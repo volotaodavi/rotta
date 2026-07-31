@@ -284,7 +284,7 @@
 **Descrição**: análoga a `DASH-05`/`06`, aplicada a `STU-*` (Parte 3), com ação em massa disponível (ex. selecionar vários para enviar comunicado, `NOTIF-broadcast`).
 
 **Critérios de aceite**:
-- **Dado** 200 alunos cadastrados, **quando** o Gestor filtra por escola, **então** vê apenas os alunos daquela escola, com paginação eficiente mesmo em bases grandes (`CASO-20` estendido, Parte 7).
+- **Dado** 200 alunos cadastrados, **quando** o Gestor filtra por escola, **então** vê apenas os alunos daquela escola, com paginação eficiente mesmo em bases grandes (`CASO-21`, Parte 7).
 
 **Possíveis melhorias futuras**: busca por nome com resultado instantâneo (sem necessidade de submeter um formulário de busca).
 

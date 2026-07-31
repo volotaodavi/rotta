@@ -596,7 +596,7 @@
 
 **Mensagens exibidas**: análogas a `DRV-02`/`DRV-03`, adaptadas ao contexto de veículo.
 
-**Casos excepcionais**: ver `CASO-16` (Parte 7, seguro vencido).
+**Casos excepcionais**: ver `CASO-18` (Parte 7, seguro vencido).
 
 **Critérios de aceite**:
 - **Dado** um veículo com seguro vencido, **quando** um motorista tenta iniciar uma rota com este veículo, **então** o início é bloqueado (`RN-19`) com mensagem explicando o motivo.
