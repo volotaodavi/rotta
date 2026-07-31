@@ -1,0 +1,21 @@
+{
+  "name": "@rotta/utils",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Funcoes utilitarias puras, sem dependencia de framework (Dossie 22, Secao 5.17).",
+  "license": "UNLICENSED",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"[@rotta/utils] nenhum teste ainda\" && exit 0",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@rotta/config": "workspace:*",
+    "eslint": "^8.57.1",
+    "typescript": "^5.7.2"
+  }
+}

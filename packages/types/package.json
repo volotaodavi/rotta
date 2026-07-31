@@ -1,0 +1,24 @@
+{
+  "name": "@rotta/types",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tipos TypeScript compartilhados dos contratos de dominio (entidades, DTOs, eventos) — derivados de shared/contracts (Dossie 22, Secao 5.4 e 6.3).",
+  "license": "UNLICENSED",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"[@rotta/types] nenhum teste ainda\" && exit 0",
+    "clean": "rm -rf dist .turbo"
+  },
+  "dependencies": {
+    "@rotta/shared-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@rotta/config": "workspace:*",
+    "eslint": "^8.57.1",
+    "typescript": "^5.7.2"
+  }
+}

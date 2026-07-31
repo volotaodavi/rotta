@@ -1,0 +1,21 @@
+{
+  "name": "@rotta/storage",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Abstracao de armazenamento local (fila offline do motorista, Dossie 14 Secao 1.7; localStorage/IndexedDB no web) — Dossie 22 Secao 5.13.",
+  "license": "UNLICENSED",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"[@rotta/storage] nenhum teste ainda\" && exit 0",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@rotta/config": "workspace:*",
+    "eslint": "^8.57.1",
+    "typescript": "^5.7.2"
+  }
+}

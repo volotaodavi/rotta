@@ -1,0 +1,30 @@
+{
+  "name": "@rotta/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Configuracoes compartilhadas de ferramental (ESLint, Prettier, TypeScript) — Dossie 22, Secao 5.18 e Dossie 23, Secao 15.",
+  "license": "UNLICENSED",
+  "exports": {
+    "./eslint/base": "./eslint/base.js",
+    "./eslint/next": "./eslint/next.js",
+    "./eslint/react-native": "./eslint/react-native.js",
+    "./eslint/nestjs": "./eslint/nestjs.js",
+    "./prettier": "./prettier/index.js",
+    "./typescript/base": "./typescript/base.json",
+    "./typescript/nextjs": "./typescript/nextjs.json",
+    "./typescript/react-native": "./typescript/react-native.json",
+    "./typescript/nestjs": "./typescript/nestjs.json"
+  },
+  "dependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-boundaries": "^5.0.1",
+    "eslint-plugin-import": "^2.31.0"
+  },
+  "devDependencies": {
+    "eslint": "^8.57.1",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@rotta/hooks",
+  "version": "0.1.0",
+  "private": true,
+  "description": "React hooks reutilizaveis, nao especificos de dominio de negocio (Dossie 22, Secao 5.8). Hooks de dominio vivem em features/ de cada app.",
+  "license": "UNLICENSED",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"[@rotta/hooks] nenhum teste ainda\" && exit 0",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@rotta/config": "workspace:*",
+    "@types/react": "^18.3.17",
+    "eslint": "^8.57.1",
+    "react": "^18.3.1",
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

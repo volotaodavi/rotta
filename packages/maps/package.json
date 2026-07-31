@@ -1,0 +1,26 @@
+{
+  "name": "@rotta/maps",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Abstracao sobre provedores de mapa (Google Maps + Mapbox, Dossie 9 Secao 2.6 / Dossie 22 Secao 5.11). Nenhum app importa os SDKs diretamente.",
+  "license": "UNLICENSED",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"[@rotta/maps] nenhum teste ainda\" && exit 0",
+    "clean": "rm -rf dist .turbo"
+  },
+  "devDependencies": {
+    "@rotta/config": "workspace:*",
+    "@types/react": "^18.3.17",
+    "eslint": "^8.57.1",
+    "react": "^18.3.1",
+    "typescript": "^5.7.2"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

@@ -1,0 +1,4 @@
+# Roda os testes unitarios apenas dos pacotes/apps afetados desde o commit
+# anterior (Dossie 23, Secao 15.1) — feedback rapido local, complementar ao
+# CI (Dossie 23, Secao 14), nunca um substituto dele.
+pnpm turbo run test --filter="...[HEAD^1]"
