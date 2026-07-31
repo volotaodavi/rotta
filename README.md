@@ -6,19 +6,20 @@ Este repositório contém a documentação completa de produto, UX, arquitetura 
 
 ## Como este material está organizado
 
-A documentação está dividida em 7 dossiês temáticos dentro de `docs/`, cobrindo os 40 capítulos solicitados. Cada capítulo justifica o "porquê" técnico e de produto por trás da decisão, não apenas o "o quê".
+A documentação nasceu de um plano de 40 capítulos organizados em 7 dossiês temáticos, e vem sendo aprofundada com dossiês adicionais dedicados sempre que um tema exige mais profundidade do que um capítulo resumido permite. Cada capítulo justifica o "porquê" técnico e de produto por trás da decisão, não apenas o "o quê".
 
-| Dossiê | Capítulos | Conteúdo |
-|---|---|---|
-| [`docs/01-produto-e-personas.md`](docs/01-produto-e-personas.md) | 1–5 | Visão, Missão, Objetivos, Público-alvo, Personas |
-| [`docs/02-fluxos-e-jornadas.md`](docs/02-fluxos-e-jornadas.md) | 6–11 | Fluxo completo, fluxo por usuário, jornadas (responsável, motorista, gestor, empresa) |
-| [`docs/03-funcionalidades-e-regras.md`](docs/03-funcionalidades-e-regras.md) | 12–13 | Funcionalidades por módulo e regras de negócio |
-| [`docs/04-arquitetura-e-dados.md`](docs/04-arquitetura-e-dados.md) | 14–20 | Arquitetura SaaS, multi-tenant, banco de dados, APIs, integrações, segurança, escalabilidade |
-| [`docs/05-roadmap-e-backlog.md`](docs/05-roadmap-e-backlog.md) | 21–25 | Roadmap, MVP, V2, V3, Backlog |
-| [`docs/06-ux-ui-design-system.md`](docs/06-ux-ui-design-system.md) | 26–34 | UX, UI, Design System, Componentes, telas, Dashboard, Landing Page, App, Painel Web |
-| [`docs/07-estrategia-tecnica-e-stack.md`](docs/07-estrategia-tecnica-e-stack.md) | 35–40 | Estratégia de crescimento, arquitetura recomendada, stack, monorepo, estrutura de pastas, boas práticas |
-| [`docs/08-modelagem-de-dados-detalhada.md`](docs/08-modelagem-de-dados-detalhada.md) | Aprofundamento do Cap. 16 | Modelagem completa de dados: multi-tenant, todas as entidades (usuários, empresas, motoristas, veículos, escolas/INEP, responsáveis, alunos, rotas, viagens, GPS, eventos, notificações, agenda, financeiro simplificado, auditoria, logs), relacionamentos, índices, cache, particionamento e escolha de banco |
-| [`docs/09-arquitetura-definitiva-stack-e-fluxos.md`](docs/09-arquitetura-definitiva-stack-e-fluxos.md) | Aprofundamento dos Cap. 14/17/18/33/34 | Arquitetura definitiva multiplataforma (landing, painel, apps Android/iOS, backend, APIs, banco, GPS, notificações), comparativo justificado de stack (Next.js/React/Vue, RN/Flutter, NestJS/Laravel/Spring, Postgres/MySQL, JWT/OAuth/Magic Link, Google Maps/Mapbox, Firebase/OneSignal, Vercel/Railway/Render/AWS/GCP, Supabase/S3, WebSocket/Socket.IO/Supabase Realtime), diagrama de infraestrutura, fluxos (login, rastreamento, mapa, push, upload, reconhecimento facial) e requisitos de publicação nas lojas |
+| Dossiê | Capítulos | Conteúdo | Status |
+|---|---|---|---|
+| [`docs/01-produto-e-personas.md`](docs/01-produto-e-personas.md) | 1–5 | Visão, Missão, Objetivos, Público-alvo, Personas | ✅ |
+| [`docs/02-fluxos-e-jornadas.md`](docs/02-fluxos-e-jornadas.md) | 6–11 | Fluxo completo, fluxo por usuário, jornadas (responsável, motorista, gestor, empresa) | ✅ |
+| [`docs/03-funcionalidades-e-regras.md`](docs/03-funcionalidades-e-regras.md) | 12–13 | Funcionalidades por módulo e regras de negócio | ✅ |
+| [`docs/04-arquitetura-e-dados.md`](docs/04-arquitetura-e-dados.md) | 14–20 | Arquitetura SaaS, multi-tenant, banco de dados, APIs, integrações, segurança, escalabilidade | ✅ |
+| `docs/05-roadmap-e-backlog.md` | 21–25 | Roadmap, MVP, V2, V3, Backlog | ⏳ pendente |
+| `docs/06-...` / `docs/07-...` | 26–34 / 35–40 | UX, UI, Design System, telas, estratégia de crescimento, monorepo, boas práticas | ➡️ substituídos e superados em profundidade pelos Dossiês 10 e 11 abaixo |
+| [`docs/08-modelagem-de-dados-detalhada.md`](docs/08-modelagem-de-dados-detalhada.md) | Aprofundamento do Cap. 16 | Modelagem completa de dados: multi-tenant, todas as entidades (usuários, empresas, motoristas, veículos, escolas/INEP, responsáveis, alunos, rotas, viagens, GPS, eventos, notificações, agenda, financeiro simplificado, auditoria, logs), relacionamentos, índices, cache, particionamento e escolha de banco | ✅ |
+| [`docs/09-arquitetura-definitiva-stack-e-fluxos.md`](docs/09-arquitetura-definitiva-stack-e-fluxos.md) | Aprofundamento dos Cap. 14/17/18/33/34 | Arquitetura definitiva multiplataforma (landing, painel, apps Android/iOS, backend, APIs, banco, GPS, notificações), comparativo justificado de stack (Next.js/React/Vue, RN/Flutter, NestJS/Laravel/Spring, Postgres/MySQL, JWT/OAuth/Magic Link, Google Maps/Mapbox, Firebase/OneSignal, Vercel/Railway/Render/AWS/GCP, Supabase/S3, WebSocket/Socket.IO/Supabase Realtime), diagrama de infraestrutura, fluxos (login, rastreamento, mapa, push, upload, reconhecimento facial) e requisitos de publicação nas lojas | ✅ |
+| [`docs/10-design-system-fundamentos.md`](docs/10-design-system-fundamentos.md) | Aprofundamento dos Cap. 26–30 | Princípios de experiência, grid, espaçamento, tipografia, ícones, raios, paleta de cores completa, tema dark/light, responsividade, especificação de todos os componentes (botões, inputs, cards, tabelas, modais, toasts, alertas, loading, skeleton, empty/erro/sucesso), acessibilidade, navegação e lista de componentização | ✅ |
+| [`docs/11-experiencia-telas-fluxos-wireframes.md`](docs/11-experiencia-telas-fluxos-wireframes.md) | Aprofundamento dos Cap. 31–34 | Wireframes detalhados da Landing Page, Dashboard da Empresa, Painel do Motorista, Painel do Responsável, Painel da Escola e Admin Rotta; todos os fluxos (cadastro, login, onboarding, criar rota, cadastrar aluno, iniciar/finalizar viagem, embarque/desembarque, ausência, troca de motorista); microinterações | ✅ |
 
 ## Princípios inegociáveis do produto
 
