@@ -38,6 +38,15 @@ Documento normativo de referência para desenvolvedores, designers, QA e futuros
 | [`docs/20-especificacao-funcional-documentos-agenda-suporte-admin-configuracoes.md`](docs/20-especificacao-funcional-documentos-agenda-suporte-admin-configuracoes.md) | `DOC-*`, `AGE-*`, `SUP-*`, `ADM-*`, `CFG-*` | Documentos (CNH, EAR, cursos, seguro, vistoria), Agenda (feriados, eventos, ausências, trocas), Suporte (tickets, chat, histórico), Admin Rotta (clientes, planos, financeiro, suporte, logs, métricas), Configurações (empresa, perfil, usuário, notificações, privacidade) | ✅ |
 | [`docs/21-especificacao-funcional-casos-especiais-e-regras-consolidadas.md`](docs/21-especificacao-funcional-casos-especiais-e-regras-consolidadas.md) | `CASO-*` | Os 21 casos especiais detalhados (perda de internet, GPS indisponível, ausências, trocas, cancelamento de plano, alteração de contato, exclusões, documentos vencidos, capacidade excedida, múltiplos responsáveis/filhos, operação em grande escala) e o índice consolidado de todas as regras de negócio (`RN-*`) da plataforma | ✅ |
 
+### Engenharia do Monorepo (preparação para implementação)
+
+Aprofunda os Cap. 37–39 do plano original (organização dos repositórios, estrutura das pastas, boas práticas) no nível de detalhe necessário para dezenas de desenvolvedores trabalharem simultaneamente sem conflito de arquitetura.
+
+| Dossiê | Conteúdo | Status |
+|---|---|---|
+| [`docs/22-engenharia-monorepo-estrutura-e-packages.md`](docs/22-engenharia-monorepo-estrutura-e-packages.md) | Escolha justificada de ferramenta de monorepo (Turborepo + pnpm Workspaces vs. Nx vs. Lerna), estrutura completa de pastas (`apps/`, `packages/`, `shared/`, `config/`, `docs/`, `scripts/`, `infra/`, `.github/`), definição de cada aplicação (web, mobile, admin, api, realtime-gateway, worker, docs) e arquitetura completa de 18 packages compartilhados (ui, theme, icons, types, validators, api-client, auth, hooks, stores, forms, maps, notifications, storage, i18n, feature-flags, constants, utils, config) | ✅ |
+| [`docs/23-engenharia-padroes-qualidade-e-operacao.md`](docs/23-engenharia-padroes-qualidade-e-operacao.md) | Estrutura React por feature, gerenciamento de estado (TanStack Query + Zustand + Context), consumo de API (fetch/cache/retry/offline), organização de rotas web e mobile, tema como código, i18n, feature flags, variáveis de ambiente, logs de frontend, pirâmide de testes (unitário/integração/E2E/visual regression), estratégia de Git (trunk-based justificado vs. Git Flow), Conventional Commits, versionamento (SemVer + Changesets), pipeline de CI/CD completo, ferramentas de qualidade (ESLint/Prettier/Husky/Commitlint/lint-staged/EditorConfig) e documentação viva (ADRs, Storybook, OpenAPI) | ✅ |
+
 ## Princípios inegociáveis do produto
 
 Toda decisão de produto e engenharia documentada aqui é filtrada por oito critérios, nesta ordem de desempate quando há conflito:
