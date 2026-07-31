@@ -18,6 +18,7 @@ A documentação está dividida em 7 dossiês temáticos dentro de `docs/`, cobr
 | [`docs/06-ux-ui-design-system.md`](docs/06-ux-ui-design-system.md) | 26–34 | UX, UI, Design System, Componentes, telas, Dashboard, Landing Page, App, Painel Web |
 | [`docs/07-estrategia-tecnica-e-stack.md`](docs/07-estrategia-tecnica-e-stack.md) | 35–40 | Estratégia de crescimento, arquitetura recomendada, stack, monorepo, estrutura de pastas, boas práticas |
 | [`docs/08-modelagem-de-dados-detalhada.md`](docs/08-modelagem-de-dados-detalhada.md) | Aprofundamento do Cap. 16 | Modelagem completa de dados: multi-tenant, todas as entidades (usuários, empresas, motoristas, veículos, escolas/INEP, responsáveis, alunos, rotas, viagens, GPS, eventos, notificações, agenda, financeiro simplificado, auditoria, logs), relacionamentos, índices, cache, particionamento e escolha de banco |
+| [`docs/09-arquitetura-definitiva-stack-e-fluxos.md`](docs/09-arquitetura-definitiva-stack-e-fluxos.md) | Aprofundamento dos Cap. 14/17/18/33/34 | Arquitetura definitiva multiplataforma (landing, painel, apps Android/iOS, backend, APIs, banco, GPS, notificações), comparativo justificado de stack (Next.js/React/Vue, RN/Flutter, NestJS/Laravel/Spring, Postgres/MySQL, JWT/OAuth/Magic Link, Google Maps/Mapbox, Firebase/OneSignal, Vercel/Railway/Render/AWS/GCP, Supabase/S3, WebSocket/Socket.IO/Supabase Realtime), diagrama de infraestrutura, fluxos (login, rastreamento, mapa, push, upload, reconhecimento facial) e requisitos de publicação nas lojas |
 
 ## Princípios inegociáveis do produto
 
