@@ -15,6 +15,7 @@
 **Pré-requisitos**: aluno já cadastrado (`STU-01`) com ao menos um convite de responsável pendente.
 
 **Fluxo principal**:
+
 1. Gestor cadastra o aluno e informa telefone/e-mail do(s) responsável(is) (`STU-01`, passo relacionado).
 2. Sistema envia convite via SMS/WhatsApp/e-mail.
 3. Responsável abre o link/código, informa CPF, confirma dados pessoais e define o método de login (OTP, padrão).
@@ -33,6 +34,7 @@
 **Casos excepcionais**: dois responsáveis do mesmo aluno aceitando o convite em momentos diferentes — cada um gera seu próprio `Usuario`/vínculo, independentemente, sem conflito.
 
 **Critérios de aceite**:
+
 - **Dado** um convite de responsável válido, **quando** o convidado o aceita com CPF válido, **então** o vínculo `AlunoResponsavel` é criado e ele passa a visualizar o aluno em `RESP-view/children`.
 - **Dado** um convite expirado, **quando** o convidado tenta aceitá-lo, **então** o sistema recusa e orienta a solicitar reenvio.
 
@@ -51,6 +53,7 @@
 **Pré-requisitos**: convite emitido com CPF ou telefone que corresponda a um `Usuario` pré-existente.
 
 **Fluxo principal**:
+
 1. Gestor cadastra um novo aluno e informa o CPF do responsável.
 2. Sistema identifica que aquele CPF já corresponde a um `Usuario` ativo (de outro vínculo, possivelmente em outro tenant).
 3. Ao aceitar o convite, o Responsável apenas confirma o novo vínculo — nenhum dado pessoal é solicitado novamente (já existe).
@@ -69,6 +72,7 @@
 **Casos excepcionais**: ver `CASO-19` (Parte 7, responsável com mais de um filho, incluindo em tenants diferentes).
 
 **Critérios de aceite**:
+
 - **Dado** um responsável já cadastrado em um tenant A, **quando** ele é convidado como responsável de um aluno no tenant B com o mesmo CPF, **então** o vínculo é criado sobre a conta existente sem exigir novo cadastro de dados pessoais.
 
 **Possíveis melhorias futuras**: notificação proativa ao Gestor de que o responsável convidado "já é usuário Rotta" no momento do cadastro do aluno, antes mesmo do convite ser enviado.
@@ -86,6 +90,7 @@
 **Pré-requisitos**: vínculo `AlunoResponsavel` ativo.
 
 **Fluxo principal**:
+
 1. Responsável acessa Perfil → "Meus dados".
 2. Revisa nome, CPF (somente leitura — CPF não é autoeditável, requer contato com suporte para correção, dado seu peso como identificador legal), telefone, e-mail, endereço.
 3. Confirma ou solicita alteração dos campos editáveis.
@@ -103,6 +108,7 @@
 **Casos excepcionais**: nenhum além dos já cobertos.
 
 **Critérios de aceite**:
+
 - **Dado** um responsável acessando "Meus dados", **quando** ele revisa as informações, **então** consegue confirmar ou editar todos os campos exceto CPF.
 
 **Possíveis melhorias futuras**: nenhuma identificada.
@@ -120,6 +126,7 @@
 **Pré-requisitos**: conta ativa.
 
 **Fluxo principal (PIN local)**:
+
 1. Responsável acessa Perfil → Segurança → "Criar PIN de acesso rápido".
 2. Define um PIN de 4–6 dígitos.
 3. Sistema passa a solicitar o PIN (não um novo OTP) para reabrir o app quando a sessão já está ativa, em vez de manter o app permanentemente desbloqueado.
@@ -137,6 +144,7 @@
 **Casos excepcionais**: troca de aparelho — o PIN não é portado (é local ao dispositivo); o novo aparelho exige OTP completo no primeiro acesso, e o usuário pode configurar um novo PIN nele.
 
 **Critérios de aceite**:
+
 - **Dado** um responsável com PIN configurado, **quando** ele reabre o app com a sessão ainda válida, **então** o sistema solicita apenas o PIN, não um novo OTP.
 - **Dado** um responsável que esqueceu o PIN, **quando** ele opta por "esqueci o PIN", **então** o sistema o redireciona ao login OTP padrão.
 
@@ -155,6 +163,7 @@
 **Pré-requisitos**: conta ativa.
 
 **Fluxo principal**:
+
 1. Responsável acessa Perfil → "Meus dados" → edita telefone ou e-mail.
 2. Sistema envia código de confirmação ao **novo** identificador informado.
 3. Responsável confirma o código no novo identificador.
@@ -174,6 +183,7 @@
 **Casos excepcionais**: ver `CASO-10` e `CASO-11` (Parte 7).
 
 **Critérios de aceite**:
+
 - **Dado** um responsável alterando o telefone, **quando** ele confirma o código enviado ao novo número, **então** o telefone é atualizado e uma notificação de segurança é enviada ao número antigo.
 - **Dado** um novo telefone já em uso por outra conta, **quando** a alteração é tentada, **então** o sistema recusa com mensagem clara.
 
@@ -192,6 +202,7 @@
 **Pré-requisitos**: escola do aluno já cadastrada (`ESC-01`).
 
 **Fluxo principal**:
+
 1. Gestor acessa "Alunos" → "+ Novo aluno".
 2. Etapa 1 — dados básicos: nome, data de nascimento, foto, escola (`STU-02`), turma/turno (`STU-03`/`STU-04`).
 3. Etapa 2 — pontos de embarque/desembarque (`STU-06`).
@@ -212,6 +223,7 @@
 **Casos excepcionais**: aluno com dois responsáveis informados simultaneamente no mesmo cadastro — ambos os convites são enviados em paralelo, cada um seguindo `RESP-01` de forma independente.
 
 **Critérios de aceite**:
+
 - **Dado** dados completos e válidos, **quando** o Gestor cadastra um aluno com um responsável, **então** o aluno é criado com status `ativo` e o convite é enviado.
 - **Dado** uma planilha de importação com 50 linhas, das quais 12 com erro, **quando** o processamento conclui, **então** 38 alunos são criados e um relatório detalhado das 12 falhas é disponibilizado.
 
@@ -242,6 +254,7 @@
 **Casos excepcionais**: escola do aluno ainda não cadastrada no tenant — o fluxo de `STU-01` oferece um atalho para cadastrar a escola sem sair do formulário de aluno (Drawer lateral, Dossiê 11 §7.5).
 
 **Critérios de aceite**:
+
 - **Dado** um aluno sendo cadastrado, **quando** o Gestor seleciona uma escola já cadastrada, **então** o vínculo é criado corretamente.
 - **Dado** uma incompatibilidade de turno entre aluno e escola, **quando** detectada, **então** o sistema alerta sem bloquear o cadastro.
 
@@ -272,6 +285,7 @@
 **Casos excepcionais**: nenhum.
 
 **Critérios de aceite**:
+
 - **Dado** uma lista de alunos, **quando** o Gestor executa a atualização em massa de turma, **então** todos os alunos selecionados têm o campo atualizado conforme configurado.
 
 **Possíveis melhorias futuras**: integração com sistema de gestão escolar da própria escola para sincronizar turma automaticamente (V3, Dossiê 4 §18.2).
@@ -315,6 +329,7 @@
 **Pré-requisitos**: aluno cadastrado.
 
 **Fluxo principal**:
+
 1. Gestor acessa o perfil do aluno → aba "Responsáveis".
 2. Visualiza lista de responsáveis vinculados, com indicação de quem é financeiro/legal.
 3. Adiciona novo responsável (convite, `RESP-01`) ou remove um vínculo existente.
@@ -332,6 +347,7 @@
 **Casos excepcionais**: ver `CASO-20` (Parte 7, aluno com dois responsáveis).
 
 **Critérios de aceite**:
+
 - **Dado** um aluno com dois responsáveis (um financeiro/legal, outro apenas de acompanhamento), **quando** o Gestor tenta remover o responsável financeiro/legal único, **então** o sistema recusa a ação.
 
 **Possíveis melhorias futuras**: transferência de responsabilidade financeira/legal com fluxo guiado dedicado (hoje é uma combinação manual de adicionar+remover).
@@ -347,6 +363,7 @@
 **Pré-requisitos**: nenhum além de `STU-01`.
 
 **Fluxo principal**:
+
 1. Durante o cadastro/edição do aluno, Gestor informa o endereço de embarque.
 2. Sistema geocodifica o endereço (via adapter Google Maps, Dossiê 9 §2.6) e exibe um pino ajustável no mapa para confirmação/correção fina.
 3. Gestor repete o processo para o ponto de desembarque (pode ser o mesmo endereço ou diferente).
@@ -364,6 +381,7 @@
 **Casos excepcionais**: ver `CASO-04` (Parte 7, aluno embarca fora do ponto cadastrado).
 
 **Critérios de aceite**:
+
 - **Dado** um endereço válido e geocodificável, **quando** informado no cadastro do aluno, **então** o sistema posiciona o pino automaticamente no mapa, ajustável pelo Gestor.
 - **Dado** um endereço não localizado automaticamente, **quando** isso ocorre, **então** o sistema permite o ajuste manual do pino sem bloquear o cadastro.
 
@@ -380,6 +398,7 @@
 **Pré-requisitos**: aluno cadastrado.
 
 **Fluxo principal**:
+
 1. Gestor acessa o perfil do aluno → altera o status (ex. para `trancado_temporariamente` durante um período de licença médica).
 2. Sistema aplica o efeito correspondente: aluno com status diferente de `ativo` não aparece nas listas de checklist de nenhuma rota até retornar a `ativo`.
 
@@ -396,6 +415,7 @@
 **Casos excepcionais**: aluno com status alterado durante uma viagem já em andamento no dia — a alteração só produz efeito a partir da próxima viagem, nunca interrompe uma viagem em curso.
 
 **Critérios de aceite**:
+
 - **Dado** um aluno `ativo` vinculado a uma rota, **quando** o Gestor o marca como `trancado_temporariamente`, **então** ele deixa de aparecer no checklist de embarque das próximas viagens até o status ser revertido.
 
 **Possíveis melhorias futuras**: agendamento de trancamento/reativação automática por data (ex. "trancar de 10/07 a 20/07"), sem exigir ação manual de reversão.
@@ -411,6 +431,7 @@
 **Pré-requisitos**: aluno com ao menos uma viagem registrada.
 
 **Fluxo principal**:
+
 1. Usuário acessa o perfil do aluno → aba "Histórico".
 2. Sistema lista, por dia, os eventos de embarque/desembarque e eventuais ocorrências, com filtro por período.
 
@@ -427,6 +448,7 @@
 **Casos excepcionais**: aluno transferido entre tenants (trocou de transportador) — o histórico anterior permanece acessível ao Responsável mesmo após a mudança de tenant, mas não fica visível ao novo tenant (isolamento multi-tenant, `RN-07`), preservando a privacidade da relação comercial anterior.
 
 **Critérios de aceite**:
+
 - **Dado** um aluno com 30 dias de histórico, **quando** o Responsável consulta o histórico, **então** vê todos os 30 dias com embarque/desembarque e ocorrências, se houver.
 - **Dado** um aluno que mudou de tenant, **quando** o tenant novo consulta o histórico, **então** vê apenas os dados a partir do novo vínculo, nunca do tenant anterior.
 
@@ -443,6 +465,7 @@
 **Pré-requisitos**: nenhum.
 
 **Fluxo principal**:
+
 1. Gestor acessa "Escolas" → "+ Nova escola".
 2. Informa nome, rede (federal/estadual/municipal/privada), código INEP (opcional, ver `ESC-02`), município, UF, endereço, turnos ofertados, contato.
 3. Sistema geocodifica o endereço e cria a escola.
@@ -460,6 +483,7 @@
 **Casos excepcionais**: nenhum além dos já cobertos.
 
 **Critérios de aceite**:
+
 - **Dado** dados válidos, **quando** o Gestor cadastra uma escola, **então** ela fica disponível para vínculo em `STU-02`.
 
 **Possíveis melhorias futuras**: ver `ESC-02`.
@@ -477,6 +501,7 @@
 **Pré-requisitos**: conectividade com o serviço de consulta (interno ou externo) de dados do INEP.
 
 **Fluxo principal**:
+
 1. No cadastro de escola, Gestor busca pelo nome da escola e município.
 2. Sistema apresenta sugestões da base INEP correspondentes.
 3. Gestor seleciona a correspondência correta.
@@ -495,6 +520,7 @@
 **Casos excepcionais**: escola que mudou de nome/rede após a última atualização da base de referência — Gestor pode prosseguir com o cadastro manual e corrigir os campos divergentes.
 
 **Critérios de aceite**:
+
 - **Dado** uma busca por nome e município que retorna correspondências, **quando** o Gestor seleciona uma, **então** os campos oficiais são preenchidos automaticamente e permanecem editáveis nos campos operacionais.
 
 **Possíveis melhorias futuras**: sincronização periódica automática da base de referência INEP (V2/V3, dependente de disponibilidade e formato de acesso aos dados públicos).
@@ -524,6 +550,7 @@
 **Casos excepcionais**: nenhum.
 
 **Critérios de aceite**:
+
 - **Dado** uma escola com turnos matutino e vespertino cadastrados, **quando** um aluno integral (turno "integral") é vinculado a ela, **então** o sistema não emite alerta de incoerência, tratando "integral" como compatível com ambos.
 
 **Possíveis melhorias futuras**: horário específico de entrada/saída por turno (não apenas o rótulo do turno), refinando ainda mais a validação cruzada com o horário da rota.

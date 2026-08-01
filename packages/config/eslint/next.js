@@ -17,6 +17,10 @@ module.exports = {
   settings: {
     react: { version: "detect" },
   },
+  // next-env.d.ts e gerado/gerenciado pelo proprio Next.js ("This file
+  // should not be edited") — nunca lintado, mesmo quando o build o
+  // reescreve para incluir a referencia tripla-slash de `typedRoutes`.
+  ignorePatterns: ["next-env.d.ts"],
   rules: {
     // A11y e requisito de produto, nao apenas boa pratica — Dossie 10, Secao 10.
     "jsx-a11y/anchor-is-valid": "error",

@@ -13,12 +13,9 @@ export interface AuthConfig {
  * apps/realtime-gateway) validem o token com a chave publica sem
  * consultar a Core API a cada conexao.
  */
-export default registerAs(
-  "auth",
-  (): AuthConfig => ({
-    jwtPrivateKey: process.env.JWT_PRIVATE_KEY ?? "",
-    jwtPublicKey: process.env.JWT_PUBLIC_KEY ?? "",
-    accessTokenTtl: process.env.JWT_ACCESS_TOKEN_TTL ?? "15m",
-    refreshTokenTtl: process.env.JWT_REFRESH_TOKEN_TTL ?? "30d",
-  }),
-);
+export default registerAs("auth", (): AuthConfig => ({
+  jwtPrivateKey: process.env.JWT_PRIVATE_KEY ?? "",
+  jwtPublicKey: process.env.JWT_PUBLIC_KEY ?? "",
+  accessTokenTtl: process.env.JWT_ACCESS_TOKEN_TTL ?? "15m",
+  refreshTokenTtl: process.env.JWT_REFRESH_TOKEN_TTL ?? "30d",
+}));

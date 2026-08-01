@@ -53,21 +53,25 @@ module.exports = {
     "import/order": [
       "warn",
       {
-        groups: [
-          "builtin",
-          "external",
-          "internal",
-          "parent",
-          "sibling",
-          "index",
-          "type",
-        ],
+        groups: ["builtin", "external", "internal", "parent", "sibling", "index", "type"],
         "newlines-between": "always",
         alphabetize: { order: "asc", caseInsensitive: true },
       },
     ],
     "import/no-cycle": "error",
     "import/no-default-export": "off",
+    // Resolucao de modulo (incluindo os aliases `@/*` de cada app/package)
+    // ja e verificada, com muito mais precisao, pelo `tsc --noEmit` de
+    // cada workspace (script `typecheck`, sempre rodado antes do `lint`
+    // no pipeline — Dossie 23, Secao 14). O resolvedor de import do
+    // ESLint (`eslint-import-resolver-typescript`) descobre o tsconfig
+    // certo por proximidade ao arquivo quando invocado a partir do
+    // diretorio de cada pacote (`pnpm turbo run lint`), mas quebra
+    // quando o mesmo comando roda a partir da raiz do monorepo com
+    // arquivos de multiplos pacotes ao mesmo tempo (`lint-staged` no
+    // hook de pre-commit) — desativar aqui evita falso-positivo nesse
+    // segundo cenario sem perder a garantia real (que continua vindo do tsc).
+    "import/no-unresolved": "off",
 
     // --- Fronteiras de dominio (Dossie 12 Secao 1.4 / Dossie 23 Secao 1.2) ---
     // Cada app/package que consome este preset declara seus proprios
@@ -83,13 +87,5 @@ module.exports = {
       },
     },
   },
-  ignorePatterns: [
-    "node_modules",
-    "dist",
-    "build",
-    ".next",
-    ".expo",
-    "coverage",
-    "*.config.js",
-  ],
+  ignorePatterns: ["node_modules", "dist", "build", ".next", ".expo", "coverage", "*.config.js"],
 };

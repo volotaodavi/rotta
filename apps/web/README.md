@@ -1,6 +1,6 @@
 # @rotta/web — Landing Page + Painel Administrativo
 
-Next.js 15 (App Router). Serve dois públicos via *route groups* (Dossiê 22, Seção 4.1):
+Next.js 15 (App Router). Serve dois públicos via _route groups_ (Dossiê 22, Seção 4.1):
 
 - `(marketing)` — Landing Page pública (Dossiê 11, Seção 1)
 - `(auth)` — login, cadastro, recuperação de senha (Dossiê 15)

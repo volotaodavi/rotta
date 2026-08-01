@@ -27,6 +27,7 @@
 **Casos excepcionais**: tentativa de criar rota com motorista/veículo bloqueado — a lista de seleção já filtra apenas elegíveis (mesma lógica de `DRV-09`), tornando esse erro praticamente inatingível pela UI, mas ainda validado no backend como defesa em profundidade.
 
 **Critérios de aceite**:
+
 - **Dado** um motorista e veículo aprovados, **quando** o Gestor cria uma rota com ao menos uma parada e um aluno, **então** a rota é criada com status `ativa`.
 - **Dado** uma rota criada sem nenhum aluno vinculado, **quando** isso ocorre, **então** ela permanece com status `pausada` até receber ao menos um vínculo de aluno ativo.
 
@@ -57,6 +58,7 @@
 **Casos excepcionais**: edição simultânea por dois Gestores — last-write-wins com registro de auditoria de ambas as tentativas (mesmo padrão de `EMP-02`).
 
 **Critérios de aceite**:
+
 - **Dado** uma rota com viagem em andamento, **quando** o Gestor remove um aluno da composição, **então** a viagem em curso não é afetada, mas a próxima viagem já reflete a remoção.
 
 **Possíveis melhorias futuras**: nenhuma identificada além do já coberto.
@@ -72,6 +74,7 @@
 **Pré-requisitos**: rota de origem existente.
 
 **Fluxo principal**:
+
 1. Gestor acessa a rota de origem → "Duplicar".
 2. Sistema cria uma nova rota com as mesmas paradas e configuração, exceto: nome (sufixado, ex. "Cópia de Rota Manhã"), motorista/veículo (deixados em branco, forçando escolha explícita), e alunos vinculados (nunca duplicados automaticamente — evita o erro grave de um mesmo aluno acabar em duas rotas simultâneas por engano, RN-26).
 3. Gestor ajusta o necessário e salva.
@@ -89,6 +92,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** uma rota com 5 paradas, **quando** o Gestor a duplica, **então** a nova rota tem as mesmas 5 paradas, mas nenhum aluno vinculado e nenhum motorista/veículo padrão definido.
 
 **Possíveis melhorias futuras**: opção explícita de "duplicar também os alunos" com uma tela de confirmação dedicada, para operações que genuinamente precisam disso (ex. rota de ida e volta com exatamente os mesmos alunos).
@@ -118,6 +122,7 @@
 **Casos excepcionais**: feriado caindo em um dia normalmente ativo — tratado pela Agenda (`AGE-01`, Parte 6), não por esta configuração estrutural (a rota continua "configurada" para aquele dia da semana; é o calendário de feriados que suprime a expectativa de viagem naquela data específica).
 
 **Critérios de aceite**:
+
 - **Dado** uma rota configurada para segunda a sexta, **quando** um motorista tenta iniciar viagem num sábado, **então** o sistema bloqueia com mensagem explicativa.
 
 **Possíveis melhorias futuras**: nenhuma identificada.
@@ -135,6 +140,7 @@
 **Pré-requisitos**: motorista substituto com status `aprovado` e disponibilidade compatível.
 
 **Fluxo principal**:
+
 1. Gestor acessa a rota (ou a viagem do dia, se a substituição for pontual e a viagem já estiver em andamento) → "Substituir motorista".
 2. Sistema lista apenas motoristas elegíveis (aprovados, sem bloqueio documental).
 3. Gestor escolhe o escopo: "somente hoje" ou "permanentemente".
@@ -153,6 +159,7 @@
 **Casos excepcionais**: ver `CASO-05` (Parte 7).
 
 **Critérios de aceite**:
+
 - **Dado** uma viagem em andamento, **quando** o Gestor realiza uma substituição pontual de motorista, **então** o restante da viagem passa a ser conduzido pelo substituto e os responsáveis recebem notificação da mudança.
 
 **Possíveis melhorias futuras**: sugestão automática do motorista substituto mais adequado (V3, Analytics).
@@ -184,6 +191,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** uma rota com 15 alunos, **quando** o Gestor tenta substituir por um veículo de capacidade 12, **então** o sistema bloqueia a substituição com mensagem explicativa.
 
 **Possíveis melhorias futuras**: nenhuma identificada.
@@ -213,6 +221,7 @@
 **Casos excepcionais**: duas paradas com endereços muito próximos (mesma rua) — sistema não impede, mas sugere consolidação em uma única parada para otimizar o tempo de trajeto.
 
 **Critérios de aceite**:
+
 - **Dado** uma rota com 4 paradas, **quando** o Gestor reordena arrastando a 3ª parada para a 1ª posição, **então** a nova ordem é persistida e refletida no app do motorista na próxima viagem.
 - **Dado** um aluno já vinculado a uma rota ativa do turno da manhã, **quando** o Gestor tenta vinculá-lo a outra rota do mesmo turno, **então** o sistema bloqueia com mensagem explicativa (`RN-26`).
 
@@ -231,6 +240,7 @@
 **Pré-requisitos**: rota com 3 ou mais paradas cadastradas (abaixo disso, a otimização não produz ganho relevante).
 
 **Fluxo principal**:
+
 1. Gestor acessa a rota → "Sugerir otimização".
 2. Sistema calcula a sequência de menor tempo/distância total, mantendo fixos os pontos de origem/destino obrigatórios (ex. chegada final na escola no horário certo).
 3. Sistema apresenta a sugestão lado a lado com a ordem atual (comparação de tempo estimado).
@@ -249,6 +259,7 @@
 **Casos excepcionais**: falha do provedor de mapas ao calcular a otimização — sistema informa a indisponibilidade temporária e mantém a ordem atual inalterada, nunca bloqueia a operação da rota por essa funcionalidade de conveniência estar fora do ar.
 
 **Critérios de aceite**:
+
 - **Dado** uma rota com 6 paradas, **quando** o Gestor solicita a otimização e aceita a sugestão, **então** a nova ordem é aplicada e refletida na próxima viagem.
 - **Dado** uma indisponibilidade do provedor de mapas, **quando** a otimização é solicitada, **então** o sistema informa a falha sem alterar a rota existente.
 
@@ -279,6 +290,7 @@
 **Casos excepcionais**: ver `CASO-13` (Parte 7, motorista tenta iniciar rota sem GPS disponível).
 
 **Critérios de aceite**:
+
 - **Dado** um motorista aprovado com veículo aprovado, **quando** ele inicia a rota dentro de um dia configurado, **então** a viagem é criada e o rastreamento é ativado.
 - **Dado** um motorista com CNH vencida, **quando** ele tenta iniciar a rota, **então** o sistema bloqueia com mensagem explicativa (`RN-18`).
 
@@ -294,7 +306,7 @@
 
 **Pré-requisitos**: viagem `em_andamento`; todos os alunos esperados processados no checklist (embarcados/ausentes justificados).
 
-**Fluxo principal**: ver Dossiê 11 §3.3/7.10 — tela dedicada de confirmação explícita ("Confirmo que o veículo está vazio", com exigência de *long-press*, Dossiê 11 §8) → viagem marcada `finalizada` → GPS de alta frequência desativado.
+**Fluxo principal**: ver Dossiê 11 §3.3/7.10 — tela dedicada de confirmação explícita ("Confirmo que o veículo está vazio", com exigência de _long-press_, Dossiê 11 §8) → viagem marcada `finalizada` → GPS de alta frequência desativado.
 
 **Fluxos alternativos**: motorista tenta finalizar com alunos ainda não processados no checklist da última parada — sistema bloqueia a finalização até que todos sejam processados.
 
@@ -309,6 +321,7 @@
 **Casos excepcionais**: nenhum além do já coberto (ver `TRIP`/`EMB`/`DESEMB` para o detalhe do checklist).
 
 **Critérios de aceite**:
+
 - **Dado** todos os alunos processados, **quando** o motorista confirma explicitamente van vazia, **então** a viagem é finalizada e o histórico é consolidado.
 - **Dado** ao menos um aluno sem checklist concluído, **quando** o motorista tenta finalizar, **então** o sistema bloqueia com mensagem clara.
 
@@ -341,6 +354,7 @@
 **Casos excepcionais**: ver `GPS-04`/`GPS-05`.
 
 **Critérios de aceite**:
+
 - **Dado** uma viagem em andamento, **quando** o motorista se move, **então** o responsável autorizado vê a posição atualizada no mapa em até 10 segundos (Dossiê 4 §20.4, SLO de referência).
 
 **Possíveis melhorias futuras**: nenhuma além das já cobertas na arquitetura (Dossiê 14).
@@ -372,6 +386,7 @@
 **Casos excepcionais**: ver `CASO-01` e `CASO-02` (Parte 7).
 
 **Critérios de aceite**:
+
 - **Dado** um motorista sem conectividade durante toda a viagem, **quando** a conexão retorna ao final, **então** todos os pontos de GPS e eventos de checklist são sincronizados corretamente, na ordem real de ocorrência.
 
 **Possíveis melhorias futuras**: indicador de "quantos itens pendentes de sincronização" visível ao motorista para transparência.
@@ -403,6 +418,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** um responsável que perdeu conexão por 2 minutos durante o acompanhamento, **quando** a conexão retorna, **então** o app solicita e exibe a posição mais recente real (não uma posição de 2 minutos atrás sem indicação).
 
 **Possíveis melhorias futuras**: nenhuma identificada além das já cobertas.
@@ -432,6 +448,7 @@
 **Casos excepcionais**: ver `CASO-02` (Parte 7, GPS indisponível).
 
 **Critérios de aceite**:
+
 - **Dado** uma posição com baixa precisão reportada, **quando** processada, **então** é armazenada normalmente no histórico, mas sinalizada para fins de exibição/alerta.
 - **Dado** uma sequência de posições geograficamente incoerente, **quando** detectada, **então** gera alerta ao Gestor sem interromper a viagem.
 
@@ -462,6 +479,7 @@
 **Casos excepcionais**: ver `CASO-03` e `CASO-04` (Parte 7).
 
 **Critérios de aceite**:
+
 - **Dado** uma parada com 4 alunos esperados, **quando** o motorista marca todos e confirma, **então** notificações de embarque são disparadas a todos os responsáveis correspondentes simultaneamente.
 - **Dado** um aluno com ausência avisada previamente, **quando** a parada é aberta, **então** ele já aparece marcado como "ausência avisada", exigindo apenas confirmação.
 
@@ -494,6 +512,7 @@
 **Casos excepcionais**: crachá perdido/trocado entre alunos — o Gestor pode gerar um novo QR Code a qualquer momento, invalidando o anterior automaticamente.
 
 **Critérios de aceite**:
+
 - **Dado** um QR Code válido de um aluno da parada atual, **quando** escaneado, **então** o aluno é automaticamente marcado como embarcado.
 - **Dado** um QR Code de um aluno que não pertence àquela parada, **quando** escaneado, **então** o sistema rejeita com mensagem de alerta.
 
@@ -546,6 +565,7 @@
 **Casos excepcionais**: revogação do consentimento pelo responsável a qualquer momento — desativa imediatamente o reconhecimento facial para aquele aluno específico, sem afetar os demais alunos da mesma rota.
 
 **Critérios de aceite**:
+
 - **Dado** um aluno com consentimento e enrolamento facial válidos, **quando** ele embarca e é reconhecido, **então** o embarque é confirmado automaticamente, com o motorista podendo ver e corrigir se necessário.
 - **Dado** um responsável que revoga o consentimento, **quando** isso ocorre, **então** o reconhecimento facial é desativado para aquele aluno imediatamente, sem impactar os demais.
 
@@ -590,6 +610,7 @@
 **Casos excepcionais**: nenhum além dos já cobertos.
 
 **Critérios de aceite**:
+
 - **Dado** um aluno embarcado nesta viagem, **quando** o motorista confirma seu desembarque na parada correta, **então** o evento é registrado e a notificação é disparada (`DESEMB-03`).
 
 **Possíveis melhorias futuras**: nenhuma além das já cobertas em `EMB-*`.
@@ -633,6 +654,7 @@
 **Casos excepcionais**: nenhum além dos já cobertos em `NOTIF-*`.
 
 **Critérios de aceite**:
+
 - **Dado** um desembarque confirmado, **quando** o evento é processado, **então** o responsável recebe a notificação em até 10 segundos (SLO de referência, Dossiê 4 §20.4).
 
 **Possíveis melhorias futuras**: nenhuma além das já cobertas em `NOTIF-*`.

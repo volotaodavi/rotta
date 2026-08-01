@@ -29,6 +29,7 @@
 **Casos excepcionais**: usuário com múltiplos dispositivos (trocou de celular sem desinstalar do antigo) — o sistema envia a todos os tokens ativos registrados, sem tentar adivinhar qual é o "principal".
 
 **Critérios de aceite**:
+
 - **Dado** um usuário com permissão de notificação concedida, **quando** um evento relevante ocorre, **então** ele recebe o push em até 10 segundos (Dossiê 4 §20.4).
 - **Dado** um usuário sem permissão concedida, **quando** um evento crítico ocorre, **então** o sistema aciona automaticamente o fallback para WhatsApp/SMS.
 
@@ -61,6 +62,7 @@
 **Casos excepcionais**: número sem WhatsApp instalado — a tentativa de envio falha no provedor, e o sistema aciona o fallback para SMS automaticamente (Dossiê 14 §2.2).
 
 **Critérios de aceite**:
+
 - **Dado** um responsável com WhatsApp ativo, **quando** um evento de embarque ocorre, **então** ele recebe a mensagem via WhatsApp usando o template aprovado correspondente.
 - **Dado** um número sem WhatsApp, **quando** o envio falha, **então** o sistema tenta o SMS automaticamente.
 
@@ -91,6 +93,7 @@
 **Casos excepcionais**: operadora com atraso de entrega de SMS (fora do controle da Rotta) — sistema marca como `enviado` mas não necessariamente `entregue` até confirmação da operadora, quando disponível.
 
 **Critérios de aceite**:
+
 - **Dado** uma falha dos canais push e WhatsApp, **quando** isso ocorre para um evento não crítico, **então** o SMS é tentado como última etapa do fallback.
 - **Dado** um evento crítico, **quando** ocorre, **então** o SMS é disparado em paralelo aos demais canais, não em sequência.
 
@@ -121,6 +124,7 @@
 **Casos excepcionais**: e-mail retornado como inválido (bounce) — sistema marca o e-mail como suspeito e alerta o usuário a confirmar/corrigir na próxima vez que acessar o app.
 
 **Critérios de aceite**:
+
 - **Dado** o fechamento mensal de fatura, **quando** processado, **então** a Empresa recebe um e-mail com o resumo e link para a fatura detalhada.
 
 **Possíveis melhorias futuras**: newsletter opcional de novidades do produto (opt-in explícito, nunca por padrão).
@@ -152,6 +156,7 @@
 **Casos excepcionais**: tenant com centenas de rotas — os indicadores são pré-agregados (não calculados a cada requisição de forma ingênua) para manter a performance de carregamento do dashboard (Dossiê 8 §20.1, cache de contadores).
 
 **Critérios de aceite**:
+
 - **Dado** um tenant com 10 rotas configuradas, das quais 8 ativas hoje, **quando** o Gestor abre o dashboard, **então** vê "8/10" no indicador de rotas ativas.
 
 **Possíveis melhorias futuras**: comparação automática com o mesmo dia da semana anterior, para contextualizar se o desempenho do dia está dentro do padrão.
@@ -178,9 +183,10 @@
 
 **Mensagens exibidas**: ver acima.
 
-**Casos excepcionais**: tenant com centenas de veículos simultâneos — o mapa aplica *clustering* visual (agrupamento de marcadores próximos) para manter a legibilidade, expandindo ao dar zoom.
+**Casos excepcionais**: tenant com centenas de veículos simultâneos — o mapa aplica _clustering_ visual (agrupamento de marcadores próximos) para manter a legibilidade, expandindo ao dar zoom.
 
 **Critérios de aceite**:
+
 - **Dado** 5 viagens em andamento, **quando** o Gestor abre o mapa, **então** vê os 5 veículos posicionados corretamente, atualizando em tempo real.
 
 **Possíveis melhorias futuras**: filtro do mapa por escola/região, útil para tenants com operação geograficamente dispersa.
@@ -212,6 +218,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** 20 alunos ativos, 15 com valor de mensalidade cadastrado, **quando** o Gestor consulta a receita estimada, **então** vê a soma dos 15 valores, com aviso sobre os 5 alunos sem valor.
 
 **Possíveis melhorias futuras**: reconciliação com cobrança real, quando o módulo financeiro completo (V2, Dossiê 3 §12.16) existir.
@@ -241,6 +248,7 @@
 **Casos excepcionais**: nenhum além dos já cobertos em `GPS-*`/`TRIP-*`.
 
 **Critérios de aceite**:
+
 - **Dado** 3 viagens em andamento e 2 concluídas hoje, **quando** o Gestor consulta a lista, **então** vê os status corretos de cada uma, atualizados em tempo real.
 
 **Possíveis melhorias futuras**: nenhuma além das já cobertas.
@@ -258,6 +266,7 @@
 **Demais campos**: idênticos em estrutura aos já detalhados em `DRV-*` (Parte 2) — esta entrada é a superfície de leitura consolidada, não uma nova regra de negócio.
 
 **Critérios de aceite**:
+
 - **Dado** um motorista com CNH vencendo em 5 dias, **quando** o Gestor consulta a lista, **então** o item aparece com badge de alerta âmbar.
 
 **Possíveis melhorias futuras**: ordenação por "mais urgente primeiro" (documento vencendo antes) como padrão.
@@ -271,6 +280,7 @@
 **Descrição**: análoga a `DASH-05`, aplicada a `VEI-*` (Parte 2).
 
 **Critérios de aceite**:
+
 - **Dado** um veículo com seguro vencido, **quando** o Gestor consulta a lista, **então** o item aparece com badge vermelho de bloqueio.
 
 **Possíveis melhorias futuras**: nenhuma além das já cobertas em `VEI-*`.
@@ -284,6 +294,7 @@
 **Descrição**: análoga a `DASH-05`/`06`, aplicada a `STU-*` (Parte 3), com ação em massa disponível (ex. selecionar vários para enviar comunicado, `NOTIF-broadcast`).
 
 **Critérios de aceite**:
+
 - **Dado** 200 alunos cadastrados, **quando** o Gestor filtra por escola, **então** vê apenas os alunos daquela escola, com paginação eficiente mesmo em bases grandes (`CASO-21`, Parte 7).
 
 **Possíveis melhorias futuras**: busca por nome com resultado instantâneo (sem necessidade de submeter um formulário de busca).
@@ -313,6 +324,7 @@
 **Casos excepcionais**: tenant com centenas de motoristas — geração é paginada internamente e pode levar minutos; usuário não fica bloqueado esperando (recebe notificação ao concluir, Dossiê 13, `Reports`).
 
 **Critérios de aceite**:
+
 - **Dado** um período de 30 dias e 50 motoristas, **quando** o relatório é solicitado, **então** o sistema processa de forma assíncrona e notifica o Gestor ao concluir.
 
 **Possíveis melhorias futuras**: agendamento de relatórios recorrentes (ex. enviar todo dia 1º do mês automaticamente por e-mail).
@@ -326,6 +338,7 @@
 **Descrição**: análogo a `REL-01`, aplicado à base de alunos — insumo direto para a jornada da persona "Diego" (Capítulo 5.3, Dossiê 1) prestar contas a uma escola parceira.
 
 **Critérios de aceite**:
+
 - **Dado** um período mensal, **quando** o relatório de frequência é gerado, **então** exibe corretamente o número de dias com embarque confirmado por aluno, incluindo ausências (avisadas e não avisadas) discriminadas.
 
 **Possíveis melhorias futuras**: exportação em formato compatível para prestação de contas formal a secretarias de educação (V3, Capítulo 24).
@@ -337,6 +350,7 @@
 **Objetivo**: consolidar indicadores operacionais por rota — pontualidade média, número de alunos, ocorrências.
 
 **Critérios de aceite**:
+
 - **Dado** uma rota com 20 dias de operação no período, **quando** o relatório é gerado, **então** exibe a pontualidade média corretamente calculada (comparação horário previsto vs. real por dia).
 
 **Possíveis melhorias futuras**: comparação entre rotas do mesmo tenant, para identificar as de pior desempenho.
@@ -350,6 +364,7 @@
 **Descrição**: consulta sempre contra réplica de leitura (Dossiê 8 §21.6); tempo de geração proporcional ao volume de pontos do período selecionado — janelas muito amplas (ex. "todo o histórico do ano") são desencorajadas na UI com um aviso de tempo estimado de processamento maior.
 
 **Critérios de aceite**:
+
 - **Dado** uma viagem específica, **quando** o relatório de GPS é solicitado, **então** o trajeto completo (todos os pontos registrados) é exportado corretamente, na ordem cronológica real.
 
 **Possíveis melhorias futuras**: visualização do trajeto exportado diretamente sobreposta ao mapa dentro do próprio relatório (não apenas dados tabulares).
@@ -363,6 +378,7 @@
 **Descrição**: é a versão "achatada"/tabular do que já é navegável individualmente em `STU-08`/`VEI-05`/histórico do motorista — útil para análise em planilha fora da plataforma.
 
 **Critérios de aceite**:
+
 - **Dado** um mês de operação com 200 viagens, **quando** o relatório é gerado em formato planilha, **então** cada linha representa uma viagem com todos os campos relevantes corretamente preenchidos.
 
 **Possíveis melhorias futuras**: nenhuma além das já cobertas.
@@ -376,6 +392,7 @@
 **Descrição**: é a exportação formal da mesma visão de `DOC-expiring` (Parte 6), organizada para arquivamento/prestação de contas.
 
 **Critérios de aceite**:
+
 - **Dado** um tenant com 30 motoristas e 20 veículos, **quando** o relatório de documentos é gerado, **então** lista o status (aprovado/vencendo/vencido) de cada documento obrigatório de cada entidade.
 
 **Possíveis melhorias futuras**: geração automática mensal enviada por e-mail ao Gestor como lembrete recorrente de conformidade.

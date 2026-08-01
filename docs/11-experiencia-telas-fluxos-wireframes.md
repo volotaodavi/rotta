@@ -120,7 +120,7 @@ Dados pessoais, canais de notificação preferidos, tema, suporte, sair da conta
 
 ## 5. Painel da Escola
 
-*(Projetado com a mesma qualidade de atenção que os demais, mesmo sendo usado inicialmente por poucos tenants — Capítulo 12.7/V2.)*
+_(Projetado com a mesma qualidade de atenção que os demais, mesmo sendo usado inicialmente por poucos tenants — Capítulo 12.7/V2.)_
 
 ### 5.1 Tela inicial (web, mesmo shell de navegação do Gestor)
 
@@ -168,6 +168,7 @@ Cada fluxo é descrito como uma sequência de telas/decisões, incluindo os desv
 ### 7.2 Primeiro acesso (Wizard de onboarding)
 
 Tela de progresso (stepper, Dossiê 10 §12) com 5 passos, cada um podendo ser pulado exceto o primeiro:
+
 1. Cadastrar primeiro veículo (obrigatório para avançar de forma significativa, mas pulável tecnicamente).
 2. Cadastrar primeiro motorista.
 3. Cadastrar primeiros alunos (com opção de importar via planilha, reduzindo fricção para empresas com base existente).
@@ -245,18 +246,18 @@ Coberto em detalhe na Seção 3.3.
 
 ## 8. Microinterações
 
-| Elemento | Microinteração |
-|---|---|
-| Botão `primary` | Leve escurecimento no hover (web) / leve escala 0.98 + feedback tátil (*haptic*) no toque (mobile) |
-| Botão em `loading` | Texto substituído por spinner inline, largura do botão mantida fixa (nunca redimensiona) |
-| Checklist de embarque | Ao tocar "Embarcou", o item da lista desliza levemente e ganha um check `success` animado (~150ms) antes de mover para o topo da lista de "confirmados" — feedback imediato de que o toque foi registrado |
-| Confirmação de van vazia | Botão exige *long-press* de 1 segundo (não um toque simples) com barra de progresso circular visível durante a pressão — fricção deliberada para uma ação que nunca deve ser acionada por engano |
-| Mapa ao vivo | Marcador do veículo se move suavemente (interpolação/*easing*) entre posições recebidas, nunca "pulando" de um ponto a outro instantaneamente — percepção de movimento real |
-| Toast de sucesso | Entra com leve deslize + fade (~200ms), sai automaticamente após 4s com fade reverso |
-| Pull-to-refresh (mobile) | Padrão nativo do sistema operacional, nunca uma animação customizada que destoe da expectativa do usuário |
-| Skeleton → conteúdo real | *Crossfade* suave (~150ms) do skeleton para o conteúdo carregado, nunca uma troca abrupta |
-| Alerta de atraso detectado | Ícone do card de rota pulsa sutilmente (uma única vez, não em loop contínuo — loop contínuo é ruído visual) ao mudar de status para "atrasado" |
-| Notificação push recebida com app aberto | Banner interno discreto no topo da tela (não interrompe a tela atual com um modal), com toque levando à tela relevante |
-| Campo de formulário com erro | Leve *shake* horizontal (~2px, 200ms) + borda `danger` aparecendo simultaneamente — reforço tátil sutil, nunca exagerado |
+| Elemento                                 | Microinteração                                                                                                                                                                                            |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Botão `primary`                          | Leve escurecimento no hover (web) / leve escala 0.98 + feedback tátil (_haptic_) no toque (mobile)                                                                                                        |
+| Botão em `loading`                       | Texto substituído por spinner inline, largura do botão mantida fixa (nunca redimensiona)                                                                                                                  |
+| Checklist de embarque                    | Ao tocar "Embarcou", o item da lista desliza levemente e ganha um check `success` animado (~150ms) antes de mover para o topo da lista de "confirmados" — feedback imediato de que o toque foi registrado |
+| Confirmação de van vazia                 | Botão exige _long-press_ de 1 segundo (não um toque simples) com barra de progresso circular visível durante a pressão — fricção deliberada para uma ação que nunca deve ser acionada por engano          |
+| Mapa ao vivo                             | Marcador do veículo se move suavemente (interpolação/_easing_) entre posições recebidas, nunca "pulando" de um ponto a outro instantaneamente — percepção de movimento real                               |
+| Toast de sucesso                         | Entra com leve deslize + fade (~200ms), sai automaticamente após 4s com fade reverso                                                                                                                      |
+| Pull-to-refresh (mobile)                 | Padrão nativo do sistema operacional, nunca uma animação customizada que destoe da expectativa do usuário                                                                                                 |
+| Skeleton → conteúdo real                 | _Crossfade_ suave (~150ms) do skeleton para o conteúdo carregado, nunca uma troca abrupta                                                                                                                 |
+| Alerta de atraso detectado               | Ícone do card de rota pulsa sutilmente (uma única vez, não em loop contínuo — loop contínuo é ruído visual) ao mudar de status para "atrasado"                                                            |
+| Notificação push recebida com app aberto | Banner interno discreto no topo da tela (não interrompe a tela atual com um modal), com toque levando à tela relevante                                                                                    |
+| Campo de formulário com erro             | Leve _shake_ horizontal (~2px, 200ms) + borda `danger` aparecendo simultaneamente — reforço tátil sutil, nunca exagerado                                                                                  |
 
 **Princípio geral de duração**: toda animação de microinteração fica entre 100–250ms — rápido o suficiente para parecer instantâneo (princípio Linear de "velocidade percebida"), longo o suficiente para ser perceptível como feedback intencional. Nenhuma animação decorativa dura mais que 300ms, e todas respeitam a preferência de redução de movimento (Dossiê 10, Seção 10.2).

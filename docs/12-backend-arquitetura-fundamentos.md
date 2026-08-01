@@ -8,16 +8,16 @@
 
 ### 1.1 As quatro opções avaliadas — e por que três delas não são, na verdade, alternativas entre si
 
-Um ponto de clareza necessário antes da comparação: **"Monolito Modular" e "Event-Driven" não competem pela mesma decisão** — o primeiro é uma decisão sobre *onde o código roda* (quantos processos/deploys distintos existem), o segundo é uma decisão sobre *como os componentes conversam entre si* (chamada direta vs. eventos assíncronos). A Rotta adota **as duas simultaneamente**: um único processo de deploy no nível macro (Modular Monolith), com comunicação interna entre módulos feita majoritariamente por **eventos de domínio** (Event-Driven como padrão de comunicação), não por chamada direta de um módulo aos repositórios de outro. Isso já foi estabelecido no Capítulo 14.4 — este dossiê aprofunda o "como" e o "quando evoluir".
+Um ponto de clareza necessário antes da comparação: **"Monolito Modular" e "Event-Driven" não competem pela mesma decisão** — o primeiro é uma decisão sobre _onde o código roda_ (quantos processos/deploys distintos existem), o segundo é uma decisão sobre _como os componentes conversam entre si_ (chamada direta vs. eventos assíncronos). A Rotta adota **as duas simultaneamente**: um único processo de deploy no nível macro (Modular Monolith), com comunicação interna entre módulos feita majoritariamente por **eventos de domínio** (Event-Driven como padrão de comunicação), não por chamada direta de um módulo aos repositórios de outro. Isso já foi estabelecido no Capítulo 14.4 — este dossiê aprofunda o "como" e o "quando evoluir".
 
-| Critério | Monolito tradicional (sem módulos) | **Monolito Modular (com eventos internos)** | Microsserviços desde o dia 1 |
-|---|---|---|---|
-| Velocidade de entrega no MVP (time pequeno) | ✅ Rápido no início, degrada com o tempo (acoplamento cresce sem fronteiras) | ✅ Rápido e sustentável — fronteiras previnem o acoplamento que mata monolitos tradicionais | ❌ Lento — overhead de infraestrutura distribuída (service discovery, tracing, deploy de N serviços) sem um time grande o suficiente para absorver esse custo |
-| Complexidade operacional (deploy, observabilidade, debug) | ✅ Baixa | ✅ Baixa (um único processo/deploy) | ❌ Alta desde o primeiro dia — múltiplos pipelines, múltiplos bancos/schemas ou coordenação de dados distribuída, tracing distribuído obrigatório só para depurar um fluxo simples |
-| Consistência transacional (ex.: iniciar viagem + registrar evento + validar documento do motorista, tudo precisa ser consistente) | ✅ Transações ACID nativas do banco único | ✅ Idem — módulos compartilham o mesmo banco/transação quando necessário | ⚠️ Exige padrões de consistência eventual/saga para operações que cruzam serviços — complexidade adicional sem benefício real neste estágio |
-| Isolamento de fronteiras de domínio (não virar espaguete conforme o time cresce) | ❌ Sem fronteira imposta, degrada previsivelmente | ✅ Fronteiras de módulo com contrato de evento explícito, testável em isolamento | ✅ Isolamento forçado por processo separado |
-| Escala de partes específicas (ex.: o Realtime/GPS precisa escalar de forma muito diferente do CRUD de cadastro) | ❌ Tudo escala junto (desperdício de recursos) | ⚠️ Bom, com uma exceção deliberada (Seção 1.3) | ✅ Nativo |
-| Caminho de evolução quando o time/escala realmente exigir separação | ❌ Caro (acoplamento não documentado, difícil de separar depois) | ✅ Barato — módulo com fronteira e eventos já definidos é "quase" um microsserviço, faltando só o transporte de rede (Seção 1.4) | — (já nasce assim, mas paga o custo cedo demais) |
+| Critério                                                                                                                          | Monolito tradicional (sem módulos)                                           | **Monolito Modular (com eventos internos)**                                                                                      | Microsserviços desde o dia 1                                                                                                                                                       |
+| --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Velocidade de entrega no MVP (time pequeno)                                                                                       | ✅ Rápido no início, degrada com o tempo (acoplamento cresce sem fronteiras) | ✅ Rápido e sustentável — fronteiras previnem o acoplamento que mata monolitos tradicionais                                      | ❌ Lento — overhead de infraestrutura distribuída (service discovery, tracing, deploy de N serviços) sem um time grande o suficiente para absorver esse custo                      |
+| Complexidade operacional (deploy, observabilidade, debug)                                                                         | ✅ Baixa                                                                     | ✅ Baixa (um único processo/deploy)                                                                                              | ❌ Alta desde o primeiro dia — múltiplos pipelines, múltiplos bancos/schemas ou coordenação de dados distribuída, tracing distribuído obrigatório só para depurar um fluxo simples |
+| Consistência transacional (ex.: iniciar viagem + registrar evento + validar documento do motorista, tudo precisa ser consistente) | ✅ Transações ACID nativas do banco único                                    | ✅ Idem — módulos compartilham o mesmo banco/transação quando necessário                                                         | ⚠️ Exige padrões de consistência eventual/saga para operações que cruzam serviços — complexidade adicional sem benefício real neste estágio                                        |
+| Isolamento de fronteiras de domínio (não virar espaguete conforme o time cresce)                                                  | ❌ Sem fronteira imposta, degrada previsivelmente                            | ✅ Fronteiras de módulo com contrato de evento explícito, testável em isolamento                                                 | ✅ Isolamento forçado por processo separado                                                                                                                                        |
+| Escala de partes específicas (ex.: o Realtime/GPS precisa escalar de forma muito diferente do CRUD de cadastro)                   | ❌ Tudo escala junto (desperdício de recursos)                               | ⚠️ Bom, com uma exceção deliberada (Seção 1.3)                                                                                   | ✅ Nativo                                                                                                                                                                          |
+| Caminho de evolução quando o time/escala realmente exigir separação                                                               | ❌ Caro (acoplamento não documentado, difícil de separar depois)             | ✅ Barato — módulo com fronteira e eventos já definidos é "quase" um microsserviço, faltando só o transporte de rede (Seção 1.4) | — (já nasce assim, mas paga o custo cedo demais)                                                                                                                                   |
 
 ### 1.2 Decisão
 
@@ -32,12 +32,12 @@ Conforme já decidido no Capítulo 14.1 e no Dossiê 9, o **Realtime Gateway** (
 A extração futura de um módulo do Monolito para um serviço próprio é tratada como uma decisão de **infraestrutura**, não de **reescrita de lógica de negócio** — desde que três disciplinas sejam seguidas rigorosamente desde o MVP:
 
 1. **Todo módulo só acessa suas próprias tabelas.** Nenhuma query de um módulo faz `JOIN` direto contra a tabela de outro módulo — se um módulo precisa de dado de outro, ele chama a interface pública (um `Service`/`Port`) daquele módulo, nunca o banco por baixo. Isso significa que, no dia da extração, o módulo já "finge" ser um serviço remoto — só falta trocar a chamada em memória por uma chamada de rede.
-2. **Toda comunicação relevante entre módulos já é modelada como evento de domínio**, publicado em um *event bus* interno (Seção 1.5) com um contrato de payload versionado e serializável (JSON), mesmo rodando tudo em um único processo Node hoje. No dia da extração, o mesmo evento passa a trafegar por uma fila real (o BullMQ/Redis já usado para jobs assíncronos, Dossiê 14, é o candidato natural) em vez de um `EventEmitter` em memória — **o código que publica e o código que consome o evento não mudam**, só o transporte por baixo muda.
-3. **Cada módulo tem sua própria pasta com fronteira física clara** (Seção 3) e não importa tipos internos de outro módulo além dos DTOs explicitamente exportados em sua interface pública — um *lint rule* de arquitetura (ex. `eslint-plugin-boundaries` ou regra equivalente de import) impede, em tempo de CI, que um módulo importe um arquivo interno de outro módulo por engano.
+2. **Toda comunicação relevante entre módulos já é modelada como evento de domínio**, publicado em um _event bus_ interno (Seção 1.5) com um contrato de payload versionado e serializável (JSON), mesmo rodando tudo em um único processo Node hoje. No dia da extração, o mesmo evento passa a trafegar por uma fila real (o BullMQ/Redis já usado para jobs assíncronos, Dossiê 14, é o candidato natural) em vez de um `EventEmitter` em memória — **o código que publica e o código que consome o evento não mudam**, só o transporte por baixo muda.
+3. **Cada módulo tem sua própria pasta com fronteira física clara** (Seção 3) e não importa tipos internos de outro módulo além dos DTOs explicitamente exportados em sua interface pública — um _lint rule_ de arquitetura (ex. `eslint-plugin-boundaries` ou regra equivalente de import) impede, em tempo de CI, que um módulo importe um arquivo interno de outro módulo por engano.
 
 **Ordem recomendada de extração, quando o sinal de escala justificar** (não uma decisão a tomar agora, mas o roteiro já preparado): (1) o módulo de **Notificações** — perfil de carga de fila assíncrona, já desacoplado por natureza; (2) o módulo de **Documentos/OCR** — processamento pesado (OCR, verificação facial) que se beneficia de escalar/rodar em hardware diferente do resto da API; (3) o módulo de **Relatórios/Analytics** — cargas de consulta pesada que já deveriam rodar contra réplica de leitura, natural candidato a virar um serviço de leitura dedicado. Módulos puramente transacionais de cadastro (Empresas, Motoristas, Veículos, Alunos, Rotas) permanecem no monólito por muito mais tempo — não há perfil de carga que justifique separá-los cedo.
 
-### 1.5 O *event bus* interno
+### 1.5 O _event bus_ interno
 
 Implementado com o `EventEmitter2` do NestJS (módulo `@nestjs/event-emitter`) na fase de monólito — despacho em memória, síncrono ou assíncrono conforme o handler, sem infraestrutura extra. Todo evento de domínio (lista completa no Dossiê 14) é uma classe tipada com um payload serializável; os módulos consumidores se inscrevem via decorator (`@OnEvent('aluno.embarcou')`) sem conhecer quem publicou o evento. Este é, deliberadamente, o mesmo formato de contrato que seria publicado em uma fila real — a troca de `EventEmitter2` para BullMQ/Redis Streams no dia da extração de um módulo é uma mudança de adaptador de infraestrutura, não de modelagem.
 
@@ -158,7 +158,7 @@ rotta-backend/
 ### 3.1 Responsabilidade de cada parte de alto nível
 
 - **`modules/`**: toda a regra de negócio da plataforma, um módulo por domínio (Dossiê 13 detalha os 24). É a única parte do código que muda quando um requisito de produto muda.
-- **`common/`**: infraestrutura transversal de *framework* (guards, interceptors, decorators) — código que **sabe** que existe HTTP/NestJS, mas **não sabe nada** sobre regra de negócio de transporte escolar. Reutilizado por todos os módulos.
+- **`common/`**: infraestrutura transversal de _framework_ (guards, interceptors, decorators) — código que **sabe** que existe HTTP/NestJS, mas **não sabe nada** sobre regra de negócio de transporte escolar. Reutilizado por todos os módulos.
 - **`shared/`**: o "kernel compartilhado" de tipos e enums que mais de um módulo precisa referenciar sem criar dependência circular entre módulos de negócio — deliberadamente mantido pequeno (um enum `Role` aqui é aceitável; uma regra de negócio aqui não é).
 - **`infra/`**: toda integração com o mundo externo (banco, cache, fila, storage, provedores terceiros) — implementa as interfaces (`Ports`) que o `domain`/`application` de cada módulo define, nunca o contrário.
 - **`config/`**: única fonte de verdade de configuração, validada no boot (falha rápido — a aplicação nunca sobe com uma variável de ambiente crítica faltando ou malformada).
@@ -185,12 +185,13 @@ Reafirma e detalha o Dossiê 9 (Seção 5.1) do ponto de vista de implementaçã
 ### 4.3 Sessões e dispositivos confiáveis
 
 Cada refresh token emitido está associado a um registro de `Sessao`: `usuario_id`, `dispositivo` (modelo, SO, identificador único de instalação do app — não IMEI, por privacidade, mas um UUID gerado na instalação), `ip_criacao`, `user_agent`, `data_criacao`, `data_ultimo_uso`, `revogado_em` (nulo se ativa). Isso permite:
+
 - **Tela "Meus dispositivos"** no perfil do usuário (Dossiê 11, Seção 3.6/4.6), listando todas as sessões ativas com opção de revogar individualmente qualquer uma (ex. "sair remotamente" de um celular perdido).
 - **Dispositivo confiável**: um dispositivo que já completou OTP com sucesso uma vez pode ser marcado como confiável (opt-in do usuário), reduzindo a fricção de exigir OTP a cada login subsequente **naquele mesmo dispositivo** — mas nunca elimina a exigência de OTP em um dispositivo novo/desconhecido, que é o principal vetor de proteção contra conta comprometida.
 
 ### 4.4 Refresh, revogação e logout
 
-- **Refresh com rotação**: a cada uso do refresh token para obter um novo par de tokens, o refresh token antigo é invalidado e um novo é emitido (*refresh token rotation*) — se um refresh token já usado for apresentado novamente (sinal de que foi roubado e usado por duas partes), **toda a família de tokens daquela sessão é revogada preventivamente** e o usuário é forçado a autenticar novamente.
+- **Refresh com rotação**: a cada uso do refresh token para obter um novo par de tokens, o refresh token antigo é invalidado e um novo é emitido (_refresh token rotation_) — se um refresh token já usado for apresentado novamente (sinal de que foi roubado e usado por duas partes), **toda a família de tokens daquela sessão é revogada preventivamente** e o usuário é forçado a autenticar novamente.
 - **Logout**: revoga o refresh token (e a sessão associada) daquele dispositivo especificamente — o JWT de acesso em memória continua tecnicamente válido até expirar (máximo 15 minutos), risco aceito e documentado dado o curto tempo de vida.
 - **Revogação administrativa**: o Gestor pode revogar todas as sessões de um Motorista desligado; o Admin Rotta pode revogar todas as sessões de um tenant inteiro (ex. suspeita de comprometimento) — ambas as ações são eventos auditados (Capítulo 16 do Dossiê 8).
 - **Lista de negação (denylist) de curta duração**: para o caso raro em que um JWT de acesso precisa ser invalidado antes de expirar (ex. usuário teve papel removido no meio da validade do token), um cache Redis de denylist por `jti` (identificador único do token) é consultado no middleware de autenticação — TTL do registro de denylist igual ao tempo restante de validade do token, nunca mais que isso.
@@ -214,15 +215,15 @@ Cada requisição autenticada carrega, no JWT, `tenant_id` e `papel` (resolvidos
 
 ### 5.2 Matriz de permissões (reafirmando e fechando o Dossiê 8, Seção 2.4, no nível de política de autorização de API)
 
-| Papel | Escopo de acesso | Observação de implementação |
-|---|---|---|
-| **Admin Rotta** | Cross-tenant, mediante guard próprio (`AdminGuard`) distinto do `TenantGuard` comum — nunca o mesmo caminho de código dos demais papéis | Toda rota do namespace `/admin/*` exige esse guard; toda chamada gera evento de auditoria automaticamente via interceptor dedicado |
-| **Empresa** | Tenant próprio, inclusive configurações de cobrança/plano | Único papel autorizado nas rotas `/companies/:id/billing/*` |
-| **Gestor** | Tenant próprio, tudo exceto cobrança/plano | Superset de permissões operacionais dentro do tenant |
-| **Motorista** | Apenas as próprias rotas/viagens atribuídas; escrita restrita a checklist/ocorrência/localização | `RolesGuard` + verificação adicional de posse (o motorista só pode escrever em uma `Viagem` cujo `motorista_id` bate com o `sub` do token) |
-| **Monitor** | Mesmo escopo do Motorista, exceto iniciar/finalizar viagem | — |
-| **Responsável** | Apenas os próprios alunos vinculados (`AlunoResponsavel`) | Toda rota de leitura de aluno/viagem/localização filtra adicionalmente por esse vínculo, não apenas por tenant |
-| **Escola** | Somente leitura, apenas alunos vinculados àquela escola | Nenhuma rota de escrita é exposta a este papel fora do próprio perfil/configurações |
+| Papel           | Escopo de acesso                                                                                                                        | Observação de implementação                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Admin Rotta** | Cross-tenant, mediante guard próprio (`AdminGuard`) distinto do `TenantGuard` comum — nunca o mesmo caminho de código dos demais papéis | Toda rota do namespace `/admin/*` exige esse guard; toda chamada gera evento de auditoria automaticamente via interceptor dedicado         |
+| **Empresa**     | Tenant próprio, inclusive configurações de cobrança/plano                                                                               | Único papel autorizado nas rotas `/companies/:id/billing/*`                                                                                |
+| **Gestor**      | Tenant próprio, tudo exceto cobrança/plano                                                                                              | Superset de permissões operacionais dentro do tenant                                                                                       |
+| **Motorista**   | Apenas as próprias rotas/viagens atribuídas; escrita restrita a checklist/ocorrência/localização                                        | `RolesGuard` + verificação adicional de posse (o motorista só pode escrever em uma `Viagem` cujo `motorista_id` bate com o `sub` do token) |
+| **Monitor**     | Mesmo escopo do Motorista, exceto iniciar/finalizar viagem                                                                              | —                                                                                                                                          |
+| **Responsável** | Apenas os próprios alunos vinculados (`AlunoResponsavel`)                                                                               | Toda rota de leitura de aluno/viagem/localização filtra adicionalmente por esse vínculo, não apenas por tenant                             |
+| **Escola**      | Somente leitura, apenas alunos vinculados àquela escola                                                                                 | Nenhuma rota de escrita é exposta a este papel fora do próprio perfil/configurações                                                        |
 
 ### 5.3 Autorização de grão fino (além do papel)
 
@@ -234,7 +235,7 @@ Para casos onde "papel" não é suficiente (ex. um Responsável não pode ver da
 
 ### 6.1 Por que Repository Pattern por cima do Prisma, e não Prisma direto no Service
 
-O Prisma Client já é, por si só, um bom *data mapper* — mas usá-lo diretamente dentro de cada `Service`/caso de uso acopla a lógica de aplicação à API específica do Prisma, dificultando tanto o teste unitário (precisaria mockar o Prisma inteiro) quanto uma eventual troca de estratégia de acesso a dado em um módulo específico (ex. um módulo que precise de uma query SQL crua otimizada para um relatório pesado). A Rotta define, por módulo, uma **interface de repositório** (`ex.: AlunoRepository`, um `Port` no sentido da arquitetura hexagonal, Seção 2) na camada `domain`/`application`, implementada concretamente por uma classe Prisma na camada `infrastructure`. O caso de uso depende só da interface — em teste unitário, uma implementação em memória da mesma interface substitui o Prisma sem esforço.
+O Prisma Client já é, por si só, um bom _data mapper_ — mas usá-lo diretamente dentro de cada `Service`/caso de uso acopla a lógica de aplicação à API específica do Prisma, dificultando tanto o teste unitário (precisaria mockar o Prisma inteiro) quanto uma eventual troca de estratégia de acesso a dado em um módulo específico (ex. um módulo que precise de uma query SQL crua otimizada para um relatório pesado). A Rotta define, por módulo, uma **interface de repositório** (`ex.: AlunoRepository`, um `Port` no sentido da arquitetura hexagonal, Seção 2) na camada `domain`/`application`, implementada concretamente por uma classe Prisma na camada `infrastructure`. O caso de uso depende só da interface — em teste unitário, uma implementação em memória da mesma interface substitui o Prisma sem esforço.
 
 ### 6.2 Onde a transação vive
 
@@ -246,7 +247,7 @@ Um middleware do Prisma Client injeta automaticamente a cláusula `tenant_id` em
 
 ### 6.4 Migrations
 
-Seguem estritamente o padrão *expand/contract* já definido no Capítulo 16.4 — geridas via Prisma Migrate, aplicadas em pipeline de CI/CD (Seção 12) nunca manualmente em produção, com revisão obrigatória de todo arquivo de migration gerado antes do merge (checagem manual de que a migration não trava a tabela `PosicaoGPS`/`Evento` por mais que um limiar aceitável).
+Seguem estritamente o padrão _expand/contract_ já definido no Capítulo 16.4 — geridas via Prisma Migrate, aplicadas em pipeline de CI/CD (Seção 12) nunca manualmente em produção, com revisão obrigatória de todo arquivo de migration gerado antes do merge (checagem manual de que a migration não trava a tabela `PosicaoGPS`/`Evento` por mais que um limiar aceitável).
 
 ---
 
@@ -256,10 +257,10 @@ Seguem estritamente o padrão *expand/contract* já definido no Capítulo 16.4 �
 
 - **Helmet**: cabeçalhos de segurança HTTP padrão (`Content-Security-Policy`, `X-Frame-Options`, `Strict-Transport-Security`, etc.) aplicados globalmente na aplicação NestJS.
 - **CORS**: lista explícita de origens permitidas (domínio da Landing Page, domínio do Painel Web) — nunca `*` em produção; o app mobile não é afetado por CORS (não é contexto de navegador), mas ainda assim autenticado por JWT normalmente.
-- **Rate limiting**: por IP e por usuário autenticado, com limiares mais agressivos em rotas sensíveis (login, solicitação de OTP, recuperação de senha) para mitigar força bruta e *SMS/WhatsApp pumping* (abuso que gera custo de envio); implementado via um *guard* dedicado apoiado em contadores Redis (Seção 11 do Dossiê 8).
+- **Rate limiting**: por IP e por usuário autenticado, com limiares mais agressivos em rotas sensíveis (login, solicitação de OTP, recuperação de senha) para mitigar força bruta e _SMS/WhatsApp pumping_ (abuso que gera custo de envio); implementado via um _guard_ dedicado apoiado em contadores Redis (Seção 11 do Dossiê 8).
 - **CSRF**: mitigado estruturalmente pelo uso de JWT Bearer (não cookie de sessão tradicional) para todas as rotas de API — o único cookie usado é o refresh token `httpOnly`/`sameSite=strict` do painel web (Seção 4.6), que por si só já neutraliza o vetor clássico de CSRF (o atributo `SameSite=Strict` impede o envio do cookie em requisições cross-site).
 - **SQL Injection**: mitigado estruturalmente pelo uso exclusivo do Prisma (queries parametrizadas por padrão) — qualquer necessidade pontual de SQL cru (`$queryRaw`, usado apenas em relatórios/analytics de alta performance) é obrigatoriamente parametrizada, nunca por concatenação de string, com revisão de código obrigatória para qualquer uso de `$queryRawUnsafe`.
-- **XSS**: o backend nunca renderiza HTML a partir de dado de usuário (é uma API pura); toda saída de texto livre fornecida por usuário (ex. descrição de ocorrência) é tratada como dado, nunca interpretada — a responsabilidade de *escaping* na exibição é do cliente (React/React Native escapam por padrão), reforçada por uma política de `Content-Security-Policy` estrita no painel web.
+- **XSS**: o backend nunca renderiza HTML a partir de dado de usuário (é uma API pura); toda saída de texto livre fornecida por usuário (ex. descrição de ocorrência) é tratada como dado, nunca interpretada — a responsabilidade de _escaping_ na exibição é do cliente (React/React Native escapam por padrão), reforçada por uma política de `Content-Security-Policy` estrita no painel web.
 
 ### 7.2 Criptografia e hashing
 
@@ -292,11 +293,11 @@ O Dossiê 8 (Seção 20) já define o que vai/não vai para cache do ponto de vi
 
 ### 9.1 Pirâmide de testes
 
-| Nível | O que cobre | Ferramenta | Velocidade | Quando roda |
-|---|---|---|---|---|
-| **Unitário** | Regras de negócio puras da camada `domain` e orquestração da camada `application` (com repositórios/adaptadores mockados) | Jest | Milissegundos por teste, milhares de testes em segundos | A cada salvamento (watch mode local) e em todo push |
-| **Integração** | Repositórios reais contra um Postgres/Redis efêmero (Testcontainers), validando que a query Prisma + RLS realmente isola tenants, que migrations aplicam corretamente | Jest + Testcontainers | Segundos a poucos minutos | A cada push/PR |
-| **E2E** | Fluxos completos via HTTP contra a aplicação NestJS inteira subida (ex.: login → criar rota → cadastrar aluno → iniciar viagem → checklist → finalizar), incluindo os principais cenários de erro (RN-12, RN-18) | Jest + Supertest (ou Playwright para fluxos que envolvem o painel web) | Minutos | Em todo PR antes de merge, e antes de cada deploy |
+| Nível          | O que cobre                                                                                                                                                                                                      | Ferramenta                                                             | Velocidade                                              | Quando roda                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------- |
+| **Unitário**   | Regras de negócio puras da camada `domain` e orquestração da camada `application` (com repositórios/adaptadores mockados)                                                                                        | Jest                                                                   | Milissegundos por teste, milhares de testes em segundos | A cada salvamento (watch mode local) e em todo push |
+| **Integração** | Repositórios reais contra um Postgres/Redis efêmero (Testcontainers), validando que a query Prisma + RLS realmente isola tenants, que migrations aplicam corretamente                                            | Jest + Testcontainers                                                  | Segundos a poucos minutos                               | A cada push/PR                                      |
+| **E2E**        | Fluxos completos via HTTP contra a aplicação NestJS inteira subida (ex.: login → criar rota → cadastrar aluno → iniciar viagem → checklist → finalizar), incluindo os principais cenários de erro (RN-12, RN-18) | Jest + Supertest (ou Playwright para fluxos que envolvem o painel web) | Minutos                                                 | Em todo PR antes de merge, e antes de cada deploy   |
 
 ### 9.2 O que é obrigatoriamente coberto por teste unitário (não negociável)
 
@@ -351,14 +352,14 @@ Duas imagens Docker distintas a partir do mesmo código-fonte: uma para o **Core
 3. Testes unitários (Seção 9.1).
 4. Testes de integração (sobem Postgres/Redis efêmeros via Testcontainers no próprio runner de CI).
 5. Build da imagem Docker (validação de que o build de produção realmente compila).
-6. Verificação de vulnerabilidades de dependências (Dependabot/Snyk, Capítulo 19.5) — bloqueia merge em caso de vulnerabilidade crítica sem *patch*.
+6. Verificação de vulnerabilidades de dependências (Dependabot/Snyk, Capítulo 19.5) — bloqueia merge em caso de vulnerabilidade crítica sem _patch_.
 
 ### 12.3 Pipeline de CD (deploy)
 
 1. Merge na branch principal dispara build da imagem de produção, taggeada com o hash do commit.
-2. Testes E2E rodam contra um ambiente de *staging* provisionado com a nova imagem.
+2. Testes E2E rodam contra um ambiente de _staging_ provisionado com a nova imagem.
 3. Migration do banco aplicada (sempre aditiva, Seção 6.4) como etapa própria e auditável do pipeline, nunca embutida silenciosamente no boot da aplicação.
-4. Deploy em produção via estratégia de *rolling update* (múltiplas réplicas, substituição gradual, sem downtime) — o health check de readiness (Seção 10.1) garante que tráfego só é roteado para uma réplica nova depois que ela confirma estar pronta.
+4. Deploy em produção via estratégia de _rolling update_ (múltiplas réplicas, substituição gradual, sem downtime) — o health check de readiness (Seção 10.1) garante que tráfego só é roteado para uma réplica nova depois que ela confirma estar pronta.
 5. Rollback automático se as métricas de erro da nova versão excederem um limiar imediatamente após o deploy (monitoramento ativo por uma janela curta pós-deploy).
 
 ### 12.4 Variáveis de ambiente e segredos

@@ -1,9 +1,10 @@
 import { Injectable, type CanActivate, type ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 
-import { ROLES_KEY } from "@/common/decorators/roles.decorator";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { Role } from "@/shared/enums";
+
+import { ROLES_KEY } from "@/common/decorators/roles.decorator";
 
 /**
  * Guard de autorizacao RBAC (Dossie 12, Secao 5.1) — valida o papel do

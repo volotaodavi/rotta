@@ -6,7 +6,7 @@
 
 ## 1. Estrutura interna de uma aplicação React (`apps/web`, `apps/admin`, `apps/mobile`)
 
-### 1.1 Organização por *feature*, não por tipo de arquivo
+### 1.1 Organização por _feature_, não por tipo de arquivo
 
 A alternativa clássica de organizar por tipo (`components/`, `hooks/`, `services/` como pastas globais de topo, cada uma acumulando arquivos de todos os domínios de negócio misturados) foi descartada — em um produto com 24 módulos de domínio (Dossiê 13), uma pasta `hooks/` global viraria, em poucos meses, uma lista de 100+ arquivos sem nenhuma fronteira, o oposto do princípio de "fronteira de domínio clara" que rege toda esta documentação (Dossiê 12 §1.4).
 
@@ -42,7 +42,7 @@ apps/web/src/
 
 ### 1.2 Regra de dependência entre features
 
-Mesma disciplina do Dossiê 12 §1.4 (fronteiras de módulo do backend), agora aplicada ao frontend: uma feature nunca importa um arquivo interno de outra feature diretamente (ex. `features/trips` não importa `features/students/components/CardAluno.tsx`) — se um componente/hook precisa ser usado por duas features, ele **não pertence a nenhuma das duas**: sobe para `components/`/`hooks/` do app (se for específico daquele app) ou para `packages/` (se fizer sentido em mais de um app). Esta regra é reforçada por um *lint* de fronteira de import (ESLint com regra de restrição de caminho, Seção 9), não apenas por convenção informal — o mesmo princípio de "regra imposta por ferramenta, não por boa vontade" do Dossiê 22 §6.2.
+Mesma disciplina do Dossiê 12 §1.4 (fronteiras de módulo do backend), agora aplicada ao frontend: uma feature nunca importa um arquivo interno de outra feature diretamente (ex. `features/trips` não importa `features/students/components/CardAluno.tsx`) — se um componente/hook precisa ser usado por duas features, ele **não pertence a nenhuma das duas**: sobe para `components/`/`hooks/` do app (se for específico daquele app) ou para `packages/` (se fizer sentido em mais de um app). Esta regra é reforçada por um _lint_ de fronteira de import (ESLint com regra de restrição de caminho, Seção 9), não apenas por convenção informal — o mesmo princípio de "regra imposta por ferramenta, não por boa vontade" do Dossiê 22 §6.2.
 
 ### 1.3 `Pages` no vocabulário desta arquitetura
 
@@ -56,10 +56,10 @@ O termo "Pages" citado no briefing corresponde, no Next.js App Router, à pasta 
 
 O erro mais comum em arquitetura de estado React é tratar "gerenciamento de estado" como uma escolha única — na prática, existem **dois tipos de estado fundamentalmente diferentes**, e a Rotta usa uma ferramenta especializada para cada um, em vez de forçar as duas em uma única biblioteca genérica:
 
-| Tipo de estado | Exemplos na Rotta | Ferramenta escolhida |
-|---|---|---|
-| **Estado de servidor** (dado que vive no backend, o cliente só tem uma cópia em cache) | Lista de rotas, perfil do aluno, posição atual do veículo, status de documentos | **TanStack Query** |
-| **Estado de cliente puro** (nunca existiu no servidor, é da sessão de UI local) | Tema selecionado, filtro ativo de uma tabela, estado de um wizard multi-etapa, seleção de perfil ativo | **Zustand** |
+| Tipo de estado                                                                         | Exemplos na Rotta                                                                                      | Ferramenta escolhida |
+| -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | -------------------- |
+| **Estado de servidor** (dado que vive no backend, o cliente só tem uma cópia em cache) | Lista de rotas, perfil do aluno, posição atual do veículo, status de documentos                        | **TanStack Query**   |
+| **Estado de cliente puro** (nunca existiu no servidor, é da sessão de UI local)        | Tema selecionado, filtro ativo de uma tabela, estado de um wizard multi-etapa, seleção de perfil ativo | **Zustand**          |
 
 ### 2.2 Por que TanStack Query para estado de servidor (e não Redux Toolkit Query)
 
@@ -69,7 +69,7 @@ TanStack Query resolve, de fábrica, exatamente os problemas que **90% do códig
 
 - **Contra Redux Toolkit "puro" (sem RTK Query)**: mesmo com a redução de boilerplate que o Redux Toolkit trouxe sobre o Redux clássico, ainda exige mais estrutura cerimonial (slices, actions, selectors) do que o volume real de estado-de-cliente-puro da Rotta justifica — a maior parte da complexidade do produto está no estado de servidor (já resolvido por TanStack Query), não em uma teia complexa de estado de UI interdependente que justificaria a arquitetura unidirecional rígida do Redux.
 - **Contra Context API como mecanismo único de estado global**: Context API é ótima para **injeção de dependência** (prover o cliente de tema, o cliente de autenticação — Seção 1.1, `providers/`), mas é uma ferramenta pobre para estado que muda com frequência e é lido por muitos componentes (qualquer mudança de valor do contexto re-renderiza todos os consumidores, sem um mecanismo nativo de seleção granular) — Zustand resolve isso nativamente (cada componente assina apenas a fatia específica do estado que usa, sem re-renderizar por mudanças em outras fatias).
-- **Zustand, especificamente**: API mínima (sem *boilerplate* de providers aninhados, sem *reducers*/*actions* formais obrigatórios), completamente compatível com React Native (mesma biblioteca usada em `apps/web` e `apps/mobile`, reforçando o princípio de código compartilhado do Dossiê 9), e passível de ser fatiada em `packages/stores` (Dossiê 22 §5.9) quando um store específico faz sentido ser compartilhado entre apps.
+- **Zustand, especificamente**: API mínima (sem _boilerplate_ de providers aninhados, sem _reducers_/_actions_ formais obrigatórios), completamente compatível com React Native (mesma biblioteca usada em `apps/web` e `apps/mobile`, reforçando o princípio de código compartilhado do Dossiê 9), e passível de ser fatiada em `packages/stores` (Dossiê 22 §5.9) quando um store específico faz sentido ser compartilhado entre apps.
 
 ### 2.4 Onde vive o Context API, então
 
@@ -101,7 +101,7 @@ No `apps/mobile`, a camada de consumo de API é complementada pela fila local (`
 
 ### 4.1 Web (`apps/web`, `apps/admin`) — Next.js App Router
 
-Estrutura de pastas de `app/` espelha a URL (convenção nativa do Next.js), organizada por *route groups* para separar contextos sem afetar a URL:
+Estrutura de pastas de `app/` espelha a URL (convenção nativa do Next.js), organizada por _route groups_ para separar contextos sem afetar a URL:
 
 ```
 app/
@@ -121,11 +121,11 @@ app/
     └── ...
 ```
 
-Toda rota sob `(dashboard)` passa por um *middleware*/verificação de sessão no `layout.tsx` daquele grupo — nenhuma tela individual reimplementa a checagem de autenticação, ela é garantida estruturalmente por estar dentro daquele *route group*.
+Toda rota sob `(dashboard)` passa por um _middleware_/verificação de sessão no `layout.tsx` daquele grupo — nenhuma tela individual reimplementa a checagem de autenticação, ela é garantida estruturalmente por estar dentro daquele _route group_.
 
 ### 4.2 Mobile (`apps/mobile`) — React Navigation, condicionado por papel
 
-Navegação em duas camadas: um *navigator* raiz decide, a partir do papel ativo do usuário autenticado (`packages/auth`), qual conjunto de telas/bottom-tabs montar (Dossiê 10 §11.1) — o Motorista nunca "vê" as rotas do Responsável sequer montadas na árvore de navegação (não é apenas uma tela escondida por permissão, é uma árvore de navegação estruturalmente diferente por papel), reduzindo tanto a superfície de erro quanto o tamanho de bundle relevante carregado por sessão.
+Navegação em duas camadas: um _navigator_ raiz decide, a partir do papel ativo do usuário autenticado (`packages/auth`), qual conjunto de telas/bottom-tabs montar (Dossiê 10 §11.1) — o Motorista nunca "vê" as rotas do Responsável sequer montadas na árvore de navegação (não é apenas uma tela escondida por permissão, é uma árvore de navegação estruturalmente diferente por papel), reduzindo tanto a superfície de erro quanto o tamanho de bundle relevante carregado por sessão.
 
 ```
 navigation/
@@ -148,7 +148,7 @@ Tokens do Dossiê 10 (§6) implementados em `packages/theme` como um objeto Type
 
 ### 6.1 Por que preparar desde já, mesmo com um único idioma em uso
 
-Adicionar i18n depois que centenas de strings já estão *hardcoded* em português espalhadas pelo código é uma refatoração cara e propensa a erro (strings esquecidas, quebra de layout com texto mais longo em outro idioma). Preparar a arquitetura desde o início custa pouco a mais agora e elimina esse retrabalho futuro por completo — mesmo padrão de raciocínio já aplicado à hierarquia de tenancy do Dossiê 8 §1.4.
+Adicionar i18n depois que centenas de strings já estão _hardcoded_ em português espalhadas pelo código é uma refatoração cara e propensa a erro (strings esquecidas, quebra de layout com texto mais longo em outro idioma). Preparar a arquitetura desde o início custa pouco a mais agora e elimina esse retrabalho futuro por completo — mesmo padrão de raciocínio já aplicado à hierarquia de tenancy do Dossiê 8 §1.4.
 
 ### 6.2 Arquitetura
 
@@ -219,12 +219,12 @@ Complementar ao Dossiê 12 §10.3 (logs de backend): cada app de frontend integr
 
 Reafirmando e estendendo a pirâmide já definida para o backend (Dossiê 12 §9) para o front-end:
 
-| Nível | Ferramenta | O que cobre |
-|---|---|---|
-| **Unitário** | Jest/Vitest + React Testing Library (web/admin), Jest + React Native Testing Library (mobile) | Componentes de `packages/ui` isoladamente, hooks de `packages/hooks`, lógica pura de `packages/utils`/`packages/validators` |
-| **Integração** | React Testing Library com mocks de rede (MSW — Mock Service Worker) | Fluxos de feature completos (ex. formulário de cadastro de aluno) sem precisar de um backend real rodando |
-| **E2E** | Playwright (web/admin), Detox ou Maestro (mobile) | Jornadas completas ponta a ponta (Dossiê 11, fluxos): login → criar rota → cadastrar aluno → iniciar viagem → checklist |
-| **Visual Regression** | Chromatic (integrado ao Storybook de `packages/ui`, `apps/docs`) | Captura automática de screenshot de cada componente do design system a cada PR, comparado ao baseline — qualquer mudança visual não intencional (ex. um ajuste de token quebrando o contraste de um botão) é sinalizada antes do merge |
+| Nível                 | Ferramenta                                                                                    | O que cobre                                                                                                                                                                                                                            |
+| --------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Unitário**          | Jest/Vitest + React Testing Library (web/admin), Jest + React Native Testing Library (mobile) | Componentes de `packages/ui` isoladamente, hooks de `packages/hooks`, lógica pura de `packages/utils`/`packages/validators`                                                                                                            |
+| **Integração**        | React Testing Library com mocks de rede (MSW — Mock Service Worker)                           | Fluxos de feature completos (ex. formulário de cadastro de aluno) sem precisar de um backend real rodando                                                                                                                              |
+| **E2E**               | Playwright (web/admin), Detox ou Maestro (mobile)                                             | Jornadas completas ponta a ponta (Dossiê 11, fluxos): login → criar rota → cadastrar aluno → iniciar viagem → checklist                                                                                                                |
+| **Visual Regression** | Chromatic (integrado ao Storybook de `packages/ui`, `apps/docs`)                              | Captura automática de screenshot de cada componente do design system a cada PR, comparado ao baseline — qualquer mudança visual não intencional (ex. um ajuste de token quebrando o contraste de um botão) é sinalizada antes do merge |
 
 **Regra de cobertura mínima**: todo `package/` compartilhado exige cobertura de teste unitário como critério de CI obrigatório (Seção 12) — um package usado por 4 apps propaga um bug para os 4 simultaneamente se não for bem testado, tornando o padrão de qualidade aqui não negociável, mais rígido do que o exigido de uma tela específica de um único app.
 
@@ -236,12 +236,12 @@ Reafirmando e estendendo a pirâmide já definida para o backend (Dossiê 12 §9
 
 O briefing cita explicitamente `main`, `develop`, `feature`, `release`, `hotfix` — a nomenclatura clássica do **Git Flow**. Antes de adotá-lo ao pé da letra, vale a análise:
 
-| Critério | Git Flow clássico (com `develop` permanente) | **Trunk-Based com branches curtas + `release/*` sob demanda** |
-|---|---|---|
-| Velocidade de integração contínua | ⚠️ `develop` como branch de integração permanente tende a acumular divergência do `main` por dias/semanas, gerando merges maiores e mais arriscados | ✅ Toda `feature/*` é curta (dias, não semanas) e mergeada direto em `main`, mantendo `main` sempre próximo do estado real de produção |
-| Compatibilidade com deploy contínuo (Seção 12) | ⚠️ Fica ambíguo "o que está em produção agora" quando existem duas branches de longa vida (`main` e `develop`) | ✅ `main` é, por definição, sempre o que está (ou está prestes a estar) em produção — a pergunta "o que está em produção" tem uma resposta única |
-| Adequação a dezenas de desenvolvedores simultâneos | ⚠️ Mais desenvolvedores commitando em `develop` por mais tempo aumenta a chance de conflito acumulado | ✅ Branches curtas reduzem a janela de divergência entre o trabalho de desenvolvedores diferentes |
-| Necessidade de estabilizar uma versão antes de lançar (ex. app mobile aguardando revisão de loja) | ✅ `release/*` cobre isso nativamente | ✅ Também suportado — uma `release/*` é cortada de `main` quando necessário (tipicamente para o app mobile, dado o ciclo de revisão de loja, Dossiê 9 §6), sem que isso exija uma `develop` permanente por trás |
+| Critério                                                                                          | Git Flow clássico (com `develop` permanente)                                                                                                        | **Trunk-Based com branches curtas + `release/*` sob demanda**                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Velocidade de integração contínua                                                                 | ⚠️ `develop` como branch de integração permanente tende a acumular divergência do `main` por dias/semanas, gerando merges maiores e mais arriscados | ✅ Toda `feature/*` é curta (dias, não semanas) e mergeada direto em `main`, mantendo `main` sempre próximo do estado real de produção                                                                          |
+| Compatibilidade com deploy contínuo (Seção 12)                                                    | ⚠️ Fica ambíguo "o que está em produção agora" quando existem duas branches de longa vida (`main` e `develop`)                                      | ✅ `main` é, por definição, sempre o que está (ou está prestes a estar) em produção — a pergunta "o que está em produção" tem uma resposta única                                                                |
+| Adequação a dezenas de desenvolvedores simultâneos                                                | ⚠️ Mais desenvolvedores commitando em `develop` por mais tempo aumenta a chance de conflito acumulado                                               | ✅ Branches curtas reduzem a janela de divergência entre o trabalho de desenvolvedores diferentes                                                                                                               |
+| Necessidade de estabilizar uma versão antes de lançar (ex. app mobile aguardando revisão de loja) | ✅ `release/*` cobre isso nativamente                                                                                                               | ✅ Também suportado — uma `release/*` é cortada de `main` quando necessário (tipicamente para o app mobile, dado o ciclo de revisão de loja, Dossiê 9 §6), sem que isso exija uma `develop` permanente por trás |
 
 **Decisão**: **Trunk-Based Development modificado** — `main` é a única branch de longa vida e é sempre "implantável" (protegida por CI obrigatório, Seção 12); todo trabalho novo nasce em uma `feature/*` de vida curta, aberta a partir de `main` e mergeada de volta via Pull Request; `release/*` é cortada **sob demanda**, não permanentemente, especificamente para estabilizar uma versão do app mobile durante a janela de revisão de loja (onde uma correção pontual pode precisar ser aplicada sem incluir features já mergeadas em `main` depois do corte); `hotfix/*` nasce diretamente de `main` (ou da tag de produção vigente) para uma correção urgente, mergeada de volta tanto em `main` quanto retro-portada para a `release/*` em andamento, se houver uma.
 
@@ -269,7 +269,7 @@ Todo commit segue estritamente [Conventional Commits](https://www.conventionalco
 
 ### 12.2 Por que isso importa estruturalmente, não apenas estilisticamente
 
-Conventional Commits não é só uma convenção estética — é o **insumo direto** de duas automações críticas: (a) geração automática de changelog por app/package (Seção 13), e (b) determinação automática do tipo de *version bump* (major/minor/patch) via Changesets (Seção 13) — um commit `feat` sugere minor, um `fix` sugere patch, um commit com `BREAKING CHANGE` no rodapé força major. Sem essa disciplina, o versionamento semântico da Seção 13 exigiria decisão manual a cada release, cara e sujeita a erro humano em um monorepo com múltiplos pacotes.
+Conventional Commits não é só uma convenção estética — é o **insumo direto** de duas automações críticas: (a) geração automática de changelog por app/package (Seção 13), e (b) determinação automática do tipo de _version bump_ (major/minor/patch) via Changesets (Seção 13) — um commit `feat` sugere minor, um `fix` sugere patch, um commit com `BREAKING CHANGE` no rodapé força major. Sem essa disciplina, o versionamento semântico da Seção 13 exigiria decisão manual a cada release, cara e sujeita a erro humano em um monorepo com múltiplos pacotes.
 
 ---
 
@@ -277,11 +277,11 @@ Conventional Commits não é só uma convenção estética — é o **insumo dir
 
 ### 13.1 SemVer para packages internos
 
-Todo `package/` do monorepo segue Versionamento Semântico (`MAJOR.MINOR.PATCH`) — ainda que nenhum deles seja publicado publicamente no NPM (são consumidos internamente via o workspace do pnpm), versionar corretamente permite rastrear no changelog interno exatamente quando uma mudança *breaking* em `packages/ui` ou `packages/api-client` foi introduzida e quais apps precisaram de ajuste em decorrência.
+Todo `package/` do monorepo segue Versionamento Semântico (`MAJOR.MINOR.PATCH`) — ainda que nenhum deles seja publicado publicamente no NPM (são consumidos internamente via o workspace do pnpm), versionar corretamente permite rastrear no changelog interno exatamente quando uma mudança _breaking_ em `packages/ui` ou `packages/api-client` foi introduzida e quais apps precisaram de ajuste em decorrência.
 
 ### 13.2 Changesets como ferramenta
 
-**Changesets** (ferramenta mantida pela comunidade, amplamente adotada em monorepos Turborepo) gerencia esse processo: todo Pull Request que altera um package compartilhado inclui um arquivo de *changeset* (gerado por um comando de CLI interativo) descrevendo o tipo de mudança e um resumo em linguagem humana; na integração contínua, os changesets acumulados são consolidados automaticamente em um Pull Request de "Version Packages" que atualiza os números de versão e o `CHANGELOG.md` de cada package afetado — sem exigir que um humano decida manualmente qual versão cada package deveria ter a cada release.
+**Changesets** (ferramenta mantida pela comunidade, amplamente adotada em monorepos Turborepo) gerencia esse processo: todo Pull Request que altera um package compartilhado inclui um arquivo de _changeset_ (gerado por um comando de CLI interativo) descrevendo o tipo de mudança e um resumo em linguagem humana; na integração contínua, os changesets acumulados são consolidados automaticamente em um Pull Request de "Version Packages" que atualiza os números de versão e o `CHANGELOG.md` de cada package afetado — sem exigir que um humano decida manualmente qual versão cada package deveria ter a cada release.
 
 ### 13.3 Versionamento dos apps (unidades deployáveis)
 
@@ -355,7 +355,7 @@ Qualidade de código consistente automatizada por ferramenta (em vez de depender
 Toda mudança de comportamento relevante (uma nova regra de negócio, uma mudança de contrato de API, uma decisão de arquitetura) atualiza a documentação correspondente **no mesmo Pull Request** que implementa a mudança — nunca como uma tarefa "para depois". Isso é viabilizado por três mecanismos concretos, cada um automatizando uma fatia da documentação em vez de depender de disciplina manual isolada:
 
 1. **Documentação de produto/arquitetura** (os Dossiês 1–23, esta mesma pasta `docs/`): versionada em Git como qualquer código, revisada em Pull Request, servida navegável em `apps/docs`.
-2. **Documentação de componentes** (`packages/ui`): gerada automaticamente pelo Storybook a partir do próprio código do componente e de seus arquivos de história (*stories*) — a documentação nunca "diverge" do componente real, porque é literalmente renderizada a partir dele.
+2. **Documentação de componentes** (`packages/ui`): gerada automaticamente pelo Storybook a partir do próprio código do componente e de seus arquivos de história (_stories_) — a documentação nunca "diverge" do componente real, porque é literalmente renderizada a partir dele.
 3. **Documentação de API** (`apps/api`): gerada automaticamente a partir dos decorators do NestJS (Swagger/OpenAPI) — todo endpoint documentado (Dossiê 13) é also uma fonte executável de especificação, publicada em `apps/docs`, sempre em sincronia com o código de fato em produção (documentação gerada do código nunca fica desatualizada por esquecimento, ao contrário de documentação escrita à parte).
 
 ### 16.2 Registro de Decisões de Arquitetura (ADRs)

@@ -18,21 +18,21 @@ Antes de modelar qualquer entidade, três números orientam cada decisão abaixo
 
 ### 1.1 As três opções avaliadas
 
-| Critério | Banco dedicado por tenant | Schema dedicado por tenant | **`tenant_id` + Row-Level Security (RLS)** |
-|---|---|---|---|
-| Isolamento de dados | Máximo (isolamento físico) | Alto (isolamento lógico por schema) | Forte (isolamento lógico por linha, reforçado no nível do motor de banco) |
-| Custo de operar 1 tenant | Alto (1 banco a monitorar, backupear, migrar) | Médio | Marginal (uma linha a mais em tabelas já existentes) |
-| Custo de operar 100.000 tenants | Inviável sem automação extrema (100 mil bancos) | Inviável além de poucos milhares (limite prático de schemas/conexões por instância Postgres) | **Linear e previsível** (um único banco, escalado por réplicas/partições) |
-| Migration de schema | Precisa rodar em N bancos (risco de drift entre tenants) | Precisa rodar em N schemas | **Uma única migration, aplicada uma vez** |
-| Adequação ao perfil de mercado (muitos tenants pequenos) | Péssima (desperdício de recursos ociosos por tenant pequeno) | Ruim | **Excelente** (tenants pequenos compartilham capacidade ociosa) |
-| Onboarding self-service instantâneo | Difícil (provisionar banco novo por signup é lento/operacionalmente arriscado) | Possível, mas lento em escala | **Trivial** (inserir uma linha em `Empresa`) |
-| Relatórios cross-tenant (Admin Rotta, métricas de negócio) | Muito difícil (requer agregar N bancos) | Difícil | **Uma única query** |
+| Critério                                                   | Banco dedicado por tenant                                                      | Schema dedicado por tenant                                                                   | **`tenant_id` + Row-Level Security (RLS)**                                |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| Isolamento de dados                                        | Máximo (isolamento físico)                                                     | Alto (isolamento lógico por schema)                                                          | Forte (isolamento lógico por linha, reforçado no nível do motor de banco) |
+| Custo de operar 1 tenant                                   | Alto (1 banco a monitorar, backupear, migrar)                                  | Médio                                                                                        | Marginal (uma linha a mais em tabelas já existentes)                      |
+| Custo de operar 100.000 tenants                            | Inviável sem automação extrema (100 mil bancos)                                | Inviável além de poucos milhares (limite prático de schemas/conexões por instância Postgres) | **Linear e previsível** (um único banco, escalado por réplicas/partições) |
+| Migration de schema                                        | Precisa rodar em N bancos (risco de drift entre tenants)                       | Precisa rodar em N schemas                                                                   | **Uma única migration, aplicada uma vez**                                 |
+| Adequação ao perfil de mercado (muitos tenants pequenos)   | Péssima (desperdício de recursos ociosos por tenant pequeno)                   | Ruim                                                                                         | **Excelente** (tenants pequenos compartilham capacidade ociosa)           |
+| Onboarding self-service instantâneo                        | Difícil (provisionar banco novo por signup é lento/operacionalmente arriscado) | Possível, mas lento em escala                                                                | **Trivial** (inserir uma linha em `Empresa`)                              |
+| Relatórios cross-tenant (Admin Rotta, métricas de negócio) | Muito difícil (requer agregar N bancos)                                        | Difícil                                                                                      | **Uma única query**                                                       |
 
 ### 1.2 Decisão
 
 **`tenant_id` em toda tabela de negócio + Row-Level Security (RLS) nativa do PostgreSQL**, com as seguintes camadas de reforço (defesa em profundidade — nunca uma única camada de proteção):
 
-1. **Camada de banco (a que realmente importa)**: cada tabela tem uma *policy* de RLS que só permite `SELECT`/`INSERT`/`UPDATE`/`DELETE` quando `tenant_id = current_setting('app.tenant_id')::uuid`. Isso significa que **mesmo que a camada de aplicação tenha um bug e esqueça de filtrar por tenant**, o próprio Postgres recusa a operação. Esta é a mitigação primária contra o risco #1 do produto: vazamento de dados entre empresas concorrentes.
+1. **Camada de banco (a que realmente importa)**: cada tabela tem uma _policy_ de RLS que só permite `SELECT`/`INSERT`/`UPDATE`/`DELETE` quando `tenant_id = current_setting('app.tenant_id')::uuid`. Isso significa que **mesmo que a camada de aplicação tenha um bug e esqueça de filtrar por tenant**, o próprio Postgres recusa a operação. Esta é a mitigação primária contra o risco #1 do produto: vazamento de dados entre empresas concorrentes.
 2. **Camada de aplicação**: todo repositório de dados injeta o `tenant_id` do contexto de sessão automaticamente (nunca aceito como parâmetro vindo do cliente) — o `tenant_id` é resolvido exclusivamente a partir do token de autenticação validado no servidor.
 3. **Camada de contrato de API**: nenhum endpoint aceita `tenant_id` como parâmetro de entrada em rotas de tenant comum — apenas o namespace `Admin` (Administrador Rotta) tem essa capacidade, e cada chamada nesse namespace gera registro de auditoria obrigatório (Seção 16).
 
@@ -42,12 +42,12 @@ Foi avaliado permitir que tenants muito grandes (ex.: uma Secretaria de Educaç�
 
 ### 1.4 Tenancy hierárquico (Secretaria → Empresas terceirizadas)
 
-Reafirmado do Capítulo 15: `Empresa.organizacao_pai_id` (nulo por padrão) permite montar a árvore de tenancy sem remodelagem. Uma segunda *policy* de RLS de somente-leitura permite que um usuário com papel `Secretaria` vinculado ao tenant pai enxergue dados agregados dos tenants filhos, nunca o contrário e nunca entre filhos irmãos.
+Reafirmado do Capítulo 15: `Empresa.organizacao_pai_id` (nulo por padrão) permite montar a árvore de tenancy sem remodelagem. Uma segunda _policy_ de RLS de somente-leitura permite que um usuário com papel `Secretaria` vinculado ao tenant pai enxergue dados agregados dos tenants filhos, nunca o contrário e nunca entre filhos irmãos.
 
 ### 1.5 Identificação e propagação do tenant em toda a pilha
 
 - Login → token carrega `tenant_id` + `papel` + `usuario_id`, assinado e de curta duração.
-- Toda requisição HTTP/WebSocket seta `app.tenant_id` na sessão de banco no início da transação (middleware obrigatório, não opcional, sem *bypass* possível pelo código de módulo).
+- Toda requisição HTTP/WebSocket seta `app.tenant_id` na sessão de banco no início da transação (middleware obrigatório, não opcional, sem _bypass_ possível pelo código de módulo).
 - Jobs assíncronos (fila de notificação, workers de relatório) recebem o `tenant_id` explicitamente no payload do job e o restauram na sessão de banco antes de qualquer query — nenhum worker roda "sem tenant setado".
 
 ---
@@ -73,23 +73,23 @@ Usuario (FK) · Empresa/tenant (FK) · Papel (enum) · status do vínculo (ativo
 
 ### 2.4 Matriz de permissões por papel (visão consolidada)
 
-| Módulo / Ação | Admin Rotta | Empresa | Gestor | Motorista | Monitor | Responsável | Escola |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| Ver/gerenciar todos os tenants | ✅ (auditado) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Gerenciar assinatura/plano do próprio tenant | ❌ | ✅ | ⚠️ leitura | ❌ | ❌ | ❌ | ❌ |
-| Cadastrar/editar veículos | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Cadastrar/editar motoristas e monitores | ❌ | ✅ | ✅ | ❌ (só o próprio perfil) | ❌ (só o próprio perfil) | ❌ | ❌ |
-| Cadastrar/editar alunos | ❌ | ✅ | ✅ | ❌ | ❌ | ⚠️ apenas dados complementares do próprio filho | ❌ |
-| Cadastrar/editar rotas | ❌ | ✅ | ✅ | ⚠️ apenas se acumula papel de gestor | ❌ | ❌ | ❌ |
-| Iniciar/finalizar viagem | ❌ | ❌ | ❌ | ✅ (apenas rota própria) | ❌ | ❌ | ❌ |
-| Registrar checklist embarque/desembarque | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
-| Ver localização em tempo real | ❌ (exceto suporte auditado) | ✅ (todas as rotas do tenant) | ✅ (todas as rotas do tenant) | ✅ (própria rota) | ✅ (própria rota) | ✅ (apenas trecho do próprio filho) | ⚠️ apenas status agregado, sem coordenada bruta |
-| Ver histórico de viagens | ⚠️ auditado | ✅ | ✅ | ✅ (próprias) | ✅ (próprias) | ✅ (do próprio filho) | ✅ (dos próprios alunos) |
-| Justificar ausência do aluno | ❌ | ❌ | ✅ | ❌ | ❌ | ✅ (próprio filho) | ❌ |
-| Enviar comunicado em massa | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| Gerenciar documentos (upload/validação) | ❌ | ✅ | ✅ | ⚠️ upload próprio, sem auto-validação | ⚠️ upload próprio | ❌ | ❌ |
-| Gerar relatórios operacionais | ⚠️ agregados anonimizados | ✅ | ✅ | ❌ | ❌ | ❌ | ⚠️ apenas dos próprios alunos |
-| Acessar log de auditoria do tenant | ⚠️ auditado | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Módulo / Ação                                |         Admin Rotta          |            Empresa            |            Gestor             |               Motorista               |         Monitor          |                   Responsável                   |                     Escola                      |
+| -------------------------------------------- | :--------------------------: | :---------------------------: | :---------------------------: | :-----------------------------------: | :----------------------: | :---------------------------------------------: | :---------------------------------------------: |
+| Ver/gerenciar todos os tenants               |        ✅ (auditado)         |              ❌               |              ❌               |                  ❌                   |            ❌            |                       ❌                        |                       ❌                        |
+| Gerenciar assinatura/plano do próprio tenant |              ❌              |              ✅               |          ⚠️ leitura           |                  ❌                   |            ❌            |                       ❌                        |                       ❌                        |
+| Cadastrar/editar veículos                    |              ❌              |              ✅               |              ✅               |                  ❌                   |            ❌            |                       ❌                        |                       ❌                        |
+| Cadastrar/editar motoristas e monitores      |              ❌              |              ✅               |              ✅               |       ❌ (só o próprio perfil)        | ❌ (só o próprio perfil) |                       ❌                        |                       ❌                        |
+| Cadastrar/editar alunos                      |              ❌              |              ✅               |              ✅               |                  ❌                   |            ❌            | ⚠️ apenas dados complementares do próprio filho |                       ❌                        |
+| Cadastrar/editar rotas                       |              ❌              |              ✅               |              ✅               | ⚠️ apenas se acumula papel de gestor  |            ❌            |                       ❌                        |                       ❌                        |
+| Iniciar/finalizar viagem                     |              ❌              |              ❌               |              ❌               |       ✅ (apenas rota própria)        |            ❌            |                       ❌                        |                       ❌                        |
+| Registrar checklist embarque/desembarque     |              ❌              |              ❌               |              ❌               |                  ✅                   |            ✅            |                       ❌                        |                       ❌                        |
+| Ver localização em tempo real                | ❌ (exceto suporte auditado) | ✅ (todas as rotas do tenant) | ✅ (todas as rotas do tenant) |           ✅ (própria rota)           |    ✅ (própria rota)     |       ✅ (apenas trecho do próprio filho)       | ⚠️ apenas status agregado, sem coordenada bruta |
+| Ver histórico de viagens                     |         ⚠️ auditado          |              ✅               |              ✅               |             ✅ (próprias)             |      ✅ (próprias)       |              ✅ (do próprio filho)              |            ✅ (dos próprios alunos)             |
+| Justificar ausência do aluno                 |              ❌              |              ❌               |              ✅               |                  ❌                   |            ❌            |               ✅ (próprio filho)                |                       ❌                        |
+| Enviar comunicado em massa                   |              ❌              |              ✅               |              ✅               |                  ❌                   |            ❌            |                       ❌                        |                       ❌                        |
+| Gerenciar documentos (upload/validação)      |              ❌              |              ✅               |              ✅               | ⚠️ upload próprio, sem auto-validação |    ⚠️ upload próprio     |                       ❌                        |                       ❌                        |
+| Gerar relatórios operacionais                |  ⚠️ agregados anonimizados   |              ✅               |              ✅               |                  ❌                   |            ❌            |                       ❌                        |          ⚠️ apenas dos próprios alunos          |
+| Acessar log de auditoria do tenant           |         ⚠️ auditado          |              ✅               |              ✅               |                  ❌                   |            ❌            |                       ❌                        |                       ❌                        |
 
 Legenda: ✅ acesso pleno · ⚠️ acesso restrito/condicional · ❌ sem acesso.
 
@@ -257,7 +257,7 @@ Embarque, desembarque, falta, ausência avisada, troca de motorista, troca de ve
 
 ### 13.2 Fila e entrega
 
-`Notificacao` nasce no status `enfileirada` (publicada em fila assíncrona pelo módulo de origem, Capítulo 14.4) e é processada pelo worker de notificações (Capítulo 14.2), que tenta o canal preferido do usuário primeiro e faz *fallback* automático para o canal seguinte da preferência configurada (ex.: push falhou → tenta WhatsApp → tenta SMS) em caso de falha, respeitando a regra de que notificações críticas disparam múltiplos canais em paralelo, não em sequência (RN-17).
+`Notificacao` nasce no status `enfileirada` (publicada em fila assíncrona pelo módulo de origem, Capítulo 14.4) e é processada pelo worker de notificações (Capítulo 14.2), que tenta o canal preferido do usuário primeiro e faz _fallback_ automático para o canal seguinte da preferência configurada (ex.: push falhou → tenta WhatsApp → tenta SMS) em caso de falha, respeitando a regra de que notificações críticas disparam múltiplos canais em paralelo, não em sequência (RN-17).
 
 ### 13.3 Histórico
 
@@ -320,13 +320,13 @@ Auditoria responde "o que mudou no negócio e quem mudou" (voltada a compliance/
 
 ### 17.2 Camadas de log
 
-| Camada | Conteúdo | Retenção sugerida |
-|---|---|---|
-| **Log de acesso (API Gateway)** | Método, rota, status HTTP, latência, tenant_id, usuario_id, IP, user-agent, id de correlação | 30–90 dias (quente), depois arquivado |
-| **Log de aplicação** | Eventos estruturados de execução (início/fim de caso de uso, decisões de regra de negócio relevantes, warnings) | 30 dias quente |
-| **Log de erro/exceção** | Stack trace, contexto da requisição, id de correlação | 90 dias, com alerta em tempo real via ferramenta de observabilidade |
-| **Log de segurança** | Tentativas de login falhas, mudanças de permissão, acessos do Admin Rotta, rejeições de RLS (se instrumentadas) | 1 ano, acesso restrito à equipe de segurança |
-| **Log de integração externa** | Requisições/respostas com provedores (WhatsApp, SMS, pagamento, mapas) — sem dado sensível bruto, apenas metadados e status | 30–90 dias |
+| Camada                          | Conteúdo                                                                                                                    | Retenção sugerida                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| **Log de acesso (API Gateway)** | Método, rota, status HTTP, latência, tenant_id, usuario_id, IP, user-agent, id de correlação                                | 30–90 dias (quente), depois arquivado                               |
+| **Log de aplicação**            | Eventos estruturados de execução (início/fim de caso de uso, decisões de regra de negócio relevantes, warnings)             | 30 dias quente                                                      |
+| **Log de erro/exceção**         | Stack trace, contexto da requisição, id de correlação                                                                       | 90 dias, com alerta em tempo real via ferramenta de observabilidade |
+| **Log de segurança**            | Tentativas de login falhas, mudanças de permissão, acessos do Admin Rotta, rejeições de RLS (se instrumentadas)             | 1 ano, acesso restrito à equipe de segurança                        |
+| **Log de integração externa**   | Requisições/respostas com provedores (WhatsApp, SMS, pagamento, mapas) — sem dado sensível bruto, apenas metadados e status | 30–90 dias                                                          |
 
 ### 17.3 Requisitos técnicos
 
@@ -336,27 +336,27 @@ Todo log é estruturado (JSON), nunca texto livre não parseável — pré-requi
 
 ## 18. Relacionamentos e Cardinalidades (visão consolidada)
 
-| Relação | Cardinalidade | Observação |
-|---|---|---|
-| Organizacao → Empresa | 1:N | Hierarquia B2G opcional (Seção 1.4) |
-| Empresa → Usuario (via VinculoPapel) | N:N | Um usuário pode ter vínculos em várias empresas; uma empresa tem vários usuários |
-| Empresa → Veiculo | 1:N | Veículo pertence a exatamente um tenant |
-| Empresa → Motorista / Monitor | 1:N | Idem |
-| Empresa → Aluno | 1:N | Um aluno pertence a um tenant ativo por vez (histórico preservado à parte) |
-| Empresa → Escola | 1:N | Cada tenant tem seu próprio cadastro de escola (Seção 6) |
-| Empresa → Rota | 1:N | — |
-| Aluno ↔ Responsavel | N:N (via AlunoResponsavel) | Múltiplos responsáveis por aluno, múltiplos filhos por responsável |
-| Aluno ↔ Rota | N:N (via AlunoRota) | Um aluno pode, em teoria, estar em rotas de turnos diferentes (manhã/tarde distintas), nunca duas rotas ativas do mesmo turno (RN-26) |
-| Rota → ParadaRota | 1:N | Sequência ordenada de paradas |
-| Rota → Motorista/Veiculo (padrão) | N:1 cada | Um motorista/veículo pode ser padrão de várias rotas (ex. motorista faz manhã e tarde) |
-| Rota → Viagem | 1:N | Uma rota gera uma viagem por dia efetivamente operado |
-| Viagem → PosicaoGPS | 1:N | Altíssimo volume — Seção 21 |
-| Viagem → Evento | 1:N | Inclui checklists, ocorrências, atrasos |
-| Viagem → ParadaViagem | 1:N | Instantâneo por parada realizada naquele dia |
-| Usuario → Notificacao | 1:N | — |
-| Evento → Notificacao | 1:N | Um evento pode disparar notificações a múltiplos destinatários/canais |
-| Motorista/Veiculo/Empresa → Documento | 1:N | Documento é entidade genérica referenciando `entidade_tipo` + `entidade_id` (polimórfico) |
-| Empresa → RegistroAuditoria | 1:N | — |
+| Relação                               | Cardinalidade              | Observação                                                                                                                            |
+| ------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Organizacao → Empresa                 | 1:N                        | Hierarquia B2G opcional (Seção 1.4)                                                                                                   |
+| Empresa → Usuario (via VinculoPapel)  | N:N                        | Um usuário pode ter vínculos em várias empresas; uma empresa tem vários usuários                                                      |
+| Empresa → Veiculo                     | 1:N                        | Veículo pertence a exatamente um tenant                                                                                               |
+| Empresa → Motorista / Monitor         | 1:N                        | Idem                                                                                                                                  |
+| Empresa → Aluno                       | 1:N                        | Um aluno pertence a um tenant ativo por vez (histórico preservado à parte)                                                            |
+| Empresa → Escola                      | 1:N                        | Cada tenant tem seu próprio cadastro de escola (Seção 6)                                                                              |
+| Empresa → Rota                        | 1:N                        | —                                                                                                                                     |
+| Aluno ↔ Responsavel                   | N:N (via AlunoResponsavel) | Múltiplos responsáveis por aluno, múltiplos filhos por responsável                                                                    |
+| Aluno ↔ Rota                          | N:N (via AlunoRota)        | Um aluno pode, em teoria, estar em rotas de turnos diferentes (manhã/tarde distintas), nunca duas rotas ativas do mesmo turno (RN-26) |
+| Rota → ParadaRota                     | 1:N                        | Sequência ordenada de paradas                                                                                                         |
+| Rota → Motorista/Veiculo (padrão)     | N:1 cada                   | Um motorista/veículo pode ser padrão de várias rotas (ex. motorista faz manhã e tarde)                                                |
+| Rota → Viagem                         | 1:N                        | Uma rota gera uma viagem por dia efetivamente operado                                                                                 |
+| Viagem → PosicaoGPS                   | 1:N                        | Altíssimo volume — Seção 21                                                                                                           |
+| Viagem → Evento                       | 1:N                        | Inclui checklists, ocorrências, atrasos                                                                                               |
+| Viagem → ParadaViagem                 | 1:N                        | Instantâneo por parada realizada naquele dia                                                                                          |
+| Usuario → Notificacao                 | 1:N                        | —                                                                                                                                     |
+| Evento → Notificacao                  | 1:N                        | Um evento pode disparar notificações a múltiplos destinatários/canais                                                                 |
+| Motorista/Veiculo/Empresa → Documento | 1:N                        | Documento é entidade genérica referenciando `entidade_tipo` + `entidade_id` (polimórfico)                                             |
+| Empresa → RegistroAuditoria           | 1:N                        | —                                                                                                                                     |
 
 ### 18.1 Nota sobre relações polimórficas
 
@@ -368,20 +368,20 @@ Todo log é estruturado (JSON), nunca texto livre não parseável — pré-requi
 
 Princípio geral: **`tenant_id` é sempre a primeira coluna de qualquer índice composto** em tabelas de negócio, porque toda query de aplicação filtra por tenant antes de qualquer outra condição (e a RLS já impõe esse filtro implicitamente — o índice precisa "casar" com o plano de execução que a RLS gera).
 
-| Tabela | Índice sugerido | Motivo |
-|---|---|---|
-| `VinculoPapel` | (`usuario_id`, `status`) e (`tenant_id`, `papel`, `status`) | Resolver rapidamente "quais vínculos ativos este usuário tem" no login, e "quantos gestores/motoristas ativos este tenant tem" |
-| `Motorista` / `Veiculo` | (`tenant_id`, `status`) | Listagens de dashboard filtram por status constantemente |
-| `Documento` | (`entidade_tipo`, `entidade_id`) e (`data_vencimento`) parcial (`WHERE status != 'expirado'`) | Consulta de documentos de uma entidade específica, e varredura diária de vencimentos próximos |
-| `Aluno` | (`tenant_id`, `escola_id`) e (`tenant_id`, `status`) | Listagens por escola e por status ativo/inativo |
-| `AlunoRota` | (`rota_id`, `parada_rota_id`) e (`aluno_id`) | Montagem do checklist por parada, e consulta "em quais rotas este aluno está" |
-| `Rota` | (`tenant_id`, `status`, `turno`) | Dashboard "rotas ativas hoje, por turno" |
-| `Viagem` | (`tenant_id`, `data`, `status`) e (`rota_id`, `data`) | Consulta operacional do dia, e histórico por rota |
-| `PosicaoGPS` | Índice sobre partição corrente por (`viagem_id`, `timestamp`) + índice espacial GiST (PostGIS) sobre a coluna de geometria | Consulta de trajeto por viagem ordenado no tempo, e consultas espaciais (geofencing, "veículos próximos a este ponto") |
-| `Evento` | (`viagem_id`, `tipo`, `timestamp`) e (`tenant_id`, `tipo`, `timestamp`) | Reconstituição de checklist de uma viagem, e relatórios agregados por tipo de evento no tenant |
-| `Notificacao` | (`destinatario_id`, `status`) e (`tenant_id`, `status`, `criado_em`) | "Minhas notificações não lidas", e fila de reprocessamento de falhas por tenant |
-| `RegistroAuditoria` | (`tenant_id`, `entidade_tipo`, `entidade_id`, `timestamp`) | Reconstituir histórico de uma entidade específica em ordem cronológica |
-| `EventoAgenda` | (`tenant_id`, `tipo`, `data`) | Visão de calendário filtrada por período |
+| Tabela                  | Índice sugerido                                                                                                            | Motivo                                                                                                                         |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `VinculoPapel`          | (`usuario_id`, `status`) e (`tenant_id`, `papel`, `status`)                                                                | Resolver rapidamente "quais vínculos ativos este usuário tem" no login, e "quantos gestores/motoristas ativos este tenant tem" |
+| `Motorista` / `Veiculo` | (`tenant_id`, `status`)                                                                                                    | Listagens de dashboard filtram por status constantemente                                                                       |
+| `Documento`             | (`entidade_tipo`, `entidade_id`) e (`data_vencimento`) parcial (`WHERE status != 'expirado'`)                              | Consulta de documentos de uma entidade específica, e varredura diária de vencimentos próximos                                  |
+| `Aluno`                 | (`tenant_id`, `escola_id`) e (`tenant_id`, `status`)                                                                       | Listagens por escola e por status ativo/inativo                                                                                |
+| `AlunoRota`             | (`rota_id`, `parada_rota_id`) e (`aluno_id`)                                                                               | Montagem do checklist por parada, e consulta "em quais rotas este aluno está"                                                  |
+| `Rota`                  | (`tenant_id`, `status`, `turno`)                                                                                           | Dashboard "rotas ativas hoje, por turno"                                                                                       |
+| `Viagem`                | (`tenant_id`, `data`, `status`) e (`rota_id`, `data`)                                                                      | Consulta operacional do dia, e histórico por rota                                                                              |
+| `PosicaoGPS`            | Índice sobre partição corrente por (`viagem_id`, `timestamp`) + índice espacial GiST (PostGIS) sobre a coluna de geometria | Consulta de trajeto por viagem ordenado no tempo, e consultas espaciais (geofencing, "veículos próximos a este ponto")         |
+| `Evento`                | (`viagem_id`, `tipo`, `timestamp`) e (`tenant_id`, `tipo`, `timestamp`)                                                    | Reconstituição de checklist de uma viagem, e relatórios agregados por tipo de evento no tenant                                 |
+| `Notificacao`           | (`destinatario_id`, `status`) e (`tenant_id`, `status`, `criado_em`)                                                       | "Minhas notificações não lidas", e fila de reprocessamento de falhas por tenant                                                |
+| `RegistroAuditoria`     | (`tenant_id`, `entidade_tipo`, `entidade_id`, `timestamp`)                                                                 | Reconstituir histórico de uma entidade específica em ordem cronológica                                                         |
+| `EventoAgenda`          | (`tenant_id`, `tipo`, `data`)                                                                                              | Visão de calendário filtrada por período                                                                                       |
 
 Todas as tabelas de negócio possuem, adicionalmente, um índice único composto (`tenant_id`, `id`) sempre que a chave primária técnica (`id`) for um UUID global — reforça a query planner a usar o filtro de tenant eficientemente mesmo em buscas por chave primária.
 
@@ -391,14 +391,14 @@ Todas as tabelas de negócio possuem, adicionalmente, um índice único composto
 
 ### 20.1 O que vai para cache (Redis) e por quê
 
-| Dado | TTL sugerido | Motivo |
-|---|---|---|
-| Sessão/token validado (permissões resolvidas do usuário) | Duração do token de acesso (minutos) | Evita recalcular RBAC completo a cada requisição |
-| Configuração do tenant (`EmpresaConfiguracao`) | 5–15 min, invalidado ativamente na escrita | Lido em quase toda decisão de regra de negócio (ex. limiar de atraso), baixa mutabilidade |
-| Status da assinatura do tenant (`ativo`/`restrito`/`suspenso`) | 5 min, invalidado ativamente no webhook de pagamento | Consultado em todo request para decidir se o tenant pode operar |
-| Última posição conhecida de cada veículo em rota ativa | Segundos (sobrescrito a cada nova posição recebida) | É literalmente o dado consumido pelo mapa em tempo real — nunca deveria ir ao Postgres para "onde está o veículo agora", só para histórico |
-| Rota do dia já montada (paradas + alunos esperados) | Até o fim do turno operacional, invalidado em qualquer alteração | Consultado repetidamente pelo app do motorista/monitor durante toda a viagem |
-| Contadores de dashboard (rotas ativas hoje, atrasos no momento) | 10–30 s | Tolerável levemente desatualizado, evita recontar em toda visita ao dashboard |
+| Dado                                                            | TTL sugerido                                                     | Motivo                                                                                                                                     |
+| --------------------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Sessão/token validado (permissões resolvidas do usuário)        | Duração do token de acesso (minutos)                             | Evita recalcular RBAC completo a cada requisição                                                                                           |
+| Configuração do tenant (`EmpresaConfiguracao`)                  | 5–15 min, invalidado ativamente na escrita                       | Lido em quase toda decisão de regra de negócio (ex. limiar de atraso), baixa mutabilidade                                                  |
+| Status da assinatura do tenant (`ativo`/`restrito`/`suspenso`)  | 5 min, invalidado ativamente no webhook de pagamento             | Consultado em todo request para decidir se o tenant pode operar                                                                            |
+| Última posição conhecida de cada veículo em rota ativa          | Segundos (sobrescrito a cada nova posição recebida)              | É literalmente o dado consumido pelo mapa em tempo real — nunca deveria ir ao Postgres para "onde está o veículo agora", só para histórico |
+| Rota do dia já montada (paradas + alunos esperados)             | Até o fim do turno operacional, invalidado em qualquer alteração | Consultado repetidamente pelo app do motorista/monitor durante toda a viagem                                                               |
+| Contadores de dashboard (rotas ativas hoje, atrasos no momento) | 10–30 s                                                          | Tolerável levemente desatualizado, evita recontar em toda visita ao dashboard                                                              |
 
 ### 20.2 O que **não** vai para cache
 
@@ -418,9 +418,10 @@ Conforme a Seção 0, a tabela `PosicaoGPS` é, disparadamente, a que mais cresc
 
 ### 21.2 Particionamento por tempo (partição primária)
 
-`PosicaoGPS` é particionada nativamente pelo Postgres (*declarative partitioning*) por **intervalo de tempo, uma partição por dia** (ou por hora, nos primeiros meses de operação nacional, se o volume diário justificar granularidade menor). Consequências práticas:
+`PosicaoGPS` é particionada nativamente pelo Postgres (_declarative partitioning_) por **intervalo de tempo, uma partição por dia** (ou por hora, nos primeiros meses de operação nacional, se o volume diário justificar granularidade menor). Consequências práticas:
+
 - Consultas operacionais (dashboards, mapa ao vivo, checklist do dia) tocam **apenas a partição do dia corrente**, que é pequena e cabe confortavelmente em memória/cache — performance previsível independentemente de quantos anos de histórico existam no total.
-- Expurgo/arquivamento de dado antigo (Seção 16.5 do Capítulo 16 já citava a política de retenção) se torna uma operação de **remover uma partição inteira** (instantâneo, sem `DELETE` linha a linha, sem gerar *bloat* de índice) em vez de uma varredura custosa.
+- Expurgo/arquivamento de dado antigo (Seção 16.5 do Capítulo 16 já citava a política de retenção) se torna uma operação de **remover uma partição inteira** (instantâneo, sem `DELETE` linha a linha, sem gerar _bloat_ de índice) em vez de uma varredura custosa.
 - `VACUUM`/manutenção incide sobre partições menores e mais recentes, nunca sobre a tabela monolítica inteira.
 
 ### 21.3 Subparticionamento por tenant (segundo nível, quando necessário)
@@ -445,22 +446,22 @@ Dashboards, relatórios e consultas de histórico de longo prazo são direcionad
 
 ### 22.1 Comparação técnica
 
-| Critério | **PostgreSQL** | Supabase | MySQL | MongoDB |
-|---|---|---|---|---|
-| Suporte geoespacial maduro (PostGIS) | ✅ Excelente, padrão de mercado | ✅ (é Postgres por baixo, PostGIS disponível) | ⚠️ Suporte espacial mais limitado/menos maduro | ⚠️ Suporte via `2dsphere`, ecossistema menor para geoconsultas complexas de rota |
-| Row-Level Security nativa (pilar da Seção 1) | ✅ Nativo, maduro | ✅ (herda do Postgres) | ❌ Sem RLS nativo equivalente | ❌ Sem RLS nativo; isolamento precisaria ser 100% na aplicação (risco maior) |
-| Particionamento declarativo por tempo | ✅ Nativo e maduro | ✅ (herda do Postgres) | ⚠️ Particionamento existe, mas ecossistema de ferramentas mais limitado | ⚠️ Sharding existe, mas modelo operacional diferente e mais complexo de operar bem |
-| Integridade referencial e transações ACID entre entidades fortemente relacionadas (Empresa→Rota→Aluno→Responsável) | ✅ Forte | ✅ | ✅ Forte | ⚠️ Transações multi-documento existem mas não é o ponto forte do modelo, e o domínio da Rotta é fundamentalmente relacional |
-| JSON/semi-estruturado quando necessário (ex. payload de Evento, configuração de tenant) | ✅ JSONB nativo, indexável | ✅ | ⚠️ Suporte a JSON existe, menos maduro que JSONB do Postgres | ✅ Nativo (mas aí o resto do domínio, majoritariamente relacional, sofreria) |
-| Controle operacional total (tuning fino, extensões customizadas, portabilidade entre provedores de nuvem) | ✅ Total, se self-managed/gerenciado (RDS/Aurora/Cloud SQL) | ⚠️ Boa parte da infra é opinativa da Supabase — ótimo para velocidade inicial, menos controle fino em escala nacional | ✅ | ✅ |
-| Velocidade de entrega do MVP (auth, storage, realtime "de fábrica") | Neutro (precisa montar cada peça) | ✅ Forte vantagem — Auth, Storage e Realtime prontos aceleram muito o MVP | Neutro | Neutro |
-| Risco de vendor lock-in em funcionalidades proprietárias | Baixo (Postgres puro é portável entre qualquer provedor gerenciado) | Médio — depende de **não** amarrar regra de negócio às particularidades da camada Auth/Edge Functions proprietárias da Supabase | Baixo | Baixo |
+| Critério                                                                                                           | **PostgreSQL**                                                      | Supabase                                                                                                                        | MySQL                                                                   | MongoDB                                                                                                                     |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Suporte geoespacial maduro (PostGIS)                                                                               | ✅ Excelente, padrão de mercado                                     | ✅ (é Postgres por baixo, PostGIS disponível)                                                                                   | ⚠️ Suporte espacial mais limitado/menos maduro                          | ⚠️ Suporte via `2dsphere`, ecossistema menor para geoconsultas complexas de rota                                            |
+| Row-Level Security nativa (pilar da Seção 1)                                                                       | ✅ Nativo, maduro                                                   | ✅ (herda do Postgres)                                                                                                          | ❌ Sem RLS nativo equivalente                                           | ❌ Sem RLS nativo; isolamento precisaria ser 100% na aplicação (risco maior)                                                |
+| Particionamento declarativo por tempo                                                                              | ✅ Nativo e maduro                                                  | ✅ (herda do Postgres)                                                                                                          | ⚠️ Particionamento existe, mas ecossistema de ferramentas mais limitado | ⚠️ Sharding existe, mas modelo operacional diferente e mais complexo de operar bem                                          |
+| Integridade referencial e transações ACID entre entidades fortemente relacionadas (Empresa→Rota→Aluno→Responsável) | ✅ Forte                                                            | ✅                                                                                                                              | ✅ Forte                                                                | ⚠️ Transações multi-documento existem mas não é o ponto forte do modelo, e o domínio da Rotta é fundamentalmente relacional |
+| JSON/semi-estruturado quando necessário (ex. payload de Evento, configuração de tenant)                            | ✅ JSONB nativo, indexável                                          | ✅                                                                                                                              | ⚠️ Suporte a JSON existe, menos maduro que JSONB do Postgres            | ✅ Nativo (mas aí o resto do domínio, majoritariamente relacional, sofreria)                                                |
+| Controle operacional total (tuning fino, extensões customizadas, portabilidade entre provedores de nuvem)          | ✅ Total, se self-managed/gerenciado (RDS/Aurora/Cloud SQL)         | ⚠️ Boa parte da infra é opinativa da Supabase — ótimo para velocidade inicial, menos controle fino em escala nacional           | ✅                                                                      | ✅                                                                                                                          |
+| Velocidade de entrega do MVP (auth, storage, realtime "de fábrica")                                                | Neutro (precisa montar cada peça)                                   | ✅ Forte vantagem — Auth, Storage e Realtime prontos aceleram muito o MVP                                                       | Neutro                                                                  | Neutro                                                                                                                      |
+| Risco de vendor lock-in em funcionalidades proprietárias                                                           | Baixo (Postgres puro é portável entre qualquer provedor gerenciado) | Médio — depende de **não** amarrar regra de negócio às particularidades da camada Auth/Edge Functions proprietárias da Supabase | Baixo                                                                   | Baixo                                                                                                                       |
 
 ### 22.2 Decisão
 
 **PostgreSQL como banco definitivo da plataforma**, por reunir sozinho os três requisitos não negociáveis do domínio (RLS nativo para multi-tenant seguro, PostGIS para todo o núcleo geoespacial do produto, particionamento maduro para o volume de GPS em escala nacional) — nenhuma das outras três opções atende aos três simultaneamente sem compromisso significativo.
 
-**Sobre a Supabase especificamente**: é uma opção legítima e recomendada **como acelerador da fase inicial do MVP** (ela é, tecnicamente, PostgreSQL com uma camada de produto por cima — Auth, Storage, Realtime e painel administrativo prontos), desde que a equipe imponha a si mesma uma disciplina: **usar apenas recursos padrão de Postgres na modelagem de dados e regras de negócio**, evitando amarrar lógica de domínio a funcionalidades proprietárias da Supabase (ex. suas *Edge Functions* ou seu modelo específico de Auth) que dificultariam uma eventual migração para um Postgres self-managed/gerenciado (Amazon Aurora PostgreSQL, Google Cloud SQL) quando a escala e a necessidade de controle fino (tuning de partição, réplicas dedicadas, subparticionamento por tenant da Seção 21.3) exigirem. Essa migração, se a disciplina acima for seguida, é operacionalmente simples — é o mesmo motor de banco por baixo.
+**Sobre a Supabase especificamente**: é uma opção legítima e recomendada **como acelerador da fase inicial do MVP** (ela é, tecnicamente, PostgreSQL com uma camada de produto por cima — Auth, Storage, Realtime e painel administrativo prontos), desde que a equipe imponha a si mesma uma disciplina: **usar apenas recursos padrão de Postgres na modelagem de dados e regras de negócio**, evitando amarrar lógica de domínio a funcionalidades proprietárias da Supabase (ex. suas _Edge Functions_ ou seu modelo específico de Auth) que dificultariam uma eventual migração para um Postgres self-managed/gerenciado (Amazon Aurora PostgreSQL, Google Cloud SQL) quando a escala e a necessidade de controle fino (tuning de partição, réplicas dedicadas, subparticionamento por tenant da Seção 21.3) exigirem. Essa migração, se a disciplina acima for seguida, é operacionalmente simples — é o mesmo motor de banco por baixo.
 
 **MySQL e MongoDB são descartados** como banco primário: MySQL por suporte geoespacial e de RLS inferiores ao Postgres para exatamente os dois pilares mais críticos deste domínio; MongoDB por o domínio da Rotta ser fundamentalmente relacional (empresa → veículo/motorista → rota → aluno → responsável, com integridade referencial e transações que importam de verdade para correção operacional), o que joga contra os pontos fortes de um banco documento-orientado.
 
@@ -534,13 +535,14 @@ Ver tabela completa na Seção 18. Padrão geral: tudo pendura de `Empresa` (ten
 - **RN-29** (Seção 4.2): status `aprovado` de Motorista é sempre derivado, nunca um campo livre.
 - **RN-30**: análogo à RN-29 para `Veiculo` — status `ativo` é derivado do conjunto de documentos vigentes.
 - **RN-31**: nenhuma tabela de alto volume (`PosicaoGPS`, `Evento`, `Notificacao`) é referenciada por chave estrangeira a partir de tabelas de cadastro estrutural — apenas o inverso — para permitir particionamento/expurgo sem risco de integridade referencial quebrada.
-- **RN-32**: qualquer alteração em `Motorista`, `Veiculo`, `Rota` (composição), `VinculoPapel` ou `EmpresaConfiguracao` é obrigatoriamente auditada (Seção 16.2) — não é uma opção de implementação, é um requisito de todo *use case* que escreve nessas entidades.
+- **RN-32**: qualquer alteração em `Motorista`, `Veiculo`, `Rota` (composição), `VinculoPapel` ou `EmpresaConfiguracao` é obrigatoriamente auditada (Seção 16.2) — não é uma opção de implementação, é um requisito de todo _use case_ que escreve nessas entidades.
 - **RN-33**: dado biométrico (`biometria_facial_hash`) nunca é lido por nenhum papel humano diretamente (nem Admin Rotta) — apenas comparado programaticamente pelo serviço de verificação facial, nunca exposto em relatório, tela ou exportação.
 - **RN-34**: a métrica de receita estimada (Seção 15.2) é sempre rotulada como estimativa na interface — nunca apresentada como valor financeiro reconhecido/realizado, para não criar confusão contábil ao Gestor.
 
 ### 23.5 Estrutura preparada para crescimento nacional
 
 O desenho aqui documentado sustenta o caminho de MVP a operação nacional **sem exigir remodelagem de domínio** em nenhum salto de escala, porque cada decisão já nasceu pensando no topo da curva:
+
 1. Multi-tenant via RLS (Seção 1) suporta de dezenas a centenas de milhares de tenants no mesmo banco lógico, com escape valve de particionamento físico por tenant grande (Seção 1.3/21.3) sem precisar de banco dedicado.
 2. `PosicaoGPS` particionada por tempo (Seção 21) desacopla o crescimento de volume histórico da performance operacional do dia corrente.
 3. Réplicas de leitura (Seção 21.6) desacoplam a carga analítica/relatórios da carga transacional crítica.
@@ -549,12 +551,12 @@ O desenho aqui documentado sustenta o caminho de MVP a operação nacional **sem
 
 ### 23.6 Possíveis gargalos futuros e como evitá-los
 
-| Gargalo potencial | Sintoma | Mitigação já prevista no desenho |
-|---|---|---|
-| Tabela `PosicaoGPS` crescendo além da capacidade de uma única partição diária em cidades de altíssima densidade de operação | Latência de escrita degradando nas janelas de pico | Subparticionamento por `tenant_id`/região (Seção 21.3); considerar granularidade horária em vez de diária |
-| Um tenant público (Secretaria) com volume desproporcional dominando recursos compartilhados | Degradação de performance para tenants pequenos vizinhos na mesma infraestrutura | Escape valve de partição física dedicada (Seção 1.3) sem sair do modelo de banco único |
-| Crescimento do número de conexões simultâneas de banco (milhões de usuários finais, ainda que via poucos backends) | Esgotamento de conexões no Postgres | *Connection pooling* de borda (PgBouncer/pooler gerenciado) entre a aplicação e o banco — nenhum processo de aplicação abre conexão direta ao Postgres em produção |
-| Consultas analíticas pesadas (relatórios, dashboards agregados) competindo com a escrita operacional crítica | Picos de latência em checklist/início de rota durante geração de relatório | Réplicas de leitura dedicadas (Seção 21.6); relatórios pesados sempre executados contra réplica, nunca contra o primário |
-| Cache desatualizado servindo status de assinatura incorreto após suspensão | Tenant inadimplente continuando a operar além do previsto | Invalidação ativa via evento de domínio no momento da mudança de status (Seção 20.3), TTL curto como rede de segurança adicional |
-| Crescimento do número de tabelas/entidades ao longo do tempo dificultando manutenção | Onboarding de novo engenheiro lento, risco de regressão | Fronteiras de módulo já mapeadas (Capítulo 14.3) mantêm cada grupo de entidades sob responsabilidade de um módulo de domínio claro, nunca uma tabela "solta" sem dono |
-| Migração de schema em tabela de altíssimo volume (`PosicaoGPS`, `Evento`) causando lock prolongado | Indisponibilidade momentânea em janela operacional | Estratégia expand/contract (Capítulo 16.4) e o fato de migrations em tabelas particionadas poderem ser aplicadas partição por partição, nunca como operação monolítica bloqueante |
+| Gargalo potencial                                                                                                           | Sintoma                                                                          | Mitigação já prevista no desenho                                                                                                                                                  |
+| --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tabela `PosicaoGPS` crescendo além da capacidade de uma única partição diária em cidades de altíssima densidade de operação | Latência de escrita degradando nas janelas de pico                               | Subparticionamento por `tenant_id`/região (Seção 21.3); considerar granularidade horária em vez de diária                                                                         |
+| Um tenant público (Secretaria) com volume desproporcional dominando recursos compartilhados                                 | Degradação de performance para tenants pequenos vizinhos na mesma infraestrutura | Escape valve de partição física dedicada (Seção 1.3) sem sair do modelo de banco único                                                                                            |
+| Crescimento do número de conexões simultâneas de banco (milhões de usuários finais, ainda que via poucos backends)          | Esgotamento de conexões no Postgres                                              | _Connection pooling_ de borda (PgBouncer/pooler gerenciado) entre a aplicação e o banco — nenhum processo de aplicação abre conexão direta ao Postgres em produção                |
+| Consultas analíticas pesadas (relatórios, dashboards agregados) competindo com a escrita operacional crítica                | Picos de latência em checklist/início de rota durante geração de relatório       | Réplicas de leitura dedicadas (Seção 21.6); relatórios pesados sempre executados contra réplica, nunca contra o primário                                                          |
+| Cache desatualizado servindo status de assinatura incorreto após suspensão                                                  | Tenant inadimplente continuando a operar além do previsto                        | Invalidação ativa via evento de domínio no momento da mudança de status (Seção 20.3), TTL curto como rede de segurança adicional                                                  |
+| Crescimento do número de tabelas/entidades ao longo do tempo dificultando manutenção                                        | Onboarding de novo engenheiro lento, risco de regressão                          | Fronteiras de módulo já mapeadas (Capítulo 14.3) mantêm cada grupo de entidades sob responsabilidade de um módulo de domínio claro, nunca uma tabela "solta" sem dono             |
+| Migração de schema em tabela de altíssimo volume (`PosicaoGPS`, `Evento`) causando lock prolongado                          | Indisponibilidade momentânea em janela operacional                               | Estratégia expand/contract (Capítulo 16.4) e o fato de migrations em tabelas particionadas poderem ser aplicadas partição por partição, nunca como operação monolítica bloqueante |

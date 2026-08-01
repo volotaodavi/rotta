@@ -2,6 +2,7 @@ import { Injectable, type CanActivate, type ExecutionContext } from "@nestjs/com
 import { Reflector } from "@nestjs/core";
 
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+
 import { IS_PUBLIC_KEY } from "@/common/decorators/public.decorator";
 import { PrismaService } from "@/infra/database/prisma.service";
 

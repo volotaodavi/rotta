@@ -5,6 +5,7 @@ import {
   type NestInterceptor,
 } from "@nestjs/common";
 import { map } from "rxjs/operators";
+
 import type { Observable } from "rxjs";
 
 export interface ApiResponseEnvelope<T> {
@@ -18,13 +19,8 @@ export interface ApiResponseEnvelope<T> {
  * unico formato a tratar em qualquer resposta, de sucesso ou erro.
  */
 @Injectable()
-export class TransformResponseInterceptor<T>
-  implements NestInterceptor<T, ApiResponseEnvelope<T>>
-{
-  intercept(
-    _context: ExecutionContext,
-    next: CallHandler<T>,
-  ): Observable<ApiResponseEnvelope<T>> {
+export class TransformResponseInterceptor<T> implements NestInterceptor<T, ApiResponseEnvelope<T>> {
+  intercept(_context: ExecutionContext, next: CallHandler<T>): Observable<ApiResponseEnvelope<T>> {
     return next.handle().pipe(map((data) => ({ data })));
   }
 }

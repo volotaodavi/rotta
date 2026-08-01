@@ -1,13 +1,7 @@
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { EventEmitterModule } from "@nestjs/event-emitter";
-
-import appConfig from "@/config/app.config";
-import authConfig from "@/config/auth.config";
-import databaseConfig from "@/config/database.config";
-import redisConfig from "@/config/redis.config";
-import { validate } from "@/config/env.validation";
 
 import { AllExceptionsFilter } from "@/common/filters/all-exceptions.filter";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
@@ -16,36 +10,38 @@ import { TenantGuard } from "@/common/guards/tenant.guard";
 import { LoggingInterceptor } from "@/common/interceptors/logging.interceptor";
 import { TimeoutInterceptor } from "@/common/interceptors/timeout.interceptor";
 import { TransformResponseInterceptor } from "@/common/interceptors/transform-response.interceptor";
-
-import { PrismaModule } from "@/infra/database/prisma.module";
-import { RedisModule } from "@/infra/cache/redis.module";
-import { QueueModule } from "@/infra/queue/queue.module";
-import { LoggerModule } from "@/infra/observability/logger.module";
-
+import appConfig from "@/config/app.config";
+import authConfig from "@/config/auth.config";
+import databaseConfig from "@/config/database.config";
+import { validate } from "@/config/env.validation";
+import redisConfig from "@/config/redis.config";
 import { HealthModule } from "@/health/health.module";
-
-import { AuthModule } from "@/modules/auth/auth.module";
-import { UsersModule } from "@/modules/users/users.module";
-import { CompaniesModule } from "@/modules/companies/companies.module";
-import { SchoolsModule } from "@/modules/schools/schools.module";
-import { DriversModule } from "@/modules/drivers/drivers.module";
-import { MonitorsModule } from "@/modules/monitors/monitors.module";
-import { ParentsModule } from "@/modules/parents/parents.module";
-import { StudentsModule } from "@/modules/students/students.module";
-import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
-import { RoutesModule } from "@/modules/routes/routes.module";
-import { TripsModule } from "@/modules/trips/trips.module";
-import { GpsModule } from "@/modules/gps/gps.module";
-import { NotificationsModule } from "@/modules/notifications/notifications.module";
+import { RedisModule } from "@/infra/cache/redis.module";
+import { PrismaModule } from "@/infra/database/prisma.module";
+import { LoggerModule } from "@/infra/observability/logger.module";
+import { QueueModule } from "@/infra/queue/queue.module";
 import { AgendaModule } from "@/modules/agenda/agenda.module";
-import { DashboardModule } from "@/modules/dashboard/dashboard.module";
-import { SupportModule } from "@/modules/support/support.module";
-import { DocumentsModule } from "@/modules/documents/documents.module";
-import { ReportsModule } from "@/modules/reports/reports.module";
-import { SettingsModule } from "@/modules/settings/settings.module";
-import { AuditModule } from "@/modules/audit/audit.module";
-import { LogsModule } from "@/modules/logs/logs.module";
 import { AnalyticsModule } from "@/modules/analytics/analytics.module";
+import { AuditModule } from "@/modules/audit/audit.module";
+import { AuthModule } from "@/modules/auth/auth.module";
+import { CompaniesModule } from "@/modules/companies/companies.module";
+import { DashboardModule } from "@/modules/dashboard/dashboard.module";
+import { DocumentsModule } from "@/modules/documents/documents.module";
+import { DriversModule } from "@/modules/drivers/drivers.module";
+import { GpsModule } from "@/modules/gps/gps.module";
+import { LogsModule } from "@/modules/logs/logs.module";
+import { MonitorsModule } from "@/modules/monitors/monitors.module";
+import { NotificationsModule } from "@/modules/notifications/notifications.module";
+import { ParentsModule } from "@/modules/parents/parents.module";
+import { ReportsModule } from "@/modules/reports/reports.module";
+import { RoutesModule } from "@/modules/routes/routes.module";
+import { SchoolsModule } from "@/modules/schools/schools.module";
+import { SettingsModule } from "@/modules/settings/settings.module";
+import { StudentsModule } from "@/modules/students/students.module";
+import { SupportModule } from "@/modules/support/support.module";
+import { TripsModule } from "@/modules/trips/trips.module";
+import { UsersModule } from "@/modules/users/users.module";
+import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
 
 @Module({
   imports: [

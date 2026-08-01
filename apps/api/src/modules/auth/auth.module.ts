@@ -3,9 +3,9 @@ import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 
-import type { AuthConfig } from "@/config/auth.config";
-
 import { JwtStrategy } from "./strategies/jwt.strategy";
+
+import type { AuthConfig } from "@/config/auth.config";
 
 /**
  * Modulo de Autenticacao (Dossie 13, Secao 1 — `AUTH-*`).

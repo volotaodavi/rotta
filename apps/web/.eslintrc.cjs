@@ -1,4 +1,4 @@
 module.exports = {
   root: true,
-  extends: ["@rotta/config/eslint/next"],
+  extends: [require.resolve("@rotta/config/eslint/next")],
 };

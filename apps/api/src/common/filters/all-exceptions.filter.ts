@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import {
   Catch,
   HttpException,
@@ -5,10 +7,9 @@ import {
   type ArgumentsHost,
   type ExceptionFilter,
 } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
-import type { Response, Request } from "express";
 
 import type { ApiErrorBody } from "@/shared/types/api-error.type";
+import type { Response, Request } from "express";
 
 /**
  * Filtro global de excecoes — traduz qualquer erro lancado na aplicacao

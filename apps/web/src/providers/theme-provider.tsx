@@ -1,14 +1,7 @@
 "use client";
 
 import { themes, type Theme, type ThemeName } from "@rotta/theme";
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
 /**
  * Provider de tema via Context API (Dossie 23, Secao 2.4 — injecao de

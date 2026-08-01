@@ -7,6 +7,7 @@
 Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend — ver Capítulo 14). Cada funcionalidade indica a fase de entrega (MVP, V2, V3 — detalhado nos Capítulos 22–24).
 
 ### 12.1 Módulo — Identidade e Acesso
+
 - Cadastro/login multi-perfil (e-mail, telefone, ou ambos) — **MVP**
 - Autenticação por telefone com OTP (SMS/WhatsApp) para responsáveis, motoristas e monitores (menor fricção que senha) — **MVP**
 - Login com e-mail/senha + 2FA opcional para Gestores/Empresa/Admin — **MVP**
@@ -15,6 +16,7 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Múltiplos vínculos: um responsável pode ter filhos em empresas de transporte diferentes; um motorista pode (raramente) atender mais de uma empresa — **MVP** (modelo de dados já suporta desde o início, ver Capítulo 16)
 
 ### 12.2 Módulo — Gestão de Empresas (Tenant)
+
 - Autocadastro (self-service signup) — **MVP**
 - Escolha e gestão de plano/assinatura — **MVP**
 - Faturamento recorrente automático (cartão/Pix) — **MVP**
@@ -22,6 +24,7 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Hierarquia Secretaria → Empresas terceirizadas — **V3**
 
 ### 12.3 Módulo — Gestão de Veículos
+
 - Cadastro (placa, modelo, ano, capacidade de lugares, foto) — **MVP**
 - Upload e controle de vencimento de documentos (CRLV, seguro, vistoria/laudo de vistoria escolar municipal) — **MVP**
 - Alertas de vencimento (30/15/5 dias) — **MVP**
@@ -30,6 +33,7 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Telemetria veicular avançada (velocidade, frenagem brusca, integração com OBD) — **V3**
 
 ### 12.4 Módulo — Gestão de Motoristas e Monitores
+
 - Cadastro com upload de documentos (CNH, categoria, cursos obrigatórios, antecedentes) — **MVP**
 - Status de verificação documental (pendente/aprovado/reprovado/vencido) — **MVP**
 - Escalas e vínculo a rotas — **MVP**
@@ -38,6 +42,7 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Certificações e treinamentos com validade (ex.: curso de direção defensiva) — **V2**
 
 ### 12.5 Módulo — Gestão de Alunos
+
 - Cadastro (nome, data de nascimento, foto, escola, endereço de embarque/desembarque, necessidades especiais relevantes ao transporte — ex.: cadeirante) — **MVP**
 - Vínculo a um ou mais responsáveis — **MVP**
 - Vínculo a uma rota e ponto de parada específico — **MVP**
@@ -46,18 +51,21 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Integração de frequência escolar (cruzamento com sistema da escola) — **V3**
 
 ### 12.6 Módulo — Gestão de Responsáveis
+
 - Cadastro/convite, múltiplos responsáveis por aluno (ex.: pai e mãe, cada um com o próprio login) — **MVP**
 - Preferências de notificação (canais, silenciar fora de horário de rota) — **MVP**
 - Justificativa de falta/ausência do aluno pelo app — **MVP**
 - Chat direto (dentro do app) com o motorista/gestor para casos não urgentes — **V2**
 
 ### 12.7 Módulo — Gestão de Escolas
+
 - Cadastro de escola (nome, endereço, contato) pela empresa transportadora — **MVP**
 - Portal de visualização (somente leitura) para a escola: alunos em rota, status do dia, ocorrências — **MVP**
 - Múltiplas empresas transportadoras atendendo a mesma escola, com visão consolidada para a escola — **V2**
 - Canal de comunicação formal escola ↔ transportador dentro da plataforma — **V2**
 
 ### 12.8 Módulo — Gestão de Rotas
+
 - Criação visual de rota no mapa (pontos, ordem, horários) — **MVP**
 - Rotas por turno (manhã/tarde/integral) e por dia da semana — **MVP**
 - Duplicar/clonar rota existente — **MVP**
@@ -66,6 +74,7 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Rotas dinâmicas/sob demanda (fora do escopo — não é o modelo de negócio da Rotta, que é rota fixa recorrente) — **fora de escopo**
 
 ### 12.9 Módulo — Rastreamento em Tempo Real
+
 - Transmissão de GPS via app do motorista (sem necessidade de hardware dedicado) — **MVP**
 - Mapa ao vivo para responsável (trecho relevante ao filho) — **MVP**
 - Mapa ao vivo consolidado (todas as rotas) para gestor — **MVP**
@@ -76,6 +85,7 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Suporte a hardware de rastreamento dedicado (para veículos maiores/frotas que já possuem equipamento) como fonte alternativa de GPS — **V3**
 
 ### 12.10 Módulo — Checklist Operacional
+
 - Checklist de embarque por aluno, por parada — **MVP**
 - Checklist de desembarque por aluno, por parada — **MVP**
 - Confirmação ativa de "van vazia" ao fim da rota — **MVP**
@@ -84,6 +94,7 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Assinatura digital do responsável no ponto (para casos de alta exigência de comprovação) — **V3**
 
 ### 12.11 Módulo — Comunicação e Notificações
+
 - Notificações push (embarque, desembarque, atraso, ocorrência) — **MVP**
 - Envio via WhatsApp Business API (mesmo conteúdo das push, para famílias que preferem/não têm o app aberto) — **MVP**
 - SMS como canal de fallback (quando push e WhatsApp falham ou não há app instalado) — **MVP**
@@ -93,11 +104,13 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Central de atendimento/chatbot para dúvidas frequentes de responsáveis — **V3**
 
 ### 12.12 Módulo — Agenda
+
 - Calendário de rotas ativas por dia — **MVP**
 - Marcação de feriados/dias sem transporte — **MVP**
 - Eventos especiais (passeio escolar, horário alterado) — **V2**
 
 ### 12.13 Módulo — Dashboard Operacional
+
 - Visão do dia (rotas ativas, atrasadas, concluídas) — **MVP**
 - Indicadores-chave (pontualidade média, ocorrências no mês, documentos vencendo) — **MVP**
 - Mapa consolidado de toda a frota — **MVP**
@@ -105,19 +118,23 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 - Score de risco operacional (combinação de atrasos, ocorrências, documentos, comportamento de condução) — **V3**
 
 ### 12.14 Módulo — Documentos
+
 - Repositório central de documentos por entidade (empresa, veículo, motorista, aluno) — **MVP**
 - Alertas de vencimento configuráveis — **MVP**
 - Extração automática de dados do documento via OCR (preenchimento assistido, reduz erro de digitação) — **V2**
 - Assinatura eletrônica de contratos (motorista ↔ empresa, empresa ↔ responsável) — **V2**
 
 ### 12.15 Módulo — Relatórios
+
 - Relatórios operacionais (pontualidade, frequência, ocorrências) exportáveis em PDF/planilha — **MVP**
 - Relatórios financeiros da própria assinatura Rotta — **MVP**
 - Relatórios de conformidade documental para prestação de contas a escolas — **V2**
 - Relatórios agregados para órgãos públicos (B2G) — **V3**
 
 ### 12.16 Módulo — Financeiro (cobrança do transportador aos responsáveis)
-*(Fora do MVP — é uma funcionalidade de valor agregado, não o core de rastreamento/gestão operacional)*
+
+_(Fora do MVP — é uma funcionalidade de valor agregado, não o core de rastreamento/gestão operacional)_
+
 - Emissão de cobrança da mensalidade do transporte aos responsáveis — **V2**
 - Conciliação e relatório de inadimplência — **V2**
 - Split de pagamento avançado / conta digital para o transportador — **V3**
@@ -170,4 +187,4 @@ Organizadas por módulo de domínio (os mesmos módulos que estruturam o backend
 
 - **RN-26**: Um aluno não pode ser vinculado a duas rotas ativas com o mesmo turno simultaneamente (evita inconsistência operacional — uma criança não pode "estar em dois vans ao mesmo tempo" do ponto de vista do sistema).
 - **RN-27**: Ao desligar um motorista/monitor de uma empresa, suas rotas ficam automaticamente sinalizadas como "sem motorista designado" no dashboard do gestor até nova atribuição — nunca ficam "silenciosamente" sem operador.
-- **RN-28**: Exclusão de uma empresa (tenant) é sempre um processo de *soft delete* com período de retenção antes de purga definitiva (ver Capítulo 19), nunca exclusão física imediata, para permitir recuperação em caso de cancelamento acidental ou disputa de cobrança.
+- **RN-28**: Exclusão de uma empresa (tenant) é sempre um processo de _soft delete_ com período de retenção antes de purga definitiva (ver Capítulo 19), nunca exclusão física imediata, para permitir recuperação em caso de cancelamento acidental ou disputa de cobrança.

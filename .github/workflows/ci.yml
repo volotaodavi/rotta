@@ -1,0 +1,131 @@
+name: CI
+
+# Pipeline de Integracao Continua — Dossie 23, Secao 14.
+#
+# Roda em todo Pull Request e em push para `main` (Dossie 23, Secao 11.1
+# — trunk-based). Cada etapa usa o Turborepo para executar apenas contra
+# os apps/packages efetivamente afetados pelo diff, aproveitando o cache
+# remoto quando configurado (TURBO_TOKEN/TURBO_TEAM como secrets do
+# repositorio) — Dossie 23, Secao 14.2.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm turbo run lint --filter="...[origin/main]"
+
+      - name: Type check
+        run: pnpm turbo run typecheck --filter="...[origin/main]"
+
+      - name: Format check
+        run: pnpm format:check
+
+  test:
+    name: Testes unitários e de integração
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: rotta
+          POSTGRES_PASSWORD: rotta_ci_only
+          POSTGRES_DB: rotta_ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rotta"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
+      REDIS_URL: "redis://localhost:6379"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Test
+        run: pnpm turbo run test --filter="...[origin/main]"
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm turbo run build --filter="...[origin/main]"
+
+  dependency-audit:
+    name: Auditoria de dependências
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      # Bloqueia o merge em caso de vulnerabilidade critica sem patch
+      # (Dossie 12, Secao 19.5).
+      - name: Audit
+        run: pnpm audit --audit-level=critical
+        continue-on-error: false

@@ -11,9 +11,7 @@ export default function LandingPagePlaceholder(): JSX.Element {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-2 px-6 text-center">
       <h1 className="text-4xl font-bold text-text">Rotta</h1>
-      <p className="text-text-muted">
-        Gestão inteligente para transporte escolar — em construção.
-      </p>
+      <p className="text-text-muted">Gestão inteligente para transporte escolar — em construção.</p>
     </main>
   );
 }

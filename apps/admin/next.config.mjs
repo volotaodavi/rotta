@@ -11,9 +11,7 @@ const nextConfig = {
     "@rotta/auth",
     "@rotta/api-client",
   ],
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
 };
 
 export default nextConfig;

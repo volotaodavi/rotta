@@ -28,9 +28,7 @@ export default function GlobalError({
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center text-text">
       <h1 className="text-h1 font-semibold">Algo deu errado</h1>
-      <p className="text-text-muted">
-        Ocorreu um erro inesperado. Tente novamente em instantes.
-      </p>
+      <p className="text-text-muted">Ocorreu um erro inesperado. Tente novamente em instantes.</p>
       <button
         type="button"
         onClick={reset}

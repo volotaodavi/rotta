@@ -1,12 +1,14 @@
+import { randomUUID } from "node:crypto";
+
 import {
   Injectable,
   type CallHandler,
   type ExecutionContext,
   type NestInterceptor,
 } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
 import { Logger } from "nestjs-pino";
 import { tap } from "rxjs/operators";
+
 import type { Observable } from "rxjs";
 
 /**

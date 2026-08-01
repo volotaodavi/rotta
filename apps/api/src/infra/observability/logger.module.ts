@@ -1,7 +1,10 @@
+import { randomUUID } from "node:crypto";
+
 import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { randomUUID } from "node:crypto";
 import { LoggerModule as PinoLoggerModule } from "nestjs-pino";
+
+import type { IncomingMessage } from "node:http";
 
 /**
  * Logger estruturado (Dossie 12, Secao 10.3) — todo log e um objeto JSON,
@@ -21,8 +24,12 @@ import { LoggerModule as PinoLoggerModule } from "nestjs-pino";
       useFactory: (configService: ConfigService) => ({
         pinoHttp: {
           level: configService.get<string>("LOG_LEVEL") ?? "info",
-          genReqId: (req: { headers: Record<string, string> }) =>
-            req.headers["x-correlation-id"] ?? randomUUID(),
+          genReqId: (req: IncomingMessage) => {
+            const correlationId = req.headers["x-correlation-id"];
+            return (
+              (Array.isArray(correlationId) ? correlationId[0] : correlationId) ?? randomUUID()
+            );
+          },
           redact: [
             "req.headers.authorization",
             "req.headers.cookie",

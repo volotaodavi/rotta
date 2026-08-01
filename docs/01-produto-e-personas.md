@@ -8,7 +8,7 @@
 
 > **Rotta será a infraestrutura digital do transporte escolar brasileiro** — o sistema operacional que conecta, em uma única plataforma, todo transportador (do motorista autônomo à secretaria de educação municipal) a todas as famílias que dependem do transporte escolar para colocar seus filhos na escola com segurança.
 
-Rotta não compete com "apps de rastreamento de veículo". Rastreamento é uma *feature*, não um produto. O produto é a **operação inteira do transporte escolar**: cadastro, conformidade documental, rotas, escala de motoristas e monitores, comunicação com a família, cobrança da mensalidade dos alunos (quando aplicável ao transportador), prestação de contas às escolas e, no limite, auditoria pública quando o cliente é uma prefeitura.
+Rotta não compete com "apps de rastreamento de veículo". Rastreamento é uma _feature_, não um produto. O produto é a **operação inteira do transporte escolar**: cadastro, conformidade documental, rotas, escala de motoristas e monitores, comunicação com a família, cobrança da mensalidade dos alunos (quando aplicável ao transportador), prestação de contas às escolas e, no limite, auditoria pública quando o cliente é uma prefeitura.
 
 Isso posiciona Rotta como um **ERP verticalizado**, na mesma lógica de produtos como Linx/Cielo para varejo ou Sólides para RH, mas para um nicho extremamente carente de digitalização: hoje a esmagadora maioria dos transportadores escolares no Brasil opera com WhatsApp, planilhas de Excel, cadernos de papel e, na melhor das hipóteses, um rastreador veicular genérico (não desenhado para o caso de uso escolar).
 
@@ -31,13 +31,13 @@ Para manter o foco do produto, é tão importante declarar o que a Rotta **não*
 
 ### 1.4 Proposta de valor por ator
 
-| Ator | Dor de hoje | Valor entregue pela Rotta |
-|---|---|---|
-| Motorista autônomo / MEI | Gestão manual em papel/WhatsApp, sem profissionalização, risco jurídico por falta de documentação em dia | App simples que substitui caderno + rastreador + grupo de WhatsApp por R$ 39,90/mês |
-| Empresa de transporte escolar | Dificuldade de escalar operação com múltiplos motoristas/veículos, sem visibilidade centralizada | Painel único de gestão de frota, rotas, documentos e comunicação, com dashboard operacional |
-| Responsável (pai/mãe) | Ansiedade por não saber onde está o filho, atrasos não comunicados | Rastreamento em tempo real, notificação de embarque/desembarque, histórico de viagens, grátis |
-| Escola | Nenhuma visibilidade sobre o transporte de seus alunos, dependência de terceiros não auditáveis | Portal com visão de quais alunos estão em rota, atrasos, ocorrências |
-| Prefeitura / Secretaria de Educação | Falta de auditoria sobre transporte terceirizado, risco de fraude e de acidentes | Camada de compliance e relatórios agregados sobre empresas contratadas |
+| Ator                                | Dor de hoje                                                                                              | Valor entregue pela Rotta                                                                     |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Motorista autônomo / MEI            | Gestão manual em papel/WhatsApp, sem profissionalização, risco jurídico por falta de documentação em dia | App simples que substitui caderno + rastreador + grupo de WhatsApp por R$ 39,90/mês           |
+| Empresa de transporte escolar       | Dificuldade de escalar operação com múltiplos motoristas/veículos, sem visibilidade centralizada         | Painel único de gestão de frota, rotas, documentos e comunicação, com dashboard operacional   |
+| Responsável (pai/mãe)               | Ansiedade por não saber onde está o filho, atrasos não comunicados                                       | Rastreamento em tempo real, notificação de embarque/desembarque, histórico de viagens, grátis |
+| Escola                              | Nenhuma visibilidade sobre o transporte de seus alunos, dependência de terceiros não auditáveis          | Portal com visão de quais alunos estão em rota, atrasos, ocorrências                          |
+| Prefeitura / Secretaria de Educação | Falta de auditoria sobre transporte terceirizado, risco de fraude e de acidentes                         | Camada de compliance e relatórios agregados sobre empresas contratadas                        |
 
 ### 1.5 Tese de produto
 
@@ -81,22 +81,25 @@ A missão não é uma peça de marketing — ela arbitra empates de engenharia a
 ### 3.2 Objetivos de negócio (12–18 meses, formato OKR sugerido)
 
 **Objetivo A — Validar o product-market fit com transportadores pequenos**
+
 - KR1: 500 empresas pagantes ativas até o fim do MVP + V2.
 - KR2: Churn mensal de tenants pagantes abaixo de 5%.
 - KR3: NPS de motoristas ≥ 60.
 
 **Objetivo B — Construir o efeito de rede via responsáveis**
+
 - KR1: 70% dos responsáveis cadastrados abrem o app ao menos 3x por semana.
 - KR2: 40% dos novos tenants chegam por indicação de um responsável que já usa o app em outra empresa (efeito de rede lateral).
 
 **Objetivo C — Provar a arquitetura multi-tenant em escala**
+
 - KR1: Suportar 10.000 tenants simultâneos com p95 de latência de API abaixo de 300ms.
 - KR2: Zero incidentes de vazamento de dados entre tenants (isolamento auditado trimestralmente).
 
 ### 3.3 Objetivos técnicos (o que a arquitetura precisa garantir desde o dia 1)
 
 - Todo tenant novo pode ser provisionado **sem deploy manual** (self-service signup → tenant ativo em produção em segundos).
-- Nenhuma alteração de schema de banco de dados exige *downtime* (migrations aditivas, *expand/contract pattern* — ver Capítulo 16).
+- Nenhuma alteração de schema de banco de dados exige _downtime_ (migrations aditivas, _expand/contract pattern_ — ver Capítulo 16).
 - O app do motorista deve funcionar de forma degradada **sem internet contínua** (fila local de eventos de GPS/checklist com sincronização posterior), porque rotas escolares frequentemente passam por áreas rurais/periféricas com conectividade instável.
 - Tempo de "cold start" do app abaixo de 2 segundos em aparelhos de entrada (Android com 2GB RAM), pois grande parte dos motoristas usa aparelhos populares.
 
@@ -106,18 +109,18 @@ A missão não é uma peça de marketing — ela arbitra empates de engenharia a
 
 ### 4.1 Segmentação primária (fase MVP/V2)
 
-| Segmento | Descrição | Tamanho estimado no Brasil | Prioridade |
-|---|---|---|---|
-| Motorista autônomo / MEI | 1 pessoa, 1 a 2 veículos, opera de forma independente, geralmente atende bairro/escola específica | ~150 a 200 mil (estimativa de mercado informal, alta pulverização) | **Alta — foco do MVP** |
-| Pequena empresa de transporte escolar | 2 a 15 veículos, 1 gestor administrativo + motoristas contratados/terceirizados | Dezenas de milhares | **Alta — foco do MVP/V2** |
-| Média/grande empresa de transporte escolar | 15+ veículos, estrutura administrativa própria, múltiplas filiais | Milhares | **Média — V2** |
+| Segmento                                   | Descrição                                                                                         | Tamanho estimado no Brasil                                         | Prioridade                |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------- |
+| Motorista autônomo / MEI                   | 1 pessoa, 1 a 2 veículos, opera de forma independente, geralmente atende bairro/escola específica | ~150 a 200 mil (estimativa de mercado informal, alta pulverização) | **Alta — foco do MVP**    |
+| Pequena empresa de transporte escolar      | 2 a 15 veículos, 1 gestor administrativo + motoristas contratados/terceirizados                   | Dezenas de milhares                                                | **Alta — foco do MVP/V2** |
+| Média/grande empresa de transporte escolar | 15+ veículos, estrutura administrativa própria, múltiplas filiais                                 | Milhares                                                           | **Média — V2**            |
 
 ### 4.2 Segmentação secundária (fase V2/V3 — expansão B2G)
 
-| Segmento | Descrição | Prioridade |
-|---|---|---|
-| Empresas terceirizadas do transporte público escolar | Contratadas por prefeituras via licitação, precisam prestar contas ao poder público | V2/V3 |
-| Prefeituras / Secretarias Municipais de Educação | Órgão público que licita e fiscaliza o transporte escolar gratuito | V3 |
+| Segmento                                             | Descrição                                                                           | Prioridade |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------- |
+| Empresas terceirizadas do transporte público escolar | Contratadas por prefeituras via licitação, precisam prestar contas ao poder público | V2/V3      |
+| Prefeituras / Secretarias Municipais de Educação     | Órgão público que licita e fiscaliza o transporte escolar gratuito                  | V3         |
 
 ### 4.3 Perfis de usuário final (não pagantes, mas essenciais ao produto)
 

@@ -8,15 +8,15 @@
 
 A Rotta não copia nenhum desses produtos — extrai um princípio específico de cada um, porque cada um resolve um problema de UX que a Rotta também tem:
 
-| Referência | Princípio extraído | Onde se manifesta na Rotta |
-|---|---|---|
-| **Uber** | Uma única tela "diz tudo" sobre o estado atual (onde está o carro, quando chega) sem exigir navegação | Tela de mapa ao vivo do Responsável mostra tudo em uma tela: posição, ETA, status — nunca exige trocar de aba para saber "cadê meu filho" |
-| **Google Maps** | Camadas de informação aparecem progressivamente, nunca todas de uma vez | O mapa do Gestor mostra veículos por padrão; detalhes de uma rota só aparecem ao tocar naquele veículo — não polui o mapa com tudo simultaneamente |
-| **Stripe Dashboard** | Densidade de dado com clareza — tabelas e números complexos apresentados sem parecer complicado | Dashboard operacional do Gestor (Capítulo 31) usa a mesma lógica: KPIs no topo, tabela densa abaixo, sem enfeite visual competindo com o dado |
-| **Notion** | Estrutura hierárquica clara, tipografia como principal ferramenta de hierarquia (não cor, não borda) | Toda tela da Rotta usa peso e tamanho de fonte, não caixinhas coloridas, para indicar o que é mais importante |
-| **Apple** | Restrição deliberada — poucos elementos na tela, cada um com propósito único, sem redundância visual | Telas do app do motorista/responsável nunca têm mais de 1 ação primária visível por vez |
-| **Linear** | Velocidade percebida — toda interação responde instantaneamente (otimismo de UI), atalhos de teclado no painel web | Toda ação no painel (criar rota, cadastrar aluno) atualiza a UI otimisticamente antes da confirmação do servidor |
-| **Airbnb** | Confiança transmitida por fotos reais, avaliação e prova social — reduzir ansiedade de "estou entregando meu filho a um desconhecido" | Perfil do motorista (foto, documentos verificados, "selo Rotta verificado") visível ao responsável desde o primeiro dia |
+| Referência           | Princípio extraído                                                                                                                    | Onde se manifesta na Rotta                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Uber**             | Uma única tela "diz tudo" sobre o estado atual (onde está o carro, quando chega) sem exigir navegação                                 | Tela de mapa ao vivo do Responsável mostra tudo em uma tela: posição, ETA, status — nunca exige trocar de aba para saber "cadê meu filho"          |
+| **Google Maps**      | Camadas de informação aparecem progressivamente, nunca todas de uma vez                                                               | O mapa do Gestor mostra veículos por padrão; detalhes de uma rota só aparecem ao tocar naquele veículo — não polui o mapa com tudo simultaneamente |
+| **Stripe Dashboard** | Densidade de dado com clareza — tabelas e números complexos apresentados sem parecer complicado                                       | Dashboard operacional do Gestor (Capítulo 31) usa a mesma lógica: KPIs no topo, tabela densa abaixo, sem enfeite visual competindo com o dado      |
+| **Notion**           | Estrutura hierárquica clara, tipografia como principal ferramenta de hierarquia (não cor, não borda)                                  | Toda tela da Rotta usa peso e tamanho de fonte, não caixinhas coloridas, para indicar o que é mais importante                                      |
+| **Apple**            | Restrição deliberada — poucos elementos na tela, cada um com propósito único, sem redundância visual                                  | Telas do app do motorista/responsável nunca têm mais de 1 ação primária visível por vez                                                            |
+| **Linear**           | Velocidade percebida — toda interação responde instantaneamente (otimismo de UI), atalhos de teclado no painel web                    | Toda ação no painel (criar rota, cadastrar aluno) atualiza a UI otimisticamente antes da confirmação do servidor                                   |
+| **Airbnb**           | Confiança transmitida por fotos reais, avaliação e prova social — reduzir ansiedade de "estou entregando meu filho a um desconhecido" | Perfil do motorista (foto, documentos verificados, "selo Rotta verificado") visível ao responsável desde o primeiro dia                            |
 
 ### 1.1 As quatro regras inegociáveis de UX da Rotta
 
@@ -35,37 +35,37 @@ Toda medida de espaçamento, tamanho de componente e grid deriva de uma unidade 
 
 ### 2.2 Breakpoints responsivos
 
-| Breakpoint | Largura | Dispositivo típico |
-|---|---|---|
-| `xs` | < 480px | iPhone SE e celulares compactos |
-| `sm` | 480–767px | Celulares padrão (retrato) |
-| `md` | 768–1023px | Tablets (retrato), celulares grandes (paisagem) |
-| `lg` | 1024–1439px | Tablets (paisagem), notebooks |
-| `xl` | ≥ 1440px | Desktops e monitores grandes |
+| Breakpoint | Largura     | Dispositivo típico                              |
+| ---------- | ----------- | ----------------------------------------------- |
+| `xs`       | < 480px     | iPhone SE e celulares compactos                 |
+| `sm`       | 480–767px   | Celulares padrão (retrato)                      |
+| `md`       | 768–1023px  | Tablets (retrato), celulares grandes (paisagem) |
+| `lg`       | 1024–1439px | Tablets (paisagem), notebooks                   |
+| `xl`       | ≥ 1440px    | Desktops e monitores grandes                    |
 
 ### 2.3 Grid por breakpoint
 
-| Contexto | Colunas | Gutter | Margem lateral | Largura máxima de conteúdo |
-|---|---|---|---|---|
-| Mobile (`xs`/`sm`) | 4 colunas | 16px | 16px | 100% |
-| Tablet (`md`) | 8 colunas | 20px | 24px | 100% |
-| Desktop (`lg`/`xl`) | 12 colunas | 24px | 32px (`lg`) / auto-centralizado (`xl`) | 1280px de conteúdo, painel de dados até 1440px |
+| Contexto            | Colunas    | Gutter | Margem lateral                         | Largura máxima de conteúdo                     |
+| ------------------- | ---------- | ------ | -------------------------------------- | ---------------------------------------------- |
+| Mobile (`xs`/`sm`)  | 4 colunas  | 16px   | 16px                                   | 100%                                           |
+| Tablet (`md`)       | 8 colunas  | 20px   | 24px                                   | 100%                                           |
+| Desktop (`lg`/`xl`) | 12 colunas | 24px   | 32px (`lg`) / auto-centralizado (`xl`) | 1280px de conteúdo, painel de dados até 1440px |
 
 **Regra de ouro**: o painel web nunca usa a largura total da tela em monitores grandes — o conteúdo é centralizado com largura máxima de 1280–1440px, preservando o "muito espaço negativo" pedido, em vez de esticar tabelas e formulários até as bordas de um monitor ultrawide.
 
 ### 2.4 Escala de espaçamento (tokens)
 
-| Token | Valor | Uso típico |
-|---|---|---|
-| `space-1` | 4px | Espaço entre ícone e texto dentro de um botão pequeno |
-| `space-2` | 8px | Espaço entre elementos muito próximos (label e input) |
-| `space-3` | 12px | Padding interno de componentes compactos |
-| `space-4` | 16px | Padding padrão de cards e inputs; espaçamento entre itens de lista |
-| `space-6` | 24px | Espaço entre blocos/seções dentro de uma tela |
-| `space-8` | 32px | Espaço entre grupos de seção |
-| `space-12` | 48px | Espaço entre grandes blocos de layout (ex. hero e seção seguinte) |
-| `space-16` | 64px | Respiro entre seções da Landing Page |
-| `space-24` | 96px | Respiro máximo, usado com moderação em telas de altíssimo impacto (hero da Landing) |
+| Token      | Valor | Uso típico                                                                          |
+| ---------- | ----- | ----------------------------------------------------------------------------------- |
+| `space-1`  | 4px   | Espaço entre ícone e texto dentro de um botão pequeno                               |
+| `space-2`  | 8px   | Espaço entre elementos muito próximos (label e input)                               |
+| `space-3`  | 12px  | Padding interno de componentes compactos                                            |
+| `space-4`  | 16px  | Padding padrão de cards e inputs; espaçamento entre itens de lista                  |
+| `space-6`  | 24px  | Espaço entre blocos/seções dentro de uma tela                                       |
+| `space-8`  | 32px  | Espaço entre grupos de seção                                                        |
+| `space-12` | 48px  | Espaço entre grandes blocos de layout (ex. hero e seção seguinte)                   |
+| `space-16` | 64px  | Respiro entre seções da Landing Page                                                |
+| `space-24` | 96px  | Respiro máximo, usado com moderação em telas de altíssimo impacto (hero da Landing) |
 
 ---
 
@@ -77,17 +77,17 @@ Toda medida de espaçamento, tamanho de componente e grid deriva de uma unidade 
 
 ### 3.2 Escala tipográfica
 
-| Estilo | Tamanho / Altura de linha | Peso | Uso |
-|---|---|---|---|
-| `display` | 40px / 48px (mobile: 32px/40px) | 700 (Bold) | Hero da Landing Page, número de destaque em KPI muito grande |
-| `h1` | 32px / 40px (mobile: 26px/32px) | 700 | Título de tela principal (ex. "Dashboard", "Alunos") |
-| `h2` | 24px / 32px | 600 (Semibold) | Título de seção dentro de uma tela |
-| `h3` | 20px / 28px | 600 | Título de card/bloco |
-| `body-lg` | 16px / 24px | 400 / 500 | Texto de leitura confortável, descrições importantes |
-| `body` | 14px / 20px | 400 | Texto padrão de interface (rótulos, texto de tabela, parágrafos) |
-| `caption` | 12px / 16px | 400 / 500 | Metadados, timestamps, textos auxiliares |
-| `label` | 13px / 16px | 600, leve tracking positivo (+0.2px) | Texto de botão, tag, badge, cabeçalho de tabela |
-| `mono-data` | 14px / 20px | 500, tabular-nums | Placas de veículo, CPF/CNPJ, horários — qualquer dado que precise alinhar verticalmente em coluna |
+| Estilo      | Tamanho / Altura de linha       | Peso                                 | Uso                                                                                               |
+| ----------- | ------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| `display`   | 40px / 48px (mobile: 32px/40px) | 700 (Bold)                           | Hero da Landing Page, número de destaque em KPI muito grande                                      |
+| `h1`        | 32px / 40px (mobile: 26px/32px) | 700                                  | Título de tela principal (ex. "Dashboard", "Alunos")                                              |
+| `h2`        | 24px / 32px                     | 600 (Semibold)                       | Título de seção dentro de uma tela                                                                |
+| `h3`        | 20px / 28px                     | 600                                  | Título de card/bloco                                                                              |
+| `body-lg`   | 16px / 24px                     | 400 / 500                            | Texto de leitura confortável, descrições importantes                                              |
+| `body`      | 14px / 20px                     | 400                                  | Texto padrão de interface (rótulos, texto de tabela, parágrafos)                                  |
+| `caption`   | 12px / 16px                     | 400 / 500                            | Metadados, timestamps, textos auxiliares                                                          |
+| `label`     | 13px / 16px                     | 600, leve tracking positivo (+0.2px) | Texto de botão, tag, badge, cabeçalho de tabela                                                   |
+| `mono-data` | 14px / 20px                     | 500, tabular-nums                    | Placas de veículo, CPF/CNPJ, horários — qualquer dado que precise alinhar verticalmente em coluna |
 
 ### 3.3 Hierarquia — regra de uso
 
@@ -97,7 +97,7 @@ A hierarquia visual é construída **primariamente por peso e tamanho de fonte**
 
 ## 4. Ícones
 
-- **Biblioteca**: conjunto de ícones baseado em traço (*stroke-based*, estilo Lucide/Feather) — mesma linha visual de Linear e Notion, consistente com "ícones consistentes" pedido pelo briefing.
+- **Biblioteca**: conjunto de ícones baseado em traço (_stroke-based_, estilo Lucide/Feather) — mesma linha visual de Linear e Notion, consistente com "ícones consistentes" pedido pelo briefing.
 - **Espessura de traço**: 1.5px (telas densas de dado, painel web) a 2px (app mobile, onde ícones são vistos a distâncias/tamanhos menores e precisam de mais peso visual para legibilidade).
 - **Tamanhos padronizados**: 16px (dentro de texto/badges), 20px (padrão em botões e itens de lista), 24px (ícones de navegação principal, cabeçalhos de seção), 32px+ (ilustração de empty state, ícone de destaque).
 - **Regra de uso**: todo ícone interativo (clicável) tem uma área de toque mínima de 44×44px (mobile) / 32×32px (web), mesmo que o ícone visual seja menor — requisito de acessibilidade e de usabilidade para o público de menor familiaridade digital (persona "Seu Anderson", Capítulo 5).
@@ -107,13 +107,13 @@ A hierarquia visual é construída **primariamente por peso e tamanho de fonte**
 
 ## 5. Raios de borda (border-radius)
 
-| Token | Valor | Uso |
-|---|---|---|
-| `radius-sm` | 6px | Badges, tags, inputs pequenos, checkboxes |
-| `radius-md` | 10px | Botões, inputs padrão, itens de lista |
-| `radius-lg` | 16px | Cards, modais, painéis flutuantes |
-| `radius-xl` | 24px | Blocos de destaque da Landing Page (hero cards, imagens grandes) |
-| `radius-full` | 9999px | Avatares, pills de status, botão de ação flutuante (FAB) |
+| Token         | Valor  | Uso                                                              |
+| ------------- | ------ | ---------------------------------------------------------------- |
+| `radius-sm`   | 6px    | Badges, tags, inputs pequenos, checkboxes                        |
+| `radius-md`   | 10px   | Botões, inputs padrão, itens de lista                            |
+| `radius-lg`   | 16px   | Cards, modais, painéis flutuantes                                |
+| `radius-xl`   | 24px   | Blocos de destaque da Landing Page (hero cards, imagens grandes) |
+| `radius-full` | 9999px | Avatares, pills de status, botão de ação flutuante (FAB)         |
 
 Consistência: nunca misturar dois valores de raio dentro do mesmo componente composto (ex. um card `radius-lg` nunca contém um botão `radius-sm` — o botão interno usa `radius-md`, e a proporção visual entre os dois raios foi calibrada para nunca parecer desalinhada).
 
@@ -127,43 +127,43 @@ O briefing de marca restringe a paleta a azul, preto, branco e cinza — **decis
 
 ### 6.2 Tokens — Tema Escuro (padrão da plataforma)
 
-| Token | Hex | Uso |
-|---|---|---|
-| `background` | `#0B0F14` | Fundo base de toda a aplicação |
-| `surface` | `#12161D` | Cards, painéis, barra lateral, cabeçalho de tabela |
-| `surface-elevated` | `#1A2029` | Modais, dropdowns, popovers — qualquer camada "acima" da superfície padrão |
-| `primary` | `#3B6EF6` | Cor de marca: botão primário, links, ícone ativo, elementos de destaque de marca |
-| `primary-hover` | `#5A8CFF` | Estado de hover/pressed do primary |
-| `primary-muted` | `#1B2B4D` | Fundo sutil para realçar um item ativo (ex. item de menu selecionado) sem competir com o `primary` sólido |
-| `secondary` | `#E5E8EC` (aplicado sobre fundo escuro como texto/ícone) | Botões secundários, ações de segunda prioridade — visualmente neutro (cinza-claro), nunca azul, para não competir com o `primary` |
-| `success` | `#22C55E` | Confirmação de embarque/desembarque concluído, documento em dia, rota no horário |
-| `warning` | `#F5A623` | Atraso, documento vencendo em breve, ação pendente de atenção |
-| `danger` | `#EF4444` | Documento vencido/bloqueio, ocorrência grave, SOS, exclusão destrutiva |
-| `border` | `#232A35` | Divisores, bordas de card e input em estado padrão |
-| `border-strong` | `#333C4A` | Borda de input em foco (sem ser a cor primary sólida), separadores de maior ênfase |
-| `text` | `#F5F7FA` | Texto principal |
-| `text-muted` | `#9AA4B2` | Texto secundário, metadados, placeholder |
-| `text-disabled` | `#5C6673` | Texto de elemento desabilitado |
+| Token              | Hex                                                      | Uso                                                                                                                               |
+| ------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `background`       | `#0B0F14`                                                | Fundo base de toda a aplicação                                                                                                    |
+| `surface`          | `#12161D`                                                | Cards, painéis, barra lateral, cabeçalho de tabela                                                                                |
+| `surface-elevated` | `#1A2029`                                                | Modais, dropdowns, popovers — qualquer camada "acima" da superfície padrão                                                        |
+| `primary`          | `#3B6EF6`                                                | Cor de marca: botão primário, links, ícone ativo, elementos de destaque de marca                                                  |
+| `primary-hover`    | `#5A8CFF`                                                | Estado de hover/pressed do primary                                                                                                |
+| `primary-muted`    | `#1B2B4D`                                                | Fundo sutil para realçar um item ativo (ex. item de menu selecionado) sem competir com o `primary` sólido                         |
+| `secondary`        | `#E5E8EC` (aplicado sobre fundo escuro como texto/ícone) | Botões secundários, ações de segunda prioridade — visualmente neutro (cinza-claro), nunca azul, para não competir com o `primary` |
+| `success`          | `#22C55E`                                                | Confirmação de embarque/desembarque concluído, documento em dia, rota no horário                                                  |
+| `warning`          | `#F5A623`                                                | Atraso, documento vencendo em breve, ação pendente de atenção                                                                     |
+| `danger`           | `#EF4444`                                                | Documento vencido/bloqueio, ocorrência grave, SOS, exclusão destrutiva                                                            |
+| `border`           | `#232A35`                                                | Divisores, bordas de card e input em estado padrão                                                                                |
+| `border-strong`    | `#333C4A`                                                | Borda de input em foco (sem ser a cor primary sólida), separadores de maior ênfase                                                |
+| `text`             | `#F5F7FA`                                                | Texto principal                                                                                                                   |
+| `text-muted`       | `#9AA4B2`                                                | Texto secundário, metadados, placeholder                                                                                          |
+| `text-disabled`    | `#5C6673`                                                | Texto de elemento desabilitado                                                                                                    |
 
 ### 6.3 Tokens — Tema Claro
 
-| Token | Hex | Uso |
-|---|---|---|
-| `background` | `#FFFFFF` | Fundo base |
-| `surface` | `#F7F8FA` | Cards, painéis |
-| `surface-elevated` | `#FFFFFF` (com sombra sutil, já que não há como "clarear" mais que branco) | Modais, dropdowns |
-| `primary` | `#2F5FE0` | Ligeiramente mais escuro que no tema dark, para manter contraste AA sobre fundo branco |
-| `primary-hover` | `#1E4BC7` | — |
-| `primary-muted` | `#E8EEFF` | Fundo sutil de item ativo |
-| `secondary` | `#4B5563` | Texto/ícone de ação secundária |
-| `success` | `#16A34A` | — |
-| `warning` | `#D97706` | — |
-| `danger` | `#DC2626` | — |
-| `border` | `#E5E8EC` | — |
-| `border-strong` | `#C7CDD6` | — |
-| `text` | `#0B0F14` | — |
-| `text-muted` | `#6B7280` | — |
-| `text-disabled` | `#A6ACB5` | — |
+| Token              | Hex                                                                        | Uso                                                                                    |
+| ------------------ | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `background`       | `#FFFFFF`                                                                  | Fundo base                                                                             |
+| `surface`          | `#F7F8FA`                                                                  | Cards, painéis                                                                         |
+| `surface-elevated` | `#FFFFFF` (com sombra sutil, já que não há como "clarear" mais que branco) | Modais, dropdowns                                                                      |
+| `primary`          | `#2F5FE0`                                                                  | Ligeiramente mais escuro que no tema dark, para manter contraste AA sobre fundo branco |
+| `primary-hover`    | `#1E4BC7`                                                                  | —                                                                                      |
+| `primary-muted`    | `#E8EEFF`                                                                  | Fundo sutil de item ativo                                                              |
+| `secondary`        | `#4B5563`                                                                  | Texto/ícone de ação secundária                                                         |
+| `success`          | `#16A34A`                                                                  | —                                                                                      |
+| `warning`          | `#D97706`                                                                  | —                                                                                      |
+| `danger`           | `#DC2626`                                                                  | —                                                                                      |
+| `border`           | `#E5E8EC`                                                                  | —                                                                                      |
+| `border-strong`    | `#C7CDD6`                                                                  | —                                                                                      |
+| `text`             | `#0B0F14`                                                                  | —                                                                                      |
+| `text-muted`       | `#6B7280`                                                                  | —                                                                                      |
+| `text-disabled`    | `#A6ACB5`                                                                  | —                                                                                      |
 
 ### 6.4 Onde cada cor deve ser utilizada (guia de aplicação)
 
@@ -199,11 +199,11 @@ A Rotta não tem uma versão "mobile" e uma "desktop" do produto — tem **um ú
 
 ### 8.2 Comportamento por dispositivo
 
-| Dispositivo | Superfície | Comportamento |
-|---|---|---|
-| **iPhone / Android (celular)** | App nativo (Motorista, Monitor, Responsável) | Navegação por Bottom Navigation + gestos nativos; layout de coluna única; tipografia otimizada para leitura a um braço de distância |
-| **Tablet** | Painel web responsivo (Gestor/Empresa/Escola/Admin usando o painel em tablet) ou o app nativo em modo tablet (Responsável acompanhando em um iPad, por ex.) | Painel web usa grid de 8 colunas, navegação lateral colapsável; app nativo em tablet ganha layout de duas colunas em telas que fazem sentido (ex. lista de alunos + detalhe lado a lado) |
-| **Notebook / Desktop** | Painel web (Gestor/Empresa/Escola/Admin) | Sidebar fixa, densidade de informação maior, atalhos de teclado habilitados (princípio Linear), tabelas com mais colunas visíveis simultaneamente |
+| Dispositivo                    | Superfície                                                                                                                                                  | Comportamento                                                                                                                                                                            |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **iPhone / Android (celular)** | App nativo (Motorista, Monitor, Responsável)                                                                                                                | Navegação por Bottom Navigation + gestos nativos; layout de coluna única; tipografia otimizada para leitura a um braço de distância                                                      |
+| **Tablet**                     | Painel web responsivo (Gestor/Empresa/Escola/Admin usando o painel em tablet) ou o app nativo em modo tablet (Responsável acompanhando em um iPad, por ex.) | Painel web usa grid de 8 colunas, navegação lateral colapsável; app nativo em tablet ganha layout de duas colunas em telas que fazem sentido (ex. lista de alunos + detalhe lado a lado) |
+| **Notebook / Desktop**         | Painel web (Gestor/Empresa/Escola/Admin)                                                                                                                    | Sidebar fixa, densidade de informação maior, atalhos de teclado habilitados (princípio Linear), tabelas com mais colunas visíveis simultaneamente                                        |
 
 ### 8.3 O que nunca muda entre dispositivos
 
@@ -227,7 +227,7 @@ Paleta de cores, tipografia, tokens de espaçamento/raio, e a linguagem de icono
 
 **Tipos**: texto, número, telefone (com máscara e seletor de DDI para expansão internacional futura), data (com date-picker nativo/customizado consistente com o design system), seleção única (`select`), seleção múltipla (`multi-select` com chips), busca (com ícone de lupa e "x" de limpar quando preenchido), upload de arquivo (Seção 9.4 do Dossiê 8 — visual próprio com estado de progresso).
 
-**Estrutura visual**: rótulo (`label`) sempre acima do campo (nunca *placeholder* fazendo o papel de rótulo — *placeholder* desaparece ao digitar e o usuário perde a referência, problema clássico de acessibilidade); texto auxiliar (*helper text*) abaixo do campo quando necessário; mensagem de erro substitui o texto auxiliar quando presente, sempre em `danger` com ícone.
+**Estrutura visual**: rótulo (`label`) sempre acima do campo (nunca _placeholder_ fazendo o papel de rótulo — _placeholder_ desaparece ao digitar e o usuário perde a referência, problema clássico de acessibilidade); texto auxiliar (_helper text_) abaixo do campo quando necessário; mensagem de erro substitui o texto auxiliar quando presente, sempre em `danger` com ícone.
 
 **Estados**: `default` (borda `border`), `focus` (borda `primary`, leve halo), `filled` (com valor, borda `border-strong`), `error` (borda `danger` + mensagem), `disabled` (fundo `surface`, texto `text-disabled`), `readonly` (sem borda destacável, cursor padrão, usado em campos derivados/calculados, ex. "distância estimada da rota").
 
@@ -245,7 +245,7 @@ Componente central do Dashboard da Empresa e do Admin Rotta (dado denso, referê
 
 ### 9.5 Modais
 
-Reservados para: (a) confirmação de ação destrutiva/crítica (excluir, cancelar assinatura), (b) formulário curto e contido (ex. "adicionar substituto para esta rota"), (c) visualização rápida de detalhe sem navegação de página inteira (ex. detalhe de uma ocorrência). Nunca usados para formulários longos e multi-etapa (isso vira uma tela própria ou um *drawer* lateral). Fundo `surface-elevated`, raio `radius-lg`, overlay escuro semitransparente (`rgba(0,0,0,0.6)` sobre o fundo), fechamento por clique fora, tecla `Esc`, ou botão "X" explícito — sempre as três opções disponíveis simultaneamente.
+Reservados para: (a) confirmação de ação destrutiva/crítica (excluir, cancelar assinatura), (b) formulário curto e contido (ex. "adicionar substituto para esta rota"), (c) visualização rápida de detalhe sem navegação de página inteira (ex. detalhe de uma ocorrência). Nunca usados para formulários longos e multi-etapa (isso vira uma tela própria ou um _drawer_ lateral). Fundo `surface-elevated`, raio `radius-lg`, overlay escuro semitransparente (`rgba(0,0,0,0.6)` sobre o fundo), fechamento por clique fora, tecla `Esc`, ou botão "X" explícito — sempre as três opções disponíveis simultaneamente.
 
 ### 9.6 Toasts (notificações transitórias de sistema)
 

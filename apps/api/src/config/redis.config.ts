@@ -5,9 +5,6 @@ export interface RedisConfig {
 }
 
 /** Configuracao de cache/filas (Dossie 8 Secao 20, Dossie 14). */
-export default registerAs(
-  "redis",
-  (): RedisConfig => ({
-    url: process.env.REDIS_URL ?? "",
-  }),
-);
+export default registerAs("redis", (): RedisConfig => ({
+  url: process.env.REDIS_URL ?? "",
+}));

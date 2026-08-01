@@ -1,0 +1,15 @@
+{
+  "name": "@rotta/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Documentação viva da Rotta (Dossie 22, Secao 4.7 e Dossie 23, Secao 16) — Storybook de @rotta/ui, dossiês de arquitetura navegáveis e documentação de API (OpenAPI).",
+  "license": "UNLICENSED",
+  "scripts": {
+    "dev": "echo \"[@rotta/docs] Storybook/site de documentacao a configurar junto com o primeiro componente real de @rotta/ui\" && exit 0",
+    "build": "echo \"[@rotta/docs] nada a construir ainda (fase de fundacao)\" && exit 0",
+    "lint": "echo \"[@rotta/docs] nada a lintar ainda\" && exit 0",
+    "typecheck": "echo \"[@rotta/docs] nada a checar ainda\" && exit 0",
+    "test": "echo \"[@rotta/docs] nenhum teste ainda\" && exit 0",
+    "clean": "rm -rf .turbo storybook-static"
+  }
+}

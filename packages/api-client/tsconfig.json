@@ -1,6 +1,7 @@
 {
   "extends": "@rotta/config/typescript/base",
   "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
     "outDir": "./dist",
     "rootDir": "./src"
   },

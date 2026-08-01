@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
-
 import { QueryProvider } from "./query-provider";
 import { ThemeProvider } from "./theme-provider";
+
+import type { ReactNode } from "react";
 
 /**
  * Composicao unica de todos os providers de nivel de aplicacao (Dossie 23,

@@ -15,6 +15,7 @@
 **Pré-requisitos**: nenhum (self-service).
 
 **Fluxo principal**:
+
 1. Ver `AUTH-01`, passos 1–6.
 2. Sistema exibe formulário completo de dados cadastrais: razão social/nome fantasia, CNPJ ou CPF (conforme tipo), inscrição municipal (opcional), endereço completo (logradouro, número, complemento, bairro, cidade, UF, CEP), telefone, WhatsApp de contato, e-mail administrativo, fuso horário operacional.
 3. Sistema valida e persiste os dados, associando-os ao tenant recém-criado.
@@ -22,6 +23,7 @@
 **Fluxos alternativos**: nenhum além dos já descritos em `AUTH-01`.
 
 **Regras de negócio**:
+
 - CNPJ é obrigatório quando `tipo = pequena_empresa`/`media_grande_empresa`/`terceirizada_publica`; para `autonomo`/`mei`, apenas CPF é obrigatório e o campo CNPJ permanece nulo.
 - Um mesmo CNPJ/CPF não pode estar associado a mais de uma `Empresa` ativa simultaneamente (índice único).
 - Fuso horário é definido na criação e usado em todo cálculo de horário de rota daquele tenant (relevante para expansão nacional entre fusos diferentes).
@@ -35,6 +37,7 @@
 **Casos excepcionais**: motorista autônomo que, ao crescer, quer migrar de `tipo = autonomo` para `tipo = pequena_empresa` e obter CNPJ — tratado como uma edição de tipo (`EMP-02`), preservando todo o histórico do tenant, nunca como um novo cadastro.
 
 **Critérios de aceite**:
+
 - **Dado** um CNPJ nunca usado, **quando** uma Empresa completa o cadastro com todos os dados obrigatórios válidos, **então** o tenant é criado com status `trial` ou `ativo` conforme a política comercial vigente.
 - **Dado** um CNPJ já cadastrado em outra conta ativa, **quando** alguém tenta se cadastrar com o mesmo CNPJ, **então** o sistema recusa com mensagem clara.
 
@@ -53,6 +56,7 @@
 **Pré-requisitos**: Empresa cadastrada.
 
 **Fluxo principal**:
+
 1. Usuário acessa Configurações → Empresa.
 2. Edita os campos permitidos ao seu papel.
 3. Sistema valida e salva, gerando registro de auditoria (`RN-32`, Dossiê 8).
@@ -70,6 +74,7 @@
 **Casos excepcionais**: edição concorrente (dois Gestores editando simultaneamente) — a última escrita prevalece (last-write-wins), com o registro de auditoria preservando ambas as tentativas para investigação, caso necessário.
 
 **Critérios de aceite**:
+
 - **Dado** um Gestor autenticado, **quando** ele tenta editar o CNPJ da empresa, **então** o sistema recusa a ação com erro de permissão.
 - **Dado** o papel Empresa autenticado, **quando** ele edita o endereço, **então** a alteração é salva e um registro de auditoria é criado.
 
@@ -88,6 +93,7 @@
 **Pré-requisitos**: tenant ativo.
 
 **Fluxo principal**:
+
 1. Empresa acessa Configurações → Plano e Cobrança.
 2. Visualiza: plano atual, valor, status da assinatura, data da próxima cobrança, forma de pagamento cadastrada.
 3. Pode atualizar a forma de pagamento (novo cartão/chave Pix) a qualquer momento.
@@ -106,6 +112,7 @@
 **Casos excepcionais**: ver `CASO-08` e `CASO-09` (Parte 7) para troca/cancelamento de plano.
 
 **Critérios de aceite**:
+
 - **Dado** uma assinatura ativa, **quando** a Empresa acessa a tela de Plano, **então** vê corretamente o valor, status e próxima data de cobrança.
 - **Dado** uma falha de pagamento recente, **quando** a Empresa acessa a tela, **então** vê o alerta de falha com ação de correção em destaque.
 
@@ -138,6 +145,7 @@
 **Casos excepcionais**: uma Empresa suspensa por inadimplência que regulariza o pagamento é reativada automaticamente (não exige intervenção manual do Admin Rotta) — distinto da suspensão por violação de termos, que exige revisão manual antes de reativar.
 
 **Critérios de aceite**:
+
 - **Dado** um tenant em `restrito` por falha de pagamento, **quando** a cobrança é reprocessada com sucesso, **então** o status retorna automaticamente a `ativo`.
 - **Dado** um tenant suspenso manualmente pelo Admin Rotta, **quando** a Empresa tenta reativar sozinha, **então** o sistema não oferece essa opção — apenas contato com suporte.
 
@@ -156,6 +164,7 @@
 **Pré-requisitos**: tenant ativo.
 
 **Fluxo principal**:
+
 1. Usuário acessa Configurações → Operacional.
 2. Ajusta o valor de cada parâmetro disponível (ex. "notificar atraso a partir de: 10 minutos").
 3. Sistema salva e aplica a nova configuração imediatamente às próximas execuções de regra (nunca retroativo a viagens já em andamento no exato momento da alteração, para não gerar inconsistência de comportamento no meio de uma rota).
@@ -173,6 +182,7 @@
 **Casos excepcionais**: alteração da política de bloqueio de `rígida` para `apenas alerta` — o sistema exibe um aviso de confirmação adicional explicando a implicação de segurança antes de permitir a mudança, dado o impacto direto em `RN-18`/`RN-19`.
 
 **Critérios de aceite**:
+
 - **Dado** um limiar de atraso padrão de 10 minutos, **quando** o Gestor o altera para 5 minutos, **então** viagens iniciadas após a alteração passam a notificar atraso a partir de 5 minutos.
 - **Dado** uma tentativa de alterar a política de bloqueio para "apenas alerta", **quando** o Gestor confirma a ação após o aviso, **então** a nova política é aplicada e um registro de auditoria é criado destacando a mudança de postura de segurança.
 
@@ -205,6 +215,7 @@
 **Casos excepcionais**: motorista com CNH de categoria inferior a D cadastrado por engano — sistema aceita o cadastro (não impede o registro administrativo), mas o status nunca chega a `aprovado` e o bloqueio de início de rota (`RN-18`) impede a operação até a regularização.
 
 **Critérios de aceite**:
+
 - **Dado** um Gestor autenticado, **quando** ele cadastra um motorista com CNH categoria D e dados válidos, **então** o motorista é criado com status `pendente_verificacao` e um convite é enviado.
 - **Dado** uma CNH de categoria B (insuficiente), **quando** cadastrada, **então** o motorista é criado mas nunca atinge status `aprovado` automaticamente.
 
@@ -223,6 +234,7 @@
 **Pré-requisitos**: motorista cadastrado (`DRV-01`).
 
 **Fluxo principal**:
+
 1. Motorista (ou Gestor) faz upload da CNH digitalizada com data de validade informada.
 2. Sistema cria o registro de `Documento` com status `pendente_verificacao`.
 3. Gestor revisa (ou o sistema aplica OCR assistido, V2) e aprova/rejeita.
@@ -241,6 +253,7 @@
 **Casos excepcionais**: ver `CASO-15` (Parte 7) para o comportamento completo quando a CNH vence com o motorista já em operação.
 
 **Critérios de aceite**:
+
 - **Dado** uma CNH categoria D com validade futura, **quando** aprovada pelo Gestor, **então** o status do Motorista é recalculado para `aprovado` (assumindo os demais documentos também em dia).
 - **Dado** uma CNH com data de validade no passado, **quando** o upload é tentado, **então** o sistema rejeita o envio com mensagem explicativa.
 
@@ -273,6 +286,7 @@
 **Casos excepcionais**: ver `CASO-16` (Parte 7).
 
 **Critérios de aceite**:
+
 - **Dado** um tenant com exigência de EAR habilitada, **quando** um motorista está com EAR vencido, **então** ele é bloqueado de iniciar rota até a regularização.
 - **Dado** um tenant que desabilitou a exigência de EAR, **quando** um motorista está sem EAR cadastrado, **então** isso não impede seu status `aprovado`.
 
@@ -284,21 +298,23 @@
 
 **Objetivo**: confirmar a identidade do motorista no início de cada rota, prevenindo que outra pessoa opere sob a conta de um motorista cadastrado.
 
-**Descrição**: funcionalidade de V2 (estrutura de dados já reservada desde o MVP, Dossiê 8 §4.1) — cadastro do *embedding* de referência (enrolamento) e verificação subsequente a cada início de rota.
+**Descrição**: funcionalidade de V2 (estrutura de dados já reservada desde o MVP, Dossiê 8 §4.1) — cadastro do _embedding_ de referência (enrolamento) e verificação subsequente a cada início de rota.
 
 **Usuários envolvidos**: Motorista.
 
 **Pré-requisitos**: motorista com status `aprovado`; enrolamento facial previamente concluído.
 
 **Fluxo principal (enrolamento, uma vez)**:
+
 1. No app, o motorista é solicitado a capturar uma foto de referência do rosto.
-2. Processamento local gera o *embedding*; imagem bruta é descartada imediatamente após a geração.
-3. *Embedding* é enviado ao serviço de verificação facial e associado ao perfil do motorista (`RN-33`).
+2. Processamento local gera o _embedding_; imagem bruta é descartada imediatamente após a geração.
+3. _Embedding_ é enviado ao serviço de verificação facial e associado ao perfil do motorista (`RN-33`).
 
 **Fluxo principal (verificação, a cada início de rota — V2)**:
+
 1. Motorista aperta "Iniciar rota".
 2. App solicita captura rápida com checagem de vivacidade.
-3. Sistema compara o novo *embedding* contra o de referência.
+3. Sistema compara o novo _embedding_ contra o de referência.
 4. Em caso de correspondência, a rota inicia normalmente (`TRIP-01`, Parte 4); em caso de não correspondência, o início é bloqueado e o Gestor é alertado.
 
 **Fluxos alternativos**: falha técnica da câmera/serviço de verificação — o sistema permite início da rota mediante aprovação manual explícita do Gestor como contingência, nunca deixando o motorista impedido de trabalhar por uma falha técnica de terceiro.
@@ -314,8 +330,9 @@
 **Casos excepcionais**: mudança relevante de aparência do motorista (ex. barba, óculos) causando falsos negativos recorrentes — fluxo de re-enrolamento disponível mediante aprovação do Gestor.
 
 **Critérios de aceite**:
-- **Dado** um motorista com *embedding* de referência cadastrado, **quando** a verificação no início da rota corresponde, **então** a viagem é iniciada normalmente.
-- **Dado** uma verificação que não corresponde ao *embedding* de referência, **quando** isso ocorre, **então** o início da rota é bloqueado e o Gestor recebe um alerta imediato.
+
+- **Dado** um motorista com _embedding_ de referência cadastrado, **quando** a verificação no início da rota corresponde, **então** a viagem é iniciada normalmente.
+- **Dado** uma verificação que não corresponde ao _embedding_ de referência, **quando** isso ocorre, **então** o início da rota é bloqueado e o Gestor recebe um alerta imediato.
 
 **Possíveis melhorias futuras**: verificação periódica durante a rota (não apenas no início), para cenários de troca de motorista não reportada no meio do trajeto.
 
@@ -332,6 +349,7 @@
 **Pré-requisitos**: motorista cadastrado.
 
 **Fluxo principal**:
+
 1. Gestor/Motorista acessa a aba "Documentos" do perfil do motorista.
 2. Visualiza lista de documentos com status de vencimento (semáforo verde/amarelo/vermelho).
 3. Adiciona novo documento (tipo, upload, validade).
@@ -349,6 +367,7 @@
 **Casos excepcionais**: nenhum além dos já cobertos em `DOC-*`.
 
 **Critérios de aceite**:
+
 - **Dado** um motorista com um curso de direção defensiva vencendo em 10 dias, **quando** o Gestor acessa a aba Documentos, **então** o item aparece destacado em âmbar com a data de vencimento visível.
 
 **Possíveis melhorias futuras**: nenhuma além das já listadas em `DOC-*`.
@@ -366,6 +385,7 @@
 **Pré-requisitos**: motorista cadastrado com ao menos os documentos mínimos obrigatórios enviados.
 
 **Fluxo principal**:
+
 1. Último documento obrigatório pendente é aprovado pelo Gestor (ou automaticamente via OCR de alta confiança, V2).
 2. Sistema recalcula o status do motorista para `aprovado`.
 3. Motorista passa a poder ser vinculado a rotas (`ROT-01`) e a iniciar viagens (`TRIP-01`).
@@ -384,6 +404,7 @@
 **Casos excepcionais**: nenhum além dos já cobertos em `DRV-02`/`DRV-03`.
 
 **Critérios de aceite**:
+
 - **Dado** um motorista com todos os documentos obrigatórios aprovados e em dia, **quando** o último pendente é aprovado, **então** o status muda automaticamente para `aprovado` e uma notificação é enviada.
 
 **Possíveis melhorias futuras**: nenhuma identificada.
@@ -401,6 +422,7 @@
 **Pré-requisitos**: motorista cadastrado.
 
 **Fluxo principal**:
+
 1. Gestor acessa o perfil do motorista → "Desligar motorista".
 2. Sistema exibe aviso sobre rotas atualmente vinculadas a esse motorista.
 3. Gestor confirma.
@@ -419,6 +441,7 @@
 **Casos excepcionais**: motorista desligado que era também o único usuário com papel Empresa (motorista autônomo desligando a si mesmo) — tratado como cancelamento de conta (`EMP-*`/`CASO-09`), não como uma inativação comum de funcionário.
 
 **Critérios de aceite**:
+
 - **Dado** um motorista sem viagem em andamento e vinculado a 2 rotas, **quando** o Gestor confirma o desligamento, **então** o motorista é inativado e as 2 rotas passam a exibir alerta de "sem motorista designado".
 - **Dado** um motorista com viagem em andamento, **quando** o Gestor tenta desligá-lo, **então** o sistema recusa a ação até o fim da viagem.
 
@@ -455,6 +478,7 @@
 **Pré-requisitos**: motorista com status `aprovado`, disponibilidade compatível com o turno da rota-alvo (`DisponibilidadeMotorista`, Dossiê 8 §4.1).
 
 **Fluxo principal**:
+
 1. Gestor acessa a Rota-alvo → "Atribuir motorista".
 2. Sistema lista apenas motoristas `aprovado`s com disponibilidade compatível.
 3. Gestor seleciona o motorista.
@@ -473,6 +497,7 @@
 **Casos excepcionais**: ver `CASO-05` (Parte 7).
 
 **Critérios de aceite**:
+
 - **Dado** uma rota sem motorista designado, **quando** o Gestor atribui um motorista `aprovado` e disponível, **então** a rota passa a exibi-lo como motorista padrão.
 - **Dado** um motorista bloqueado por documento vencido, **quando** o Gestor tenta atribuí-lo a uma rota, **então** ele não aparece na lista de elegíveis.
 
@@ -489,6 +514,7 @@
 **Pré-requisitos**: tenant ativo.
 
 **Fluxo principal**:
+
 1. Gestor acessa "Veículos" → "+ Novo veículo".
 2. Informa placa, modelo, marca, ano, cor, capacidade de lugares, capacidade de cadeirantes (se aplicável), tipo (van/kombi/ônibus/micro-ônibus), foto.
 3. Sistema valida e cria o veículo com status `pendente_verificacao` (até documentos serem aprovados).
@@ -506,6 +532,7 @@
 **Casos excepcionais**: cadastro de veículo com placa já usada por outro veículo do mesmo tenant no passado (veículo vendido e placa reutilizada por engano de digitação) — sistema alerta sobre a placa duplicada e pede confirmação explícita antes de prosseguir.
 
 **Critérios de aceite**:
+
 - **Dado** dados válidos e uma placa não usada no tenant, **quando** o Gestor cadastra o veículo, **então** ele é criado com status `pendente_verificacao`.
 - **Dado** uma placa já cadastrada no mesmo tenant, **quando** o cadastro é tentado, **então** o sistema alerta sobre a duplicidade antes de permitir prosseguir.
 
@@ -536,6 +563,7 @@
 **Casos excepcionais**: ver `CASO-17` (Parte 7, veículo acima da capacidade).
 
 **Critérios de aceite**:
+
 - **Dado** um veículo com 15 alunos vinculados em suas rotas, **quando** o Gestor tenta reduzir a capacidade para 10, **então** o sistema recusa a alteração e explica o motivo.
 
 **Possíveis melhorias futuras**: nenhuma identificada além das já cobertas.
@@ -567,6 +595,7 @@
 **Casos excepcionais**: ver `CASO-17` (Parte 7).
 
 **Critérios de aceite**:
+
 - **Dado** um veículo com capacidade 15 já com 15 alunos vinculados, **quando** o Gestor tenta vincular o 16º aluno, **então** o sistema bloqueia a ação com mensagem explicativa.
 - **Dado** o mesmo cenário, **quando** o Gestor força a exceção com justificativa, **então** o vínculo é criado e um registro de auditoria destacado é gerado.
 
@@ -599,6 +628,7 @@
 **Casos excepcionais**: ver `CASO-18` (Parte 7, seguro vencido).
 
 **Critérios de aceite**:
+
 - **Dado** um veículo com seguro vencido, **quando** um motorista tenta iniciar uma rota com este veículo, **então** o início é bloqueado (`RN-19`) com mensagem explicando o motivo.
 
 **Possíveis melhorias futuras**: OCR do CRLV para preenchimento automático de dados do veículo a partir do documento digitalizado.
@@ -616,6 +646,7 @@
 **Pré-requisitos**: veículo com ao menos uma viagem registrada.
 
 **Fluxo principal**:
+
 1. Gestor acessa o perfil do veículo → aba "Histórico".
 2. Sistema lista viagens realizadas (data, rota, motorista, duração, ocorrências), com filtro por período.
 
@@ -632,6 +663,7 @@
 **Casos excepcionais**: veículo utilizado por múltiplos motoristas ao longo do tempo (substituições frequentes) — o histórico exibe claramente qual motorista conduziu cada viagem específica, nunca atribuindo a viagem apenas ao "motorista padrão" da rota se houve substituição naquele dia.
 
 **Critérios de aceite**:
+
 - **Dado** um veículo com 20 viagens registradas no mês, **quando** o Gestor consulta o histórico filtrando por aquele mês, **então** vê as 20 viagens com motorista correto identificado em cada uma, inclusive as conduzidas por substitutos.
 
 **Possíveis melhorias futuras**: gráfico de utilização (km rodados, horas em operação) por veículo ao longo do tempo, para apoiar decisão de manutenção preventiva (V2 — Dossiê 3 §12.3).

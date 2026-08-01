@@ -6,9 +6,10 @@
 
 ### 14.1 Estilo arquitetural escolhido: Monólito Modular (Modular Monolith) evoluindo para serviços extraídos
 
-**Decisão**: no MVP e V2, a Rotta será construída como um **monólito modular** com fronteiras de domínio rígidas (DDD leve — *bounded contexts* claros), não como microsserviços desde o dia 1, com **exceção** do gateway de tempo real (localização/eventos), que já nasce como serviço separado.
+**Decisão**: no MVP e V2, a Rotta será construída como um **monólito modular** com fronteiras de domínio rígidas (DDD leve — _bounded contexts_ claros), não como microsserviços desde o dia 1, com **exceção** do gateway de tempo real (localização/eventos), que já nasce como serviço separado.
 
 **Justificativa técnica**:
+
 - Microsserviços resolvem um problema que a Rotta não tem no dia 1: múltiplos times grandes trabalhando em paralelo com necessidade de deploy independente. No MVP, o time é pequeno — a complexidade operacional de orquestrar N serviços (service discovery, tracing distribuído, consistência eventual entre serviços) é custo puro sem benefício correspondente.
 - Um monólito modular bem desenhado (módulos com interfaces claras, sem acoplamento cruzado de tabelas) entrega 90% do benefício de "fronteiras limpas" dos microsserviços com uma fração da complexidade operacional.
 - A extração futura de um módulo para um serviço próprio (ex.: Notificações, ou Rotas/Geolocalização) é uma decisão de **quando**, não de **se** — e só compensa quando um módulo específico tiver um perfil de carga, escala ou time dedicado que justifique o isolamento. Desenhar módulos com fronteiras limpas desde o início é o que torna essa extração futura barata (ver Capítulo 36).
@@ -63,25 +64,25 @@
 
 ### 14.3 Módulos do Core API (fronteiras de domínio)
 
-| Módulo | Responsabilidade | Não faz |
-|---|---|---|
-| `identity` | Autenticação, sessões, papéis, permissões | Não conhece regras de rota ou veículo |
-| `tenancy` | Ciclo de vida de Empresas, planos, cobrança | Não conhece detalhes operacionais de rota |
-| `fleet` | Veículos e seus documentos | Não conhece alunos |
-| `people` | Motoristas, monitores e seus documentos | Não decide quem dirige qual rota (isso é `routing`) |
-| `students` | Alunos, responsáveis, vínculos, autorizados | Não conhece geolocalização |
-| `routing` | Rotas, paradas, atribuição motorista/veículo/aluno | Não processa GPS bruto (isso é `realtime`) |
-| `schools` | Escolas e portal de visualização | Somente leitura sobre os demais módulos |
-| `realtime` (serviço separado) | Ingestão de GPS, geofencing, cálculo de ETA, pub/sub | Não guarda regras de negócio de cadastro |
-| `checklist` | Estados de embarque/desembarque, confirmação de van vazia | — |
-| `notifications` | Orquestração de envio multicanal, templates | Não decide *quando* notificar (isso é publicado como evento pelos outros módulos) |
-| `documents` | Repositório de arquivos, OCR, alertas de vencimento | — |
-| `reporting` | Agregações e exportações | Somente leitura de dados de outros módulos |
-| `billing` | Assinatura, cobrança recorrente, inadimplência | — |
+| Módulo                        | Responsabilidade                                          | Não faz                                                                           |
+| ----------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `identity`                    | Autenticação, sessões, papéis, permissões                 | Não conhece regras de rota ou veículo                                             |
+| `tenancy`                     | Ciclo de vida de Empresas, planos, cobrança               | Não conhece detalhes operacionais de rota                                         |
+| `fleet`                       | Veículos e seus documentos                                | Não conhece alunos                                                                |
+| `people`                      | Motoristas, monitores e seus documentos                   | Não decide quem dirige qual rota (isso é `routing`)                               |
+| `students`                    | Alunos, responsáveis, vínculos, autorizados               | Não conhece geolocalização                                                        |
+| `routing`                     | Rotas, paradas, atribuição motorista/veículo/aluno        | Não processa GPS bruto (isso é `realtime`)                                        |
+| `schools`                     | Escolas e portal de visualização                          | Somente leitura sobre os demais módulos                                           |
+| `realtime` (serviço separado) | Ingestão de GPS, geofencing, cálculo de ETA, pub/sub      | Não guarda regras de negócio de cadastro                                          |
+| `checklist`                   | Estados de embarque/desembarque, confirmação de van vazia | —                                                                                 |
+| `notifications`               | Orquestração de envio multicanal, templates               | Não decide _quando_ notificar (isso é publicado como evento pelos outros módulos) |
+| `documents`                   | Repositório de arquivos, OCR, alertas de vencimento       | —                                                                                 |
+| `reporting`                   | Agregações e exportações                                  | Somente leitura de dados de outros módulos                                        |
+| `billing`                     | Assinatura, cobrança recorrente, inadimplência            | —                                                                                 |
 
 ### 14.4 Comunicação entre módulos: eventos de domínio, não chamadas diretas de banco
 
-Cada módulo só acessa suas próprias tabelas diretamente. Comunicação entre módulos ocorre via **eventos de domínio internos** (ex.: `AlunoEmbarcou`, `RotaIniciada`, `DocumentoVencendo`) publicados em um *event bus* interno (na fase de monólito, um bus in-process; na fase de serviços extraídos, o mesmo contrato de evento passa a trafegar pela fila de mensagens sem mudança de código de negócio). Esta é a decisão arquitetural mais importante do documento: **o contrato de eventos é desenhado desde o MVP como se os módulos já fossem serviços distintos**, mesmo rodando no mesmo processo — é isso que torna a futura extração de serviços uma mudança de infraestrutura, não uma reescrita de lógica de negócio.
+Cada módulo só acessa suas próprias tabelas diretamente. Comunicação entre módulos ocorre via **eventos de domínio internos** (ex.: `AlunoEmbarcou`, `RotaIniciada`, `DocumentoVencendo`) publicados em um _event bus_ interno (na fase de monólito, um bus in-process; na fase de serviços extraídos, o mesmo contrato de evento passa a trafegar pela fila de mensagens sem mudança de código de negócio). Esta é a decisão arquitetural mais importante do documento: **o contrato de eventos é desenhado desde o MVP como se os módulos já fossem serviços distintos**, mesmo rodando no mesmo processo — é isso que torna a futura extração de serviços uma mudança de infraestrutura, não uma reescrita de lógica de negócio.
 
 ### 14.5 Padrão de camadas dentro de cada módulo (Arquitetura Limpa / Hexagonal)
 
@@ -106,13 +107,14 @@ Cada módulo só acessa suas próprias tabelas diretamente. Comunicação entre 
 
 Três modelos foram avaliados:
 
-| Modelo | Isolamento | Custo operacional | Escala a milhares de tenants? |
-|---|---|---|---|
-| Banco dedicado por tenant | Máximo | Altíssimo (N bancos para gerenciar, migrar, monitorar) | Não escala além de centenas sem automação pesada |
-| Schema dedicado por tenant (mesmo banco) | Alto | Alto (migrations em N schemas, conexões por schema) | Escala mal além de milhares |
-| **Schema compartilhado + `tenant_id` em toda tabela + Row-Level Security (RLS)** | Forte, com defesa em profundidade | Baixo (uma migration, um pool de conexão) | **Escala a centenas de milhares** |
+| Modelo                                                                           | Isolamento                        | Custo operacional                                      | Escala a milhares de tenants?                    |
+| -------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------ | ------------------------------------------------ |
+| Banco dedicado por tenant                                                        | Máximo                            | Altíssimo (N bancos para gerenciar, migrar, monitorar) | Não escala além de centenas sem automação pesada |
+| Schema dedicado por tenant (mesmo banco)                                         | Alto                              | Alto (migrations em N schemas, conexões por schema)    | Escala mal além de milhares                      |
+| **Schema compartilhado + `tenant_id` em toda tabela + Row-Level Security (RLS)** | Forte, com defesa em profundidade | Baixo (uma migration, um pool de conexão)              | **Escala a centenas de milhares**                |
 
 **Decisão**: **Shared Schema com RLS**, pelos seguintes motivos técnicos:
+
 1. A imensa maioria dos tenants da Rotta é **pequena** (1 motorista, 1 van) — um banco dedicado por tenant desperdiçaria recursos (idle connections, overhead de manutenção) em uma escala massiva de tenants pequenos, que é exatamente o perfil de mercado (Capítulo 4).
 2. Migrations de schema em um único banco são ordens de magnitude mais simples de operar do que coordenar migrations consistentes em milhares de bancos/schemas isolados — impacto direto no objetivo técnico de "nenhuma migration exige downtime" (Capítulo 3).
 3. RLS do PostgreSQL aplica o isolamento **no nível do banco de dados**, não apenas na camada de aplicação — isso significa que mesmo um bug de aplicação que "esqueça" de filtrar por tenant não consegue vazar dados entre empresas, porque o próprio Postgres rejeita a leitura. Esta é a principal mitigação de risco do requisito de segurança "zero incidentes de vazamento entre tenants" (Capítulo 3).
@@ -120,16 +122,16 @@ Três modelos foram avaliados:
 ### 15.2 Como o isolamento funciona na prática
 
 - Toda tabela de negócio possui uma coluna `tenant_id` (não anulável, indexada, sempre a primeira coluna de qualquer índice composto).
-- Uma *policy* de RLS em cada tabela restringe toda leitura/escrita a `tenant_id = current_setting('app.tenant_id')`.
+- Uma _policy_ de RLS em cada tabela restringe toda leitura/escrita a `tenant_id = current_setting('app.tenant_id')`.
 - A aplicação define `app.tenant_id` como a primeira ação de cada requisição autenticada, a partir do token de sessão (nunca a partir de um parâmetro vindo do cliente) — o tenant do usuário é resolvido no momento do login e carimbado no token, imutável durante a sessão.
-- O **Administrador Rotta** opera com uma *policy* de bypass auditado (role de banco separada, com todo acesso logado) — nunca reutilizando a mesma sessão de aplicação usada por tenants comuns.
+- O **Administrador Rotta** opera com uma _policy_ de bypass auditado (role de banco separada, com todo acesso logado) — nunca reutilizando a mesma sessão de aplicação usada por tenants comuns.
 
 ### 15.3 Tenancy hierárquico (para suportar V3 — Secretarias/Prefeituras)
 
 Para o caso B2G, uma Secretaria de Educação precisa enxergar dados agregados de múltiplas Empresas terceirizadas, sem que essas empresas enxerguem uma à outra. O modelo de dados já nasce preparado para isso:
 
 - Toda `Empresa` (tenant) possui um campo opcional `organizacao_pai_id`, permitindo formar uma árvore de tenancy (Secretaria no topo, Empresas terceirizadas como filhas).
-- RLS é estendida com uma segunda *policy* que permite leitura (nunca escrita) de tenants filhos por um usuário com papel "Secretaria" vinculado ao tenant pai — mantendo o mesmo mecanismo de defesa em profundidade, sem introduzir um modelo de dados paralelo.
+- RLS é estendida com uma segunda _policy_ que permite leitura (nunca escrita) de tenants filhos por um usuário com papel "Secretaria" vinculado ao tenant pai — mantendo o mesmo mecanismo de defesa em profundidade, sem introduzir um modelo de dados paralelo.
 - Este desenho evita a armadilha comum de "vamos remodelar tudo quando chegarmos no B2G" — o custo de suportar a hierarquia é pago uma vez, cedo, como uma coluna nula que não afeta tenants comuns.
 
 ### 15.4 Identificação de tenant na borda (roteamento)
@@ -149,6 +151,7 @@ Ainda que o plano seja único e sem limite de uso "duro" (não há cobrança por
 ### 16.1 Escolha de tecnologia
 
 **PostgreSQL** como banco relacional primário, com as extensões:
+
 - **PostGIS**: para armazenamento e consulta eficiente de geometria/geografia (pontos de parada, geofences, cálculo de distância) — essencial para geofencing e ETA.
 - **TimescaleDB** (ou tabela particionada por tempo nativa do Postgres, dependendo da escala real observada): para a série temporal de posições GPS (alto volume de escrita, consultas por janela de tempo, downsampling para histórico de longo prazo).
 
@@ -194,7 +197,7 @@ Organizacao (opcional, hierarquia B2G)
 
 **Responsavel**: id, tenant_id, usuario_id, relação com o(s) aluno(s) via tabela associativa `AlunoResponsavel` (aluno_id, responsavel_id, tipo de parentesco, é responsável financeiro/legal).
 
-**Escola**: id, tenant_id, nome, endereço, contato. *(Nota: no modelo de dados, `Escola` é sempre um registro pertencente a um tenant — mesmo que a mesma escola física seja cadastrada por duas empresas transportadoras diferentes, cada uma tem seu próprio registro. Um cadastro global de escolas deduplicado é uma otimização de V2/V3, não um requisito de correção do MVP.)*
+**Escola**: id, tenant_id, nome, endereço, contato. _(Nota: no modelo de dados, `Escola` é sempre um registro pertencente a um tenant — mesmo que a mesma escola física seja cadastrada por duas empresas transportadoras diferentes, cada uma tem seu próprio registro. Um cadastro global de escolas deduplicado é uma otimização de V2/V3, não um requisito de correção do MVP.)_
 
 **Rota**: id, tenant_id, nome, turno, dias da semana, veiculo_id (padrão), motorista_id (padrão), lista ordenada de `ParadaRota` (sequência, geolocalização, horário previsto).
 
@@ -261,14 +264,14 @@ Organizacao (opcional, hierarquia B2G)
 
 ### 18.1 Integrações essenciais ao MVP
 
-| Integração | Propósito | Fornecedor recomendado |
-|---|---|---|
-| Notificação Push | Embarque/desembarque/atraso em tempo real | Firebase Cloud Messaging (Android) + APNs (iOS), via um serviço unificador |
-| WhatsApp Business | Canal preferido de muitas famílias, maior taxa de leitura que push em alguns perfis | Meta WhatsApp Cloud API (direto) ou um BSP (Zenvia, Twilio) para simplificar compliance de template/aprovação |
-| SMS | Fallback quando push/WhatsApp falham ou não há app instalado | Twilio ou provedor nacional (Zenvia) |
-| Gateway de pagamento recorrente | Cobrança mensal da Empresa | Stripe (cartão internacional/nacional) e/ou um provedor nacional com Pix recorrente (ex.: Pagar.me, Iugu) — decisão final depende de cobertura de Pix recorrente no momento da implementação |
-| Mapas e geocodificação | Exibição de mapa, cálculo de rota/ETA, geocodificação de endereço | Google Maps Platform (maior cobertura e qualidade de dados no Brasil) — com abstração de provedor para permitir troca futura (Mapbox como alternativa de custo em escala) |
-| Armazenamento de arquivos | Documentos, fotos de alunos, comprovantes | Object storage compatível com S3 (AWS S3 ou equivalente) |
+| Integração                      | Propósito                                                                           | Fornecedor recomendado                                                                                                                                                                       |
+| ------------------------------- | ----------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Notificação Push                | Embarque/desembarque/atraso em tempo real                                           | Firebase Cloud Messaging (Android) + APNs (iOS), via um serviço unificador                                                                                                                   |
+| WhatsApp Business               | Canal preferido de muitas famílias, maior taxa de leitura que push em alguns perfis | Meta WhatsApp Cloud API (direto) ou um BSP (Zenvia, Twilio) para simplificar compliance de template/aprovação                                                                                |
+| SMS                             | Fallback quando push/WhatsApp falham ou não há app instalado                        | Twilio ou provedor nacional (Zenvia)                                                                                                                                                         |
+| Gateway de pagamento recorrente | Cobrança mensal da Empresa                                                          | Stripe (cartão internacional/nacional) e/ou um provedor nacional com Pix recorrente (ex.: Pagar.me, Iugu) — decisão final depende de cobertura de Pix recorrente no momento da implementação |
+| Mapas e geocodificação          | Exibição de mapa, cálculo de rota/ETA, geocodificação de endereço                   | Google Maps Platform (maior cobertura e qualidade de dados no Brasil) — com abstração de provedor para permitir troca futura (Mapbox como alternativa de custo em escala)                    |
+| Armazenamento de arquivos       | Documentos, fotos de alunos, comprovantes                                           | Object storage compatível com S3 (AWS S3 ou equivalente)                                                                                                                                     |
 
 ### 18.2 Integrações de V2/V3
 
@@ -323,7 +326,7 @@ Diferente de um SaaS B2B genérico, a Rotta lida com **dados de crianças** e co
 
 - **WAF e proteção contra DDoS** na borda (Cloudflare ou equivalente do provedor de nuvem).
 - **Rate limiting** por IP, por usuário e por tenant, com atenção especial a endpoints de autenticação (força bruta) e ao endpoint de ingestão de GPS (abuso/flooding).
-- **Dependências e supply chain**: scanner automatizado de vulnerabilidades em dependências (Dependabot/Snyk) no pipeline de CI, bloqueando merge de dependência com vulnerabilidade crítica conhecida sem *patch*.
+- **Dependências e supply chain**: scanner automatizado de vulnerabilidades em dependências (Dependabot/Snyk) no pipeline de CI, bloqueando merge de dependência com vulnerabilidade crítica conhecida sem _patch_.
 - **Pentest**: teste de intrusão externo antes do lançamento público e recorrente (mínimo anual, ou a cada mudança arquitetural significativa), com escopo obrigatório em isolamento multi-tenant.
 - **Backups e disaster recovery**: backup automatizado do banco (point-in-time recovery), testado periodicamente com restauração real (backup nunca testado não é backup confiável); RPO/RTO definidos e documentados (meta inicial: RPO ≤ 15 minutos, RTO ≤ 1 hora para o MVP, revisado à medida que a base cresce).
 
@@ -339,7 +342,7 @@ O gargalo de escala da Rotta não é volume de tenants (a maioria pequena) nem v
 
 - **Realtime Gateway**: escalado horizontalmente de forma independente do Core API (justamente por já ser um serviço separado desde o MVP, Capítulo 14.1) — permite provisionar capacidade elástica especificamente para os picos previsíveis das janelas operacionais (scaling agendado/preditivo, não apenas reativo), com custo controlado nos vales.
 - **Ingestão de GPS**: recebida via um protocolo leve (MQTT preferencialmente a WebSocket bruto para o uplink do motorista, por menor overhead de bateria e melhor tolerância a rede instável — ver Capítulo 33), publicada em Redis pub/sub, e persistida de forma assíncrona/em lote na tabela particionada de `PosicaoGPS`, nunca de forma síncrona bloqueante por requisição.
-- **Banco de dados**: leitura escalada via réplicas de leitura (read replicas) para dashboards e relatórios, mantendo a escrita primária dedicada aos fluxos operacionais críticos (checklist, GPS); particionamento por tempo na tabela de posições GPS; à medida que o número de tenants cresça para a casa das centenas de milhares, avaliação de *sharding* horizontal por `tenant_id` (hash-based) como próximo degrau — decisão adiada deliberadamente até haver sinal real de necessidade, para não pagar complexidade de sharding prematuramente.
+- **Banco de dados**: leitura escalada via réplicas de leitura (read replicas) para dashboards e relatórios, mantendo a escrita primária dedicada aos fluxos operacionais críticos (checklist, GPS); particionamento por tempo na tabela de posições GPS; à medida que o número de tenants cresça para a casa das centenas de milhares, avaliação de _sharding_ horizontal por `tenant_id` (hash-based) como próximo degrau — decisão adiada deliberadamente até haver sinal real de necessidade, para não pagar complexidade de sharding prematuramente.
 - **Cache**: Redis para dados de leitura frequente e de baixa mutabilidade (ex.: configuração de rota do dia, status de assinatura do tenant), reduzindo carga repetida no Postgres durante os picos.
 - **CDN**: todo asset estático (app landing page, imagens, mapas de tile quando aplicável) servido via CDN, nunca diretamente pela API.
 - **Filas assíncronas**: todo processamento não crítico ao caminho síncrono da requisição (envio de notificação, geração de relatório, OCR de documento) é desacoplado via fila, absorvendo picos sem degradar a experiência do fluxo síncrono principal (checklist, início de rota).
@@ -351,11 +354,11 @@ O gargalo de escala da Rotta não é volume de tenants (a maioria pequena) nem v
 
 ### 20.4 Metas de performance (SLOs de referência para o MVP, revisados com dado real de produção)
 
-| Métrica | Meta MVP |
-|---|---|
-| Latência p95 de API de leitura (Core API) | < 300ms |
-| Latência p95 de API de escrita (checklist, início de rota) | < 500ms |
-| Latência de entrega de posição GPS (do dispositivo ao mapa do responsável) | < 5s |
-| Latência de notificação de embarque (do evento ao push recebido) | < 10s |
-| Disponibilidade do Realtime Gateway nas janelas operacionais | ≥ 99.9% |
-| Disponibilidade geral da plataforma | ≥ 99.5% (MVP) evoluindo a 99.9% (V2+) |
+| Métrica                                                                    | Meta MVP                              |
+| -------------------------------------------------------------------------- | ------------------------------------- |
+| Latência p95 de API de leitura (Core API)                                  | < 300ms                               |
+| Latência p95 de API de escrita (checklist, início de rota)                 | < 500ms                               |
+| Latência de entrega de posição GPS (do dispositivo ao mapa do responsável) | < 5s                                  |
+| Latência de notificação de embarque (do evento ao push recebido)           | < 10s                                 |
+| Disponibilidade do Realtime Gateway nas janelas operacionais               | ≥ 99.9%                               |
+| Disponibilidade geral da plataforma                                        | ≥ 99.5% (MVP) evoluindo a 99.9% (V2+) |

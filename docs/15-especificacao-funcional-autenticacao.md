@@ -15,6 +15,7 @@
 **Pré-requisitos**: para cadastro originário, nenhum. Para cadastro por convite, um convite válido e não expirado emitido por um Gestor/Empresa (`SETT-02`, Parte 6).
 
 **Fluxo principal (cadastro originário — Empresa)**:
+
 1. Usuário acessa a Landing Page e seleciona "Começar agora".
 2. Informa telefone ou e-mail e o tipo de conta (Autônomo/MEI/Empresa).
 3. Sistema envia código de verificação (OTP) ao canal informado.
@@ -24,10 +25,12 @@
 7. Usuário é redirecionado ao fluxo de pagamento/trial e, em seguida, ao onboarding (Dossiê 11 §7.2).
 
 **Fluxos alternativos**:
+
 - **A1 — Cadastro por convite**: usuário recebe link/código de convite → abre o app/link → informa dados complementares exigidos pelo papel (ex. CNH para Motorista) → aceita → `Usuario` e `VinculoPapel` são criados vinculados ao tenant convidante.
 - **A2 — Identificador já existente**: se o telefone/e-mail informado já pertence a um `Usuario`, o sistema oferece login em vez de um segundo cadastro, prevenindo contas duplicadas para a mesma pessoa.
 
 **Regras de negócio**:
+
 - Um `Usuario` é único por pessoa; múltiplos `VinculoPapel` são permitidos para a mesma pessoa em tenants/papéis diferentes (RN-06, Capítulo 13).
 - CPF é obrigatório para Motorista, Monitor, Responsável e Empresa/autônomo; opcional para Escola (papel institucional).
 - CNPJ é obrigatório apenas quando `tipo = empresa`; para `autônomo`/`MEI`, o CPF é suficiente.
@@ -36,22 +39,26 @@
 **Permissões**: rota pública (`[público]`), sem autenticação prévia.
 
 **Validações**:
+
 - Formato de CPF/CNPJ validado (dígito verificador), não apenas quantidade de caracteres.
 - Telefone validado com DDI+DDD, checagem de formato brasileiro válido no MVP.
 - E-mail validado por formato e, opcionalmente, por verificação de domínio ativo.
 - Senha (quando aplicável ao papel — Seção AUTH-02): mínimo 8 caracteres, ao menos 1 número e 1 letra, nunca igual ao identificador de login.
 
 **Mensagens exibidas**:
+
 - Sucesso: "Conta criada! Enviamos um código para confirmar seu telefone."
 - Erro — identificador já em uso: "Este telefone/e-mail já possui uma conta. Fazer login?"
 - Erro — CPF/CNPJ inválido: "CPF/CNPJ inválido. Verifique os números digitados."
 - Erro — convite expirado (A1): "Este convite expirou. Peça para [empresa] enviar um novo."
 
 **Casos excepcionais**:
+
 - Usuário fecha o app entre a confirmação do OTP e o preenchimento dos dados da empresa: o `Usuario` já existe (status `pendente_verificacao` de perfil, não de conta), e ao retornar o sistema retoma exatamente de onde parou, nunca pedindo o OTP novamente dentro da janela de validade da sessão de cadastro.
 - Dois convites simultâneos para o mesmo telefone (dois tenants diferentes convidando a mesma pessoa): ambos podem ser aceitos — o `Usuario` passa a ter dois `VinculoPapel` ativos (RN-06).
 
 **Critérios de aceite**:
+
 - **Dado** que um telefone nunca foi cadastrado, **quando** o usuário completa o fluxo de cadastro originário com dados válidos, **então** um `Usuario`, uma `Empresa` e um `VinculoPapel` (Empresa) são criados e o usuário recebe tokens de sessão válidos.
 - **Dado** que um telefone já possui conta ativa, **quando** o usuário tenta se cadastrar novamente com o mesmo telefone, **então** o sistema exibe a mensagem de conta existente e oferece login, sem criar um segundo `Usuario`.
 - **Dado** um convite de Responsável válido e não expirado, **quando** o convidado completa a aceitação com CPF válido, **então** o `VinculoPapel` (Responsável) é ativado e vinculado ao(s) aluno(s) especificado(s) no convite.
@@ -72,6 +79,7 @@
 **Pré-requisitos**: conta ativa (status diferente de `bloqueado`), ao menos um `VinculoPapel` ativo.
 
 **Fluxo principal (OTP)**:
+
 1. Usuário informa telefone, e-mail ou CPF na tela de login.
 2. Sistema identifica o `Usuario` correspondente e o método de verificação esperado.
 3. Sistema envia código OTP via SMS ou WhatsApp (conforme preferência/disponibilidade).
@@ -80,11 +88,13 @@
 6. Se o usuário possui mais de um `VinculoPapel` ativo, o sistema apresenta o seletor de perfil antes de finalizar o login (Dossiê 11 §-, fluxo de login).
 
 **Fluxos alternativos**:
+
 - **A1 — E-mail/senha**: usuário informa e-mail + senha → se 2FA habilitado, informa código TOTP adicional → tokens emitidos.
 - **A2 — Magic Link**: usuário solicita link por e-mail → clica no link recebido → tokens emitidos automaticamente, sem digitação adicional.
 - **A3 — Dispositivo confiável**: se o dispositivo já completou OTP com sucesso anteriormente e foi marcado como confiável, o sistema pode reduzir a fricção (ex. pular a etapa de reenvio de código se o token de dispositivo ainda for válido) — nunca elimina totalmente a possibilidade de verificação, apenas reduz a frequência de solicitação em dispositivo já reconhecido.
 
 **Regras de negócio**:
+
 - `RN-AUTH-01`: um dispositivo novo (nunca associado à conta) sempre exige verificação completa (OTP ou senha+2FA), independentemente de configuração de "dispositivo confiável" de outro aparelho da mesma conta.
 - `RN-AUTH-02`: após 5 tentativas de login malsucedidas consecutivas (senha incorreta ou OTP incorreto) em um intervalo de 15 minutos, a conta entra em bloqueio temporário progressivo (Dossiê 12 §7.4).
 - Login por CPF resolve o `Usuario` da mesma forma que telefone/e-mail (AUTH-01), sem tratamento diferenciado além da busca por esse campo.
@@ -94,16 +104,19 @@
 **Validações**: identificador deve corresponder a uma conta existente (mensagem genérica se não corresponder, RN de enumeração de usuário, Dossiê 12 §7.4); código OTP válido por 5 minutos, uso único.
 
 **Mensagens exibidas**:
+
 - Erro genérico (identificador não encontrado OU senha incorreta — nunca especifica qual): "Não foi possível entrar. Verifique os dados e tente novamente."
 - Erro — código expirado: "Este código expirou. Solicite um novo."
 - Bloqueio temporário: "Muitas tentativas. Tente novamente em [X] minutos."
 - 2FA obrigatório: "Digite o código do seu aplicativo autenticador."
 
 **Casos excepcionais**:
+
 - Usuário perde acesso ao número de telefone cadastrado (trocou de chip): fluxo de recuperação de conta assistido por suporte (`SUP-01`), nunca uma auto-recuperação puramente automatizada quando o único fator de identificação (telefone) não está mais acessível — mitigação de sequestro de conta.
 - Usuário com múltiplos vínculos tenta logar durante uma rota ativa (Motorista): o seletor de perfil é sempre exibido, mesmo durante o horário operacional — não há login "automático" no último perfil usado, para evitar o motorista operar acidentalmente sob o papel errado.
 
 **Critérios de aceite**:
+
 - **Dado** um usuário com conta ativa e um único vínculo, **quando** ele completa a verificação OTP corretamente, **então** o sistema emite tokens válidos e o direciona diretamente à tela inicial do seu papel.
 - **Dado** um usuário com dois vínculos ativos em tenants diferentes, **quando** ele completa a autenticação, **então** o sistema exibe o seletor de perfil antes de conceder acesso à tela inicial.
 - **Dado** uma conta bloqueada temporariamente por tentativas excessivas, **quando** o usuário tenta logar novamente antes do fim do bloqueio, **então** o sistema recusa a tentativa e informa o tempo restante.
@@ -124,6 +137,7 @@
 **Pré-requisitos**: conta existente com e-mail cadastrado e confirmado.
 
 **Fluxo principal**:
+
 1. Usuário seleciona "Esqueci minha senha" na tela de login.
 2. Informa o e-mail/identificador.
 3. Sistema envia link de redefinição por e-mail (token de uso único, expiração curta — 30 minutos).
@@ -132,9 +146,11 @@
 6. Sistema invalida a senha antiga, revoga todas as sessões ativas daquela conta (medida de segurança — se a recuperação foi motivada por suspeita de comprometimento, todas as sessões antigas são encerradas), e permite novo login.
 
 **Fluxos alternativos**:
+
 - **A1 — Link expirado**: usuário solicita novo envio, repetindo o fluxo desde o passo 2.
 
 **Regras de negócio**:
+
 - `RN-AUTH-03`: a resposta ao passo 2 é sempre "Se este e-mail existir, enviaremos instruções" — nunca confirma ou nega a existência da conta (Dossiê 12 §7.4).
 - `RN-AUTH-04`: toda redefinição de senha bem-sucedida revoga **todas** as sessões/refresh tokens ativos daquela conta, em todos os dispositivos, forçando novo login em cada um.
 - Um token de redefinição só pode ser usado uma vez; uma segunda tentativa de uso do mesmo link (já usado) é rejeitada.
@@ -144,6 +160,7 @@
 **Validações**: nova senha segue a mesma política de força de AUTH-01; nova senha não pode ser igual à anterior (verificação por hash).
 
 **Mensagens exibidas**:
+
 - "Se este e-mail existir em nossa base, você receberá um link de redefinição em instantes."
 - Erro — token expirado: "Este link expirou. Solicite a redefinição novamente."
 - Sucesso: "Senha redefinida com sucesso. Você foi desconectado de todos os dispositivos por segurança."
@@ -151,6 +168,7 @@
 **Casos excepcionais**: usuário solicita redefinição múltiplas vezes seguidas — apenas o link mais recente é válido; links anteriores são invalidados automaticamente ao gerar um novo, evitando confusão sobre qual link usar.
 
 **Critérios de aceite**:
+
 - **Dado** um e-mail cadastrado, **quando** o usuário solicita redefinição e usa o link recebido dentro do prazo, **então** a nova senha passa a ser válida e todas as sessões anteriores são revogadas.
 - **Dado** um e-mail não cadastrado, **quando** alguém solicita redefinição para ele, **então** o sistema responde com a mesma mensagem genérica de sucesso, sem enviar e-mail algum.
 - **Dado** um link de redefinição já utilizado, **quando** alguém tenta usá-lo novamente, **então** o sistema rejeita com mensagem de link inválido/expirado.
@@ -170,6 +188,7 @@
 **Pré-requisitos**: convite aceito (AUTH-01, fluxo A1) ou cadastro originário concluído (Empresa).
 
 **Fluxo principal (Responsável)**:
+
 1. Responsável aceita convite (AUTH-01-A1) e realiza o primeiro login.
 2. Sistema exibe tela de boas-vindas com o(s) aluno(s) já vinculado(s) ao convite.
 3. Responsável confirma/completa dados do aluno permitidos ao seu papel (foto, contatos de emergência, autorizados a retirar).
@@ -177,10 +196,12 @@
 5. Sistema libera a tela inicial normal do app.
 
 **Fluxos alternativos**:
+
 - **A1 (Motorista/Monitor)**: primeiro acesso exige upload de ao menos os documentos obrigatórios mínimos (CNH para Motorista) antes de liberar visualização de rotas — o app mostra claramente "Complete seu cadastro" como bloqueador visual até isso ser feito, mesmo que o status final ainda dependa de aprovação do Gestor.
 - **A2 (Empresa)**: primeiro acesso é o Wizard completo de onboarding (Dossiê 11 §7.2), com opção de pular etapas não obrigatórias.
 
 **Regras de negócio**:
+
 - Primeiro acesso nunca bloqueia indefinidamente o usuário sem explicação — toda etapa pendente é comunicada com clareza sobre o motivo e o que falta.
 - Dados que só a Empresa/Gestor pode alterar (ex. escola do aluno, rota) não são editáveis pelo Responsável mesmo durante o primeiro acesso — ele apenas complementa o que é de sua competência (Dossiê 12 §5.2).
 
@@ -193,6 +214,7 @@
 **Casos excepcionais**: Responsável com mais de um filho convidado simultaneamente por convites de empresas diferentes — o primeiro acesso trata cada vínculo de forma independente, sem misturar a configuração de notificação de um tenant com o outro (preferências são por vínculo, não globais ao `Usuario`, quando fizer sentido — ex. um responsável pode querer WhatsApp para o filho A e apenas push para o filho B).
 
 **Critérios de aceite**:
+
 - **Dado** um Responsável completando o primeiro acesso, **quando** ele conclui a confirmação de dados e preferências, **então** o app libera a tela inicial padrão sem repetir esse fluxo em logins futuros.
 - **Dado** um Motorista sem nenhum documento enviado, **quando** ele tenta acessar a tela de rotas antes do primeiro upload, **então** o sistema o redireciona à etapa de upload obrigatório com explicação clara.
 
@@ -211,6 +233,7 @@
 **Pré-requisitos**: sessão ativa.
 
 **Fluxo principal**:
+
 1. Usuário seleciona "Sair" no Perfil.
 2. Sistema exibe confirmação (apenas quando há uma viagem em andamento — Seção casos excepcionais; do contrário, ação direta sem confirmação, conforme princípio de UX do Dossiê 10 §1.1, regra 2).
 3. Sistema revoga o refresh token e a sessão daquele dispositivo.
@@ -219,6 +242,7 @@
 **Fluxos alternativos**: nenhum além da confirmação condicional descrita acima.
 
 **Regras de negócio**:
+
 - Logout nunca revoga sessões de **outros** dispositivos da mesma conta — apenas o dispositivo atual (revogação de todos os dispositivos é uma ação distinta, AUTH-06).
 - `RN-AUTH-05`: se o Motorista está com uma viagem em andamento, o logout exige confirmação explícita adicional ("Você tem uma viagem em andamento. Deseja mesmo sair?"), porque encerrar a sessão nesse contexto interrompe a transmissão de GPS.
 
@@ -231,6 +255,7 @@
 **Casos excepcionais**: logout durante viagem ativa (RN-AUTH-05, acima) — se o motorista confirmar mesmo assim, o sistema registra um evento de auditoria e, se possível, notifica o Gestor de que a rota ficou sem transmissão de GPS.
 
 **Critérios de aceite**:
+
 - **Dado** um usuário autenticado sem viagem em andamento, **quando** ele seleciona "Sair", **então** a sessão é encerrada imediatamente sem diálogo de confirmação adicional.
 - **Dado** um Motorista com viagem em andamento, **quando** ele tenta sair, **então** o sistema exige confirmação explícita informando o impacto no rastreamento.
 
@@ -249,12 +274,14 @@
 **Pré-requisitos**: conta com ao menos uma sessão ativa (a atual).
 
 **Fluxo principal**:
+
 1. Usuário acessa Perfil → "Dispositivos conectados".
 2. Sistema lista todas as sessões ativas: dispositivo, localização aproximada de criação, data do último uso, indicação de "este dispositivo" para a sessão atual.
 3. Usuário seleciona "Encerrar" em uma sessão específica (que não a atual).
 4. Sistema revoga aquela sessão imediatamente.
 
 **Fluxos alternativos**:
+
 - **A1 — Encerrar todas as outras sessões**: ação em massa, útil em caso de suspeita de acesso indevido — revoga todas exceto a sessão atual, em uma única ação.
 
 **Regras de negócio**: a sessão atual nunca pode ser revogada a partir desta tela (evita o usuário se desconectar acidentalmente de si mesmo por engano; para isso existe o Logout, AUTH-05).
@@ -268,6 +295,7 @@
 **Casos excepcionais**: usuário revoga a sessão de um dispositivo que está sendo usado no exato momento por outra pessoa (ex. celular roubado em uso) — a próxima requisição daquele dispositivo recebe 401 e é forçado a tela de login, efetivamente interrompendo o uso indevido em tempo quase real (limitado pela janela de validade do JWT de acesso já emitido, até 15 minutos, Dossiê 12 §4.4 — mitigado pela denylist de curta duração quando a urgência justificar).
 
 **Critérios de aceite**:
+
 - **Dado** um usuário com 3 sessões ativas, **quando** ele acessa "Dispositivos conectados", **então** vê as 3 sessões listadas com a atual claramente identificada.
 - **Dado** uma sessão de outro dispositivo, **quando** o usuário a revoga, **então** aquele dispositivo perde acesso à próxima requisição/na próxima tentativa de refresh.
 
@@ -286,6 +314,7 @@
 **Pré-requisitos**: sessão ativa, conhecimento da senha atual.
 
 **Fluxo principal**:
+
 1. Usuário acessa Perfil → "Alterar senha".
 2. Informa a senha atual.
 3. Informa a nova senha (duas vezes, para confirmação).
@@ -305,6 +334,7 @@
 **Casos excepcionais**: usuário digita a senha atual incorretamente 3 vezes seguidas — o sistema aplica o mesmo mecanismo de bloqueio progressivo de `RN-AUTH-02`, tratando essa ação como uma tentativa sensível equivalente a login.
 
 **Critérios de aceite**:
+
 - **Dado** um usuário autenticado que informa corretamente a senha atual e uma nova senha válida, **quando** ele confirma a alteração, **então** a senha é atualizada e as demais sessões são revogadas.
 - **Dado** uma senha atual incorreta, **quando** o usuário tenta trocar a senha, **então** o sistema rejeita a operação sem alterar nada.
 

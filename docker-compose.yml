@@ -1,0 +1,61 @@
+name: rotta
+
+# Ambiente de desenvolvimento local — Dossie 12, Secao 12.1 e Dossie 23,
+# Secao 14. Sobe Postgres, Redis e a Core API com paridade de producao
+# (mesma imagem multi-estagio usada em CI/CD). apps/web, apps/admin e
+# apps/mobile rodam fora do Docker em desenvolvimento (`pnpm dev:web`
+# etc.) — apenas a infraestrutura compartilhada e o backend precisam de
+# um ambiente consistente entre maquinas.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-rotta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rotta_dev_only}
+      POSTGRES_DB: ${POSTGRES_DB:-rotta_dev}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - rotta_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rotta}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - rotta_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    env_file:
+      - apps/api/.env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rotta}:${POSTGRES_PASSWORD:-rotta_dev_only}@postgres:5432/${POSTGRES_DB:-rotta_dev}?schema=public
+      REDIS_URL: redis://redis:6379
+    ports:
+      - "3333:3333"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  rotta_postgres_data:
+  rotta_redis_data:

@@ -1,9 +1,8 @@
 import { Controller, Get } from "@nestjs/common";
 
 import { Public } from "@/common/decorators/public.decorator";
-
-import { PrismaService } from "@/infra/database/prisma.service";
 import { RedisService } from "@/infra/cache/redis.service";
+import { PrismaService } from "@/infra/database/prisma.service";
 
 /**
  * Health checks (Dossie 12, Secao 10.1) — consumidos pelo orquestrador
@@ -28,10 +27,7 @@ export class HealthController {
   @Public()
   @Get("ready")
   async readiness(): Promise<{ status: "ok" | "degraded"; database: boolean; cache: boolean }> {
-    const database = await this.prisma
-      .$queryRaw`SELECT 1`
-      .then(() => true)
-      .catch(() => false);
+    const database = await this.prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false);
 
     const cache = await this.redis
       .set("health:ping", "1", 5)

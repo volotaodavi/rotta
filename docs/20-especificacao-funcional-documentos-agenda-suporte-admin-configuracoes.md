@@ -15,6 +15,7 @@
 **Pré-requisitos**: motorista cadastrado.
 
 **Fluxo principal**:
+
 1. Cliente solicita URL de upload pré-assinada ao backend, informando entidade/tipo de documento (Dossiê 12 §11).
 2. Upload do arquivo diretamente ao armazenamento de objetos (S3).
 3. Cliente confirma o upload ao backend; registro `Documento` criado com status `pendente_verificacao`.
@@ -56,6 +57,7 @@
 **Regras de negócio**: apenas o curso obrigatório configurado pelo tenant (`EMP-05`) impacta o status `aprovado` do motorista (`RN-29`); cursos complementares cadastrados são informativos, sem efeito bloqueante.
 
 **Critérios de aceite**:
+
 - **Dado** um tenant que exige curso de transporte escolar como obrigatório, **quando** um motorista está sem esse curso válido, **então** ele não atinge status `aprovado`, mesmo com CNH e EAR em dia.
 
 **Possíveis melhorias futuras**: catálogo de cursos parceiros integrado diretamente à plataforma (V3), permitindo ao motorista realizar e certificar o curso sem sair do app.
@@ -95,6 +97,7 @@
 **Pré-requisitos**: nenhum.
 
 **Fluxo principal**:
+
 1. Gestor acessa Agenda → "+ Novo evento" → tipo "Feriado".
 2. Informa data e descrição (ex. "Feriado municipal").
 3. Sistema cria o `EventoAgenda`; a partir dessa data, o dashboard e os apps não exibem as rotas daquele dia como "pendentes/atrasadas", e nenhuma notificação de "rota não iniciada" é disparada.
@@ -112,6 +115,7 @@
 **Casos excepcionais**: feriado cadastrado por engano em uma data errada, com motoristas já sendo instruídos a não rodar — Gestor pode excluir/corrigir a qualquer momento antes da data chegar; se corrigido no mesmo dia (feriado removido de última hora), o sistema volta a tratar a rota como esperada normalmente, sem necessidade de nenhuma ação adicional.
 
 **Critérios de aceite**:
+
 - **Dado** uma rota configurada para segunda a sexta, **quando** uma segunda-feira é marcada como feriado, **então** o dashboard não exibe essa rota como "não iniciada/atrasada" naquele dia.
 
 **Possíveis melhorias futuras**: importação automática do calendário oficial de feriados nacionais/municipais por localização do tenant.
@@ -141,6 +145,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** um evento escolar com horário alterado para uma data específica, **quando** essa data chega, **então** o app do motorista exibe o horário ajustado apenas para aquele dia.
 
 **Possíveis melhorias futuras**: notificação automática aos responsáveis avisando sobre o horário alterado, disparada alguns dias antes do evento.
@@ -156,6 +161,7 @@
 **Pré-requisitos**: nenhum.
 
 **Fluxo principal (ausência de motorista)**:
+
 1. Motorista solicita um período de ausência planejada (ex. férias) através do app.
 2. Gestor recebe a solicitação e providencia substituto (`ROT-05`) para o período, antes da data de início.
 3. Sistema registra o `EventoAgenda` do tipo `ausencia_planejada`.
@@ -173,6 +179,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** uma ausência planejada de motorista cadastrada com 10 dias de antecedência, **quando** a data se aproxima sem substituto definido, **então** o Gestor recebe alertas crescentes de urgência.
 
 **Possíveis melhorias futuras**: sugestão automática de substituto disponível no período (V3, Analytics).
@@ -210,6 +217,7 @@
 **Pré-requisitos**: conta ativa.
 
 **Fluxo principal**:
+
 1. Usuário acessa "Suporte" → "+ Novo chamado".
 2. Informa assunto, descrição, categoria (dúvida/problema técnico/cobrança/outro), anexo opcional.
 3. Sistema cria o ticket com status `aberto` e o disponibiliza à fila de atendimento do Admin Rotta.
@@ -229,6 +237,7 @@
 **Casos excepcionais**: usuário abre múltiplos tickets duplicados para o mesmo problema — Admin Rotta pode mesclar/vincular tickets relacionados manualmente (funcionalidade administrativa, não exposta ao tenant).
 
 **Critérios de aceite**:
+
 - **Dado** um Gestor que abre um chamado, **quando** o Admin Rotta responde, **então** o Gestor recebe notificação e pode visualizar a resposta no histórico do ticket.
 
 **Possíveis melhorias futuras**: categorização automática por IA para triagem inicial mais rápida (V3).
@@ -260,6 +269,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** um ticket aberto, **quando** o Admin Rotta envia uma mensagem, **então** o Gestor é notificado e a mensagem aparece na conversa em ordem cronológica.
 
 **Possíveis melhorias futuras**: chat ao vivo com indicador de "digitando..." e SLA de resposta em horário comercial (V2).
@@ -289,6 +299,7 @@
 **Casos excepcionais**: nenhum.
 
 **Critérios de aceite**:
+
 - **Dado** 5 tickets encerrados ao longo do ano, **quando** o Gestor consulta o histórico, **então** todos os 5 permanecem visíveis e consultáveis.
 
 **Possíveis melhorias futuras**: nenhuma identificada.
@@ -318,6 +329,7 @@
 **Casos excepcionais**: nenhum além do já coberto.
 
 **Critérios de aceite**:
+
 - **Dado** um Admin Rotta acessando os dados de um tenant como suporte, **quando** essa ação ocorre, **então** um registro de auditoria é criado imediatamente com o motivo informado.
 
 **Possíveis melhorias futuras**: score de saúde do tenant (combinação de uso, pontualidade, ocorrências) para priorização proativa de suporte (V3, Analytics).
@@ -347,6 +359,7 @@
 **Casos excepcionais**: nenhum relevante no MVP.
 
 **Critérios de aceite**:
+
 - **Dado** o plano único do MVP, **quando** consultado por qualquer tenant, **então** exibe corretamente o valor de R$ 39,90/mês.
 
 **Possíveis melhorias futuras**: múltiplos planos com funcionalidades diferenciadas (V2+).
@@ -376,6 +389,7 @@
 **Casos excepcionais**: nenhum.
 
 **Critérios de aceite**:
+
 - **Dado** 500 tenants ativos pagantes, **quando** o Admin Rotta consulta o MRR, **então** o valor exibido corresponde exatamente à soma das assinaturas ativas naquele momento.
 
 **Possíveis melhorias futuras**: projeção de receita futura baseada em tendência de crescimento/churn histórico.
@@ -411,6 +425,7 @@
 **Permissões**: exclusivo de Admin Rotta.
 
 **Critérios de aceite**:
+
 - **Dado** um chamado de suporte reportando falha de notificação, **quando** o Admin Rotta busca pelo id de correlação daquele evento, **então** vê toda a jornada técnica (evento → notificação → tentativas → resultado) sem precisar acessar múltiplos sistemas separadamente.
 
 **Possíveis melhorias futuras**: alertas automáticos vinculados diretamente a um chamado de suporte relacionado.
@@ -424,6 +439,7 @@
 **Descrição**: detalhado no Dossiê 12 §10.2 e Dossiê 13 (Módulo `Analytics`) — ativação, retenção, uso por perfil, latência, throughput, saúde de filas.
 
 **Critérios de aceite**:
+
 - **Dado** um pico de tráfego de GPS em uma janela operacional, **quando** o Admin Rotta consulta as métricas de infraestrutura, **então** vê a latência e o throughput daquele período refletidos corretamente.
 
 **Possíveis melhorias futuras**: alertas automáticos configuráveis diretamente a partir do painel de métricas, sem depender de configuração externa ao produto.
@@ -455,6 +471,7 @@
 **Permissões**: cada usuário sobre os próprios dados.
 
 **Critérios de aceite**:
+
 - **Dado** um usuário autenticado, **quando** ele altera o tema para claro, **então** a preferência é salva e persiste entre sessões e dispositivos (associada à conta, não ao aparelho).
 
 **Possíveis melhorias futuras**: preferência de idioma, quando a plataforma suportar múltiplos idiomas (expansão internacional hipotética, fora do roadmap atual).
@@ -476,6 +493,7 @@
 **Permissões**: exclusivo de Gestor/Empresa.
 
 **Critérios de aceite**:
+
 - **Dado** um tenant com um único usuário de papel Empresa, **quando** alguém tenta revogar esse vínculo, **então** o sistema recusa a ação.
 
 **Possíveis melhorias futuras**: papéis administrativos com granularidade adicional dentro do próprio Gestor (ex. "Gestor financeiro" vs. "Gestor operacional"), caso a demanda de tenants maiores justifique (V3).
@@ -489,6 +507,7 @@
 **Descrição**: consolidação de `NOTIF-preferences` (Dossiê 13, Módulo `Notifications`).
 
 **Critérios de aceite**:
+
 - **Dado** um responsável que desabilita SMS como canal, **quando** um evento não crítico ocorre, **então** o SMS nunca é utilizado para ele, apenas push/WhatsApp conforme disponível.
 - **Dado** o mesmo responsável, **quando** um evento crítico (SOS) ocorre, **então** o SMS é utilizado de qualquer forma (`RN-17`), pois eventos críticos ignoram a preferência de canal desabilitado.
 
@@ -505,6 +524,7 @@
 **Pré-requisitos**: conta ativa.
 
 **Fluxo principal**:
+
 1. Usuário acessa Configurações → Privacidade.
 2. Visualiza um resumo de quais dados a Rotta mantém sobre ele/seu(s) filho(s).
 3. Pode solicitar exportação de dados (recebe um arquivo consolidado) ou solicitar exclusão (`RN-24`).
@@ -522,6 +542,7 @@
 **Casos excepcionais**: solicitação de exclusão feita por um responsável que não é o responsável legal do aluno (ex. avó com acesso de acompanhamento apenas) — sistema recusa a ação, informando que apenas o responsável legal pode solicitar exclusão de dados do menor.
 
 **Critérios de aceite**:
+
 - **Dado** um responsável legal solicitando exclusão de dados do próprio filho sem vínculo de rota ativo, **quando** a solicitação é confirmada, **então** o processo de exclusão/anonimização é iniciado conforme o prazo de retenção aplicável.
 - **Dado** um responsável sem a flag de responsável legal, **quando** ele tenta solicitar exclusão, **então** o sistema recusa a ação.
 
