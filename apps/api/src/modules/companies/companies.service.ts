@@ -1,0 +1,612 @@
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
+
+import {
+  COMPANY_REPOSITORY,
+  COMPANY_SETTING_REPOSITORY,
+  PLAN_REPOSITORY,
+} from "./companies.constants";
+import { toCompanyResponseDto } from "./mappers/company.mapper";
+
+import type { AuditLogResponseDto, ListAuditLogsResponseDto } from "./dto/audit-log-response.dto";
+import type { ChangePlanDto } from "./dto/change-plan.dto";
+import type { CompanyDashboardResponseDto } from "./dto/company-dashboard-response.dto";
+import type { CompanyResponseDto, ListCompaniesResponseDto } from "./dto/company-response.dto";
+import type { CreateCompanyDto } from "./dto/create-company.dto";
+import type { ListCompaniesQueryDto } from "./dto/list-companies-query.dto";
+import type { SuspendCompanyDto } from "./dto/suspend-company.dto";
+import type {
+  NotificationChannel,
+  UpdateCompanySettingsDto,
+} from "./dto/update-company-settings.dto";
+import type { UpdateCompanyDto } from "./dto/update-company.dto";
+import type { CompanySettingRepository } from "./repositories/company-setting.repository";
+import type { CompanyRepository, UpdateCompanyData } from "./repositories/company.repository";
+import type { PlanRepository } from "./repositories/plan.repository";
+import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
+
+import { PrismaService } from "@/infra/database/prisma.service";
+import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { UsersService } from "@/modules/users/users.service";
+import { Role } from "@/shared/enums";
+
+export interface RequestMeta {
+  ip?: string;
+  userAgent?: string;
+}
+
+const ADDRESS_FIELDS = new Set([
+  "cep",
+  "endereco",
+  "numero",
+  "complemento",
+  "bairro",
+  "cidade",
+  "estado",
+  "latitude",
+  "longitude",
+]);
+
+function onlyDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function pick<T extends object, K extends keyof T>(source: T, keys: K[]): Partial<T> {
+  const result: Partial<T> = {};
+  for (const key of keys) {
+    result[key] = source[key];
+  }
+  return result;
+}
+
+/**
+ * Núcleo de negócio do módulo Empresas (Dossiê 16). Nunca executa uma
+ * query diretamente — sempre via `CompanyRepository`/`PlanRepository`/
+ * `CompanySettingRepository` (Repository Pattern, Dossiê 12 Seção 6.1) —
+ * e delega identidade/vínculo a `UsersService` (nunca duplica a lógica
+ * de criação de usuário aqui). A única exceção é `PrismaService`,
+ * injetado apenas para abrir a transação de `create()` via
+ * `runInTenantTransaction` — o `tx` resultante ainda é repassado para
+ * cada repositório fazer sua própria escrita, nunca uma query solta
+ * escrita aqui.
+ */
+@Injectable()
+export class CompaniesService {
+  private readonly logger = new Logger(CompaniesService.name);
+
+  constructor(
+    @Inject(COMPANY_REPOSITORY) private readonly companyRepository: CompanyRepository,
+    @Inject(COMPANY_SETTING_REPOSITORY)
+    private readonly settingRepository: CompanySettingRepository,
+    @Inject(PLAN_REPOSITORY) private readonly planRepository: PlanRepository,
+    private readonly usersService: UsersService,
+    private readonly auditLogService: AuditLogService,
+    private readonly storageService: SupabaseStorageService,
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * Só `Role.ADMIN_ROTTA` acessa qualquer empresa; os demais papéis só
+   * acessam a própria (`actor.tenantId`). `NotFoundException` (nunca
+   * `ForbiddenException`) para não confirmar a existência de uma
+   * empresa de outro tenant a quem não tem acesso a ela (mesmo
+   * princípio de não-enumeração do Dossiê 12 §7.4).
+   */
+  private assertCanAccessCompany(companyId: string, actor: AuthenticatedUser): void {
+    if (actor.role !== Role.ADMIN_ROTTA && actor.tenantId !== companyId) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+  }
+
+  private async resolvePlanOrThrow(planCode: string) {
+    const plan = await this.planRepository.findByCode(planCode);
+    if (!plan) {
+      throw new NotFoundException(`Plano "${planCode}" não encontrado.`);
+    }
+    return plan;
+  }
+
+  async create(
+    dto: CreateCompanyDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    const cpfCnpjDigits = onlyDigits(dto.cpfCnpj);
+    const adminCpfDigits = onlyDigits(dto.administrador.cpf);
+    const adminTelefoneDigits = onlyDigits(dto.administrador.telefone);
+
+    if (dto.tipo === CompanyType.AUTONOMO) {
+      if (cpfCnpjDigits.length !== 11) {
+        throw new BadRequestException(
+          "Motorista autônomo deve informar CPF (11 dígitos) em cpfCnpj.",
+        );
+      }
+      if (cpfCnpjDigits !== adminCpfDigits) {
+        throw new BadRequestException(
+          "Para motorista autônomo, o CPF da empresa (cpfCnpj) deve ser o mesmo do administrador.",
+        );
+      }
+    } else if (cpfCnpjDigits.length !== 14) {
+      throw new BadRequestException("Este tipo de empresa exige CNPJ (14 dígitos) em cpfCnpj.");
+    }
+
+    const existingCompany = await this.companyRepository.findByCpfCnpj(cpfCnpjDigits);
+    if (existingCompany) {
+      throw new ConflictException("Já existe uma empresa cadastrada com este CPF/CNPJ.");
+    }
+
+    const adminEmail = dto.administrador.email.trim().toLowerCase();
+    await this.usersService.assertNoDuplicateIdentity(
+      adminEmail,
+      adminTelefoneDigits,
+      adminCpfDigits,
+    );
+
+    const plan = await this.resolvePlanOrThrow(dto.planCode ?? "STARTER");
+
+    // Company + User (administrador) + Membership são uma única unidade
+    // de negócio (Dossiê 16: "motorista autônomo automaticamente vira
+    // Administrador da empresa") — atômicos via uma única transação
+    // (`runInTenantTransaction`), nunca 3 escritas independentes: uma
+    // falha a meio caminho (ex. e-mail duplicado detectado só no
+    // `unique` do banco por uma corrida de requisições) já deixou, na
+    // primeira versão desta função, uma `Company` órfã sem
+    // administrador — bug real encontrado e corrigido durante este
+    // módulo, testando o fluxo de cadastro ponta a ponta.
+    const { company, adminUser } = await this.prisma.runInTenantTransaction(async (tx) => {
+      const createdCompany = await this.companyRepository.create(
+        {
+          razaoSocial: dto.razaoSocial,
+          nomeFantasia: dto.nomeFantasia,
+          cpfCnpj: cpfCnpjDigits,
+          tipo: dto.tipo,
+          email: dto.email.trim().toLowerCase(),
+          telefone: onlyDigits(dto.telefone),
+          whatsapp: dto.whatsapp ? onlyDigits(dto.whatsapp) : undefined,
+          cep: onlyDigits(dto.cep),
+          endereco: dto.endereco,
+          numero: dto.numero,
+          complemento: dto.complemento,
+          bairro: dto.bairro,
+          cidade: dto.cidade,
+          estado: dto.estado.toUpperCase(),
+          latitude: dto.latitude,
+          longitude: dto.longitude,
+          corPrimaria: dto.corPrimaria,
+          idioma: dto.idioma,
+          fusoHorario: dto.fusoHorario,
+          planId: plan.id,
+        },
+        tx,
+      );
+
+      const createdAdminUser = await this.usersService.createUserWithPassword(
+        {
+          nome: dto.administrador.nome,
+          email: adminEmail,
+          telefone: adminTelefoneDigits,
+          cpf: adminCpfDigits,
+          senha: dto.administrador.senha,
+        },
+        tx,
+      );
+
+      await this.usersService.createMembership(
+        { userId: createdAdminUser.id, companyId: createdCompany.id, role: Role.EMPRESA },
+        tx,
+      );
+
+      return { company: createdCompany, adminUser: createdAdminUser };
+    });
+
+    await this.recordAudit({
+      companyId: company.id,
+      entidadeTipo: "Company",
+      entidadeId: company.id,
+      acao: "CREATED",
+      atorUserId: actor.role === Role.ADMIN_ROTTA ? actor.sub : adminUser.id,
+      dadosDepois: {
+        nomeFantasia: company.nomeFantasia,
+        tipo: company.tipo,
+        status: company.status,
+      },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(company);
+  }
+
+  async findByIdOrThrow(id: string, actor: AuthenticatedUser): Promise<CompanyResponseDto> {
+    this.assertCanAccessCompany(id, actor);
+    const company = await this.companyRepository.findById(id);
+    if (!company) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+    return toCompanyResponseDto(company);
+  }
+
+  async list(query: ListCompaniesQueryDto): Promise<ListCompaniesResponseDto> {
+    const { items, total } = await this.companyRepository.list({
+      search: query.search,
+      status: query.status,
+      tipo: query.tipo,
+      page: query.page,
+      pageSize: query.pageSize,
+      sortBy: query.sortBy,
+      sortOrder: query.sortOrder,
+    });
+
+    return {
+      items: items.map(toCompanyResponseDto),
+      total,
+      page: query.page,
+      pageSize: query.pageSize,
+    };
+  }
+
+  async update(
+    id: string,
+    dto: UpdateCompanyDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    this.assertCanAccessCompany(id, actor);
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    const changedKeys = (Object.keys(dto) as (keyof UpdateCompanyDto)[]).filter(
+      (key) => dto[key] !== undefined,
+    );
+
+    if (changedKeys.length === 0) {
+      return toCompanyResponseDto(existing);
+    }
+
+    const data: UpdateCompanyData = { ...dto };
+    if (dto.telefone) data.telefone = onlyDigits(dto.telefone);
+    if (dto.whatsapp) data.whatsapp = onlyDigits(dto.whatsapp);
+    if (dto.cep) data.cep = onlyDigits(dto.cep);
+    if (dto.estado) data.estado = dto.estado.toUpperCase();
+    if (dto.email) data.email = dto.email.trim().toLowerCase();
+
+    const updated = await this.companyRepository.update(id, data);
+
+    const isAddressOnly = changedKeys.every((key) => ADDRESS_FIELDS.has(key));
+    const acao = isAddressOnly ? "ADDRESS_CHANGED" : "UPDATED";
+
+    await this.recordAudit({
+      companyId: id,
+      entidadeTipo: "Company",
+      entidadeId: id,
+      acao,
+      atorUserId: actor.sub,
+      dadosAntes: pick(existing, changedKeys as (keyof typeof existing)[]),
+      dadosDepois: pick(updated, changedKeys as (keyof typeof updated)[]),
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(updated);
+  }
+
+  /** Soft delete (Dossiê 16, "Excluir Empresa") — apenas Admin Rotta (garantido pelo controller). */
+  async remove(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<void> {
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    await this.companyRepository.update(id, { deletedAt: new Date() });
+
+    await this.recordAudit({
+      companyId: id,
+      entidadeTipo: "Company",
+      entidadeId: id,
+      acao: "DELETED",
+      atorUserId: actor.sub,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
+  async suspend(
+    id: string,
+    dto: SuspendCompanyDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+    if (existing.status === CompanyStatus.CANCELADO) {
+      throw new BadRequestException("Uma empresa cancelada não pode ser suspensa.");
+    }
+
+    const updated = await this.companyRepository.update(id, { status: CompanyStatus.SUSPENSO });
+
+    await this.recordAudit({
+      companyId: id,
+      entidadeTipo: "Company",
+      entidadeId: id,
+      acao: "SUSPENDED",
+      atorUserId: actor.sub,
+      dadosAntes: { status: existing.status },
+      dadosDepois: { status: updated.status, motivo: dto.motivo },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(updated);
+  }
+
+  async reactivate(
+    id: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+    if (existing.status !== CompanyStatus.SUSPENSO) {
+      throw new BadRequestException("Apenas empresas suspensas podem ser reativadas.");
+    }
+
+    const updated = await this.companyRepository.update(id, { status: CompanyStatus.ATIVO });
+
+    await this.recordAudit({
+      companyId: id,
+      entidadeTipo: "Company",
+      entidadeId: id,
+      acao: "REACTIVATED",
+      atorUserId: actor.sub,
+      dadosAntes: { status: existing.status },
+      dadosDepois: { status: updated.status },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(updated);
+  }
+
+  async changePlan(
+    id: string,
+    dto: ChangePlanDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    this.assertCanAccessCompany(id, actor);
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    const newPlan = await this.resolvePlanOrThrow(dto.planCode);
+    if (newPlan.id === existing.planId) {
+      throw new BadRequestException("A empresa já está neste plano.");
+    }
+
+    const updated = await this.companyRepository.update(id, { planId: newPlan.id });
+
+    await this.recordAudit({
+      companyId: id,
+      entidadeTipo: "Company",
+      entidadeId: id,
+      acao: "PLAN_CHANGED",
+      atorUserId: actor.sub,
+      dadosAntes: { planCode: existing.plan.code },
+      dadosDepois: { planCode: newPlan.code },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(updated);
+  }
+
+  async getDashboard(id: string, actor: AuthenticatedUser): Promise<CompanyDashboardResponseDto> {
+    this.assertCanAccessCompany(id, actor);
+    const company = await this.companyRepository.findById(id);
+    if (!company) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    const memberships = await this.usersService.listMembershipsByCompany(id);
+    const isActive = (role: Role): number =>
+      memberships.filter((m) => (m.role as Role) === role && m.status === MembershipStatus.ATIVO)
+        .length;
+
+    return {
+      motoristas: isActive(Role.MOTORISTA),
+      responsaveis: isActive(Role.RESPONSAVEL),
+      alunos: 0,
+      veiculos: 0,
+      rotas: 0,
+      viagens: 0,
+      receitaEstimadaCentavos: company.plan.priceCents,
+      documentosVencendo: 0,
+      alertas: [],
+    };
+  }
+
+  async getSettings(id: string, actor: AuthenticatedUser): Promise<UpdateCompanySettingsDto> {
+    this.assertCanAccessCompany(id, actor);
+    const rows = await this.settingRepository.listByCompany(id);
+    const byKey = new Map(rows.map((row) => [row.chave, row.valor]));
+
+    return {
+      tema: byKey.has("tema") ? (JSON.parse(byKey.get("tema")!) as "dark" | "light") : "dark",
+      canaisNotificacao: byKey.has("canaisNotificacao")
+        ? (JSON.parse(byKey.get("canaisNotificacao")!) as NotificationChannel[])
+        : ["push"],
+      integracoes: byKey.has("integracoes")
+        ? (JSON.parse(byKey.get("integracoes")!) as Record<string, boolean>)
+        : {},
+    };
+  }
+
+  async updateSettings(
+    id: string,
+    dto: UpdateCompanySettingsDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<UpdateCompanySettingsDto> {
+    this.assertCanAccessCompany(id, actor);
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    const entries: { chave: string; tipo: "json"; valor: string }[] = [];
+    if (dto.tema !== undefined) {
+      entries.push({ chave: "tema", tipo: "json", valor: JSON.stringify(dto.tema) });
+    }
+    if (dto.canaisNotificacao !== undefined) {
+      entries.push({
+        chave: "canaisNotificacao",
+        tipo: "json",
+        valor: JSON.stringify(dto.canaisNotificacao),
+      });
+    }
+    if (dto.integracoes !== undefined) {
+      entries.push({ chave: "integracoes", tipo: "json", valor: JSON.stringify(dto.integracoes) });
+    }
+
+    if (entries.length > 0) {
+      await this.settingRepository.upsertMany(id, entries);
+      await this.recordAudit({
+        companyId: id,
+        entidadeTipo: "CompanySetting",
+        entidadeId: id,
+        acao: "SETTINGS_UPDATED",
+        atorUserId: actor.sub,
+        dadosDepois: dto as unknown as Record<string, unknown>,
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    }
+
+    return this.getSettings(id, actor);
+  }
+
+  async listAuditLogs(
+    id: string,
+    actor: AuthenticatedUser,
+    page: number,
+    pageSize: number,
+  ): Promise<ListAuditLogsResponseDto> {
+    this.assertCanAccessCompany(id, actor);
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    const { items, total } = await this.auditLogService.listByCompany(id, { page, pageSize });
+
+    return {
+      items: items.map((log): AuditLogResponseDto => ({
+        id: log.id,
+        entidadeTipo: log.entidadeTipo,
+        entidadeId: log.entidadeId,
+        acao: log.acao,
+        atorUserId: log.atorUserId,
+        dadosAntes: log.dadosAntes,
+        dadosDepois: log.dadosDepois,
+        createdAt: log.createdAt,
+      })),
+      total,
+      page,
+      pageSize,
+    };
+  }
+
+  private async uploadImage(
+    id: string,
+    kind: "logo" | "foto",
+    file: Express.Multer.File,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    this.assertCanAccessCompany(id, actor);
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    if (!file.mimetype.startsWith("image/")) {
+      throw new BadRequestException("O arquivo enviado precisa ser uma imagem.");
+    }
+
+    const extension = file.originalname.split(".").pop() ?? "png";
+    const url = await this.storageService.upload(
+      `companies/${id}/${kind}.${extension}`,
+      file.buffer,
+      file.mimetype,
+    );
+
+    const field = kind === "logo" ? "logoUrl" : "fotoUrl";
+    const updated = await this.companyRepository.update(id, { [field]: url });
+
+    await this.recordAudit({
+      companyId: id,
+      entidadeTipo: "Company",
+      entidadeId: id,
+      acao: kind === "logo" ? "LOGO_CHANGED" : "PHOTO_CHANGED",
+      atorUserId: actor.sub,
+      dadosDepois: { [field]: url },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(updated);
+  }
+
+  /**
+   * Auditoria é sempre best-effort em relação à operação de negócio
+   * principal: perder um registro de log não pode reverter/falhar uma
+   * mutação já validamente concluída (Dossiê 13 §20 trata Audit como
+   * trilha de observabilidade, não como invariante transacional da
+   * entidade) — nenhum chamador deste service invoca
+   * `auditLogService.record` diretamente.
+   */
+  private async recordAudit(input: RecordAuditLogInput): Promise<void> {
+    try {
+      await this.auditLogService.record(input);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao registrar auditoria (${input.entidadeTipo} ${input.entidadeId}, ação ${input.acao})`,
+        error as Error,
+      );
+    }
+  }
+
+  uploadLogo(
+    id: string,
+    file: Express.Multer.File,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    return this.uploadImage(id, "logo", file, actor, meta);
+  }
+
+  uploadPhoto(
+    id: string,
+    file: Express.Multer.File,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    return this.uploadImage(id, "foto", file, actor, meta);
+  }
+}

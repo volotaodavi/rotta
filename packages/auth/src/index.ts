@@ -11,7 +11,10 @@
  *   - Hooks/providers de sessao consumidos por apps/web, apps/admin e
  *     apps/mobile
  *
- * Nenhuma logica de negocio implementada ainda (fase de fundacao).
+ * `token-storage.ts` é uma ponte temporária (ver seu próprio comentário)
+ * para permitir testar módulos de negócio contra a API real antes do
+ * Auth existir — não é a implementação final de sessão.
  */
 
-export {};
+export * from "./token-storage";
+export * from "./company-context-storage";

@@ -11,7 +11,7 @@
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
     "test": "echo \"[@rotta/forms] nenhum teste ainda\" && exit 0",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
     "@rotta/validators": "workspace:*",

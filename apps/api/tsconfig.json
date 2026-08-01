@@ -3,11 +3,10 @@
   "compilerOptions": {
     "baseUrl": "./src",
     "outDir": "./dist",
-    "rootDir": "./src",
     "paths": {
       "@/*": ["*"]
     }
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "test"]
+  "include": ["src/**/*.ts", "test/**/*.ts", "prisma/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

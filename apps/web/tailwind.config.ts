@@ -24,6 +24,10 @@ const config: Config = {
         success: "var(--color-success)",
         warning: "var(--color-warning)",
         danger: "var(--color-danger)",
+        info: "var(--color-info)",
+        card: "var(--color-card)",
+        muted: "var(--color-muted)",
+        placeholder: "var(--color-placeholder)",
         border: {
           DEFAULT: "var(--color-border)",
           strong: "var(--color-border-strong)",
@@ -32,6 +36,10 @@ const config: Config = {
           DEFAULT: "var(--color-text)",
           muted: "var(--color-text-muted)",
           disabled: "var(--color-text-disabled)",
+        },
+        disabled: {
+          bg: "var(--color-disabled-bg)",
+          text: "var(--color-text-disabled)",
         },
       },
       borderRadius: {

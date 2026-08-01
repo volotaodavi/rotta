@@ -7,4 +7,5 @@
  * a implementar junto com cada modulo de backend real.
  */
 
+export * from "./endpoints/companies";
 export * from "./http";

@@ -1,0 +1,46 @@
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { CompanyStatus, CompanyType } from "@prisma/client";
+
+export class PlanResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() code!: string;
+  @ApiProperty() name!: string;
+  @ApiProperty() priceCents!: number;
+}
+
+/** Forma de resposta pública de `Company` — nunca expõe `planId` cru, sempre o `plan` resolvido. */
+export class CompanyResponseDto {
+  @ApiProperty() id!: string;
+  @ApiProperty() razaoSocial!: string;
+  @ApiProperty() nomeFantasia!: string;
+  @ApiProperty() cpfCnpj!: string;
+  @ApiProperty({ enum: CompanyType }) tipo!: CompanyType;
+  @ApiProperty() email!: string;
+  @ApiProperty() telefone!: string;
+  @ApiPropertyOptional() whatsapp?: string | null;
+  @ApiProperty() cep!: string;
+  @ApiProperty() endereco!: string;
+  @ApiProperty() numero!: string;
+  @ApiPropertyOptional() complemento?: string | null;
+  @ApiProperty() bairro!: string;
+  @ApiProperty() cidade!: string;
+  @ApiProperty() estado!: string;
+  @ApiPropertyOptional() latitude?: number | null;
+  @ApiPropertyOptional() longitude?: number | null;
+  @ApiPropertyOptional() logoUrl?: string | null;
+  @ApiPropertyOptional() fotoUrl?: string | null;
+  @ApiProperty() corPrimaria!: string;
+  @ApiProperty() idioma!: string;
+  @ApiProperty() fusoHorario!: string;
+  @ApiProperty({ enum: CompanyStatus }) status!: CompanyStatus;
+  @ApiProperty({ type: PlanResponseDto }) plan!: PlanResponseDto;
+  @ApiProperty() createdAt!: Date;
+  @ApiProperty() updatedAt!: Date;
+}
+
+export class ListCompaniesResponseDto {
+  @ApiProperty({ type: [CompanyResponseDto] }) items!: CompanyResponseDto[];
+  @ApiProperty() total!: number;
+  @ApiProperty() page!: number;
+  @ApiProperty() pageSize!: number;
+}

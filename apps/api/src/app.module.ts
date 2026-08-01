@@ -8,6 +8,7 @@ import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 import { TenantGuard } from "@/common/guards/tenant.guard";
 import { LoggingInterceptor } from "@/common/interceptors/logging.interceptor";
+import { TenantContextInterceptor } from "@/common/interceptors/tenant-context.interceptor";
 import { TimeoutInterceptor } from "@/common/interceptors/timeout.interceptor";
 import { TransformResponseInterceptor } from "@/common/interceptors/transform-response.interceptor";
 import appConfig from "@/config/app.config";
@@ -15,6 +16,7 @@ import authConfig from "@/config/auth.config";
 import databaseConfig from "@/config/database.config";
 import { validate } from "@/config/env.validation";
 import redisConfig from "@/config/redis.config";
+import storageConfig from "@/config/storage.config";
 import { HealthModule } from "@/health/health.module";
 import { RedisModule } from "@/infra/cache/redis.module";
 import { PrismaModule } from "@/infra/database/prisma.module";
@@ -49,7 +51,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
-      load: [appConfig, authConfig, databaseConfig, redisConfig],
+      load: [appConfig, authConfig, databaseConfig, redisConfig, storageConfig],
     }),
 
     // --- Observabilidade e infraestrutura (Dossie 12, Secoes 6/8/10) ---
@@ -100,7 +102,13 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     // porque LoggingInterceptor depende do Logger do nestjs-pino via
     // injecao de dependencia — tokens APP_* sao a unica forma idiomatica
     // do NestJS de registrar um provider global que participa do
-    // container de DI. Ordem de registro = ordem de execucao.
+    // container de DI. Ordem de registro = ordem de execucao — o
+    // primeiro e o mais "externo" (encapsula todos os demais e o
+    // controller). `TenantContextInterceptor` precisa ser o primeiro
+    // exatamente por isso: seu `AsyncLocalStorage.run(...)` so cobre
+    // corretamente tudo que ele encapsula (Dossie 8, Secao 15.2 — ver
+    // a nota de implementacao no proprio interceptor).
+    { provide: APP_INTERCEPTOR, useClass: TenantContextInterceptor },
     { provide: APP_INTERCEPTOR, useClass: LoggingInterceptor },
     { provide: APP_INTERCEPTOR, useClass: TransformResponseInterceptor },
     { provide: APP_INTERCEPTOR, useClass: TimeoutInterceptor },

@@ -2,32 +2,40 @@ import { Injectable, type CanActivate, type ExecutionContext } from "@nestjs/com
 import { Reflector } from "@nestjs/core";
 
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { TenantContext } from "@/infra/database/tenant-context";
 
 import { IS_PUBLIC_KEY } from "@/common/decorators/public.decorator";
-import { PrismaService } from "@/infra/database/prisma.service";
+import { Role } from "@/shared/enums";
 
 /**
  * Guard de isolamento multi-tenant (Dossie 8, Secao 15 e Dossie 12,
  * Secao 15.1) — resolve o `tenant_id` exclusivamente a partir do JWT
- * (nunca de parametro de URL/body do cliente) e o define como contexto
- * de sessao do Prisma para a requisicao corrente, para que a Row-Level
- * Security do PostgreSQL seja a ultima linha de defesa mesmo que uma
- * query de aplicacao esqueca de filtrar por tenant.
+ * (nunca de parametro de URL/body do cliente) e publica o resultado em
+ * `request.tenantContext`, para o `TenantContextInterceptor` propagar
+ * via `AsyncLocalStorage` (ver a nota de implementacao em
+ * `tenant-context.interceptor.ts` sobre por que a propagacao **precisa**
+ * ser feita por um interceptor, nunca por este guard chamando
+ * `tenantContextStorage.enterWith(...)` diretamente — foi tentado e
+ * comprovadamente perde o contexto entre o guard e o controller/service
+ * no pipeline baseado em Observables do NestJS).
  *
  * Rotas `@Public()` (ex. health check, login) pulam este guard pelo
  * mesmo motivo que pulam o `JwtAuthGuard` — nao ha usuario/tenant
- * resolvido ainda naquele ponto do fluxo. Namespace `/admin/*` (Admin
- * Rotta) usa um caminho de codigo distinto (Dossie 12, Secao 5.2) e,
- * quando implementado, tambem devera ser dispensado deste guard.
+ * resolvido ainda naquele ponto do fluxo.
+ *
+ * `Role.ADMIN_ROTTA` e o unico papel sem `tenantId` (Dossie 8, Secao 2 —
+ * funcionario da Rotta, nao de uma Empresa) e por isso e o unico que
+ * publica `bypass: true` — sem este caso especial, o guard reprovaria
+ * (`return false`) toda requisicao de Admin Rotta por falta de
+ * `tenantId`, tornando o papel inoperante (bug coberto pelo modulo de
+ * Empresas, Dossie 16, ja que e o primeiro modulo com uma rota
+ * exclusiva de Admin Rotta).
  */
 @Injectable()
 export class TenantGuard implements CanActivate {
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly reflector: Reflector,
-  ) {}
+  constructor(private readonly reflector: Reflector) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
@@ -37,14 +45,25 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    const request = context.switchToHttp().getRequest<{ user?: AuthenticatedUser }>();
+    const request = context
+      .switchToHttp()
+      .getRequest<{ user?: AuthenticatedUser; tenantContext?: TenantContext }>();
     const user = request.user;
 
-    if (!user?.tenantId) {
+    if (!user) {
       return false;
     }
 
-    await this.prisma.setTenantContext(user.tenantId);
+    if (user.role === Role.ADMIN_ROTTA) {
+      request.tenantContext = { tenantId: null, bypass: true };
+      return true;
+    }
+
+    if (!user.tenantId) {
+      return false;
+    }
+
+    request.tenantContext = { tenantId: user.tenantId, bypass: false };
     return true;
   }
 }

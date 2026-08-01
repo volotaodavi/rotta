@@ -4,6 +4,7 @@ import {
   Catch,
   HttpException,
   HttpStatus,
+  Logger,
   type ArgumentsHost,
   type ExceptionFilter,
 } from "@nestjs/common";
@@ -16,9 +17,18 @@ import type { Response, Request } from "express";
  * para o formato padrao de erro definido no Dossie 13, Secao 23:
  * `{ code, message, field?, correlationId }`, nunca stack trace ou
  * detalhe de implementacao exposto ao cliente (Dossie 10, Secao 9.11).
+ *
+ * Todo erro nao esperado (fora de `HttpException`, ex. um bug real ou
+ * falha de infraestrutura) e sempre logado no servidor com o
+ * `correlationId` correspondente antes de responder — sem isso, um 500
+ * genuino fica invisivel nos logs (gap real encontrado e corrigido
+ * durante o modulo de Empresas, testando o fluxo de cadastro ponta a
+ * ponta pela primeira vez).
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(AllExceptionsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
@@ -27,8 +37,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const correlationId =
       (request.headers["x-correlation-id"] as string | undefined) ?? randomUUID();
 
-    const status =
+    const status: number =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
+
+    if (status === Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
+      const stack = exception instanceof Error ? exception.stack : String(exception);
+      this.logger.error(`[${correlationId}] ${request.method} ${request.url}`, stack);
+    }
 
     const body: ApiErrorBody = this.buildErrorBody(exception, correlationId);
 

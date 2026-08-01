@@ -15,7 +15,7 @@
     "lint:fix": "eslint . --ext .ts --fix",
     "typecheck": "tsc --noEmit",
     "test": "echo \"[@rotta/theme] nenhum teste ainda — ver Dossie 23, Secao 10\" && exit 0",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "devDependencies": {
     "@rotta/config": "workspace:*",

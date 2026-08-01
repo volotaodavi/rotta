@@ -8,8 +8,11 @@
  * lados, eliminando o risco de front e back validarem de forma
  * sutilmente diferente.
  *
- *   schemas/   Um arquivo por dominio (ex. `aluno.schema.ts`), a criar
- *              junto com o primeiro modulo de negocio implementado.
+ *   schemas/   Um arquivo por dominio de validacao.
  */
 
-export {};
+export * from "./schemas/cep.schema";
+export * from "./schemas/document.schema";
+export * from "./schemas/email.schema";
+export * from "./schemas/password.schema";
+export * from "./schemas/phone.schema";

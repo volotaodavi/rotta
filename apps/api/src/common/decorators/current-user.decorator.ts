@@ -5,10 +5,15 @@ import type { Role } from "@/shared/enums";
 /**
  * Payload minimo carregado pelo JWT de acesso (Dossie 12, Secao 4.2):
  * `sub` (usuario_id), `tenant_id`, `papel`, `vinculo_id`.
+ *
+ * `tenantId` e `null` exclusivamente para `Role.ADMIN_ROTTA` — o
+ * Administrador Rotta e funcionario da propria Rotta, nunca vinculado a
+ * uma Empresa/tenant (Dossie 8, Secao 2). Todo outro papel sempre tem um
+ * `tenantId` presente (o `Membership` que originou o login).
  */
 export interface AuthenticatedUser {
   sub: string;
-  tenantId: string;
+  tenantId: string | null;
   role: Role;
   vinculoId: string;
 }

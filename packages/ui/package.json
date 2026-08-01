@@ -2,7 +2,7 @@
   "name": "@rotta/ui",
   "version": "0.1.0",
   "private": true,
-  "description": "Design System compartilhado da Rotta — Dossie 10 e Dossie 22, Secao 5.1. Organizacao presente; componentes ainda nao implementados.",
+  "description": "Design System compartilhado da Rotta — Dossie 24 e Dossie 25. Componentes implementados incrementalmente, a partir do modulo de Empresas (Dossie 16).",
   "license": "UNLICENSED",
   "exports": {
     "./web": "./src/web/index.ts",
@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "echo \"[@rotta/ui] nenhum teste ainda — ver Dossie 23, Secao 10\" && exit 0",
     "storybook": "echo \"[@rotta/ui] Storybook sera configurado junto com apps/docs\" && exit 0",
-    "clean": "rm -rf dist .turbo"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
     "@rotta/theme": "workspace:*",

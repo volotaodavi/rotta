@@ -7,6 +7,7 @@
   "exports": {
     "./eslint/base": "./eslint/base.js",
     "./eslint/next": "./eslint/next.js",
+    "./eslint/react": "./eslint/react.js",
     "./eslint/react-native": "./eslint/react-native.js",
     "./eslint/nestjs": "./eslint/nestjs.js",
     "./prettier": "./prettier/index.js",

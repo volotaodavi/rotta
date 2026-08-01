@@ -1,14 +1,14 @@
 // Schema Prisma da Rotta — Dossie 8 (modelagem de dados) e Dossie 12 (Secao 6).
 //
-// ESTADO ATUAL: apenas a infraestrutura (datasource + generator). Nenhuma
-// tabela/model foi criada ainda — isso acontece quando o primeiro modulo
-// de dominio real for implementado, seguindo rigorosamente o modelo
-// conceitual do Dossie 8 (entidades, relacionamentos, indices,
-// particionamento da tabela PosicaoGPS, Row-Level Security por tenant).
+// ESTADO ATUAL: primeiro recorte real do schema, introduzido pelo modulo
+// de Empresas (Tenant) — Dossie 8, Secao 3, e Dossie 16 (`EMP-*`). Os
+// modelos abaixo cobrem exatamente o que os modulos Empresas/Usuarios/
+// Auditoria precisam hoje; os demais 19 dominios do Dossie 13 chegam
+// junto com cada modulo real (nunca especulativamente adiantados aqui).
 //
-// Extensoes previstas quando o schema real for criado (Dossie 8, Secao 22):
-//   - PostGIS (geolocalizacao de paradas, geofencing)
-//   - Particionamento declarativo nativo do Postgres (tabela PosicaoGPS)
+// Extensoes previstas quando o primeiro model geoespacial for criado
+// (Dossie 8, Secao 22): PostGIS + particionamento declarativo nativo do
+// Postgres para a tabela PosicaoGPS. Nao habilitadas ainda.
 //
 // generator client {
 //   provider        = "prisma-client-js"
@@ -23,4 +23,260 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
   // extensions = [postgis] — habilitado junto com o primeiro model geoespacial (Dossie 8, Secao 16.1)
+}
+
+// =============================================================================
+// Enums
+// =============================================================================
+
+/// Forma societaria da Empresa/Tenant (Dossie 16, `EMP-01`). `AUTONOMO`
+/// dispara a regra "o motorista automaticamente e o Administrador da
+/// empresa" (Dossie 16, Secao 1.2) — o proprio motorista assina o CPF em
+/// `cpfCnpj` e vira o unico `Membership` com papel `empresa`.
+enum CompanyType {
+  AUTONOMO
+  MEI
+  LTDA
+  SLU
+  EIRELI
+  OUTRO
+}
+
+/// Ciclo de vida comercial da Empresa/Tenant (Dossie 16, `EMP-04`/`EMP-05`).
+enum CompanyStatus {
+  TRIAL
+  ATIVO
+  SUSPENSO
+  CANCELADO
+  INADIMPLENTE
+}
+
+/// Status da conta de identidade global `User` — independente de em
+/// quantos tenants o usuario tem `Membership` (Dossie 8, Secao 2).
+enum UserStatus {
+  ATIVO
+  INATIVO
+}
+
+/// Status do vinculo Usuario<->Empresa<->Papel (Dossie 8, Secao 2 —
+/// `VinculoPapel`). Um `Membership` `REMOVIDO` e preservado (nunca
+/// apagado) para trilha de auditoria de quem já pertenceu ao tenant.
+enum MembershipStatus {
+  ATIVO
+  SUSPENSO
+  REMOVIDO
+}
+
+// =============================================================================
+// Plan — estrutura extensivel de planos comerciais (Dossie 16, Secao "Plano")
+// =============================================================================
+
+/// Catalogo de planos comerciais. Modelado como tabela (nao enum) desde o
+/// primeiro plano ("Starter") especificamente para que novos planos sejam
+/// uma migration de dado (`INSERT`), nunca uma migration de schema —
+/// requisito explicito do briefing ("Criar estrutura para futuros
+/// planos"). Populado por `prisma/seed.ts`, nunca por migration manual.
+model Plan {
+  id         String   @id @default(uuid()) @db.Uuid
+  code       String   @unique
+  name       String
+  priceCents Int
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  companies Company[]
+
+  @@map("plans")
+}
+
+// =============================================================================
+// Company — o Tenant (Dossie 8, Secao 3 e Dossie 16)
+// =============================================================================
+
+/// A Empresa É o tenant (Dossie 8, Secao 1: "toda empresa cadastrada será
+/// um tenant independente") — não existe uma tabela `Tenant` separada.
+/// `Company.id` é o valor que circula como `tenant_id` em toda tabela de
+/// negócio do restante da plataforma (`Membership.companyId`,
+/// `CompanySetting.companyId`, `AuditLog.companyId`, e futuramente
+/// `Driver.companyId`, `Vehicle.companyId` etc.).
+///
+/// Configurações operacionais (tema, canais de notificação, integrações)
+/// NÃO são colunas aqui — vivem em `CompanySetting` (chave/valor tipado),
+/// exatamente pela razão do Dossiê 8, Seção 3.2: esta tabela é lida em
+/// praticamente toda requisição autenticada do sistema e deve permanecer
+/// enxuta e estável; configurações tendem a crescer em número a cada
+/// funcionalidade nova, o que geraria migrations constantes aqui.
+model Company {
+  id String @id @default(uuid()) @db.Uuid
+
+  razaoSocial  String
+  nomeFantasia String
+  /// CPF (motorista autônomo) ou CNPJ (demais tipos) — único globalmente,
+  /// validado na camada de aplicação (`@rotta/validators`), nunca apenas
+  /// no formato (dígito verificador real).
+  cpfCnpj      String      @unique
+  tipo         CompanyType
+
+  email    String
+  telefone String
+  whatsapp String?
+
+  cep         String
+  endereco    String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  estado      String
+  latitude    Decimal? @db.Decimal(9, 6)
+  longitude   Decimal? @db.Decimal(9, 6)
+
+  logoUrl     String?
+  fotoUrl     String?
+  corPrimaria String  @default("#3B6EF6")
+  idioma      String  @default("pt-BR")
+  fusoHorario String  @default("America/Sao_Paulo")
+
+  status CompanyStatus @default(TRIAL)
+  planId String        @db.Uuid
+  plan   Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Soft delete (Dossie 16, "Excluir Empresa") — nunca DELETE físico.
+  /// Distinto de `status = CANCELADO`: cancelamento é uma transição de
+  /// ciclo de vida comercial visível/reversível (Admin Rotta reativa);
+  /// `deletedAt` é a exclusão administrativa (ex. registro de teste
+  /// criado por engano), que sai das listagens por padrão mas preserva a
+  /// linha para integridade referencial do histórico de auditoria.
+  deletedAt DateTime?
+
+  memberships Membership[]
+  settings    CompanySetting[]
+  auditLogs   AuditLog[]
+
+  @@index([status])
+  @@index([tipo])
+  @@index([deletedAt])
+  @@map("companies")
+}
+
+/// Configuração operacional chave/valor tipada por tenant (Dossie 8,
+/// Seção 3.2). `tipo` guarda o tipo lógico do valor serializado em
+/// `valor` (`string` | `boolean` | `number` | `json`) — a validação e
+/// desserialização tipada acontece na camada de aplicação
+/// (`CompanySettingsService`), nunca no banco.
+model CompanySetting {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  chave String
+  tipo  String
+  valor String
+
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, chave])
+  @@map("company_settings")
+}
+
+// =============================================================================
+// User — identidade global (Dossie 8, Secao 2)
+// =============================================================================
+
+/// Identidade de login, GLOBAL — deliberadamente sem `tenant_id` própria.
+/// Um `User` pode ter múltiplos `Membership` em tenants diferentes (ex.:
+/// é responsável de um filho na Empresa A e, paralelamente, motorista
+/// autônomo cadastrado como Empresa B) — Dossie 8, Seção 2, "VinculoPapel".
+/// A autenticação (login/sessão/refresh token) é escopo do módulo Auth
+/// (Dossiê 15), ainda não implementado; este módulo modela apenas o
+/// suficiente da identidade (incluindo `passwordHash`) para que o
+/// cadastro de Empresa possa criar o primeiro usuário administrador sem
+/// que o Auth precise remodelar esta tabela depois.
+model User {
+  id String @id @default(uuid()) @db.Uuid
+
+  nome         String
+  email        String @unique
+  telefone     String @unique
+  cpf          String @unique
+  passwordHash String
+
+  status    UserStatus @default(ATIVO)
+  avatarUrl String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  memberships    Membership[]
+  auditLogs      AuditLog[]
+
+  @@map("users")
+}
+
+/// `VinculoPapel` do Dossiê 8, Seção 2: liga `User` + `Company` (tenant) +
+/// papel (`Role`, `@rotta/types` — valores em `packages/types`/
+/// `apps/api/src/shared/enums/role.enum.ts`, nunca redefinidos aqui).
+/// Um mesmo par (usuário, empresa) pode ter mais de um papel simultâneo
+/// em teoria; a combinação (`userId`, `companyId`, `role`) é única para
+/// impedir duplicidade do mesmo vínculo.
+model Membership {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId    String @db.Uuid
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Valor de `Role` (Dossie 8, Secao 2) — string, nao enum do Prisma,
+  /// para que a fonte unica de verdade continue sendo
+  /// `apps/api/src/shared/enums/role.enum.ts` (consumido tambem por
+  /// codigo que nao le o schema Prisma, ex. guards).
+  role   String
+  status MembershipStatus @default(ATIVO)
+
+  convidadoPorId String?   @db.Uuid
+  iniciadoEm     DateTime  @default(now())
+  encerradoEm    DateTime?
+
+  @@unique([userId, companyId, role])
+  @@index([companyId, role, status])
+  @@index([userId, status])
+  @@map("memberships")
+}
+
+// =============================================================================
+// AuditLog — trilha de auditoria imutável (Dossie 8, Secao 16 e RN-32)
+// =============================================================================
+
+/// Registro de auditoria genérico e polimórfico (Dossiê 8, Seção 16.3 —
+/// mesmo trade-off documentado ali: perde-se FK nativa forte por
+/// `entidadeTipo`/`entidadeId`, ganha-se não precisar de uma tabela
+/// `AuditLogCompany`/`AuditLogDriver`/... por domínio). Nunca aceita
+/// UPDATE/DELETE via aplicação — apenas INSERT (módulo Audit, Dossiê 13
+/// Seção 20, expõe somente leitura).
+model AuditLog {
+  id String @id @default(uuid()) @db.Uuid
+
+  companyId    String  @db.Uuid
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  entidadeTipo String
+  entidadeId   String
+  acao         String
+
+  atorUserId String? @db.Uuid
+  atorUser   User?   @relation(fields: [atorUserId], references: [id], onDelete: SetNull)
+
+  dadosAntes  Json?
+  dadosDepois Json?
+  ip          String?
+  userAgent   String?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, entidadeTipo, entidadeId, createdAt])
+  @@map("audit_logs")
 }

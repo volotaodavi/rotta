@@ -22,7 +22,11 @@ export const envSchema = z.object({
   JWT_ACCESS_TOKEN_TTL: z.string().default("15m"),
   JWT_REFRESH_TOKEN_TTL: z.string().default("30d"),
 
-  SUPABASE_URL: z.string().url().optional(),
+  // `.or(z.literal(""))` porque `.env.example` documenta a variavel com
+  // valor vazio (nenhum segredo real no repositorio) — string vazia e
+  // "nao configurado" aqui, tratado como tal por `SupabaseStorageService`
+  // (Dossie 16, upload de logo/foto), nunca como URL invalida.
+  SUPABASE_URL: z.string().url().or(z.literal("")).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_STORAGE_BUCKET: z.string().default("rotta-documents"),
 

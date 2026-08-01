@@ -1,0 +1,302 @@
+"use client";
+
+import { ApiError } from "@rotta/api-client";
+import { getStoredCompanyId } from "@rotta/auth";
+import { Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
+import { useEffect, useState, type FormEvent } from "react";
+
+import type { UpdateCompanyInput } from "@rotta/api-client";
+
+import { NoCompanyContext } from "@/features/company/components/no-company-context";
+import {
+  useMyCompany,
+  useMyCompanyDashboard,
+  useMyCompanySettings,
+  useUpdateMyCompany,
+  useUpdateMyCompanySettings,
+} from "@/features/company/hooks/use-company";
+
+function centsToBRL(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+/**
+ * "Minha Empresa" — visão da própria empresa para Administrador/Gestor
+ * (Dossiê 16). Combina Detalhes + Editar + Dashboard + Configurações em
+ * uma única tela: decisão deliberada de escopo (ver relatório de
+ * entrega do módulo) — o Admin da própria empresa só tem UMA empresa
+ * para olhar, então não há razão de negócio para 4 rotas separadas
+ * como existe em `apps/admin` (que lista N tenants).
+ */
+export default function MinhaEmpresaPage(): JSX.Element {
+  const [companyId, setCompanyId] = useState<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    setCompanyId(getStoredCompanyId());
+  }, []);
+
+  if (companyId === undefined) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!companyId) {
+    return <NoCompanyContext />;
+  }
+
+  return <MinhaEmpresaContent companyId={companyId} />;
+}
+
+function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element {
+  const { data: company, isLoading, isError } = useMyCompany(companyId);
+  const { data: dashboard } = useMyCompanyDashboard(companyId);
+  const { data: settings } = useMyCompanySettings(companyId);
+  const updateCompany = useUpdateMyCompany(companyId);
+  const updateSettings = useUpdateMyCompanySettings(companyId);
+
+  const [form, setForm] = useState<UpdateCompanyInput | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (company && !form) {
+      setForm({
+        razaoSocial: company.razaoSocial,
+        nomeFantasia: company.nomeFantasia,
+        email: company.email,
+        telefone: company.telefone,
+        whatsapp: company.whatsapp ?? "",
+        cep: company.cep,
+        endereco: company.endereco,
+        numero: company.numero,
+        complemento: company.complemento ?? "",
+        bairro: company.bairro,
+        cidade: company.cidade,
+        estado: company.estado,
+      });
+    }
+  }, [company, form]);
+
+  function updateField<K extends keyof UpdateCompanyInput>(
+    key: K,
+    value: UpdateCompanyInput[K],
+  ): void {
+    setForm((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (!form) return;
+    setErrorMessage(null);
+    try {
+      await updateCompany.mutateAsync(form);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError ? error.message : "Erro inesperado ao salvar empresa.",
+      );
+    }
+  }
+
+  if (isLoading || !form) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (isError || !company) {
+    return (
+      <Typography variant="body" color="danger">
+        Não foi possível carregar os dados da sua empresa.
+      </Typography>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Typography variant="title">Minha empresa</Typography>
+
+      {dashboard && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+          {[
+            { label: "Motoristas", value: dashboard.motoristas },
+            { label: "Responsáveis", value: dashboard.responsaveis },
+            { label: "Alunos", value: dashboard.alunos },
+            { label: "Veículos", value: dashboard.veiculos },
+            { label: "Rotas", value: dashboard.rotas },
+            { label: "Viagens", value: dashboard.viagens },
+          ].map((metric) => (
+            <Card key={metric.label}>
+              <Card.Body className="flex flex-col gap-1">
+                <Typography variant="caption" color="muted">
+                  {metric.label}
+                </Typography>
+                <Typography variant="subtitle">{metric.value}</Typography>
+              </Card.Body>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {dashboard && (
+        <Card>
+          <Card.Body className="flex items-center justify-between">
+            <Typography variant="bodySmall" color="muted">
+              Receita estimada
+            </Typography>
+            <Typography variant="subtitle">
+              {centsToBRL(dashboard.receitaEstimadaCentavos)}
+            </Typography>
+          </Card.Body>
+        </Card>
+      )}
+
+      {dashboard && dashboard.alertas.length > 0 && (
+        <Card>
+          <Card.Header title="Alertas" />
+          <Card.Body className="flex flex-col gap-2">
+            {dashboard.alertas.map((alerta) => (
+              <Typography key={alerta} variant="bodySmall" color="danger">
+                {alerta}
+              </Typography>
+            ))}
+          </Card.Body>
+        </Card>
+      )}
+
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6">
+        <Card>
+          <Card.Header title="Dados da empresa" />
+          <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField label="Razão social" isRequired>
+              <Input
+                required
+                value={form.razaoSocial}
+                onChange={(event) => updateField("razaoSocial", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Nome fantasia" isRequired>
+              <Input
+                required
+                value={form.nomeFantasia}
+                onChange={(event) => updateField("nomeFantasia", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Email" isRequired>
+              <Input
+                type="email"
+                required
+                value={form.email}
+                onChange={(event) => updateField("email", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Telefone" isRequired>
+              <Input
+                required
+                value={form.telefone}
+                onChange={(event) => updateField("telefone", event.target.value)}
+              />
+            </FormField>
+            <FormField label="WhatsApp">
+              <Input
+                value={form.whatsapp}
+                onChange={(event) => updateField("whatsapp", event.target.value)}
+              />
+            </FormField>
+          </Card.Body>
+        </Card>
+
+        <Card>
+          <Card.Header title="Endereço" />
+          <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField label="CEP" isRequired>
+              <Input
+                required
+                value={form.cep}
+                onChange={(event) => updateField("cep", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Endereço" isRequired>
+              <Input
+                required
+                value={form.endereco}
+                onChange={(event) => updateField("endereco", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Número" isRequired>
+              <Input
+                required
+                value={form.numero}
+                onChange={(event) => updateField("numero", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Complemento">
+              <Input
+                value={form.complemento}
+                onChange={(event) => updateField("complemento", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Bairro" isRequired>
+              <Input
+                required
+                value={form.bairro}
+                onChange={(event) => updateField("bairro", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Cidade" isRequired>
+              <Input
+                required
+                value={form.cidade}
+                onChange={(event) => updateField("cidade", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Estado (UF)" isRequired>
+              <Input
+                required
+                maxLength={2}
+                value={form.estado}
+                onChange={(event) => updateField("estado", event.target.value.toUpperCase())}
+              />
+            </FormField>
+          </Card.Body>
+          <Card.Footer>
+            {errorMessage && (
+              <Typography variant="bodySmall" color="danger" className="mr-auto">
+                {errorMessage}
+              </Typography>
+            )}
+            <Button type="submit" variant="primary" isLoading={updateCompany.isPending}>
+              Salvar alterações
+            </Button>
+          </Card.Footer>
+        </Card>
+      </form>
+
+      {settings && (
+        <Card>
+          <Card.Header title="Configurações" />
+          <Card.Body className="flex flex-col gap-4">
+            <FormField label="Tema">
+              <Select
+                className="max-w-xs"
+                value={settings.tema}
+                onChange={(event) =>
+                  updateSettings.mutate({ tema: event.target.value as "dark" | "light" })
+                }
+              >
+                <option value="dark">Escuro</option>
+                <option value="light">Claro</option>
+              </Select>
+            </FormField>
+            <Typography variant="caption" color="muted">
+              Canais de notificação: {settings.canaisNotificacao.join(", ") || "nenhum"}
+            </Typography>
+          </Card.Body>
+        </Card>
+      )}
+    </div>
+  );
+}

@@ -11,6 +11,15 @@
     "allowJs": false,
     "noEmit": false,
     "outDir": "./dist",
-    "removeComments": true
+    "removeComments": true,
+    // `nest-cli.json` usa `deleteOutDir: true` (apaga `dist/` via fs antes
+    // de cada build) — incompativel com `incremental` (herdado de
+    // `base.json`): o cache de `.tsbuildinfo` nao percebe que o `dist/`
+    // foi apagado por fora do tsc, e o proximo `nest build` pode terminar
+    // com exit code 0 sem emitir nenhum arquivo (bug reproduzido e
+    // corrigido durante o modulo de Empresas, Dossie 16). Desativado
+    // apenas aqui — pacotes/apps que nao usam `deleteOutDir` mantêm o
+    // ganho de velocidade do incremental vindo de `base.json`.
+    "incremental": false
   }
 }
