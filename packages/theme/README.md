@@ -1,8 +1,8 @@
 # @rotta/theme
 
-Tokens de design da Rotta — cores (dark/light), tipografia, espaçamento, raio, elevação e motion. Fonte única de verdade consumida por `@rotta/ui/web` e `@rotta/ui/native`.
+Tokens de design da Rotta — cores (dark/light), tipografia, espaçamento, raio, elevação, border (espessura), motion, opacity, breakpoints, z-index e transitions. Fonte única de verdade consumida por `@rotta/ui/web` e `@rotta/ui/native`.
 
-Especificação completa: [`docs/10-design-system-fundamentos.md`](../../docs/10-design-system-fundamentos.md).
+Especificação completa e vinculante: [`docs/24-design-system-oficial-fundamentos.md`](../../docs/24-design-system-oficial-fundamentos.md) (tokens) e [`docs/25-design-system-oficial-catalogo-de-componentes.md`](../../docs/25-design-system-oficial-catalogo-de-componentes.md) (componentes). O Dossiê 10 é o rascunho inicial, superado por estes dois.
 
 ## Uso
 
