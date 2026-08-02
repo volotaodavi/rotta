@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
+
 import type { CompanySettingEntry, CompanySettingRepository } from "./company-setting.repository";
 import type { CompanySetting } from "@prisma/client";
 

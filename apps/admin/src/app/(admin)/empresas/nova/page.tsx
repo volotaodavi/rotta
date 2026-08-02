@@ -9,6 +9,7 @@ import type { CreateCompanyInput, CompanyType } from "@rotta/api-client";
 
 import { useCreateCompany } from "@/features/companies/hooks/use-companies";
 
+
 const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
   { value: "AUTONOMO", label: "Motorista Autônomo" },
   { value: "MEI", label: "MEI" },

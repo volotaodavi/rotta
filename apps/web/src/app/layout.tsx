@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AppProviders } from "@/providers/app-providers";
+import { ServiceWorkerRegistration } from "@/providers/service-worker-registration";
+
 
 import "./globals.css";
 
@@ -20,6 +22,7 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
   return (
     <html lang="pt-BR" data-theme="dark">
       <body>
+        <ServiceWorkerRegistration />
         <AppProviders>{children}</AppProviders>
       </body>
     </html>

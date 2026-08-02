@@ -10,6 +10,7 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
+
 /**
  * E2E do módulo Empresas (Dossiê 16) — sobe a aplicação Nest completa
  * (guards/interceptors/filtros globais reais) contra o Postgres de

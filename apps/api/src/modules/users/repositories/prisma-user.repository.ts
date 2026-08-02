@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
-import type { CreateUserInput, UserRepository } from "./user.repository";
+
+import type { CreateUserInput, UpdateUserAuthStateInput, UserRepository } from "./user.repository";
 import type { Prisma, User } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
@@ -32,5 +33,9 @@ export class PrismaUserRepository implements UserRepository {
 
   findByCpf(cpf: string): Promise<User | null> {
     return this.prisma.user.findUnique({ where: { cpf } });
+  }
+
+  updateAuthState(id: string, data: UpdateUserAuthStateInput): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data });
   }
 }

@@ -6,6 +6,7 @@ import type { CompanySettings, UpdateCompanyInput } from "@rotta/api-client";
 
 import { companiesApi } from "@/lib/api-client";
 
+
 /**
  * Hooks de dados da "Minha Empresa" (Dossie 16) — visão da própria
  * empresa pelo usuário Administrador/Gestor, não a listagem de tenants

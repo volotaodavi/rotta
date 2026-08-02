@@ -15,6 +15,14 @@ export interface CreateUserInput {
   avatarUrl?: string;
 }
 
+/** Campos de estado de autenticação atualizáveis (Dossiê 15, `AUTH-*`) — nunca um passthrough genérico de `Prisma.UserUpdateInput`. */
+export interface UpdateUserAuthStateInput {
+  passwordHash?: string;
+  tentativasLoginFalhas?: number;
+  bloqueadoAte?: Date | null;
+  consentimentoLgpdAceitoEm?: Date;
+}
+
 export interface UserRepository {
   /** `tx` opcional: usado quando a criação precisa ser atômica com outras escritas (ex. Dossiê 16 — Company+User+Membership). */
   create(input: CreateUserInput, tx?: Prisma.TransactionClient): Promise<User>;
@@ -22,4 +30,5 @@ export interface UserRepository {
   findByEmail(email: string): Promise<User | null>;
   findByTelefone(telefone: string): Promise<User | null>;
   findByCpf(cpf: string): Promise<User | null>;
+  updateAuthState(id: string, data: UpdateUserAuthStateInput): Promise<User>;
 }

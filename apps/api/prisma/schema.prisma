@@ -155,6 +155,7 @@ model Company {
   memberships Membership[]
   settings    CompanySetting[]
   auditLogs   AuditLog[]
+  invites     Invite[]
 
   @@index([status])
   @@index([tipo])
@@ -195,6 +196,12 @@ model CompanySetting {
 /// suficiente da identidade (incluindo `passwordHash`) para que o
 /// cadastro de Empresa possa criar o primeiro usuário administrador sem
 /// que o Auth precise remodelar esta tabela depois.
+///
+/// Campos de autenticação (Dossiê 15, `AUTH-02`/`RN-AUTH-02`) chegam
+/// junto com o módulo Auth: `tentativasLoginFalhas`/`bloqueadoAte`
+/// implementam o bloqueio progressivo após 5 tentativas malsucedidas em
+/// 15 minutos; `consentimentoLgpdAceitoEm` registra o momento da
+/// aceitação dos termos no cadastro (LGPD, nunca inferido/assumido).
 model User {
   id String @id @default(uuid()) @db.Uuid
 
@@ -207,12 +214,27 @@ model User {
   status    UserStatus @default(ATIVO)
   avatarUrl String?
 
+  tentativasLoginFalhas     Int       @default(0)
+  bloqueadoAte              DateTime?
+  consentimentoLgpdAceitoEm DateTime?
+
+  /// Marca a conta como Administrador Rotta (Dossie 8, Secao 2: "unico
+  /// papel sem tenantId, funcionario da Rotta, contas criadas
+  /// internamente pela equipe, nunca por self-service") — nao modelado
+  /// como uma Company/Membership falsa; o login le esta flag ANTES de
+  /// procurar Membership. Nunca setavel por nenhuma rota publica.
+  isAdminRotta Boolean @default(false)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  memberships    Membership[]
-  auditLogs      AuditLog[]
+  memberships         Membership[]
+  auditLogs           AuditLog[]
+  sessions            Session[]
+  passwordResetTokens PasswordResetToken[]
+  invitesCriados      Invite[]             @relation("InviteCriadoPor")
+  invitesUsados       Invite[]             @relation("InviteUsadoPor")
 
   @@map("users")
 }
@@ -226,9 +248,9 @@ model User {
 model Membership {
   id String @id @default(uuid()) @db.Uuid
 
-  userId    String @db.Uuid
-  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  companyId String @db.Uuid
+  userId    String  @db.Uuid
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   /// Valor de `Role` (Dossie 8, Secao 2) — string, nao enum do Prisma,
@@ -279,4 +301,100 @@ model AuditLog {
 
   @@index([companyId, entidadeTipo, entidadeId, createdAt])
   @@map("audit_logs")
+}
+
+// =============================================================================
+// Session/PasswordResetToken/Invite — modulo Auth (Dossie 15, `AUTH-*`)
+// =============================================================================
+
+/// Uma sessao = um refresh token ativo em um dispositivo (Dossie 12,
+/// Secao 4.3/4.4 e `AUTH-06`, "Meus dispositivos"). O valor bruto do
+/// refresh token nunca e persistido — apenas seu hash (mesma logica de
+/// nao guardar segredo em claro que `passwordHash`), permitindo revogar
+/// (`revokedAt`) e detectar reuso (rotacao) sem expor o token caso o
+/// banco vaze. `deviceName`/`ip`/`userAgent` sao o que a tela "Meus
+/// dispositivos" exibe; nenhum dado de geolocalizacao precisa e
+/// resolvido (aproximado o suficiente para o usuario reconhecer o
+/// dispositivo, nunca usado para decisao de seguranca automatica).
+///
+/// `tenantId`/`role`/`vinculoId` fixam sob qual `Membership` esta sessao
+/// foi emitida (Dossie 15, `AUTH-02`) — o `/auth/refresh` reemite um
+/// `access_token` para o MESMO vinculo, nunca permite que o cliente troque
+/// de perfil silenciosamente apenas girando o refresh token; trocar de
+/// perfil exige um novo login com o seletor.
+model Session {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  refreshTokenHash String  @unique
+  deviceName       String?
+  ip               String?
+  userAgent        String?
+
+  tenantId  String? @db.Uuid
+  role      String
+  vinculoId String
+
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+  expiresAt  DateTime
+  revokedAt  DateTime?
+
+  @@index([userId, revokedAt])
+  @@map("sessions")
+}
+
+/// Token de uso unico para o fluxo "Esqueci minha senha" (`AUTH-03`).
+/// `RN-AUTH-04`: uma redefinicao bem-sucedida revoga todas as `Session`
+/// ativas do usuario — implementado na camada de aplicacao
+/// (`AuthService`), nunca aqui (este model so guarda o token em si).
+model PasswordResetToken {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+/// Convite de papel emitido por uma Empresa/Gestor (ex. motorista) —
+/// nunca cria uma nova `Company`, apenas um `Membership` no tenant
+/// convidante quando resgatado. `codigo` e o valor curto mostrado ao
+/// usuario (ex. "M586PO"); o link de convite (`RTA-8F29KQ` no
+/// briefing) e apenas esse mesmo codigo embutido em uma URL do site —
+/// nao um valor separado. Estado e modelado por timestamps
+/// (`usadoEm`/`revogadoEm`) em vez de um enum de status, seguindo a
+/// mesma convencao ja usada em `Company.deletedAt`/`Membership.encerradoEm`.
+model Invite {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Valor de `Role` (mesma convencao de `Membership.role`) — papel que
+  /// o convidado assumira ao resgatar.
+  role String
+
+  codigo String @unique
+
+  criadoPorId String @db.Uuid
+  criadoPor   User   @relation("InviteCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+
+  usadoPorId String? @db.Uuid
+  usadoPor   User?   @relation("InviteUsadoPor", fields: [usadoPorId], references: [id], onDelete: SetNull)
+
+  expiresAt  DateTime
+  usadoEm    DateTime?
+  revogadoEm DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+  @@map("invites")
 }

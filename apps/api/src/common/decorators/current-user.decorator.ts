@@ -10,12 +10,19 @@ import type { Role } from "@/shared/enums";
  * Administrador Rotta e funcionario da propria Rotta, nunca vinculado a
  * uma Empresa/tenant (Dossie 8, Secao 2). Todo outro papel sempre tem um
  * `tenantId` presente (o `Membership` que originou o login).
+ *
+ * `sessionId` (Dossie 15, `AUTH-05`/`AUTH-06`) identifica QUAL `Session`
+ * (dispositivo) emitiu este token — opcional porque tokens de teste
+ * construidos antes do modulo Auth existir (ex. `jwt-test.helper.ts` do
+ * modulo de Empresas) nao exercitam nenhuma rota de sessao; todo token
+ * emitido pelo `AuthService` real sempre o preenche.
  */
 export interface AuthenticatedUser {
   sub: string;
   tenantId: string | null;
   role: Role;
   vinculoId: string;
+  sessionId?: string;
 }
 
 /**

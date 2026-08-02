@@ -1,13 +1,12 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { getStoredCompanyId } from "@rotta/auth";
+import { useAuth } from "@rotta/auth/web";
 import { Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
 import { useEffect, useState, type FormEvent } from "react";
 
 import type { UpdateCompanyInput } from "@rotta/api-client";
 
-import { NoCompanyContext } from "@/features/company/components/no-company-context";
 import {
   useMyCompany,
   useMyCompanyDashboard,
@@ -15,6 +14,7 @@ import {
   useUpdateMyCompany,
   useUpdateMyCompanySettings,
 } from "@/features/company/hooks/use-company";
+
 
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -26,28 +26,21 @@ function centsToBRL(cents: number): string {
  * uma única tela: decisão deliberada de escopo (ver relatório de
  * entrega do módulo) — o Admin da própria empresa só tem UMA empresa
  * para olhar, então não há razão de negócio para 4 rotas separadas
- * como existe em `apps/admin` (que lista N tenants).
+ * como existe em `apps/admin` (que lista N tenants). `companyId` vem
+ * da sessão real (Dossiê 15), nunca mais de uma ponte de `localStorage`.
  */
 export default function MinhaEmpresaPage(): JSX.Element {
-  const [companyId, setCompanyId] = useState<string | null | undefined>(undefined);
+  const { user } = useAuth();
 
-  useEffect(() => {
-    setCompanyId(getStoredCompanyId());
-  }, []);
-
-  if (companyId === undefined) {
+  if (!user?.companyId) {
     return (
-      <div className="flex justify-center py-12">
-        <Spinner size="lg" />
-      </div>
+      <Typography variant="body" color="danger">
+        Sua conta não está vinculada a nenhuma empresa.
+      </Typography>
     );
   }
 
-  if (!companyId) {
-    return <NoCompanyContext />;
-  }
-
-  return <MinhaEmpresaContent companyId={companyId} />;
+  return <MinhaEmpresaContent companyId={user.companyId} />;
 }
 
 function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element {

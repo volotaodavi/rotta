@@ -1,34 +1,22 @@
 import type { ExpoConfig } from "expo/config";
 
 /**
- * Configuracao dinamica do Expo — gera dois produtos de loja distintos
- * ("Rotta Motorista" e "Rotta Familia") a partir do MESMO codigo-fonte
- * (Dossie 9, Secao 4.2.1), diferenciados apenas por variante de build
- * (EAS Build profiles), nunca por duplicacao de projeto.
+ * Configuracao do Expo — um unico aplicativo "Rotta" (Dossie 15: "Existira
+ * apenas UM aplicativo... Nunca aplicativos separados por papel"). Decisao
+ * que substitui o plano anterior de dois produtos de loja diferenciados por
+ * variante de build (Dossie 9, Secao 4.2.1) — o papel do usuario logado
+ * (Motorista/Monitor/Responsavel/...) agora e resolvido em tempo de execucao
+ * pela sessao real (`@rotta/auth`), nunca por variante de build ou app
+ * distinto.
  *
  * Nenhum icone/splash real foi adicionado ainda (fase de fundacao) —
  * `icon`/`splash` serao configurados junto com a identidade visual real
  * do Dossie 10.
  */
-type AppVariant = "driver" | "parent";
-
-const variant = (process.env.EXPO_PUBLIC_APP_VARIANT as AppVariant | undefined) ?? "driver";
-
-const variantConfig: Record<AppVariant, Pick<ExpoConfig, "name" | "slug" | "scheme">> = {
-  driver: {
-    name: "Rotta Motorista",
-    slug: "rotta-motorista",
-    scheme: "rotta-motorista",
-  },
-  parent: {
-    name: "Rotta Família",
-    slug: "rotta-familia",
-    scheme: "rotta-familia",
-  },
-};
-
 export default (): ExpoConfig => ({
-  ...variantConfig[variant],
+  name: "Rotta",
+  slug: "rotta",
+  scheme: "rotta",
   owner: "rotta",
   version: "0.1.0",
   orientation: "portrait",
@@ -37,7 +25,7 @@ export default (): ExpoConfig => ({
   platforms: ["ios", "android"],
   ios: {
     supportsTablet: false,
-    bundleIdentifier: variant === "driver" ? "br.com.rotta.motorista" : "br.com.rotta.familia",
+    bundleIdentifier: "br.com.rotta.app",
     infoPlist: {
       // Justificativa de uso de localizacao em segundo plano — exigida
       // pela App Store Review (Dossie 9, Secao 6.3). Texto final a
@@ -47,11 +35,8 @@ export default (): ExpoConfig => ({
     },
   },
   android: {
-    package: variant === "driver" ? "br.com.rotta.motorista" : "br.com.rotta.familia",
+    package: "br.com.rotta.app",
     permissions: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
-  },
-  extra: {
-    appVariant: variant,
   },
   plugins: ["expo-secure-store"],
 });

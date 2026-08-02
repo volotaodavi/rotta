@@ -9,6 +9,7 @@ import type { UpdateCompanyInput } from "@rotta/api-client";
 
 import { useCompany, useUpdateCompany } from "@/features/companies/hooks/use-companies";
 
+
 type FormState = UpdateCompanyInput;
 
 /** Edição de empresa (Dossiê 16, Seção 5.1) — não permite alterar CPF/CNPJ, tipo nem o administrador, apenas dados cadastrais. */

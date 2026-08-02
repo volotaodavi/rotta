@@ -1,16 +1,22 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import { passwordEqualsIdentifier } from "@rotta/validators";
 
+
 import { MEMBERSHIP_REPOSITORY, USER_REPOSITORY } from "./users.constants";
 
 import type {
   CreateMembershipInput,
   MembershipRepository,
+  MembershipWithCompany,
 } from "./repositories/membership.repository";
 import type { UserRepository } from "./repositories/user.repository";
 import type { Membership, Prisma, User } from "@prisma/client";
 
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
+
+/** `RN-AUTH-02` (Dossiê 15) — bloqueio temporário após tentativas malsucedidas. */
+const MAX_FAILED_LOGIN_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 export interface CreateUserWithPasswordInput {
   nome: string;
@@ -115,5 +121,58 @@ export class UsersService {
 
   listMembershipsByCompany(companyId: string): Promise<Membership[]> {
     return this.membershipRepository.listByCompany(companyId);
+  }
+
+  findActiveMembership(userId: string, companyId: string): Promise<Membership | null> {
+    return this.membershipRepository.findActive(userId, companyId);
+  }
+
+  findById(id: string): Promise<User | null> {
+    return this.userRepository.findById(id);
+  }
+
+  /** Vínculos ativos do usuário em QUALQUER tenant (Dossiê 15, `AUTH-02` — seletor de perfil no login). */
+  listActiveMembershipsWithCompany(userId: string): Promise<MembershipWithCompany[]> {
+    return this.membershipRepository.listActiveByUserWithCompany(userId);
+  }
+
+  isLockedOut(user: User): boolean {
+    return Boolean(user.bloqueadoAte && user.bloqueadoAte.getTime() > Date.now());
+  }
+
+  /**
+   * `RN-AUTH-02`: após `MAX_FAILED_LOGIN_ATTEMPTS` tentativas malsucedidas
+   * consecutivas, a conta entra em bloqueio temporário. Simplificação
+   * deliberada em relação ao texto literal da regra ("em um intervalo de
+   * 15 minutos"): em vez de uma janela deslizante (exigiria guardar o
+   * timestamp de cada tentativa), o contador é zerado a cada bloqueio
+   * aplicado — proteção equivalente na prática, sem tabela adicional.
+   */
+  async recordLoginFailure(user: User): Promise<void> {
+    const attempts = user.tentativasLoginFalhas + 1;
+    if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+      await this.userRepository.updateAuthState(user.id, {
+        tentativasLoginFalhas: 0,
+        bloqueadoAte: new Date(Date.now() + LOCKOUT_DURATION_MS),
+      });
+      return;
+    }
+    await this.userRepository.updateAuthState(user.id, { tentativasLoginFalhas: attempts });
+  }
+
+  async resetLoginFailures(userId: string): Promise<void> {
+    await this.userRepository.updateAuthState(userId, {
+      tentativasLoginFalhas: 0,
+      bloqueadoAte: null,
+    });
+  }
+
+  async updatePassword(userId: string, newPasswordHash: string): Promise<void> {
+    await this.userRepository.updateAuthState(userId, { passwordHash: newPasswordHash });
+  }
+
+  /** Melhor esforço: nunca falha o fluxo chamador por si só (mesmo espírito de `AuditLogService.record`). */
+  async recordLgpdConsent(userId: string): Promise<void> {
+    await this.userRepository.updateAuthState(userId, { consentimentoLgpdAceitoEm: new Date() });
   }
 }

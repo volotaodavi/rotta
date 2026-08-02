@@ -36,6 +36,7 @@ import { MonitorsModule } from "@/modules/monitors/monitors.module";
 import { NotificationsModule } from "@/modules/notifications/notifications.module";
 import { ParentsModule } from "@/modules/parents/parents.module";
 import { ReportsModule } from "@/modules/reports/reports.module";
+import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
 import { SchoolsModule } from "@/modules/schools/schools.module";
 import { SettingsModule } from "@/modules/settings/settings.module";
@@ -89,6 +90,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     AuditModule,
     LogsModule,
     AnalyticsModule,
+    RottaAiModule,
   ],
   providers: [
     // --- Guards globais (Dossie 12, Secao 5.1) ---

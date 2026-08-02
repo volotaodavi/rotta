@@ -1,6 +1,11 @@
 import { Injectable } from "@nestjs/common";
 
-import type { CreateMembershipInput, MembershipRepository } from "./membership.repository";
+
+import type {
+  CreateMembershipInput,
+  MembershipRepository,
+  MembershipWithCompany,
+} from "./membership.repository";
 import type { Membership, MembershipStatus, Prisma } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
@@ -39,6 +44,16 @@ export class PrismaMembershipRepository implements MembershipRepository {
       this.prisma.membership.update({
         where: { id },
         data: { status, encerradoEm: status === "ATIVO" ? null : new Date() },
+      }),
+    );
+  }
+
+  listActiveByUserWithCompany(userId: string): Promise<MembershipWithCompany[]> {
+    return this.prisma.withBypass(
+      this.prisma.membership.findMany({
+        where: { userId, status: "ATIVO" },
+        include: { company: true },
+        orderBy: { iniciadoEm: "asc" },
       }),
     );
   }

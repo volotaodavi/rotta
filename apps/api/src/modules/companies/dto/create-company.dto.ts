@@ -18,6 +18,7 @@ import { CreateCompanyAdminDto } from "./create-company-admin.dto";
 
 import { IsBrazilianPhone, IsCep, IsCpfOrCnpj } from "@/common/validators";
 
+
 /** Cadastro de Empresa (Dossiê 16, `EMP-01`) — sempre cria o tenant + o primeiro usuário administrador. */
 export class CreateCompanyDto {
   @ApiProperty({ example: "Transportes Rotta LTDA" })

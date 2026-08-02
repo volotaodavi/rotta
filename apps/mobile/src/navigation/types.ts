@@ -5,7 +5,14 @@
  */
 
 export type AuthStackParamList = {
+  Entrada: undefined;
   Login: undefined;
+  CriarConta: undefined;
+  AreaProfissional: undefined;
+  AreaPessoal: undefined;
+  CriarEmpresaWebView: undefined;
+  ConviteCodigo: undefined;
+  ConvitePreview: { codigo: string };
 };
 
 export type DriverTabParamList = {

@@ -6,10 +6,15 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   EXPO_PUBLIC_API_URL: z.string().url(),
-  EXPO_PUBLIC_APP_VARIANT: z.enum(["driver", "parent"]).default("driver"),
+  /**
+   * URL do Site/Painel Web (Dossie 15, `AUTH-01`) — nunca hardcoded: em
+   * dev aponta para `http://localhost:3000`, em producao para o dominio
+   * real. Usada para abrir "Criar Empresa" em WebView integrada.
+   */
+  EXPO_PUBLIC_WEB_URL: z.string().url(),
 });
 
 export const env = envSchema.parse({
   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
-  EXPO_PUBLIC_APP_VARIANT: process.env.EXPO_PUBLIC_APP_VARIANT,
+  EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
 });
