@@ -1,4 +1,4 @@
-import { createApiClient, createAuthEndpoints } from "@rotta/api-client";
+import { createApiClient, createAuthEndpoints, createVehiclesEndpoints } from "@rotta/api-client";
 import { getAccessToken } from "@rotta/auth/native";
 
 import { env } from "@/config/env";
@@ -15,3 +15,4 @@ const apiClient = createApiClient({
 });
 
 export const authApi = createAuthEndpoints(apiClient);
+export const vehiclesApi = createVehiclesEndpoints(apiClient);

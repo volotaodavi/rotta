@@ -9,4 +9,5 @@
 
 export * from "./endpoints/auth";
 export * from "./endpoints/companies";
+export * from "./endpoints/vehicles";
 export * from "./http";

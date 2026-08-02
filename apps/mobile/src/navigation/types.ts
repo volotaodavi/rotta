@@ -18,7 +18,18 @@ export type AuthStackParamList = {
 export type DriverTabParamList = {
   Inicio: undefined;
   Historico: undefined;
+  Veiculo: undefined;
   Perfil: undefined;
+};
+
+/** Stack de "Meu Veículo" (briefing "APP MOBILE"), aberta a partir da aba `Veiculo` do Motorista/Monitor. */
+export type VeiculoStackParamList = {
+  MeuVeiculo: undefined;
+  Fotos: undefined;
+  Documentos: undefined;
+  Historico: undefined;
+  Ocorrencias: undefined;
+  Checklist: undefined;
 };
 
 export type ParentTabParamList = {

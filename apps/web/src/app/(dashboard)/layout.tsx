@@ -2,6 +2,7 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Button, Spinner, Typography } from "@rotta/ui/web";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -35,7 +36,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <Typography variant="subtitle">{user?.companyName ?? "Rotta"}</Typography>
+        <div className="flex items-center gap-8">
+          <Typography variant="subtitle">{user?.companyName ?? "Rotta"}</Typography>
+          <nav className="flex items-center gap-4">
+            <Link
+              href="/empresa"
+              className="text-sm text-text-muted transition-colors hover:text-text"
+            >
+              Minha Empresa
+            </Link>
+            <Link
+              href="/veiculos"
+              className="text-sm text-text-muted transition-colors hover:text-text"
+            >
+              Veículos
+            </Link>
+          </nav>
+        </div>
         <Button
           variant="ghost"
           size="sm"

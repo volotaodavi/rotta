@@ -43,6 +43,12 @@ export interface ApiClientConfig {
 
 export interface RequestOptions extends Omit<RequestInit, "body"> {
   body?: unknown;
+  /**
+   * `"blob"` para respostas binárias (ex. exportação de veículos em
+   * PDF/Excel/CSV, Dossiê 13 módulo Veículos — "EXPORTAÇÃO") — evita
+   * que o wrapper tente `response.json()` num arquivo. Padrão `"json"`.
+   */
+  responseType?: "json" | "blob";
 }
 
 export interface ApiClient {
@@ -57,15 +63,24 @@ export interface ApiClient {
 export function createApiClient(config: ApiClientConfig): ApiClient {
   async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
     const token = (await config.getAccessToken?.()) ?? null;
+    // `FormData` (upload de foto/documento) nunca é serializado em JSON
+    // nem leva `Content-Type` manual — o `fetch` monta o boundary
+    // multipart sozinho a partir do corpo.
+    const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
 
     const response = await fetch(`${config.baseUrl}${path}`, {
       ...options,
       headers: {
-        "Content-Type": "application/json",
+        ...(isFormData ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
-      body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+      body:
+        options.body === undefined
+          ? undefined
+          : isFormData
+            ? (options.body as FormData)
+            : JSON.stringify(options.body),
     });
 
     if (!response.ok) {
@@ -78,6 +93,10 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
 
     if (response.status === 204) {
       return undefined as T;
+    }
+
+    if (options.responseType === "blob") {
+      return (await response.blob()) as T;
     }
 
     return (await response.json()) as T;

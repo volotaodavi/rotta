@@ -1,6 +1,8 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StyleSheet, Text, View } from "react-native";
 
+import { VeiculoNavigator } from "./VeiculoNavigator";
+
 import type { DriverTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<DriverTabParamList>();
@@ -26,6 +28,7 @@ export function DriverNavigator(): JSX.Element {
     <Tab.Navigator screenOptions={{ headerShown: false }}>
       <Tab.Screen name="Inicio">{() => <PlaceholderScreen label="Início" />}</Tab.Screen>
       <Tab.Screen name="Historico">{() => <PlaceholderScreen label="Histórico" />}</Tab.Screen>
+      <Tab.Screen name="Veiculo" component={VeiculoNavigator} options={{ title: "Veículo" }} />
       <Tab.Screen name="Perfil">{() => <PlaceholderScreen label="Perfil" />}</Tab.Screen>
     </Tab.Navigator>
   );

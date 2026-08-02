@@ -67,6 +67,110 @@ enum MembershipStatus {
   REMOVIDO
 }
 
+/// Carroceria/porte do veículo (Dossie 13, Secao 9, `VEI-01`).
+enum VehicleType {
+  AUTOMOVEL
+  SEDAN
+  SUV
+  MINIVAN
+  VAN
+  MICRO_ONIBUS
+  ONIBUS
+  OUTRO
+}
+
+/// Finalidade de uso do veículo — separado de `VehicleType` (que é a
+/// carroceria) porque um mesmo tipo (ex. Van) pode operar tanto
+/// transporte escolar quanto fretamento avulso.
+enum VehicleCategory {
+  ESCOLAR
+  FRETAMENTO
+  PARTICULAR
+  OUTRO
+}
+
+/// Ciclo de vida operacional do veículo (`VEI-06`). Transições são
+/// sempre explícitas via `VehiclesService` (nunca infere-se
+/// `EM_VIAGEM`/`MANUTENCAO` por efeito colateral de outro módulo sem
+/// uma chamada própria) — `TripsModule`/`RoutesModule` ainda não
+/// existem (ver nota em `Vehicle.viagemAtualId`), então por ora o único
+/// disparador real de `EM_VIAGEM` é a própria API (endpoint de status).
+enum VehicleStatus {
+  DISPONIVEL
+  EM_VIAGEM
+  MANUTENCAO
+  RESERVA
+  INATIVO
+  BLOQUEADO
+}
+
+/// Tipo de documento anexável ao veículo (briefing "DOCUMENTAÇÃO").
+enum VehicleDocumentType {
+  CRLV
+  LICENCIAMENTO
+  SEGURO
+  LAUDO
+  VISTORIA
+  FOTO
+  OUTRO
+}
+
+/// Resultado da análise assíncrona da Rotta AI sobre um
+/// `VehicleDocument` (briefing "ROTTA AI"). `INDISPONIVEL` é o valor
+/// hoje sempre atribuído — `RottaAiService` é um stub (Dossiê 15) sem
+/// provedor de visão computacional/OCR contratado; o upload do
+/// documento nunca fica bloqueado esperando por ela.
+enum VehicleDocumentAiStatus {
+  PENDENTE
+  APROVADO
+  REPROVADO
+  INDISPONIVEL
+}
+
+/// Tipo de manutenção (briefing "MANUTENÇÃO").
+enum VehicleMaintenanceType {
+  TROCA_OLEO
+  PNEUS
+  FREIOS
+  REVISAO
+  VISTORIA
+  LIMPEZA
+  OUTRA
+}
+
+/// Tipo de lembrete automático (briefing "LEMBRETES").
+enum VehicleReminderType {
+  LICENCIAMENTO
+  SEGURO
+  REVISAO
+  TROCA_OLEO
+  MANUTENCAO_PREVENTIVA
+  VISTORIA
+}
+
+/// Estado do lembrete — computado como "vencendo"/"vencido" na camada de
+/// aplicação a partir de `dataAlvo` (nunca um job agendado só para
+/// isso); este enum guarda apenas o estado que exige ação humana.
+enum VehicleReminderStatus {
+  PENDENTE
+  CONCLUIDO
+  CANCELADO
+}
+
+/// Papel do vínculo em `VehicleAssignment` (briefing "VINCULAÇÃO").
+enum VehicleAssignmentRole {
+  MOTORISTA
+  MONITOR
+}
+
+/// Severidade de uma `VehicleOccurrence` reportada pelo app (briefing
+/// "Ocorrências").
+enum VehicleOccurrenceSeverity {
+  BAIXA
+  MEDIA
+  ALTA
+}
+
 // =============================================================================
 // Plan — estrutura extensivel de planos comerciais (Dossie 16, Secao "Plano")
 // =============================================================================
@@ -156,6 +260,7 @@ model Company {
   settings    CompanySetting[]
   auditLogs   AuditLog[]
   invites     Invite[]
+  vehicles    Vehicle[]
 
   @@index([status])
   @@index([tipo])
@@ -235,6 +340,20 @@ model User {
   passwordResetTokens PasswordResetToken[]
   invitesCriados      Invite[]             @relation("InviteCriadoPor")
   invitesUsados       Invite[]             @relation("InviteUsadoPor")
+
+  /// Relações do módulo Veículos (Dossiê 13, Secao 9) — um `User` pode
+  /// ser referenciado por um `Vehicle`/`VehicleDocument`/etc. de várias
+  /// formas distintas (quem enviou o documento vs. quem foi o último
+  /// motorista vs. quem registrou uma manutenção), daí os múltiplos
+  /// relacionamentos nomeados, mesmo padrão de `InviteCriadoPor`/`InviteUsadoPor`.
+  veiculosUltimoMotorista       Vehicle[]            @relation("VehicleUltimoMotorista")
+  veiculosUltimoMonitor         Vehicle[]            @relation("VehicleUltimoMonitor")
+  documentosVeiculoEnviados     VehicleDocument[]    @relation("VehicleDocumentUploadedBy")
+  manutencoesVeiculoRegistradas VehicleMaintenance[] @relation("VehicleMaintenanceRegistradoPor")
+  vinculosVeiculo               VehicleAssignment[]  @relation("VehicleAssignmentUser")
+  vinculosVeiculoCriados        VehicleAssignment[]  @relation("VehicleAssignmentCriadoPor")
+  checklistsVeiculo             VehicleChecklist[]   @relation("VehicleChecklistMotorista")
+  ocorrenciasVeiculoReportadas  VehicleOccurrence[]  @relation("VehicleOccurrenceReportadoPor")
 
   @@map("users")
 }
@@ -397,4 +516,266 @@ model Invite {
 
   @@index([companyId])
   @@map("invites")
+}
+
+// =============================================================================
+// Vehicle — modulo Veiculos (Dossie 13, Secao 9)
+// =============================================================================
+
+/// Veículo do tenant (briefing "Gestão de Veículos"). "Todo veículo
+/// obrigatoriamente pertence a um único Tenant... Nunca poderá existir
+/// compartilhamento de veículos entre empresas diferentes" — RLS por
+/// `companyId` (mesmo mecanismo de `Membership`/`Invite`).
+///
+/// `placa` é `@unique` GLOBALMENTE (não `@@unique([companyId, placa])`)
+/// — mesma decisão de `Company.cpfCnpj`: identifica um veículo físico
+/// real, então a checagem de duplicidade do briefing precisa valer
+/// mesmo entre tenants diferentes (um veículo não pode ser cadastrado
+/// duas vezes na plataforma), apesar de a visibilidade de linhas
+/// continuar isolada por RLS.
+///
+/// Campos "Última posição/viagem/motorista/monitor" (briefing
+/// "LOCALIZAÇÃO") são um snapshot desnormalizado, atualizado pelos
+/// próprios endpoints deste módulo (posição e vínculo) — não existe
+/// ainda um pipeline de GPS/Trips real (`GpsModule`/`TripsModule` são
+/// stubs vazios); `viagemAtualId` é deliberadamente uma `String?` sem
+/// `@relation` (nenhuma tabela de Viagem existe para referenciar ainda)
+/// — populado quando o módulo de Viagens existir, documentado como
+/// lacuna conhecida (mesma disciplina do stub da Rotta AI).
+model Vehicle {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  placa                 String
+  modelo                String
+  marca                 String?
+  ano                   Int?
+  cor                   String?
+  renavam               String?
+  chassi                String?
+  capacidadePassageiros Int
+  tipo                  VehicleType
+  categoria             VehicleCategory @default(ESCOLAR)
+  observacoes           String?
+  fotoUrl               String?
+
+  status VehicleStatus @default(DISPONIVEL)
+
+  quilometragemAtual Int @default(0)
+
+  ultimaLatitude  Decimal?  @db.Decimal(9, 6)
+  ultimaLongitude Decimal?  @db.Decimal(9, 6)
+  ultimaPosicaoEm DateTime?
+  /// Sem `@relation` — ver nota do model acima ("Viagens" ainda não existe).
+  viagemAtualId   String?
+
+  ultimoMotoristaId String? @db.Uuid
+  ultimoMotorista   User?   @relation("VehicleUltimoMotorista", fields: [ultimoMotoristaId], references: [id], onDelete: SetNull)
+  ultimoMonitorId   String? @db.Uuid
+  ultimoMonitor     User?   @relation("VehicleUltimoMonitor", fields: [ultimoMonitorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Soft delete — "Nunca apagar registros" (briefing "VINCULAÇÃO"),
+  /// mesma convenção de `Company.deletedAt`.
+  deletedAt DateTime?
+
+  documentos  VehicleDocument[]
+  manutencoes VehicleMaintenance[]
+  lembretes   VehicleReminder[]
+  vinculos    VehicleAssignment[]
+  checklists  VehicleChecklist[]
+  ocorrencias VehicleOccurrence[]
+
+  @@unique([placa])
+  @@index([companyId, status])
+  @@index([companyId, tipo])
+  @@index([companyId, deletedAt])
+  @@map("vehicles")
+}
+
+/// Documento/foto anexado ao veículo (briefing "DOCUMENTAÇÃO"). `companyId`
+/// é desnormalizado de `vehicleId` (sem `@relation` própria para
+/// `Company` — evita inflar `Company` com mais um array de volta só
+/// para permitir que a policy RLS leia a coluna) apenas para a policy
+/// de RLS e para filtrar sem precisar de join; a integridade
+/// referencial real vem de `vehicleId` (`onDelete: Cascade`).
+model VehicleDocument {
+  id        String  @id @default(uuid()) @db.Uuid
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+
+  /// Preenchido quando o documento é um anexo de uma manutenção
+  /// específica (briefing "MANUTENÇÃO" — "Anexos"), em vez de um
+  /// documento do veículo em si (CRLV/Seguro/etc.).
+  maintenanceId String?             @db.Uuid
+  maintenance   VehicleMaintenance? @relation(fields: [maintenanceId], references: [id], onDelete: SetNull)
+
+  tipo         VehicleDocumentType
+  nomeOriginal String
+  mimeType     String
+  fileUrl      String
+  vencimentoEm DateTime?
+
+  /// Análise assíncrona da Rotta AI (briefing "ROTTA AI") — sempre
+  /// `INDISPONIVEL` hoje (`RottaAiService` é um stub, Dossiê 15); o
+  /// upload em si nunca é bloqueado esperando por ela.
+  rottaAiStatus              VehicleDocumentAiStatus @default(PENDENTE)
+  rottaAiQualidadeOk         Boolean?
+  rottaAiLegivel             Boolean?
+  rottaAiSuspeitaAdulteracao Boolean?
+  rottaAiObservacoes         String?
+  rottaAiAnalisadoEm         DateTime?
+
+  uploadedByUserId String @db.Uuid
+  uploadedBy       User   @relation("VehicleDocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  /// Soft delete — histórico de documentos anteriores nunca é apagado
+  /// fisicamente (briefing "Sempre manter histórico").
+  deletedAt DateTime?
+
+  @@index([companyId, vehicleId, tipo])
+  @@index([companyId, vencimentoEm])
+  @@map("vehicle_documents")
+}
+
+/// Registro de manutenção (briefing "MANUTENÇÃO") — histórico
+/// append-only (nunca editado após criado, apenas `observacoes`
+/// poderia em tese ser corrigida, mas o módulo não expõe update:
+/// qualquer correção é um novo registro, preservando a trilha real do
+/// que foi feito no veículo).
+model VehicleMaintenance {
+  id        String  @id @default(uuid()) @db.Uuid
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+
+  tipo          VehicleMaintenanceType
+  data          DateTime
+  quilometragem Int?
+  valorCentavos Int?
+  fornecedor    String?
+  observacoes   String?
+
+  registradoPorId String @db.Uuid
+  registradoPor   User   @relation("VehicleMaintenanceRegistradoPor", fields: [registradoPorId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  anexos VehicleDocument[]
+
+  @@index([companyId, vehicleId, tipo])
+  @@index([companyId, data])
+  @@map("vehicle_maintenances")
+}
+
+/// Lembrete automático de vencimento (briefing "LEMBRETES").
+/// `origemDocumentoId` (sem `@relation` — apenas referência informativa)
+/// é preenchido quando o lembrete foi auto-gerado a partir do
+/// `vencimentoEm` de um `VehicleDocument` (CRLV/Seguro/Licenciamento/
+/// Vistoria); lembretes de revisão/troca de óleo são criados
+/// manualmente (por data OU por quilometragem-alvo).
+model VehicleReminder {
+  id        String  @id @default(uuid()) @db.Uuid
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+
+  tipo              VehicleReminderType
+  dataAlvo          DateTime
+  quilometragemAlvo Int?
+  status            VehicleReminderStatus @default(PENDENTE)
+  observacoes       String?
+  origemDocumentoId String?               @db.Uuid
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  concluidoEm DateTime?
+
+  @@index([companyId, vehicleId, status])
+  @@index([companyId, dataAlvo])
+  @@map("vehicle_reminders")
+}
+
+/// Vínculo Veículo<->Motorista/Monitor (briefing "VINCULAÇÃO") — "Um
+/// veículo poderá ser utilizado por diferentes motoristas ao longo do
+/// tempo... Todo histórico deverá ser preservado." Nunca é
+/// UPDATE/DELETE físico: encerrar um vínculo é `encerradoEm = now()` +
+/// criar um novo registro para o novo motorista/monitor, mesma
+/// convenção de `Membership.encerradoEm`. `encerradoEm = null` é o
+/// vínculo vigente.
+model VehicleAssignment {
+  id        String  @id @default(uuid()) @db.Uuid
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+
+  papel  VehicleAssignmentRole
+  userId String                @db.Uuid
+  user   User                  @relation("VehicleAssignmentUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  iniciadoEm  DateTime  @default(now())
+  encerradoEm DateTime?
+
+  criadoPorId String @db.Uuid
+  criadoPor   User   @relation("VehicleAssignmentCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+
+  @@index([companyId, vehicleId, papel, encerradoEm])
+  @@index([companyId, userId])
+  @@map("vehicle_assignments")
+}
+
+/// Checklist opcional pré-viagem preenchido pelo motorista (briefing
+/// "CHECKLIST") — sempre INSERT, nunca UPDATE/DELETE ("Salvar
+/// histórico"). `viagemId` segue a mesma lacuna documentada em
+/// `Vehicle.viagemAtualId` (Trips ainda não existe).
+model VehicleChecklist {
+  id        String  @id @default(uuid()) @db.Uuid
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+
+  motoristaId String @db.Uuid
+  motorista   User   @relation("VehicleChecklistMotorista", fields: [motoristaId], references: [id], onDelete: Restrict)
+
+  viagemId String?
+
+  pneusOk                    Boolean @default(true)
+  lucesOk                    Boolean @default(true)
+  combustivelOk              Boolean @default(true)
+  limpezaOk                  Boolean @default(true)
+  equipamentosObrigatoriosOk Boolean @default(true)
+  observacoes                String?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, vehicleId, createdAt])
+  @@index([companyId, motoristaId])
+  @@map("vehicle_checklists")
+}
+
+/// Ocorrência/incidente reportado pelo app mobile (briefing "APP
+/// MOBILE" — tela "Ocorrências"), ex. avaria, pane, acidente. Sempre
+/// INSERT — histórico de ocorrências nunca é editado/apagado.
+model VehicleOccurrence {
+  id        String  @id @default(uuid()) @db.Uuid
+  vehicleId String  @db.Uuid
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+
+  reportadoPorId String @db.Uuid
+  reportadoPor   User   @relation("VehicleOccurrenceReportadoPor", fields: [reportadoPorId], references: [id], onDelete: Restrict)
+
+  titulo     String
+  descricao  String
+  severidade VehicleOccurrenceSeverity @default(MEDIA)
+  fotoUrls   String[]
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, vehicleId, createdAt])
+  @@map("vehicle_occurrences")
 }

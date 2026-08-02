@@ -8,8 +8,8 @@
  * junto com a tela que precisar deles pela primeira vez):
  *
  *   atoms/      Button, Input, Select, Badge, Spinner, Typography
- *   molecules/  FormField
- *   organisms/  Card (Compound: Card.Header/Body/Footer)
+ *   molecules/  FormField, Pagination, Tabs
+ *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven)
  */
 
 export * from "./atoms/Badge";
@@ -19,4 +19,7 @@ export * from "./atoms/Select";
 export * from "./atoms/Spinner";
 export * from "./atoms/Typography";
 export * from "./molecules/FormField";
+export * from "./molecules/Pagination";
+export * from "./molecules/Tabs";
 export * from "./organisms/Card";
+export * from "./organisms/Table";

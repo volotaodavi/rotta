@@ -8,7 +8,6 @@ import {
 } from "@nestjs/common";
 import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
 
-
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -16,7 +15,6 @@ import {
 } from "./companies.constants";
 import { toCompanyResponseDto } from "./mappers/company.mapper";
 
-import type { AuditLogResponseDto, ListAuditLogsResponseDto } from "./dto/audit-log-response.dto";
 import type { ChangePlanDto } from "./dto/change-plan.dto";
 import type { CompanyDashboardResponseDto } from "./dto/company-dashboard-response.dto";
 import type { CompanyResponseDto, ListCompaniesResponseDto } from "./dto/company-response.dto";
@@ -32,6 +30,10 @@ import type { CompanySettingRepository } from "./repositories/company-setting.re
 import type { CompanyRepository, UpdateCompanyData } from "./repositories/company.repository";
 import type { PlanRepository } from "./repositories/plan.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type {
+  AuditLogResponseDto,
+  ListAuditLogsResponseDto,
+} from "@/common/dto/audit-log-response.dto";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 
 import { PrismaService } from "@/infra/database/prisma.service";

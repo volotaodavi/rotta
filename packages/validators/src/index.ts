@@ -16,3 +16,4 @@ export * from "./schemas/document.schema";
 export * from "./schemas/email.schema";
 export * from "./schemas/password.schema";
 export * from "./schemas/phone.schema";
+export * from "./schemas/plate.schema";
