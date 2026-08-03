@@ -15,12 +15,11 @@ const MAX_TENTATIVAS = 3;
 /**
  * Orquestra o fluxo completo da Rotta Geo Platform para UMA escola já
  * cadastrada (briefing §"FLUXO COMPLETO": Geocoding AI Agent → Mapbox →
- * Validation AI Agent → aprovado/reprocessar). Disparado hoje por uma
+ * Validation AI Agent → aprovado/reprocessar). Disparado tanto por uma
  * ação manual (`GeoController`, Empresa/Gestor/Admin Rotta pedindo para
- * geocodificar/regeocodificar uma escola) — o mesmo método é o ponto de
- * entrada que o Education Sync Agent (ainda não implementado, depende
- * de acesso real à base do INEP/MEC) vai chamar automaticamente para
- * cada escola nova/alterada assim que existir.
+ * geocodificar/regeocodificar uma escola) quanto automaticamente pelo
+ * Education Sync Agent (`InepSyncService`) para toda escola nova ou com
+ * endereço alterado detectada na sincronização com o Censo Escolar.
  *
  * O laço de `REPROCESSANDO` é limitado pelo próprio `ValidationAiAgentService`
  * (nunca reprocessa além de `MAX_TENTATIVAS`) — o `for` aqui é só uma
