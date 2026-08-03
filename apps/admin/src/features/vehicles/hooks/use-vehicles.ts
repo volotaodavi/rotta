@@ -6,6 +6,7 @@ import type { ListVehiclesParams, VehicleStatus } from "@rotta/api-client";
 
 import { vehiclesApi } from "@/lib/api-client";
 
+
 /**
  * Hooks de dados do módulo Veículos (visão cross-tenant do Admin Rotta) —
  * mesmo padrão de `use-companies.ts`. Apenas leitura + troca de status,

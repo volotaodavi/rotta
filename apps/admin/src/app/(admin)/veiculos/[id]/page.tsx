@@ -13,6 +13,7 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_CATEGORY_LABEL, VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 
+
 const STATUS_OPTIONS: VehicleStatus[] = [
   "DISPONIVEL",
   "EM_VIAGEM",
