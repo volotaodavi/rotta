@@ -233,6 +233,37 @@ enum SchoolAccessPointType {
   OUTRO
 }
 
+/// Sexo do aluno (briefing "CADASTRO DO ALUNO", módulo Marketplace).
+enum StudentSex {
+  MASCULINO
+  FEMININO
+  OUTRO
+}
+
+/// Status da solicitação de transporte (briefing "SOLICITAÇÃO").
+enum TransportRequestStatus {
+  RECEBIDA
+  EM_ANALISE
+  APROVADA
+  RECUSADA
+}
+
+/// Ciclo de vida do contrato (briefing "CONTRATO"/"TRANSPORTE ATIVO").
+enum ContractStatus {
+  AGUARDANDO_ASSINATURA
+  ATIVO
+  ENCERRADO
+}
+
+/// Alvo de uma avaliação (briefing "AVALIAÇÕES") — ver nota de
+/// polimorfismo em `Rating.alvoId`.
+enum RatingTargetType {
+  MOTORISTA
+  EMPRESA
+  MONITOR
+  VEICULO
+}
+
 // =============================================================================
 // Plan — estrutura extensivel de planos comerciais (Dossie 16, Secao "Plano")
 // =============================================================================
@@ -318,12 +349,15 @@ model Company {
   /// linha para integridade referencial do histórico de auditoria.
   deletedAt DateTime?
 
-  memberships       Membership[]
-  settings          CompanySetting[]
-  auditLogs         AuditLog[]
-  invites           Invite[]
-  vehicles          Vehicle[]
-  escolasVinculadas SchoolCompanyLink[]
+  memberships            Membership[]
+  settings               CompanySetting[]
+  auditLogs              AuditLog[]
+  invites                Invite[]
+  vehicles               Vehicle[]
+  escolasVinculadas      SchoolCompanyLink[]
+  solicitacoesTransporte TransportRequest[]
+  contratos              Contract[]
+  avaliacoesRecebidas    Rating[]
 
   @@index([status])
   @@index([tipo])
@@ -422,6 +456,19 @@ model User {
   escolasCriadas           School[]            @relation("SchoolCriadoPor")
   vinculosEscola           SchoolCompanyLink[] @relation("SchoolCompanyLinkVinculadoPor")
   vinculosEscolaEncerrados SchoolCompanyLink[] @relation("SchoolCompanyLinkEncerradoPor")
+
+  /// Relações do módulo Marketplace (Alunos/Solicitações/Contratos/
+  /// Avaliações) — um `User` no papel de Responsável tem `alunos`/
+  /// `solicitacoesTransporte`/`contratos`/`avaliacoesFeitas`; o mesmo
+  /// `User` pode também aparecer como `contratosMotorista`/
+  /// `contratosMonitor` quando atua como Motorista/Monitor de uma
+  /// Empresa (Dossiê 8 §2 — "múltiplos papéis simultâneos").
+  alunos                 Student[]          @relation("StudentResponsavel")
+  solicitacoesTransporte TransportRequest[] @relation("TransportRequestResponsavel")
+  contratos              Contract[]         @relation("ContractResponsavel")
+  contratosMotorista     Contract[]         @relation("ContractMotorista")
+  contratosMonitor       Contract[]         @relation("ContractMonitor")
+  avaliacoesFeitas       Rating[]           @relation("RatingResponsavel")
 
   @@map("users")
 }
@@ -664,6 +711,7 @@ model Vehicle {
   vinculos    VehicleAssignment[]
   checklists  VehicleChecklist[]
   ocorrencias VehicleOccurrence[]
+  contratos   Contract[]
 
   @@unique([placa])
   @@index([companyId, status])
@@ -944,8 +992,11 @@ model School {
   /// Soft delete — mesma convenção de `Company.deletedAt`/`Vehicle.deletedAt`.
   deletedAt DateTime?
 
-  pontosAcesso    SchoolAccessPoint[]
-  vinculosEmpresa SchoolCompanyLink[]
+  pontosAcesso           SchoolAccessPoint[]
+  vinculosEmpresa        SchoolCompanyLink[]
+  alunos                 Student[]
+  solicitacoesTransporte TransportRequest[]
+  contratos              Contract[]
 
   @@index([status])
   @@index([cidade, estado])
@@ -1004,4 +1055,228 @@ model SchoolCompanyLink {
   @@index([companyId, schoolId, desvinculadoEm])
   @@index([schoolId, desvinculadoEm])
   @@map("school_company_links")
+}
+
+// =============================================================================
+// Student — Aluno (briefing "Marketplace" §"CADASTRO DO ALUNO"; Dossiê 17 `STU-*`)
+// =============================================================================
+
+/// Aluno — pertence ao RESPONSÁVEL que o cadastrou, não a uma
+/// Empresa/tenant (mesma família arquitetural de `School`: sem
+/// `companyId` própria, sem RLS). Decisão de escopo desta entrega: o
+/// Dossiê 17 original previa o Aluno sempre cadastrado pelo
+/// Gestor/Empresa ("nunca pelo Responsável"); o briefing do Marketplace
+/// introduz um fluxo de autoatendimento onde o próprio Responsável
+/// cadastra o aluno e SÓ DEPOIS busca um transportador — isso só é
+/// coerente se o Aluno existir independentemente de qualquer empresa
+/// desde o cadastro. O vínculo com um transportador específico vive em
+/// `TransportRequest`/`Contract`, nunca aqui — mesmo padrão de
+/// `SchoolCompanyLink` para `School`.
+model Student {
+  id String @id @default(uuid()) @db.Uuid
+
+  responsavelId String @db.Uuid
+  responsavel   User   @relation("StudentResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
+
+  nome           String
+  fotoUrl        String?
+  dataNascimento DateTime   @db.Date
+  sexo           StudentSex
+
+  schoolId String      @db.Uuid
+  school   School      @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  turno    SchoolShift
+
+  /// Endereço de embarque/desembarque (briefing "CADASTRO DO ALUNO")
+  /// podem ser diferentes (ex. embarque em casa, desembarque na casa de
+  /// um parente) — por isso duplicados em vez de um único endereço.
+  embarqueCep         String
+  embarqueLogradouro  String
+  embarqueNumero      String
+  embarqueComplemento String?
+  embarqueBairro      String
+  embarqueCidade      String
+  embarqueEstado      String
+  embarqueLatitude    Decimal? @db.Decimal(9, 6)
+  embarqueLongitude   Decimal? @db.Decimal(9, 6)
+
+  desembarqueCep         String
+  desembarqueLogradouro  String
+  desembarqueNumero      String
+  desembarqueComplemento String?
+  desembarqueBairro      String
+  desembarqueCidade      String
+  desembarqueEstado      String
+  desembarqueLatitude    Decimal? @db.Decimal(9, 6)
+  desembarqueLongitude   Decimal? @db.Decimal(9, 6)
+
+  necessidadesEspeciais String?
+  medicamentos          String?
+  observacoes           String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Soft delete — mesma convenção de `School.deletedAt`.
+  deletedAt DateTime?
+
+  pessoasAutorizadas StudentAuthorizedPerson[]
+  transportRequests  TransportRequest[]
+  contracts          Contract[]
+
+  @@index([responsavelId, deletedAt])
+  @@index([schoolId])
+  @@map("students")
+}
+
+/// Pessoa autorizada a buscar/acompanhar o aluno (briefing "CADASTRO DO
+/// ALUNO" — campo opcional). Sem RLS/tenant, mesma razão de `Student`.
+/// Sem soft delete: lista editável de metadados, não um registro de
+/// evento (mesmo raciocínio de `SchoolAccessPoint`).
+model StudentAuthorizedPerson {
+  id        String  @id @default(uuid()) @db.Uuid
+  studentId String  @db.Uuid
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  nome       String
+  cpf        String?
+  telefone   String?
+  parentesco String?
+
+  createdAt DateTime @default(now())
+
+  @@index([studentId])
+  @@map("student_authorized_persons")
+}
+
+// =============================================================================
+// Marketplace — TransportRequest, Contract, Rating (briefing "Marketplace")
+// =============================================================================
+
+/// Solicitação de transporte (briefing "SOLICITAR TRANSPORTE"/
+/// "SOLICITAÇÃO") — dado de TENANT de verdade (ao contrário de
+/// `Student`/`School`): representa a intenção comercial de UMA empresa
+/// específica atender UM aluno específico, então tem RLS por
+/// `companyId`. O Responsável (que não tem `companyId` próprio) acessa
+/// as suas próprias solicitações via bypass explícito filtrado por
+/// `responsavelId = actor.sub` — nunca uma consulta cross-tenant
+/// arbitrária (mesmo padrão de `AuthService` resolvendo os próprios
+/// `Membership`s no login, Dossiê 12 §4.6).
+model TransportRequest {
+  id String @id @default(uuid()) @db.Uuid
+
+  studentId String  @db.Uuid
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+
+  responsavelId String @db.Uuid
+  responsavel   User   @relation("TransportRequestResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
+
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  schoolId String      @db.Uuid
+  school   School      @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+  turno    SchoolShift
+
+  status       TransportRequestStatus @default(RECEBIDA)
+  motivoRecusa String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  contract Contract?
+
+  @@index([companyId, status])
+  @@index([responsavelId])
+  @@index([studentId])
+  @@map("transport_requests")
+}
+
+/// Contrato (briefing "CONTRATO") — 1:1 com a `TransportRequest`
+/// aprovada. RLS por `companyId`, mesmo motivo de `TransportRequest`.
+/// `authentiqueDocumentId` é o único campo já preparado para a
+/// integração real com a Authentique (briefing "Preparar integração
+/// com Authentique") — hoje sempre `null`, preenchido quando
+/// `ContractsService` deixar de tratar a assinatura como stub.
+model Contract {
+  id String @id @default(uuid()) @db.Uuid
+
+  transportRequestId String           @unique @db.Uuid
+  transportRequest   TransportRequest @relation(fields: [transportRequestId], references: [id], onDelete: Restrict)
+
+  studentId     String  @db.Uuid
+  student       Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  responsavelId String  @db.Uuid
+  responsavel   User    @relation("ContractResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
+  companyId     String  @db.Uuid
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  schoolId      String  @db.Uuid
+  school        School  @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  /// Veículo/motorista/monitor só são conhecidos quando a operação
+  /// atribui um recurso concreto ao contrato — podem ficar `null` entre
+  /// a ativação e essa atribuição (mesmo raciocínio de
+  /// `Vehicle.ultimoMotoristaId` opcional).
+  vehicleId   String?  @db.Uuid
+  vehicle     Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  motoristaId String?  @db.Uuid
+  motorista   User?    @relation("ContractMotorista", fields: [motoristaId], references: [id], onDelete: SetNull)
+  monitorId   String?  @db.Uuid
+  monitor     User?    @relation("ContractMonitor", fields: [monitorId], references: [id], onDelete: SetNull)
+
+  valorMensalidadeCentavos Int
+  planoDescricao           String
+  regras                   String
+  vigenciaInicio           DateTime  @db.Date
+  vigenciaFim              DateTime? @db.Date
+
+  status ContractStatus @default(AGUARDANDO_ASSINATURA)
+
+  /// Preparado para a Authentique (sempre `null` hoje — ver nota do model).
+  authentiqueDocumentId String?
+  assinadoResponsavelEm DateTime?
+  assinadoEmpresaEm     DateTime?
+  ativadoEm             DateTime?
+  encerradoEm           DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ratings Rating[]
+
+  @@index([companyId, status])
+  @@index([responsavelId])
+  @@index([studentId])
+  @@map("contracts")
+}
+
+/// Avaliação (briefing "AVALIAÇÕES") — `alvoId` é polimórfico
+/// (Motorista/Monitor => `User.id`; Empresa => `Company.id`; Veículo =>
+/// `Vehicle.id`), sem FK nativa, mesmo trade-off já documentado em
+/// `AuditLog.entidadeId` (perde-se integridade referencial forte em
+/// troca de um único modelo cobrindo os 4 alvos possíveis em vez de 4
+/// tabelas quase idênticas). RLS por `companyId` (o contrato de origem
+/// já é de um tenant específico).
+model Rating {
+  id String @id @default(uuid()) @db.Uuid
+
+  contractId String   @db.Uuid
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  responsavelId String  @db.Uuid
+  responsavel   User    @relation("RatingResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
+  companyId     String  @db.Uuid
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  alvoTipo RatingTargetType
+  alvoId   String           @db.Uuid
+
+  nota       Int
+  comentario String?
+
+  createdAt DateTime @default(now())
+
+  @@unique([contractId, responsavelId, alvoTipo, alvoId])
+  @@index([companyId])
+  @@index([alvoTipo, alvoId])
+  @@map("ratings")
 }
