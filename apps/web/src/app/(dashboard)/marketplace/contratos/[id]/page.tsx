@@ -1,0 +1,158 @@
+"use client";
+
+import { ApiError } from "@rotta/api-client";
+import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { useRouter } from "next/navigation";
+import { use, useState } from "react";
+
+import { ContractStatusBadge } from "@/features/marketplace/components/contract-status-badge";
+import {
+  useAssinarContratoComoEmpresa,
+  useContract,
+  useContractRatings,
+} from "@/features/marketplace/hooks/use-marketplace";
+import { RATING_TARGET_LABEL } from "@/features/marketplace/labels";
+
+/**
+ * Detalhe de um contrato do Marketplace (briefing "Marketplace"
+ * §"CONTRATO"/"AVALIAÇÕES") — dados completos, assinatura pela Empresa
+ * (quando pendente) e avaliações recebidas da família após o transporte
+ * (leitura — a criação é exclusiva do Responsável).
+ */
+export default function ContratoDetalhePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): JSX.Element {
+  const { id } = use(params);
+  const router = useRouter();
+  const { data: contract, isLoading } = useContract(id);
+  const { data: ratings } = useContractRatings(id);
+  const assinar = useAssinarContratoComoEmpresa(id);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  if (isLoading || !contract) {
+    return (
+      <div className="flex justify-center py-12">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  async function handleAssinar(): Promise<void> {
+    setErrorMessage(null);
+    try {
+      await assinar.mutateAsync();
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao assinar.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Typography variant="title">Contrato</Typography>
+          <ContractStatusBadge status={contract.status} />
+        </div>
+        <Button variant="ghost" onClick={() => router.push("/marketplace/contratos")}>
+          Voltar
+        </Button>
+      </div>
+
+      <Card>
+        <Card.Header title="Dados do contrato" />
+        <Card.Body className="flex flex-col gap-2">
+          <Typography variant="bodySmall" color="muted">
+            Aluno (ID): <span className="font-mono">{contract.studentId}</span>
+          </Typography>
+          <Typography variant="bodySmall" color="muted">
+            Escola (ID): <span className="font-mono">{contract.schoolId}</span>
+          </Typography>
+          <Typography variant="body">
+            Mensalidade: R$ {(contract.valorMensalidadeCentavos / 100).toFixed(2)}
+          </Typography>
+          <Typography variant="bodySmall" color="muted">
+            Plano: {contract.planoDescricao}
+          </Typography>
+          <Typography variant="bodySmall" color="muted">
+            Regras: {contract.regras}
+          </Typography>
+          <Typography variant="bodySmall" color="muted">
+            Vigência: {new Date(contract.vigenciaInicio).toLocaleDateString("pt-BR")}
+            {contract.vigenciaFim
+              ? ` até ${new Date(contract.vigenciaFim).toLocaleDateString("pt-BR")}`
+              : ""}
+          </Typography>
+          {contract.vehicleId ? (
+            <Typography variant="bodySmall" color="muted">
+              Veículo (ID): <span className="font-mono">{contract.vehicleId}</span>
+            </Typography>
+          ) : null}
+          {contract.motoristaId ? (
+            <Typography variant="bodySmall" color="muted">
+              Motorista (ID): <span className="font-mono">{contract.motoristaId}</span>
+            </Typography>
+          ) : null}
+          {contract.monitorId ? (
+            <Typography variant="bodySmall" color="muted">
+              Monitor (ID): <span className="font-mono">{contract.monitorId}</span>
+            </Typography>
+          ) : null}
+        </Card.Body>
+      </Card>
+
+      {errorMessage ? (
+        <Typography variant="bodySmall" color="danger">
+          {errorMessage}
+        </Typography>
+      ) : null}
+
+      {contract.status === "AGUARDANDO_ASSINATURA" ? (
+        <Card>
+          <Card.Body className="flex flex-col gap-3">
+            {contract.assinadoEmpresaEm ? (
+              <Typography variant="bodySmall" color="muted">
+                Já assinado pela sua empresa em{" "}
+                {new Date(contract.assinadoEmpresaEm).toLocaleDateString("pt-BR")}. Aguardando a
+                assinatura da família.
+              </Typography>
+            ) : (
+              <Button
+                variant="primary"
+                onClick={() => void handleAssinar()}
+                isLoading={assinar.isPending}
+              >
+                Assinar contrato
+              </Button>
+            )}
+          </Card.Body>
+        </Card>
+      ) : null}
+
+      <Card>
+        <Card.Header title="Avaliações recebidas" />
+        <Card.Body className="flex flex-col gap-3">
+          {!ratings || ratings.length === 0 ? (
+            <Typography variant="bodySmall" color="muted">
+              Nenhuma avaliação recebida ainda.
+            </Typography>
+          ) : (
+            ratings.map((rating) => (
+              <div key={rating.id} className="border-b border-border pb-2 last:border-none">
+                <Typography variant="bodySmall">
+                  {RATING_TARGET_LABEL[rating.alvoTipo]}: ★ {rating.nota}
+                </Typography>
+                {rating.comentario ? (
+                  <Typography variant="bodySmall" color="muted">
+                    {rating.comentario}
+                  </Typography>
+                ) : null}
+              </div>
+            ))
+          )}
+        </Card.Body>
+      </Card>
+    </div>
+  );
+}

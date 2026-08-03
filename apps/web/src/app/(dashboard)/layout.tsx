@@ -57,6 +57,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
             >
               Escolas
             </Link>
+            <Link
+              href="/marketplace/solicitacoes"
+              className="text-sm text-text-muted transition-colors hover:text-text"
+            >
+              Marketplace
+            </Link>
           </nav>
         </div>
         <Button
