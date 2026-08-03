@@ -51,6 +51,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
             >
               Veículos
             </Link>
+            <Link
+              href="/escolas"
+              className="text-sm text-text-muted transition-colors hover:text-text"
+            >
+              Escolas
+            </Link>
           </nav>
         </div>
         <Button
