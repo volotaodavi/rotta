@@ -3,6 +3,7 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Button, FormField, Input, Typography } from "@rotta/ui/web";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -44,7 +45,8 @@ export default function EntrarPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1 text-center">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <Image src="/brand/rotta-mark-512.png" alt="Rotta" width={48} height={48} priority />
         <Typography variant="title">Rotta Admin</Typography>
         <Typography variant="bodySmall" color="muted">
           Painel interno da equipe Rotta

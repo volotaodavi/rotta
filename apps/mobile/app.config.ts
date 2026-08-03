@@ -9,9 +9,11 @@ import type { ExpoConfig } from "expo/config";
  * pela sessao real (`@rotta/auth`), nunca por variante de build ou app
  * distinto.
  *
- * Nenhum icone/splash real foi adicionado ainda (fase de fundacao) —
- * `icon`/`splash` serao configurados junto com a identidade visual real
- * do Dossie 10.
+ * Ícone/splash reais (`assets/icon.png`, `assets/adaptive-icon.png`,
+ * `assets/splash-icon.png`) gerados a partir do logotipo enviado pelo
+ * usuário (`apps/web/public/brand/rotta-mark.png`, mesma fonte usada
+ * no favicon/manifest do Web e no ícone do Admin) — nunca redesenhados
+ * à parte, para os três apps nunca divergirem de marca.
  */
 export default (): ExpoConfig => ({
   name: "Rotta",
@@ -23,6 +25,12 @@ export default (): ExpoConfig => ({
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
   platforms: ["ios", "android"],
+  icon: "./assets/icon.png",
+  splash: {
+    image: "./assets/splash-icon.png",
+    backgroundColor: "#0B0F14",
+    resizeMode: "contain",
+  },
   ios: {
     supportsTablet: false,
     bundleIdentifier: "br.com.rotta.app",
@@ -30,6 +38,13 @@ export default (): ExpoConfig => ({
   android: {
     package: "br.com.rotta.app",
     permissions: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
+    adaptiveIcon: {
+      foregroundImage: "./assets/adaptive-icon.png",
+      backgroundColor: "#0B0F14",
+    },
+  },
+  web: {
+    favicon: "./assets/favicon.png",
   },
   plugins: [
     "expo-secure-store",

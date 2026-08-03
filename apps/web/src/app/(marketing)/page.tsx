@@ -1,4 +1,5 @@
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
+import Image from "next/image";
 import Link from "next/link";
 
 import type { Route } from "next";
@@ -103,7 +104,7 @@ const BENEFICIOS = [
   },
 ];
 
-/** Painel visual da hero — placeholder geométrico até o logotipo/mockup real chegar (ver `RouteMark`, usado no header). */
+/** Painel visual da hero — o logotipo real da Rotta (`public/brand`) em destaque, com o mesmo motivo de rota do restante da página ao redor. */
 function HeroVisual(): JSX.Element {
   return (
     <div className="relative aspect-square w-full max-w-md overflow-hidden rounded-2xl border border-border bg-surface">
@@ -120,8 +121,18 @@ function HeroVisual(): JSX.Element {
         />
         <circle cx="40" cy="260" r="8" className="fill-primary" />
         <circle cx="280" cy="40" r="8" className="fill-secondary" />
-        <circle cx="150" cy="150" r="5" className="fill-primary" opacity="0.6" />
       </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="absolute h-56 w-56 rounded-full bg-primary/20 blur-3xl" />
+        <Image
+          src="/brand/rotta-mark-512.png"
+          alt="Rotta"
+          width={220}
+          height={220}
+          priority
+          className="relative drop-shadow-2xl"
+        />
+      </div>
       <div className="absolute bottom-5 left-5 right-5 rounded-xl border border-border bg-card/90 p-4 backdrop-blur">
         <Typography variant="caption" color="muted">
           Rota em andamento

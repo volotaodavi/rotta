@@ -2,6 +2,7 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Button, Spinner, Typography } from "@rotta/ui/web";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
@@ -36,7 +37,10 @@ export default function AdminLayout({ children }: { children: ReactNode }): JSX.
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <Typography variant="subtitle">Rotta Admin</Typography>
+        <div className="flex items-center gap-2">
+          <Image src="/brand/rotta-mark-512.png" alt="Rotta" width={28} height={28} priority />
+          <Typography variant="subtitle">Rotta Admin</Typography>
+        </div>
         <Button
           variant="ghost"
           size="sm"

@@ -5,10 +5,9 @@ import type { MetadataRoute } from "next";
  * funcionar também como Progressive Web App"). Next.js 15 gera
  * `/manifest.webmanifest` automaticamente a partir deste arquivo.
  *
- * `icons` fica vazio deliberadamente — nenhum ícone de app (192x192/
- * 512x512) foi desenhado ainda (fora do escopo de design deste módulo);
- * sem eles o navegador não mostra o prompt "Adicionar à tela inicial",
- * mas o manifest/SW já preparam o resto da instalabilidade.
+ * `icons` aponta para o logotipo real (`public/brand/rotta-mark-*.png`,
+ * recortado do arquivo enviado pelo usuário) — com eles o navegador já
+ * mostra o prompt "Adicionar à tela inicial" com o ícone correto.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -19,6 +18,9 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     background_color: "#0B0F14",
     theme_color: "#0B0F14",
-    icons: [],
+    icons: [
+      { src: "/brand/rotta-mark-192.png", sizes: "192x192", type: "image/png" },
+      { src: "/brand/rotta-mark-512.png", sizes: "512x512", type: "image/png" },
+    ],
   };
 }
