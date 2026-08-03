@@ -12,12 +12,9 @@ const envSchema = z.object({
    * real. Usada para abrir "Criar Empresa" em WebView integrada.
    */
   EXPO_PUBLIC_WEB_URL: z.string().url(),
-  /** Token público do Mapbox (`pk.*`) — Rotta Geo Platform, `@rotta/maps/native`. Opcional: sem ele, as telas de mapa caem no fallback de lista. */
-  EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: z.string().optional(),
 });
 
 export const env = envSchema.parse({
   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
   EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
-  EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN: process.env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN,
 });

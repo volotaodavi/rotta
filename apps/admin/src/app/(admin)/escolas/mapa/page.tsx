@@ -7,7 +7,6 @@ import { useMemo, useState } from "react";
 
 import type { BoundingBoxInput } from "@rotta/api-client";
 
-import { env } from "@/config/env";
 import { useSchoolMarkers } from "@/features/schools/hooks/use-school-markers";
 
 
@@ -47,27 +46,19 @@ export default function EscolasMapaAdminPage(): JSX.Element {
 
       <Card>
         <Card.Body className="flex flex-col gap-4">
-          {!env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ? (
-            <Typography variant="bodySmall" color="muted">
-              Mapa interativo indisponível: NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN não configurado neste
-              ambiente.
-            </Typography>
-          ) : (
-            <div className="relative" style={{ height: 640 }}>
-              {isLoading && bounds && (
-                <div className="absolute right-3 top-3 z-10">
-                  <Spinner size="sm" />
-                </div>
-              )}
-              <RottaMap
-                accessToken={env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
-                markers={markers}
-                initialZoom={4}
-                onBoundsChange={setBounds}
-                onMarkerPress={(marker) => router.push(`/escolas/${marker.id}`)}
-              />
-            </div>
-          )}
+          <div className="relative" style={{ height: 640 }}>
+            {isLoading && bounds && (
+              <div className="absolute right-3 top-3 z-10">
+                <Spinner size="sm" />
+              </div>
+            )}
+            <RottaMap
+              markers={markers}
+              initialZoom={4}
+              onBoundsChange={setBounds}
+              onMarkerPress={(marker) => router.push(`/escolas/${marker.id}`)}
+            />
+          </div>
         </Card.Body>
       </Card>
     </div>

@@ -1,33 +1,33 @@
-import Mapbox from "@rnmapbox/maps";
-import { useEffect, useRef } from "react";
+import { Camera, Callout, MapView, PointAnnotation } from "@maplibre/maplibre-react-native";
+import { useRef } from "react";
 import { StyleSheet, View } from "react-native";
 
 import type { RottaMapProps } from "../types";
-import type { MapView as MapboxMapView } from "@rnmapbox/maps";
+import type { MapViewRef } from "@maplibre/maplibre-react-native";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
-const DEFAULT_STYLE = Mapbox.StyleURL.Dark;
+/** OpenFreeMap (https://openfreemap.org) — hospedagem gratuita de tiles vetoriais OSM, sem token/conta/limite de uso. Estilo "dark", visualmente equivalente ao estilo escuro do Mapbox usado antes. */
+const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/dark";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
 
 /**
  * `<RottaMap />` (mobile/native) — único componente do app que importa
- * `@rnmapbox/maps` diretamente (ver ADR em `../types.ts`). Renderiza os
- * marcadores já calculados pelo Map Intelligence Agent (`GET
- * /geo/mapa/marcadores`); NUNCA chama o Mapbox Geocoding/Directions API
- * do dispositivo.
+ * `@maplibre/maplibre-react-native` diretamente (ver ADR em
+ * `../types.ts`). Renderiza os marcadores já calculados pelo Map
+ * Intelligence Agent (`GET /geo/mapa/marcadores`); NUNCA chama
+ * Nominatim/OSRM do dispositivo.
  *
- * Requer o config plugin `@rnmapbox/maps` registrado em
- * `apps/mobile/app.config.ts` e um build nativo (dev client/EAS) — NÃO
- * funciona no app Expo Go (módulo nativo). Fixado em `^10.2.x` (não a
- * major mais recente, `10.3.x`, que exige React Native >=0.79 — este
- * monorepo está em RN 0.76.5/Expo SDK 52; revisitar quando o projeto
- * atualizar o Expo SDK).
+ * Requer o config plugin `@maplibre/maplibre-react-native` registrado
+ * em `apps/mobile/app.config.ts` e um build nativo (dev client/EAS) —
+ * NÃO funciona no app Expo Go (módulo nativo). Ao contrário do
+ * `@rnmapbox/maps` que este pacote usava antes, o MapLibre Native é
+ * inteiramente open-source: nenhum token de download é necessário em
+ * build-time (SDK distribuído via Maven Central/CocoaPods livremente).
  */
 export function RottaMap({
-  accessToken,
   markers,
   initialCenter,
   initialZoom = DEFAULT_ZOOM,
@@ -35,13 +35,9 @@ export function RottaMap({
   onMarkerPress,
   styleUrl = DEFAULT_STYLE,
 }: RottaMapProps): JSX.Element {
-  const mapRef = useRef<MapboxMapView>(null);
+  const mapRef = useRef<MapViewRef>(null);
   const onBoundsChangeRef = useRef(onBoundsChange);
   onBoundsChangeRef.current = onBoundsChange;
-
-  useEffect(() => {
-    Mapbox.setAccessToken(accessToken);
-  }, [accessToken]);
 
   const center = initialCenter
     ? ([initialCenter.longitude, initialCenter.latitude] as [number, number])
@@ -51,11 +47,11 @@ export function RottaMap({
 
   return (
     <View style={styles.container}>
-      <Mapbox.MapView
+      <MapView
         ref={mapRef}
         style={styles.map}
-        styleURL={styleUrl}
-        onMapIdle={async () => {
+        mapStyle={styleUrl}
+        onRegionDidChange={async () => {
           if (!onBoundsChangeRef.current || !mapRef.current) return;
           const [ne, sw] = await mapRef.current.getVisibleBounds();
           onBoundsChangeRef.current({
@@ -66,19 +62,19 @@ export function RottaMap({
           });
         }}
       >
-        <Mapbox.Camera defaultSettings={{ centerCoordinate: center, zoomLevel: initialZoom }} />
+        <Camera defaultSettings={{ centerCoordinate: center, zoomLevel: initialZoom }} />
         {markers.map((marker) => (
-          <Mapbox.PointAnnotation
+          <PointAnnotation
             key={marker.id}
             id={marker.id}
             coordinate={[marker.longitude, marker.latitude]}
             onSelected={() => onMarkerPress?.(marker)}
           >
             <View style={styles.marker} />
-            <Mapbox.Callout title={marker.titulo} />
-          </Mapbox.PointAnnotation>
+            <Callout title={marker.titulo} />
+          </PointAnnotation>
         ))}
-      </Mapbox.MapView>
+      </MapView>
     </View>
   );
 }

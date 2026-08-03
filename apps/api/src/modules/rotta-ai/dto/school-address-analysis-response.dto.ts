@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
-/** Resposta real de `RottaAiService.analyzeSchoolAddress` (Rotta Geo Engine/Mapbox Geocoding API) — campos sugeridos ficam `undefined` quando o Mapbox não os devolve para o endereço informado. */
+/** Resposta real de `RottaAiService.analyzeSchoolAddress` (Rotta Geo Engine/Nominatim) — campos sugeridos ficam `undefined` quando o Nominatim não os devolve para o endereço informado. */
 export class SchoolAddressAnalysisResponseDto {
   @ApiProperty() cepValido!: boolean;
   @ApiPropertyOptional() logradouroSugerido?: string;

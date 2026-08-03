@@ -1,6 +1,7 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 
+
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { InepSyncSchedulerService } from "./agents/inep-sync-scheduler.service";
 import { InepSyncService } from "./agents/inep-sync.service";
@@ -24,7 +25,7 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
 
 /**
  * Rotta Geo Platform (briefing "ROTTA GEO PLATFORM") — `GeoEngineService`
- * é a ÚNICA porta de saída para o Mapbox de todo o backend; os agentes
+ * é a ÚNICA porta de saída para Nominatim/OSRM de todo o backend; os agentes
  * de geocodificação (`GeocodingAiAgentService`/`ValidationAiAgentService`),
  * o Education Sync Agent (`InepSyncService`), o Map Intelligence Agent
  * (`MapIntelligenceService`) e o orquestrador (`GeoPipelineService`)

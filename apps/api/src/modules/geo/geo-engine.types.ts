@@ -1,15 +1,16 @@
 /**
  * Contratos do Rotta Geo Engine (briefing "ROTTA GEO PLATFORM" —
- * "Nenhum módulo poderá acessar diretamente o Mapbox. Todos deverão
- * utilizar exclusivamente o Rotta Geo Engine."). Formas estáveis que
- * NÃO vazam a forma bruta da resposta do Mapbox para o resto do
- * sistema — se o provedor mudar um dia, só `GeoEngineService` muda.
+ * "Nenhum módulo poderá acessar diretamente o [provedor de mapas].
+ * Todos deverão utilizar exclusivamente o Rotta Geo Engine."). Formas
+ * estáveis que NÃO vazam a forma bruta da resposta do provedor
+ * (Nominatim/OSRM, antes Mapbox) para o resto do sistema — se o
+ * provedor mudar um dia, só `GeoEngineService` muda.
  */
 
 export interface GeocodeResult {
   latitude: number;
   longitude: number;
-  /** Texto livre do provedor (ex. `relevance` do Mapbox, 0 a 1) — ver nota em `SchoolCoordinate.precisao`. */
+  /** Texto livre do provedor (ex. `importance` do Nominatim, 0 a 1) — ver nota em `SchoolCoordinate.precisao`. */
   precisao: string;
   enderecoFormatado: string;
   /** Componentes do endereço, quando o provedor os devolve (briefing "ROTTA AI" — "corrigir endereços"). */

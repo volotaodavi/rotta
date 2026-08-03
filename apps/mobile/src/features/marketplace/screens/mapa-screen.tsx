@@ -13,7 +13,6 @@ import type { MarketplaceStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SearchTransportersParams } from "@rotta/api-client";
 
-import { env } from "@/config/env";
 import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -75,10 +74,9 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
     return <EnderecoManualScreen onConfirm={setManualCoords} />;
   }
 
-  const mapaCabecalho = env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN && coords && (
+  const mapaCabecalho = coords && (
     <View style={styles.mapaCabecalho}>
       <RottaMap
-        accessToken={env.EXPO_PUBLIC_MAPBOX_ACCESS_TOKEN}
         markers={[{ id: "origem", titulo: "Você está aqui", ...coords }]}
         initialCenter={coords}
         initialZoom={13}

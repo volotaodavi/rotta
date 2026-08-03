@@ -1,5 +1,6 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
+
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { ValidationAiAgentService } from "./agents/validation-ai-agent.service";
 import { SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
@@ -63,7 +64,7 @@ export class GeoPipelineService {
    * (briefing "IMPORTANTE" — 3 tentativas automáticas esgotadas, um
    * humano decide). Nunca sobrescreve a linha `REVISAO_MANUAL`: grava
    * uma NOVA tentativa (`fonte: MANUAL`, já `VALIDADO`, sem passar pelo
-   * Validation AI Agent — a fonte é a decisão humana, não o Mapbox) e
+   * Validation AI Agent — a fonte é a decisão humana, não o Nominatim) e
    * atualiza `School.latitude`/`longitude`, mesmo efeito final de uma
    * aprovação automática.
    */

@@ -9,15 +9,18 @@ import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-statu
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 
+
 /**
  * "Mapa" (briefing "MAPA" — "mostrar todos os veículos em tempo real,
- * filtros por motorista/empresa/status/tipo"). `packages/maps` ainda é
- * um stub vazio (nenhuma chave de Google Maps/Mapbox configurada) —
- * decisão de escopo deliberada (mesmo espírito do stub da Rotta AI):
- * esta tela já implementa os filtros reais e a última posição
- * conhecida de cada veículo (`Vehicle.ultimaLatitude/ultimaLongitude`,
- * Dossiê 15) em formato tabular; o mapa interativo substitui esta
- * tabela assim que o provedor de mapas for contratado.
+ * filtros por motorista/empresa/status/tipo"). Esta tela ainda não usa
+ * `@rotta/maps` (decisão de escopo deliberada, mesmo espírito do stub
+ * da Rotta AI — não é uma limitação de provedor: `@rotta/maps` já
+ * renderiza mapas reais via MapLibre/OpenStreetMap sem nenhum token
+ * necessário, ver Escolas/Marketplace): esta tela já implementa os
+ * filtros reais e a última posição conhecida de cada veículo
+ * (`Vehicle.ultimaLatitude/ultimaLongitude`, Dossiê 15) em formato
+ * tabular; o mapa interativo substitui esta tabela num passo de
+ * escopo futuro.
  */
 export default function VeiculosMapaPage(): JSX.Element {
   const [status, setStatus] = useState<VehicleStatus | "">("");
@@ -36,8 +39,8 @@ export default function VeiculosMapaPage(): JSX.Element {
       <Card>
         <Card.Body className="flex flex-col gap-4">
           <Typography variant="bodySmall" color="muted">
-            Mapa interativo em preparação — nenhum provedor de mapas (Google Maps/Mapbox) está
-            configurado ainda. Esta tabela mostra a última posição conhecida de cada veículo.
+            Mapa interativo em preparação — esta tabela mostra a última posição conhecida de cada
+            veículo enquanto a tela de mapa não é implementada.
           </Typography>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -7,7 +7,6 @@ import { useMemo, useState } from "react";
 
 import type { School, SchoolShift, SchoolType } from "@rotta/api-client";
 
-import { env } from "@/config/env";
 import { useSchoolsList } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL, SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
 
@@ -15,11 +14,8 @@ import { SCHOOL_SHIFT_LABEL, SCHOOL_TYPE_LABEL } from "@/features/schools/labels
 /**
  * "Mapa" (briefing "MAPA" — "exibir todas as escolas, permitir
  * filtros, agrupar por cidade") — Rotta Geo Platform, Map Intelligence
- * Agent (backend). Mapa real via `@rotta/maps/web` (Mapbox GL JS);
- * quando `NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` não está configurado, cai no
- * fallback de lista agrupada por cidade (mesma disciplina de
- * `GeoEngineService` no backend — nunca finge um mapa que não pode
- * renderizar).
+ * Agent (backend). Mapa real via `@rotta/maps/web` (MapLibre GL JS
+ * sobre OpenStreetMap, sem token).
  */
 export default function EscolasMapaPage(): JSX.Element {
   const router = useRouter();
@@ -82,11 +78,6 @@ export default function EscolasMapaPage(): JSX.Element {
             <div className="flex justify-center py-12">
               <Spinner size="lg" />
             </div>
-          ) : !env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN ? (
-            <Typography variant="bodySmall" color="muted">
-              Mapa interativo indisponível: NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN não configurado neste
-              ambiente. {data.items.length} escola(s) encontrada(s) com os filtros atuais.
-            </Typography>
           ) : markers.length === 0 ? (
             <Typography variant="bodySmall" color="muted">
               Nenhuma escola com coordenadas conhecidas para os filtros selecionados.
@@ -94,7 +85,6 @@ export default function EscolasMapaPage(): JSX.Element {
           ) : (
             <div style={{ height: 560 }}>
               <RottaMap
-                accessToken={env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN}
                 markers={markers}
                 onMarkerPress={(marker) => router.push(`/escolas/${marker.id}`)}
               />

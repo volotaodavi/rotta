@@ -7,7 +7,7 @@ import { IsOptional, IsString, MaxLength } from "class-validator";
  * coordenadas automaticamente."). As quatro capacidades vivem em UM
  * único contrato agrupado (não quatro DTOs separados) porque
  * `RottaAiService.analyzeSchoolAddress` resolve todas de uma vez, via
- * Rotta Geo Engine (Mapbox Geocoding API — `MAPBOX_ACCESS_TOKEN`).
+ * Rotta Geo Engine (Nominatim, OpenStreetMap).
  */
 export class AnalyzeSchoolAddressDto {
   @ApiProperty({ example: "01310100" })

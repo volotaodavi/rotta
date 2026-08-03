@@ -1,27 +1,27 @@
 "use client";
 
-import mapboxgl from "mapbox-gl";
+import { LngLatBounds, MapLibreMap, Marker, NavigationControl, Popup } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 
 import type { RottaMapProps } from "../types";
 
-import "mapbox-gl/dist/mapbox-gl.css";
+import "maplibre-gl/dist/maplibre-gl.css";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
-const DEFAULT_STYLE = "mapbox://styles/mapbox/dark-v11";
+/** OpenFreeMap (https://openfreemap.org) — hospedagem gratuita de tiles vetoriais OSM, sem token/conta/limite de uso. Estilo "dark", visualmente equivalente ao `mapbox://styles/mapbox/dark-v11` usado antes. */
+const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/dark";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
 
 /**
- * `<RottaMap />` (web) — único componente do app que importa `mapbox-gl`
- * diretamente (ver ADR em `../types.ts`). Renderiza os marcadores já
- * calculados pelo Map Intelligence Agent (`GET /geo/mapa/marcadores`);
- * NUNCA chama o Mapbox Geocoding/Directions API do navegador.
+ * `<RottaMap />` (web) — único componente do app que importa
+ * `maplibre-gl` diretamente (ver ADR em `../types.ts`). Renderiza os
+ * marcadores já calculados pelo Map Intelligence Agent (`GET
+ * /geo/mapa/marcadores`); NUNCA chama Nominatim/OSRM do navegador.
  */
 export function RottaMap({
-  accessToken,
   markers,
   initialCenter,
   initialZoom = DEFAULT_ZOOM,
@@ -30,11 +30,11 @@ export function RottaMap({
   styleUrl = DEFAULT_STYLE,
 }: RottaMapProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<mapboxgl.Marker[]>([]);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const markersRef = useRef<Marker[]>([]);
   // Refs para os callbacks: evita recriar o mapa a cada render quando o
   // app chamador passa uma arrow function inline (padrão comum em
-  // `onPress`/`onChange` de tela React) — só a criação do mapa (token/
+  // `onPress`/`onChange` de tela React) — só a criação do mapa (estilo/
   // container) precisa re-executar o efeito de setup.
   const onBoundsChangeRef = useRef(onBoundsChange);
   const onMarkerPressRef = useRef(onMarkerPress);
@@ -43,15 +43,14 @@ export function RottaMap({
 
   useEffect(() => {
     if (!containerRef.current) return;
-    mapboxgl.accessToken = accessToken;
 
-    const map = new mapboxgl.Map({
+    const map = new MapLibreMap({
       container: containerRef.current,
       style: styleUrl,
       center: initialCenter ? [initialCenter.longitude, initialCenter.latitude] : FALLBACK_CENTER,
       zoom: initialZoom,
     });
-    map.addControl(new mapboxgl.NavigationControl(), "top-right");
+    map.addControl(new NavigationControl(), "top-right");
 
     const emitBounds = (): void => {
       const bounds = map.getBounds();
@@ -71,8 +70,8 @@ export function RottaMap({
       map.remove();
       mapRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setup roda só quando token/estilo mudam; ver refs acima para os callbacks.
-  }, [accessToken, styleUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setup roda só quando o estilo muda; ver refs acima para os callbacks.
+  }, [styleUrl]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -80,18 +79,18 @@ export function RottaMap({
 
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = markers.map((marker) => {
-      const mapboxMarker = new mapboxgl.Marker({ color: "#2563eb" })
+      const mapMarker = new Marker({ color: "#2563eb" })
         .setLngLat([marker.longitude, marker.latitude])
-        .setPopup(new mapboxgl.Popup({ offset: 24 }).setText(marker.titulo))
+        .setPopup(new Popup({ offset: 24 }).setText(marker.titulo))
         .addTo(map);
-      mapboxMarker.getElement().addEventListener("click", () => onMarkerPressRef.current?.(marker));
-      return mapboxMarker;
+      mapMarker.getElement().addEventListener("click", () => onMarkerPressRef.current?.(marker));
+      return mapMarker;
     });
 
     if (!initialCenter && markers.length > 0) {
       const bounds = markers.reduce(
         (acc, marker) => acc.extend([marker.longitude, marker.latitude]),
-        new mapboxgl.LngLatBounds(
+        new LngLatBounds(
           [markers[0]!.longitude, markers[0]!.latitude],
           [markers[0]!.longitude, markers[0]!.latitude],
         ),

@@ -250,10 +250,11 @@ enum SchoolCoordinateStatus {
 }
 
 /// De onde veio a coordenada de uma tentativa (briefing "SCHOOL
-/// COORDINATES" §"FONTE") — `MAPBOX` é o caminho normal (Geocoding AI
-/// Agent); `MANUAL` cobre correção humana na Fila de Revisão Manual.
+/// COORDINATES" §"FONTE") — `NOMINATIM` é o caminho normal (Geocoding AI
+/// Agent, Rotta Geo Engine sobre OpenStreetMap/Nominatim); `MANUAL` cobre
+/// correção humana na Fila de Revisão Manual.
 enum SchoolCoordinateSource {
-  MAPBOX
+  NOMINATIM
   MANUAL
 }
 
@@ -275,11 +276,10 @@ model SchoolCoordinate {
   latitude  Decimal                @db.Decimal(9, 6)
   longitude Decimal                @db.Decimal(9, 6)
   /// Texto livre com o retorno de precisão do provedor (ex.
-  /// `relevance`/`accuracy` do Mapbox Geocoding API) — sem enum fechado
-  /// porque o vocabulário varia por provedor (briefing não define um
-  /// próprio).
+  /// `importance` do Nominatim) — sem enum fechado porque o vocabulário
+  /// varia por provedor (briefing não define um próprio).
   precisao  String?
-  fonte     SchoolCoordinateSource @default(MAPBOX)
+  fonte     SchoolCoordinateSource @default(NOMINATIM)
   status    SchoolCoordinateStatus @default(PENDENTE)
 
   /// Quantas vezes esta escola já foi reprocessada (briefing: "Limite

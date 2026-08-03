@@ -12,11 +12,8 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url(),
-  /** Token público do Mapbox (`pk.*`) — Rotta Geo Platform, `@rotta/maps/web`. Opcional: sem ele, as telas de mapa caem no fallback de lista (mesma disciplina de `GeoEngineService` no backend). */
-  NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: z.string().optional(),
 });
 
 export const env = envSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
-  NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN,
 });

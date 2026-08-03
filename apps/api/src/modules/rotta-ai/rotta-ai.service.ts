@@ -58,15 +58,15 @@ export class RottaAiService {
    * ENDEREÇO de Escola (briefing "ROTTA AI" do módulo Escolas —
    * corrigir endereço/validar CEP/geocodificar/obter coordenadas) —
    * agora real: delega ao Rotta Geo Engine (briefing "ROTTA GEO
-   * PLATFORM", Mapbox Geocoding API). Chamado pelo front-end ANTES de
+   * PLATFORM", Nominatim/OpenStreetMap). Chamado pelo front-end ANTES de
    * a escola existir (formulário de cadastro, `POST /rotta-ai/analyze-
    * school-address`) — por isso não grava `SchoolCoordinate` nem
    * atualiza nenhum `School` aqui; isso só acontece para escolas já
    * cadastradas, via `GeoPipelineService` (Geocoding AI Agent +
-   * Validation AI Agent). Se o Rotta Geo Engine não estiver configurado
-   * (sem `MAPBOX_ACCESS_TOKEN`), a exceção de `GeoEngineService`
-   * propaga tal como está — o chamador (formulário) trata como
-   * best-effort e segue sem coordenadas, nunca bloqueia o cadastro.
+   * Validation AI Agent). Se o Nominatim/OSRM estiverem fora do ar, a
+   * exceção de `GeoEngineService` propaga tal como está — o chamador
+   * (formulário) trata como best-effort e segue sem coordenadas, nunca
+   * bloqueia o cadastro.
    */
   async analyzeSchoolAddress(
     dto: AnalyzeSchoolAddressDto,

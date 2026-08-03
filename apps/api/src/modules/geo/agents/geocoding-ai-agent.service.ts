@@ -32,7 +32,7 @@ export class GeocodingAiAgentService {
       latitude: resultado.latitude,
       longitude: resultado.longitude,
       precisao: resultado.precisao,
-      fonte: "MAPBOX",
+      fonte: "NOMINATIM",
       tentativa,
     });
   }

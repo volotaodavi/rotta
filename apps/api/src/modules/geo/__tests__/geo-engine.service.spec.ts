@@ -1,13 +1,20 @@
-import { BadGatewayException, ServiceUnavailableException } from "@nestjs/common";
+import { BadGatewayException } from "@nestjs/common";
 
 import { GeoEngineService } from "../geo-engine.service";
 
+import type { GeoConfig } from "@/config/geo.config";
 import type { ConfigService } from "@nestjs/config";
 
-function buildConfigService(mapboxAccessToken: string | undefined): ConfigService {
-  return {
-    get: () => ({ mapboxAccessToken }),
-  } as unknown as ConfigService;
+function buildConfigService(overrides: Partial<GeoConfig> = {}): ConfigService {
+  const config: GeoConfig = {
+    nominatimBaseUrl: "https://nominatim.openstreetmap.org",
+    nominatimUserAgent: "RottaGeoPlatform/1.0 (+https://rotta.com.br)",
+    osrmBaseUrl: "https://router.project-osrm.org",
+    inepSyncCron: undefined,
+    inepSyncAno: undefined,
+    ...overrides,
+  };
+  return { get: () => config } as unknown as ConfigService;
 }
 
 function mockFetchOnce(status: number, body: unknown): void {
@@ -23,51 +30,32 @@ describe("GeoEngineService", () => {
     jest.restoreAllMocks();
   });
 
-  describe("sem MAPBOX_ACCESS_TOKEN configurado", () => {
-    it("recusa geocode/reverseGeocode/getRoute com ServiceUnavailableException, nunca simula um resultado", async () => {
-      const service = new GeoEngineService(buildConfigService(undefined));
-
-      await expect(service.geocode("Avenida Paulista, 1000")).rejects.toThrow(
-        ServiceUnavailableException,
-      );
-      await expect(service.reverseGeocode({ latitude: -23.5, longitude: -46.6 })).rejects.toThrow(
-        ServiceUnavailableException,
-      );
-      await expect(
-        service.getRoute(
-          { latitude: -23.5, longitude: -46.6 },
-          { latitude: -23.6, longitude: -46.7 },
-        ),
-      ).rejects.toThrow(ServiceUnavailableException);
-    });
-  });
-
   describe("geocode", () => {
-    it("converte a resposta do Mapbox Geocoding API para o contrato estável do Rotta Geo Engine", async () => {
-      mockFetchOnce(200, {
-        features: [
-          {
-            center: [-46.655981, -23.561684],
-            place_name: "Avenida Paulista, 1000, São Paulo - SP, 01310100, Brasil",
-            relevance: 0.95,
-            text: "Avenida Paulista",
-            context: [
-              { id: "neighborhood.123", text: "Bela Vista" },
-              { id: "place.456", text: "São Paulo" },
-              { id: "region.789", text: "São Paulo", short_code: "BR-SP" },
-            ],
+    it("converte a resposta do Nominatim /search para o contrato estável do Rotta Geo Engine", async () => {
+      mockFetchOnce(200, [
+        {
+          lat: "-23.561684",
+          lon: "-46.655981",
+          display_name: "Avenida Paulista, Bela Vista, São Paulo - SP, 01310100, Brasil",
+          importance: 0.95,
+          address: {
+            road: "Avenida Paulista",
+            suburb: "Bela Vista",
+            city: "São Paulo",
+            state: "São Paulo",
+            "ISO3166-2-lvl4": "BR-SP",
           },
-        ],
-      });
+        },
+      ]);
 
-      const service = new GeoEngineService(buildConfigService("pk.test"));
+      const service = new GeoEngineService(buildConfigService());
       const resultado = await service.geocode("Avenida Paulista, 1000");
 
       expect(resultado).toEqual({
         latitude: -23.561684,
         longitude: -46.655981,
         precisao: "0.95",
-        enderecoFormatado: "Avenida Paulista, 1000, São Paulo - SP, 01310100, Brasil",
+        enderecoFormatado: "Avenida Paulista, Bela Vista, São Paulo - SP, 01310100, Brasil",
         logradouro: "Avenida Paulista",
         bairro: "Bela Vista",
         cidade: "São Paulo",
@@ -75,38 +63,68 @@ describe("GeoEngineService", () => {
       });
     });
 
-    it("lança BadGatewayException quando o Mapbox não retorna nenhuma feature", async () => {
-      mockFetchOnce(200, { features: [] });
-      const service = new GeoEngineService(buildConfigService("pk.test"));
+    it("envia o User-Agent exigido pela política de uso do Nominatim público", async () => {
+      mockFetchOnce(200, [
+        {
+          lat: "-23.5",
+          lon: "-46.6",
+          display_name: "Endereço",
+          importance: 0.5,
+          address: {},
+        },
+      ]);
+      const service = new GeoEngineService(
+        buildConfigService({ nominatimUserAgent: "MeuAgente/2.0" }),
+      );
+
+      await service.geocode("Avenida Paulista, 1000");
+
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({ headers: { "User-Agent": "MeuAgente/2.0" } }),
+      );
+    });
+
+    it("resolve a UF a partir do nome completo do estado quando o Nominatim não devolve ISO3166-2-lvl4", async () => {
+      mockFetchOnce(200, [
+        {
+          lat: "-23.561684",
+          lon: "-46.655981",
+          display_name: "Avenida Paulista, São Paulo - SP",
+          importance: 0.9,
+          address: { city: "São Paulo", state: "São Paulo" },
+        },
+      ]);
+      const service = new GeoEngineService(buildConfigService());
+
+      const resultado = await service.geocode("Avenida Paulista, 1000");
+
+      expect(resultado.estado).toBe("SP");
+    });
+
+    it("lança BadGatewayException quando o Nominatim não retorna nenhum resultado", async () => {
+      mockFetchOnce(200, []);
+      const service = new GeoEngineService(buildConfigService());
 
       await expect(service.geocode("endereço inexistente")).rejects.toThrow(BadGatewayException);
     });
 
-    it("lança BadGatewayException quando o Mapbox responde com erro HTTP", async () => {
-      mockFetchOnce(403, {});
-      const service = new GeoEngineService(buildConfigService("pk.test"));
+    it("lança BadGatewayException quando o Nominatim responde com erro HTTP", async () => {
+      mockFetchOnce(429, {});
+      const service = new GeoEngineService(buildConfigService());
 
       await expect(service.geocode("Avenida Paulista, 1000")).rejects.toThrow(BadGatewayException);
     });
   });
 
   describe("reverseGeocode", () => {
-    it("extrai cidade e UF do context do Mapbox (short_code prefixado pelo país)", async () => {
+    it("extrai cidade e UF do address do Nominatim /reverse", async () => {
       mockFetchOnce(200, {
-        features: [
-          {
-            center: [-46.655981, -23.561684],
-            place_name: "Avenida Paulista, 1000, São Paulo - SP",
-            relevance: 0.9,
-            context: [
-              { id: "place.456", text: "São Paulo" },
-              { id: "region.789", text: "São Paulo", short_code: "BR-SP" },
-            ],
-          },
-        ],
+        display_name: "Avenida Paulista, 1000, São Paulo - SP",
+        address: { city: "São Paulo", state: "São Paulo", "ISO3166-2-lvl4": "BR-SP" },
       });
 
-      const service = new GeoEngineService(buildConfigService("pk.test"));
+      const service = new GeoEngineService(buildConfigService());
       const resultado = await service.reverseGeocode({
         latitude: -23.561684,
         longitude: -46.655981,
@@ -115,10 +133,19 @@ describe("GeoEngineService", () => {
       expect(resultado.cidade).toBe("São Paulo");
       expect(resultado.estado).toBe("SP");
     });
+
+    it("lança BadGatewayException quando o Nominatim não devolve endereço para a coordenada", async () => {
+      mockFetchOnce(200, { display_name: "" });
+      const service = new GeoEngineService(buildConfigService());
+
+      await expect(service.reverseGeocode({ latitude: -23.5, longitude: -46.6 })).rejects.toThrow(
+        BadGatewayException,
+      );
+    });
   });
 
   describe("getRoute", () => {
-    it("converte a resposta do Mapbox Directions API para o contrato estável", async () => {
+    it("converte a resposta do OSRM /route para o contrato estável", async () => {
       mockFetchOnce(200, {
         code: "Ok",
         routes: [
@@ -126,7 +153,7 @@ describe("GeoEngineService", () => {
         ],
       });
 
-      const service = new GeoEngineService(buildConfigService("pk.test"));
+      const service = new GeoEngineService(buildConfigService());
       const resultado = await service.getRoute(
         { latitude: -23.561684, longitude: -46.655981 },
         { latitude: -23.55052, longitude: -46.633309 },
@@ -136,9 +163,21 @@ describe("GeoEngineService", () => {
       expect(resultado.duracaoSegundos).toBe(720.1);
     });
 
-    it("lança BadGatewayException quando o Mapbox não retorna nenhuma rota", async () => {
-      mockFetchOnce(200, { code: "NoRoute", routes: [] });
-      const service = new GeoEngineService(buildConfigService("pk.test"));
+    it("lança BadGatewayException quando o OSRM não encontra rota (code NoRoute, sem routes)", async () => {
+      mockFetchOnce(200, { code: "NoRoute" });
+      const service = new GeoEngineService(buildConfigService());
+
+      await expect(
+        service.getRoute(
+          { latitude: -23.5, longitude: -46.6 },
+          { latitude: -23.6, longitude: -46.7 },
+        ),
+      ).rejects.toThrow(BadGatewayException);
+    });
+
+    it("lança BadGatewayException quando o OSRM responde com erro HTTP", async () => {
+      mockFetchOnce(503, {});
+      const service = new GeoEngineService(buildConfigService());
 
       await expect(
         service.getRoute(

@@ -7,7 +7,7 @@ import type { SchoolStatus } from "./schools";
  * Endpoints tipados do Rotta Geo Platform (briefing "ROTTA GEO
  * PLATFORM") — espelham `apps/api/src/modules/geo`. Escopo desta
  * primeira fatia: leitura de marcadores do mapa (Map Intelligence
- * Agent), consumida pelo `@rotta/maps` (mobile) e pelo wrapper Mapbox
+ * Agent), consumida pelo `@rotta/maps` (mobile) e pelo wrapper MapLibre
  * GL JS de `apps/web`/`apps/admin`. Endpoints administrativos (geocode
  * manual, fila de revisão manual, sincronização INEP) ficam para quando
  * as telas de administração da Geo Platform forem construídas.

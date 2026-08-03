@@ -52,7 +52,7 @@ function buildCoordinate(overrides: Partial<SchoolCoordinate> = {}): SchoolCoord
     latitude: -23.561684 as never,
     longitude: -46.655981 as never,
     precisao: "0.95",
-    fonte: "MAPBOX",
+    fonte: "NOMINATIM",
     status: "PENDENTE",
     tentativa: 1,
     validadoPorIa: false,

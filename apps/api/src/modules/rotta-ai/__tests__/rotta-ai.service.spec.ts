@@ -6,7 +6,7 @@ import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
 
 describe("RottaAiService", () => {
   describe("analyzeSchoolAddress", () => {
-    it("delega ao Rotta Geo Engine e retorna cepValido + os campos sugeridos pelo Mapbox", async () => {
+    it("delega ao Rotta Geo Engine e retorna cepValido + os campos sugeridos pelo Nominatim", async () => {
       const geoEngine = {
         geocode: jest.fn().mockResolvedValue({
           latitude: -23.561684,

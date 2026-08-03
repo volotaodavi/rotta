@@ -1,4 +1,4 @@
-import { BadGatewayException, Injectable, ServiceUnavailableException } from "@nestjs/common";
+import { BadGatewayException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
 import type {
@@ -9,61 +9,112 @@ import type {
 } from "./geo-engine.types";
 import type { GeoConfig } from "@/config/geo.config";
 
-const GEOCODING_BASE_URL = "https://api.mapbox.com/geocoding/v5/mapbox.places";
-const DIRECTIONS_BASE_URL = "https://api.mapbox.com/directions/v5/mapbox/driving";
+/** Nome completo (como o Nominatim devolve em `address.state`) → UF, para bater com `School.estado` (sempre a sigla, ex. `"SP"`). */
+const UF_POR_ESTADO: Record<string, string> = {
+  acre: "AC",
+  alagoas: "AL",
+  amapá: "AP",
+  amazonas: "AM",
+  bahia: "BA",
+  ceará: "CE",
+  "distrito federal": "DF",
+  "espírito santo": "ES",
+  goiás: "GO",
+  maranhão: "MA",
+  "mato grosso": "MT",
+  "mato grosso do sul": "MS",
+  "minas gerais": "MG",
+  pará: "PA",
+  paraíba: "PB",
+  paraná: "PR",
+  pernambuco: "PE",
+  piauí: "PI",
+  "rio de janeiro": "RJ",
+  "rio grande do norte": "RN",
+  "rio grande do sul": "RS",
+  rondônia: "RO",
+  roraima: "RR",
+  "santa catarina": "SC",
+  "são paulo": "SP",
+  sergipe: "SE",
+  tocantins: "TO",
+};
 
-interface MapboxContextEntry {
-  id: string;
-  text: string;
-  /** Só presente em `region.*` — ex. `"BR-SP"`. `School.estado` guarda a UF (`"SP"`), nunca o nome completo. */
-  short_code?: string;
+interface NominatimAddress {
+  road?: string;
+  neighbourhood?: string;
+  suburb?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  municipality?: string;
+  state?: string;
+  /** Presente para entidades administrativas nível 4 (estado) — ex. `"BR-SP"`, já na sigla. Quando ausente, cai para `estadoParaUf(state)`. */
+  "ISO3166-2-lvl4"?: string;
 }
 
-interface MapboxGeocodingFeature {
-  center: [number, number];
-  place_name: string;
-  relevance: number;
-  /** Só presente quando a feature é do tipo `address` — nome da rua, sem o número. */
-  text?: string;
-  context?: MapboxContextEntry[];
+interface NominatimResult {
+  lat: string;
+  lon: string;
+  display_name: string;
+  /** 0 a 1 — papel equivalente ao `relevance` que o Mapbox Geocoding API devolvia. */
+  importance: number;
+  address?: NominatimAddress;
 }
 
-interface MapboxGeocodingResponse {
-  features: MapboxGeocodingFeature[];
+/** `"BR-SP"` → `"SP"`; nome completo (`"São Paulo"`) → `"SP"` via `UF_POR_ESTADO`. Nunca lança — retorna `null` quando o Nominatim não devolve nada reconhecível (endereço rural sem `address.state`, por exemplo). */
+function ufFromAddress(address: NominatimAddress | undefined): string | null {
+  if (!address) return null;
+  const iso = address["ISO3166-2-lvl4"];
+  if (iso?.startsWith("BR-")) return iso.slice(3);
+  if (!address.state) return null;
+  return UF_POR_ESTADO[address.state.toLowerCase()] ?? null;
 }
 
-function findContext(feature: MapboxGeocodingFeature, prefixo: string): MapboxContextEntry | null {
-  return feature.context?.find((entry) => entry.id.startsWith(`${prefixo}.`)) ?? null;
+function cidadeFromAddress(address: NominatimAddress | undefined): string | null {
+  return address?.city ?? address?.town ?? address?.village ?? address?.municipality ?? null;
 }
 
-/** `"BR-SP"` → `"SP"` — `short_code` do Mapbox sempre vem prefixado pelo país. */
-function ufFromShortCode(shortCode: string | undefined): string | null {
-  if (!shortCode) return null;
-  const partes = shortCode.split("-");
-  return partes[partes.length - 1]?.toUpperCase() ?? null;
+function bairroFromAddress(address: NominatimAddress | undefined): string | null {
+  return address?.suburb ?? address?.neighbourhood ?? null;
 }
 
-interface MapboxDirectionsRoute {
+interface OsrmRoute {
   distance: number;
   duration: number;
   geometry: unknown;
 }
 
-interface MapboxDirectionsResponse {
+interface OsrmRouteResponse {
   code: string;
-  routes: MapboxDirectionsRoute[];
+  /** Ausente quando `code !== "Ok"` (ex. `"NoRoute"`) — nunca assumir presente. */
+  routes?: OsrmRoute[];
 }
 
 /**
  * Rotta Geo Engine (briefing "ROTTA GEO PLATFORM" §"ROTTA GEO ENGINE")
- * — único ponto do sistema que conhece o Mapbox (Geocoding API/
- * Directions API). Nenhum outro módulo pode chamar `fetch` para
- * `api.mapbox.com` diretamente; todos passam por aqui. Mesma disciplina
- * de `SupabaseStorageService`: constrói a chamada de forma "preguiçosa"
- * (o token só é lido quando um método é realmente chamado) para que a
- * aplicação suba normalmente mesmo sem `MAPBOX_ACCESS_TOKEN`
- * configurado — o erro só aparece se uma geocodificação/rota for de
- * fato tentada, nunca no boot.
+ * — único ponto do sistema que conhece o provedor de mapas/geocodificação
+ * (OpenStreetMap: Nominatim para geocodificação, OSRM para rotas —
+ * substituiu o Mapbox, mesmo contrato estável em `geo-engine.types.ts`
+ * para o resto do sistema nunca perceber a troca). Nenhum outro módulo
+ * pode chamar `fetch` para Nominatim/OSRM diretamente; todos passam por
+ * aqui.
+ *
+ * DIVULGAÇÃO HONESTA (mesma disciplina de `SupabaseStorageService`/
+ * `InepSyncService`): os endereços padrão (`NOMINATIM_BASE_URL`/
+ * `OSRM_BASE_URL`) apontam para as instâncias públicas e gratuitas
+ * mantidas pela comunidade OSM — funcionam sem nenhuma configuração
+ * (nenhum token, ao contrário do Mapbox), mas têm política de uso
+ * pesada para produção em escala nacional: Nominatim pede no máximo
+ * ~1 requisição/segundo e exige um `User-Agent` identificando a
+ * aplicação (`NOMINATIM_USER_AGENT`, com um default aqui mas
+ * sobrescrevível); o OSRM demo público não tem SLA nem garantia de
+ * disponibilidade. Para volume nacional real (~200 mil escolas), a
+ * recomendação é hospedar as próprias instâncias (Nominatim/OSRM são
+ * open-source, rodáveis em Docker) e apontar `NOMINATIM_BASE_URL`/
+ * `OSRM_BASE_URL` para elas — o `SchoolGeocodeProcessor` já limita a
+ * concorrência da fila de geocodificação para respeitar o rate limit
+ * público por padrão.
  */
 @Injectable()
 export class GeoEngineService {
@@ -73,98 +124,86 @@ export class GeoEngineService {
     this.config = configService.get<GeoConfig>("geo")!;
   }
 
-  private getToken(): string {
-    if (!this.config.mapboxAccessToken) {
-      throw new ServiceUnavailableException(
-        "Rotta Geo Engine não configurado neste ambiente (MAPBOX_ACCESS_TOKEN ausente).",
-      );
-    }
-    return this.config.mapboxAccessToken;
+  private nominatimHeaders(): Record<string, string> {
+    return { "User-Agent": this.config.nominatimUserAgent };
   }
 
-  /** Endereço → coordenadas (Mapbox Geocoding API). Lança se o endereço não retornar nenhum resultado. */
+  /** Endereço → coordenadas (Nominatim `/search`). Lança se o endereço não retornar nenhum resultado. */
   async geocode(endereco: string): Promise<GeocodeResult> {
-    const token = this.getToken();
-    const url = `${GEOCODING_BASE_URL}/${encodeURIComponent(endereco)}.json?access_token=${token}&limit=1&country=BR`;
+    const url = `${this.config.nominatimBaseUrl}/search?q=${encodeURIComponent(endereco)}&format=jsonv2&addressdetails=1&countrycodes=br&limit=1`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: this.nominatimHeaders() });
     if (!response.ok) {
       throw new BadGatewayException(
-        `Rotta Geo Engine: falha ao geocodificar endereço (Mapbox retornou ${response.status}).`,
+        `Rotta Geo Engine: falha ao geocodificar endereço (Nominatim retornou ${response.status}).`,
       );
     }
 
-    const body = (await response.json()) as MapboxGeocodingResponse;
-    const feature = body.features[0];
-    if (!feature) {
+    const body = (await response.json()) as NominatimResult[];
+    const resultado = body[0];
+    if (!resultado) {
       throw new BadGatewayException(
         "Rotta Geo Engine: nenhuma coordenada encontrada para o endereço informado.",
       );
     }
 
-    const [longitude, latitude] = feature.center;
-    const regiao = findContext(feature, "region");
     return {
-      latitude,
-      longitude,
-      precisao: feature.relevance.toFixed(2),
-      enderecoFormatado: feature.place_name,
-      logradouro: feature.text ?? null,
-      bairro: findContext(feature, "neighborhood")?.text ?? null,
-      cidade: findContext(feature, "place")?.text ?? null,
-      estado: ufFromShortCode(regiao?.short_code) ?? regiao?.text ?? null,
+      latitude: Number(resultado.lat),
+      longitude: Number(resultado.lon),
+      precisao: resultado.importance.toFixed(2),
+      enderecoFormatado: resultado.display_name,
+      logradouro: resultado.address?.road ?? null,
+      bairro: bairroFromAddress(resultado.address),
+      cidade: cidadeFromAddress(resultado.address),
+      estado: ufFromAddress(resultado.address),
     };
   }
 
-  /** Coordenadas → endereço/cidade/estado (Mapbox Geocoding API, modo reverso) — usado pelo Validation AI Agent para conferir a geocodificação de forma independente. */
+  /** Coordenadas → endereço/cidade/estado (Nominatim `/reverse`) — usado pelo Validation AI Agent para conferir a geocodificação de forma independente. */
   async reverseGeocode(ponto: Coordenada): Promise<ReverseGeocodeResult> {
-    const token = this.getToken();
-    const url = `${GEOCODING_BASE_URL}/${ponto.longitude},${ponto.latitude}.json?access_token=${token}&types=address&limit=1`;
+    const url = `${this.config.nominatimBaseUrl}/reverse?lat=${ponto.latitude}&lon=${ponto.longitude}&format=jsonv2&addressdetails=1`;
 
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: this.nominatimHeaders() });
     if (!response.ok) {
       throw new BadGatewayException(
-        `Rotta Geo Engine: falha ao geocodificar coordenada reversa (Mapbox retornou ${response.status}).`,
+        `Rotta Geo Engine: falha ao geocodificar coordenada reversa (Nominatim retornou ${response.status}).`,
       );
     }
 
-    const body = (await response.json()) as MapboxGeocodingResponse;
-    const feature = body.features[0];
-    if (!feature) {
+    const body = (await response.json()) as NominatimResult;
+    if (!body.address) {
       throw new BadGatewayException(
         "Rotta Geo Engine: nenhum endereço encontrado para a coordenada informada.",
       );
     }
 
-    const regiao = findContext(feature, "region");
     return {
-      cidade: findContext(feature, "place")?.text ?? null,
-      estado: ufFromShortCode(regiao?.short_code) ?? regiao?.text ?? null,
-      enderecoFormatado: feature.place_name,
+      cidade: cidadeFromAddress(body.address),
+      estado: ufFromAddress(body.address),
+      enderecoFormatado: body.display_name,
     };
   }
 
-  /** Traçado/ETA/distância entre dois pontos, com paradas intermediárias opcionais (Mapbox Directions API). */
+  /** Traçado/ETA/distância entre dois pontos, com paradas intermediárias opcionais (OSRM `/route`). */
   async getRoute(
     origem: Coordenada,
     destino: Coordenada,
     paradas: Coordenada[] = [],
   ): Promise<DirectionsResult> {
-    const token = this.getToken();
     const pontos = [origem, ...paradas, destino]
       .map((ponto) => `${ponto.longitude},${ponto.latitude}`)
       .join(";");
-    const url = `${DIRECTIONS_BASE_URL}/${pontos}?access_token=${token}&geometries=geojson&overview=full`;
+    const url = `${this.config.osrmBaseUrl}/route/v1/driving/${pontos}?geometries=geojson&overview=full`;
 
     const response = await fetch(url);
     if (!response.ok) {
       throw new BadGatewayException(
-        `Rotta Geo Engine: falha ao calcular rota (Mapbox retornou ${response.status}).`,
+        `Rotta Geo Engine: falha ao calcular rota (OSRM retornou ${response.status}).`,
       );
     }
 
-    const body = (await response.json()) as MapboxDirectionsResponse;
-    const route = body.routes[0];
+    const body = (await response.json()) as OsrmRouteResponse;
+    const route = body.routes?.[0];
     if (!route) {
       throw new BadGatewayException(
         "Rotta Geo Engine: nenhuma rota encontrada entre os pontos informados.",

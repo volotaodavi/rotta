@@ -30,11 +30,14 @@ export const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_STORAGE_BUCKET: z.string().default("rotta-documents"),
 
-  // Mesma convenção `.optional()` de SUPABASE_URL acima — ausência é
-  // "não configurado" (o Rotta Geo Engine, `GeoEngineService`, checa a
-  // presença em runtime e recusa honestamente as chamadas ao Mapbox
-  // quando faltar, nunca falha o boot da aplicação por causa disto).
-  MAPBOX_ACCESS_TOKEN: z.string().optional(),
+  // Rotta Geo Engine sobre OpenStreetMap (Nominatim/OSRM) — ao contrário
+  // do Mapbox, nenhuma é obrigatória: sem elas, `GeoEngineService` usa as
+  // instâncias públicas OSM (`geo.config.ts`), que já funcionam sem
+  // nenhum token. Só fazem sentido sobrescrever para apontar a
+  // instâncias self-hosted (recomendado em produção de escala nacional).
+  NOMINATIM_BASE_URL: z.string().url().or(z.literal("")).optional(),
+  NOMINATIM_USER_AGENT: z.string().optional(),
+  OSRM_BASE_URL: z.string().url().or(z.literal("")).optional(),
 
   // Sincronização automática do Education Sync Agent (BullMQ job
   // repetível, coordenado via Redis — nunca dispara em duplicidade

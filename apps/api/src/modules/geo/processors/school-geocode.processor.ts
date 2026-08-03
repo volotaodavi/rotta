@@ -27,8 +27,19 @@ export interface SchoolGeocodeJobData {
  * processamento) não é um problema de infraestrutura — sinalizado
  * como `UnrecoverableError` para o BullMQ não desperdiçar tentativas
  * de retry numa falha que nunca vai se resolver sozinha.
+ *
+ * `concurrency: 1` + `limiter` (1 job/1.1s) respeitam a política de uso
+ * do Nominatim público (~1 requisição/segundo — ver divulgação honesta
+ * em `GeoEngineService`): a troca do Mapbox (rate limit generoso, plano
+ * pago) para o OSM público significa que o gargalo de geocodificação em
+ * escala nacional passou do "N em paralelo" para "1 por vez, sem
+ * pressa" — quem apontar `NOMINATIM_BASE_URL` para uma instância
+ * self-hosted pode aumentar ambos com segurança.
  */
-@Processor(SCHOOL_GEOCODE_QUEUE, { concurrency: 5 })
+@Processor(SCHOOL_GEOCODE_QUEUE, {
+  concurrency: 1,
+  limiter: { max: 1, duration: 1_100 },
+})
 export class SchoolGeocodeProcessor extends WorkerHost {
   private readonly logger = new Logger(SchoolGeocodeProcessor.name);
 
