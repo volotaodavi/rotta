@@ -2,6 +2,7 @@ import {
   createApiClient,
   createAuthEndpoints,
   createCompaniesEndpoints,
+  createSchoolsEndpoints,
   createVehiclesEndpoints,
 } from "@rotta/api-client";
 import { getAccessToken } from "@rotta/auth/web";
@@ -21,3 +22,4 @@ const apiClient = createApiClient({
 export const authApi = createAuthEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
+export const schoolsApi = createSchoolsEndpoints(apiClient);
