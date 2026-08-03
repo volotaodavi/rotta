@@ -18,7 +18,6 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 
-
 import { CreateSchoolAccessPointDto } from "./dto/create-school-access-point.dto";
 import { CreateSchoolCompanyLinkDto } from "./dto/create-school-company-link.dto";
 import { CreateSchoolDto } from "./dto/create-school.dto";
@@ -37,7 +36,7 @@ import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
 const MANAGE_ROLES = [Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR] as const;
-const READ_ROLES = [...MANAGE_ROLES, Role.MOTORISTA, Role.MONITOR] as const;
+const READ_ROLES = [...MANAGE_ROLES, Role.MOTORISTA, Role.MONITOR, Role.RESPONSAVEL] as const;
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };

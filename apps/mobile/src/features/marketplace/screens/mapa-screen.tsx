@@ -1,6 +1,5 @@
-import { useEffect } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { TransporterCard } from "../components/transporter-card";
 import { useLocation } from "../hooks/use-location";
@@ -8,22 +7,38 @@ import { useTransportersSearch } from "../hooks/use-transporters";
 
 import { EnderecoManualScreen } from "./endereco-manual-screen";
 
+import type { MarketplaceStackParamList } from "@/navigation/types";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { SearchTransportersParams } from "@rotta/api-client";
+
 import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
+type Props = NativeStackScreenProps<MarketplaceStackParamList, "MapaHome">;
+
+type SortBy = NonNullable<SearchTransportersParams["sortBy"]>;
+
+const SORT_OPTIONS: { value: SortBy; label: string }[] = [
+  { value: "distancia", label: "Mais perto" },
+  { value: "avaliacao", label: "Melhor avaliação" },
+  { value: "mensalidade", label: "Menor mensalidade" },
+];
+
 /**
- * "Mapa" (briefing "Marketplace" §"MAPA") — tela padrão sempre que o
- * Responsável abre o app (primeira aba do Bottom Navigation). Solicita
- * localização automaticamente ao entrar; se negada, cai no fallback de
- * endereço manual. Sem `packages/maps` configurado ainda (mesmo estado
- * de `features/schools/screens/mapa-screen.tsx`), a "vista de mapa" é a
- * lista de transportadores ordenada por distância — o mapa interativo
- * substitui esta lista assim que o provedor for contratado, sem mudar
- * a busca/filtros por baixo.
+ * "Mapa" (briefing "Marketplace" §"MAPA"/"FILTROS") — tela padrão sempre
+ * que o Responsável abre o app (primeira tela da stack da aba `Mapa`).
+ * Solicita localização automaticamente ao entrar; se negada, cai no
+ * fallback de endereço manual. Sem `packages/maps` configurado ainda
+ * (mesmo estado de `features/schools/screens/mapa-screen.tsx`), a "vista
+ * de mapa" é a lista de transportadores — o mapa interativo substitui
+ * esta lista assim que o provedor for contratado, sem mudar a busca/
+ * filtros por baixo.
  */
-export function MapaScreen(): JSX.Element {
+export function MapaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { status, coords, requestLocation, setManualCoords } = useLocation();
+  const [sortBy, setSortBy] = useState<SortBy>("distancia");
+  const [apenasVerificados, setApenasVerificados] = useState(false);
 
   useEffect(() => {
     if (status === "idle") {
@@ -33,7 +48,7 @@ export function MapaScreen(): JSX.Element {
 
   const searchParams =
     coords && status === "granted"
-      ? { ...coords, sortBy: "distancia" as const, pageSize: 20 }
+      ? { ...coords, sortBy, apenasVerificados: apenasVerificados || undefined, pageSize: 20 }
       : null;
   const { data, isLoading, isError } = useTransportersSearch(searchParams);
 
@@ -52,9 +67,30 @@ export function MapaScreen(): JSX.Element {
     return <EnderecoManualScreen onConfirm={setManualCoords} />;
   }
 
+  const filtros = (
+    <View style={{ gap: theme.spacing[2] }}>
+      <View style={[styles.filtrosRow, { gap: theme.spacing[2] }]}>
+        {SORT_OPTIONS.map((option) => (
+          <VehicleButton
+            key={option.value}
+            label={option.label}
+            variant={sortBy === option.value ? "primary" : "secondary"}
+            onPress={() => setSortBy(option.value)}
+          />
+        ))}
+      </View>
+      <VehicleButton
+        label={apenasVerificados ? "✓ Somente verificados" : "Somente verificados"}
+        variant={apenasVerificados ? "primary" : "secondary"}
+        onPress={() => setApenasVerificados((prev) => !prev)}
+      />
+    </View>
+  );
+
   if (isLoading) {
     return (
       <VehicleScreen>
+        {filtros}
         <ActivityIndicator color={theme.colors.primary} />
       </VehicleScreen>
     );
@@ -63,6 +99,7 @@ export function MapaScreen(): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
+        {filtros}
         <Text style={{ color: theme.colors.danger }}>
           Não foi possível buscar transportadores agora. Tente novamente mais tarde.
         </Text>
@@ -74,6 +111,7 @@ export function MapaScreen(): JSX.Element {
   if (!data || data.items.length === 0) {
     return (
       <VehicleScreen>
+        {filtros}
         <Text style={{ color: theme.colors.textMuted }}>
           Nenhum transportador encontrado perto de você ainda.
         </Text>
@@ -83,9 +121,17 @@ export function MapaScreen(): JSX.Element {
 
   return (
     <VehicleScreen>
+      {filtros}
       <Text style={[styles.titulo, { color: theme.colors.text }]}>Transportadores próximos</Text>
       {data.items.map((transportador) => (
-        <TransporterCard key={transportador.id} transportador={transportador} />
+        <Pressable
+          key={transportador.id}
+          onPress={() =>
+            navigation.navigate("TransportadorDetalhes", { transportadorId: transportador.id })
+          }
+        >
+          <TransporterCard transportador={transportador} />
+        </Pressable>
       ))}
     </VehicleScreen>
   );
@@ -93,5 +139,6 @@ export function MapaScreen(): JSX.Element {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center" },
+  filtrosRow: { flexDirection: "row", flexWrap: "wrap" },
   titulo: { fontSize: 18, fontWeight: "700" },
 });

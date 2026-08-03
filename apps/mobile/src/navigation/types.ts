@@ -56,3 +56,15 @@ export type ParentTabParamList = {
   Notificacoes: undefined;
   Perfil: undefined;
 };
+
+/**
+ * Stack aninhada na aba `Mapa` do Responsável (briefing "Marketplace"
+ * §"BUSCA"/"DETALHES DO TRANSPORTADOR"/"SOLICITAR TRANSPORTE") — mesmo
+ * papel de `VeiculoStackParamList` dentro de `DriverNavigator`: a aba em
+ * si nunca muda, só a tela exibida dentro dela.
+ */
+export type MarketplaceStackParamList = {
+  MapaHome: undefined;
+  TransportadorDetalhes: { transportadorId: string };
+  SolicitarTransporte: { transportadorId: string };
+};

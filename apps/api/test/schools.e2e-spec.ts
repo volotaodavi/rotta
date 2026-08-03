@@ -10,7 +10,6 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
-
 /**
  * E2E do módulo Escolas (briefing "Gestão de Escolas") — mesma
  * disciplina de `vehicles.e2e-spec.ts`, aplicação Nest completa contra
@@ -277,6 +276,61 @@ describe("Schools (e2e)", () => {
         .get(`/v1/schools/${schoolId}`)
         .set("Authorization", `Bearer ${owner.motoristaToken}`)
         .expect(200);
+    });
+  });
+
+  describe("Responsável (RBAC de leitura)", () => {
+    async function createResponsavelToken() {
+      const userId = randomUUID();
+      await prisma.user.create({
+        data: {
+          id: userId,
+          nome: "Responsável (teste)",
+          email: `responsavel-${userId}@teste.com.br`,
+          telefone: `11${Math.floor(900000000 + Math.random() * 99999999)}`,
+          cpf: String(Math.floor(10000000000 + Math.random() * 89999999999)),
+          passwordHash: "x",
+          isResponsavel: true,
+        },
+      });
+      return signTestToken({
+        sub: userId,
+        tenantId: null,
+        role: Role.RESPONSAVEL,
+        vinculoId: userId,
+      });
+    }
+
+    it("Responsável pode listar e ver detalhes de escolas do catálogo (para escolher a escola do aluno)", async () => {
+      const { empresaToken } = await createCompanyWithMembers();
+      const createResponse = await request(app.getHttpServer())
+        .post("/v1/schools")
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send(validSchoolPayload())
+        .expect(201);
+      const schoolId = createResponse.body.data.id as string;
+
+      const responsavelToken = await createResponsavelToken();
+
+      const list = await request(app.getHttpServer())
+        .get("/v1/schools")
+        .set("Authorization", `Bearer ${responsavelToken}`)
+        .expect(200);
+      expect(list.body.data.items.some((s: { id: string }) => s.id === schoolId)).toBe(true);
+
+      await request(app.getHttpServer())
+        .get(`/v1/schools/${schoolId}`)
+        .set("Authorization", `Bearer ${responsavelToken}`)
+        .expect(200);
+    });
+
+    it("Responsável não pode cadastrar escola (403)", async () => {
+      const responsavelToken = await createResponsavelToken();
+      await request(app.getHttpServer())
+        .post("/v1/schools")
+        .set("Authorization", `Bearer ${responsavelToken}`)
+        .send(validSchoolPayload())
+        .expect(403);
     });
   });
 

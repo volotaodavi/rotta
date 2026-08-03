@@ -1,12 +1,13 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StyleSheet, Text, View } from "react-native";
 
+import { MarketplaceNavigator } from "./MarketplaceNavigator";
+
 import type { ParentTabParamList } from "./types";
 
 import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-transport-state";
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
-import { MapaScreen, TransporteInicioScreen } from "@/features/marketplace/screens";
-
+import { TransporteInicioScreen } from "@/features/marketplace/screens";
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
 
@@ -33,7 +34,7 @@ export function ParentNavigator(): JSX.Element {
 
   return (
     <Tab.Navigator initialRouteName="Mapa" screenOptions={{ headerShown: false }}>
-      <Tab.Screen name="Mapa" component={MapaScreen} />
+      <Tab.Screen name="Mapa" component={MarketplaceNavigator} />
       <Tab.Screen
         name="Transporte"
         component={TransporteInicioScreen}
