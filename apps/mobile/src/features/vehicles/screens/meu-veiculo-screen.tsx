@@ -1,5 +1,6 @@
 import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 
+
 import { StatusPill, VehicleButton, VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle } from "../hooks/use-vehicles";
 import { VEHICLE_STATUS_LABEL, VEHICLE_STATUS_TONE, VEHICLE_TYPE_LABEL } from "../labels";

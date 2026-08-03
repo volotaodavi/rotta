@@ -43,9 +43,16 @@ export type VeiculoStackParamList = {
   EscolaHorarios: { schoolId: string };
 };
 
+/**
+ * Bottom Navigation do Responsável (briefing "Marketplace" §"NAVEGAÇÃO"):
+ * `Mapa` é sempre a tela padrão ao abrir o app; `Transporte` renomeia o
+ * próprio rótulo da aba conforme `ResponsavelTransportState` (ver
+ * `features/marketplace/labels.ts`), mas a rota em si tem sempre este
+ * mesmo nome fixo.
+ */
 export type ParentTabParamList = {
-  Inicio: undefined;
-  Historico: undefined;
+  Mapa: undefined;
+  Transporte: undefined;
   Notificacoes: undefined;
   Perfil: undefined;
 };

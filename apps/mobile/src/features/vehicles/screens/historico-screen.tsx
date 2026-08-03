@@ -1,5 +1,6 @@
 import { StyleSheet, Text } from "react-native";
 
+
 import { VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle, useVehicleMaintenances } from "../hooks/use-vehicles";
 import { VEHICLE_MAINTENANCE_TYPE_LABEL } from "../labels";

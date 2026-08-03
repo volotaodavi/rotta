@@ -26,17 +26,31 @@ export default (): ExpoConfig => ({
   ios: {
     supportsTablet: false,
     bundleIdentifier: "br.com.rotta.app",
-    infoPlist: {
-      // Justificativa de uso de localizacao em segundo plano — exigida
-      // pela App Store Review (Dossie 9, Secao 6.3). Texto final a
-      // revisar junto com o time de produto antes do primeiro envio.
-      NSLocationAlwaysAndWhenInUseUsageDescription:
-        "A Rotta usa sua localização durante a viagem ativa para que as famílias acompanhem o trajeto em tempo real.",
-    },
   },
   android: {
     package: "br.com.rotta.app",
     permissions: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
   },
-  plugins: ["expo-secure-store"],
+  plugins: [
+    "expo-secure-store",
+    [
+      "expo-location",
+      {
+        // Textos de justificativa de uso de localizacao exigidos pela
+        // App Store Review (Dossie 9, Secao 6.3) — o plugin injeta as
+        // chaves de Info.plist automaticamente (nunca mais declaradas
+        // manualmente em `ios.infoPlist`, para evitar duas fontes de
+        // verdade). "When in use": Responsavel buscando transportadores
+        // proximos (briefing "Marketplace" §"MAPA"). "Always": Motorista
+        // com viagem ativa (Dossie 9, Secao 6.3), unico uso de segundo
+        // plano hoje.
+        locationWhenInUsePermission:
+          "A Rotta usa sua localização para encontrar transportadores escolares próximos de você.",
+        locationAlwaysAndWhenInUsePermission:
+          "A Rotta usa sua localização durante a viagem ativa para que as famílias acompanhem o trajeto em tempo real.",
+        isIosBackgroundLocationEnabled: true,
+        isAndroidBackgroundLocationEnabled: true,
+      },
+    ],
+  ],
 });

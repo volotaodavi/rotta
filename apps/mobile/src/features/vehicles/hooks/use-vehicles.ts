@@ -4,6 +4,7 @@ import type { CreateVehicleOccurrenceInput, VehicleChecklistInput } from "@rotta
 
 import { vehiclesApi } from "@/lib/api-client";
 
+
 /**
  * Hooks de dados do módulo Veículos no app mobile (Dossiê 23, Secao
  * 2.2) — escopo do Motorista/Monitor: `GET /vehicles/me` (briefing "APP

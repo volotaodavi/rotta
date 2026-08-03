@@ -18,5 +18,9 @@ config.resolver.nodeModulesPaths = [
 // pnpm usa symlinks — necessario para o Metro resolver pacotes do workspace corretamente.
 config.resolver.unstable_enableSymlinks = true;
 config.resolver.disableHierarchicalLookup = true;
+// Necessario para resolver o campo "exports" do package.json (ex.
+// `@rotta/auth/native`/`@rotta/auth/web`) — sem isso o Metro nunca
+// encontra os subpaths declarados, mesmo com o symlink do pnpm correto.
+config.resolver.unstable_enablePackageExports = true;
 
 module.exports = config;
