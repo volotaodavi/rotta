@@ -1,8 +1,11 @@
 import { Button } from "@rotta/ui/web";
 import Link from "next/link";
 
+
 import type { Route } from "next";
 import type { ReactNode } from "react";
+
+import { RouteMark } from "@/components/route-mark";
 
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
@@ -12,22 +15,52 @@ const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/suporte", label: "Suporte" },
 ];
 
-const FOOTER_LINKS: { href: Route; label: string }[] = [
-  ...NAV_LINKS,
-  { href: "/blog", label: "Blog" },
+interface FooterColumn {
+  titulo: string;
+  links: { href: Route; label: string }[];
+}
+
+const FOOTER_COLUNAS: FooterColumn[] = [
+  {
+    titulo: "Produto",
+    links: [
+      { href: "/planos", label: "Planos" },
+      { href: "/beneficios", label: "Benefícios" },
+      { href: "/blog", label: "Blog" },
+    ],
+  },
+  {
+    titulo: "Conta",
+    links: [
+      { href: "/entrar", label: "Entrar" },
+      { href: "/criar-conta/pessoal", label: "Sou responsável" },
+      { href: "/criar-conta/empresa", label: "Sou transportadora" },
+      { href: "/criar-conta/profissional", label: "Sou motorista/monitor" },
+    ],
+  },
+  {
+    titulo: "Ajuda",
+    links: [
+      { href: "/faq", label: "FAQ" },
+      { href: "/suporte", label: "Suporte" },
+      { href: "/contato", label: "Contato" },
+    ],
+  },
 ];
 
 /**
  * Layout do route group `(marketing)` — Landing Page + Site público
- * (Dossie 11, Secao 1). Header/footer minimalistas, inspirados em
- * Uber/Stripe/Notion/Linear (briefing): muito espaço em branco, poucos
- * elementos de navegação.
+ * (Dossie 11, Secao 1). Header com marca (ver `RouteMark`) e rodapé em
+ * colunas — estrutura inspirada nos rodapés/cabeçalhos de Uber e 99
+ * (mais elementos de navegação que o layout anterior, puramente
+ * minimalista), sem reaproveitar cor ou copy das referências.
  */
 export default function MarketingLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-        <Link href="/" className="text-lg font-bold tracking-tight">
+        <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
+          <RouteMark className="h-8 w-8" />
           Rotta
         </Link>
         <nav className="hidden items-center gap-8 md:flex">
@@ -57,20 +90,38 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
 
       <main className="flex-1">{children}</main>
 
-      <footer className="mx-auto w-full max-w-6xl px-6 py-10">
-        <div className="flex flex-col items-center gap-4 border-t border-border pt-8 text-center">
-          <nav className="flex flex-wrap items-center justify-center gap-6">
-            {FOOTER_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-text-muted transition-colors hover:text-text"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-          <p className="text-xs text-text-muted">© {new Date().getFullYear()} Rotta.</p>
+      <footer className="w-full border-t border-border">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-4">
+          <div className="col-span-2 flex flex-col gap-2 sm:col-span-1">
+            <span className="flex items-center gap-2 text-base font-bold tracking-tight">
+              <RouteMark className="h-6 w-6" />
+              Rotta
+            </span>
+            <p className="text-sm text-text-muted">
+              Transporte escolar sob controle, do embarque à entrega.
+            </p>
+          </div>
+          {FOOTER_COLUNAS.map((coluna) => (
+            <div key={coluna.titulo} className="flex flex-col gap-3">
+              <span className="text-sm font-semibold">{coluna.titulo}</span>
+              <nav className="flex flex-col gap-2">
+                {coluna.links.map((link) => (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className="text-sm text-text-muted transition-colors hover:text-text"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
+              </nav>
+            </div>
+          ))}
+        </div>
+        <div className="border-t border-border px-6 py-6">
+          <p className="mx-auto w-full max-w-6xl text-center text-xs text-text-muted">
+            © {new Date().getFullYear()} Rotta. Todos os direitos reservados.
+          </p>
         </div>
       </footer>
     </div>
