@@ -98,6 +98,11 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
           label="Checklist de viagem"
           onPress={() => navigation.navigate("Checklist")}
         />
+        <VehicleButton
+          label="Escolas atendidas"
+          variant="secondary"
+          onPress={() => navigation.navigate("Escolas")}
+        />
       </View>
     </VehicleScreen>
   );

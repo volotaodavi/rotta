@@ -30,6 +30,17 @@ export type VeiculoStackParamList = {
   Historico: undefined;
   Ocorrencias: undefined;
   Checklist: undefined;
+  /**
+   * Escolas atendidas pelas rotas do Motorista/Monitor (briefing "APP
+   * MOBILE" do módulo Escolas) — aninhada na mesma stack de "Meu
+   * Veículo" (nenhuma aba própria: Bottom Navigation do Motorista já
+   * está no limite de 3-4 itens, Dossiê 10 §11.1).
+   */
+  Escolas: undefined;
+  EscolaDetalhes: { schoolId: string };
+  EscolaMapa: { schoolId: string };
+  EscolaRotasVinculadas: { schoolId: string };
+  EscolaHorarios: { schoolId: string };
 };
 
 export type ParentTabParamList = {
