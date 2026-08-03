@@ -34,6 +34,19 @@ export default (): ExpoConfig => ({
   plugins: [
     "expo-secure-store",
     [
+      "@rnmapbox/maps",
+      {
+        // Token de DOWNLOAD do Mapbox (secreto, `sk.*` com escopo
+        // `DOWNLOADS:READ` — NUNCA o token público `pk.*` usado em
+        // runtime pelo `@rotta/maps/native`) — só usado em build-time
+        // para baixar o SDK nativo do Mapbox (Maven/CocoaPods). Lido de
+        // uma variável de ambiente NÃO prefixada `EXPO_PUBLIC_` (este
+        // arquivo roda em Node durante o build, nunca no bundle do
+        // cliente) — Rotta Geo Platform.
+        RNMapboxMapsDownloadToken: process.env.RNMAPBOX_MAPS_DOWNLOAD_TOKEN,
+      },
+    ],
+    [
       "expo-location",
       {
         // Textos de justificativa de uso de localizacao exigidos pela

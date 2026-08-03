@@ -10,6 +10,7 @@ const nextConfig = {
     "@rotta/types",
     "@rotta/auth",
     "@rotta/api-client",
+    "@rotta/maps",
   ],
   typedRoutes: true,
 };

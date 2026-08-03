@@ -9,6 +9,7 @@
 
 export * from "./endpoints/auth";
 export * from "./endpoints/companies";
+export * from "./endpoints/geo";
 export * from "./endpoints/marketplace";
 export * from "./endpoints/schools";
 export * from "./endpoints/students";

@@ -2,10 +2,12 @@
   "name": "@rotta/maps",
   "version": "0.1.0",
   "private": true,
-  "description": "Abstracao sobre provedores de mapa (Google Maps + Mapbox, Dossie 9 Secao 2.6 / Dossie 22 Secao 5.11). Nenhum app importa os SDKs diretamente.",
+  "description": "Abstracao sobre o Mapbox (unico motor de mapas da Rotta Geo Platform, Dossie 9 Secao 2.6 / Dossie 22 Secao 5.11). Nenhum app importa mapbox-gl/@rnmapbox/maps diretamente.",
   "license": "UNLICENSED",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "exports": {
+    "./web": "./src/web/index.tsx",
+    "./native": "./src/native/index.tsx"
+  },
   "scripts": {
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
@@ -14,13 +16,31 @@
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "devDependencies": {
+    "@rnmapbox/maps": "10.2.10",
     "@rotta/config": "workspace:*",
+    "@types/mapbox-gl": "^3.5.0",
     "@types/react": "^18.3.17",
     "eslint": "^8.57.1",
+    "mapbox-gl": "^3.27.0",
     "react": "^18.3.1",
+    "react-native": "0.76.5",
     "typescript": "^5.7.2"
   },
   "peerDependencies": {
-    "react": "^18.3.1"
+    "@rnmapbox/maps": "10.2.10",
+    "mapbox-gl": "^3.27.0",
+    "react": "^18.3.1",
+    "react-native": "*"
+  },
+  "peerDependenciesMeta": {
+    "@rnmapbox/maps": {
+      "optional": true
+    },
+    "mapbox-gl": {
+      "optional": true
+    },
+    "react-native": {
+      "optional": true
+    }
   }
 }

@@ -1,6 +1,7 @@
 import {
   createApiClient,
   createAuthEndpoints,
+  createGeoEndpoints,
   createMarketplaceEndpoints,
   createSchoolsEndpoints,
   createStudentsEndpoints,
@@ -26,3 +27,4 @@ export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const studentsApi = createStudentsEndpoints(apiClient);
 export const marketplaceApi = createMarketplaceEndpoints(apiClient);
+export const geoApi = createGeoEndpoints(apiClient);

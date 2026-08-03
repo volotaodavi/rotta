@@ -10,15 +10,15 @@ export interface Coords {
 
 /**
  * Localização atual do Responsável (briefing "Marketplace" §"MAPA" —
- * "solicitar permissão de localização"). Diferente do "Mapa" de Escolas
- * (`features/schools/screens/mapa-screen.tsx`, um stub de lista porque
- * `packages/maps` está vazio): aqui não há mapa interativo nenhum sendo
- * substituído — apenas as COORDENADAS reais do dispositivo, via
- * `expo-location` (já instalado e configurado em `app.config.ts`),
- * usadas como parâmetro de busca (`GET /marketplace/transporters`).
- * Sem geocodificação de endereço digitado: nenhum provedor foi
- * contratado (`RottaAiService.analyzeSchoolAddress` é o mesmo stub
- * honesto já usado pelo módulo Escolas) — por isso o fallback manual
+ * "solicitar permissão de localização") — as COORDENADAS reais do
+ * dispositivo, via `expo-location` (já instalado e configurado em
+ * `app.config.ts`), usadas tanto como parâmetro de busca (`GET
+ * /marketplace/transporters`) quanto como centro do mapa real em
+ * `mapa-screen.tsx` (`@rotta/maps/native`). Sem geocodificação de
+ * endereço digitado: nenhum provedor foi contratado para ISSO
+ * especificamente (`RottaAiService.analyzeSchoolAddress`, usado pelo
+ * módulo Escolas, resolve endereço → coordenada via Rotta Geo Engine,
+ * mas não é chamado aqui) — por isso o fallback manual
  * (`endereco-manual-screen.tsx`) só aceita coordenadas se o próprio
  * Responsável as souber, nunca finge geocodificar o endereço.
  */
