@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   AuditLogRepository,
   ListAuditLogsByEntityFilter,
@@ -22,21 +21,29 @@ export class PrismaAuditLogRepository implements AuditLogRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   record(input: RecordAuditLogInput): Promise<AuditLog> {
-    return this.prisma.withTenant(
-      this.prisma.auditLog.create({
-        data: {
-          companyId: input.companyId,
-          entidadeTipo: input.entidadeTipo,
-          entidadeId: input.entidadeId,
-          acao: input.acao,
-          atorUserId: input.atorUserId,
-          dadosAntes: input.dadosAntes as Prisma.InputJsonValue | undefined,
-          dadosDepois: input.dadosDepois as Prisma.InputJsonValue | undefined,
-          ip: input.ip,
-          userAgent: input.userAgent,
-        },
-      }),
-    );
+    const operation = this.prisma.auditLog.create({
+      data: {
+        companyId: input.companyId,
+        entidadeTipo: input.entidadeTipo,
+        entidadeId: input.entidadeId,
+        acao: input.acao,
+        atorUserId: input.atorUserId,
+        dadosAntes: input.dadosAntes as Prisma.InputJsonValue | undefined,
+        dadosDepois: input.dadosDepois as Prisma.InputJsonValue | undefined,
+        ip: input.ip,
+        userAgent: input.userAgent,
+      },
+    });
+
+    // Sem `companyId` (ex. ator Responsável — módulo Marketplace, ou
+    // Admin Rotta agindo sobre um catálogo compartilhado): não há
+    // tenant nenhum para o `WITH CHECK` da policy comparar, então
+    // `withTenant` (que lê o contexto AMBIENTE da requisição, quase
+    // sempre `bypass: false` para papéis sem tenant — ver
+    // `TenantGuard`) rejeitaria a escrita mesmo sendo legítima.
+    // `withBypass` aqui é seguro: é sempre um INSERT de uma linha nova,
+    // nunca uma leitura cross-tenant.
+    return input.companyId ? this.prisma.withTenant(operation) : this.prisma.withBypass(operation);
   }
 
   async list(filter: ListAuditLogsFilter): Promise<ListAuditLogsResult> {

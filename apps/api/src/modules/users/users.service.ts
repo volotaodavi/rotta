@@ -25,6 +25,8 @@ export interface CreateUserWithPasswordInput {
   cpf: string;
   senha: string;
   avatarUrl?: string;
+  /** Ver nota em `User.isResponsavel`, `schema.prisma` (módulo Marketplace). */
+  isResponsavel?: boolean;
 }
 
 /**
@@ -107,6 +109,7 @@ export class UsersService {
         cpf: input.cpf,
         passwordHash,
         avatarUrl: input.avatarUrl,
+        isResponsavel: input.isResponsavel,
       },
       tx,
     );

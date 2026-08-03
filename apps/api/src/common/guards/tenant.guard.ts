@@ -7,7 +7,6 @@ import type { TenantContext } from "@/infra/database/tenant-context";
 import { IS_PUBLIC_KEY } from "@/common/decorators/public.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * Guard de isolamento multi-tenant (Dossie 8, Secao 15 e Dossie 12,
  * Secao 15.1) — resolve o `tenant_id` exclusivamente a partir do JWT
@@ -24,13 +23,24 @@ import { Role } from "@/shared/enums";
  * mesmo motivo que pulam o `JwtAuthGuard` — nao ha usuario/tenant
  * resolvido ainda naquele ponto do fluxo.
  *
- * `Role.ADMIN_ROTTA` e o unico papel sem `tenantId` (Dossie 8, Secao 2 —
- * funcionario da Rotta, nao de uma Empresa) e por isso e o unico que
- * publica `bypass: true` — sem este caso especial, o guard reprovaria
- * (`return false`) toda requisicao de Admin Rotta por falta de
- * `tenantId`, tornando o papel inoperante (bug coberto pelo modulo de
- * Empresas, Dossie 16, ja que e o primeiro modulo com uma rota
- * exclusiva de Admin Rotta).
+ * `Role.ADMIN_ROTTA` e `Role.RESPONSAVEL` sao os dois papeis sem
+ * `tenantId` (Dossie 8, Secao 2 — funcionario da Rotta e Responsavel do
+ * modulo Marketplace, respectivamente, nenhum vinculado a uma Empresa)
+ * — sem este caso especial, o guard reprovaria (`return false`) toda
+ * requisicao desses papeis por falta de `tenantId`, tornando-os
+ * inoperantes (bug coberto pelo modulo de Empresas, Dossie 16, ja que e
+ * o primeiro modulo com uma rota exclusiva de Admin Rotta).
+ *
+ * DIFERENÇA CRÍTICA entre os dois: só Admin Rotta publica
+ * `bypass: true` (funcionario da Rotta, deliberadamente cross-tenant).
+ * Responsável publica `bypass: false` — ele NÃO tem permissão
+ * cross-tenant nenhuma; `withTenant(...)` genérico simplesmente nao
+ * teria nenhum tenant para mostrar a ele (0 linhas em qualquer tabela
+ * com RLS, o padrão seguro documentado em `PrismaService`). O acesso
+ * real do Responsável às SUAS PRÓPRIAS linhas em tabelas com RLS
+ * (`transport_requests`/`contracts`/`ratings`) é resolvido nos
+ * repositórios daqueles módulos via `withBypass` EXPLÍCITO, sempre
+ * filtrado por `responsavelId = actor.sub` — nunca por este guard.
  */
 @Injectable()
 export class TenantGuard implements CanActivate {
@@ -57,6 +67,11 @@ export class TenantGuard implements CanActivate {
 
     if (user.role === Role.ADMIN_ROTTA) {
       request.tenantContext = { tenantId: null, bypass: true };
+      return true;
+    }
+
+    if (user.role === Role.RESPONSAVEL) {
+      request.tenantContext = { tenantId: null, bypass: false };
       return true;
     }
 

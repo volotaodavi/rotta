@@ -28,6 +28,7 @@ import type { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import type { LoginDto } from "./dto/login.dto";
 import type { RefreshTokenDto } from "./dto/refresh-token.dto";
 import type { RegisterEmpresaDto } from "./dto/register-empresa.dto";
+import type { RegisterPessoalDto } from "./dto/register-pessoal.dto";
 import type { ResetPasswordDto } from "./dto/reset-password.dto";
 import type { SessionResponseDto } from "./dto/session-response.dto";
 import type { PasswordResetTokenRepository } from "./repositories/password-reset-token.repository";
@@ -126,11 +127,39 @@ export class AuthService {
   }
 
   /**
+   * Cadastro self-service da Área Pessoal (briefing "Marketplace" —
+   * Responsável). Bem mais simples que `register` (Empresa): `users`
+   * não tem RLS, então não precisa de `runWithTenantContext`/bypass —
+   * é só criar o `User` com `isResponsavel: true` e emitir o token
+   * diretamente (sem `Company`/`Membership` nenhum).
+   */
+  async registerPessoal(
+    dto: RegisterPessoalDto,
+    meta: AuthRequestMeta,
+  ): Promise<AuthTokensResponseDto> {
+    const email = dto.email.trim().toLowerCase();
+    await this.usersService.assertNoDuplicateIdentity(email, dto.telefone, dto.cpf);
+
+    const user = await this.usersService.createUserWithPassword({
+      nome: dto.nome,
+      email,
+      telefone: dto.telefone,
+      cpf: dto.cpf,
+      senha: dto.senha,
+      isResponsavel: true,
+    });
+
+    await this.usersService.recordLgpdConsent(user.id);
+
+    return this.issueTokens(user, null, Role.RESPONSAVEL, user.id, meta);
+  }
+
+  /**
    * Login único (Dossiê 15, `AUTH-02`) — mesmo endpoint para toda
    * plataforma. Retorna tokens diretamente quando há exatamente um
-   * vínculo ativo (ou a conta é Admin Rotta); com mais de um vínculo e
-   * nenhum `companyId` informado, retorna a lista de perfis para
-   * seleção em vez de tokens (ver `LoginDto`).
+   * vínculo ativo (ou a conta é Admin Rotta/Responsável); com mais de
+   * um vínculo e nenhum `companyId` informado, retorna a lista de
+   * perfis para seleção em vez de tokens (ver `LoginDto`).
    */
   async login(
     dto: LoginDto,
@@ -164,6 +193,17 @@ export class AuthService {
     }
 
     const memberships = await this.usersService.listActiveMembershipsWithCompany(user.id);
+
+    // Responsável "puro" (módulo Marketplace) — sem nenhum Membership,
+    // entra direto como RESPONSAVEL. Uma mesma pessoa que É Responsável
+    // E TEM Membership(s) simultâneos (Dossiê 8 §2 — múltiplos papéis)
+    // fica fora do escopo desta entrega: por ora ela segue o fluxo de
+    // seleção de perfil abaixo apenas entre seus Memberships, sem a
+    // opção "Área Pessoal" aparecer na lista — documentado, não um bug
+    // escondido.
+    if (user.isResponsavel && memberships.length === 0) {
+      return this.issueTokens(user, null, Role.RESPONSAVEL, user.id, meta);
+    }
 
     if (memberships.length === 0) {
       throw new ForbiddenException("Esta conta ainda não possui nenhum vínculo ativo.");

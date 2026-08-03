@@ -13,6 +13,8 @@ export interface CreateUserInput {
   cpf: string;
   passwordHash: string;
   avatarUrl?: string;
+  /** Ver nota em `User.isResponsavel`, `schema.prisma` (módulo Marketplace). */
+  isResponsavel?: boolean;
 }
 
 /** Campos de estado de autenticação atualizáveis (Dossiê 15, `AUTH-*`) — nunca um passthrough genérico de `Prisma.UserUpdateInput`. */

@@ -427,6 +427,16 @@ model User {
   /// procurar Membership. Nunca setavel por nenhuma rota publica.
   isAdminRotta Boolean @default(false)
 
+  /// Marca a conta como Responsável (módulo Marketplace) — identidade
+  /// GLOBAL sem `Membership`/tenant próprio, mesmo mecanismo de
+  /// `isAdminRotta` (o login lê esta flag ANTES de exigir Membership).
+  /// Diferente de `isAdminRotta`: nada impede a MESMA pessoa de também
+  /// ter `Membership`s (ex. Responsável de um filho e, paralelamente,
+  /// motorista autônomo — Dossie 8 §2, comentário em `User` acima);
+  /// nesse caso o login oferece as duas identidades como perfis
+  /// distintos, mesmo padrão de `requiresProfileSelection`.
+  isResponsavel Boolean @default(false)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?

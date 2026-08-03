@@ -45,6 +45,16 @@ describe("Auth (e2e)", () => {
     ...overrides,
   });
 
+  const registerPessoalPayload = (overrides: Record<string, unknown> = {}) => ({
+    nome: "Beatriz Responsável",
+    email: `beatriz-${randomUUID()}@email.com`,
+    telefone: randomValidPhone(),
+    cpf: randomValidCpf(),
+    senha: "SenhaForte@123",
+    aceiteTermos: true,
+    ...overrides,
+  });
+
   beforeAll(async () => {
     notifySpy = jest.fn();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -101,6 +111,47 @@ describe("Auth (e2e)", () => {
         .post("/v1/auth/register/empresa")
         .send(payload)
         .expect(400);
+    });
+  });
+
+  describe("Registro self-service da Área Pessoal (módulo Marketplace)", () => {
+    it("cria User com isResponsavel, SEM Company/Membership, e devolve tokens com role=responsavel", async () => {
+      const response = await request(app.getHttpServer())
+        .post("/v1/auth/register/pessoal")
+        .send(registerPessoalPayload())
+        .expect(201);
+
+      expect(response.body.data.accessToken).toEqual(expect.any(String));
+      expect(response.body.data.user.role).toBe("responsavel");
+      expect(response.body.data.user.companyId).toBeNull();
+    });
+
+    it("login subsequente também resolve direto para responsavel (sem seleção de perfil)", async () => {
+      const payload = registerPessoalPayload();
+      await request(app.getHttpServer())
+        .post("/v1/auth/register/pessoal")
+        .send(payload)
+        .expect(201);
+
+      const login = await request(app.getHttpServer())
+        .post("/v1/auth/login")
+        .send({ identificador: payload.email, senha: payload.senha })
+        .expect(200);
+
+      expect(login.body.data.user.role).toBe("responsavel");
+      expect(login.body.data.user.companyId).toBeNull();
+    });
+
+    it("rejeita CPF duplicado", async () => {
+      const payload = registerPessoalPayload();
+      await request(app.getHttpServer())
+        .post("/v1/auth/register/pessoal")
+        .send(payload)
+        .expect(201);
+      await request(app.getHttpServer())
+        .post("/v1/auth/register/pessoal")
+        .send({ ...payload, email: `outra-${randomUUID()}@email.com` })
+        .expect(409);
     });
   });
 

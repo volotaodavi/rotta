@@ -22,6 +22,7 @@ import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterEmpresaDto } from "./dto/register-empresa.dto";
+import { RegisterPessoalDto } from "./dto/register-pessoal.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
 
 import type { Request } from "express";
@@ -52,6 +53,13 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   register(@Body() dto: RegisterEmpresaDto, @Req() req: Request) {
     return this.authService.register(dto, requestMeta(req));
+  }
+
+  @Public()
+  @Post("register/pessoal")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  registerPessoal(@Body() dto: RegisterPessoalDto, @Req() req: Request) {
+    return this.authService.registerPessoal(dto, requestMeta(req));
   }
 
   @Public()
