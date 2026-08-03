@@ -171,6 +171,68 @@ enum VehicleOccurrenceSeverity {
   ALTA
 }
 
+/// Nível/modalidade de ensino ofertado (briefing "TIPOS") — array em
+/// `School.tipos`, nunca um único valor: uma mesma unidade física
+/// comumente oferta mais de um nível (ex. Creche + Pré-escola).
+enum SchoolType {
+  CRECHE
+  PRE_ESCOLA
+  FUNDAMENTAL
+  MEDIO
+  EJA
+  TECNICO
+  UNIVERSIDADE
+  OUTRO
+}
+
+/// Dependência administrativa oficial (briefing "DEPENDÊNCIA
+/// ADMINISTRATIVA") — mesma classificação usada pelo Censo Escolar do
+/// INEP, para que a sincronização futura (`School.codigoInep`) mapeie
+/// 1:1 sem tradução.
+enum SchoolAdministrativeDependency {
+  FEDERAL
+  ESTADUAL
+  MUNICIPAL
+  PRIVADA
+  FILANTROPICA
+  COMUNITARIA
+}
+
+/// Turno atendido pela escola (briefing "TURNOS") — array em
+/// `School.turnosAtendidos`, já que a maioria das escolas atende mais
+/// de um turno.
+enum SchoolShift {
+  MANHA
+  TARDE
+  INTEGRAL
+  NOITE
+  PERSONALIZADO
+}
+
+/// Ciclo de vida do registro no catálogo (briefing "STATUS"). Cadastro
+/// manual (Empresa/Gestor/Admin Rotta) entra direto `ATIVA`;
+/// `EM_ANALISE` é reservado para o resultado de importação em lote e
+/// de sincronização INEP (`SchoolsService`, briefing "IMPORTAÇÃO" —
+/// decisão de produto: dado de origem externa/lote é revisado antes de
+/// aparecer em buscas/mapas por padrão).
+enum SchoolStatus {
+  ATIVA
+  INATIVA
+  EM_ANALISE
+  ARQUIVADA
+}
+
+/// Papel de um `SchoolAccessPoint` (briefing "LOCALIZAÇÃO" +
+/// "PORTÕES E PONTOS DE EMBARQUE" — as duas seções descrevem a MESMA
+/// coleção de pontos: "Localização" apenas destaca, no mapa, os pontos
+/// cujo `tipo` é um destes três papéis reservados).
+enum SchoolAccessPointType {
+  ENTRADA_PRINCIPAL
+  PONTO_EMBARQUE
+  PONTO_DESEMBARQUE
+  OUTRO
+}
+
 // =============================================================================
 // Plan — estrutura extensivel de planos comerciais (Dossie 16, Secao "Plano")
 // =============================================================================
@@ -256,11 +318,12 @@ model Company {
   /// linha para integridade referencial do histórico de auditoria.
   deletedAt DateTime?
 
-  memberships Membership[]
-  settings    CompanySetting[]
-  auditLogs   AuditLog[]
-  invites     Invite[]
-  vehicles    Vehicle[]
+  memberships       Membership[]
+  settings          CompanySetting[]
+  auditLogs         AuditLog[]
+  invites           Invite[]
+  vehicles          Vehicle[]
+  escolasVinculadas SchoolCompanyLink[]
 
   @@index([status])
   @@index([tipo])
@@ -355,6 +418,11 @@ model User {
   checklistsVeiculo             VehicleChecklist[]   @relation("VehicleChecklistMotorista")
   ocorrenciasVeiculoReportadas  VehicleOccurrence[]  @relation("VehicleOccurrenceReportadoPor")
 
+  /// Relações do módulo Escolas (Dossiê 13, Secao 10).
+  escolasCriadas           School[]            @relation("SchoolCriadoPor")
+  vinculosEscola           SchoolCompanyLink[] @relation("SchoolCompanyLinkVinculadoPor")
+  vinculosEscolaEncerrados SchoolCompanyLink[] @relation("SchoolCompanyLinkEncerradoPor")
+
   @@map("users")
 }
 
@@ -402,8 +470,16 @@ model Membership {
 model AuditLog {
   id String @id @default(uuid()) @db.Uuid
 
-  companyId    String  @db.Uuid
-  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  /// Opcional desde o módulo Escolas (Dossiê 13, `ESC-*`): registra o
+  /// tenant do ATOR que executou a ação (para aparecer no audit trail
+  /// da PRÓPRIA empresa), nunca necessariamente o "dono" da entidade —
+  /// `School`/`SchoolAccessPoint` são catálogo compartilhado, sem
+  /// tenant próprio (ver nota em `School`). Quando o ator é
+  /// `Role.ADMIN_ROTTA` (sem `tenantId`, ex. sincronização INEP), esta
+  /// coluna é `null` e a linha só é visível em bypass — RLS abaixo já
+  /// cobre isso (`NULL = qualquer coisa` nunca é `true` no Postgres).
+  companyId    String?  @db.Uuid
+  company      Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
   entidadeTipo String
   entidadeId   String
   acao         String
@@ -419,6 +495,7 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([companyId, entidadeTipo, entidadeId, createdAt])
+  @@index([entidadeTipo, entidadeId, createdAt])
   @@map("audit_logs")
 }
 
@@ -778,4 +855,153 @@ model VehicleOccurrence {
 
   @@index([companyId, vehicleId, createdAt])
   @@map("vehicle_occurrences")
+}
+
+// =============================================================================
+// Escolas — catalogo compartilhado (Dossie 13, Secao 10 / briefing "Gestao de Escolas")
+// =============================================================================
+
+/// DECISÃO ARQUITETURAL CENTRAL deste módulo, diferente de `Vehicle`:
+/// uma Escola é uma instituição FÍSICA real, e múltiplas Empresas
+/// (transportadoras concorrentes entre si) frequentemente atendem a
+/// MESMA escola com rotas distintas — não existe "a escola da Empresa
+/// X". Por isso `School` NÃO tem `companyId`/RLS (mesmo padrão de
+/// `Plan`, "catálogo público compartilhado", nunca o de `Vehicle`).
+/// O que É por tenant é o VÍNCULO `SchoolCompanyLink` — cada Empresa
+/// mantém sua própria lista de "escolas que eu atendo", e é esse
+/// vínculo (não a linha `School`) que soure o dashboard/RBAC de cada
+/// tenant. Consequência prática: Empresa/Gestor podem cadastrar e
+/// editar uma escola que OUTRA empresa já cadastrou (mesmo modelo
+/// colaborativo do próprio Censo Escolar/INEP) — toda alteração é
+/// auditada (`AuditLog`, `entidadeTipo = "School"`) exatamente para
+/// tornar essa colaboração rastreável.
+///
+/// `codigoInep` é o identificador oficial nacional (Censo Escolar) —
+/// único quando presente, mas OPCIONAL: escolas particulares pequenas
+/// ou recém-abertas legitimamente não têm código INEP ainda.
+///
+/// Preparado para, mas NÃO implementa hoje: vínculo com Alunos/
+/// Responsáveis/Rotas/Viagens (briefing "ALUNOS"/"ROTAS") — nenhum
+/// desses módulos existe ainda no monorepo (mesma lacuna já registrada
+/// em `Vehicle.viagemAtualId`); quando existirem, referenciam
+/// `School.id` diretamente, sem precisar alterar este model.
+model School {
+  id                        String                         @id @default(uuid()) @db.Uuid
+  /// Formatado em `SchoolsService.create()` (`ESC-000001`, `ESC-000002`,
+  /// ...) a partir da sequência Postgres `schools_codigo_interno_seq`
+  /// (criada via SQL na migration, Prisma não tem `sequence` nativa no
+  /// schema) — nunca a UUID `id`, inadequada para digitação humana
+  /// (rádio com o motorista, ligação de suporte). Nunca setável pelo cliente.
+  codigoInterno             String                         @unique
+  /// Código oficial do Censo Escolar (INEP) — único globalmente quando
+  /// presente; ausência é uma condição de negócio válida, nunca "dado
+  /// faltando por erro".
+  codigoInep                String?                        @unique
+  nomeOficial               String
+  nomeFantasia              String?
+  /// Rede de ensino (ex. "Rede Estadual de SP", "SESI", "Objetivo") —
+  /// texto livre: nomenclatura varia demais entre municípios/redes
+  /// privadas para caber em um enum fechado, ao contrário de
+  /// `dependenciaAdministrativa` (classificação oficial fixa do INEP).
+  redeEnsino                String?
+  dependenciaAdministrativa SchoolAdministrativeDependency
+
+  /// CPF (autônomo) ou CNPJ — opcional (briefing "CADASTRO"): nem toda
+  /// escola pública tem CNPJ próprio (frequentemente é o da Secretaria
+  /// de Educação mantenedora).
+  cnpj     String?
+  telefone String?
+  whatsapp String?
+  email    String?
+  website  String?
+
+  cep                    String
+  logradouro             String
+  numero                 String
+  complemento            String?
+  bairro                 String
+  cidade                 String
+  estado                 String
+  pais                   String   @default("Brasil")
+  latitude               Decimal? @db.Decimal(9, 6)
+  longitude              Decimal? @db.Decimal(9, 6)
+  observacoesLocalizacao String?
+
+  tipos           SchoolType[]
+  turnosAtendidos SchoolShift[]
+  status          SchoolStatus  @default(ATIVA)
+
+  /// De onde veio este registro (`MANUAL`, `IMPORT_CSV`, `IMPORT_EXCEL`,
+  /// `IMPORT_JSON`, `SYNC_INEP`) — metadado de proveniência para
+  /// triagem/auditoria, nunca usado em regra de autorização.
+  origemCadastro String @default("MANUAL")
+
+  criadoPorId String? @db.Uuid
+  criadoPor   User?   @relation("SchoolCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Soft delete — mesma convenção de `Company.deletedAt`/`Vehicle.deletedAt`.
+  deletedAt DateTime?
+
+  pontosAcesso    SchoolAccessPoint[]
+  vinculosEmpresa SchoolCompanyLink[]
+
+  @@index([status])
+  @@index([cidade, estado])
+  @@index([dependenciaAdministrativa])
+  @@index([deletedAt])
+  @@map("schools")
+}
+
+/// Portão/ponto de embarque-desembarque (briefing "PORTÕES E PONTOS DE
+/// EMBARQUE" + "LOCALIZAÇÃO") — sem RLS/tenant, mesma razão de
+/// `School` (é um fato físico da escola, não da empresa que o
+/// cadastrou). Sem soft delete: ao contrário de Documentos/Manutenções
+/// de veículo, o briefing não exige preservar histórico de portões
+/// (são metadados editáveis, não um registro de evento).
+model SchoolAccessPoint {
+  id       String @id @default(uuid()) @db.Uuid
+  schoolId String @db.Uuid
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  tipo        SchoolAccessPointType @default(OUTRO)
+  nome        String
+  descricao   String?
+  latitude    Decimal               @db.Decimal(9, 6)
+  longitude   Decimal               @db.Decimal(9, 6)
+  observacoes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, tipo])
+  @@map("school_access_points")
+}
+
+/// Vínculo Empresa<->Escola ("esta empresa atende esta escola") — ESTA
+/// tabela sim tem RLS por `companyId` (ao contrário de `School`),
+/// porque é o registro de negócio privado de cada tenant. Nunca
+/// UPDATE/DELETE físico ao desvincular: `desvinculadoEm = now()`,
+/// mesma convenção de `VehicleAssignment.encerradoEm` — preserva "esta
+/// empresa já atendeu esta escola no passado" para auditoria/histórico.
+/// `encerradoEm = null` é o vínculo vigente.
+model SchoolCompanyLink {
+  id        String  @id @default(uuid()) @db.Uuid
+  schoolId  String  @db.Uuid
+  school    School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  vinculadoEm    DateTime  @default(now())
+  desvinculadoEm DateTime?
+
+  vinculadoPorId String  @db.Uuid
+  vinculadoPor   User    @relation("SchoolCompanyLinkVinculadoPor", fields: [vinculadoPorId], references: [id], onDelete: Restrict)
+  encerradoPorId String? @db.Uuid
+  encerradoPor   User?   @relation("SchoolCompanyLinkEncerradoPor", fields: [encerradoPorId], references: [id], onDelete: SetNull)
+
+  @@index([companyId, schoolId, desvinculadoEm])
+  @@index([schoolId, desvinculadoEm])
+  @@map("school_company_links")
 }

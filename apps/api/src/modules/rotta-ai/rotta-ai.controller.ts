@@ -1,6 +1,7 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
+import { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
 import { ValidateDocumentDto } from "./dto/validate-document.dto";
 import { RottaAiService } from "./rotta-ai.service";
@@ -19,5 +20,10 @@ export class RottaAiController {
   @Post("analyze-vehicle-document")
   analyzeVehicleDocument(@Body() dto: AnalyzeVehicleDocumentDto) {
     return this.rottaAiService.analyzeVehicleDocument(dto);
+  }
+
+  @Post("analyze-school-address")
+  analyzeSchoolAddress(@Body() dto: AnalyzeSchoolAddressDto) {
+    return this.rottaAiService.analyzeSchoolAddress(dto);
   }
 }

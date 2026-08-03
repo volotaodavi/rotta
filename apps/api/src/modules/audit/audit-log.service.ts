@@ -37,4 +37,14 @@ export class AuditLogService {
       pageSize: filter.pageSize ?? 20,
     });
   }
+
+  /** Trilha de auditoria de uma entidade de catálogo compartilhado (ex. `School`) — ver `ListAuditLogsByEntityFilter`. */
+  listByEntity(
+    entidadeTipo: string,
+    entidadeId: string,
+    page = 1,
+    pageSize = 20,
+  ): Promise<ListAuditLogsResult> {
+    return this.repository.listByEntity({ entidadeTipo, entidadeId, page, pageSize });
+  }
 }

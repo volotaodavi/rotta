@@ -1,5 +1,6 @@
 import { Injectable, NotImplementedException } from "@nestjs/common";
 
+import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
 import type { ValidateDocumentDto } from "./dto/validate-document.dto";
 
@@ -41,6 +42,24 @@ export class RottaAiService {
   async analyzeVehicleDocument(_dto: AnalyzeVehicleDocumentDto): Promise<never> {
     throw new NotImplementedException(
       "A análise automática de documentos de veículo via Rotta AI ainda não está disponível — integração pendente de um provedor de OCR/visão computacional.",
+    );
+  }
+
+  /**
+   * Mesmo stub honesto, agora para ENDEREÇO de Escola (briefing "ROTTA
+   * AI" do módulo Escolas — corrigir endereço/validar CEP/geocodificar/
+   * obter coordenadas). `SchoolsService` chama isto de forma
+   * best-effort ao cadastrar/editar uma escola sem lat/long: se
+   * indisponível (sempre, hoje), o cadastro segue normalmente sem
+   * coordenadas — nunca bloqueia o fluxo. Detecção de escolas
+   * duplicadas é diferente: NÃO depende de provedor externo, por isso
+   * é implementada de verdade em `SchoolsService.checkPossibleDuplicates`,
+   * não aqui.
+   */
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async analyzeSchoolAddress(_dto: AnalyzeSchoolAddressDto): Promise<never> {
+    throw new NotImplementedException(
+      "A geocodificação/validação automática de endereço via Rotta AI ainda não está disponível — integração pendente de um provedor de geocodificação (ex. ViaCEP/Google Maps/Mapbox).",
     );
   }
 }
