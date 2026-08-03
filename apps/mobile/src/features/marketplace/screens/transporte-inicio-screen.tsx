@@ -1,7 +1,12 @@
-import { ActivityIndicator, StyleSheet, Text } from "react-native";
+import { ApiError, type Contract, type RatingTargetType } from "@rotta/api-client";
+import { useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 
+import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
+import { useCreateRating, useRatings } from "../hooks/use-ratings";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
+import { useTransporterDetail } from "../hooks/use-transporters";
 import {
   CONTRACT_STATUS_LABEL,
   CONTRACT_STATUS_TONE,
@@ -12,24 +17,39 @@ import {
 import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
+import { useSchool } from "@/features/schools/hooks/use-schools";
 import {
   StatusPill,
   VehicleButton,
   VehicleCard,
   VehicleScreen,
+  VehicleTextField,
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = BottomTabScreenProps<ParentTabParamList, "Transporte">;
 
+const RATING_TARGETS: {
+  tipo: RatingTargetType;
+  label: string;
+  presente: (contrato: Contract) => boolean;
+}[] = [
+  { tipo: "EMPRESA", label: "Transportadora", presente: () => true },
+  { tipo: "MOTORISTA", label: "Motorista", presente: (c) => Boolean(c.motoristaId) },
+  { tipo: "MONITOR", label: "Monitor", presente: (c) => Boolean(c.monitorId) },
+  { tipo: "VEICULO", label: "Veículo", presente: (c) => Boolean(c.vehicleId) },
+];
+
 /**
- * Tela padrão da aba "Transporte" (briefing "Marketplace" — o rótulo da
- * própria aba já muda por estado, ver `TRANSPORT_TAB_LABEL`/
- * `ParentNavigator`). Cobre os 5 estados em um nível básico; o detalhe
- * completo de "Meu Transporte" (empresa/motorista/monitor/veículo/
- * escola/horários/mensalidade/contrato + acompanhamento + avaliação)
- * é construído na tarefa seguinte — aqui cada estado já mostra dados
- * reais (nunca texto fixo), só sem a tela de detalhe dedicada ainda.
+ * Tela da aba "Transporte" (briefing "Marketplace" §"MEU TRANSPORTE"/
+ * "ACOMPANHAMENTO"/"AVALIAÇÕES" — o rótulo da própria aba já muda por
+ * estado, ver `TRANSPORT_TAB_LABEL`/`ParentNavigator`). Cobre os 5
+ * estados do Responsável com dados reais (nunca texto fixo): solicitação
+ * pendente, assinatura de contrato, transporte ativo (dados completos do
+ * transportador/escola/contrato + avaliações após ativação) e transporte
+ * encerrado. O acompanhamento em tempo real (mapa/GPS da viagem) fica
+ * para o módulo de Rotas — aqui a limitação é dita de forma explícita,
+ * nunca escondida atrás de um mapa falso.
  */
 export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -87,24 +107,14 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
     return (
       <VehicleScreen>
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Aguardando contrato</Text>
-        <Text style={{ color: theme.colors.textMuted }}>
-          {ultimoContrato
-            ? "O transportador gerou o contrato — assine para ativar o transporte."
-            : "Sua solicitação foi aprovada. O transportador vai gerar o contrato em breve."}
-        </Text>
         {ultimoContrato ? (
-          <VehicleCard>
-            <StatusPill
-              label={CONTRACT_STATUS_LABEL[ultimoContrato.status]}
-              tone={CONTRACT_STATUS_TONE[ultimoContrato.status]}
-            />
-            <Text style={{ color: theme.colors.text }}>
-              R$ {(ultimoContrato.valorMensalidadeCentavos / 100).toFixed(2)}/mês
-            </Text>
-          </VehicleCard>
+          <ContratoAssinatura contrato={ultimoContrato} />
         ) : solicitacaoAprovadaSemContrato ? (
           <VehicleCard>
             <StatusPill label="Aprovada" tone="success" />
+            <Text style={{ color: theme.colors.textMuted }}>
+              Sua solicitação foi aprovada. O transportador vai gerar o contrato em breve.
+            </Text>
           </VehicleCard>
         ) : null}
       </VehicleScreen>
@@ -115,13 +125,17 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
     return (
       <VehicleScreen>
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Text>
+        <DetalhesContrato contrato={contratoAtivo} />
+
         <VehicleCard>
-          <StatusPill label="Ativo" tone="success" />
-          <Text style={{ color: theme.colors.text }}>
-            R$ {(contratoAtivo.valorMensalidadeCentavos / 100).toFixed(2)}/mês
+          <Text style={[styles.secao, { color: theme.colors.text }]}>Acompanhamento</Text>
+          <Text style={{ color: theme.colors.textMuted }}>
+            O acompanhamento em tempo real da viagem (mapa, motorista, ETA) estará disponível assim
+            que o módulo de Rotas for lançado.
           </Text>
-          <Text style={{ color: theme.colors.textMuted }}>{contratoAtivo.planoDescricao}</Text>
         </VehicleCard>
+
+        <AvaliacoesSection contrato={contratoAtivo} />
       </VehicleScreen>
     );
   }
@@ -130,15 +144,182 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <Text style={[styles.titulo, { color: theme.colors.text }]}>Transporte encerrado</Text>
+      {ultimoContrato ? <DetalhesContrato contrato={ultimoContrato} /> : null}
+      {ultimoContrato ? <AvaliacoesSection contrato={ultimoContrato} /> : null}
       <Text style={{ color: theme.colors.textMuted }}>
-        Seu último contrato de transporte foi encerrado. Busque um novo transportador quando
-        precisar.
+        Busque um novo transportador quando precisar.
       </Text>
       <VehicleButton label="Buscar transportadores" onPress={() => navigation.navigate("Mapa")} />
     </VehicleScreen>
   );
 }
 
+function DetalhesContrato({ contrato }: { contrato: Contract }): JSX.Element {
+  const { theme } = useTheme();
+  const { data: transportador } = useTransporterDetail(contrato.companyId);
+  const { data: escola } = useSchool(contrato.schoolId);
+
+  return (
+    <VehicleCard>
+      <View style={styles.header}>
+        <StatusPill
+          label={CONTRACT_STATUS_LABEL[contrato.status]}
+          tone={CONTRACT_STATUS_TONE[contrato.status]}
+        />
+      </View>
+      <Text style={{ color: theme.colors.text }}>
+        {transportador?.nomeFantasia ?? "Carregando transportador..."}
+      </Text>
+      <Text style={{ color: theme.colors.textMuted }}>
+        {escola?.nomeOficial ?? "Carregando escola..."}
+      </Text>
+      <Text style={[styles.mensalidade, { color: theme.colors.primary }]}>
+        R$ {(contrato.valorMensalidadeCentavos / 100).toFixed(2)}/mês
+      </Text>
+      <Text style={{ color: theme.colors.textMuted }}>{contrato.planoDescricao}</Text>
+      <Text style={{ color: theme.colors.textMuted }}>{contrato.regras}</Text>
+      <Text style={{ color: theme.colors.textMuted }}>
+        Vigência: {new Date(contrato.vigenciaInicio).toLocaleDateString("pt-BR")}
+        {contrato.vigenciaFim
+          ? ` até ${new Date(contrato.vigenciaFim).toLocaleDateString("pt-BR")}`
+          : ""}
+      </Text>
+    </VehicleCard>
+  );
+}
+
+function ContratoAssinatura({ contrato }: { contrato: Contract }): JSX.Element {
+  const { theme } = useTheme();
+  const assinar = useAssinarContratoComoResponsavel(contrato.id);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function handleAssinar(): Promise<void> {
+    setErrorMessage(null);
+    try {
+      await assinar.mutateAsync();
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao assinar.");
+    }
+  }
+
+  return (
+    <>
+      <DetalhesContrato contrato={contrato} />
+      {contrato.assinadoResponsavelEm ? (
+        <VehicleCard>
+          <StatusPill label="Aguardando assinatura do transportador" tone="warning" />
+        </VehicleCard>
+      ) : (
+        <>
+          {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+          <VehicleButton
+            label="Assinar contrato"
+            onPress={() => void handleAssinar()}
+            isLoading={assinar.isPending}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+function AvaliacoesSection({ contrato }: { contrato: Contract }): JSX.Element {
+  const { theme } = useTheme();
+  const { data: ratings, isLoading } = useRatings(contrato.id);
+
+  const alvosPendentes = RATING_TARGETS.filter(
+    (target) =>
+      target.presente(contrato) && !ratings?.some((rating) => rating.alvoTipo === target.tipo),
+  );
+
+  return (
+    <View style={styles.avaliacoes}>
+      <Text style={[styles.secao, { color: theme.colors.text }]}>Avaliações</Text>
+      {isLoading ? <ActivityIndicator color={theme.colors.primary} /> : null}
+      {(ratings ?? []).map((rating) => (
+        <VehicleCard key={rating.id}>
+          <Text style={{ color: theme.colors.text }}>
+            {RATING_TARGETS.find((t) => t.tipo === rating.alvoTipo)?.label ?? rating.alvoTipo}: ★{" "}
+            {rating.nota}
+          </Text>
+          {rating.comentario ? (
+            <Text style={{ color: theme.colors.textMuted }}>{rating.comentario}</Text>
+          ) : null}
+        </VehicleCard>
+      ))}
+      {alvosPendentes.map((target) => (
+        <RatingForm
+          key={target.tipo}
+          contratoId={contrato.id}
+          alvoTipo={target.tipo}
+          label={target.label}
+        />
+      ))}
+    </View>
+  );
+}
+
+function RatingForm({
+  contratoId,
+  alvoTipo,
+  label,
+}: {
+  contratoId: string;
+  alvoTipo: RatingTargetType;
+  label: string;
+}): JSX.Element {
+  const { theme } = useTheme();
+  const createRating = useCreateRating(contratoId);
+  const [nota, setNota] = useState<number | null>(null);
+  const [comentario, setComentario] = useState("");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  async function handleEnviar(): Promise<void> {
+    if (nota === null) return;
+    setErrorMessage(null);
+    try {
+      await createRating.mutateAsync({ alvoTipo, nota, comentario: comentario || undefined });
+    } catch (error) {
+      setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao avaliar.");
+    }
+  }
+
+  return (
+    <VehicleCard>
+      <Text style={[styles.rotuloAvaliacao, { color: theme.colors.text }]}>Avaliar {label}</Text>
+      <View style={styles.notas}>
+        {[1, 2, 3, 4, 5].map((valor) => (
+          <VehicleButton
+            key={valor}
+            label={String(valor)}
+            variant={nota === valor ? "primary" : "secondary"}
+            onPress={() => setNota(valor)}
+          />
+        ))}
+      </View>
+      <VehicleTextField
+        label="Comentário (opcional)"
+        value={comentario}
+        onChangeText={setComentario}
+        multiline
+      />
+      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      <VehicleButton
+        label="Enviar avaliação"
+        onPress={() => void handleEnviar()}
+        disabled={nota === null}
+        isLoading={createRating.isPending}
+      />
+    </VehicleCard>
+  );
+}
+
 const styles = StyleSheet.create({
+  avaliacoes: { gap: 12 },
+  header: { flexDirection: "row" },
+  mensalidade: { fontWeight: "600" },
+  notas: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  rotuloAvaliacao: { fontWeight: "600" },
+  secao: { fontSize: 16, fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
 });

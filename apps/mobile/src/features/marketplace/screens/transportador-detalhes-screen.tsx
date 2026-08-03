@@ -1,5 +1,6 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
+
 import { useTransporterDetail } from "../hooks/use-transporters";
 
 import type { MarketplaceStackParamList } from "@/navigation/types";

@@ -9,6 +9,8 @@ import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-t
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
 import { TransporteInicioScreen } from "@/features/marketplace/screens";
 
+
+
 const Tab = createBottomTabNavigator<ParentTabParamList>();
 
 /**
