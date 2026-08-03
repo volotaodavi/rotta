@@ -53,7 +53,10 @@ jobs:
     needs: lint-and-typecheck
     services:
       postgres:
-        image: postgres:16-alpine
+        # postgis/postgis em vez de postgres puro — mesma decisão de
+        # docker-compose.yml (Rotta Geo Platform depende da extensão
+        # `postgis`, ausente na imagem `postgres:16-alpine`).
+        image: postgis/postgis:16-3.4
         env:
           POSTGRES_USER: rotta
           POSTGRES_PASSWORD: rotta_ci_only

@@ -9,7 +9,13 @@ name: rotta
 
 services:
   postgres:
-    image: postgres:16-alpine
+    # `postgis/postgis` em vez de `postgres` puro (Dossie 8, Secao 22:
+    # "PostgreSQL + PostGIS" e a decisao definitiva de banco) — a Rotta
+    # Geo Platform (indice espacial GiST de `SchoolCoordinate`/futuras
+    # posicoes de GPS) depende da extensao `postgis`, ausente na imagem
+    # `postgres:16-alpine`. Mesma versao major do Postgres (16), so a
+    # imagem muda — nenhuma migration/query pre-existente e afetada.
+    image: postgis/postgis:16-3.4
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-rotta}

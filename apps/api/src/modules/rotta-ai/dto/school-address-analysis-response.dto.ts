@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 
-/** Nunca retornado hoje — `RottaAiService.analyzeSchoolAddress` é um stub (`NotImplementedException`). Documentado para já fixar o contrato que o provedor real devolverá. */
+/** Resposta real de `RottaAiService.analyzeSchoolAddress` (Rotta Geo Engine/Mapbox Geocoding API) — campos sugeridos ficam `undefined` quando o Mapbox não os devolve para o endereço informado. */
 export class SchoolAddressAnalysisResponseDto {
   @ApiProperty() cepValido!: boolean;
   @ApiPropertyOptional() logradouroSugerido?: string;

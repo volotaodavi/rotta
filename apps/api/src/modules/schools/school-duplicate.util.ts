@@ -13,7 +13,8 @@
 
 const COMBINING_DIACRITICS = /[̀-ͯ]/g;
 
-function normalize(text: string): string {
+/** Reaproveitado pelo Validation AI Agent (`modules/geo`) para comparar cidade/estado — nunca duplicado. */
+export function normalize(text: string): string {
   return text
     .normalize("NFD")
     .replace(COMBINING_DIACRITICS, "")

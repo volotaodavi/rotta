@@ -1,9 +1,15 @@
 import { Injectable, NotImplementedException } from "@nestjs/common";
 
+
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
+import type { SchoolAddressAnalysisResponseDto } from "./dto/school-address-analysis-response.dto";
 import type { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import type { ValidateDocumentDto } from "./dto/validate-document.dto";
+
+import { GeoEngineService } from "@/modules/geo/geo-engine.service";
+
+const CEP_VALIDO = /^\d{5}-?\d{3}$/;
 
 /**
  * Ponto de integração preparado para a Rotta AI (briefing: "Preparar
@@ -21,6 +27,8 @@ import type { ValidateDocumentDto } from "./dto/validate-document.dto";
  */
 @Injectable()
 export class RottaAiService {
+  constructor(private readonly geoEngine: GeoEngineService) {}
+
   // eslint-disable-next-line @typescript-eslint/require-await
   async validateDocument(_dto: ValidateDocumentDto): Promise<never> {
     throw new NotImplementedException(
@@ -47,21 +55,35 @@ export class RottaAiService {
   }
 
   /**
-   * Mesmo stub honesto, agora para ENDEREÇO de Escola (briefing "ROTTA
-   * AI" do módulo Escolas — corrigir endereço/validar CEP/geocodificar/
-   * obter coordenadas). `SchoolsService` chama isto de forma
-   * best-effort ao cadastrar/editar uma escola sem lat/long: se
-   * indisponível (sempre, hoje), o cadastro segue normalmente sem
-   * coordenadas — nunca bloqueia o fluxo. Detecção de escolas
-   * duplicadas é diferente: NÃO depende de provedor externo, por isso
-   * é implementada de verdade em `SchoolsService.checkPossibleDuplicates`,
-   * não aqui.
+   * ENDEREÇO de Escola (briefing "ROTTA AI" do módulo Escolas —
+   * corrigir endereço/validar CEP/geocodificar/obter coordenadas) —
+   * agora real: delega ao Rotta Geo Engine (briefing "ROTTA GEO
+   * PLATFORM", Mapbox Geocoding API). Chamado pelo front-end ANTES de
+   * a escola existir (formulário de cadastro, `POST /rotta-ai/analyze-
+   * school-address`) — por isso não grava `SchoolCoordinate` nem
+   * atualiza nenhum `School` aqui; isso só acontece para escolas já
+   * cadastradas, via `GeoPipelineService` (Geocoding AI Agent +
+   * Validation AI Agent). Se o Rotta Geo Engine não estiver configurado
+   * (sem `MAPBOX_ACCESS_TOKEN`), a exceção de `GeoEngineService`
+   * propaga tal como está — o chamador (formulário) trata como
+   * best-effort e segue sem coordenadas, nunca bloqueia o cadastro.
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async analyzeSchoolAddress(_dto: AnalyzeSchoolAddressDto): Promise<never> {
-    throw new NotImplementedException(
-      "A geocodificação/validação automática de endereço via Rotta AI ainda não está disponível — integração pendente de um provedor de geocodificação (ex. ViaCEP/Google Maps/Mapbox).",
-    );
+  async analyzeSchoolAddress(
+    dto: AnalyzeSchoolAddressDto,
+  ): Promise<SchoolAddressAnalysisResponseDto> {
+    const cepValido = CEP_VALIDO.test(dto.cep);
+    const endereco = dto.enderecoLivre ? `${dto.enderecoLivre}, ${dto.cep}` : dto.cep;
+    const resultado = await this.geoEngine.geocode(endereco);
+
+    return {
+      cepValido,
+      logradouroSugerido: resultado.logradouro ?? undefined,
+      bairroSugerido: resultado.bairro ?? undefined,
+      cidadeSugerida: resultado.cidade ?? undefined,
+      estadoSugerido: resultado.estado ?? undefined,
+      latitude: resultado.latitude,
+      longitude: resultado.longitude,
+    };
   }
 
   /**

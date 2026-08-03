@@ -15,6 +15,7 @@ import appConfig from "@/config/app.config";
 import authConfig from "@/config/auth.config";
 import databaseConfig from "@/config/database.config";
 import { validate } from "@/config/env.validation";
+import geoConfig from "@/config/geo.config";
 import redisConfig from "@/config/redis.config";
 import storageConfig from "@/config/storage.config";
 import { HealthModule } from "@/health/health.module";
@@ -31,6 +32,7 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
+import { GeoModule } from "@/modules/geo/geo.module";
 import { GpsModule } from "@/modules/gps/gps.module";
 import { LogsModule } from "@/modules/logs/logs.module";
 import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
@@ -54,7 +56,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
-      load: [appConfig, authConfig, databaseConfig, redisConfig, storageConfig],
+      load: [appConfig, authConfig, databaseConfig, redisConfig, storageConfig, geoConfig],
     }),
 
     // --- Observabilidade e infraestrutura (Dossie 12, Secoes 6/8/10) ---
@@ -75,6 +77,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     UsersModule,
     CompaniesModule,
     SchoolsModule,
+    GeoModule,
     DriversModule,
     MonitorsModule,
     ParentsModule,

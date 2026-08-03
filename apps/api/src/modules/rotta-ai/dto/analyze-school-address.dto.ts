@@ -4,12 +4,10 @@ import { IsOptional, IsString, MaxLength } from "class-validator";
 /**
  * Análise de endereço de ESCOLA (briefing "ROTTA AI" do módulo Escolas
  * — "Corrigir endereços. Validar CEP. Geocodificar endereço. Obter
- * coordenadas automaticamente."). As quatro capacidades pedidas
- * dependem de um provedor externo de geocodificação/endereços (ex.
- * ViaCEP + Google Maps/Mapbox) — nenhum está contratado/configurado
- * (mesma lacuna de `packages/maps`, já disclosed no módulo Veículos),
- * então vivem em UM único contrato agrupado, não quatro stubs
- * separados sem diferença real de implementação hoje.
+ * coordenadas automaticamente."). As quatro capacidades vivem em UM
+ * único contrato agrupado (não quatro DTOs separados) porque
+ * `RottaAiService.analyzeSchoolAddress` resolve todas de uma vez, via
+ * Rotta Geo Engine (Mapbox Geocoding API — `MAPBOX_ACCESS_TOKEN`).
  */
 export class AnalyzeSchoolAddressDto {
   @ApiProperty({ example: "01310100" })

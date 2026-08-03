@@ -233,6 +233,69 @@ enum SchoolAccessPointType {
   OUTRO
 }
 
+/// Status de uma tentativa de geocodificação da Rotta Geo Platform
+/// (briefing "ROTTA GEO PLATFORM" §"VALIDATION AI AGENT"). `PENDENTE`
+/// é o estado inicial (Geocoding AI Agent acabou de gravar); o
+/// Validation AI Agent decide entre `VALIDADO` (copiado para
+/// `School.latitude`/`longitude`) e `REPROCESSAR` (nova tentativa,
+/// nunca mais que 3 — a 4ª reprovação vira `REVISAO_MANUAL`, nunca um
+/// loop infinito).
+enum SchoolCoordinateStatus {
+  PENDENTE
+  VALIDADO
+  REPROCESSAR
+  REVISAO_MANUAL
+}
+
+/// De onde veio a coordenada de uma tentativa (briefing "SCHOOL
+/// COORDINATES" §"FONTE") — `MAPBOX` é o caminho normal (Geocoding AI
+/// Agent); `MANUAL` cobre correção humana na Fila de Revisão Manual.
+enum SchoolCoordinateSource {
+  MAPBOX
+  MANUAL
+}
+
+/// Histórico/auditoria de geocodificação de uma Escola (briefing
+/// "ROTTA GEO PLATFORM" §"BANCO DE DADOS" — "School Coordinates"). Cada
+/// tentativa do Geocoding AI Agent grava UMA linha aqui; NUNCA é a
+/// fonte de leitura para "onde fica esta escola" (isso continua sendo
+/// `School.latitude`/`longitude`, já lido por Marketplace/mapas/rotas
+/// hoje) — o Map Intelligence Agent copia a tentativa `VALIDADO` mais
+/// recente para lá assim que ela é aprovada. Manter os dois separados
+/// evita duas fontes de verdade divergentes: este model é o "porquê"
+/// (proveniência/auditoria/fila de revisão), `School` é o "o quê"
+/// (valor atual, já usado por todo o resto da plataforma).
+model SchoolCoordinate {
+  id       String @id @default(uuid()) @db.Uuid
+  schoolId String @db.Uuid
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  latitude  Decimal                @db.Decimal(9, 6)
+  longitude Decimal                @db.Decimal(9, 6)
+  /// Texto livre com o retorno de precisão do provedor (ex.
+  /// `relevance`/`accuracy` do Mapbox Geocoding API) — sem enum fechado
+  /// porque o vocabulário varia por provedor (briefing não define um
+  /// próprio).
+  precisao  String?
+  fonte     SchoolCoordinateSource @default(MAPBOX)
+  status    SchoolCoordinateStatus @default(PENDENTE)
+
+  /// Quantas vezes esta escola já foi reprocessada (briefing: "Limite
+  /// máximo: 3 tentativas automáticas") — contínuo por escola: cada
+  /// nova tentativa grava `tentativaAnterior + 1`, nunca reinicia.
+  tentativa Int @default(1)
+
+  validadoPorIa Boolean @default(false)
+  motivoRevisao String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([schoolId, status])
+  @@index([status])
+  @@map("school_coordinates")
+}
+
 /// Sexo do aluno (briefing "CADASTRO DO ALUNO", módulo Marketplace).
 enum StudentSex {
   MASCULINO
@@ -1007,6 +1070,7 @@ model School {
   alunos                 Student[]
   solicitacoesTransporte TransportRequest[]
   contratos              Contract[]
+  coordenadas            SchoolCoordinate[]
 
   @@index([status])
   @@index([cidade, estado])

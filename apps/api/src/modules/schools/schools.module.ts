@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { PrismaSchoolAccessPointRepository } from "./repositories/prisma-school-access-point.repository";
 import { PrismaSchoolCompanyLinkRepository } from "./repositories/prisma-school-company-link.repository";
 import { PrismaSchoolRepository } from "./repositories/prisma-school.repository";
@@ -46,6 +45,12 @@ import { AuditModule } from "@/modules/audit/audit.module";
     { provide: SCHOOL_ACCESS_POINT_REPOSITORY, useClass: PrismaSchoolAccessPointRepository },
     { provide: SCHOOL_COMPANY_LINK_REPOSITORY, useClass: PrismaSchoolCompanyLinkRepository },
   ],
-  exports: [SchoolsService],
+  // `SCHOOL_REPOSITORY` também é exportado (além de `SchoolsService`)
+  // para o `GeoModule` — o Validation AI Agent grava
+  // `latitude`/`longitude` diretamente ali quando aprova uma
+  // geocodificação (escrita de sistema, sem `AuthenticatedUser`/RBAC
+  // humano; a auditoria dessa escrita é o próprio `SchoolCoordinate`,
+  // não o `AuditLog` genérico que `SchoolsService.update()` exigiria).
+  exports: [SchoolsService, SCHOOL_REPOSITORY],
 })
 export class SchoolsModule {}
