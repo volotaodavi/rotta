@@ -6,23 +6,25 @@
 // Auditoria precisam hoje; os demais 19 dominios do Dossie 13 chegam
 // junto com cada modulo real (nunca especulativamente adiantados aqui).
 //
-// Extensoes previstas quando o primeiro model geoespacial for criado
-// (Dossie 8, Secao 22): PostGIS + particionamento declarativo nativo do
-// Postgres para a tabela PosicaoGPS. Nao habilitadas ainda.
-//
-// generator client {
-//   provider        = "prisma-client-js"
-//   previewFeatures = ["postgresqlExtensions"]
-// }
+// PostGIS habilitado a partir do Map Intelligence Agent (Rotta Geo
+// Platform, Dossie 8 Secao 22): `School.pontoGeografico` (campo
+// `Unsupported`, ver model `School`) e um `geography(Point,4326)`
+// mantido por trigger de banco (migration
+// `20260803192602_geo_map_intelligence`) com indice espacial GiST —
+// Prisma Client nao le/escreve esse campo diretamente (tipo
+// `Unsupported`), so o `MapIntelligenceService`/`SchoolMarkerRepository`
+// (`$queryRaw`) o usam. Particionamento declarativo da tabela
+// PosicaoGPS ainda nao habilitado (chega com o modulo Rotas).
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // extensions = [postgis] — habilitado junto com o primeiro model geoespacial (Dossie 8, Secao 16.1)
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [postgis]
 }
 
 // =============================================================================
@@ -1047,6 +1049,15 @@ model School {
   latitude               Decimal? @db.Decimal(9, 6)
   longitude              Decimal? @db.Decimal(9, 6)
   observacoesLocalizacao String?
+  /// `geography(Point,4326)` mantido por trigger de banco a partir de
+  /// `latitude`/`longitude` (migration `20260803192602_geo_map_intelligence`)
+  /// — índice espacial GiST do Map Intelligence Agent. Tipo `Unsupported`:
+  /// Prisma Client não lê/escreve este campo, só existe aqui para o
+  /// migration diff reconhecer a coluna; toda leitura é via
+  /// `SchoolMarkerRepository` (`$queryRaw`). Nome distinto da relação
+  /// `coordenadas: SchoolCoordinate[]` abaixo (histórico de tentativas de
+  /// geocodificação — conceito diferente deste ponto geográfico único).
+  pontoGeografico        Unsupported("geography(Point, 4326)")?
 
   tipos           SchoolType[]
   turnosAtendidos SchoolShift[]

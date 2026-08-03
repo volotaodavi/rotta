@@ -6,13 +6,14 @@ function toRadians(degrees: number): number {
 
 /**
  * Distância em linha reta entre duas coordenadas (fórmula de Haversine)
- * — usada pela busca de transportadores (briefing "Marketplace" §"MAPA")
- * porque o schema ainda não habilita PostGIS (ver nota em
- * `schema.prisma`, topo do arquivo: "Nao habilitadas ainda"). Calculada
- * na camada de aplicação sobre o conjunto já filtrado por status/RLS —
- * aceitável para o volume esperado de Empresas ativas hoje; migrar para
- * `ST_DWithin`/índice espacial é o caminho natural quando PostGIS for
- * habilitado, sem mudar a assinatura pública deste util.
+ * — usada pela busca de transportadores (briefing "Marketplace" §"MAPA").
+ * Calculada na camada de aplicação sobre o conjunto já filtrado por
+ * status/RLS — aceitável para o volume esperado de Empresas ativas
+ * hoje. PostGIS já foi habilitado (Map Intelligence Agent, módulo Geo
+ * Platform — ver `School.pontoGeografico`/`SchoolMarkerRepository`),
+ * mas migrar esta busca de transportadores para `ST_DWithin`/índice
+ * espacial é um trabalho à parte (schema de `Company`, não de `School`)
+ * — nenhuma mudança na assinatura pública deste util quando isso acontecer.
  */
 export function haversineDistanceKm(
   lat1: number,

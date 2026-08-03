@@ -1,6 +1,7 @@
 import { BadGatewayException, Inject, Injectable, Logger } from "@nestjs/common";
 import AdmZip from "adm-zip";
 
+
 import { GeoPipelineService } from "../geo-pipeline.service";
 import { mapInepRowToSchoolData } from "../inep/inep-row.mapper";
 
@@ -51,7 +52,7 @@ export interface InepSyncResumo {
  *     (`mapInepRowToSchoolData`) e compara contra a base atual por
  *     `codigoInep` (busca em lote, nunca N consultas individuais).
  *  4. Escola nova → cria (`status: EM_ANALISE`, `origemCadastro:
- *     "INEP_SYNC"`) e dispara `GeoPipelineService.geocodeSchool`.
+ *     "SYNC_INEP"`) e dispara `GeoPipelineService.geocodeSchool`.
  *  5. Escola existente com endereço alterado → atualiza e dispara o
  *     pipeline de novo (endereço mudou, a coordenada antiga não vale
  *     mais). Sem alteração de endereço → não mexe (nunca sobrescreve
@@ -187,7 +188,7 @@ export class InepSyncService {
             tipos: ["OUTRO"],
             turnosAtendidos: ["PERSONALIZADO"],
             status: "EM_ANALISE",
-            origemCadastro: "INEP_SYNC",
+            origemCadastro: "SYNC_INEP",
           });
           resumo.novas += 1;
           paraGeocodificar.push(criada.id);

@@ -35,7 +35,7 @@ function buildSchool(overrides: Partial<School> = {}): School {
     tipos: ["FUNDAMENTAL"],
     turnosAtendidos: ["MANHA"],
     status: "ATIVA",
-    origemCadastro: "INEP_SYNC",
+    origemCadastro: "SYNC_INEP",
     criadoPorId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -112,7 +112,7 @@ describe("InepSyncService", () => {
       expect(schoolRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           codigoInep: "35000123",
-          origemCadastro: "INEP_SYNC",
+          origemCadastro: "SYNC_INEP",
           status: "EM_ANALISE",
         }),
       );
