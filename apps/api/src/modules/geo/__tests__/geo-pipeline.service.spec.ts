@@ -170,8 +170,12 @@ describe("GeoPipelineService", () => {
         schoolRepository,
         coordinateRepository,
       );
-      await service.resolveManualReview("coordinate-1", { latitude: -23.5, longitude: -46.6 });
+      const resultado = await service.resolveManualReview("coordinate-1", {
+        latitude: -23.5,
+        longitude: -46.6,
+      });
 
+      expect(resultado.status).toBe("VALIDADO");
       expect(coordinateRepository.create).toHaveBeenCalledWith({
         schoolId: "school-1",
         latitude: -23.5,

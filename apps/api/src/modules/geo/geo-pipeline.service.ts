@@ -1,6 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
-
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { ValidationAiAgentService } from "./agents/validation-ai-agent.service";
 import { SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
@@ -88,12 +87,14 @@ export class GeoPipelineService {
       fonte: "MANUAL",
       tentativa: anterior.tentativa + 1,
     });
-    await this.coordinateRepository.updateStatus(revisada.id, "VALIDADO", { validadoPorIa: false });
+    const validada = await this.coordinateRepository.updateStatus(revisada.id, "VALIDADO", {
+      validadoPorIa: false,
+    });
     await this.schoolRepository.update(school.id, {
       latitude: input.latitude,
       longitude: input.longitude,
     });
 
-    return revisada;
+    return validada;
   }
 }
