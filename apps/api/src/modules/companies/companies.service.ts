@@ -40,6 +40,7 @@ import { PrismaService } from "@/infra/database/prisma.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { UsersService } from "@/modules/users/users.service";
+import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -95,6 +96,7 @@ export class CompaniesService {
     private readonly auditLogService: AuditLogService,
     private readonly storageService: SupabaseStorageService,
     private readonly prisma: PrismaService,
+    private readonly vehiclesService: VehiclesService,
   ) {}
 
   /**
@@ -434,8 +436,11 @@ export class CompaniesService {
     return {
       motoristas: isActive(Role.MOTORISTA),
       responsaveis: isActive(Role.RESPONSAVEL),
+      // `alunos`/`rotas`/`viagens`/`documentosVencendo` seguem em 0: nenhum
+      // desses módulos existe ainda no monorepo (ver Dossiê 14/17-19) —
+      // `veiculos` já reflete a contagem real desde o módulo Veículos.
       alunos: 0,
-      veiculos: 0,
+      veiculos: await this.vehiclesService.countActive(id),
       rotas: 0,
       viagens: 0,
       receitaEstimadaCentavos: company.plan.priceCents,

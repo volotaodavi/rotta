@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { CompanyStatus, CompanyType } from "@prisma/client";
 
-
 import { CompaniesService } from "../companies.service";
 
 import type { CreateCompanyDto } from "../dto/create-company.dto";
@@ -13,6 +12,7 @@ import type { PrismaService } from "@/infra/database/prisma.service";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { UsersService } from "@/modules/users/users.service";
+import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 
 import { Role } from "@/shared/enums";
 
@@ -99,6 +99,7 @@ describe("CompaniesService", () => {
   let auditLogService: jest.Mocked<AuditLogService>;
   let storageService: jest.Mocked<SupabaseStorageService>;
   let prisma: jest.Mocked<PrismaService>;
+  let vehiclesService: jest.Mocked<VehiclesService>;
 
   beforeEach(() => {
     companyRepository = {
@@ -125,6 +126,7 @@ describe("CompaniesService", () => {
     prisma = {
       runInTenantTransaction: jest.fn((fn: (tx: unknown) => unknown) => fn({})),
     } as unknown as jest.Mocked<PrismaService>;
+    vehiclesService = { countActive: jest.fn() } as unknown as jest.Mocked<VehiclesService>;
 
     service = new CompaniesService(
       companyRepository,
@@ -134,6 +136,7 @@ describe("CompaniesService", () => {
       auditLogService,
       storageService,
       prisma,
+      vehiclesService,
     );
 
     planRepository.findByCode.mockResolvedValue(STARTER_PLAN);
@@ -249,6 +252,26 @@ describe("CompaniesService", () => {
 
       const result = await service.findByIdOrThrow(company.id, ownActor);
       expect(result.id).toBe(company.id);
+    });
+  });
+
+  describe("getDashboard", () => {
+    it("reflete a contagem real de veículos ativos (nunca hardcoded em zero)", async () => {
+      const company = buildCompany();
+      companyRepository.findById.mockResolvedValue(company);
+      usersService.listMembershipsByCompany.mockResolvedValue([]);
+      vehiclesService.countActive.mockResolvedValue(3);
+      const ownActor: AuthenticatedUser = {
+        sub: "u1",
+        tenantId: company.id,
+        role: Role.EMPRESA,
+        vinculoId: "v1",
+      };
+
+      const result = await service.getDashboard(company.id, ownActor);
+
+      expect(vehiclesService.countActive).toHaveBeenCalledWith(company.id);
+      expect(result.veiculos).toBe(3);
     });
   });
 

@@ -963,6 +963,16 @@ export class VehiclesService {
     };
   }
 
+  /**
+   * Contagem de veículos ativos de uma empresa, para consumo por OUTROS
+   * módulos (ex. `CompaniesService.getDashboard`, campo "Veículos" de
+   * "Minha Empresa") — nunca leem o repositório de Veículos diretamente,
+   * sempre por este método público do service.
+   */
+  async countActive(companyId: string): Promise<number> {
+    return (await this.vehicleRepository.listAllActive(companyId)).length;
+  }
+
   // ---------------------------------------------------------------------
   // Exportação (briefing "EXPORTAÇÃO")
   // ---------------------------------------------------------------------

@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -15,6 +14,7 @@ import { PrismaPlanRepository } from "./repositories/prisma-plan.repository";
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { UsersModule } from "@/modules/users/users.module";
+import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
 
 /**
  * Módulo Empresas (Dossiê 13, Seção 3 / Dossiê 16) — dono do ciclo de
@@ -32,10 +32,13 @@ import { UsersModule } from "@/modules/users/users.module";
  *
  * `UsersModule`/`AuditModule` são importados (nunca reimplementados
  * aqui) — este módulo não conhece `Prisma.user`/`Prisma.membership`/
- * `Prisma.auditLog` diretamente.
+ * `Prisma.auditLog` diretamente. `VehiclesModule` é importado só para o
+ * campo "Veículos" do dashboard (`getDashboard`) reusar
+ * `VehiclesService.countActive`, em vez de reimplementar a contagem ou
+ * deixá-la hardcoded em zero.
  */
 @Module({
-  imports: [UsersModule, AuditModule, StorageModule],
+  imports: [UsersModule, AuditModule, StorageModule, VehiclesModule],
   controllers: [CompaniesController],
   providers: [
     CompaniesService,
