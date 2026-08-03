@@ -1,7 +1,9 @@
 import {
   createApiClient,
   createAuthEndpoints,
+  createMarketplaceEndpoints,
   createSchoolsEndpoints,
+  createStudentsEndpoints,
   createVehiclesEndpoints,
 } from "@rotta/api-client";
 import { getAccessToken } from "@rotta/auth/native";
@@ -22,3 +24,5 @@ const apiClient = createApiClient({
 export const authApi = createAuthEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
+export const studentsApi = createStudentsEndpoints(apiClient);
+export const marketplaceApi = createMarketplaceEndpoints(apiClient);
