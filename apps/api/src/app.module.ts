@@ -26,6 +26,7 @@ import { AgendaModule } from "@/modules/agenda/agenda.module";
 import { AnalyticsModule } from "@/modules/analytics/analytics.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { AuthModule } from "@/modules/auth/auth.module";
+import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
@@ -70,6 +71,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
 
     // --- Modulos de dominio (Dossie 13) — todos vazios nesta fase ---
     AuthModule,
+    AuthentiqueModule,
     UsersModule,
     CompaniesModule,
     SchoolsModule,
