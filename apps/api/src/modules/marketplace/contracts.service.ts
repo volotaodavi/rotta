@@ -21,6 +21,7 @@ import type { Contract } from "@prisma/client";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { AuthentiqueService } from "@/modules/authentique/authentique.service";
+import { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -35,10 +36,14 @@ const ENTIDADE_TIPO = "Contract";
  * Geração é sempre da Empresa/Gestor dona da `TransportRequest`
  * `APROVADA`; a assinatura tem DOIS lados independentes
  * (`assinarComoResponsavel`/`assinarComoEmpresa`), cada um só pelo
- * respectivo ator. Ativação automática pós-assinatura (Rotta AI) é
- * responsabilidade de outro serviço (briefing "ROTTA AI" pós-assinatura)
- * — deliberadamente fora daqui, para manter este service focado só na
- * geração/assinatura em si.
+ * respectivo ator. Assim que a SEGUNDA assinatura chega (de qualquer um
+ * dos dois lados), `tryActivateAfterBothSigned` ativa o transporte
+ * automaticamente (briefing "ROTTA AI" pós-assinatura) — a ativação em
+ * si é uma regra de negócio determinística ("as duas assinaturas já
+ * estão no banco"), nunca condicionada ao resultado da Rotta AI: esta é
+ * chamada apenas como uma checagem adicional best-effort (mesmo padrão
+ * de `analyzeVehicleDocument`, nunca bloqueante), então segue
+ * indisponível hoje sem impedir a ativação.
  */
 @Injectable()
 export class ContractsService {
@@ -49,6 +54,7 @@ export class ContractsService {
     @Inject(TRANSPORT_REQUEST_REPOSITORY)
     private readonly transportRequestRepository: TransportRequestRepository,
     private readonly authentiqueService: AuthentiqueService,
+    private readonly rottaAiService: RottaAiService,
     private readonly auditLogService: AuditLogService,
   ) {}
 
@@ -174,6 +180,41 @@ export class ContractsService {
     return toContractResponseDto(found);
   }
 
+  /**
+   * Chamada logo após CADA assinatura — só ativa quando as duas já
+   * estão presentes (a que acabou de ser gravada + a que já existia).
+   * `RottaAiService.validarContratoAssinado` é best-effort e nunca
+   * impede a ativação (ver nota da classe).
+   */
+  private async tryActivateAfterBothSigned(
+    contract: Contract,
+    atorUserId: string,
+    meta: RequestMeta,
+  ): Promise<Contract> {
+    if (!contract.assinadoResponsavelEm || !contract.assinadoEmpresaEm) {
+      return contract;
+    }
+
+    try {
+      await this.rottaAiService.validarContratoAssinado({ contractId: contract.id });
+    } catch (error) {
+      this.logger.warn(
+        `Rotta AI indisponível para validar o contrato ${contract.id} — ativação segue apenas pela regra de negócio (ambas as assinaturas já presentes).`,
+      );
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
+
+    const activated = await this.contractRepository.activate(contract.id);
+    await this.recordAudit({
+      entidadeId: contract.id,
+      acao: "ATIVADO",
+      atorUserId,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return activated;
+  }
+
   async assinarComoResponsavel(
     id: string,
     actor: AuthenticatedUser,
@@ -197,7 +238,9 @@ export class ContractsService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
-    return toContractResponseDto(updated);
+
+    const final = await this.tryActivateAfterBothSigned(updated, actor.sub, meta);
+    return toContractResponseDto(final);
   }
 
   async assinarComoEmpresa(
@@ -223,6 +266,8 @@ export class ContractsService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
-    return toContractResponseDto(updated);
+
+    const final = await this.tryActivateAfterBothSigned(updated, actor.sub, meta);
+    return toContractResponseDto(final);
   }
 }

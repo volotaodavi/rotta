@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
+
 import { ContractsService } from "../contracts.service";
 
 import type { ContractRepository } from "../repositories/contract.repository";
@@ -7,6 +8,7 @@ import type { TransportRequestRepository } from "../repositories/transport-reque
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { AuthentiqueService } from "@/modules/authentique/authentique.service";
+import type { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import type { Contract, TransportRequest } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
@@ -83,6 +85,7 @@ describe("ContractsService", () => {
   let contractRepository: jest.Mocked<ContractRepository>;
   let transportRequestRepository: jest.Mocked<TransportRequestRepository>;
   let authentiqueService: jest.Mocked<Pick<AuthentiqueService, "prepararDocumentoParaAssinatura">>;
+  let rottaAiService: jest.Mocked<Pick<RottaAiService, "validarContratoAssinado">>;
   let auditLogService: jest.Mocked<AuditLogService>;
 
   beforeEach(() => {
@@ -93,6 +96,7 @@ describe("ContractsService", () => {
       findById: jest.fn(),
       updateAsEmpresa: jest.fn(),
       updateAsResponsavel: jest.fn(),
+      activate: jest.fn(),
       list: jest.fn(),
     };
     transportRequestRepository = {
@@ -106,6 +110,9 @@ describe("ContractsService", () => {
     authentiqueService = {
       prepararDocumentoParaAssinatura: jest.fn().mockRejectedValue(new Error("stub")),
     };
+    rottaAiService = {
+      validarContratoAssinado: jest.fn().mockRejectedValue(new Error("stub")),
+    };
     auditLogService = {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AuditLogService>;
@@ -114,6 +121,7 @@ describe("ContractsService", () => {
       contractRepository,
       transportRequestRepository,
       authentiqueService,
+      rottaAiService as unknown as RottaAiService,
       auditLogService,
     );
   });
@@ -214,7 +222,7 @@ describe("ContractsService", () => {
       ).rejects.toThrow(ConflictException);
     });
 
-    it("assinarComoResponsavel funciona e grava o timestamp via updateAsResponsavel (bypass)", async () => {
+    it("assinarComoResponsavel funciona, mas NÃO ativa enquanto a Empresa não assinou também", async () => {
       contractRepository.findByIdScoped.mockResolvedValue(buildContract());
       contractRepository.updateAsResponsavel.mockResolvedValue(
         buildContract({ assinadoResponsavelEm: new Date() }),
@@ -227,9 +235,10 @@ describe("ContractsService", () => {
         "contract-1",
         expect.objectContaining({ assinadoResponsavelEm: expect.any(Date) }),
       );
+      expect(contractRepository.activate).not.toHaveBeenCalled();
     });
 
-    it("assinarComoEmpresa funciona e grava o timestamp via updateAsEmpresa", async () => {
+    it("assinarComoEmpresa funciona, mas NÃO ativa enquanto o Responsável não assinou também", async () => {
       contractRepository.findByIdScoped.mockResolvedValue(buildContract());
       contractRepository.updateAsEmpresa.mockResolvedValue(
         buildContract({ assinadoEmpresaEm: new Date() }),
@@ -242,6 +251,7 @@ describe("ContractsService", () => {
         "contract-1",
         expect.objectContaining({ assinadoEmpresaEm: expect.any(Date) }),
       );
+      expect(contractRepository.activate).not.toHaveBeenCalled();
     });
 
     it("assinarComoEmpresa rejeita assinatura duplicada", async () => {
@@ -252,6 +262,56 @@ describe("ContractsService", () => {
       await expect(service.assinarComoEmpresa("contract-1", empresaActor, {})).rejects.toThrow(
         ConflictException,
       );
+    });
+  });
+
+  describe("ativação automática pós-assinatura (Rotta AI best-effort)", () => {
+    it("ativa quando a assinatura do Responsável completa as duas (Empresa já havia assinado)", async () => {
+      contractRepository.findByIdScoped.mockResolvedValue(
+        buildContract({ assinadoEmpresaEm: new Date() }),
+      );
+      contractRepository.updateAsResponsavel.mockResolvedValue(
+        buildContract({ assinadoEmpresaEm: new Date(), assinadoResponsavelEm: new Date() }),
+      );
+      contractRepository.activate.mockResolvedValue(
+        buildContract({
+          assinadoEmpresaEm: new Date(),
+          assinadoResponsavelEm: new Date(),
+          status: "ATIVO",
+          ativadoEm: new Date(),
+        }),
+      );
+
+      const result = await service.assinarComoResponsavel("contract-1", responsavelActor, {});
+
+      expect(rottaAiService.validarContratoAssinado).toHaveBeenCalledWith({
+        contractId: "contract-1",
+      });
+      expect(contractRepository.activate).toHaveBeenCalledWith("contract-1");
+      expect(result.status).toBe("ATIVO");
+      expect(result.ativadoEm).not.toBeNull();
+    });
+
+    it("ativa quando a assinatura da Empresa completa as duas, mesmo com Rotta AI indisponível", async () => {
+      contractRepository.findByIdScoped.mockResolvedValue(
+        buildContract({ assinadoResponsavelEm: new Date() }),
+      );
+      contractRepository.updateAsEmpresa.mockResolvedValue(
+        buildContract({ assinadoResponsavelEm: new Date(), assinadoEmpresaEm: new Date() }),
+      );
+      contractRepository.activate.mockResolvedValue(
+        buildContract({
+          assinadoResponsavelEm: new Date(),
+          assinadoEmpresaEm: new Date(),
+          status: "ATIVO",
+          ativadoEm: new Date(),
+        }),
+      );
+
+      const result = await service.assinarComoEmpresa("contract-1", empresaActor, {});
+
+      expect(contractRepository.activate).toHaveBeenCalledWith("contract-1");
+      expect(result.status).toBe("ATIVO");
     });
   });
 });

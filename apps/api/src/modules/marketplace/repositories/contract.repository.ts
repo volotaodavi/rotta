@@ -37,9 +37,11 @@ export interface ListContractsResult {
  * `TransportRequestRepository`, mesmo mecanismo). Diferente daquele
  * repositório: `create`/`updateAsEmpresa` são sempre chamados pela
  * Empresa/Gestor dona do contrato (contexto ambiente JÁ é o `companyId`
- * certo) — usam `withTenant` normalmente. Só `updateAsResponsavel`
- * (assinatura do Responsável) precisa de `withBypass` explícito, pelo
- * mesmo motivo já documentado em `TransportRequestRepository.create`.
+ * certo) — usam `withTenant` normalmente. `updateAsResponsavel`
+ * (assinatura do Responsável) e `activate` (briefing "ROTTA AI" pós-
+ * assinatura — pode ser disparada por QUALQUER um dos dois lados,
+ * conforme quem assina por último) sempre usam `withBypass` explícito,
+ * pelo mesmo motivo já documentado em `TransportRequestRepository.create`.
  */
 export interface ContractRepository {
   create(data: CreateContractData): Promise<Contract>;
@@ -51,5 +53,7 @@ export interface ContractRepository {
   updateAsEmpresa(id: string, data: Partial<Contract>): Promise<Contract>;
   /** Assinatura do Responsável — sempre bypass (ver nota da interface). */
   updateAsResponsavel(id: string, data: Partial<Contract>): Promise<Contract>;
+  /** Ativação automática (`status: ATIVO`, `ativadoEm`) — sempre bypass (ver nota da interface). */
+  activate(id: string): Promise<Contract>;
   list(filter: ListContractsFilter): Promise<ListContractsResult>;
 }

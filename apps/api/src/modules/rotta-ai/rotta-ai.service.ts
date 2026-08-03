@@ -2,6 +2,7 @@ import { Injectable, NotImplementedException } from "@nestjs/common";
 
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
+import type { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import type { ValidateDocumentDto } from "./dto/validate-document.dto";
 
 /**
@@ -60,6 +61,27 @@ export class RottaAiService {
   async analyzeSchoolAddress(_dto: AnalyzeSchoolAddressDto): Promise<never> {
     throw new NotImplementedException(
       "A geocodificação/validação automática de endereço via Rotta AI ainda não está disponível — integração pendente de um provedor de geocodificação (ex. ViaCEP/Google Maps/Mapbox).",
+    );
+  }
+
+  /**
+   * Mesmo stub honesto, agora para a validação pós-assinatura do
+   * CONTRATO (briefing "Marketplace" §"ROTTA AI" — "valida o contrato
+   * assinado e ativa automaticamente o transporte"). Chamada por
+   * `ContractsService` de forma best-effort assim que as DUAS
+   * assinaturas (Responsável + Empresa) já estão presentes — mas,
+   * diferente dos demais usos da Rotta AI neste módulo, a ATIVAÇÃO do
+   * contrato em si NUNCA depende do resultado desta chamada: "ambas as
+   * partes assinaram" é um fato que o próprio banco já garante com
+   * certeza, sem precisar de nenhum provedor externo para confirmá-lo.
+   * Esta validação é uma camada adicional (ex. detecção de fraude/
+   * anomalia), best-effort, exatamente como `analyzeVehicleDocument`
+   * nunca bloqueia o upload em si.
+   */
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async validarContratoAssinado(_dto: ValidarContratoAssinadoDto): Promise<never> {
+    throw new NotImplementedException(
+      "A validação automática de contrato assinado via Rotta AI ainda não está disponível — integração pendente de um provedor de análise documental.",
     );
   }
 }

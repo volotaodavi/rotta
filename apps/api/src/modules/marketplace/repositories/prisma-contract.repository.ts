@@ -52,6 +52,15 @@ export class PrismaContractRepository implements ContractRepository {
     return this.prisma.withBypass(this.prisma.contract.update({ where: { id }, data }));
   }
 
+  activate(id: string): Promise<Contract> {
+    return this.prisma.withBypass(
+      this.prisma.contract.update({
+        where: { id },
+        data: { status: "ATIVO", ativadoEm: new Date() },
+      }),
+    );
+  }
+
   async list(filter: ListContractsFilter): Promise<ListContractsResult> {
     const where: Prisma.ContractWhereInput = scopeWhere(filter);
 

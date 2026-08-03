@@ -3,6 +3,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
+import { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import { ValidateDocumentDto } from "./dto/validate-document.dto";
 import { RottaAiService } from "./rotta-ai.service";
 
@@ -25,5 +26,10 @@ export class RottaAiController {
   @Post("analyze-school-address")
   analyzeSchoolAddress(@Body() dto: AnalyzeSchoolAddressDto) {
     return this.rottaAiService.analyzeSchoolAddress(dto);
+  }
+
+  @Post("validar-contrato-assinado")
+  validarContratoAssinado(@Body() dto: ValidarContratoAssinadoDto) {
+    return this.rottaAiService.validarContratoAssinado(dto);
   }
 }

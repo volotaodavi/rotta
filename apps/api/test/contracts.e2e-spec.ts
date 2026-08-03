@@ -14,12 +14,13 @@ import { Role } from "@/shared/enums";
 const SAO_PAULO = { latitude: -23.561684, longitude: -46.655981 };
 
 /**
- * E2E de geração/assinatura de contrato (briefing "Marketplace"
- * §"CONTRATO") — cobre o caminho feliz completo: solicitação Aprovada
- * -> contrato gerado (`AGUARDANDO_ASSINATURA`, Authentique indisponível
- * de forma esperada e não-bloqueante) -> assinatura dos dois lados.
- * Ativação automática pós-assinatura fica para o serviço da Rotta AI
- * (não testada aqui).
+ * E2E de geração/assinatura/ativação de contrato (briefing "Marketplace"
+ * §"CONTRATO"/"ROTTA AI") — cobre o caminho feliz completo: solicitação
+ * Aprovada -> contrato gerado (`AGUARDANDO_ASSINATURA`, Authentique
+ * indisponível de forma esperada e não-bloqueante) -> assinatura dos
+ * dois lados -> ativação automática (`ATIVO`) assim que a segunda
+ * assinatura chega, mesmo com a Rotta AI indisponível (ver nota em
+ * `ContractsService.tryActivateAfterBothSigned`).
  */
 describe("Marketplace — contratos (e2e)", () => {
   let app: INestApplication;
@@ -306,7 +307,7 @@ describe("Marketplace — contratos (e2e)", () => {
         .expect(403);
     });
 
-    it("assina dos dois lados com sucesso; rejeita assinatura duplicada", async () => {
+    it("assina dos dois lados com sucesso; rejeita assinatura duplicada; ainda não ativa após só um lado", async () => {
       const { contractId, responsavelToken, empresaToken } = await createContract();
 
       const respAssina = await request(app.getHttpServer())
@@ -314,6 +315,7 @@ describe("Marketplace — contratos (e2e)", () => {
         .set("Authorization", `Bearer ${responsavelToken}`)
         .expect(200);
       expect(respAssina.body.data.assinadoResponsavelEm).not.toBeNull();
+      expect(respAssina.body.data.status).toBe("AGUARDANDO_ASSINATURA");
 
       await request(app.getHttpServer())
         .patch(`/v1/marketplace/contracts/${contractId}/assinar-responsavel`)
@@ -335,6 +337,60 @@ describe("Marketplace — contratos (e2e)", () => {
         .patch(`/v1/marketplace/contracts/${contractId}/assinar-responsavel`)
         .set("Authorization", `Bearer ${outro.token}`)
         .expect(404);
+    });
+  });
+
+  describe("Ativação automática pós-assinatura (briefing ROTTA AI)", () => {
+    async function createContract() {
+      const { token } = await createResponsavel();
+      const { companyId, empresaToken } = await createCompanyWithEmpresaToken();
+      const requestId = await createApprovedRequest(token, companyId);
+      await request(app.getHttpServer())
+        .patch(`/v1/marketplace/transport-requests/${requestId}/aprovar`)
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .expect(200);
+      const created = await request(app.getHttpServer())
+        .post(`/v1/marketplace/transport-requests/${requestId}/contract`)
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send(validContractPayload())
+        .expect(201);
+      return { contractId: created.body.data.id as string, responsavelToken: token, empresaToken };
+    }
+
+    it("ativa automaticamente assim que a segunda assinatura chega (Empresa assina por último)", async () => {
+      const { contractId, responsavelToken, empresaToken } = await createContract();
+
+      await request(app.getHttpServer())
+        .patch(`/v1/marketplace/contracts/${contractId}/assinar-responsavel`)
+        .set("Authorization", `Bearer ${responsavelToken}`)
+        .expect(200);
+
+      const final = await request(app.getHttpServer())
+        .patch(`/v1/marketplace/contracts/${contractId}/assinar-empresa`)
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .expect(200);
+
+      expect(final.body.data.status).toBe("ATIVO");
+      expect(final.body.data.ativadoEm).not.toBeNull();
+
+      const persisted = await prisma.contract.findUnique({ where: { id: contractId } });
+      expect(persisted?.status).toBe("ATIVO");
+    });
+
+    it("ativa automaticamente quando o Responsável assina por último", async () => {
+      const { contractId, responsavelToken, empresaToken } = await createContract();
+
+      await request(app.getHttpServer())
+        .patch(`/v1/marketplace/contracts/${contractId}/assinar-empresa`)
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .expect(200);
+
+      const final = await request(app.getHttpServer())
+        .patch(`/v1/marketplace/contracts/${contractId}/assinar-responsavel`)
+        .set("Authorization", `Bearer ${responsavelToken}`)
+        .expect(200);
+
+      expect(final.body.data.status).toBe("ATIVO");
     });
   });
 });

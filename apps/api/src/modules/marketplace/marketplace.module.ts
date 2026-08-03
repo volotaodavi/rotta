@@ -18,25 +18,27 @@ import { TransportRequestsService } from "./transport-requests.service";
 
 import { AuditModule } from "@/modules/audit/audit.module";
 import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
+import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { StudentsModule } from "@/modules/students/students.module";
 
 /**
  * Módulo Marketplace (briefing "Marketplace") — descoberta/contratação
  * de transportadores pelo Responsável. Cobre BUSCA (`MarketplaceService`),
  * SOLICITAÇÃO DE TRANSPORTE (`TransportRequestsService`) e
- * GERAÇÃO/ASSINATURA DE CONTRATO (`ContractsService`, com
- * `AuthentiqueModule` para a preparação do documento — stub honesto);
- * ativação automática pós-assinatura e avaliações chegam como serviços
- * adicionais deste mesmo módulo, nunca como módulos novos (todos operam
- * sobre `TransportRequest`/`Contract`/`Rating`, já modelados juntos no
- * schema Prisma — ver `schema.prisma`, seção "Marketplace"). Importa
- * `StudentsModule` para o cadastro inline de aluno na própria
- * solicitação (briefing "SOLICITAR TRANSPORTE") — sem risco de
- * dependência circular, já que `StudentsModule` deliberadamente NÃO
- * importa `MarketplaceModule` de volta (ver nota em `students.module.ts`).
+ * GERAÇÃO/ASSINATURA/ATIVAÇÃO DE CONTRATO (`ContractsService`, com
+ * `AuthentiqueModule` para a preparação do documento e `RottaAiModule`
+ * para a validação best-effort pós-assinatura — ambos stubs honestos);
+ * avaliações chegam como um serviço adicional deste mesmo módulo, nunca
+ * um módulo novo (todos operam sobre `TransportRequest`/`Contract`/
+ * `Rating`, já modelados juntos no schema Prisma — ver `schema.prisma`,
+ * seção "Marketplace"). Importa `StudentsModule` para o cadastro inline
+ * de aluno na própria solicitação (briefing "SOLICITAR TRANSPORTE") —
+ * sem risco de dependência circular, já que `StudentsModule`
+ * deliberadamente NÃO importa `MarketplaceModule` de volta (ver nota em
+ * `students.module.ts`).
  */
 @Module({
-  imports: [AuditModule, StudentsModule, AuthentiqueModule],
+  imports: [AuditModule, StudentsModule, AuthentiqueModule, RottaAiModule],
   controllers: [MarketplaceController, TransportRequestsController, ContractsController],
   providers: [
     MarketplaceService,
