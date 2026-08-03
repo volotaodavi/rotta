@@ -17,6 +17,7 @@ import {
 } from "@prisma/client";
 import { normalizePlate } from "@rotta/validators";
 
+
 import { toVehicleAssignmentResponseDto } from "./mappers/vehicle-assignment.mapper";
 import {
   toListVehicleChecklistsResponseDto,

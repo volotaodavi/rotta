@@ -32,6 +32,7 @@ import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
 import { GpsModule } from "@/modules/gps/gps.module";
 import { LogsModule } from "@/modules/logs/logs.module";
+import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
 import { MonitorsModule } from "@/modules/monitors/monitors.module";
 import { NotificationsModule } from "@/modules/notifications/notifications.module";
 import { ParentsModule } from "@/modules/parents/parents.module";
@@ -76,6 +77,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     MonitorsModule,
     ParentsModule,
     StudentsModule,
+    MarketplaceModule,
     VehiclesModule,
     RoutesModule,
     TripsModule,

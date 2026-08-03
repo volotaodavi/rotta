@@ -10,6 +10,7 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
+
 /**
  * E2E do módulo Veículos (briefing "Gestão de Veículos") — mesma
  * disciplina de `companies.e2e-spec.ts`: aplicação Nest completa contra

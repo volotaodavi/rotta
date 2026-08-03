@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+
 import { PrismaVehicleAssignmentRepository } from "./repositories/prisma-vehicle-assignment.repository";
 import { PrismaVehicleChecklistRepository } from "./repositories/prisma-vehicle-checklist.repository";
 import { PrismaVehicleDocumentRepository } from "./repositories/prisma-vehicle-document.repository";

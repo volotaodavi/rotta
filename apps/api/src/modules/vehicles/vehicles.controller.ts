@@ -19,6 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { VehicleDocumentType } from "@prisma/client";
 
+
 import { CreateVehicleAssignmentDto } from "./dto/create-vehicle-assignment.dto";
 import { CreateVehicleChecklistDto } from "./dto/create-vehicle-checklist.dto";
 import { CreateVehicleDocumentDto } from "./dto/create-vehicle-document.dto";

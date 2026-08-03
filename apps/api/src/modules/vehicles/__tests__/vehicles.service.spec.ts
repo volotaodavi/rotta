@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { VehicleAssignmentRole, VehicleCategory, VehicleStatus, VehicleType } from "@prisma/client";
 
+
 import { VehiclesService } from "../vehicles.service";
 
 import type { CreateVehicleDto } from "../dto/create-vehicle.dto";

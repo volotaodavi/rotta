@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 
+
 import { SchoolsService } from "../schools.service";
 
 import type { SchoolAccessPointRepository } from "../repositories/school-access-point.repository";
