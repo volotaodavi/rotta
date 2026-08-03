@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CreateSchoolData,
   ListSchoolsFilter,
@@ -34,6 +33,11 @@ export class PrismaSchoolRepository implements SchoolRepository {
 
   findByCodigoInep(codigoInep: string): Promise<School | null> {
     return this.prisma.school.findFirst({ where: { codigoInep } });
+  }
+
+  findManyByCodigosInep(codigosInep: string[]): Promise<School[]> {
+    if (codigosInep.length === 0) return Promise.resolve([]);
+    return this.prisma.school.findMany({ where: { codigoInep: { in: codigosInep } } });
   }
 
   update(id: string, data: UpdateSchoolData): Promise<School> {

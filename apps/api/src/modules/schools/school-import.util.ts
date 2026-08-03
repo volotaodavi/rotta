@@ -4,11 +4,16 @@ import type { CreateSchoolData } from "./repositories/school.repository";
 import type { SchoolAdministrativeDependency, SchoolShift, SchoolType } from "@prisma/client";
 
 /**
- * Importação real de Escolas (briefing "IMPORTAÇÃO" — CSV/Excel/JSON;
- * "API Oficial" é tratada à parte por `InepSyncService`, ver
- * `schools.module.ts`). Cada linha vira um `CreateSchoolData` OU um
- * erro — uma linha malformada nunca aborta o restante do arquivo
- * (`SchoolsService.importFromFile` acumula os erros e segue).
+ * Importação real de Escolas (briefing "IMPORTAÇÃO" — CSV/Excel/JSON
+ * com o header já no formato da Rotta; a "API Oficial" do INEP/MEC é
+ * tratada à parte pelo Education Sync Agent, `InepSyncService` em
+ * `@/modules/geo/agents/inep-sync.service.ts`, que reusa `parseCsvRows`
+ * daqui com `delimiter: ";"` mas tem seu próprio mapeamento de colunas
+ * — `mapInepRowToSchoolData` — porque o Censo Escolar usa nomes de
+ * coluna bem diferentes, ex. `CO_ENTIDADE`). Cada linha vira um
+ * `CreateSchoolData` OU um erro — uma linha malformada nunca aborta o
+ * restante do arquivo (`SchoolsService.importFromFile` acumula os erros
+ * e segue).
  */
 
 const REQUIRED_COLUMNS = [
@@ -115,8 +120,14 @@ export function mapRowToCreateSchoolData(row: ImportRow): MapRowResult {
   };
 }
 
-/** Parser CSV simples (RFC 4180 — vírgula, aspas duplas, campos com vírgula/quebra de linha escapados). */
-export function parseCsvRows(content: string): ImportRow[] {
+/**
+ * Parser CSV simples (RFC 4180 — aspas duplas, campos com delimitador/
+ * quebra de linha escapados). `delimiter` é parametrizável porque o
+ * Censo Escolar do INEP usa `;` (padrão de planilha BR), diferente do
+ * `,` dos exports/imports próprios da Rotta (`InepSyncService` reusa
+ * este parser com `delimiter: ";"` em vez de duplicar a lógica).
+ */
+export function parseCsvRows(content: string, delimiter = ","): ImportRow[] {
   const rows: string[][] = [];
   let field = "";
   let row: string[] = [];
@@ -140,7 +151,7 @@ export function parseCsvRows(content: string): ImportRow[] {
 
     if (char === '"') {
       insideQuotes = true;
-    } else if (char === ",") {
+    } else if (char === delimiter) {
       row.push(field);
       field = "";
     } else if (char === "\n" || char === "\r") {

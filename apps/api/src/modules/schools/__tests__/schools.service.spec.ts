@@ -1,6 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 
-
 import { SchoolsService } from "../schools.service";
 
 import type { SchoolAccessPointRepository } from "../repositories/school-access-point.repository";
@@ -111,6 +110,7 @@ describe("SchoolsService", () => {
       create: jest.fn(),
       findById: jest.fn(),
       findByCodigoInep: jest.fn(),
+      findManyByCodigosInep: jest.fn(),
       update: jest.fn(),
       list: jest.fn(),
       listAllActive: jest.fn(),

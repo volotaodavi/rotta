@@ -1,7 +1,18 @@
-import { Body, Controller, Get, Inject, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  Param,
+  ParseIntPipe,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+} from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
+import { InepSyncService } from "./agents/inep-sync.service";
 import { RevisarCoordinateDto } from "./dto/revisar-coordinate.dto";
 import { GeoPipelineService } from "./geo-pipeline.service";
 import { SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
@@ -12,6 +23,8 @@ import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
 const MANAGE_ROLES = [Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR] as const;
+/** Sincronizar com o Censo Escolar nacional é uma operação de escala/custo bem maior que gerenciar a própria base — só Admin Rotta dispara. */
+const SYNC_ROLES = [Role.ADMIN_ROTTA] as const;
 
 /**
  * API REST do Rotta Geo Engine/Geo Platform (briefing "ROTTA GEO
@@ -27,6 +40,7 @@ const MANAGE_ROLES = [Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR] as const;
 export class GeoController {
   constructor(
     private readonly geoPipeline: GeoPipelineService,
+    private readonly inepSync: InepSyncService,
     @Inject(SCHOOL_COORDINATE_REPOSITORY)
     private readonly coordinateRepository: SchoolCoordinateRepository,
   ) {}
@@ -53,5 +67,12 @@ export class GeoController {
   @Roles(...MANAGE_ROLES)
   revisarCoordinate(@Param("id", ParseUUIDPipe) id: string, @Body() dto: RevisarCoordinateDto) {
     return this.geoPipeline.resolveManualReview(id, dto);
+  }
+
+  /** Education Sync Agent — dispara a sincronização com o Censo Escolar (INEP/MEC) do ano informado. */
+  @Post("inep-sync")
+  @Roles(...SYNC_ROLES)
+  sincronizarInep(@Query("ano", ParseIntPipe) ano: number) {
+    return this.inepSync.sincronizar(ano);
   }
 }

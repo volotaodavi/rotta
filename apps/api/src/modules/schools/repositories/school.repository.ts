@@ -74,6 +74,8 @@ export interface SchoolRepository {
   create(data: CreateSchoolData, tx?: Prisma.TransactionClient): Promise<School>;
   findById(id: string): Promise<School | null>;
   findByCodigoInep(codigoInep: string): Promise<School | null>;
+  /** Busca em lote por `codigoInep` (Education Sync Agent — evita N consultas ao diferenciar um lote do Censo Escolar contra a base atual). */
+  findManyByCodigosInep(codigosInep: string[]): Promise<School[]>;
   update(id: string, data: UpdateSchoolData): Promise<School>;
   list(filter: ListSchoolsFilter): Promise<ListSchoolsResult>;
   /** Todas as escolas ativas (para dashboard/mapa) — opcionalmente escopadas a uma Empresa via vínculo vigente. */
