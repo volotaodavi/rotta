@@ -3,9 +3,10 @@ import { BadGatewayException } from "@nestjs/common";
 import { InepSyncService } from "../agents/inep-sync.service";
 import { INEP_COLUMNS } from "../inep/inep-row.mapper";
 
-import type { GeoPipelineService } from "../geo-pipeline.service";
+import type { SchoolGeocodeJobData } from "../processors/school-geocode.processor";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School } from "@prisma/client";
+import type { Queue } from "bullmq";
 
 function buildSchool(overrides: Partial<School> = {}): School {
   return {
@@ -90,24 +91,29 @@ describe("InepSyncService", () => {
       ...schoolRepositoryOverrides,
     } as unknown as jest.Mocked<SchoolRepository>;
 
-    const geoPipeline = {
-      geocodeSchool: jest.fn().mockResolvedValue({}),
-      resolveManualReview: jest.fn(),
-    } as unknown as jest.Mocked<GeoPipelineService>;
+    const schoolGeocodeQueue = {
+      addBulk: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<Queue<SchoolGeocodeJobData>>;
 
-    const service = new InepSyncService(schoolRepository, geoPipeline);
-    return { service, schoolRepository, geoPipeline };
+    const service = new InepSyncService(schoolRepository, schoolGeocodeQueue);
+    return { service, schoolRepository, schoolGeocodeQueue };
   }
 
   describe("sincronizarDeCsv", () => {
-    it("cria uma escola nova e dispara o Rotta Geo Engine (via GeoPipelineService) para geocodificá-la", async () => {
-      const { service, schoolRepository, geoPipeline } = buildService();
+    it("cria uma escola nova e enfileira um job na fila school-geocode para geocodificá-la", async () => {
+      const { service, schoolRepository, schoolGeocodeQueue } = buildService();
       schoolRepository.create.mockResolvedValue(buildSchool());
       const csv = buildCsv([buildInepRow()]);
 
       const resumo = await service.sincronizarDeCsv(2024, csv);
 
-      expect(resumo).toMatchObject({ novas: 1, atualizadas: 0, inalteradas: 0, ignoradas: 0 });
+      expect(resumo).toMatchObject({
+        novas: 1,
+        atualizadas: 0,
+        inalteradas: 0,
+        ignoradas: 0,
+        enfileiradasParaGeocodificacao: 1,
+      });
       expect(resumo.erros).toEqual([]);
       expect(schoolRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -116,12 +122,14 @@ describe("InepSyncService", () => {
           status: "EM_ANALISE",
         }),
       );
-      expect(geoPipeline.geocodeSchool).toHaveBeenCalledWith("school-1");
+      expect(schoolGeocodeQueue.addBulk).toHaveBeenCalledWith([
+        expect.objectContaining({ name: "geocode", data: { schoolId: "school-1" } }),
+      ]);
     });
 
-    it("atualiza e regeocodifica quando o endereço da escola já existente mudou", async () => {
+    it("atualiza e reenfileira geocodificação quando o endereço da escola já existente mudou", async () => {
       const existente = buildSchool({ logradouro: "Rua Antiga", numero: "1" });
-      const { service, schoolRepository, geoPipeline } = buildService({
+      const { service, schoolRepository, schoolGeocodeQueue } = buildService({
         findManyByCodigosInep: jest.fn().mockResolvedValue([existente]),
       });
       schoolRepository.update.mockResolvedValue(buildSchool());
@@ -134,22 +142,29 @@ describe("InepSyncService", () => {
         existente.id,
         expect.objectContaining({ logradouro: "Avenida Paulista" }),
       );
-      expect(geoPipeline.geocodeSchool).toHaveBeenCalledWith(existente.id);
+      expect(schoolGeocodeQueue.addBulk).toHaveBeenCalledWith([
+        expect.objectContaining({ name: "geocode", data: { schoolId: existente.id } }),
+      ]);
       expect(schoolRepository.create).not.toHaveBeenCalled();
     });
 
-    it("não mexe (nem regeocodifica) quando o endereço já existente é idêntico ao do Censo", async () => {
+    it("não mexe (nem reenfileira geocodificação) quando o endereço já existente é idêntico ao do Censo", async () => {
       const existente = buildSchool();
-      const { service, schoolRepository, geoPipeline } = buildService({
+      const { service, schoolRepository, schoolGeocodeQueue } = buildService({
         findManyByCodigosInep: jest.fn().mockResolvedValue([existente]),
       });
       const csv = buildCsv([buildInepRow()]);
 
       const resumo = await service.sincronizarDeCsv(2024, csv);
 
-      expect(resumo).toMatchObject({ novas: 0, atualizadas: 0, inalteradas: 1 });
+      expect(resumo).toMatchObject({
+        novas: 0,
+        atualizadas: 0,
+        inalteradas: 1,
+        enfileiradasParaGeocodificacao: 0,
+      });
       expect(schoolRepository.update).not.toHaveBeenCalled();
-      expect(geoPipeline.geocodeSchool).not.toHaveBeenCalled();
+      expect(schoolGeocodeQueue.addBulk).not.toHaveBeenCalled();
     });
 
     it("ignora escolas fora de atividade sem contar como erro", async () => {
@@ -175,19 +190,20 @@ describe("InepSyncService", () => {
       expect(resumo.erros).toHaveLength(1);
     });
 
-    it("registra falha de geocodificação de uma escola sem derrubar a sincronização inteira", async () => {
-      const { service, schoolRepository, geoPipeline } = buildService();
+    it("enfileira um único job em lote (addBulk) para múltiplas escolas novas/alteradas na mesma sincronização", async () => {
+      const { service, schoolRepository, schoolGeocodeQueue } = buildService();
       schoolRepository.create.mockResolvedValue(buildSchool());
-      (geoPipeline.geocodeSchool as jest.Mock).mockRejectedValueOnce(
-        new BadGatewayException("Mapbox indisponível"),
-      );
-      const csv = buildCsv([buildInepRow()]);
+      const csv = buildCsv([
+        buildInepRow(),
+        buildInepRow({ [INEP_COLUMNS.codigoInep]: "35000124" }),
+      ]);
 
       const resumo = await service.sincronizarDeCsv(2024, csv);
 
-      expect(resumo.novas).toBe(1);
-      expect(resumo.erros).toHaveLength(1);
-      expect(resumo.erros[0]?.mensagem).toContain("Falha ao geocodificar");
+      expect(resumo.novas).toBe(2);
+      expect(resumo.enfileiradasParaGeocodificacao).toBe(2);
+      expect(schoolGeocodeQueue.addBulk).toHaveBeenCalledTimes(1);
+      expect((schoolGeocodeQueue.addBulk as jest.Mock).mock.calls[0][0]).toHaveLength(2);
     });
   });
 

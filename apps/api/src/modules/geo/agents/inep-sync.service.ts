@@ -1,31 +1,20 @@
+import { InjectQueue } from "@nestjs/bullmq";
 import { BadGatewayException, Inject, Injectable, Logger } from "@nestjs/common";
 import AdmZip from "adm-zip";
 
-
-import { GeoPipelineService } from "../geo-pipeline.service";
+import { SCHOOL_GEOCODE_QUEUE } from "../geo.constants";
 import { mapInepRowToSchoolData } from "../inep/inep-row.mapper";
 
+import type { SchoolGeocodeJobData } from "../processors/school-geocode.processor";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School } from "@prisma/client";
+import type { Queue } from "bullmq";
 
 import { parseCsvRows } from "@/modules/schools/school-import.util";
 import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 
 const CENSO_ZIP_URL = (ano: number): string =>
   `https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_${ano}.zip`;
-
-/**
- * Quantidade de escolas novas processadas em paralelo (download+parse é
- * síncrono/rápido; o custo real é 1 chamada ao Rotta Geo Engine por
- * escola nova/alterada). Mantém a sincronização longe de estourar o
- * rate limit do Mapbox numa base do tamanho do Censo Escolar nacional.
- * Para o volume completo (~200 mil escolas), este processamento
- * sequencial em lotes é um ponto de partida honesto — mover para uma
- * fila real (BullMQ, já dependência do projeto mas ainda não usada em
- * nenhum módulo) é o próximo passo natural de escala, fora do escopo
- * desta primeira integração funcional.
- */
-const GEOCODE_BATCH_SIZE = 10;
 
 export interface InepSyncResumo {
   ano: number;
@@ -34,6 +23,7 @@ export interface InepSyncResumo {
   atualizadas: number;
   inalteradas: number;
   ignoradas: number;
+  enfileiradasParaGeocodificacao: number;
   erros: { codigoInep?: string; mensagem: string }[];
 }
 
@@ -52,9 +42,12 @@ export interface InepSyncResumo {
  *     (`mapInepRowToSchoolData`) e compara contra a base atual por
  *     `codigoInep` (busca em lote, nunca N consultas individuais).
  *  4. Escola nova → cria (`status: EM_ANALISE`, `origemCadastro:
- *     "SYNC_INEP"`) e dispara `GeoPipelineService.geocodeSchool`.
- *  5. Escola existente com endereço alterado → atualiza e dispara o
- *     pipeline de novo (endereço mudou, a coordenada antiga não vale
+ *     "SYNC_INEP"`) e enfileira um job na fila `school-geocode`
+ *     (BullMQ) para o `SchoolGeocodeProcessor` geocodificar de forma
+ *     assíncrona — a escala nacional (~200 mil escolas) nunca cabe
+ *     numa chamada em série dentro desta única requisição/execução.
+ *  5. Escola existente com endereço alterado → atualiza e enfileira o
+ *     mesmo job de novo (endereço mudou, a coordenada antiga não vale
  *     mais). Sem alteração de endereço → não mexe (nunca sobrescreve
  *     dados que a própria Empresa/Gestor tenha editado manualmente,
  *     como telefone/nome fantasia).
@@ -74,7 +67,8 @@ export class InepSyncService {
   constructor(
     @Inject(SCHOOL_REPOSITORY)
     private readonly schoolRepository: SchoolRepository,
-    private readonly geoPipeline: GeoPipelineService,
+    @InjectQueue(SCHOOL_GEOCODE_QUEUE)
+    private readonly schoolGeocodeQueue: Queue<SchoolGeocodeJobData>,
   ) {}
 
   private async downloadCensoZip(ano: number): Promise<Buffer> {
@@ -139,6 +133,7 @@ export class InepSyncService {
       atualizadas: 0,
       inalteradas: 0,
       ignoradas: 0,
+      enfileiradasParaGeocodificacao: 0,
       erros: [],
     };
 
@@ -218,10 +213,10 @@ export class InepSyncService {
       }
     }
 
-    await this.geocodificarEmLotes(paraGeocodificar, resumo);
+    await this.enfileirarGeocodificacao(paraGeocodificar, resumo);
 
     this.logger.log(
-      `Sincronização INEP ${ano}: ${resumo.novas} novas, ${resumo.atualizadas} atualizadas, ${resumo.inalteradas} inalteradas, ${resumo.ignoradas} ignoradas, ${resumo.erros.length} erros.`,
+      `Sincronização INEP ${ano}: ${resumo.novas} novas, ${resumo.atualizadas} atualizadas, ${resumo.inalteradas} inalteradas, ${resumo.ignoradas} ignoradas, ${resumo.enfileiradasParaGeocodificacao} enfileiradas para geocodificação, ${resumo.erros.length} erros.`,
     );
     return resumo;
   }
@@ -247,22 +242,38 @@ export class InepSyncService {
     );
   }
 
-  /** Dispara `GeoPipelineService.geocodeSchool` em lotes — uma falha de geocodificação isolada nunca aborta a sincronização inteira, só fica registrada no resumo. */
-  private async geocodificarEmLotes(schoolIds: string[], resumo: InepSyncResumo): Promise<void> {
-    for (let inicio = 0; inicio < schoolIds.length; inicio += GEOCODE_BATCH_SIZE) {
-      const lote = schoolIds.slice(inicio, inicio + GEOCODE_BATCH_SIZE);
-      const resultados = await Promise.allSettled(
-        lote.map((schoolId) => this.geoPipeline.geocodeSchool(schoolId)),
-      );
-      resultados.forEach((resultado, index) => {
-        if (resultado.status === "rejected") {
-          resumo.erros.push({
-            mensagem: `Falha ao geocodificar escola ${lote[index]}: ${
-              resultado.reason instanceof Error ? resultado.reason.message : "erro desconhecido"
-            }`,
-          });
-        }
-      });
-    }
+  /**
+   * Enfileira um job por escola na fila `school-geocode` (BullMQ) em vez
+   * de chamar `GeoPipelineService.geocodeSchool` direto — o
+   * `SchoolGeocodeProcessor` processa com concorrência limitada,
+   * independente desta sincronização (que pode terminar antes de toda
+   * geocodificação ter sido concluída; acompanhar o resultado real é
+   * responsabilidade dos logs do worker, não deste resumo).
+   *
+   * `attempts`/`backoff` aqui cobrem falha de INFRAESTRUTURA (Redis
+   * momentaneamente indisponível ao enfileirar não é o caso — é o job
+   * já enfileirado falhando por rede/DB durante o processamento); não
+   * confundir com as 3 tentativas do Validation AI Agent, que são sobre
+   * PRECISÃO da geocodificação e resolvidas dentro do próprio job.
+   */
+  private async enfileirarGeocodificacao(
+    schoolIds: string[],
+    resumo: InepSyncResumo,
+  ): Promise<void> {
+    if (schoolIds.length === 0) return;
+
+    await this.schoolGeocodeQueue.addBulk(
+      schoolIds.map((schoolId) => ({
+        name: "geocode",
+        data: { schoolId },
+        opts: {
+          attempts: 3,
+          backoff: { type: "exponential", delay: 5_000 },
+          removeOnComplete: true,
+          removeOnFail: 1_000,
+        },
+      })),
+    );
+    resumo.enfileiradasParaGeocodificacao = schoolIds.length;
   }
 }

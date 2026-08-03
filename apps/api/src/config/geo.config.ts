@@ -2,6 +2,10 @@ import { registerAs } from "@nestjs/config";
 
 export interface GeoConfig {
   mapboxAccessToken: string | undefined;
+  /** Cron BullMQ (Redis-coordenado) do Education Sync Agent — ausente = sincronização só manual. */
+  inepSyncCron: string | undefined;
+  /** Ano do Censo Escolar sincronizado automaticamente; sem `INEP_SYNC_ANO`, usa o ano corrente - 1 (o INEP publica com defasagem). */
+  inepSyncAno: number | undefined;
 }
 
 /**
@@ -15,4 +19,6 @@ export interface GeoConfig {
  */
 export default registerAs("geo", (): GeoConfig => ({
   mapboxAccessToken: process.env.MAPBOX_ACCESS_TOKEN || undefined,
+  inepSyncCron: process.env.INEP_SYNC_CRON || undefined,
+  inepSyncAno: process.env.INEP_SYNC_ANO ? Number(process.env.INEP_SYNC_ANO) : undefined,
 }));

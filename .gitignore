@@ -53,3 +53,4 @@ logs/
 .eslintcache
 *.tsbuildinfo
 .vercel
+*.rdb

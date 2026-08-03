@@ -1,7 +1,10 @@
+import { InjectQueue } from "@nestjs/bullmq";
 import {
   Body,
   Controller,
   Get,
+  HttpCode,
+  HttpStatus,
   Inject,
   Param,
   ParseIntPipe,
@@ -12,16 +15,16 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
-import { InepSyncService } from "./agents/inep-sync.service";
 import { MapIntelligenceService } from "./agents/map-intelligence.service";
 import { ListMapMarkersQueryDto } from "./dto/list-map-markers-query.dto";
 import { ListNearbySchoolsQueryDto } from "./dto/list-nearby-schools-query.dto";
 import { RevisarCoordinateDto } from "./dto/revisar-coordinate.dto";
 import { GeoPipelineService } from "./geo-pipeline.service";
-import { SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
+import { INEP_SYNC_QUEUE, SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
 
+import type { InepSyncJobData } from "./processors/inep-sync.processor";
 import type { SchoolCoordinateRepository } from "./repositories/school-coordinate.repository";
+import type { Queue } from "bullmq";
 
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
@@ -48,10 +51,11 @@ const VIEW_ROLES = [...MANAGE_ROLES, Role.MOTORISTA, Role.MONITOR, Role.RESPONSA
 export class GeoController {
   constructor(
     private readonly geoPipeline: GeoPipelineService,
-    private readonly inepSync: InepSyncService,
     private readonly mapIntelligence: MapIntelligenceService,
     @Inject(SCHOOL_COORDINATE_REPOSITORY)
     private readonly coordinateRepository: SchoolCoordinateRepository,
+    @InjectQueue(INEP_SYNC_QUEUE)
+    private readonly inepSyncQueue: Queue<InepSyncJobData>,
   ) {}
 
   @Post("schools/:schoolId/geocode")
@@ -78,11 +82,24 @@ export class GeoController {
     return this.geoPipeline.resolveManualReview(id, dto);
   }
 
-  /** Education Sync Agent — dispara a sincronização com o Censo Escolar (INEP/MEC) do ano informado. */
+  /**
+   * Education Sync Agent — enfileira a sincronização com o Censo Escolar
+   * (INEP/MEC) do ano informado (fila `inep-sync`, BullMQ) e responde
+   * `202 Accepted` imediatamente: o download+parse+diff de ~200 mil
+   * linhas nunca cabe dentro do tempo de uma requisição HTTP síncrona.
+   * O resultado (`InepSyncResumo`) fica só nos logs do worker
+   * (`InepSyncProcessor`) — não há hoje uma tela de acompanhamento.
+   */
   @Post("inep-sync")
   @Roles(...SYNC_ROLES)
-  sincronizarInep(@Query("ano", ParseIntPipe) ano: number) {
-    return this.inepSync.sincronizar(ano);
+  @HttpCode(HttpStatus.ACCEPTED)
+  async sincronizarInep(@Query("ano", ParseIntPipe) ano: number) {
+    const job = await this.inepSyncQueue.add(
+      "inep-sync-manual",
+      { ano },
+      { attempts: 3, backoff: { type: "exponential", delay: 60_000 } },
+    );
+    return { jobId: job.id, ano };
   }
 
   /** Map Intelligence Agent — marcadores de Escola dentro da janela visível do mapa. */

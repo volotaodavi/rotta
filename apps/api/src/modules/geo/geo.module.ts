@@ -1,14 +1,22 @@
+import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 
-
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
+import { InepSyncSchedulerService } from "./agents/inep-sync-scheduler.service";
 import { InepSyncService } from "./agents/inep-sync.service";
 import { MapIntelligenceService } from "./agents/map-intelligence.service";
 import { ValidationAiAgentService } from "./agents/validation-ai-agent.service";
 import { GeoEngineService } from "./geo-engine.service";
 import { GeoPipelineService } from "./geo-pipeline.service";
-import { SCHOOL_COORDINATE_REPOSITORY, SCHOOL_MARKER_REPOSITORY } from "./geo.constants";
+import {
+  INEP_SYNC_QUEUE,
+  SCHOOL_COORDINATE_REPOSITORY,
+  SCHOOL_GEOCODE_QUEUE,
+  SCHOOL_MARKER_REPOSITORY,
+} from "./geo.constants";
 import { GeoController } from "./geo.controller";
+import { InepSyncProcessor } from "./processors/inep-sync.processor";
+import { SchoolGeocodeProcessor } from "./processors/school-geocode.processor";
 import { PrismaSchoolCoordinateRepository } from "./repositories/prisma-school-coordinate.repository";
 import { PrismaSchoolMarkerRepository } from "./repositories/prisma-school-marker.repository";
 
@@ -28,7 +36,10 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
  * `RedisService` já está disponível para `MapIntelligenceService`).
  */
 @Module({
-  imports: [SchoolsModule],
+  imports: [
+    SchoolsModule,
+    BullModule.registerQueue({ name: SCHOOL_GEOCODE_QUEUE }, { name: INEP_SYNC_QUEUE }),
+  ],
   controllers: [GeoController],
   providers: [
     GeoEngineService,
@@ -36,7 +47,10 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
     ValidationAiAgentService,
     GeoPipelineService,
     InepSyncService,
+    InepSyncSchedulerService,
     MapIntelligenceService,
+    SchoolGeocodeProcessor,
+    InepSyncProcessor,
     { provide: SCHOOL_COORDINATE_REPOSITORY, useClass: PrismaSchoolCoordinateRepository },
     { provide: SCHOOL_MARKER_REPOSITORY, useClass: PrismaSchoolMarkerRepository },
   ],

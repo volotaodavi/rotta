@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { getQueueToken } from "@nestjs/bullmq";
 import { ValidationPipe, type INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import { PrismaClient } from "@prisma/client";
@@ -13,9 +14,11 @@ import type {
   GeocodeResult,
   ReverseGeocodeResult,
 } from "@/modules/geo/geo-engine.types";
+import type { Queue } from "bullmq";
 
 import { AppModule } from "@/app.module";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
+import { INEP_SYNC_QUEUE } from "@/modules/geo/geo.constants";
 import { Role } from "@/shared/enums";
 
 /**
@@ -312,6 +315,29 @@ describe("Geo Platform (e2e)", () => {
         .query({ ano: 2024 })
         .set("Authorization", `Bearer ${empresaToken}`)
         .expect(403);
+    });
+
+    it("Admin Rotta enfileira a sincronização (202 Accepted) e o job cai de verdade na fila BullMQ", async () => {
+      const inepSyncQueue = app.get<Queue>(getQueueToken(INEP_SYNC_QUEUE));
+
+      const response = await request(app.getHttpServer())
+        .post("/v1/geo/inep-sync")
+        .query({ ano: 2024 })
+        .set("Authorization", `Bearer ${adminToken}`)
+        .expect(202);
+
+      expect(response.body.data).toMatchObject({ ano: 2024 });
+      expect(response.body.data.jobId).toBeTruthy();
+
+      // Não remove o job: o `InepSyncProcessor` real (registrado no mesmo
+      // app, Redis real) já pode ter pego a lock para processá-lo — a
+      // prova que importa aqui é que o job existe na fila com os dados
+      // corretos, não o ciclo de vida completo dele (download real do
+      // INEP está fora do escopo deste teste e é bloqueado pela rede do
+      // ambiente de desenvolvimento).
+      const job = await inepSyncQueue.getJob(response.body.data.jobId);
+      expect(job).toBeDefined();
+      expect(job?.data).toEqual({ ano: 2024 });
     });
   });
 });

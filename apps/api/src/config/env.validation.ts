@@ -36,6 +36,15 @@ export const envSchema = z.object({
   // quando faltar, nunca falha o boot da aplicação por causa disto).
   MAPBOX_ACCESS_TOKEN: z.string().optional(),
 
+  // Sincronização automática do Education Sync Agent (BullMQ job
+  // repetível, coordenado via Redis — nunca dispara em duplicidade
+  // mesmo com múltiplas réplicas do `apps/api` em produção, ao
+  // contrário de um `@Cron` local). Ambas opcionais: sem
+  // `INEP_SYNC_CRON` configurado, a sincronização nacional continua
+  // manual (`POST /geo/inep-sync`), nunca falha o boot da aplicação.
+  INEP_SYNC_CRON: z.string().optional(),
+  INEP_SYNC_ANO: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 
