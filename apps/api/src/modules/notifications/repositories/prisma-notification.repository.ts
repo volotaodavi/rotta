@@ -7,7 +7,13 @@ import type {
   ListNotificationsResult,
   NotificationRepository,
 } from "./notification.repository";
-import type { CommunicationChannel, Notification, Prisma } from "@prisma/client";
+import type {
+  CommunicationChannel,
+  Notification,
+  NotificationEventType,
+  NotificationPriority,
+  Prisma,
+} from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 
@@ -149,6 +155,54 @@ export class PrismaNotificationRepository implements NotificationRepository {
     ]);
 
     return { total, lidas, favoritadas, arquivadas };
+  }
+
+  async countByPriority(
+    companyId: string,
+    filter: { desde?: Date },
+  ): Promise<{ prioridade: NotificationPriority; total: number }[]> {
+    const groups = await this.prisma.withTenant(
+      this.prisma.notification.groupBy({
+        by: ["prioridade"],
+        where: { companyId, createdAt: filter.desde ? { gte: filter.desde } : undefined },
+        _count: { _all: true },
+      }),
+    );
+    return groups.map((g) => ({ prioridade: g.prioridade, total: g._count._all }));
+  }
+
+  async countByType(
+    companyId: string,
+    filter: { desde?: Date },
+  ): Promise<{ tipo: NotificationEventType; total: number }[]> {
+    const groups = await this.prisma.withTenant(
+      this.prisma.notification.groupBy({
+        by: ["tipo"],
+        where: { companyId, createdAt: filter.desde ? { gte: filter.desde } : undefined },
+        _count: { _all: true },
+      }),
+    );
+    return groups.map((g) => ({ tipo: g.tipo, total: g._count._all }));
+  }
+
+  async countByChannel(
+    companyId: string,
+    filter: { desde?: Date },
+  ): Promise<{ canal: CommunicationChannel; total: number }[]> {
+    const rows = await this.prisma.withTenant(
+      this.prisma.notification.findMany({
+        where: { companyId, createdAt: filter.desde ? { gte: filter.desde } : undefined },
+        select: { canaisEscolhidos: true },
+      }),
+    );
+
+    const counts = new Map<CommunicationChannel, number>();
+    for (const row of rows) {
+      for (const canal of row.canaisEscolhidos) {
+        counts.set(canal, (counts.get(canal) ?? 0) + 1);
+      }
+    }
+    return [...counts.entries()].map(([canal, total]) => ({ canal, total }));
   }
 
   /** Garante 404 (nunca 403) para notificação de outro usuário — mesmo princípio de não-enumeração do Dossiê 12 §7.4. */

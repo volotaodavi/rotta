@@ -69,4 +69,26 @@ export interface NotificationRepository {
     companyId: string,
     filter: { desde?: Date },
   ): Promise<{ total: number; lidas: number; favoritadas: number; arquivadas: number }>;
+  /** Quebra por `NotificationPriority` (briefing "AGENTE 02") do dashboard de comunicação — via `withTenant`. */
+  countByPriority(
+    companyId: string,
+    filter: { desde?: Date },
+  ): Promise<{ prioridade: NotificationPriority; total: number }[]>;
+  /** Quebra por `NotificationEventType` do dashboard de comunicação — via `withTenant`. */
+  countByType(
+    companyId: string,
+    filter: { desde?: Date },
+  ): Promise<{ tipo: NotificationEventType; total: number }[]>;
+  /**
+   * Quebra por canal ESCOLHIDO (`canaisEscolhidos`, array — nunca o canal
+   * de UMA tentativa de entrega, ver `NotificationDeliveryAttemptRepository.
+   * statsByCompany` para isso) do dashboard de comunicação. Prisma não
+   * agrupa por elemento de array nativamente, então soma em memória sobre
+   * a lista já filtrada por `companyId`/período — aceitável para uma
+   * consulta agregada de dashboard (nunca no caminho de escrita/entrega).
+   */
+  countByChannel(
+    companyId: string,
+    filter: { desde?: Date },
+  ): Promise<{ canal: CommunicationChannel; total: number }[]>;
 }

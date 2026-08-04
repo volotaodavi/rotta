@@ -14,6 +14,8 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 
+import { CommunicationDashboardQueryDto } from "./dto/communication-dashboard-query.dto";
+import { CommunicationDashboardResponseDto } from "./dto/communication-dashboard-response.dto";
 import { ListNotificationsQueryDto } from "./dto/list-notifications-query.dto";
 import {
   ListNotificationsResponseDto,
@@ -23,9 +25,12 @@ import { RegisterDeviceTokenDto } from "./dto/register-device-token.dto";
 import { SetNotificationFlagDto } from "./dto/set-notification-flag.dto";
 import { UpdateNotificationPreferenceDto } from "./dto/update-notification-preference.dto";
 import { toNotificationResponseDto } from "./mappers/notification.mapper";
+import { NotificationDashboardService } from "./notification-dashboard.service";
 import { NotificationInboxService } from "./notification-inbox.service";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import { Roles } from "@/common/decorators/roles.decorator";
+import { Role } from "@/shared/enums";
 
 /**
  * Central de Notificações Internas (briefing "NOTIFICAÇÕES INTERNAS") —
@@ -46,7 +51,27 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 @ApiBearerAuth()
 @Controller("notifications")
 export class NotificationsController {
-  constructor(private readonly inboxService: NotificationInboxService) {}
+  constructor(
+    private readonly inboxService: NotificationInboxService,
+    private readonly dashboardService: NotificationDashboardService,
+  ) {}
+
+  /**
+   * Única rota deste controller escopada por EMPRESA (não pelo ator
+   * autenticado) — precisa vir antes de `:id` porque `"empresas"` tem o
+   * mesmo número de segmentos adicionais que os demais sufixos fixos
+   * (`"preferencia"`, `"dispositivos"`), mesma disciplina da nota da
+   * classe.
+   */
+  @Get("empresas/:companyId/dashboard")
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR)
+  getDashboard(
+    @Param("companyId", ParseUUIDPipe) companyId: string,
+    @Query() query: CommunicationDashboardQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<CommunicationDashboardResponseDto> {
+    return this.dashboardService.getDashboard(companyId, actor, query);
+  }
 
   @Get()
   async list(

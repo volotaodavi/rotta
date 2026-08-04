@@ -3,10 +3,11 @@ import { Injectable } from "@nestjs/common";
 
 import type {
   CreateDeliveryAttemptData,
+  DeliveryStatsByCompanyRow,
   NotificationDeliveryAttemptRepository,
   UpdateDeliveryAttemptData,
 } from "./notification-delivery-attempt.repository";
-import type { NotificationDeliveryAttempt } from "@prisma/client";
+import type { NotificationDeliveryAttempt, Prisma } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 
@@ -38,5 +39,33 @@ export class PrismaNotificationDeliveryAttemptRepository implements Notification
       where: { notificationId },
       orderBy: { createdAt: "asc" },
     });
+  }
+
+  async statsByCompany(
+    companyId: string,
+    filter: { desde?: Date },
+  ): Promise<DeliveryStatsByCompanyRow[]> {
+    const where: Prisma.NotificationDeliveryAttemptWhereInput = {
+      notification: {
+        companyId,
+        createdAt: filter.desde ? { gte: filter.desde } : undefined,
+      },
+    };
+
+    const groups = await this.prisma.withTenant(
+      this.prisma.notificationDeliveryAttempt.groupBy({
+        by: ["canal", "status"],
+        where,
+        _count: { _all: true },
+        _avg: { tempoRespostaMs: true },
+      }),
+    );
+
+    return groups.map((g) => ({
+      canal: g.canal,
+      status: g.status,
+      total: g._count._all,
+      tempoRespostaMedioMs: g._avg.tempoRespostaMs,
+    }));
   }
 }

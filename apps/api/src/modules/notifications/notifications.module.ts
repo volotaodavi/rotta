@@ -1,6 +1,7 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 
+
 import { ChannelRegistryService } from "./channels/channel-registry.service";
 import { EmailChannelSender } from "./channels/email-channel.sender";
 import { InAppChannelSender } from "./channels/in-app-channel.sender";
@@ -10,6 +11,7 @@ import { WhatsappChannelSender } from "./channels/whatsapp-channel.sender";
 import { CommunicationEventsListener } from "./events/communication-events.listener";
 import { MessagePersonalizationModule } from "./message-personalization.module";
 import { NotificationChannelSelectorService } from "./notification-channel-selector.service";
+import { NotificationDashboardService } from "./notification-dashboard.service";
 import { NotificationInboxService } from "./notification-inbox.service";
 import { NotificationPriorityClassifierService } from "./notification-priority-classifier.service";
 import {
@@ -98,6 +100,7 @@ import { UsersModule } from "@/modules/users/users.module";
   providers: [
     NotificationsService,
     NotificationInboxService,
+    NotificationDashboardService,
     CommunicationEventsListener,
     NotificationChannelSelectorService,
     NotificationPriorityClassifierService,
