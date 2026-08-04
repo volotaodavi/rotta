@@ -8,6 +8,7 @@ import { InAppChannelSender } from "./channels/in-app-channel.sender";
 import { PushChannelSender } from "./channels/push-channel.sender";
 import { SmsChannelSender } from "./channels/sms-channel.sender";
 import { WhatsappChannelSender } from "./channels/whatsapp-channel.sender";
+import { MessagePersonalizationService } from "./message-personalization.service";
 import { NotificationChannelSelectorService } from "./notification-channel-selector.service";
 import { NotificationInboxService } from "./notification-inbox.service";
 import { NotificationPriorityClassifierService } from "./notification-priority-classifier.service";
@@ -80,6 +81,7 @@ import { UsersModule } from "@/modules/users/users.module";
   providers: [
     NotificationsService,
     NotificationInboxService,
+    MessagePersonalizationService,
     NotificationChannelSelectorService,
     NotificationPriorityClassifierService,
     ChannelRegistryService,
@@ -122,6 +124,6 @@ import { UsersModule } from "@/modules/users/users.module";
     SmsChannelSender,
     EmailChannelSender,
   ],
-  exports: [NotificationsService],
+  exports: [NotificationsService, MessagePersonalizationService],
 })
 export class NotificationsModule {}
