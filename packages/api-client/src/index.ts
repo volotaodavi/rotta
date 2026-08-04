@@ -11,6 +11,7 @@ export * from "./endpoints/auth";
 export * from "./endpoints/companies";
 export * from "./endpoints/geo";
 export * from "./endpoints/marketplace";
+export * from "./endpoints/notifications";
 export * from "./endpoints/schools";
 export * from "./endpoints/students";
 export * from "./endpoints/vehicles";
