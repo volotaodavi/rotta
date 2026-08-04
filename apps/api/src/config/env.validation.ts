@@ -48,6 +48,14 @@ export const envSchema = z.object({
   INEP_SYNC_CRON: z.string().optional(),
   INEP_SYNC_ANO: z.string().optional(),
 
+  // Push notification via Firebase Cloud Messaging (briefing "PUSH
+  // NOTIFICATION", módulo Communication) — as 3 opcionais: sem elas,
+  // `FcmService` recusa o envio com um erro claro em vez de falhar o
+  // boot da aplicação (mesmo padrão de `SUPABASE_*` acima).
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

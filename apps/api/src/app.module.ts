@@ -15,6 +15,7 @@ import appConfig from "@/config/app.config";
 import authConfig from "@/config/auth.config";
 import databaseConfig from "@/config/database.config";
 import { validate } from "@/config/env.validation";
+import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
 import redisConfig from "@/config/redis.config";
 import storageConfig from "@/config/storage.config";
@@ -56,7 +57,15 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     ConfigModule.forRoot({
       isGlobal: true,
       validate,
-      load: [appConfig, authConfig, databaseConfig, redisConfig, storageConfig, geoConfig],
+      load: [
+        appConfig,
+        authConfig,
+        databaseConfig,
+        redisConfig,
+        storageConfig,
+        geoConfig,
+        fcmConfig,
+      ],
     }),
 
     // --- Observabilidade e infraestrutura (Dossie 12, Secoes 6/8/10) ---
