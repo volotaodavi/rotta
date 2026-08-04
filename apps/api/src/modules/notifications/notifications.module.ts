@@ -29,6 +29,7 @@ import { PrismaNotificationDeliveryAttemptRepository } from "./repositories/pris
 import { PrismaNotificationPreferenceRepository } from "./repositories/prisma-notification-preference.repository";
 import { PrismaNotificationRepository } from "./repositories/prisma-notification.repository";
 
+import { EmailModule } from "@/infra/email/email.module";
 import { PushModule } from "@/infra/push/push.module";
 import { QUEUE_NAMES } from "@/infra/queue/queue.constants";
 import { SmsModule } from "@/infra/sms/sms.module";
@@ -64,6 +65,7 @@ import { UsersModule } from "@/modules/users/users.module";
     PushModule,
     WhatsappModule,
     SmsModule,
+    EmailModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.NOTIFICATIONS_PUSH },
       { name: QUEUE_NAMES.NOTIFICATIONS_WHATSAPP },

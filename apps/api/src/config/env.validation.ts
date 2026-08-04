@@ -75,6 +75,16 @@ export const envSchema = z.object({
   TWILIO_AUTH_TOKEN: z.string().optional(),
   TWILIO_FROM_NUMBER: z.string().optional(),
 
+  // Canal E-mail (briefing — "Criar serviço de envio de e-mails,
+  // templates HTML responsivos, permitir múltiplos provedores").
+  // Provedor ativo hoje: Resend (`EMAIL_PROVIDER` default). Sem
+  // EMAIL_API_KEY, `EmailService` recusa o envio com um erro claro,
+  // nunca falha o boot.
+  EMAIL_PROVIDER: z.string().optional(),
+  EMAIL_API_KEY: z.string().optional(),
+  EMAIL_FROM_ADDRESS: z.string().optional(),
+  EMAIL_FROM_NAME: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 
