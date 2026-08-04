@@ -1,4 +1,8 @@
+"use client";
+
+import { ChevronDown } from "@rotta/icons";
 import { Typography } from "@rotta/ui/web";
+import { useState } from "react";
 
 const FAQS = [
   {
@@ -21,22 +25,39 @@ const FAQS = [
   },
 ];
 
-/** FAQ (briefing "SITE RESPONSIVO"). */
+/** FAQ (briefing "SITE RESPONSIVO") — acordeão: cada pergunta expande sob demanda, sem preencher a tela toda de texto já visível. */
 export default function FaqPage(): JSX.Element {
+  const [abertaIndex, setAbertaIndex] = useState<number | null>(0);
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-20">
       <Typography variant="headline" as="h1" className="text-center">
         Perguntas frequentes
       </Typography>
       <div className="flex flex-col divide-y divide-border">
-        {FAQS.map((faq) => (
-          <div key={faq.question} className="flex flex-col gap-2 py-6">
-            <Typography variant="subtitle">{faq.question}</Typography>
-            <Typography variant="body" color="muted">
-              {faq.answer}
-            </Typography>
-          </div>
-        ))}
+        {FAQS.map((faq, index) => {
+          const aberta = abertaIndex === index;
+          return (
+            <div key={faq.question} className="py-2">
+              <button
+                type="button"
+                onClick={() => setAbertaIndex(aberta ? null : index)}
+                aria-expanded={aberta}
+                className="flex w-full items-center justify-between gap-4 py-4 text-left"
+              >
+                <Typography variant="subtitle">{faq.question}</Typography>
+                <ChevronDown
+                  className={`h-5 w-5 shrink-0 text-text-muted transition-transform duration-150 ${aberta ? "rotate-180" : ""}`}
+                />
+              </button>
+              {aberta && (
+                <Typography variant="body" color="muted" className="pb-4">
+                  {faq.answer}
+                </Typography>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

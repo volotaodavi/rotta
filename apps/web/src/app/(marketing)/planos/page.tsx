@@ -1,3 +1,4 @@
+import { Check } from "@rotta/icons";
 import { Button, Card, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
@@ -26,14 +27,15 @@ export default function PlanosPage(): JSX.Element {
               /mês
             </Typography>
           </div>
-          <ul className="flex flex-col gap-2">
+          <ul className="flex flex-col gap-2.5">
             {[
               "Cadastro de motoristas e veículos",
               "Rastreamento em tempo real",
               "Notificações para responsáveis",
               "Painel de gestão completo",
             ].map((item) => (
-              <li key={item}>
+              <li key={item} className="flex items-start gap-2">
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <Typography variant="bodySmall">{item}</Typography>
               </li>
             ))}
