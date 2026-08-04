@@ -68,3 +68,17 @@ export type MarketplaceStackParamList = {
   TransportadorDetalhes: { transportadorId: string };
   SolicitarTransporte: { transportadorId: string };
 };
+
+/**
+ * Stack montada na aba `Notificacoes` do Responsável (briefing "MÓDULO —
+ * ROTTA COMMUNICATION ENGINE" §"NOTIFICAÇÕES INTERNAS"; Dossiê 11 §4.4) —
+ * mesmo papel de `MarketplaceStackParamList` dentro de `ParentNavigator`.
+ * `Historico` lista as notificações arquivadas (fora da lista principal
+ * de `Central`); `Preferencias` é alcançada pelo cabeçalho de `Central`.
+ */
+export type NotificationsStackParamList = {
+  Central: undefined;
+  Detalhes: { notificationId: string };
+  Historico: undefined;
+  Preferencias: undefined;
+};

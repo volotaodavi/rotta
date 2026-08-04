@@ -2,20 +2,22 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { StyleSheet, Text, View } from "react-native";
 
 import { MarketplaceNavigator } from "./MarketplaceNavigator";
+import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { ParentTabParamList } from "./types";
 
 import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-transport-state";
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
 import { TransporteInicioScreen } from "@/features/marketplace/screens";
+import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
 
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
 
 /**
- * PLACEHOLDER — Notificações/Perfil do Responsável (Dossie 11, Secao 4)
- * a implementar em outra tarefa; fora do escopo do módulo Marketplace.
+ * PLACEHOLDER — Perfil do Responsável (Dossie 11, Secao 4) a implementar
+ * em outra tarefa; fora do escopo do módulo Marketplace/Communication.
  */
 function PlaceholderScreen({ label }: { label: string }): JSX.Element {
   return (
@@ -33,6 +35,7 @@ function PlaceholderScreen({ label }: { label: string }): JSX.Element {
  */
 export function ParentNavigator(): JSX.Element {
   const { state } = useResponsavelTransportState();
+  const { data: naoLidas } = useUnreadNotificationsCount();
 
   return (
     <Tab.Navigator initialRouteName="Mapa" screenOptions={{ headerShown: false }}>
@@ -42,9 +45,11 @@ export function ParentNavigator(): JSX.Element {
         component={TransporteInicioScreen}
         options={{ title: TRANSPORT_TAB_LABEL[state], tabBarLabel: TRANSPORT_TAB_LABEL[state] }}
       />
-      <Tab.Screen name="Notificacoes">
-        {() => <PlaceholderScreen label="Notificações" />}
-      </Tab.Screen>
+      <Tab.Screen
+        name="Notificacoes"
+        component={NotificacoesNavigator}
+        options={{ tabBarBadge: naoLidas ? naoLidas : undefined }}
+      />
       <Tab.Screen name="Perfil">{() => <PlaceholderScreen label="Perfil" />}</Tab.Screen>
     </Tab.Navigator>
   );
