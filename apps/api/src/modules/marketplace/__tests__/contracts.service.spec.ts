@@ -1,6 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { ContractsService } from "../contracts.service";
 
 import type { ContractRepository } from "../repositories/contract.repository";
@@ -8,7 +7,10 @@ import type { TransportRequestRepository } from "../repositories/transport-reque
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { AuthentiqueService } from "@/modules/authentique/authentique.service";
+import type { CompaniesService } from "@/modules/companies/companies.service";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Contract, TransportRequest } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
@@ -87,6 +89,11 @@ describe("ContractsService", () => {
   let authentiqueService: jest.Mocked<Pick<AuthentiqueService, "prepararDocumentoParaAssinatura">>;
   let rottaAiService: jest.Mocked<Pick<RottaAiService, "validarContratoAssinado">>;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let companiesService: jest.Mocked<Pick<CompaniesService, "getNomeFantasia">>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
+  let messagePersonalizationService: jest.Mocked<
+    Pick<MessagePersonalizationService, "novoContrato" | "contratoAssinado">
+  >;
 
   beforeEach(() => {
     contractRepository = {
@@ -116,6 +123,16 @@ describe("ContractsService", () => {
     auditLogService = {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AuditLogService>;
+    companiesService = {
+      getNomeFantasia: jest.fn().mockResolvedValue("Gama Transportes"),
+    };
+    eventEmitter = {
+      emit: jest.fn(),
+    } as unknown as jest.Mocked<EventEmitter2>;
+    messagePersonalizationService = {
+      novoContrato: jest.fn().mockReturnValue({ titulo: "Novo contrato", corpo: "..." }),
+      contratoAssinado: jest.fn().mockReturnValue({ titulo: "Contrato assinado", corpo: "..." }),
+    };
 
     service = new ContractsService(
       contractRepository,
@@ -123,6 +140,9 @@ describe("ContractsService", () => {
       authentiqueService,
       rottaAiService as unknown as RottaAiService,
       auditLogService,
+      companiesService as unknown as CompaniesService,
+      eventEmitter,
+      messagePersonalizationService as unknown as MessagePersonalizationService,
     );
   });
 

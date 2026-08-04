@@ -1,14 +1,14 @@
 import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 
-
 import { ChannelRegistryService } from "./channels/channel-registry.service";
 import { EmailChannelSender } from "./channels/email-channel.sender";
 import { InAppChannelSender } from "./channels/in-app-channel.sender";
 import { PushChannelSender } from "./channels/push-channel.sender";
 import { SmsChannelSender } from "./channels/sms-channel.sender";
 import { WhatsappChannelSender } from "./channels/whatsapp-channel.sender";
-import { MessagePersonalizationService } from "./message-personalization.service";
+import { CommunicationEventsListener } from "./events/communication-events.listener";
+import { MessagePersonalizationModule } from "./message-personalization.module";
 import { NotificationChannelSelectorService } from "./notification-channel-selector.service";
 import { NotificationInboxService } from "./notification-inbox.service";
 import { NotificationPriorityClassifierService } from "./notification-priority-classifier.service";
@@ -59,12 +59,29 @@ import { UsersModule } from "@/modules/users/users.module";
  * CRITICAL`), mesmo padrão de `GeoModule.registerQueue` — a conexão
  * Redis raiz já vem de `QueueModule` (`BullModule.forRootAsync` em
  * `AppModule`).
+ *
+ * `CommunicationEventsListener` é o único ponto de entrada assíncrono
+ * (`@nestjs/event-emitter`, já registrado globalmente em `AppModule`):
+ * traduz o evento `communication.requested`, emitido pelos módulos de
+ * domínio (Alunos/Escolas/Marketplace/Auth), em uma chamada real a
+ * `NotificationsService.notify` — ver `events/communication-events.listener.ts`
+ * para a lista de quais `NotificationEventType` já têm gatilho real.
+ *
+ * `MessagePersonalizationService` mora em `MessagePersonalizationModule`
+ * (importado aqui, nunca redeclarado como provider próprio) exatamente
+ * para que módulos de domínio que só precisam compor `titulo`/`corpo`
+ * (ex. `SchoolsModule`) importem esse módulo leve em vez deste — este
+ * módulo carrega `CompaniesModule`, que por sua vez alcança
+ * `VehiclesModule`/`RottaAiModule`/`GeoModule`/`SchoolsModule`; se
+ * `SchoolsModule` importasse `NotificationsModule` diretamente, fecharia
+ * um ciclo de dependência.
  */
 @Module({
   imports: [
     AuditModule,
     CompaniesModule,
     UsersModule,
+    MessagePersonalizationModule,
     PushModule,
     WhatsappModule,
     SmsModule,
@@ -81,7 +98,7 @@ import { UsersModule } from "@/modules/users/users.module";
   providers: [
     NotificationsService,
     NotificationInboxService,
-    MessagePersonalizationService,
+    CommunicationEventsListener,
     NotificationChannelSelectorService,
     NotificationPriorityClassifierService,
     ChannelRegistryService,
@@ -124,6 +141,6 @@ import { UsersModule } from "@/modules/users/users.module";
     SmsChannelSender,
     EmailChannelSender,
   ],
-  exports: [NotificationsService, MessagePersonalizationService],
+  exports: [NotificationsService, MessagePersonalizationModule],
 })
 export class NotificationsModule {}

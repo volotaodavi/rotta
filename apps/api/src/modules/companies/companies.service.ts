@@ -8,7 +8,6 @@ import {
 } from "@nestjs/common";
 import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
 
-
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -485,6 +484,21 @@ export class CompaniesService {
       const rows = await this.settingRepository.listByCompany(companyId);
       const raw = rows.find((row) => row.chave === "canaisNotificacao")?.valor;
       return raw ? (JSON.parse(raw) as NotificationChannel[]) : ["push"];
+    });
+  }
+
+  /**
+   * Leitura interna (sem RBAC de ator humano), mesmo padrão e mesmo
+   * motivo de `getEnabledChannels`: usada pelo Marketplace
+   * (`ContractsService`) só para compor `nomeEmpresa` nas mensagens do
+   * Message Personalization AI (`novoContrato`/`contratoAssinado`) antes
+   * de emitir `communication.requested` — nunca a partir de um
+   * `companyId` não verificado de cliente.
+   */
+  getNomeFantasia(companyId: string): Promise<string | null> {
+    return this.prisma.runWithTenantContext({ tenantId: companyId, bypass: true }, async () => {
+      const company = await this.companyRepository.findById(companyId);
+      return company?.nomeFantasia ?? null;
     });
   }
 

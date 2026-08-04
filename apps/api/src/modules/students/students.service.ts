@@ -1,5 +1,6 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { NotificationEventType, type Student } from "@prisma/client";
 
 import { toStudentAuthorizedPersonResponseDto } from "./mappers/student-authorized-person.mapper";
 import { toStudentResponseDto } from "./mappers/student.mapper";
@@ -15,10 +16,11 @@ import type { StudentAuthorizedPersonRepository } from "./repositories/student-a
 import type { StudentAccessScope, StudentRepository } from "./repositories/student.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { ListAuditLogsResponseDto } from "@/common/dto/audit-log-response.dto";
-import type { Student } from "@prisma/client";
 
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -48,6 +50,8 @@ export class StudentsService {
     private readonly authorizedPersonRepository: StudentAuthorizedPersonRepository,
     private readonly auditLogService: AuditLogService,
     private readonly storageService: SupabaseStorageService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
   ) {}
 
   private async recordAudit(input: {
@@ -120,6 +124,15 @@ export class StudentsService {
       dadosDepois: { nome: student.nome, schoolId: student.schoolId },
       ip: meta.ip,
       userAgent: meta.userAgent,
+    });
+
+    const { titulo, corpo } = this.messagePersonalizationService.novoAluno(student.nome);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: actor.sub,
+      tipo: NotificationEventType.NOVO_ALUNO,
+      titulo,
+      corpo,
+      dadosContexto: { studentId: student.id },
     });
 
     return toStudentResponseDto(student);

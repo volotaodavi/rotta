@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { ContractsController } from "./contracts.controller";
 import { ContractsService } from "./contracts.service";
 import {
@@ -22,6 +21,8 @@ import { TransportRequestsService } from "./transport-requests.service";
 
 import { AuditModule } from "@/modules/audit/audit.module";
 import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
+import { CompaniesModule } from "@/modules/companies/companies.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { StudentsModule } from "@/modules/students/students.module";
 
@@ -40,9 +41,26 @@ import { StudentsModule } from "@/modules/students/students.module";
  * solicitação (briefing "SOLICITAR TRANSPORTE") — sem risco de
  * dependência circular, já que `StudentsModule` deliberadamente NÃO
  * importa `MarketplaceModule` de volta (ver nota em `students.module.ts`).
+ *
+ * Importa `CompaniesModule` (só `CompaniesService.getNomeFantasia`, para
+ * compor `nomeEmpresa` nas mensagens do Message Personalization AI) e
+ * `MessagePersonalizationModule` (nunca `NotificationsModule` inteiro,
+ * ver nota em `notifications.module.ts`) para `MessagePersonalizationService`
+ * — `EventEmitter2` (emitir `communication.requested` em `gerarContrato`/
+ * `tryActivateAfterBothSigned`, eventos `NOVO_CONTRATO`/
+ * `CONTRATO_ASSINADO`) é injetado sem import extra, já global em
+ * `AppModule`. Nenhum ciclo, já que `CompaniesModule` não conhece
+ * `MarketplaceModule`.
  */
 @Module({
-  imports: [AuditModule, StudentsModule, AuthentiqueModule, RottaAiModule],
+  imports: [
+    AuditModule,
+    StudentsModule,
+    AuthentiqueModule,
+    RottaAiModule,
+    CompaniesModule,
+    MessagePersonalizationModule,
+  ],
   controllers: [
     MarketplaceController,
     TransportRequestsController,

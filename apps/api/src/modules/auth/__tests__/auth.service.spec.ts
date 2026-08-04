@@ -1,7 +1,6 @@
 import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { UserStatus } from "@prisma/client";
 
-
 import { AuthService } from "../auth.service";
 
 import type { PasswordResetNotifierService } from "../password-reset-notifier.service";
@@ -10,9 +9,11 @@ import type { SessionRepository } from "../repositories/session.repository";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { PasswordHasherService } from "@/infra/security/password-hasher.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { MembershipWithCompany } from "@/modules/users/repositories/membership.repository";
 import type { UsersService } from "@/modules/users/users.service";
 import type { ConfigService } from "@nestjs/config";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { JwtService } from "@nestjs/jwt";
 import type { Session, User } from "@prisma/client";
 
@@ -87,6 +88,8 @@ describe("AuthService", () => {
   let passwordResetNotifier: jest.Mocked<PasswordResetNotifierService>;
   let sessionRepository: jest.Mocked<SessionRepository>;
   let passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
+  let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
 
   beforeEach(() => {
     usersService = {
@@ -143,6 +146,14 @@ describe("AuthService", () => {
       invalidateAllForUser: jest.fn(),
     };
 
+    eventEmitter = {
+      emit: jest.fn(),
+    } as unknown as jest.Mocked<EventEmitter2>;
+
+    messagePersonalizationService = {
+      novoResponsavel: jest.fn().mockReturnValue({ titulo: "Novo responsável", corpo: "..." }),
+    } as unknown as jest.Mocked<MessagePersonalizationService>;
+
     service = new AuthService(
       usersService,
       companiesService,
@@ -153,6 +164,8 @@ describe("AuthService", () => {
       passwordResetNotifier,
       sessionRepository,
       passwordResetTokenRepository,
+      eventEmitter,
+      messagePersonalizationService,
     );
   });
 

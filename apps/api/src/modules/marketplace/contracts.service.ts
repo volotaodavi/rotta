@@ -6,7 +6,8 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { NotificationEventType } from "@prisma/client";
 
 import { toContractResponseDto } from "./mappers/contract.mapper";
 import { CONTRACT_REPOSITORY, TRANSPORT_REQUEST_REPOSITORY } from "./marketplace.constants";
@@ -21,6 +22,9 @@ import type { Contract } from "@prisma/client";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { AuthentiqueService } from "@/modules/authentique/authentique.service";
+import { CompaniesService } from "@/modules/companies/companies.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import { Role } from "@/shared/enums";
 
@@ -56,7 +60,21 @@ export class ContractsService {
     private readonly authentiqueService: AuthentiqueService,
     private readonly rottaAiService: RottaAiService,
     private readonly auditLogService: AuditLogService,
+    private readonly companiesService: CompaniesService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
   ) {}
+
+  /** Best-effort — nunca bloqueia a emissão do evento de comunicação por causa de uma falha ao resolver `nomeFantasia`. */
+  private async resolveNomeEmpresa(companyId: string): Promise<string> {
+    try {
+      return (await this.companiesService.getNomeFantasia(companyId)) ?? "a transportadora";
+    } catch (error) {
+      this.logger.warn(`Falha ao resolver nomeFantasia da empresa ${companyId} para notificação.`);
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+      return "a transportadora";
+    }
+  }
 
   private async recordAudit(input: {
     entidadeId: string;
@@ -153,6 +171,17 @@ export class ContractsService {
       userAgent: meta.userAgent,
     });
 
+    const nomeEmpresa = await this.resolveNomeEmpresa(contract.companyId);
+    const { titulo, corpo } = this.messagePersonalizationService.novoContrato(nomeEmpresa);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: contract.responsavelId,
+      companyId: contract.companyId,
+      tipo: NotificationEventType.NOVO_CONTRATO,
+      titulo,
+      corpo,
+      dadosContexto: { contractId: contract.id },
+    });
+
     return toContractResponseDto(contract);
   }
 
@@ -212,6 +241,18 @@ export class ContractsService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+
+    const nomeEmpresa = await this.resolveNomeEmpresa(activated.companyId);
+    const { titulo, corpo } = this.messagePersonalizationService.contratoAssinado(nomeEmpresa);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: activated.responsavelId,
+      companyId: activated.companyId,
+      tipo: NotificationEventType.CONTRATO_ASSINADO,
+      titulo,
+      corpo,
+      dadosContexto: { contractId: activated.id },
+    });
+
     return activated;
   }
 

@@ -6,7 +6,8 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { NotificationEventType } from "@prisma/client";
 
 import { toSchoolAccessPointResponseDto } from "./mappers/school-access-point.mapper";
 import {
@@ -59,6 +60,8 @@ import {
   type ExportColumn,
 } from "@/common/utils/tabular-export.util";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -93,6 +96,8 @@ export class SchoolsService {
     @Inject(SCHOOL_COMPANY_LINK_REPOSITORY)
     private readonly companyLinkRepository: SchoolCompanyLinkRepository,
     private readonly auditLogService: AuditLogService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -212,6 +217,16 @@ export class SchoolsService {
         this.logger.warn(error instanceof Error ? error.message : String(error));
       }
     }
+
+    const { titulo, corpo } = this.messagePersonalizationService.novaEscola(school.nomeOficial);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: actor.sub,
+      companyId: actor.tenantId ?? undefined,
+      tipo: NotificationEventType.NOVA_ESCOLA,
+      titulo,
+      corpo,
+      dadosContexto: { schoolId: school.id },
+    });
 
     return toSchoolResponseDto(school);
   }

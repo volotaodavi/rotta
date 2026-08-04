@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { PrismaStudentAuthorizedPersonRepository } from "./repositories/prisma-student-authorized-person.repository";
 import { PrismaStudentRepository } from "./repositories/prisma-student.repository";
 import { STUDENT_AUTHORIZED_PERSON_REPOSITORY, STUDENT_REPOSITORY } from "./students.constants";
@@ -9,6 +8,7 @@ import { StudentsService } from "./students.service";
 
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 
 /**
  * Módulo Alunos (briefing "Marketplace" §"CADASTRO DO ALUNO") —
@@ -20,9 +20,16 @@ import { AuditModule } from "@/modules/audit/audit.module";
  * dependência circular que existiria se `MarketplaceModule` (que
  * PRECISA de `StudentsService` para montar contratos) fosse importado
  * de volta por aqui.
+ *
+ * Importa `MessagePersonalizationModule` (nunca `NotificationsModule`
+ * inteiro, ver nota em `notifications.module.ts`) só para
+ * `MessagePersonalizationService` (compor `novoAluno`); `EventEmitter2`
+ * (emitir `communication.requested` em `create` — evento `NOVO_ALUNO`) é
+ * injetado sem import extra, já que `EventEmitterModule.forRoot()` é
+ * global (`AppModule`). Nunca chama `NotificationsService` diretamente.
  */
 @Module({
-  imports: [AuditModule, StorageModule],
+  imports: [AuditModule, StorageModule, MessagePersonalizationModule],
   controllers: [StudentsController],
   providers: [
     StudentsService,

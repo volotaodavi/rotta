@@ -7,6 +7,8 @@ import type { SchoolCompanyLinkRepository } from "../repositories/school-company
 import type { SchoolRepository } from "../repositories/school.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { School, SchoolAccessPoint, SchoolCompanyLink } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
@@ -104,6 +106,8 @@ describe("SchoolsService", () => {
   let accessPointRepository: jest.Mocked<SchoolAccessPointRepository>;
   let companyLinkRepository: jest.Mocked<SchoolCompanyLinkRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
+  let messagePersonalizationService: jest.Mocked<Pick<MessagePersonalizationService, "novaEscola">>;
 
   beforeEach(() => {
     schoolRepository = {
@@ -135,12 +139,20 @@ describe("SchoolsService", () => {
       listByCompany: jest.fn(),
       listByEntity: jest.fn(),
     } as unknown as jest.Mocked<AuditLogService>;
+    eventEmitter = {
+      emit: jest.fn(),
+    } as unknown as jest.Mocked<EventEmitter2>;
+    messagePersonalizationService = {
+      novaEscola: jest.fn().mockReturnValue({ titulo: "Nova escola cadastrada", corpo: "..." }),
+    };
 
     service = new SchoolsService(
       schoolRepository,
       accessPointRepository,
       companyLinkRepository,
       auditLogService,
+      eventEmitter,
+      messagePersonalizationService as unknown as MessagePersonalizationService,
     );
 
     schoolRepository.nextCodigoInternoSequence.mockResolvedValue(1);

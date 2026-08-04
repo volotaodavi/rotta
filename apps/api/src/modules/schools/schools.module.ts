@@ -12,6 +12,7 @@ import { SchoolsController } from "./schools.controller";
 import { SchoolsService } from "./schools.service";
 
 import { AuditModule } from "@/modules/audit/audit.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 
 /**
  * Módulo Escolas (Dossiê 13, Secao 4 / briefing "Gestão de Escolas") —
@@ -35,9 +36,18 @@ import { AuditModule } from "@/modules/audit/audit.module";
  * verificação de vínculo de Motorista/Monitor via `UsersService` (a
  * checagem de RBAC usa apenas `SchoolCompanyLinkRepository`, já
  * interno a este módulo).
+ *
+ * Importa `MessagePersonalizationModule` (nunca `NotificationsModule`
+ * inteiro — fecharia um ciclo via `CompaniesModule -> VehiclesModule ->
+ * RottaAiModule -> GeoModule -> SchoolsModule`, ver nota em
+ * `notifications.module.ts`) só para `MessagePersonalizationService`
+ * (compor `novaEscola`); `EventEmitter2` (emitir `communication.requested`
+ * em `create` — evento `NOVA_ESCOLA`) é injetado sem import extra, já
+ * que `EventEmitterModule.forRoot()` é global (`AppModule`). Nunca chama
+ * `NotificationsService` diretamente.
  */
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, MessagePersonalizationModule],
   controllers: [SchoolsController],
   providers: [
     SchoolsService,

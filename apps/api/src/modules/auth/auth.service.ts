@@ -11,9 +11,9 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
-import { UserStatus } from "@prisma/client";
-
+import { NotificationEventType, UserStatus } from "@prisma/client";
 
 import { PASSWORD_RESET_TOKEN_REPOSITORY, SESSION_REPOSITORY } from "./auth.constants";
 import { PasswordResetNotifierService } from "./password-reset-notifier.service";
@@ -41,6 +41,8 @@ import { parseDurationToMs } from "@/common/utils/duration.util";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
 import { CompaniesService, type RequestMeta } from "@/modules/companies/companies.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
 
@@ -75,6 +77,8 @@ export class AuthService {
     @Inject(SESSION_REPOSITORY) private readonly sessionRepository: SessionRepository,
     @Inject(PASSWORD_RESET_TOKEN_REPOSITORY)
     private readonly passwordResetTokenRepository: PasswordResetTokenRepository,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
   ) {}
 
   /**
@@ -150,6 +154,14 @@ export class AuthService {
     });
 
     await this.usersService.recordLgpdConsent(user.id);
+
+    const { titulo, corpo } = this.messagePersonalizationService.novoResponsavel(dto.nome);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: user.id,
+      tipo: NotificationEventType.NOVO_RESPONSAVEL,
+      titulo,
+      corpo,
+    });
 
     return this.issueTokens(user, null, Role.RESPONSAVEL, user.id, meta);
   }

@@ -4,7 +4,6 @@ import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ThrottlerModule } from "@nestjs/throttler";
 
-
 import {
   INVITE_REPOSITORY,
   PASSWORD_RESET_TOKEN_REPOSITORY,
@@ -24,6 +23,7 @@ import type { AuthConfig } from "@/config/auth.config";
 
 import { SecurityModule } from "@/infra/security/security.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { UsersModule } from "@/modules/users/users.module";
 
 /**
@@ -33,6 +33,13 @@ import { UsersModule } from "@/modules/users/users.module";
  * mesma conta"). Reutiliza `CompaniesModule`/`UsersModule` (Dossiê 16)
  * para o cadastro self-service e a identidade global — nunca duplica a
  * criação de Company/User/Membership.
+ *
+ * Importa `MessagePersonalizationModule` (nunca `NotificationsModule`
+ * inteiro, ver nota em `notifications.module.ts`) só para
+ * `MessagePersonalizationService` (compor `novoResponsavel`);
+ * `EventEmitter2` (emitir `communication.requested` em `registerPessoal`
+ * — evento `NOVO_RESPONSAVEL`) é injetado sem import extra, já global em
+ * `AppModule`. Nunca chama `NotificationsService` diretamente.
  *
  * `ThrottlerModule` registrado aqui (não em `app.module.ts`) porque,
  * hoje, só as rotas deste módulo precisam de rate limiting dedicado
@@ -70,6 +77,7 @@ import { UsersModule } from "@/modules/users/users.module";
     SecurityModule,
     UsersModule,
     CompaniesModule,
+    MessagePersonalizationModule,
   ],
   controllers: [AuthController, InvitesController],
   providers: [

@@ -1,6 +1,5 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { StudentsService } from "../students.service";
 
 import type { StudentAuthorizedPersonRepository } from "../repositories/student-authorized-person.repository";
@@ -8,6 +7,8 @@ import type { StudentRepository } from "../repositories/student.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Student, StudentAuthorizedPerson } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
@@ -106,6 +107,8 @@ describe("StudentsService", () => {
   let authorizedPersonRepository: jest.Mocked<StudentAuthorizedPersonRepository>;
   let auditLogService: jest.Mocked<AuditLogService>;
   let storageService: jest.Mocked<SupabaseStorageService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
+  let messagePersonalizationService: jest.Mocked<Pick<MessagePersonalizationService, "novoAluno">>;
 
   beforeEach(() => {
     studentRepository = {
@@ -128,12 +131,20 @@ describe("StudentsService", () => {
     storageService = {
       upload: jest.fn().mockResolvedValue("https://storage.example.com/foto.png"),
     } as unknown as jest.Mocked<SupabaseStorageService>;
+    eventEmitter = {
+      emit: jest.fn(),
+    } as unknown as jest.Mocked<EventEmitter2>;
+    messagePersonalizationService = {
+      novoAluno: jest.fn().mockReturnValue({ titulo: "Novo aluno", corpo: "..." }),
+    };
 
     service = new StudentsService(
       studentRepository,
       authorizedPersonRepository,
       auditLogService,
       storageService,
+      eventEmitter,
+      messagePersonalizationService as unknown as MessagePersonalizationService,
     );
   });
 
