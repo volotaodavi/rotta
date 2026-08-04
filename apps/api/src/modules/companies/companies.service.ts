@@ -466,6 +466,28 @@ export class CompaniesService {
     };
   }
 
+  /**
+   * Leitura interna (sem RBAC de ator humano) do teto de canais
+   * habilitados pela EMPRESA (briefing "ROTTA COMMUNICATION ENGINE" —
+   * `CompanySetting.canaisNotificacao`); o `NotificationsService` aplica
+   * por cima a preferência de cada USUÁRIO (`NotificationPreference`),
+   * nunca o contrário. Chamado apenas pelo Communication Engine, que já
+   * conhece o `companyId` de uma `Notification` legitimamente associada
+   * a essa empresa — nunca a partir de um parâmetro não verificado de
+   * cliente. `runWithTenantContext` (bypass) é necessário porque esta
+   * chamada acontece fora do ciclo Guard→Interceptor de uma requisição
+   * HTTP (ex. um evento de domínio disparando uma notificação em
+   * background), então não há `TenantContext` na `AsyncLocalStorage`
+   * para `withTenant` resolver.
+   */
+  getEnabledChannels(companyId: string): Promise<NotificationChannel[]> {
+    return this.prisma.runWithTenantContext({ tenantId: companyId, bypass: true }, async () => {
+      const rows = await this.settingRepository.listByCompany(companyId);
+      const raw = rows.find((row) => row.chave === "canaisNotificacao")?.valor;
+      return raw ? (JSON.parse(raw) as NotificationChannel[]) : ["push"];
+    });
+  }
+
   async updateSettings(
     id: string,
     dto: UpdateCompanySettingsDto,
