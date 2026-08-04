@@ -423,6 +423,10 @@ model Company {
   solicitacoesTransporte TransportRequest[]
   contratos              Contract[]
   avaliacoesRecebidas    Rating[]
+  /// Só alimenta o dashboard de comunicação da empresa (briefing "CENTRAL
+  /// DE COMUNICAÇÃO") — nunca usado para controle de acesso ao inbox
+  /// pessoal do destinatário (ver nota em `Notification`).
+  notifications          Notification[]
 
   @@index([status])
   @@index([tipo])
@@ -544,6 +548,15 @@ model User {
   contratosMotorista     Contract[]         @relation("ContractMotorista")
   contratosMonitor       Contract[]         @relation("ContractMonitor")
   avaliacoesFeitas       Rating[]           @relation("RatingResponsavel")
+
+  /// Relações do módulo Communication (briefing "ROTTA COMMUNICATION
+  /// ENGINE") — inbox pessoal, dispositivos com Token FCM e preferências
+  /// de canal/Quiet Hours; `notificationPreference` é opcional porque só
+  /// existe a partir da primeira vez que o usuário grava uma preferência
+  /// (o efetivo default é aplicado em código quando ausente).
+  notifications          Notification[]
+  deviceTokens           DeviceToken[]
+  notificationPreference NotificationPreference?
 
   @@map("users")
 }
@@ -1045,9 +1058,9 @@ model School {
   bairro                 String
   cidade                 String
   estado                 String
-  pais                   String   @default("Brasil")
-  latitude               Decimal? @db.Decimal(9, 6)
-  longitude              Decimal? @db.Decimal(9, 6)
+  pais                   String                                 @default("Brasil")
+  latitude               Decimal?                               @db.Decimal(9, 6)
+  longitude              Decimal?                               @db.Decimal(9, 6)
   observacoesLocalizacao String?
   /// `geography(Point,4326)` mantido por trigger de banco a partir de
   /// `latitude`/`longitude` (migration `20260803192602_geo_map_intelligence`)
@@ -1364,4 +1377,235 @@ model Rating {
   @@index([companyId])
   @@index([alvoTipo, alvoId])
   @@map("ratings")
+}
+
+// =============================================================================
+// Rotta Communication Engine — Notification, DeviceToken, NotificationPreference,
+// NotificationDeliveryAttempt (módulo Communication — "toda comunicação da
+// plataforma deverá passar exclusivamente por esse módulo")
+// =============================================================================
+
+/// Canal de envio suportado hoje pelo Communication Engine — arquitetura
+/// preparada para novos canais (novo valor de enum + novo `ChannelSender`,
+/// nunca uma reescrita dos modelos abaixo).
+enum CommunicationChannel {
+  PUSH
+  WHATSAPP
+  SMS
+  EMAIL
+  IN_APP
+}
+
+/// Evento de origem de uma notificação (briefing "EVENTOS") — cada valor é
+/// disparado por exatamente um módulo via `@nestjs/event-emitter`; nenhum
+/// módulo além do Communication Engine decide o(s) canal(is) finais.
+enum NotificationEventType {
+  VIAGEM_INICIADA
+  VIAGEM_ENCERRADA
+  ALUNO_EMBARCOU
+  ALUNO_DESEMBARCOU
+  ALUNO_AUSENTE
+  VEICULO_PROXIMO
+  MOTORISTA_ALTERADO
+  MONITOR_ALTERADO
+  VEICULO_ALTERADO
+  ROTA_ALTERADA
+  OCORRENCIA
+  EMERGENCIA
+  NOVO_CONTRATO
+  CONTRATO_ASSINADO
+  CNH_VENCENDO
+  DOCUMENTO_VENCENDO
+  PAGAMENTO_APROVADO
+  PAGAMENTO_RECUSADO
+  PAGAMENTO_PENDENTE
+  NOVA_ESCOLA
+  NOVO_ALUNO
+  NOVO_RESPONSAVEL
+}
+
+/// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —
+/// `EMERGENCIA` é o único nível que ignora Quiet Hours (briefing "QUIET
+/// HOURS", "Exceto notificações críticas").
+enum NotificationPriority {
+  INFORMATIVA
+  IMPORTANTE
+  URGENTE
+  CRITICA
+  EMERGENCIA
+}
+
+/// Status de uma tentativa de entrega em UM canal (briefing "AGENTE 03 —
+/// Delivery AI") — não confundir com `Notification.lida`, que é o estado de
+/// leitura do item na Central de Notificações (canal `IN_APP` implícito).
+enum NotificationDeliveryStatus {
+  PENDENTE
+  ENFILEIRADA
+  ENVIADA
+  ENTREGUE
+  LIDA
+  FALHOU
+}
+
+/// Plataforma de um Token FCM (briefing "PUSH NOTIFICATION" —
+/// "Compatível com Android/iOS/Web").
+enum DeviceTokenPlatform {
+  ANDROID
+  IOS
+  WEB
+}
+
+/// Item da Central de Notificações Internas (briefing "NOTIFICAÇÕES
+/// INTERNAS" — "Cada usuário possui seu próprio histórico"). Sempre
+/// pertence a UM `User` (qualquer papel, inclusive Responsável e Admin
+/// Rotta); `companyId` é OPCIONAL — presente apenas quando a notificação
+/// se origina de um contexto de tenant (para alimentar o dashboard de
+/// comunicação da empresa), nulo para notificações puramente pessoais/
+/// globais. RLS: acesso ao próprio inbox é SEMPRE via bypass explícito
+/// filtrado por `userId = actor.sub` na camada de aplicação (nunca uma
+/// policy de RLS por `userId` — mesmo raciocínio do bypass de
+/// Responsável documentado em `TransportRequest`, generalizado aqui para
+/// todo usuário, já que um inbox de notificações é sempre pessoal); a
+/// policy de RLS por `companyId` abaixo cobre apenas a consulta agregada
+/// do dashboard da empresa.
+model Notification {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Presente apenas quando originada em um contexto de tenant (ver nota
+  /// do model) — nunca usado para restringir o acesso do destinatário ao
+  /// próprio item, somente para o dashboard agregado da empresa.
+  companyId String?  @db.Uuid
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  tipo       NotificationEventType
+  prioridade NotificationPriority  @default(INFORMATIVA)
+
+  /// Título/corpo já resolvidos pelo Message Personalization AI (briefing
+  /// "AGENTE 04") — nunca um texto genérico quando havia dado disponível.
+  titulo String
+  corpo  String
+
+  /// Dados estruturados para personalização/deep-link (ex. `tripId`,
+  /// `studentId`, ETA) — nunca dado pessoal sensível além do
+  /// indispensável para o próprio destinatário abrir o item (LGPD,
+  /// briefing "SEGURANÇA").
+  dadosContexto Json?
+
+  /// Canais efetivamente escolhidos pela Communication AI (briefing
+  /// "ROTTA COMMUNICATION AI") para este evento — o detalhe por canal
+  /// (entregue/falhou/lido/tempo de resposta) fica em
+  /// `NotificationDeliveryAttempt`, nunca duplicado aqui.
+  canaisEscolhidos CommunicationChannel[]
+
+  lida   Boolean   @default(false)
+  lidaEm DateTime?
+
+  favoritada Boolean @default(false)
+  arquivada  Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tentativasEntrega NotificationDeliveryAttempt[]
+
+  @@index([userId, arquivada, lida, createdAt])
+  @@index([userId, favoritada])
+  @@index([companyId, createdAt])
+  @@map("notifications")
+}
+
+/// Tentativa de entrega de UMA `Notification` em UM canal (briefing
+/// "AGENTE 03 — Delivery AI" e "CENTRAL DE COMUNICAÇÃO"/"LOGS") — cada
+/// reenvio automático ou troca de canal gera uma nova linha (nunca
+/// sobrescreve a anterior), preservando o histórico completo exigido por
+/// "LOGS: Registrar absolutamente tudo".
+model NotificationDeliveryAttempt {
+  id String @id @default(uuid()) @db.Uuid
+
+  notificationId String       @db.Uuid
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  canal     CommunicationChannel
+  status    NotificationDeliveryStatus @default(PENDENTE)
+  tentativa Int                        @default(1)
+
+  /// Nome do provedor real que processou o envio (ex. `"fcm"`,
+  /// `"twilio"`, `"meta-whatsapp-cloud-api"`) — `null` enquanto o canal
+  /// ainda é um stub honesto sem provedor contratado (briefing WhatsApp/
+  /// SMS).
+  provedor String?
+  erro     String?
+
+  enviadoEm       DateTime?
+  entregueEm      DateTime?
+  lidaEm          DateTime?
+  tempoRespostaMs Int?
+
+  createdAt DateTime @default(now())
+
+  @@index([notificationId, canal])
+  @@index([status, createdAt])
+  @@map("notification_delivery_attempts")
+}
+
+/// Token FCM de um dispositivo (briefing "PUSH NOTIFICATION" — "Cada
+/// dispositivo deverá possuir um Token FCM único. Implementar renovação
+/// automática do token"). Um `User` pode ter vários dispositivos ativos
+/// simultaneamente (celular + web, por exemplo); `token` é único porque
+/// o FCM nunca emite o mesmo token para dois registros distintos.
+model DeviceToken {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token      String              @unique
+  plataforma DeviceTokenPlatform
+
+  /// `false` quando o token expirou e ainda não foi renovado pelo
+  /// próprio dispositivo (briefing — "se expirar, gerar novo
+  /// automaticamente") ou quando o FCM devolveu erro definitivo
+  /// (desinstalado) — inativos nunca recebem novo envio.
+  ativo       Boolean  @default(true)
+  ultimoUsoEm DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, ativo])
+  @@map("device_tokens")
+}
+
+/// Preferências de comunicação de UM usuário (briefing
+/// "CONFIGURAÇÕES"/"QUIET HOURS") — camada aplicada POR CIMA de
+/// `CompanySetting.canaisNotificacao` (canal efetivo = habilitado pela
+/// empresa E habilitado pelo usuário); nunca duplica a configuração da
+/// empresa, apenas restringe.
+model NotificationPreference {
+  id String @id @default(uuid()) @db.Uuid
+
+  userId String @unique @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  receberPush     Boolean @default(true)
+  receberWhatsapp Boolean @default(true)
+  receberSms      Boolean @default(true)
+  receberEmail    Boolean @default(true)
+
+  silenciarFinsDeSemana Boolean @default(false)
+
+  /// Horário silencioso diário (briefing "ex. 22:00 até 06:00") — formato
+  /// `"HH:mm"`; `null` em ambos desativa o Quiet Hours. Nunca aplicado a
+  /// `NotificationPriority.EMERGENCIA` (briefing — "Exceto notificações
+  /// críticas").
+  quietHoursInicio String?
+  quietHoursFim    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("notification_preferences")
 }
