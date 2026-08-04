@@ -56,6 +56,16 @@ export const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
 
+  // Canal WhatsApp (briefing — "arquitetura preparada... camada de
+  // abstração para trocar de fornecedor futuramente"). Provedor ativo
+  // hoje: Meta Cloud API (`WHATSAPP_PROVIDER` default). Ambas de
+  // credencial opcionais: sem elas, `WhatsAppService` recusa o envio com
+  // um erro claro, nunca falha o boot.
+  WHATSAPP_PROVIDER: z.string().optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
+  WHATSAPP_API_VERSION: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

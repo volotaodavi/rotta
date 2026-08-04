@@ -1,4 +1,4 @@
-import { Injectable, NotImplementedException } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { CommunicationChannel } from "@prisma/client";
 
 import type {
@@ -7,22 +7,39 @@ import type {
   ChannelSender,
 } from "./channel-sender.interface";
 
+import { WhatsAppService } from "@/infra/whatsapp/whatsapp.service";
+import { UsersService } from "@/modules/users/users.service";
+
+
 /**
  * Canal `WHATSAPP` (briefing — "Preparar arquitetura para integração com
  * WhatsApp Business API, através de provedores oficiais, com camada de
- * abstração para trocar de fornecedor futuramente"). Nenhum provedor
- * (ex. Meta Cloud API, Twilio) foi contratado ainda — mesmo raciocínio
- * de stub honesto do `PushChannelSender`: a troca para um provedor real
- * é, deliberadamente, a troca do corpo deste único método.
+ * abstração para trocar de fornecedor futuramente") — envia de verdade
+ * através do provedor ativo (`WhatsAppService`, hoje a Meta Cloud API).
+ * O destino é sempre `User.telefone` (nunca um campo à parte só para
+ * WhatsApp — o mesmo telefone cadastrado no perfil, briefing "SEGURANÇA":
+ * nunca duplicar dado pessoal desnecessariamente).
  */
 @Injectable()
 export class WhatsappChannelSender implements ChannelSender {
   readonly channel = CommunicationChannel.WHATSAPP;
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async send(_input: ChannelSendInput): Promise<ChannelSendResult> {
-    throw new NotImplementedException(
-      "Envio via WhatsApp ainda não está disponível — integração com um provedor oficial da WhatsApp Business API pendente.",
+  constructor(
+    private readonly whatsAppService: WhatsAppService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  async send(input: ChannelSendInput): Promise<ChannelSendResult> {
+    const user = await this.usersService.findById(input.notification.userId);
+    if (!user) {
+      throw new NotFoundException("Usuário do destinatário não encontrado.");
+    }
+
+    await this.whatsAppService.sendMessage(
+      user.telefone,
+      `${input.notification.titulo}\n${input.notification.corpo}`,
     );
+
+    return { provedor: "whatsapp", entregueImediatamente: false };
   }
 }

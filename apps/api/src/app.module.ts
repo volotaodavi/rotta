@@ -19,6 +19,7 @@ import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
 import redisConfig from "@/config/redis.config";
 import storageConfig from "@/config/storage.config";
+import whatsappConfig from "@/config/whatsapp.config";
 import { HealthModule } from "@/health/health.module";
 import { RedisModule } from "@/infra/cache/redis.module";
 import { PrismaModule } from "@/infra/database/prisma.module";
@@ -65,6 +66,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
         storageConfig,
         geoConfig,
         fcmConfig,
+        whatsappConfig,
       ],
     }),
 

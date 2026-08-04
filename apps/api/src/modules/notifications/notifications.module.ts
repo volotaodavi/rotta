@@ -31,8 +31,10 @@ import { PrismaNotificationRepository } from "./repositories/prisma-notification
 
 import { PushModule } from "@/infra/push/push.module";
 import { QUEUE_NAMES } from "@/infra/queue/queue.constants";
+import { WhatsappModule } from "@/infra/whatsapp/whatsapp.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { UsersModule } from "@/modules/users/users.module";
 
 /**
  * Rotta Communication Engine (briefing "MÓDULO — ROTTA COMMUNICATION
@@ -57,7 +59,9 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
   imports: [
     AuditModule,
     CompaniesModule,
+    UsersModule,
     PushModule,
+    WhatsappModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.NOTIFICATIONS_PUSH },
       { name: QUEUE_NAMES.NOTIFICATIONS_WHATSAPP },
