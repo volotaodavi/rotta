@@ -1,13 +1,26 @@
+import {
+  ArrowRight,
+  Bell,
+  Check,
+  Headset,
+  LayoutGrid,
+  Link2,
+  MapPin,
+  Route as RouteIcon,
+  ShieldCheck,
+  UserPlus,
+} from "@rotta/icons";
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
 import Image from "next/image";
 import Link from "next/link";
 
 import type { Route } from "next";
+import type { ComponentType } from "react";
 
-const TRUST_CHIPS = [
-  "Rastreamento em tempo real",
-  "Notificações automáticas",
-  "Documentos verificados por IA",
+const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
+  { label: "Rastreamento em tempo real", icon: MapPin },
+  { label: "Notificações automáticas", icon: Bell },
+  { label: "Documentos verificados por IA", icon: ShieldCheck },
 ];
 
 interface AudienceCard {
@@ -54,53 +67,72 @@ const AUDIENCIAS: AudienceCard[] = [
   },
 ];
 
-const COMO_FUNCIONA = [
+const COMO_FUNCIONA: {
+  numero: string;
+  titulo: string;
+  descricao: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
   {
     numero: "01",
     titulo: "Cadastre-se",
     descricao: "Crie sua conta em minutos — sem burocracia, sem contrato de fidelidade.",
+    icon: UserPlus,
   },
   {
     numero: "02",
     titulo: "Vincule sua rota",
     descricao: "Conecte motoristas, veículos, escolas e alunos em poucos cliques.",
+    icon: Link2,
   },
   {
     numero: "03",
     titulo: "Acompanhe em tempo real",
     descricao: "Veja o transporte se mover no mapa, do embarque até a entrega.",
+    icon: MapPin,
   },
   {
     numero: "04",
     titulo: "Fique tranquilo",
     descricao: "Notificações automáticas a cada etapa — chega de grupo de WhatsApp.",
+    icon: ShieldCheck,
   },
 ];
 
-const BENEFICIOS = [
+const BENEFICIOS: {
+  titulo: string;
+  descricao: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
   {
     titulo: "Rastreamento em tempo real",
     descricao: "Localização do transporte escolar ao vivo, do embarque ao desembarque.",
+    icon: MapPin,
   },
   {
     titulo: "Comunicação automática",
     descricao: "Responsáveis avisados a cada etapa da rota, sem ligações nem grupos de WhatsApp.",
+    icon: Bell,
   },
   {
     titulo: "Gestão simples",
     descricao: "Motoristas, veículos, rotas e alunos em um único painel.",
+    icon: LayoutGrid,
   },
   {
     titulo: "Documentos verificados por IA",
     descricao: "CNH, veículo e antecedentes analisados automaticamente antes de qualquer viagem.",
+    icon: ShieldCheck,
   },
   {
     titulo: "Rotas inteligentes",
     descricao: "Sequência de embarque otimizada e recálculo automático quando um aluno falta.",
+    icon: RouteIcon,
   },
   {
     titulo: "Suporte dedicado",
     descricao: "Time de suporte acompanhando empresas, motoristas e famílias todos os dias.",
+    icon: Headset,
   },
 ];
 
@@ -180,8 +212,11 @@ export default function LandingPage(): JSX.Element {
           </div>
           <div className="flex flex-wrap gap-2 pt-2">
             {TRUST_CHIPS.map((chip) => (
-              <Badge key={chip} variant="neutral">
-                {chip}
+              <Badge key={chip.label} variant="neutral">
+                <span className="flex items-center gap-1.5">
+                  <chip.icon className="h-3.5 w-3.5" />
+                  {chip.label}
+                </span>
               </Badge>
             ))}
           </div>
@@ -206,7 +241,7 @@ export default function LandingPage(): JSX.Element {
                 <ul className="flex flex-1 flex-col gap-2">
                   {audiencia.bullets.map((bullet) => (
                     <li key={bullet} className="flex items-start gap-2">
-                      <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                       <Typography variant="bodySmall" color="muted">
                         {bullet}
                       </Typography>
@@ -231,10 +266,15 @@ export default function LandingPage(): JSX.Element {
           </Typography>
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {COMO_FUNCIONA.map((passo) => (
-              <div key={passo.numero} className="flex flex-col gap-2">
-                <Typography variant="headline" color="primary">
-                  {passo.numero}
-                </Typography>
+              <div key={passo.numero} className="flex flex-col gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <passo.icon className="h-5 w-5" />
+                  </span>
+                  <Typography variant="headline" color="primary">
+                    {passo.numero}
+                  </Typography>
+                </div>
                 <Typography variant="subtitle">{passo.titulo}</Typography>
                 <Typography variant="bodySmall" color="muted">
                   {passo.descricao}
@@ -252,7 +292,10 @@ export default function LandingPage(): JSX.Element {
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {BENEFICIOS.map((beneficio) => (
             <Card key={beneficio.titulo}>
-              <Card.Body className="flex flex-col gap-2">
+              <Card.Body className="flex flex-col gap-3">
+                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <beneficio.icon className="h-5 w-5" />
+                </span>
                 <Typography variant="subtitle">{beneficio.titulo}</Typography>
                 <Typography variant="bodySmall" color="muted">
                   {beneficio.descricao}
@@ -272,7 +315,7 @@ export default function LandingPage(): JSX.Element {
             Leva menos de 5 minutos para criar sua conta e começar a acompanhar o transporte.
           </Typography>
           <Link href="/criar-conta">
-            <Button variant="primary" size="lg">
+            <Button variant="primary" size="lg" iconRight={<ArrowRight className="h-4 w-4" />}>
               Criar conta gratuita
             </Button>
           </Link>

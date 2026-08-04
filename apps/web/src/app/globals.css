@@ -9,6 +9,12 @@
  * for automatizado (gerar CSS a partir do TS em vez de duplicar), este
  * arquivo passa a ser gerado, nunca editado a mao.
  *
+ * Canais RGB (`R G B`, nao hexadecimal) — necessario para os modificadores
+ * de opacidade do Tailwind (`bg-primary/20`, usado por `Badge`/`HeroVisual`)
+ * funcionarem: `tailwind.config.ts` referencia estas variaveis como
+ * `rgb(var(--color-x) / <alpha-value>)`, formato exigido pelo Tailwind
+ * para variaveis CSS dinamicas (ver `tailwind.config.ts`).
+ *
  * Tema escuro e o padrao da plataforma (Dossie 10, Secao 7.1) — nao
  * depende de `prefers-color-scheme`; a troca para claro e uma
  * preferencia explicita do usuario, aplicada via atributo `data-theme`
@@ -16,49 +22,49 @@
  */
 :root,
 [data-theme="dark"] {
-  --color-background: #0b0f14;
-  --color-surface: #12161d;
-  --color-surface-elevated: #1a2029;
-  --color-primary: #3b6ef6;
-  --color-primary-hover: #5a8cff;
-  --color-primary-muted: #1b2b4d;
-  --color-secondary: #e5e8ec;
-  --color-success: #22c55e;
-  --color-warning: #f5a623;
-  --color-danger: #ef4444;
-  --color-border: #232a35;
-  --color-border-strong: #333c4a;
-  --color-text: #f5f7fa;
-  --color-text-muted: #9aa4b2;
-  --color-text-disabled: #5c6673;
-  --color-card: #151a22;
-  --color-info: #22d3ee;
-  --color-placeholder: #6b7484;
-  --color-disabled-bg: #1c212b;
-  --color-muted: #161b24;
+  --color-background: 11 15 20;
+  --color-surface: 18 22 29;
+  --color-surface-elevated: 26 32 41;
+  --color-primary: 59 110 246;
+  --color-primary-hover: 90 140 255;
+  --color-primary-muted: 27 43 77;
+  --color-secondary: 229 232 236;
+  --color-success: 34 197 94;
+  --color-warning: 245 166 35;
+  --color-danger: 239 68 68;
+  --color-border: 35 42 53;
+  --color-border-strong: 51 60 74;
+  --color-text: 245 247 250;
+  --color-text-muted: 154 164 178;
+  --color-text-disabled: 92 102 115;
+  --color-card: 21 26 34;
+  --color-info: 34 211 238;
+  --color-placeholder: 107 116 132;
+  --color-disabled-bg: 28 33 43;
+  --color-muted: 22 27 36;
 }
 
 [data-theme="light"] {
-  --color-background: #ffffff;
-  --color-surface: #f7f8fa;
-  --color-surface-elevated: #ffffff;
-  --color-primary: #2f5fe0;
-  --color-primary-hover: #1e4bc7;
-  --color-primary-muted: #e8eeff;
-  --color-secondary: #4b5563;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
-  --color-border: #e5e8ec;
-  --color-border-strong: #c7cdd6;
-  --color-text: #0b0f14;
-  --color-text-muted: #6b7280;
-  --color-text-disabled: #a6acb5;
-  --color-card: #ffffff;
-  --color-info: #0891b2;
-  --color-placeholder: #9ca3af;
-  --color-disabled-bg: #f1f2f4;
-  --color-muted: #f1f2f4;
+  --color-background: 255 255 255;
+  --color-surface: 247 248 250;
+  --color-surface-elevated: 255 255 255;
+  --color-primary: 47 95 224;
+  --color-primary-hover: 30 75 199;
+  --color-primary-muted: 232 238 255;
+  --color-secondary: 75 85 99;
+  --color-success: 22 163 74;
+  --color-warning: 217 119 6;
+  --color-danger: 220 38 38;
+  --color-border: 229 232 236;
+  --color-border-strong: 199 205 214;
+  --color-text: 11 15 20;
+  --color-text-muted: 107 114 128;
+  --color-text-disabled: 166 172 181;
+  --color-card: 255 255 255;
+  --color-info: 8 145 178;
+  --color-placeholder: 156 163 175;
+  --color-disabled-bg: 241 242 244;
+  --color-muted: 241 242 244;
 }
 
 :root {
@@ -71,7 +77,7 @@
 }
 
 body {
-  background-color: var(--color-background);
-  color: var(--color-text);
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-text));
   font-family: var(--font-family-base);
 }

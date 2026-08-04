@@ -1,40 +1,54 @@
 import type { Config } from "tailwindcss";
 
-/** Ver apps/web/tailwind.config.ts — mesma abordagem (Dossie 22, Secao 5.2). */
+/**
+ * Ver apps/web/tailwind.config.ts — mesma abordagem (Dossie 22, Secao
+ * 5.2), incluindo `withOpacity` (variaveis CSS em `globals.css` como
+ * canais `R G B`, exigido pelo Tailwind para os modificadores de
+ * opacidade usados por `Badge`).
+ */
+function withOpacity(variableName: string): string {
+  // Ver apps/web/tailwind.config.ts — mesmo cast, mesma limitacao dos
+  // tipos oficiais do Tailwind (a funcao e valida em runtime).
+  return (({ opacityValue }: { opacityValue?: string }) =>
+    opacityValue === undefined
+      ? `rgb(var(${variableName}))`
+      : `rgb(var(${variableName}) / ${opacityValue})`) as unknown as string;
+}
+
 const config: Config = {
   darkMode: ["class"],
   content: ["./src/**/*.{ts,tsx}", "../../packages/ui/src/web/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        background: "var(--color-background)",
-        surface: "var(--color-surface)",
-        "surface-elevated": "var(--color-surface-elevated)",
+        background: withOpacity("--color-background"),
+        surface: withOpacity("--color-surface"),
+        "surface-elevated": withOpacity("--color-surface-elevated"),
         primary: {
-          DEFAULT: "var(--color-primary)",
-          hover: "var(--color-primary-hover)",
-          muted: "var(--color-primary-muted)",
+          DEFAULT: withOpacity("--color-primary"),
+          hover: withOpacity("--color-primary-hover"),
+          muted: withOpacity("--color-primary-muted"),
         },
-        secondary: "var(--color-secondary)",
-        success: "var(--color-success)",
-        warning: "var(--color-warning)",
-        danger: "var(--color-danger)",
-        info: "var(--color-info)",
-        card: "var(--color-card)",
-        muted: "var(--color-muted)",
-        placeholder: "var(--color-placeholder)",
+        secondary: withOpacity("--color-secondary"),
+        success: withOpacity("--color-success"),
+        warning: withOpacity("--color-warning"),
+        danger: withOpacity("--color-danger"),
+        info: withOpacity("--color-info"),
+        card: withOpacity("--color-card"),
+        muted: withOpacity("--color-muted"),
+        placeholder: withOpacity("--color-placeholder"),
         border: {
-          DEFAULT: "var(--color-border)",
-          strong: "var(--color-border-strong)",
+          DEFAULT: withOpacity("--color-border"),
+          strong: withOpacity("--color-border-strong"),
         },
         text: {
-          DEFAULT: "var(--color-text)",
-          muted: "var(--color-text-muted)",
-          disabled: "var(--color-text-disabled)",
+          DEFAULT: withOpacity("--color-text"),
+          muted: withOpacity("--color-text-muted"),
+          disabled: withOpacity("--color-text-disabled"),
         },
         disabled: {
-          bg: "var(--color-disabled-bg)",
-          text: "var(--color-text-disabled)",
+          bg: withOpacity("--color-disabled-bg"),
+          text: withOpacity("--color-text-disabled"),
         },
       },
       borderRadius: {

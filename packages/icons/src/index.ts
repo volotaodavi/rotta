@@ -1,10 +1,9 @@
 /**
- * @rotta/icons — icones da marca (Dossie 10, Secao 4), gerados a partir de
- * uma unica fonte de arquivos SVG, exportados como componentes React (web)
- * e componentes RN (mobile) — nunca importados ad-hoc de bibliotecas
- * distintas por app.
- *
- * Nenhum icone implementado ainda (fase de fundacao).
+ * @rotta/icons — icones da marca (Dossie 10, Secao 4; briefing "ROTTA
+ * DIGITAL EXPERIENCE" — "Lucide Icons, nunca emoji ou biblioteca
+ * generica misturada"). Fonte unica: Lucide (traco 2px, grade 24px,
+ * tamanhos usuais 16/20/24/32px via prop `size`) — nenhum app importa
+ * `lucide-react` diretamente, sempre por este barrel.
  */
 
-export {};
+export * from "lucide-react";

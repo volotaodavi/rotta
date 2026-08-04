@@ -18,6 +18,7 @@
   "dependencies": {
     "@rotta/api-client": "workspace:*",
     "@rotta/auth": "workspace:*",
+    "@rotta/icons": "workspace:*",
     "@rotta/maps": "workspace:*",
     "@rotta/theme": "workspace:*",
     "@rotta/types": "workspace:*",
