@@ -66,6 +66,15 @@ export const envSchema = z.object({
   WHATSAPP_PHONE_NUMBER_ID: z.string().optional(),
   WHATSAPP_API_VERSION: z.string().optional(),
 
+  // Canal SMS (briefing — "arquitetura preparada... totalmente
+  // desacoplada"). Provedor ativo hoje: Twilio (`SMS_PROVIDER` default).
+  // Todas opcionais: sem elas, `SmsService` recusa o envio com um erro
+  // claro, nunca falha o boot.
+  SMS_PROVIDER: z.string().optional(),
+  TWILIO_ACCOUNT_SID: z.string().optional(),
+  TWILIO_AUTH_TOKEN: z.string().optional(),
+  TWILIO_FROM_NUMBER: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

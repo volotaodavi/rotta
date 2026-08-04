@@ -18,6 +18,7 @@ import { validate } from "@/config/env.validation";
 import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
 import redisConfig from "@/config/redis.config";
+import smsConfig from "@/config/sms.config";
 import storageConfig from "@/config/storage.config";
 import whatsappConfig from "@/config/whatsapp.config";
 import { HealthModule } from "@/health/health.module";
@@ -67,6 +68,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
         geoConfig,
         fcmConfig,
         whatsappConfig,
+        smsConfig,
       ],
     }),
 
