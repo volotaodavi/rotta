@@ -57,9 +57,9 @@ export class NotificationsController {
   ) {}
 
   /**
-   * Única rota deste controller escopada por EMPRESA (não pelo ator
-   * autenticado) — precisa vir antes de `:id` porque `"empresas"` tem o
-   * mesmo número de segmentos adicionais que os demais sufixos fixos
+   * Únicas rotas deste controller escopadas por EMPRESA (não pelo ator
+   * autenticado) — precisam vir antes de `:id` porque `"empresas"` tem
+   * o mesmo número de segmentos adicionais que os demais sufixos fixos
    * (`"preferencia"`, `"dispositivos"`), mesma disciplina da nota da
    * classe.
    */
@@ -71,6 +71,17 @@ export class NotificationsController {
     @CurrentUser() actor: AuthenticatedUser,
   ): Promise<CommunicationDashboardResponseDto> {
     return this.dashboardService.getDashboard(companyId, actor, query);
+  }
+
+  @Get("empresas/:companyId/audit-logs")
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR)
+  listAuditLogs(
+    @Param("companyId", ParseUUIDPipe) companyId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query("page") page = 1,
+    @Query("pageSize") pageSize = 20,
+  ) {
+    return this.dashboardService.listAuditLogs(companyId, actor, Number(page), Number(pageSize));
   }
 
   @Get()
@@ -166,7 +177,7 @@ export class NotificationsController {
     @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthenticatedUser,
   ): Promise<void> {
-    await this.inboxService.findByIdOrThrow(id, actor.sub);
-    await this.inboxService.delete(id, actor.sub);
+    const notification = await this.inboxService.findByIdOrThrow(id, actor.sub);
+    await this.inboxService.delete(notification, actor.sub);
   }
 }

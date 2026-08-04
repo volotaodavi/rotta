@@ -1,4 +1,5 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+
 
 import {
   DEVICE_TOKEN_REPOSITORY,
@@ -18,6 +19,10 @@ import type {
 } from "./repositories/notification.repository";
 import type { DeviceToken, DeviceTokenPlatform, Notification } from "@prisma/client";
 
+import { AuditLogService } from "@/modules/audit/audit-log.service";
+
+const ENTIDADE_TIPO = "Notification";
+
 /**
  * Central de Notificações Internas (briefing "NOTIFICAÇÕES INTERNAS" —
  * "Cada usuário possui seu próprio histórico. Permitir: Marcar como
@@ -34,6 +39,8 @@ import type { DeviceToken, DeviceTokenPlatform, Notification } from "@prisma/cli
  */
 @Injectable()
 export class NotificationInboxService {
+  private readonly logger = new Logger(NotificationInboxService.name);
+
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
     private readonly notificationRepository: NotificationRepository,
@@ -41,6 +48,7 @@ export class NotificationInboxService {
     private readonly deviceTokenRepository: DeviceTokenRepository,
     @Inject(NOTIFICATION_PREFERENCE_REPOSITORY)
     private readonly preferenceRepository: NotificationPreferenceRepository,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   list(
@@ -74,8 +82,29 @@ export class NotificationInboxService {
     return this.notificationRepository.setArquivada(id, userId, arquivada);
   }
 
-  delete(id: string, userId: string): Promise<void> {
-    return this.notificationRepository.delete(id, userId);
+  /**
+   * `notification` já vem carregada do `findByIdOrThrow` que o
+   * controller chama antes (mesmo dado, nunca uma segunda consulta só
+   * para popular `dadosAntes`) — exclusão é permanente, então é o único
+   * ponto deste service que audita (marcar lida/favoritar/arquivar são
+   * toggles de alta frequência sem valor de trilha, mesmo raciocínio de
+   * nunca poluir `AuditLog` com ruído de UI). Nunca passa `companyId`
+   * mesmo quando `notification.companyId` existe: é sempre uma ação
+   * PESSOAL do destinatário sobre o próprio inbox (mesmo raciocínio de
+   * `StudentsService.recordAudit`), nunca uma escrita de tenant — se
+   * passasse, `AuditLogService.record` tentaria `withTenant` com o
+   * `TenantContext` do ATOR (que pode ser `null`/outra empresa,
+   * ex. Responsável apagando uma notificação de contrato de uma
+   * empresa que não é o "tenant" dele), violando a RLS de `audit_logs`.
+   */
+  async delete(notification: Notification, userId: string): Promise<void> {
+    await this.notificationRepository.delete(notification.id, userId);
+    await this.recordAudit({
+      entidadeId: notification.id,
+      acao: "NOTIFICATION_DELETED",
+      atorUserId: userId,
+      dadosAntes: { tipo: notification.tipo, titulo: notification.titulo },
+    });
   }
 
   registerDeviceToken(
@@ -106,7 +135,39 @@ export class NotificationInboxService {
     );
   }
 
-  updatePreference(userId: string, data: Omit<UpsertNotificationPreferenceData, "userId">) {
-    return this.preferenceRepository.upsert({ userId, ...data });
+  /** Auditado (nunca um toggle silencioso): muda o que o usuário efetivamente recebe (Quiet Hours/canais), relevante para reconstituir "por que uma notificação não chegou" numa investigação futura. */
+  async updatePreference(userId: string, data: Omit<UpsertNotificationPreferenceData, "userId">) {
+    const updated = await this.preferenceRepository.upsert({ userId, ...data });
+    await this.recordAudit({
+      entidadeId: userId,
+      acao: "NOTIFICATION_PREFERENCE_UPDATED",
+      atorUserId: userId,
+      dadosDepois: { ...data },
+    });
+    return updated;
+  }
+
+  /**
+   * Auditoria é sempre best-effort em relação à operação principal —
+   * mesmo princípio de `NotificationsService.recordAudit`. Nunca recebe
+   * `companyId` (ver nota em `delete`): todo registro aqui é sobre uma
+   * ação do próprio usuário no próprio inbox/preferência, então sempre
+   * grava via bypass (`AuditLogService.record` sem `companyId`).
+   */
+  private async recordAudit(input: {
+    entidadeId: string;
+    acao: string;
+    atorUserId: string;
+    dadosAntes?: Record<string, unknown>;
+    dadosDepois?: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      await this.auditLogService.record({ ...input, entidadeTipo: ENTIDADE_TIPO });
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao registrar auditoria (Notification ${input.entidadeId}, ação ${input.acao})`,
+      );
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
   }
 }
