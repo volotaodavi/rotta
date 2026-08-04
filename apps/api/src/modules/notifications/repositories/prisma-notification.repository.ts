@@ -7,7 +7,7 @@ import type {
   ListNotificationsResult,
   NotificationRepository,
 } from "./notification.repository";
-import type { Notification, Prisma } from "@prisma/client";
+import type { CommunicationChannel, Notification, Prisma } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 
@@ -46,6 +46,15 @@ export class PrismaNotificationRepository implements NotificationRepository {
 
   findByIdInternal(id: string): Promise<Notification | null> {
     return this.prisma.withBypass(this.prisma.notification.findUnique({ where: { id } }));
+  }
+
+  addChannel(id: string, canal: CommunicationChannel): Promise<Notification> {
+    return this.prisma.withBypass(
+      this.prisma.notification.update({
+        where: { id },
+        data: { canaisEscolhidos: { push: canal } },
+      }),
+    );
   }
 
   async list(filter: ListNotificationsFilter): Promise<ListNotificationsResult> {

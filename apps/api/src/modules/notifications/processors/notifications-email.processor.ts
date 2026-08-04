@@ -22,5 +22,8 @@ export class NotificationsEmailProcessor extends WorkerHost {
   @OnWorkerEvent("failed")
   onFailed(job: Job<ChannelDeliveryJobData> | undefined, error: Error): void {
     this.runner.logFailure(job?.data, job?.attemptsMade ?? 0, error);
+    if (job && this.runner.isPermanentFailure(job, error)) {
+      void this.runner.handlePermanentFailure(job.data);
+    }
   }
 }

@@ -50,6 +50,14 @@ export interface NotificationRepository {
    * nunca um parâmetro de cliente), nunca por um controller.
    */
   findByIdInternal(id: string): Promise<Notification | null>;
+  /**
+   * Acrescenta um canal a `canaisEscolhidos` (briefing "AGENTE 03 —
+   * Delivery AI": "Caso falhe: ... Trocar canal") — usado apenas quando
+   * o Delivery AI decide escalar para um canal de fallback após falha
+   * permanente do canal original; nunca chamado na criação (que já
+   * grava a lista completa via `create`).
+   */
+  addChannel(id: string, canal: CommunicationChannel): Promise<Notification>;
   list(filter: ListNotificationsFilter): Promise<ListNotificationsResult>;
   markRead(id: string, userId: string): Promise<Notification>;
   markAllRead(userId: string): Promise<number>;

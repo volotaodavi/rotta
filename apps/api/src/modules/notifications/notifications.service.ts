@@ -56,6 +56,27 @@ const COMPANY_SETTING_KEY_BY_CHANNEL: Partial<
 };
 
 /**
+ * Cadeia de fallback do Delivery AI (briefing "AGENTE 03" — "Caso
+ * falhe: ... Trocar canal") — Push é o canal mais barato/rápido, então
+ * vira WhatsApp, depois SMS (mais caro, mas quase nunca falha por rede
+ * do destinatário), e por fim E-mail (último recurso, sem limite de
+ * "janela de atendimento" como o WhatsApp). `EMAIL` não tem fallback —
+ * já é o último elo.
+ */
+const FALLBACK_CHANNEL: Partial<Record<CommunicationChannel, CommunicationChannel>> = {
+  [CommunicationChannel.PUSH]: CommunicationChannel.WHATSAPP,
+  [CommunicationChannel.WHATSAPP]: CommunicationChannel.SMS,
+  [CommunicationChannel.SMS]: CommunicationChannel.EMAIL,
+};
+
+/** Só prioridades a partir daqui justificam o custo/ruído de um canal extra automático — informativa/importante já têm o inbox interno como registro permanente. */
+const ESCALATION_PRIORITIES: ReadonlySet<NotificationPriority> = new Set([
+  NotificationPriority.URGENTE,
+  NotificationPriority.CRITICA,
+  NotificationPriority.EMERGENCIA,
+]);
+
+/**
  * Rotta Communication Engine (briefing "MÓDULO — ROTTA COMMUNICATION
  * ENGINE") — ÚNICO ponto de entrada para QUALQUER comunicação da
  * plataforma. Nenhum outro módulo grava em `notifications`/envia um
@@ -143,6 +164,43 @@ export class NotificationsService {
     await this.recordAudit(notification);
 
     return notification;
+  }
+
+  /**
+   * Delivery AI (briefing "AGENTE 03" — "Monitorar Entrega, Falha...
+   * Caso falhe: Reenviar automaticamente, Trocar canal, Registrar
+   * auditoria"). Chamado por `NotificationDeliveryRunnerService` quando
+   * um canal esgota todas as tentativas do BullMQ (retry automático já
+   * aconteceu) ou falha de forma definitiva (`UnrecoverableError`) —
+   * este método é o "trocar canal": só escala para
+   * `URGENTE`/`CRITICA`/`EMERGENCIA` (briefing — nunca ruído extra numa
+   * notificação informativa), nunca repete um canal já presente em
+   * `canaisEscolhidos` (evita reenviar um canal que já está rodando em
+   * paralelo) e passa pelo MESMO filtro de empresa/usuário/Quiet Hours
+   * de `notify` — a escalação nunca ignora uma preferência do
+   * destinatário.
+   */
+  async escalateToFallback(
+    notificationId: string,
+    canalFalho: CommunicationChannel,
+  ): Promise<void> {
+    const notification = await this.notificationRepository.findByIdInternal(notificationId);
+    if (!notification || !ESCALATION_PRIORITIES.has(notification.prioridade)) return;
+
+    const fallback = FALLBACK_CHANNEL[canalFalho];
+    if (!fallback || notification.canaisEscolhidos.includes(fallback)) return;
+
+    const permitido = await this.filterChannels(
+      notification.userId,
+      notification.companyId ?? undefined,
+      notification.prioridade,
+      new Set([fallback]),
+    );
+    if (!permitido.has(fallback)) return;
+
+    await this.notificationRepository.addChannel(notification.id, fallback);
+    await this.dispatchChannel(notification, fallback, notification.prioridade);
+    await this.recordEscalationAudit(notification, canalFalho, fallback);
   }
 
   private async filterChannels(
@@ -250,6 +308,29 @@ export class NotificationsService {
     } catch (error) {
       this.logger.warn(
         `Falha ao registrar auditoria (Notification ${notification.id})`,
+        error as Error,
+      );
+    }
+  }
+
+  /** Best-effort — mesmo raciocínio de `recordAudit`. */
+  private async recordEscalationAudit(
+    notification: Notification,
+    canalFalho: CommunicationChannel,
+    canalFallback: CommunicationChannel,
+  ): Promise<void> {
+    try {
+      await this.auditLogService.record({
+        companyId: notification.companyId ?? undefined,
+        entidadeTipo: "Notification",
+        entidadeId: notification.id,
+        acao: "NOTIFICATION_CHANNEL_ESCALATED",
+        dadosAntes: { canalFalho },
+        dadosDepois: { canalFallback },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao registrar auditoria de escalonamento (Notification ${notification.id})`,
         error as Error,
       );
     }
