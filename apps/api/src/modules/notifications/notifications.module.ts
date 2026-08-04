@@ -9,6 +9,7 @@ import { PushChannelSender } from "./channels/push-channel.sender";
 import { SmsChannelSender } from "./channels/sms-channel.sender";
 import { WhatsappChannelSender } from "./channels/whatsapp-channel.sender";
 import { NotificationChannelSelectorService } from "./notification-channel-selector.service";
+import { NotificationInboxService } from "./notification-inbox.service";
 import { NotificationPriorityClassifierService } from "./notification-priority-classifier.service";
 import {
   CHANNEL_SENDERS,
@@ -17,6 +18,7 @@ import {
   NOTIFICATION_PREFERENCE_REPOSITORY,
   NOTIFICATION_REPOSITORY,
 } from "./notifications.constants";
+import { NotificationsController } from "./notifications.controller";
 import { NotificationsService } from "./notifications.service";
 import { NotificationDeliveryRunnerService } from "./processors/notification-delivery-runner.service";
 import { NotificationsCriticalProcessor } from "./processors/notifications-critical.processor";
@@ -74,8 +76,10 @@ import { UsersModule } from "@/modules/users/users.module";
       { name: QUEUE_NAMES.NOTIFICATIONS_CRITICAL },
     ),
   ],
+  controllers: [NotificationsController],
   providers: [
     NotificationsService,
+    NotificationInboxService,
     NotificationChannelSelectorService,
     NotificationPriorityClassifierService,
     ChannelRegistryService,
