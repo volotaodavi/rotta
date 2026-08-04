@@ -10,6 +10,7 @@ export type AuthStackParamList = {
   CriarConta: undefined;
   AreaProfissional: undefined;
   AreaPessoal: undefined;
+  CriarContaPessoal: undefined;
   CriarEmpresaWebView: undefined;
   ConviteCodigo: undefined;
   ConvitePreview: { codigo: string };

@@ -72,6 +72,15 @@ export interface RegisterEmpresaInput {
   };
 }
 
+export interface RegisterPessoalInput {
+  nome: string;
+  email: string;
+  telefone: string;
+  cpf: string;
+  senha: string;
+  aceiteTermos: true;
+}
+
 export interface SessionInfo {
   id: string;
   deviceName: string | null;
@@ -111,6 +120,14 @@ export function createAuthEndpoints(apiClient: ApiClient) {
     registerEmpresa: async (input: RegisterEmpresaInput): Promise<AuthTokensResponse> =>
       (
         await apiClient.request<ApiEnvelope<AuthTokensResponse>>("/auth/register/empresa", {
+          method: "POST",
+          body: input,
+        })
+      ).data,
+
+    registerPessoal: async (input: RegisterPessoalInput): Promise<AuthTokensResponse> =>
+      (
+        await apiClient.request<ApiEnvelope<AuthTokensResponse>>("/auth/register/pessoal", {
           method: "POST",
           body: input,
         })

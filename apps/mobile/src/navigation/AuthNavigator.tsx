@@ -7,12 +7,12 @@ import {
   AreaProfissionalScreen,
   ConviteCodigoScreen,
   ConvitePreviewScreen,
+  CriarContaPessoalScreen,
   CriarContaScreen,
   CriarEmpresaWebViewScreen,
   EntradaScreen,
   LoginScreen,
 } from "@/features/auth/screens";
-
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -29,6 +29,7 @@ export function AuthNavigator(): JSX.Element {
       <Stack.Screen name="CriarConta" component={CriarContaScreen} />
       <Stack.Screen name="AreaProfissional" component={AreaProfissionalScreen} />
       <Stack.Screen name="AreaPessoal" component={AreaPessoalScreen} />
+      <Stack.Screen name="CriarContaPessoal" component={CriarContaPessoalScreen} />
       <Stack.Screen
         name="CriarEmpresaWebView"
         component={CriarEmpresaWebViewScreen}

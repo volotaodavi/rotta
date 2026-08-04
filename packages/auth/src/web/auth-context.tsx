@@ -27,6 +27,7 @@ import type {
   MeResponse,
   RedeemInviteInput,
   RegisterEmpresaInput,
+  RegisterPessoalInput,
 } from "@rotta/api-client";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
@@ -36,6 +37,7 @@ interface AuthContextValue {
   user: MeResponse | null;
   login: (input: LoginInput) => Promise<LoginResponse>;
   registerEmpresa: (input: RegisterEmpresaInput) => Promise<MeResponse>;
+  registerPessoal: (input: RegisterPessoalInput) => Promise<MeResponse>;
   redeemInvite: (input: RedeemInviteInput) => Promise<MeResponse>;
   logout: () => Promise<void>;
 }
@@ -141,6 +143,15 @@ export function AuthProvider({
     [authApi, applySession],
   );
 
+  const registerPessoal = useCallback(
+    async (input: RegisterPessoalInput): Promise<MeResponse> => {
+      const tokens = await authApi.registerPessoal(input);
+      applySession(tokens);
+      return tokens.user;
+    },
+    [authApi, applySession],
+  );
+
   const redeemInvite = useCallback(
     async (input: RedeemInviteInput): Promise<MeResponse> => {
       const tokens = await authApi.redeemInvite(input);
@@ -164,7 +175,9 @@ export function AuthProvider({
   }, [authApi]);
 
   return (
-    <AuthContext.Provider value={{ status, user, login, registerEmpresa, redeemInvite, logout }}>
+    <AuthContext.Provider
+      value={{ status, user, login, registerEmpresa, registerPessoal, redeemInvite, logout }}
+    >
       {children}
     </AuthContext.Provider>
   );

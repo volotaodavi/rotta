@@ -1,6 +1,5 @@
 import { StyleSheet, Text } from "react-native";
 
-
 import { AuthButton, AuthScreen } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
@@ -11,9 +10,10 @@ import { useTheme } from "@/providers/theme-provider";
 type Props = NativeStackScreenProps<AuthStackParamList, "AreaPessoal">;
 
 /**
- * Área Pessoal (Dossiê 15, `AUTH-01`) — contas de Responsável são sempre
- * ativadas por convite da empresa/escola que já cadastrou o aluno; não há
- * autocadastro de Responsável.
+ * Área Pessoal (Dossiê 15, `AUTH-01`) — Responsável pode criar a conta
+ * diretamente (self-service, `POST /auth/register/pessoal`) ou usar um
+ * código de convite recebido de uma escola/empresa de transporte já
+ * vinculada aos seus filhos; nenhum dos dois caminhos é obrigatório.
  */
 export function AreaPessoalScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -29,13 +29,14 @@ export function AreaPessoalScreen({ navigation }: Props): JSX.Element {
         Área Pessoal
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        Contas de Responsável são ativadas por um convite enviado pela empresa de transporte ou
-        escola do seu filho. Se você recebeu um código de convite (ex.: &quot;RTA-8F29KQ&quot;),
-        use-o para completar seu cadastro.
+        Crie sua conta de Responsável para cadastrar seus filhos e buscar transportadores. Se você
+        já recebeu um código de convite de uma escola ou empresa, também pode usá-lo.
       </Text>
 
+      <AuthButton label="Criar conta" onPress={() => navigation.navigate("CriarContaPessoal")} />
       <AuthButton
         label="Tenho um código de convite"
+        variant="secondary"
         onPress={() => navigation.navigate("ConviteCodigo")}
       />
     </AuthScreen>

@@ -1,26 +1,158 @@
 "use client";
 
-import { Button, Typography } from "@rotta/ui/web";
+import { ApiError } from "@rotta/api-client";
+import { useAuth } from "@rotta/auth/web";
+import { CheckCircle2 } from "@rotta/icons";
+import { Button, Card, FormField, Input, Typography } from "@rotta/ui/web";
 import Link from "next/link";
+import { useState, type FormEvent } from "react";
+
+import type { RegisterPessoalInput } from "@rotta/api-client";
+
+const INITIAL_STATE: RegisterPessoalInput = {
+  nome: "",
+  email: "",
+  telefone: "",
+  cpf: "",
+  senha: "",
+  aceiteTermos: true,
+};
 
 /**
- * Área Pessoal (Responsável) — nunca um cadastro self-service: a conta
- * é sempre ativada por um convite emitido pela escola/empresa que já
- * tem o(s) aluno(s) cadastrado(s) (Dossiê 15, `AUTH-01-A1`).
+ * Cadastro self-service da Área Pessoal (Responsável, briefing
+ * "Marketplace") — cria diretamente a conta (sem tenant/empresa),
+ * mesma operação de `POST /auth/register/pessoal` já usada pelo app
+ * mobile. Quem já tem um código de convite de uma escola/empresa
+ * continua podendo usá-lo (o vínculo é anexado à mesma conta), mas ele
+ * deixou de ser a única porta de entrada da Área Pessoal.
  */
-export default function AreaPessoalPage(): JSX.Element {
+export default function CriarContaPessoalPage(): JSX.Element {
+  const { registerPessoal } = useAuth();
+  const [form, setForm] = useState<RegisterPessoalInput>(INITIAL_STATE);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDone, setIsDone] = useState(false);
+
+  function updateField<K extends keyof RegisterPessoalInput>(
+    key: K,
+    value: RegisterPessoalInput[K],
+  ): void {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    setErrorMessage(null);
+    setIsSubmitting(true);
+    try {
+      await registerPessoal(form);
+      setIsDone(true);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError ? error.message : "Erro inesperado ao criar sua conta.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // A experiência da Área Pessoal (Mapa, Marketplace, meus filhos) vive no
+  // app mobile (Dossiê 11 §2) — o painel web é o do Profissional
+  // (Empresa/Gestor/Escola). Por isso, ao concluir aqui, a conta já está
+  // autenticada (mesma sessão compartilhada), mas o próximo passo real é
+  // abrir o app, não navegar para dentro do painel web.
+  if (isDone) {
+    return (
+      <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 py-20 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">
+          <CheckCircle2 className="h-6 w-6" />
+        </span>
+        <Typography variant="headline" as="h1">
+          Conta criada!
+        </Typography>
+        <Typography variant="body" color="muted">
+          Sua conta de Responsável já está pronta. Abra o app Rotta no seu celular e entre com o
+          mesmo e-mail e senha para cadastrar seus filhos e buscar transportadores.
+        </Typography>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-6 text-center">
-      <Typography variant="title">Área Pessoal</Typography>
-      <Typography variant="body" color="muted">
-        Contas de Responsável são ativadas por um convite enviado pela escola ou empresa de
-        transporte responsável pelo seu filho(a). Se você já recebeu um código, informe-o a seguir.
+    <div className="mx-auto flex w-full max-w-lg flex-col gap-6 py-10">
+      <div className="flex flex-col gap-1 text-center">
+        <Typography variant="title">Área Pessoal</Typography>
+        <Typography variant="body" color="muted">
+          Crie sua conta de Responsável. Depois de entrar, você cadastra seus filhos e busca
+          transportadores no Marketplace.
+        </Typography>
+      </div>
+
+      <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6">
+        <Card>
+          <Card.Body className="grid grid-cols-1 gap-4">
+            <FormField label="Nome completo" isRequired>
+              <Input
+                required
+                value={form.nome}
+                onChange={(event) => updateField("nome", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Email" isRequired>
+              <Input
+                type="email"
+                required
+                value={form.email}
+                onChange={(event) => updateField("email", event.target.value)}
+              />
+            </FormField>
+            <FormField label="Telefone" isRequired>
+              <Input
+                required
+                value={form.telefone}
+                onChange={(event) => updateField("telefone", event.target.value)}
+              />
+            </FormField>
+            <FormField label="CPF" isRequired>
+              <Input
+                required
+                value={form.cpf}
+                onChange={(event) => updateField("cpf", event.target.value)}
+              />
+            </FormField>
+            <FormField
+              label="Senha"
+              isRequired
+              helperText="Mínimo 8 caracteres, com letra maiúscula, número e símbolo."
+            >
+              <Input
+                type="password"
+                required
+                value={form.senha}
+                onChange={(event) => updateField("senha", event.target.value)}
+              />
+            </FormField>
+          </Card.Body>
+          <Card.Footer>
+            {errorMessage && (
+              <Typography variant="bodySmall" color="danger" className="mr-auto">
+                {errorMessage}
+              </Typography>
+            )}
+            <Button type="submit" variant="primary" isLoading={isSubmitting} fullWidth>
+              Criar conta
+            </Button>
+          </Card.Footer>
+        </Card>
+      </form>
+
+      <Typography variant="bodySmall" color="muted" className="text-center">
+        Recebeu um código de convite de uma escola ou empresa de transporte?{" "}
+        <Link href="/convite" className="text-primary hover:underline">
+          Use seu código aqui
+        </Link>
+        .
       </Typography>
-      <Link href="/convite">
-        <Button variant="primary" fullWidth>
-          Já fui convidado
-        </Button>
-      </Link>
     </div>
   );
 }

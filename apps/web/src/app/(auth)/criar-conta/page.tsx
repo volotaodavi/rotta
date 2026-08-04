@@ -29,7 +29,7 @@ export default function CriarContaPage(): JSX.Element {
           <Card interactive className="px-6 py-5">
             <Typography variant="subtitle">Área Pessoal</Typography>
             <Typography variant="bodySmall" color="muted">
-              Responsável de aluno(s) já matriculado(s).
+              Responsável de aluno(s) — crie sua conta direto ou use um código de convite.
             </Typography>
           </Card>
         </Link>
