@@ -99,6 +99,15 @@ export const envSchema = z.object({
   EMAIL_FROM_ADDRESS: z.string().optional(),
   EMAIL_FROM_NAME: z.string().optional(),
 
+  // Didit (didit.me) — verificação de identidade (OCR de CNH, Face
+  // Match, Liveness) usada por `RottaAiService.validateDocument`
+  // (Dossiê 15, tipos CNH/SELFIE/FACE_MATCH/OCR). Opcional: sem
+  // DIDIT_API_KEY, `DiditService` recusa a chamada com um erro claro
+  // (mesmo padrão de WHATSAPP_*/EMAIL_* acima) — nunca falha o boot,
+  // nunca finge um resultado de verificação.
+  DIDIT_API_KEY: z.string().optional(),
+  DIDIT_BASE_URL: z.string().url().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

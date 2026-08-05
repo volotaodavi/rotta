@@ -14,6 +14,7 @@ import { TransformResponseInterceptor } from "@/common/interceptors/transform-re
 import appConfig from "@/config/app.config";
 import authConfig from "@/config/auth.config";
 import databaseConfig from "@/config/database.config";
+import diditConfig from "@/config/didit.config";
 import emailConfig from "@/config/email.config";
 import { validate } from "@/config/env.validation";
 import fcmConfig from "@/config/fcm.config";
@@ -73,6 +74,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
         whatsappConfig,
         smsConfig,
         emailConfig,
+        diditConfig,
       ],
     }),
 

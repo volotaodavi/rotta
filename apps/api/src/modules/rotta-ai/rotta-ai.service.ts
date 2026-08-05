@@ -1,39 +1,90 @@
-import { Injectable, NotImplementedException } from "@nestjs/common";
-
+import { BadRequestException, Injectable, NotImplementedException } from "@nestjs/common";
 
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
 import type { SchoolAddressAnalysisResponseDto } from "./dto/school-address-analysis-response.dto";
 import type { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
+import type { ValidateDocumentResponseDto } from "./dto/validate-document-response.dto";
 import type { ValidateDocumentDto } from "./dto/validate-document.dto";
 
+import { DiditService } from "@/infra/didit/didit.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
 
 const CEP_VALIDO = /^\d{5}-?\d{3}$/;
 
 /**
- * Ponto de integração preparado para a Rotta AI (briefing: "Preparar
- * integração para validar automaticamente CNH, Selfie, Face Match, OCR,
- * EAR, Cursos"). Nenhum provedor de visão computacional/OCR foi
- * contratado ou especificado neste módulo — implementar um resultado
- * fake aqui seria pior do que declarar honestamente que a checagem
- * ainda não roda, já que times a jusante (Motoristas/Documentos) não
- * podem confiar em uma aprovação simulada como se fosse real.
+ * Ponto de integração da Rotta AI (briefing: "Preparar integração para
+ * validar automaticamente CNH, Selfie, Face Match, OCR, EAR, Cursos").
  *
- * Contrato estabilizado desde já (`ValidateDocumentDto`/`RottaAiCheckType`)
- * para que o restante do sistema já possa ser escrito contra esta
- * interface; a troca para uma implementação real será, deliberadamente,
- * a troca do corpo deste único método.
+ * CNH/SELFIE/FACE_MATCH/OCR: reais, via Didit (didit.me) — provedor de
+ * verificação de identidade (`DiditService`). Mapeamento:
+ *   - CNH/OCR  → ID Verification (OCR + autenticidade do documento)
+ *   - SELFIE   → Passive Liveness (confirma que é uma pessoa presente,
+ *                não uma foto de foto/deepfake — não existe um check
+ *                de "selfie" isolado na Didit; liveness é o
+ *                equivalente real mais próximo)
+ *   - FACE_MATCH → compara `referenciaArquivo` (selfie) com
+ *                `referenciaArquivoComparacao` (retrato do documento)
+ *
+ * EAR/CURSO permanecem stub honesto: não são documentos de identidade
+ * reconhecidos mundialmente (catálogo da Didit é CNH/RG/passaporte/etc,
+ * não certificados específicos do DETRAN ou de cursos) — implementar um
+ * resultado fake aqui seria pior do que declarar honestamente que a
+ * checagem ainda não roda.
  */
 @Injectable()
 export class RottaAiService {
-  constructor(private readonly geoEngine: GeoEngineService) {}
+  constructor(
+    private readonly geoEngine: GeoEngineService,
+    private readonly diditService: DiditService,
+  ) {}
 
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async validateDocument(_dto: ValidateDocumentDto): Promise<never> {
-    throw new NotImplementedException(
-      "A validação automática via Rotta AI ainda não está disponível — integração pendente de um provedor de OCR/visão computacional.",
-    );
+  async validateDocument(dto: ValidateDocumentDto): Promise<ValidateDocumentResponseDto> {
+    switch (dto.tipo) {
+      case "CNH":
+      case "OCR": {
+        const resultado = await this.diditService.verifyId(dto.referenciaArquivo);
+        return {
+          aprovado: resultado.aprovado,
+          status: resultado.status,
+          provedor: "didit",
+          tipoDocumento: resultado.tipoDocumento,
+          dadosBrutos: resultado.dadosBrutos,
+        };
+      }
+      case "SELFIE": {
+        const resultado = await this.diditService.passiveLiveness(dto.referenciaArquivo);
+        return {
+          aprovado: resultado.aprovado,
+          status: resultado.status,
+          provedor: "didit",
+          dadosBrutos: resultado.dadosBrutos,
+        };
+      }
+      case "FACE_MATCH": {
+        if (!dto.referenciaArquivoComparacao) {
+          throw new BadRequestException(
+            "FACE_MATCH exige referenciaArquivoComparacao (a foto do documento a comparar com a selfie).",
+          );
+        }
+        const resultado = await this.diditService.faceMatch(
+          dto.referenciaArquivo,
+          dto.referenciaArquivoComparacao,
+        );
+        return {
+          aprovado: resultado.aprovado,
+          status: resultado.status,
+          provedor: "didit",
+          scoreFaceMatch: resultado.score,
+          dadosBrutos: resultado.dadosBrutos,
+        };
+      }
+      case "EAR":
+      case "CURSO":
+        throw new NotImplementedException(
+          `A validação automática de ${dto.tipo} ainda não está disponível — não é um documento de identidade do catálogo da Didit, precisa de um provedor específico (ex. OCR genérico + validação manual).`,
+        );
+    }
   }
 
   /**
