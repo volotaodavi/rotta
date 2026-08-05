@@ -210,6 +210,19 @@ export class ContractsService {
   }
 
   /**
+   * Mesma checagem de `findByIdOrThrow`, mas devolve o `Contract` bruto
+   * (não o DTO) — para consumo por OUTROS módulos que precisam dos
+   * campos internos (`studentId`, `motoristaId`, `vehicleId`, `status`),
+   * como `RoutesService.addStudent` (RN-26 exige saber a que contrato
+   * ATIVO um aluno pertence antes de vinculá-lo a uma rota). Mesmo
+   * padrão de `VehiclesService.countActive`: um método público que
+   * expõe o domínio, nunca o repositório diretamente.
+   */
+  async findRawByIdOrThrow(id: string, actor: AuthenticatedUser): Promise<Contract> {
+    return this.fetchOrThrow(id, actor);
+  }
+
+  /**
    * Chamada logo após CADA assinatura — só ativa quando as duas já
    * estão presentes (a que acabou de ser gravada + a que já existia).
    * `RottaAiService.validarContratoAssinado` é best-effort e nunca

@@ -427,6 +427,8 @@ model Company {
   /// DE COMUNICAÇÃO") — nunca usado para controle de acesso ao inbox
   /// pessoal do destinatário (ver nota em `Notification`).
   notifications          Notification[]
+  rotas                  Route[]
+  viagens                Trip[]
 
   @@index([status])
   @@index([tipo])
@@ -557,6 +559,16 @@ model User {
   notifications          Notification[]
   deviceTokens           DeviceToken[]
   notificationPreference NotificationPreference?
+
+  /// Relações do módulo Rotas/GPS (Dossiê 13, Secao 12 e Dossiê 18) — um
+  /// `User` pode ser motorista/monitor padrão de uma `Route`, motorista/
+  /// monitor de uma `Trip` específica, ou quem processou um checklist de
+  /// embarque/desembarque (`TripStudentEvent`).
+  rotasMotoristaPadrao    Route[]            @relation("RouteMotoristaPadrao")
+  rotasMonitorPadrao      Route[]            @relation("RouteMonitorPadrao")
+  viagensMotorista        Trip[]             @relation("TripMotorista")
+  viagensMonitor          Trip[]             @relation("TripMonitor")
+  eventosAlunoProcessados TripStudentEvent[] @relation("TripStudentEventProcessadoPor")
 
   @@map("users")
 }
@@ -779,8 +791,12 @@ model Vehicle {
   ultimaLatitude  Decimal?  @db.Decimal(9, 6)
   ultimaLongitude Decimal?  @db.Decimal(9, 6)
   ultimaPosicaoEm DateTime?
-  /// Sem `@relation` — ver nota do model acima ("Viagens" ainda não existe).
-  viagemAtualId   String?
+  /// Agora uma `@relation` de verdade (era string solta enquanto o
+  /// módulo Trips não existia) — a viagem `EM_ANDAMENTO` deste veículo,
+  /// se houver. `onDelete: SetNull` porque encerrar/cancelar uma viagem
+  /// nunca deve apagar o veículo.
+  viagemAtualId   String?   @db.Uuid
+  viagemAtual     Trip?     @relation("VehicleViagemAtual", fields: [viagemAtualId], references: [id], onDelete: SetNull)
 
   ultimoMotoristaId String? @db.Uuid
   ultimoMotorista   User?   @relation("VehicleUltimoMotorista", fields: [ultimoMotoristaId], references: [id], onDelete: SetNull)
@@ -800,6 +816,8 @@ model Vehicle {
   checklists  VehicleChecklist[]
   ocorrencias VehicleOccurrence[]
   contratos   Contract[]
+  rotasPadrao Route[]
+  viagens     Trip[]               @relation("TripVeiculo")
 
   @@unique([placa])
   @@index([companyId, status])
@@ -1220,6 +1238,8 @@ model Student {
   pessoasAutorizadas StudentAuthorizedPerson[]
   transportRequests  TransportRequest[]
   contracts          Contract[]
+  vinculosRota       RouteStudent[]
+  eventosViagem      TripStudentEvent[]
 
   @@index([responsavelId, deletedAt])
   @@index([schoolId])
@@ -1339,12 +1359,257 @@ model Contract {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ratings Rating[]
+  ratings     Rating[]
+  vinculoRota RouteStudent?
 
   @@index([companyId, status])
   @@index([responsavelId])
   @@index([studentId])
   @@map("contracts")
+}
+
+// =============================================================================
+// Rotas / GPS / Embarque / Desembarque (Dossiê 13 Seção 12, Dossiê 18)
+// =============================================================================
+
+/// Ciclo de vida estrutural da rota (briefing `ROT-01`) — `PAUSADA` até
+/// ter ao menos uma parada e um aluno ativo vinculado; nunca pode virar
+/// `ATIVA` sem isso (validado em `RoutesService`, não apenas na UI).
+enum RouteStatus {
+  ATIVA
+  PAUSADA
+}
+
+/// Dias da semana em que a rota opera (briefing `ROT-04`) — lista, não
+/// bitmask, para ficar legível em query/debug direto no banco.
+enum RouteWeekday {
+  SEGUNDA
+  TERCA
+  QUARTA
+  QUINTA
+  SEXTA
+  SABADO
+  DOMINGO
+}
+
+/// Rota — o "template" recorrente que dá origem a uma `Trip` a cada dia
+/// efetivamente operado (briefing `ROT-01`). RLS por `companyId`, mesmo
+/// mecanismo de `Vehicle`/`School`. `motoristaPadraoId`/`veiculoPadraoId`/
+/// `monitorPadraoId` são o recurso PADRÃO — a substituição pontual do dia
+/// (`ROT-05`/`ROT-06`) fica registrada na `Trip` em si (`Trip.motoristaId`/
+/// `veiculoId`/`monitorId`), nunca sobrescrevendo o padrão da rota.
+model Route {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  nome       String
+  turno      SchoolShift
+  diasSemana RouteWeekday[]
+  status     RouteStatus    @default(PAUSADA)
+
+  veiculoPadraoId   String?  @db.Uuid
+  veiculoPadrao     Vehicle? @relation(fields: [veiculoPadraoId], references: [id], onDelete: SetNull)
+  motoristaPadraoId String?  @db.Uuid
+  motoristaPadrao   User?    @relation("RouteMotoristaPadrao", fields: [motoristaPadraoId], references: [id], onDelete: SetNull)
+  monitorPadraoId   String?  @db.Uuid
+  monitorPadrao     User?    @relation("RouteMonitorPadrao", fields: [monitorPadraoId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  /// Soft delete — mesma convenção de `Vehicle.deletedAt`.
+  deletedAt DateTime?
+
+  paradas RouteStop[]
+  alunos  RouteStudent[]
+  viagens Trip[]
+
+  @@index([companyId, status])
+  @@index([companyId, deletedAt])
+  @@map("routes")
+}
+
+/// Parada física de uma rota, em ordem (briefing `ROT-07`). `companyId`
+/// desnormalizado de `routeId` — mesmo raciocínio de
+/// `VehicleDocument.companyId` (RLS/filtro sem precisar de join).
+model RouteStop {
+  id        String @id @default(uuid()) @db.Uuid
+  routeId   String @db.Uuid
+  route     Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  companyId String @db.Uuid
+
+  ordem           Int
+  endereco        String
+  latitude        Decimal @db.Decimal(9, 6)
+  longitude       Decimal @db.Decimal(9, 6)
+  /// Formato "HH:mm" (mesmo padrão de `MessagePersonalizationService.veiculoProximo`) — horário previsto de passagem, nunca um `DateTime` completo (a parada se repete todo dia operado).
+  horarioPrevisto String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  embarquesAqui    RouteStudent[]     @relation("RouteStudentEmbarque")
+  desembarquesAqui RouteStudent[]     @relation("RouteStudentDesembarque")
+  eventosAluno     TripStudentEvent[]
+
+  @@unique([routeId, ordem])
+  @@index([companyId])
+  @@map("route_stops")
+}
+
+/// Vínculo aluno-rota (briefing `ROT-07`) — aponta para o `Contract`
+/// (não direto para `Student`) porque só um aluno com contrato `ATIVO`
+/// com ESTA empresa pode ser vinculado a uma rota DELA (o contrato já é
+/// a fonte de verdade de "este aluno anda com esta empresa", Dossiê 16
+/// Marketplace). `contractId` é `@unique`: um contrato tem no máximo um
+/// vínculo de rota por vez — mudar de rota é atualizar `routeId` deste
+/// mesmo registro, nunca criar um segundo. `RN-26` (aluno não pode estar
+/// em duas rotas ativas do mesmo turno) é validada em `RoutesService`
+/// via `PrismaService.withBypass` (a checagem precisa enxergar rotas de
+/// QUALQUER empresa, não só a do tenant atual).
+model RouteStudent {
+  id        String @id @default(uuid()) @db.Uuid
+  routeId   String @db.Uuid
+  route     Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  companyId String @db.Uuid
+
+  contractId String   @unique @db.Uuid
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  studentId  String   @db.Uuid
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  paradaEmbarqueId    String    @db.Uuid
+  paradaEmbarque      RouteStop @relation("RouteStudentEmbarque", fields: [paradaEmbarqueId], references: [id], onDelete: Restrict)
+  paradaDesembarqueId String    @db.Uuid
+  paradaDesembarque   RouteStop @relation("RouteStudentDesembarque", fields: [paradaDesembarqueId], references: [id], onDelete: Restrict)
+
+  ativo Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId])
+  @@index([studentId, ativo])
+  @@map("route_students")
+}
+
+/// Ciclo de vida da execução concreta de uma rota em um dia (briefing
+/// `GPS-01`/`GPS-02`). Só uma `Trip` `EM_ANDAMENTO` por rota por dia
+/// (`@@unique([routeId, data])`) — impede literalmente no banco o "não é
+/// possível iniciar duas vezes" de `GPS-01`.
+enum TripStatus {
+  EM_ANDAMENTO
+  FINALIZADA
+  CANCELADA
+}
+
+/// Execução concreta de uma `Route` em um dia (briefing `GPS-01`). RLS
+/// por `companyId`. `motoristaId`/`veiculoId`/`monitorId` começam iguais
+/// ao padrão da rota, mas podem ser substituídos pontualmente
+/// (`ROT-05`/`ROT-06`) sem alterar `Route.motoristaPadraoId` — é assim
+/// que o histórico preserva corretamente "quem dirigiu aquele dia
+/// específico" mesmo após trocas.
+model Trip {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  routeId   String  @db.Uuid
+  route     Route   @relation(fields: [routeId], references: [id], onDelete: Restrict)
+
+  /// Dia operado (não timestamp) — a chave de unicidade "uma viagem em
+  /// andamento por rota por dia" (`GPS-01`) é sobre esta data, não sobre
+  /// `iniciadaEm`.
+  data   DateTime   @db.Date
+  status TripStatus @default(EM_ANDAMENTO)
+
+  veiculoId   String  @db.Uuid
+  veiculo     Vehicle @relation("TripVeiculo", fields: [veiculoId], references: [id], onDelete: Restrict)
+  motoristaId String  @db.Uuid
+  motorista   User    @relation("TripMotorista", fields: [motoristaId], references: [id], onDelete: Restrict)
+  monitorId   String? @db.Uuid
+  monitor     User?   @relation("TripMonitor", fields: [monitorId], references: [id], onDelete: SetNull)
+
+  iniciadaEm   DateTime  @default(now())
+  finalizadaEm DateTime?
+  canceladaEm  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  posicoes             TripPosition[]
+  eventosAluno         TripStudentEvent[]
+  /// Back-relation obrigatória do Prisma para `Vehicle.viagemAtualId` — nunca usada diretamente.
+  veiculosComEstaAtual Vehicle[]          @relation("VehicleViagemAtual")
+
+  @@unique([routeId, data])
+  @@index([companyId, status])
+  @@map("trips")
+}
+
+/// Um "ping" de GPS dentro de uma viagem (briefing `GPS-03`/`GPS-04`/
+/// `GPS-06`). `capturadaEm` é o timestamp gerado NO DISPOSITIVO (não
+/// `createdAt`, que é quando o servidor recebeu) — essencial para
+/// preservar a ordem real de captura quando o motorista ficou offline e
+/// sincronizou um lote inteiro de uma vez (`GPS-04`). Nunca deletado nem
+/// sobrescrito: mesmo uma posição de baixa precisão ou sinalizada como
+/// `simuladoSuspeito` fica no histórico bruto (`GPS-06`) — a suavização/
+/// descarte é só para exibição, nunca para o dado armazenado.
+model TripPosition {
+  id        String @id @default(uuid()) @db.Uuid
+  tripId    String @db.Uuid
+  trip      Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  companyId String @db.Uuid
+
+  latitude       Decimal  @db.Decimal(9, 6)
+  longitude      Decimal  @db.Decimal(9, 6)
+  /// Precisão em metros reportada pelo próprio GPS do aparelho (`GPS-06`) — `null` quando o dispositivo não informa.
+  precisaoMetros Decimal? @db.Decimal(6, 2)
+  velocidadeKmh  Decimal? @db.Decimal(5, 2)
+  capturadaEm    DateTime
+
+  /// `GPS-06`: salto geograficamente incoerente com o histórico recente — sinalizado, nunca descartado. Gera alerta ao Gestor (Communication Engine), não bloqueia a viagem.
+  simuladoSuspeito Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([tripId, capturadaEm])
+  @@index([companyId])
+  @@map("trip_positions")
+}
+
+/// Checklist nominal de embarque/desembarque (briefing `EMB-01`/`EMB-05`/
+/// `DESEMB-01`) — um `Evento` imutável por aluno por viagem por tipo
+/// (`@@unique`), nunca uma tabela paralela de status mutável (Dossiê 8
+/// §12, citado em `DESEMB-02`: "sempre parte do mesmo registro imutável
+/// de Evento, nunca uma tabela paralela sujeita a divergência").
+enum TripStudentEventType {
+  EMBARCOU
+  AUSENTE
+  DESEMBARCOU
+}
+
+model TripStudentEvent {
+  id        String @id @default(uuid()) @db.Uuid
+  tripId    String @db.Uuid
+  trip      Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  companyId String @db.Uuid
+
+  studentId   String    @db.Uuid
+  student     Student   @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  routeStopId String    @db.Uuid
+  routeStop   RouteStop @relation(fields: [routeStopId], references: [id], onDelete: Restrict)
+
+  tipo           TripStudentEventType
+  motivoAusencia String?
+
+  processadoPorId String   @db.Uuid
+  processadoPor   User     @relation("TripStudentEventProcessadoPor", fields: [processadoPorId], references: [id], onDelete: Restrict)
+  processadoEm    DateTime @default(now())
+
+  @@unique([tripId, studentId, tipo])
+  @@index([tripId])
+  @@index([studentId])
+  @@map("trip_student_events")
 }
 
 /// Avaliação (briefing "AVALIAÇÕES") — `alvoId` é polimórfico

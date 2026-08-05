@@ -163,6 +163,18 @@ export class StudentsService {
     return toStudentResponseDto(student);
   }
 
+  /**
+   * Leitura bruta (sem escopo/DTO), para consumo por OUTROS módulos que
+   * já validaram o acesso por outro caminho (ex. `RoutesService`/
+   * `TripsService` resolvendo o nome do aluno para o Message
+   * Personalization AI, depois de já ter validado o `Contract` do
+   * aluno). Mesmo padrão de `VehiclesService.countActive` — nunca expõe
+   * o repositório em si para fora do módulo.
+   */
+  async findRawById(id: string): Promise<Student | null> {
+    return this.studentRepository.findById(id);
+  }
+
   async update(
     id: string,
     dto: UpdateStudentDto,

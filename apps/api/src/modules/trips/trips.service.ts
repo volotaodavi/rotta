@@ -1,0 +1,594 @@
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { NotificationEventType, type Trip } from "@prisma/client";
+
+
+import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
+import { toTripPositionResponseDto } from "./mappers/trip-position.mapper";
+import { toTripStudentEventResponseDto } from "./mappers/trip-student-event.mapper";
+import { toListTripsResponseDto, toTripResponseDto } from "./mappers/trip.mapper";
+import {
+  TRIP_POSITION_REPOSITORY,
+  TRIP_REPOSITORY,
+  TRIP_STUDENT_EVENT_REPOSITORY,
+} from "./trips.constants";
+
+import type { CreateTripStudentEventDto } from "./dto/create-trip-student-event.dto";
+import type { IngestPositionDto, IngestPositionsBatchDto } from "./dto/ingest-position.dto";
+import type { MapVehicleResponseDto } from "./dto/map-vehicle-response.dto";
+import type { StartTripDto } from "./dto/start-trip.dto";
+import type { TripPositionResponseDto } from "./dto/trip-position-response.dto";
+import type { ListTripsResponseDto, TripResponseDto } from "./dto/trip-response.dto";
+import type { TripStudentEventResponseDto } from "./dto/trip-student-event-response.dto";
+import type { TripPositionRepository } from "./repositories/trip-position.repository";
+import type { TripStudentEventRepository } from "./repositories/trip-student-event.repository";
+import type { TripRepository } from "./repositories/trip.repository";
+import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+
+import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { ContractsService } from "@/modules/marketplace/contracts.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { RoutesService } from "@/modules/routes/routes.service";
+import { StudentsService } from "@/modules/students/students.service";
+import { UsersService } from "@/modules/users/users.service";
+import { VehiclesService } from "@/modules/vehicles/vehicles.service";
+import { Role } from "@/shared/enums";
+
+export interface RequestMeta {
+  ip?: string;
+  userAgent?: string;
+}
+
+/** Início do dia corrente em UTC — `Trip.data` é `@db.Date` (sem hora), então a hora local do servidor não deve vazar para a chave de unicidade `[routeId, data]`. */
+function today(): Date {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+}
+
+/**
+ * Núcleo de negócio do módulo Trips (GPS-01/02/03/06 + EMB-01/05 +
+ * DESEMB-01/03, Dossiê 13 Seção 11 / Especificação Funcional Parte 4) —
+ * execução concreta de uma rota em um dia: abrir/encerrar viagem,
+ * ingestão de posição GPS e checklist manual de embarque/desembarque.
+ *
+ * ESCOPO DESTA ENTREGA: ciclo de vida da viagem, ingestão de posição
+ * (unitária e em lote — a fila OFFLINE em si, GPS-04, é um recurso do
+ * APP MOBILE que ainda não existe; este backend já aceita lotes
+ * atrasados via `capturadaEm` explícito, então o cliente mobile poderá
+ * consumir este mesmo endpoint quando for implementado), checklist
+ * manual EMBARCOU/AUSENTE/DESEMBARCOU. FORA DE ESCOPO (documentado, não
+ * omitido): recálculo automático de rota por ausência (RN futura,
+ * tarefa #99), notificação `VEICULO_PROXIMO` (exigiria rastrear "já
+ * notificamos esta parada nesta viagem", um estado que não existe no
+ * schema hoje) e `OCORRENCIA`/`EMERGENCIA` (já cobertas por
+ * `VehicleOccurrence`, módulo Vehicles).
+ */
+@Injectable()
+export class TripsService {
+  private readonly logger = new Logger(TripsService.name);
+
+  constructor(
+    @Inject(TRIP_REPOSITORY) private readonly tripRepository: TripRepository,
+    @Inject(TRIP_POSITION_REPOSITORY) private readonly positionRepository: TripPositionRepository,
+    @Inject(TRIP_STUDENT_EVENT_REPOSITORY)
+    private readonly studentEventRepository: TripStudentEventRepository,
+    private readonly routesService: RoutesService,
+    private readonly vehiclesService: VehiclesService,
+    private readonly contractsService: ContractsService,
+    private readonly studentsService: StudentsService,
+    private readonly usersService: UsersService,
+    private readonly auditLogService: AuditLogService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
+  ) {}
+
+  // ---------------------------------------------------------------------
+  // Helpers privados
+  // ---------------------------------------------------------------------
+
+  private async recordAudit(input: {
+    companyId: string;
+    entidadeId: string;
+    acao: string;
+    atorUserId: string;
+    dadosDepois?: Record<string, unknown>;
+    ip?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    try {
+      await this.auditLogService.record({ ...input, entidadeTipo: "Trip" });
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao registrar auditoria (Trip ${input.entidadeId}, ação ${input.acao})`,
+      );
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /** 404 (não 403) fora do escopo — mesmo princípio de não-enumeração usado no resto do backend. */
+  private async fetchOrThrow(id: string, actor: AuthenticatedUser): Promise<Trip> {
+    const trip = await this.tripRepository.findById(id);
+    if (!trip || (actor.role !== Role.ADMIN_ROTTA && trip.companyId !== actor.tenantId)) {
+      throw new NotFoundException("Viagem não encontrada.");
+    }
+    if (
+      (actor.role === Role.MOTORISTA && trip.motoristaId !== actor.sub) ||
+      (actor.role === Role.MONITOR && trip.monitorId !== actor.sub)
+    ) {
+      throw new NotFoundException("Viagem não encontrada.");
+    }
+    return trip;
+  }
+
+  private assertCanOperateTrip(trip: Trip, actor: AuthenticatedUser): void {
+    const isManager =
+      actor.role === Role.ADMIN_ROTTA || actor.role === Role.EMPRESA || actor.role === Role.GESTOR;
+    const isDriver = actor.role === Role.MOTORISTA && trip.motoristaId === actor.sub;
+    const isMonitor = actor.role === Role.MONITOR && trip.monitorId === actor.sub;
+    if (!isManager && !isDriver && !isMonitor) {
+      throw new ForbiddenException("Você não pode operar esta viagem.");
+    }
+  }
+
+  /** "A viagem de {nomeAluno} começou/terminou" — um evento por aluno ATIVO na rota. */
+  private async notifyActiveStudentsOfRoute(
+    routeId: string,
+    actor: AuthenticatedUser,
+    eventType: NotificationEventType,
+    build: (nomeResponsavel: string, nomeAluno: string) => { titulo: string; corpo: string },
+  ): Promise<void> {
+    const vinculos = await this.routesService.listStudents(routeId, actor);
+    for (const vinculo of vinculos) {
+      try {
+        const [contract, student] = await Promise.all([
+          this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+          this.studentsService.findRawById(vinculo.studentId),
+        ]);
+        if (!student) continue;
+        const responsavel = await this.usersService.findById(contract.responsavelId);
+        if (!responsavel) continue;
+        const message = build(responsavel.nome, student.nome);
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId: contract.responsavelId,
+          companyId: contract.companyId,
+          tipo: eventType,
+          titulo: message.titulo,
+          corpo: message.corpo,
+          dadosContexto: { routeId, studentId: vinculo.studentId },
+        });
+      } catch (error) {
+        this.logger.warn(
+          `Falha ao notificar responsável do vínculo ${vinculo.id} sobre ${eventType}.`,
+        );
+        this.logger.warn(error instanceof Error ? error.message : String(error));
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // Ciclo de vida da viagem (GPS-01)
+  // ---------------------------------------------------------------------
+
+  async start(
+    dto: StartTripDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<TripResponseDto> {
+    const route = await this.routesService.findByIdOrThrow(dto.routeId, actor);
+    if (route.status !== "ATIVA") {
+      throw new BadRequestException("Só é possível iniciar viagem de uma rota ATIVA.");
+    }
+
+    const motoristaId =
+      actor.role === Role.MOTORISTA ? actor.sub : (dto.motoristaId ?? route.motoristaPadraoId);
+    if (!motoristaId) {
+      throw new BadRequestException("Informe motoristaId (rota sem motorista padrão).");
+    }
+    if (actor.role !== Role.MOTORISTA) {
+      const membership = await this.usersService.findActiveMembership(motoristaId, route.companyId);
+      if (!membership || (membership.role as Role) !== Role.MOTORISTA) {
+        throw new BadRequestException(
+          "motoristaId não possui vínculo ativo de Motorista nesta empresa.",
+        );
+      }
+    }
+
+    const veiculoId = dto.veiculoId ?? route.veiculoPadraoId;
+    if (!veiculoId) {
+      throw new BadRequestException("Informe veiculoId (rota sem veículo padrão).");
+    }
+    // Valida que o veículo pertence à empresa e é acessível ao ator
+    // (para Motorista, restrito ao veículo atualmente vinculado a ele —
+    // mesma regra de `VehiclesService.fetchOrThrow`).
+    await this.vehiclesService.findByIdOrThrow(veiculoId, actor);
+
+    const monitorId = dto.monitorId ?? route.monitorPadraoId ?? undefined;
+    if (monitorId) {
+      const membership = await this.usersService.findActiveMembership(monitorId, route.companyId);
+      if (!membership || (membership.role as Role) !== Role.MONITOR) {
+        throw new BadRequestException(
+          "monitorId não possui vínculo ativo de Monitor nesta empresa.",
+        );
+      }
+    }
+
+    const data = today();
+    const existing = await this.tripRepository.findByRouteAndDate(dto.routeId, data);
+    if (existing) {
+      throw new ConflictException(
+        existing.status === "EM_ANDAMENTO"
+          ? "Já existe uma viagem em andamento para esta rota hoje."
+          : "Esta rota já teve uma viagem registrada hoje — não é possível iniciar uma segunda no mesmo dia.",
+      );
+    }
+
+    const trip = await this.tripRepository.create({
+      companyId: route.companyId,
+      routeId: dto.routeId,
+      data,
+      veiculoId,
+      motoristaId,
+      monitorId,
+    });
+
+    await this.vehiclesService.setCurrentTrip(veiculoId, trip.id);
+
+    await this.recordAudit({
+      companyId: route.companyId,
+      entidadeId: trip.id,
+      acao: "STARTED",
+      atorUserId: actor.sub,
+      dadosDepois: { routeId: dto.routeId, veiculoId, motoristaId },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    await this.notifyActiveStudentsOfRoute(
+      dto.routeId,
+      actor,
+      NotificationEventType.VIAGEM_INICIADA,
+      (nomeResponsavel, nomeAluno) =>
+        this.messagePersonalizationService.viagemIniciada(nomeResponsavel, nomeAluno),
+    );
+
+    return toTripResponseDto(trip);
+  }
+
+  async finish(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    this.assertCanOperateTrip(trip, actor);
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException("Esta viagem não está em andamento.");
+    }
+
+    const updated = await this.tripRepository.update(id, {
+      status: "FINALIZADA",
+      finalizadaEm: new Date(),
+    });
+    await this.vehiclesService.setCurrentTrip(trip.veiculoId, null);
+
+    await this.recordAudit({
+      companyId: trip.companyId,
+      entidadeId: id,
+      acao: "FINISHED",
+      atorUserId: actor.sub,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    await this.notifyActiveStudentsOfRoute(
+      trip.routeId,
+      actor,
+      NotificationEventType.VIAGEM_ENCERRADA,
+      (nomeResponsavel, nomeAluno) =>
+        this.messagePersonalizationService.viagemEncerrada(nomeResponsavel, nomeAluno),
+    );
+
+    return toTripResponseDto(updated);
+  }
+
+  async cancel(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    this.assertCanOperateTrip(trip, actor);
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException("Esta viagem não está em andamento.");
+    }
+
+    const updated = await this.tripRepository.update(id, {
+      status: "CANCELADA",
+      canceladaEm: new Date(),
+    });
+    await this.vehiclesService.setCurrentTrip(trip.veiculoId, null);
+
+    await this.recordAudit({
+      companyId: trip.companyId,
+      entidadeId: id,
+      acao: "CANCELLED",
+      atorUserId: actor.sub,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toTripResponseDto(updated);
+  }
+
+  async findByIdOrThrow(id: string, actor: AuthenticatedUser): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    return toTripResponseDto(trip);
+  }
+
+  /** Histórico de viagens de uma rota (mais recentes primeiro). */
+  async listByRoute(
+    routeId: string,
+    actor: AuthenticatedUser,
+    page: number,
+    pageSize: number,
+  ): Promise<ListTripsResponseDto> {
+    await this.routesService.findByIdOrThrow(routeId, actor);
+    const result = await this.tripRepository.listByRoute(routeId, page, pageSize);
+    return toListTripsResponseDto(result, page, pageSize);
+  }
+
+  // ---------------------------------------------------------------------
+  // Posições GPS (GPS-02/03/06)
+  // ---------------------------------------------------------------------
+
+  async ingestPosition(
+    tripId: string,
+    dto: IngestPositionDto,
+    actor: AuthenticatedUser,
+  ): Promise<TripPositionResponseDto> {
+    const trip = await this.fetchOrThrow(tripId, actor);
+    this.assertCanOperateTrip(trip, actor);
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException("Só é possível registrar posição de uma viagem em andamento.");
+    }
+
+    const capturadaEm = new Date(dto.capturadaEm);
+    const position = await this.positionRepository.create({
+      tripId,
+      companyId: trip.companyId,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      precisaoMetros: dto.precisaoMetros,
+      velocidadeKmh: dto.velocidadeKmh,
+      capturadaEm,
+      simuladoSuspeito: dto.simuladoSuspeito,
+    });
+
+    await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      capturadaEm,
+      viagemId: tripId,
+    });
+
+    return toTripPositionResponseDto(position);
+  }
+
+  /**
+   * Ingestão em lote (GPS-04 — reconciliação da fila offline do app
+   * mobile, ainda não implementado no cliente, mas já suportado aqui).
+   * Só a posição de MAIOR `capturadaEm` do lote atualiza a última
+   * posição conhecida do veículo — as demais só entram no histórico
+   * bruto (`TripPosition`, nunca sobrescrito).
+   */
+  async ingestPositionsBatch(
+    tripId: string,
+    dto: IngestPositionsBatchDto,
+    actor: AuthenticatedUser,
+  ): Promise<TripPositionResponseDto[]> {
+    const trip = await this.fetchOrThrow(tripId, actor);
+    this.assertCanOperateTrip(trip, actor);
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException("Só é possível registrar posição de uma viagem em andamento.");
+    }
+
+    const positions = await this.positionRepository.createMany(
+      dto.posicoes.map((item) => ({
+        tripId,
+        companyId: trip.companyId,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        precisaoMetros: item.precisaoMetros,
+        velocidadeKmh: item.velocidadeKmh,
+        capturadaEm: new Date(item.capturadaEm),
+        simuladoSuspeito: item.simuladoSuspeito,
+      })),
+    );
+
+    const latest = positions.reduce((a, b) => (a.capturadaEm > b.capturadaEm ? a : b));
+    await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {
+      latitude: Number(latest.latitude),
+      longitude: Number(latest.longitude),
+      capturadaEm: latest.capturadaEm,
+      viagemId: tripId,
+    });
+
+    return positions.map(toTripPositionResponseDto);
+  }
+
+  async listPositions(
+    tripId: string,
+    actor: AuthenticatedUser,
+  ): Promise<TripPositionResponseDto[]> {
+    await this.fetchOrThrow(tripId, actor);
+    const positions = await this.positionRepository.listByTrip(tripId);
+    return positions.map(toTripPositionResponseDto);
+  }
+
+  // ---------------------------------------------------------------------
+  // Checklist de embarque/desembarque (EMB-01/05 + DESEMB-01/03)
+  // ---------------------------------------------------------------------
+
+  async addStudentEvent(
+    tripId: string,
+    dto: CreateTripStudentEventDto,
+    actor: AuthenticatedUser,
+  ): Promise<TripStudentEventResponseDto> {
+    const trip = await this.fetchOrThrow(tripId, actor);
+    this.assertCanOperateTrip(trip, actor);
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException(
+        "Só é possível registrar embarque/desembarque de uma viagem em andamento.",
+      );
+    }
+    if (dto.tipo === "AUSENTE" && !dto.motivoAusencia) {
+      throw new BadRequestException("motivoAusencia é obrigatório quando tipo = AUSENTE.");
+    }
+
+    const vinculos = await this.routesService.listStudents(trip.routeId, actor);
+    const vinculo = vinculos.find((v) => v.studentId === dto.studentId);
+    if (!vinculo) {
+      throw new BadRequestException("Este aluno não está vinculado à rota desta viagem.");
+    }
+
+    // `routeStopId` é sempre derivado do vínculo — nunca vem do cliente (ver nota do DTO).
+    const routeStopId =
+      dto.tipo === "DESEMBARCOU" ? vinculo.paradaDesembarqueId : vinculo.paradaEmbarqueId;
+
+    if (dto.tipo === "DESEMBARCOU") {
+      const embarque = await this.studentEventRepository.findByTripStudentAndTipo(
+        tripId,
+        dto.studentId,
+        "EMBARCOU",
+      );
+      if (!embarque) {
+        throw new BadRequestException(
+          "Não é possível registrar desembarque sem um embarque prévio nesta viagem.",
+        );
+      }
+    }
+
+    const existing = await this.studentEventRepository.findByTripStudentAndTipo(
+      tripId,
+      dto.studentId,
+      dto.tipo,
+    );
+    if (existing) {
+      throw new ConflictException(
+        `Já existe um evento ${dto.tipo} registrado para este aluno nesta viagem.`,
+      );
+    }
+
+    const event = await this.studentEventRepository.create({
+      tripId,
+      companyId: trip.companyId,
+      studentId: dto.studentId,
+      routeStopId,
+      tipo: dto.tipo,
+      motivoAusencia: dto.motivoAusencia,
+      processadoPorId: actor.sub,
+    });
+
+    await this.notifyStudentEvent(vinculo.contractId, dto.studentId, dto.tipo, actor);
+
+    return toTripStudentEventResponseDto(event);
+  }
+
+  private async notifyStudentEvent(
+    contractId: string,
+    studentId: string,
+    tipo: CreateTripStudentEventDto["tipo"],
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    try {
+      const [contract, student] = await Promise.all([
+        this.contractsService.findRawByIdOrThrow(contractId, actor),
+        this.studentsService.findRawById(studentId),
+      ]);
+      if (!student) return;
+
+      const message =
+        tipo === "EMBARCOU"
+          ? this.messagePersonalizationService.alunoEmbarcou(student.nome)
+          : tipo === "DESEMBARCOU"
+            ? this.messagePersonalizationService.alunoDesembarcou(student.nome)
+            : this.messagePersonalizationService.alunoAusente(student.nome);
+
+      const eventType =
+        tipo === "EMBARCOU"
+          ? NotificationEventType.ALUNO_EMBARCOU
+          : tipo === "DESEMBARCOU"
+            ? NotificationEventType.ALUNO_DESEMBARCOU
+            : NotificationEventType.ALUNO_AUSENTE;
+
+      this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+        userId: contract.responsavelId,
+        companyId: contract.companyId,
+        tipo: eventType,
+        titulo: message.titulo,
+        corpo: message.corpo,
+        dadosContexto: { studentId },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao notificar responsável sobre evento ${tipo} do aluno ${studentId}.`,
+      );
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  async listStudentEvents(
+    tripId: string,
+    actor: AuthenticatedUser,
+  ): Promise<TripStudentEventResponseDto[]> {
+    await this.fetchOrThrow(tripId, actor);
+    const events = await this.studentEventRepository.listByTrip(tripId);
+    return events.map(toTripStudentEventResponseDto);
+  }
+
+  // ---------------------------------------------------------------------
+  // Mapa/localizador (GPS-01/03/06)
+  // ---------------------------------------------------------------------
+
+  /** Todos os veículos em viagem no momento — a fonte de dados do mapa (Empresa/Gestor). */
+  async listActiveForMap(
+    actor: AuthenticatedUser,
+    companyIdParam?: string,
+  ): Promise<MapVehicleResponseDto[]> {
+    const companyId = actor.role === Role.ADMIN_ROTTA ? companyIdParam : actor.tenantId;
+    if (!companyId) {
+      throw new BadRequestException("Informe `companyId` para consultar o mapa como Admin Rotta.");
+    }
+    const trips = await this.tripRepository.listActiveByCompany(companyId);
+    return trips.map(toMapVehicleResponseDto);
+  }
+
+  /**
+   * Localizador do Responsável (briefing "Mapa inicial do Responsável" —
+   * acompanhamento em tempo real do transporte do próprio filho).
+   * `StudentsService.findByIdOrThrow` já restringe o acesso ao próprio
+   * Responsável (mesmo princípio de não-enumeração do resto do
+   * backend) — nunca aceita `studentId` de terceiros. Um aluno pode ter
+   * mais de uma rota ativa (ida/volta, turnos diferentes — RN-26 só
+   * proíbe duas do MESMO turno); devolve a primeira que tiver uma
+   * viagem `EM_ANDAMENTO` hoje, ou `null` se nenhuma estiver em curso
+   * agora.
+   */
+  async findActiveTripForStudent(
+    studentId: string,
+    actor: AuthenticatedUser,
+  ): Promise<MapVehicleResponseDto | null> {
+    await this.studentsService.findByIdOrThrow(studentId, actor);
+
+    const routeIds = await this.routesService.findActiveRouteIdsForStudent(studentId);
+    const data = today();
+    for (const routeId of routeIds) {
+      const trip = await this.tripRepository.findActiveDetailedByRouteId(routeId, data);
+      if (trip) {
+        return toMapVehicleResponseDto(trip);
+      }
+    }
+    return null;
+  }
+}

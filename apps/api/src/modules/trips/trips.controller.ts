@@ -1,0 +1,139 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from "@nestjs/common";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
+
+
+import { CreateTripStudentEventDto } from "./dto/create-trip-student-event.dto";
+import { IngestPositionDto, IngestPositionsBatchDto } from "./dto/ingest-position.dto";
+import { StartTripDto } from "./dto/start-trip.dto";
+import { TripsService, type RequestMeta } from "./trips.service";
+
+import type { Request } from "express";
+
+import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import { Roles } from "@/common/decorators/roles.decorator";
+import { Role } from "@/shared/enums";
+
+const MANAGE_ROLES = [Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR] as const;
+const OPERATE_ROLES = [...MANAGE_ROLES, Role.MOTORISTA, Role.MONITOR] as const;
+
+function requestMeta(req: Request): RequestMeta {
+  return { ip: req.ip, userAgent: req.headers["user-agent"] };
+}
+
+/**
+ * API REST do módulo Trips (GPS-01/02/03/06 + EMB-01/05 + DESEMB-01/03,
+ * Dossiê 13 Seção 11). O "localizador"/mapa em si (agregado por
+ * empresa/por aluno) vive em `GpsController`, que só LÊ os dados que
+ * este controller escreve.
+ */
+@ApiTags("trips")
+@ApiBearerAuth()
+@Controller("trips")
+export class TripsController {
+  constructor(private readonly tripsService: TripsService) {}
+
+  @Post()
+  @Roles(...OPERATE_ROLES)
+  start(@Body() dto: StartTripDto, @CurrentUser() actor: AuthenticatedUser, @Req() req: Request) {
+    return this.tripsService.start(dto, actor, requestMeta(req));
+  }
+
+  // Rota literal ("routes/:routeId/history") registrada ANTES de ":id"
+  // — mesma precaução de `VehiclesController` ("dashboard"/"export"
+  // antes de ":id") para nunca colidir com o parâmetro coringa.
+  @Get("routes/:routeId/history")
+  @Roles(...MANAGE_ROLES)
+  listByRoute(
+    @Param("routeId", ParseUUIDPipe) routeId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query("page") page = 1,
+    @Query("pageSize") pageSize = 20,
+  ) {
+    return this.tripsService.listByRoute(routeId, actor, Number(page), Number(pageSize));
+  }
+
+  @Get(":id")
+  @Roles(...OPERATE_ROLES)
+  findById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.tripsService.findByIdOrThrow(id, actor);
+  }
+
+  @Patch(":id/finish")
+  @Roles(...OPERATE_ROLES)
+  finish(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tripsService.finish(id, actor, requestMeta(req));
+  }
+
+  @Patch(":id/cancel")
+  @Roles(...OPERATE_ROLES)
+  cancel(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tripsService.cancel(id, actor, requestMeta(req));
+  }
+
+  // --- Posições GPS (GPS-02/03/06) ---
+
+  @Post(":id/positions")
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR, Role.MOTORISTA)
+  ingestPosition(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: IngestPositionDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.ingestPosition(id, dto, actor);
+  }
+
+  @Post(":id/positions/batch")
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR, Role.MOTORISTA)
+  ingestPositionsBatch(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: IngestPositionsBatchDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.ingestPositionsBatch(id, dto, actor);
+  }
+
+  @Get(":id/positions")
+  @Roles(...OPERATE_ROLES)
+  listPositions(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.tripsService.listPositions(id, actor);
+  }
+
+  // --- Checklist de embarque/desembarque (EMB-01/05 + DESEMB-01/03) ---
+
+  @Post(":id/student-events")
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR)
+  addStudentEvent(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CreateTripStudentEventDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.addStudentEvent(id, dto, actor);
+  }
+
+  @Get(":id/student-events")
+  @Roles(...OPERATE_ROLES)
+  listStudentEvents(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.listStudentEvents(id, actor);
+  }
+}

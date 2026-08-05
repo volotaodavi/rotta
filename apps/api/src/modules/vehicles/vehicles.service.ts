@@ -17,7 +17,6 @@ import {
 } from "@prisma/client";
 import { normalizePlate } from "@rotta/validators";
 
-
 import { toVehicleAssignmentResponseDto } from "./mappers/vehicle-assignment.mapper";
 import {
   toListVehicleChecklistsResponseDto,
@@ -400,6 +399,41 @@ export class VehiclesService {
     });
 
     return toVehicleResponseDto(updated);
+  }
+
+  /**
+   * Sincroniza `Vehicle.viagemAtualId` a partir do módulo Trips
+   * (`TripsService.start`/`finish`/`cancel`) — nunca passa pelo
+   * `fetchOrThrow` baseado em ator (o chamador já validou que o veículo
+   * pertence à viagem, não há um `AuthenticatedUser` de RBAC aqui).
+   * `null` limpa o vínculo ao encerrar/cancelar a viagem.
+   */
+  async setCurrentTrip(
+    vehicleId: string,
+    viagemAtualId: string | null,
+  ): Promise<VehicleResponseDto> {
+    return toVehicleResponseDto(await this.vehicleRepository.update(vehicleId, { viagemAtualId }));
+  }
+
+  /**
+   * Atualização de posição feita pelo módulo Trips durante uma viagem
+   * EM_ANDAMENTO (GPS-01/02) — já validado ali que o ator é o motorista
+   * da própria viagem; por isso, diferente de `updateLocation` (chamado
+   * via `PATCH /vehicles/:id/location`), não repete a checagem de
+   * `VehicleAssignment`: `Trip.veiculoId`/`Trip.motoristaId` já são a
+   * fonte de verdade da viagem em curso, que pode usar um veículo
+   * diferente do vínculo "padrão" (ex. substituição pontual).
+   */
+  async updateLocationFromTrip(
+    vehicleId: string,
+    data: { latitude: number; longitude: number; capturadaEm: Date; viagemId: string },
+  ): Promise<void> {
+    await this.vehicleRepository.update(vehicleId, {
+      ultimaLatitude: data.latitude,
+      ultimaLongitude: data.longitude,
+      ultimaPosicaoEm: data.capturadaEm,
+      viagemAtualId: data.viagemId,
+    });
   }
 
   async remove(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<void> {

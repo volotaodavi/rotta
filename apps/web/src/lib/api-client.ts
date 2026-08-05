@@ -3,9 +3,12 @@ import {
   createAuthEndpoints,
   createCompaniesEndpoints,
   createGeoEndpoints,
+  createGpsEndpoints,
   createMarketplaceEndpoints,
   createNotificationsEndpoints,
+  createRoutesEndpoints,
   createSchoolsEndpoints,
+  createTripsEndpoints,
   createVehiclesEndpoints,
 } from "@rotta/api-client";
 import { getAccessToken } from "@rotta/auth/web";
@@ -29,3 +32,6 @@ export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const marketplaceApi = createMarketplaceEndpoints(apiClient);
 export const geoApi = createGeoEndpoints(apiClient);
 export const notificationsApi = createNotificationsEndpoints(apiClient);
+export const routesApi = createRoutesEndpoints(apiClient);
+export const tripsApi = createTripsEndpoints(apiClient);
+export const gpsApi = createGpsEndpoints(apiClient);

@@ -1,119 +1,91 @@
 "use client";
 
-import { Card, Select, Spinner, Table, Typography } from "@rotta/ui/web";
-import { useState } from "react";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { useMemo, useState } from "react";
 
-import type { Vehicle, VehicleStatus, VehicleType } from "@rotta/api-client";
+import type { MapVehicle } from "@rotta/api-client";
 
-import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
-import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
-import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
+import { useGpsMap } from "@/features/gps/hooks/use-gps";
 
 
 /**
- * "Mapa" (briefing "MAPA" — "mostrar todos os veículos em tempo real,
- * filtros por motorista/empresa/status/tipo"). Esta tela ainda não usa
- * `@rotta/maps` (decisão de escopo deliberada, mesmo espírito do stub
- * da Rotta AI — não é uma limitação de provedor: `@rotta/maps` já
- * renderiza mapas reais via MapLibre/OpenStreetMap sem nenhum token
- * necessário, ver Escolas/Marketplace): esta tela já implementa os
- * filtros reais e a última posição conhecida de cada veículo
- * (`Vehicle.ultimaLatitude/ultimaLongitude`, Dossiê 15) em formato
- * tabular; o mapa interativo substitui esta tabela num passo de
- * escopo futuro.
+ * "Mapa"/localizador em tempo real (briefing "MAPA" — "mostrar todos
+ * os veículos em tempo real"). Mapa real via `@rotta/maps/web`
+ * (MapLibre GL JS sobre OpenStreetMap, sem token — mesmo componente de
+ * Escolas/Marketplace), alimentado por `GET /gps/map` (GPS-01/03/06):
+ * um marcador por VIAGEM em andamento agora, com a última posição
+ * conhecida do veículo. Atualiza sozinho a cada 10s (`useGpsMap`) —
+ * substitui o polling por um canal em tempo real (WebSocket,
+ * `apps/realtime-gateway`) quando esse serviço existir.
+ *
+ * Veículos sem viagem em andamento não aparecem aqui (não há posição
+ * "ao vivo" para eles) — a última posição estática de qualquer veículo
+ * continua disponível em `/veiculos/:id`.
  */
 export default function VeiculosMapaPage(): JSX.Element {
-  const [status, setStatus] = useState<VehicleStatus | "">("");
-  const [tipo, setTipo] = useState<VehicleType | "">("");
+  const { data, isLoading } = useGpsMap();
+  const [selected, setSelected] = useState<MapVehicle | null>(null);
 
-  const { data, isLoading } = useVehiclesList({
-    status: status || undefined,
-    tipo: tipo || undefined,
-    pageSize: 100,
-  });
+  const markers = useMemo<RottaMapMarker[]>(
+    () =>
+      (data ?? [])
+        .filter((v): v is MapVehicle & { latitude: number; longitude: number } =>
+          Boolean(v.latitude && v.longitude),
+        )
+        .map((v) => ({
+          id: v.tripId,
+          titulo: `${v.placa} — ${v.routeNome} (${v.motoristaNome})`,
+          latitude: v.latitude,
+          longitude: v.longitude,
+        })),
+    [data],
+  );
 
   return (
     <div className="flex flex-col gap-6">
-      <Typography variant="title">Mapa da frota</Typography>
+      <Typography variant="title">Localizador — mapa em tempo real</Typography>
 
       <Card>
         <Card.Body className="flex flex-col gap-4">
           <Typography variant="bodySmall" color="muted">
-            Mapa interativo em preparação — esta tabela mostra a última posição conhecida de cada
-            veículo enquanto a tela de mapa não é implementada.
+            {data?.length ?? 0} veículo(s) em viagem agora. Atualiza automaticamente a cada 10
+            segundos.
           </Typography>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Select
-              value={status}
-              onChange={(event) => setStatus(event.target.value as VehicleStatus | "")}
-            >
-              <option value="">Todos os status</option>
-              {(
-                [
-                  "DISPONIVEL",
-                  "EM_VIAGEM",
-                  "MANUTENCAO",
-                  "RESERVA",
-                  "INATIVO",
-                  "BLOQUEADO",
-                ] as VehicleStatus[]
-              ).map((value) => (
-                <option key={value} value={value}>
-                  {value}
-                </option>
-              ))}
-            </Select>
-            <Select
-              value={tipo}
-              onChange={(event) => setTipo(event.target.value as VehicleType | "")}
-            >
-              <option value="">Todos os tipos</option>
-              {Object.entries(VEHICLE_TYPE_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </div>
-
-          {isLoading || !data ? (
+          {isLoading ? (
             <div className="flex justify-center py-12">
               <Spinner size="lg" />
             </div>
+          ) : markers.length === 0 ? (
+            <Typography variant="bodySmall" color="muted">
+              Nenhum veículo em viagem no momento.
+            </Typography>
           ) : (
-            <Table<Vehicle>
-              columns={[
-                {
-                  key: "placa",
-                  header: "Placa",
-                  render: (v) => <span className="font-mono">{v.placa}</span>,
-                },
-                { key: "modelo", header: "Modelo", render: (v) => v.modelo },
-                {
-                  key: "status",
-                  header: "Status",
-                  render: (v) => <VehicleStatusBadge status={v.status} />,
-                },
-                {
-                  key: "posicao",
-                  header: "Última posição",
-                  render: (v) =>
-                    v.ultimaLatitude && v.ultimaLongitude
-                      ? `${v.ultimaLatitude.toFixed(5)}, ${v.ultimaLongitude.toFixed(5)}`
-                      : "Sem posição registrada",
-                },
-                {
-                  key: "atualizacao",
-                  header: "Última atualização",
-                  render: (v) =>
-                    v.ultimaPosicaoEm ? new Date(v.ultimaPosicaoEm).toLocaleString("pt-BR") : "—",
-                },
-              ]}
-              rows={data.items}
-              keyExtractor={(v) => v.id}
-            />
+            <div style={{ height: 560 }}>
+              <RottaMap
+                markers={markers}
+                onMarkerPress={(marker) =>
+                  setSelected(data?.find((v) => v.tripId === marker.id) ?? null)
+                }
+              />
+            </div>
           )}
+
+          {selected ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-4">
+              <Badge variant="info">{selected.placa}</Badge>
+              <Typography variant="bodySmall">
+                {selected.routeNome} ({selected.turno}) — motorista {selected.motoristaNome}
+                {selected.monitorNome ? `, monitor ${selected.monitorNome}` : ""}
+              </Typography>
+              <Typography variant="bodySmall" color="muted">
+                {selected.ultimaPosicaoEm
+                  ? `Última posição: ${new Date(selected.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
+                  : "Aguardando primeira posição"}
+              </Typography>
+            </div>
+          ) : null}
         </Card.Body>
       </Card>
     </div>
