@@ -31,9 +31,22 @@ export interface ReverseGeocodeResult {
   enderecoFormatado: string;
 }
 
+/** Um trecho entre dois pontos consecutivos passados a `getRoute` (origem→parada1, parada1→parada2, ..., →destino). */
+export interface DirectionsLeg {
+  distanciaMetros: number;
+  duracaoSegundos: number;
+}
+
 export interface DirectionsResult {
   distanciaMetros: number;
   duracaoSegundos: number;
   /** GeoJSON `LineString` do percurso — usado para desenhar a rota no mapa. */
   geometria: unknown;
+  /**
+   * Uma perna por trecho, na mesma ordem dos pontos informados —
+   * `pernas.length === pontos.length - 1`. Usado por
+   * `TripsService.recalcularProximasEtas` (tarefa #99) para acumular o
+   * ETA até cada parada pendente, não só o total da viagem.
+   */
+  pernas: DirectionsLeg[];
 }

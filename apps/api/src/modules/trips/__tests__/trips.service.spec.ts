@@ -8,6 +8,7 @@ import type { TripStudentEventRepository } from "../repositories/trip-student-ev
 import type { TripRepository } from "../repositories/trip.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import type { ContractsService } from "@/modules/marketplace/contracts.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { RoutesService } from "@/modules/routes/routes.service";
@@ -65,6 +66,7 @@ describe("TripsService", () => {
   let auditLogService: jest.Mocked<AuditLogService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
+  let geoEngineService: jest.Mocked<GeoEngineService>;
 
   beforeEach(() => {
     tripRepository = {
@@ -90,6 +92,7 @@ describe("TripsService", () => {
     routesService = {
       findByIdOrThrow: jest.fn(),
       listStudents: jest.fn(),
+      listStops: jest.fn(),
       findActiveRouteIdsForStudent: jest.fn(),
       notifyActiveStudents: jest.fn(),
       assertVeiculoCapacidade: jest.fn(),
@@ -121,9 +124,15 @@ describe("TripsService", () => {
       motoristaAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       monitorAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       veiculoAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      veiculoProximo: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
+    geoEngineService = {
+      getRoute: jest.fn(),
+    } as unknown as jest.Mocked<GeoEngineService>;
 
     routesService.listStudents.mockResolvedValue([]);
+    routesService.listStops.mockResolvedValue([]);
+    positionRepository.findLatestByTrip.mockResolvedValue(null);
 
     service = new TripsService(
       tripRepository,
@@ -137,6 +146,7 @@ describe("TripsService", () => {
       auditLogService,
       eventEmitter,
       messagePersonalizationService,
+      geoEngineService,
     );
   });
 
@@ -462,6 +472,230 @@ describe("TripsService", () => {
         empresaActor,
       );
       expect(result.monitorId).toBe("monitor-2");
+    });
+  });
+
+  describe("recalcularProximasEtas / recálculo por ausência de aluno (tarefa #99)", () => {
+    const stopA = {
+      id: "stop-A",
+      endereco: "Rua A",
+      latitude: -23.1,
+      longitude: -46.1,
+      horarioPrevisto: "07:00",
+    };
+    const stopB = {
+      id: "stop-B",
+      endereco: "Rua B",
+      latitude: -23.2,
+      longitude: -46.2,
+      horarioPrevisto: "07:10",
+    };
+    const stopC = {
+      id: "stop-C",
+      endereco: "Rua C",
+      latitude: -23.3,
+      longitude: -46.3,
+      horarioPrevisto: "07:20",
+    };
+    const stopD = {
+      id: "stop-D",
+      endereco: "Rua D",
+      latitude: -23.4,
+      longitude: -46.4,
+      horarioPrevisto: "07:30",
+    };
+
+    const vinculo1 = {
+      id: "vinculo-1",
+      routeId: "route-1",
+      contractId: "contract-1",
+      studentId: "student-1",
+      paradaEmbarqueId: stopA.id,
+      paradaDesembarqueId: stopB.id,
+      ativo: true,
+    };
+    const vinculo2 = {
+      id: "vinculo-2",
+      routeId: "route-1",
+      contractId: "contract-2",
+      studentId: "student-2",
+      paradaEmbarqueId: stopC.id,
+      paradaDesembarqueId: stopD.id,
+      ativo: true,
+    };
+
+    beforeEach(() => {
+      tripRepository.findById.mockResolvedValue(buildTrip());
+      routesService.listStops.mockResolvedValue([stopA, stopC, stopB, stopD] as never);
+      routesService.listStudents.mockResolvedValue([vinculo1, vinculo2] as never);
+    });
+
+    it("rejeita recalcular ETAs de uma viagem que não está em andamento", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ status: TripStatus.FINALIZADA }));
+
+      await expect(service.recalcularProximasEtas("trip-1", empresaActor)).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("devolve vazio quando ainda não há nenhuma posição GPS registrada", async () => {
+      positionRepository.findLatestByTrip.mockResolvedValue(null);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+
+      const result = await service.recalcularProximasEtas("trip-1", empresaActor);
+
+      expect(result).toEqual([]);
+      expect(geoEngineService.getRoute).not.toHaveBeenCalled();
+    });
+
+    it("devolve vazio quando todos os alunos já embarcaram e desembarcaram (nenhuma parada pendente)", async () => {
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      studentEventRepository.listByTrip.mockResolvedValue([
+        { studentId: "student-1", tipo: "EMBARCOU" },
+        { studentId: "student-1", tipo: "DESEMBARCOU" },
+        { studentId: "student-2", tipo: "AUSENTE" },
+      ] as never);
+
+      const result = await service.recalcularProximasEtas("trip-1", empresaActor);
+
+      expect(result).toEqual([]);
+      expect(geoEngineService.getRoute).not.toHaveBeenCalled();
+    });
+
+    it("recalcula o ETA acumulado só para as paradas ainda pendentes, na ordem da rota", async () => {
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      // student-1 já embarcou (falta só o desembarque, parada B); student-2
+      // ainda não fez nada (falta o embarque, parada C) — parada A (já
+      // embarcado) e D (aluno 2 não embarcou ainda, então não pendente)
+      // ficam de fora.
+      studentEventRepository.listByTrip.mockResolvedValue([
+        { studentId: "student-1", tipo: "EMBARCOU" },
+      ] as never);
+      geoEngineService.getRoute.mockResolvedValue({
+        distanciaMetros: 1500,
+        duracaoSegundos: 180,
+        geometria: null,
+        pernas: [
+          { distanciaMetros: 1000, duracaoSegundos: 120 },
+          { distanciaMetros: 500, duracaoSegundos: 60 },
+        ],
+      });
+
+      const result = await service.recalcularProximasEtas("trip-1", empresaActor);
+
+      expect(geoEngineService.getRoute).toHaveBeenCalledWith(
+        { latitude: -23.0, longitude: -46.0 },
+        { latitude: stopB.latitude, longitude: stopB.longitude },
+        [{ latitude: stopC.latitude, longitude: stopC.longitude }],
+      );
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
+        routeStopId: stopC.id,
+        distanciaMetros: 1000,
+        etaSegundos: 120,
+      });
+      expect(result[1]).toMatchObject({
+        routeStopId: stopB.id,
+        distanciaMetros: 1500,
+        etaSegundos: 180,
+      });
+    });
+
+    it("addStudentEvent(AUSENTE) notifica best-effort os responsáveis da PRÓXIMA parada pendente com o novo ETA", async () => {
+      const activeTrip = buildTrip();
+      tripRepository.findById.mockResolvedValue(activeTrip);
+      // vínculo do próprio aluno marcado ausente (necessário para
+      // addStudentEvent aceitar o evento).
+      routesService.listStudents.mockResolvedValue([vinculo1, vinculo2] as never);
+      studentEventRepository.findByTripStudentAndTipo.mockResolvedValue(null);
+      studentEventRepository.create.mockResolvedValue({
+        id: "event-1",
+        tripId: "trip-1",
+        studentId: "student-1",
+        routeStopId: stopA.id,
+        tipo: "AUSENTE",
+        motivoAusencia: "Doente",
+        processadoPorId: "motorista-1",
+        processadoEm: new Date(),
+      } as never);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-2",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "Bia" } as never);
+
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      // Depois de student-1 ficar AUSENTE, a parada A não é mais
+      // pendente (nem embarque nem desembarque) — a próxima pendente é
+      // C (embarque de student-2).
+      studentEventRepository.listByTrip.mockResolvedValue([
+        { studentId: "student-1", tipo: "AUSENTE" },
+      ] as never);
+      geoEngineService.getRoute.mockResolvedValue({
+        distanciaMetros: 800,
+        duracaoSegundos: 90,
+        geometria: null,
+        pernas: [{ distanciaMetros: 800, duracaoSegundos: 90 }],
+      });
+
+      await service.addStudentEvent(
+        "trip-1",
+        { studentId: "student-1", tipo: "AUSENTE", motivoAusencia: "Doente" },
+        motoristaActor,
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          userId: "responsavel-2",
+          tipo: "VEICULO_PROXIMO",
+          dadosContexto: { routeId: "route-1", studentId: "student-2" },
+        }),
+      );
+    });
+
+    it("nunca lança (best-effort) quando o GeoEngineService falha após uma AUSÊNCIA", async () => {
+      routesService.listStudents.mockResolvedValue([vinculo1] as never);
+      studentEventRepository.findByTripStudentAndTipo.mockResolvedValue(null);
+      studentEventRepository.create.mockResolvedValue({
+        id: "event-1",
+        tripId: "trip-1",
+        studentId: "student-1",
+        routeStopId: stopA.id,
+        tipo: "AUSENTE",
+        motivoAusencia: "Doente",
+        processadoPorId: "motorista-1",
+        processadoEm: new Date(),
+      } as never);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-1",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "João" } as never);
+
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+      geoEngineService.getRoute.mockRejectedValue(new Error("OSRM fora do ar"));
+
+      await expect(
+        service.addStudentEvent(
+          "trip-1",
+          { studentId: "student-1", tipo: "AUSENTE", motivoAusencia: "Doente" },
+          motoristaActor,
+        ),
+      ).resolves.toBeDefined();
     });
   });
 });

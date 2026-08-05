@@ -174,4 +174,15 @@ export class TripsController {
   ) {
     return this.tripsService.listStudentEvents(id, actor);
   }
+
+  // --- Recálculo de ETA por ausência de aluno (tarefa #99) ---
+
+  @Get(":id/proximas-etas")
+  @Roles(...OPERATE_ROLES)
+  recalcularProximasEtas(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.recalcularProximasEtas(id, actor);
+  }
 }

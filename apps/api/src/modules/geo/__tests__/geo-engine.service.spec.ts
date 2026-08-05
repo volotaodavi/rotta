@@ -149,7 +149,12 @@ describe("GeoEngineService", () => {
       mockFetchOnce(200, {
         code: "Ok",
         routes: [
-          { distance: 5230.4, duration: 720.1, geometry: { type: "LineString", coordinates: [] } },
+          {
+            distance: 5230.4,
+            duration: 720.1,
+            geometry: { type: "LineString", coordinates: [] },
+            legs: [{ distance: 5230.4, duration: 720.1 }],
+          },
         ],
       });
 
@@ -161,6 +166,36 @@ describe("GeoEngineService", () => {
 
       expect(resultado.distanciaMetros).toBe(5230.4);
       expect(resultado.duracaoSegundos).toBe(720.1);
+      expect(resultado.pernas).toEqual([{ distanciaMetros: 5230.4, duracaoSegundos: 720.1 }]);
+    });
+
+    it("devolve uma perna por trecho quando há paradas intermediárias", async () => {
+      mockFetchOnce(200, {
+        code: "Ok",
+        routes: [
+          {
+            distance: 9000,
+            duration: 1200,
+            geometry: { type: "LineString", coordinates: [] },
+            legs: [
+              { distance: 4000, duration: 500 },
+              { distance: 5000, duration: 700 },
+            ],
+          },
+        ],
+      });
+
+      const service = new GeoEngineService(buildConfigService());
+      const resultado = await service.getRoute(
+        { latitude: -23.561684, longitude: -46.655981 },
+        { latitude: -23.55052, longitude: -46.633309 },
+        [{ latitude: -23.55, longitude: -46.64 }],
+      );
+
+      expect(resultado.pernas).toEqual([
+        { distanciaMetros: 4000, duracaoSegundos: 500 },
+        { distanciaMetros: 5000, duracaoSegundos: 700 },
+      ]);
     });
 
     it("lança BadGatewayException quando o OSRM não encontra rota (code NoRoute, sem routes)", async () => {

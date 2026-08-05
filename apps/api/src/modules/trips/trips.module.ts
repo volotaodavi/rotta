@@ -12,13 +12,13 @@ import { TripsController } from "./trips.controller";
 import { TripsService } from "./trips.service";
 
 import { AuditModule } from "@/modules/audit/audit.module";
+import { GeoModule } from "@/modules/geo/geo.module";
 import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
-
 
 /**
  * Módulo Trips (Dossiê 13, Seção 11 / Especificação Funcional Parte 4,
@@ -29,10 +29,12 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
  * paradas), `VehiclesModule` (sincroniza `Vehicle.viagemAtualId`/última
  * posição — `VehiclesService.setCurrentTrip`/`updateLocationFromTrip`),
  * `MarketplaceModule`/`StudentsModule`/`UsersModule` (resolver nomes
- * para o Message Personalization AI) e `MessagePersonalizationModule`
+ * para o Message Personalization AI), `MessagePersonalizationModule`
  * (nunca `NotificationsModule` inteiro — mesma justificativa de
- * `routes.module.ts`). Sem ciclo: nenhum desses módulos importa
- * `TripsModule` de volta.
+ * `routes.module.ts`) e `GeoModule` (`GeoEngineService` — única porta
+ * de saída para o OSRM, usado por `recalcularProximasEtas`/
+ * `recalcularEnotificarBestEffort`, tarefa #99). Sem ciclo: nenhum
+ * desses módulos importa `TripsModule` de volta.
  */
 @Module({
   imports: [
@@ -43,6 +45,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     StudentsModule,
     UsersModule,
     MessagePersonalizationModule,
+    GeoModule,
   ],
   controllers: [TripsController],
   providers: [

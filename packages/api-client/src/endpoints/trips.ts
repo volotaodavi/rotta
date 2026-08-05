@@ -96,6 +96,16 @@ export interface TripStudentEvent {
   processadoEm: string;
 }
 
+/** Parada ainda pendente hoje, com ETA recalculado (tarefa #99). */
+export interface NextEta {
+  routeStopId: string;
+  endereco: string;
+  horarioPrevisto: string;
+  distanciaMetros: number;
+  etaSegundos: number;
+  etaPrevista: string;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -183,6 +193,11 @@ export function createTripsEndpoints(apiClient: ApiClient) {
     listStudentEvents: async (id: string): Promise<TripStudentEvent[]> =>
       (await apiClient.request<ApiEnvelope<TripStudentEvent[]>>(`/trips/${id}/student-events`))
         .data,
+
+    // --- Recálculo de ETA por ausência de aluno (tarefa #99) ---
+
+    getProximasEtas: async (id: string): Promise<NextEta[]> =>
+      (await apiClient.request<ApiEnvelope<NextEta[]>>(`/trips/${id}/proximas-etas`)).data,
   };
 }
 

@@ -23,6 +23,7 @@ import {
 import type { CreateTripStudentEventDto } from "./dto/create-trip-student-event.dto";
 import type { IngestPositionDto, IngestPositionsBatchDto } from "./dto/ingest-position.dto";
 import type { MapVehicleResponseDto } from "./dto/map-vehicle-response.dto";
+import type { NextEtaResponseDto } from "./dto/next-eta-response.dto";
 import type { StartTripDto } from "./dto/start-trip.dto";
 import type { SubstituirMonitorDto } from "./dto/substituir-monitor.dto";
 import type { SubstituirMotoristaDto } from "./dto/substituir-motorista.dto";
@@ -36,6 +37,7 @@ import type { TripRepository } from "./repositories/trip.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import { ContractsService } from "@/modules/marketplace/contracts.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -73,12 +75,20 @@ function today(): Date {
  * #102) — grava só nas colunas da própria `Trip`, nunca no padrão da
  * `Route` (esse fluxo é `RoutesService.update`), e reaproveita
  * `RoutesService.notifyActiveStudents`/`assertVeiculoCapacidade` em vez
- * de duplicar a lógica de notificação/validação de capacidade. FORA DE
- * ESCOPO (documentado, não omitido): recálculo automático de rota por
- * ausência (RN futura, tarefa #99), notificação `VEICULO_PROXIMO`
- * (exigiria rastrear "já notificamos esta parada nesta viagem", um
- * estado que não existe no schema hoje) e `OCORRENCIA`/`EMERGENCIA` (já
- * cobertas por `VehicleOccurrence`, módulo Vehicles).
+ * de duplicar a lógica de notificação/validação de capacidade, e
+ * recálculo de ETA por ausência de aluno (`recalcularProximasEtas`,
+ * tarefa #99) — quando um aluno é marcado AUSENTE, a parada dele sai da
+ * lista de pendências e o `GeoEngineService` (única porta de saída para
+ * o OSRM) recalcula o trajeto a partir da última posição GPS conhecida
+ * até as paradas que ainda faltam, notificando os responsáveis da
+ * PRÓXIMA parada com o novo horário estimado (reaproveita
+ * `MessagePersonalizationService.veiculoProximo`, que já existia mas
+ * nunca tinha um chamador real). FORA DE ESCOPO (documentado, não
+ * omitido): reotimizar a ORDEM das paradas (`RottaAiService.
+ * suggestRouteOptimization`, ROT-08, stub honesto — problema diferente
+ * de só recalcular tempo/distância do trajeto já definido) e
+ * `OCORRENCIA`/`EMERGENCIA` (já cobertas por `VehicleOccurrence`, módulo
+ * Vehicles).
  */
 @Injectable()
 export class TripsService {
@@ -97,6 +107,7 @@ export class TripsService {
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly geoEngineService: GeoEngineService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -675,6 +686,10 @@ export class TripsService {
 
     await this.notifyStudentEvent(vinculo.contractId, dto.studentId, dto.tipo, actor);
 
+    if (dto.tipo === "AUSENTE") {
+      await this.recalcularEnotificarBestEffort(trip, actor);
+    }
+
     return toTripStudentEventResponseDto(event);
   }
 
@@ -728,6 +743,169 @@ export class TripsService {
     await this.fetchOrThrow(tripId, actor);
     const events = await this.studentEventRepository.listByTrip(tripId);
     return events.map(toTripStudentEventResponseDto);
+  }
+
+  // ---------------------------------------------------------------------
+  // Recálculo de ETA por ausência de aluno (tarefa #99)
+  // ---------------------------------------------------------------------
+
+  /**
+   * ETA recalculado para cada parada AINDA PENDENTE hoje, a partir da
+   * última posição GPS conhecida do veículo — usado pelo endpoint `GET
+   * /trips/:id/proximas-etas` (chamada explícita, sob demanda) e,
+   * internamente, pelo disparo automático em `addStudentEvent` (ver
+   * `recalcularEnotificarBestEffort` abaixo). Lança se a viagem não
+   * estiver em andamento ou se o `GeoEngineService` falhar — quem quiser
+   * uma versão que nunca lança usa o método best-effort.
+   */
+  async recalcularProximasEtas(
+    id: string,
+    actor: AuthenticatedUser,
+  ): Promise<NextEtaResponseDto[]> {
+    const trip = await this.fetchOrThrow(id, actor);
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException("Só é possível recalcular ETAs de uma viagem em andamento.");
+    }
+    return this.computeProximasEtas(trip, actor);
+  }
+
+  /**
+   * "Pendente" = tem pelo menos um aluno ativo que ainda não passou por
+   * esta parada hoje: sem EMBARCOU/AUSENTE registrado (falta embarque),
+   * ou com EMBARCOU mas sem DESEMBARCOU (falta desembarque — um aluno
+   * AUSENTE nunca gera pendência de desembarque). Sem nenhuma posição
+   * GPS ainda, não há "onde o veículo está agora" para recalcular a
+   * partir daí — devolve vazio (nunca lança: ausência de GPS é normal
+   * nos primeiros segundos de uma viagem).
+   */
+  private async computeProximasEtas(
+    trip: Trip,
+    actor: AuthenticatedUser,
+  ): Promise<NextEtaResponseDto[]> {
+    const ultimaPosicao = await this.positionRepository.findLatestByTrip(trip.id);
+    if (!ultimaPosicao) {
+      return [];
+    }
+
+    const [stops, vinculos, eventos] = await Promise.all([
+      this.routesService.listStops(trip.routeId, actor),
+      this.routesService.listStudents(trip.routeId, actor),
+      this.studentEventRepository.listByTrip(trip.id),
+    ]);
+
+    const paradasPendentesIds = new Set<string>();
+    for (const vinculo of vinculos) {
+      const embarqueOuAusente = eventos.find(
+        (e) => e.studentId === vinculo.studentId && (e.tipo === "EMBARCOU" || e.tipo === "AUSENTE"),
+      );
+      if (!embarqueOuAusente) {
+        paradasPendentesIds.add(vinculo.paradaEmbarqueId);
+        continue;
+      }
+      if (embarqueOuAusente.tipo === "EMBARCOU") {
+        const jaDesembarcou = eventos.some(
+          (e) => e.studentId === vinculo.studentId && e.tipo === "DESEMBARCOU",
+        );
+        if (!jaDesembarcou) {
+          paradasPendentesIds.add(vinculo.paradaDesembarqueId);
+        }
+      }
+    }
+
+    // `stops` já vem ordenado por `ordem` (`RouteStopRepository.listByRoute`)
+    // — o `filter` preserva essa ordem, então `paradasPendentes` é
+    // exatamente a sequência que falta percorrer hoje.
+    const paradasPendentes = stops.filter((stop) => paradasPendentesIds.has(stop.id));
+    if (paradasPendentes.length === 0) {
+      return [];
+    }
+
+    const origem = {
+      latitude: Number(ultimaPosicao.latitude),
+      longitude: Number(ultimaPosicao.longitude),
+    };
+    const destino = paradasPendentes[paradasPendentes.length - 1]!;
+    const intermediarias = paradasPendentes.slice(0, -1);
+
+    const rota = await this.geoEngineService.getRoute(
+      origem,
+      { latitude: destino.latitude, longitude: destino.longitude },
+      intermediarias.map((stop) => ({ latitude: stop.latitude, longitude: stop.longitude })),
+    );
+
+    const agora = Date.now();
+    let acumuladoSegundos = 0;
+    let acumuladoMetros = 0;
+    return paradasPendentes.map((stop, index) => {
+      const perna = rota.pernas[index];
+      acumuladoSegundos += perna?.duracaoSegundos ?? 0;
+      acumuladoMetros += perna?.distanciaMetros ?? 0;
+      return {
+        routeStopId: stop.id,
+        endereco: stop.endereco,
+        horarioPrevisto: stop.horarioPrevisto,
+        distanciaMetros: Math.round(acumuladoMetros),
+        etaSegundos: Math.round(acumuladoSegundos),
+        etaPrevista: new Date(agora + acumuladoSegundos * 1000).toISOString(),
+      };
+    });
+  }
+
+  /**
+   * Disparado best-effort por `addStudentEvent` quando `tipo ===
+   * "AUSENTE"` — nunca lança, nunca bloqueia o registro da ausência em
+   * si (mesmo princípio de `notifyStudentEvent`/`recordAudit`). Notifica
+   * só os responsáveis vinculados à PRÓXIMA parada pendente (reaproveita
+   * `MessagePersonalizationService.veiculoProximo`, que já existia mas
+   * nunca tinha um chamador real neste backend) — as demais paradas
+   * recalculadas ficam disponíveis via `GET /trips/:id/proximas-etas`
+   * para quem quiser o trajeto inteiro, não só a próxima parada.
+   */
+  private async recalcularEnotificarBestEffort(
+    trip: Trip,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    try {
+      const proximas = await this.computeProximasEtas(trip, actor);
+      const proxima = proximas[0];
+      if (!proxima) return;
+
+      const horario = proxima.etaPrevista.slice(11, 16);
+      const vinculos = await this.routesService.listStudents(trip.routeId, actor);
+
+      for (const vinculo of vinculos) {
+        if (
+          vinculo.paradaEmbarqueId !== proxima.routeStopId &&
+          vinculo.paradaDesembarqueId !== proxima.routeStopId
+        ) {
+          continue;
+        }
+        try {
+          const [contract, student] = await Promise.all([
+            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+            this.studentsService.findRawById(vinculo.studentId),
+          ]);
+          if (!student) continue;
+          const message = this.messagePersonalizationService.veiculoProximo(student.nome, horario);
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: contract.responsavelId,
+            companyId: contract.companyId,
+            tipo: NotificationEventType.VEICULO_PROXIMO,
+            titulo: message.titulo,
+            corpo: message.corpo,
+            dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao notificar responsável do vínculo ${vinculo.id} sobre novo ETA (rota ${trip.routeId}).`,
+          );
+          this.logger.warn(error instanceof Error ? error.message : String(error));
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Falha ao recalcular próximas ETAs da viagem ${trip.id} após ausência.`);
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
   }
 
   // ---------------------------------------------------------------------

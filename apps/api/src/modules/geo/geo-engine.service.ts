@@ -79,10 +79,17 @@ function bairroFromAddress(address: NominatimAddress | undefined): string | null
   return address?.suburb ?? address?.neighbourhood ?? null;
 }
 
+interface OsrmLeg {
+  distance: number;
+  duration: number;
+}
+
 interface OsrmRoute {
   distance: number;
   duration: number;
   geometry: unknown;
+  /** Uma perna por trecho entre pontos consecutivos — o OSRM já devolve isso, só não era repassado adiante até a tarefa #99. */
+  legs: OsrmLeg[];
 }
 
 interface OsrmRouteResponse {
@@ -214,6 +221,10 @@ export class GeoEngineService {
       distanciaMetros: route.distance,
       duracaoSegundos: route.duration,
       geometria: route.geometry,
+      pernas: route.legs.map((leg) => ({
+        distanciaMetros: leg.distance,
+        duracaoSegundos: leg.duration,
+      })),
     };
   }
 }
