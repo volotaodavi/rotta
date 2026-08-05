@@ -10,6 +10,7 @@ import type { AuthentiqueService } from "@/modules/authentique/authentique.servi
 import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
+import type { WalletService } from "@/modules/wallet/wallet.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Contract, TransportRequest } from "@prisma/client";
 
@@ -94,6 +95,7 @@ describe("ContractsService", () => {
   let messagePersonalizationService: jest.Mocked<
     Pick<MessagePersonalizationService, "novoContrato" | "contratoAssinado">
   >;
+  let walletService: jest.Mocked<Pick<WalletService, "registrarMensalidadePendente">>;
 
   beforeEach(() => {
     contractRepository = {
@@ -133,6 +135,9 @@ describe("ContractsService", () => {
       novoContrato: jest.fn().mockReturnValue({ titulo: "Novo contrato", corpo: "..." }),
       contratoAssinado: jest.fn().mockReturnValue({ titulo: "Contrato assinado", corpo: "..." }),
     };
+    walletService = {
+      registrarMensalidadePendente: jest.fn().mockResolvedValue(undefined),
+    };
 
     service = new ContractsService(
       contractRepository,
@@ -143,6 +148,7 @@ describe("ContractsService", () => {
       companiesService as unknown as CompaniesService,
       eventEmitter,
       messagePersonalizationService as unknown as MessagePersonalizationService,
+      walletService as unknown as WalletService,
     );
   });
 

@@ -42,6 +42,12 @@ export type VeiculoStackParamList = {
   EscolaMapa: { schoolId: string };
   EscolaRotasVinculadas: { schoolId: string };
   EscolaHorarios: { schoolId: string };
+  /**
+   * Carteira Rotta Pay do Motorista (Dossiê 26) — mesma decisão de
+   * aninhamento de `Escolas` acima: sem aba própria, acessada por um
+   * botão em `MeuVeiculoScreen`.
+   */
+  Carteira: undefined;
 };
 
 /**

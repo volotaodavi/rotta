@@ -108,6 +108,16 @@ export const envSchema = z.object({
   DIDIT_API_KEY: z.string().optional(),
   DIDIT_BASE_URL: z.string().url().optional(),
 
+  // Lytex (lytex.com.br) — provedora de pagamento parceira da Rotta Pay
+  // (Dossiê 26). Opcional: sem LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET,
+  // `RottaPayProviderService` recusa a transferência com um erro claro,
+  // nunca falha o boot. `LYTEX_BASE_URL` fica sem default (`.env.example`
+  // — o contrato real da API ainda não foi verificado nesta base de
+  // código, ver nota em `lytex.config.ts`).
+  LYTEX_CLIENT_ID: z.string().optional(),
+  LYTEX_CLIENT_SECRET: z.string().optional(),
+  LYTEX_BASE_URL: z.string().url().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

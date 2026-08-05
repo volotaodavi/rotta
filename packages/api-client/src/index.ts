@@ -18,4 +18,5 @@ export * from "./endpoints/schools";
 export * from "./endpoints/students";
 export * from "./endpoints/trips";
 export * from "./endpoints/vehicles";
+export * from "./endpoints/wallet";
 export * from "./http";

@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+
 import { ContractsController } from "./contracts.controller";
 import { ContractsService } from "./contracts.service";
 import {
@@ -25,6 +26,7 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { StudentsModule } from "@/modules/students/students.module";
+import { WalletModule } from "@/modules/wallet/wallet.module";
 
 /**
  * Módulo Marketplace (briefing "Marketplace") — descoberta/contratação
@@ -51,6 +53,11 @@ import { StudentsModule } from "@/modules/students/students.module";
  * `CONTRATO_ASSINADO`) é injetado sem import extra, já global em
  * `AppModule`. Nenhum ciclo, já que `CompaniesModule` não conhece
  * `MarketplaceModule`.
+ *
+ * Importa também `WalletModule` (Dossiê 26) — `tryActivateAfterBothSigned`
+ * chama `WalletService.registrarMensalidadePendente` best-effort na
+ * ativação, para a mensalidade do contrato aparecer como crédito
+ * pendente na carteira Rotta Pay da empresa.
  */
 @Module({
   imports: [
@@ -60,6 +67,7 @@ import { StudentsModule } from "@/modules/students/students.module";
     RottaAiModule,
     CompaniesModule,
     MessagePersonalizationModule,
+    WalletModule,
   ],
   controllers: [
     MarketplaceController,

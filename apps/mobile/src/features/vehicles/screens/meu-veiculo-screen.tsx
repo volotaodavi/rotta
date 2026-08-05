@@ -104,6 +104,11 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
           variant="secondary"
           onPress={() => navigation.navigate("Escolas")}
         />
+        <VehicleButton
+          label="Rotta Pay — minha carteira"
+          variant="secondary"
+          onPress={() => navigation.navigate("Carteira")}
+        />
       </View>
     </VehicleScreen>
   );

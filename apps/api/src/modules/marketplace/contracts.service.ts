@@ -9,6 +9,7 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType } from "@prisma/client";
 
+
 import { toContractResponseDto } from "./mappers/contract.mapper";
 import { CONTRACT_REPOSITORY, TRANSPORT_REQUEST_REPOSITORY } from "./marketplace.constants";
 
@@ -26,6 +27,7 @@ import { CompaniesService } from "@/modules/companies/companies.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
+import { WalletService } from "@/modules/wallet/wallet.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -63,6 +65,7 @@ export class ContractsService {
     private readonly companiesService: CompaniesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly walletService: WalletService,
   ) {}
 
   /** Best-effort — nunca bloqueia a emissão do evento de comunicação por causa de uma falha ao resolver `nomeFantasia`. */
@@ -254,6 +257,11 @@ export class ContractsService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+
+    // Best-effort, nunca bloqueia a ativação (Dossiê 26, Seção 6) — o
+    // crédito nasce PENDENTE (a receber, não sacável) até alguém
+    // confirmar o recebimento de verdade; ver `WalletService.registrarMensalidadePendente`.
+    await this.walletService.registrarMensalidadePendente(activated);
 
     const nomeEmpresa = await this.resolveNomeEmpresa(activated.companyId);
     const { titulo, corpo } = this.messagePersonalizationService.contratoAssinado(nomeEmpresa);

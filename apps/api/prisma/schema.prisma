@@ -429,6 +429,10 @@ model Company {
   notifications          Notification[]
   rotas                  Route[]
   viagens                Trip[]
+  /// Carteira Rotta Pay da empresa (Dossiê 26) — opcional porque só
+  /// passa a existir quando a primeira movimentação acontece
+  /// (`WalletService.getOrCreate`), nunca criada no cadastro da empresa.
+  wallet                 Wallet?
 
   @@index([status])
   @@index([tipo])
@@ -569,6 +573,15 @@ model User {
   viagensMotorista        Trip[]             @relation("TripMotorista")
   viagensMonitor          Trip[]             @relation("TripMonitor")
   eventosAlunoProcessados TripStudentEvent[] @relation("TripStudentEventProcessadoPor")
+
+  /// Relações do módulo Rotta Pay (Dossiê 26) — carteira própria quando
+  /// atua como Motorista (`Membership` com `role = MOTORISTA`), e as
+  /// transações/saques que este usuário solicitou/registrou (podendo ser
+  /// de QUALQUER carteira — Admin Rotta confirmando um crédito de uma
+  /// empresa, por exemplo, daí não ser o mesmo relacionamento de `walletMotorista`).
+  walletMotorista   Wallet?
+  transacoesCriadas WalletTransaction[] @relation("WalletTransactionCriadaPor")
+  saquesSolicitados WithdrawalRequest[] @relation("WithdrawalRequestSolicitadoPor")
 
   @@map("users")
 }
@@ -1359,8 +1372,12 @@ model Contract {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ratings     Rating[]
-  vinculoRota RouteStudent?
+  ratings            Rating[]
+  vinculoRota        RouteStudent?
+  /// Créditos de mensalidade gerados na carteira Rotta Pay da empresa a
+  /// partir deste contrato (Dossiê 26, Seção 6) — normalmente 1 (na
+  /// ativação), mas o modelo permite mais de um (ex. reajuste futuro).
+  transacoesCarteira WalletTransaction[]
 
   @@index([companyId, status])
   @@index([responsavelId])
@@ -1873,4 +1890,157 @@ model NotificationPreference {
   updatedAt DateTime @updatedAt
 
   @@map("notification_preferences")
+}
+
+// =============================================================================
+// Rotta Pay — Carteira e Pagamentos (Dossiê 26)
+// =============================================================================
+
+/// Dono da carteira — polimórfico por duas FKs opcionais e únicas
+/// (nunca as duas preenchidas ao mesmo tempo; validado em
+/// `WalletService`, não no banco) em vez de uma FK genérica
+/// `entidadeId`/`entidadeTipo` (padrão de `AuditLog`) porque aqui
+/// QUEREMOS a integridade referencial forte do Postgres — é dinheiro.
+enum WalletOwnerType {
+  EMPRESA
+  MOTORISTA
+}
+
+/// Tipo da movimentação no ledger (Dossiê 26, Seção 3) — o sinal
+/// (crédito/débito) vem do prefixo, nunca de um campo `sinal` solto.
+enum WalletTransactionType {
+  CREDITO_MENSALIDADE
+  CREDITO_AJUSTE
+  /// Devolução ao saldo disponível de um `DEBITO_SAQUE` cujo saque foi
+  /// rejeitado (Dossiê 26, Seção 3) — nunca edita a linha original,
+  /// sempre uma nova linha.
+  CREDITO_ESTORNO
+  DEBITO_SAQUE
+  DEBITO_TARIFA
+  DEBITO_AJUSTE
+}
+
+/// `PENDENTE` = aguardando confirmação (mensalidade a receber, saque em
+/// processamento) — nunca compõe `saldoDisponivelCentavos` enquanto
+/// nesse estado (ver `Wallet` e Dossiê 26, Seção 3).
+enum WalletTransactionStatus {
+  PENDENTE
+  CONCLUIDA
+  FALHOU
+}
+
+enum WithdrawalRequestStatus {
+  SOLICITADO
+  EM_PROCESSAMENTO
+  CONCLUIDO
+  REJEITADO
+}
+
+/// Carteira Rotta Pay (Dossiê 26) — uma por Empresa OU uma por
+/// Motorista, criada sob demanda na primeira movimentação
+/// (`WalletService.getOrCreate`). `saldoDisponivelCentavos` é o único
+/// valor sacável; `saldoPendenteCentavos` é dinheiro "a receber" (ainda
+/// não confirmado por ninguém) e NUNCA pode ser sacado.
+model Wallet {
+  id String @id @default(uuid()) @db.Uuid
+
+  ownerType WalletOwnerType
+
+  companyId String?  @unique @db.Uuid
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  motoristaId String? @unique @db.Uuid
+  motorista   User?   @relation(fields: [motoristaId], references: [id], onDelete: Cascade)
+
+  saldoDisponivelCentavos Int    @default(0)
+  saldoPendenteCentavos   Int    @default(0)
+  moeda                   String @default("BRL")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transactions       WalletTransaction[]
+  withdrawalRequests WithdrawalRequest[]
+
+  @@index([ownerType])
+  @@map("wallets")
+}
+
+/// Ledger append-only (Dossiê 26, Seção 3) — nunca UPDATE/DELETE via
+/// aplicação (mesmo princípio de `AuditLog`); uma correção é sempre uma
+/// NOVA linha (`CREDITO_AJUSTE`/`DEBITO_ESTORNO`), nunca editar uma
+/// existente. `saldoDisponivelAposCentavos` é o snapshot do saldo
+/// disponível logo após esta transação — permite auditar/reconstruir o
+/// histórico linha a linha sem depender só do valor atual em `Wallet`.
+model WalletTransaction {
+  id String @id @default(uuid()) @db.Uuid
+
+  walletId String @db.Uuid
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  tipo   WalletTransactionType
+  status WalletTransactionStatus @default(CONCLUIDA)
+
+  /// Sempre positivo — o sinal (crédito/débito) vem de `tipo`.
+  valorCentavos               Int
+  saldoDisponivelAposCentavos Int
+  descricao                   String
+
+  /// Presente quando esta transação veio de uma mensalidade de contrato
+  /// ativado (Dossiê 26, Seção 6) — `SetNull` porque o `Contract` pode,
+  /// em tese, ser removido por retenção de dados muito depois de o
+  /// ledger financeiro já existir; o registro financeiro nunca pode
+  /// sumir por causa disso.
+  contractId String?   @db.Uuid
+  contract   Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
+
+  withdrawalRequestId String?            @unique @db.Uuid
+  withdrawalRequest   WithdrawalRequest? @relation(fields: [withdrawalRequestId], references: [id], onDelete: SetNull)
+
+  /// `null` = evento automático do sistema (ex. crédito de mensalidade
+  /// na ativação do contrato); preenchido quando um humano agiu (Admin
+  /// Rotta confirmando um crédito pendente, por exemplo).
+  criadaPorUserId String? @db.Uuid
+  criadaPor       User?   @relation("WalletTransactionCriadaPor", fields: [criadaPorUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId, createdAt])
+  @@index([contractId])
+  @@map("wallet_transactions")
+}
+
+/// Solicitação de saque (Dossiê 26, Seção 3) — o valor já é debitado do
+/// `saldoDisponivelCentavos` da carteira no momento da solicitação (via
+/// a `WalletTransaction` vinculada, status `PENDENTE`), nunca só na
+/// conclusão — evita saque em dobro enquanto aguarda o provedor
+/// (`RottaPayProviderService`, stub honesto, Dossiê 26 Seção 4).
+model WithdrawalRequest {
+  id String @id @default(uuid()) @db.Uuid
+
+  walletId String @db.Uuid
+  wallet   Wallet @relation(fields: [walletId], references: [id], onDelete: Restrict)
+
+  valorCentavos Int
+  /// Chave PIX — padrão brasileiro de dado bancário, mais simples que
+  /// agência/conta (Dossiê 26, Seção 3).
+  chavePix      String
+  status        WithdrawalRequestStatus @default(SOLICITADO)
+
+  solicitadoPorUserId String @db.Uuid
+  solicitadoPor       User   @relation("WithdrawalRequestSolicitadoPor", fields: [solicitadoPorUserId], references: [id], onDelete: Restrict)
+
+  /// Id da transferência no provedor de pagamento parceiro real —
+  /// sempre `null` hoje (stub honesto, Dossiê 26 Seção 4).
+  providerReferencia String?
+  motivoRejeicao     String?
+  processadoEm       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transaction WalletTransaction?
+
+  @@index([walletId, status])
+  @@map("withdrawal_requests")
 }

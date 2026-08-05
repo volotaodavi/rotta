@@ -19,6 +19,7 @@ import emailConfig from "@/config/email.config";
 import { validate } from "@/config/env.validation";
 import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
+import lytexConfig from "@/config/lytex.config";
 import qstashConfig from "@/config/qstash.config";
 import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
@@ -55,6 +56,7 @@ import { SupportModule } from "@/modules/support/support.module";
 import { TripsModule } from "@/modules/trips/trips.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
+import { WalletModule } from "@/modules/wallet/wallet.module";
 
 @Module({
   imports: [
@@ -75,6 +77,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
         smsConfig,
         emailConfig,
         diditConfig,
+        lytexConfig,
       ],
     }),
 
@@ -101,6 +104,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     MonitorsModule,
     ParentsModule,
     StudentsModule,
+    WalletModule,
     MarketplaceModule,
     VehiclesModule,
     RoutesModule,
