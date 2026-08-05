@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 import { RouteStatus, SchoolShift } from "@prisma/client";
 
-
 import { RoutesService } from "../routes.service";
 
 import type { RouteStopRepository } from "../repositories/route-stop.repository";
@@ -13,6 +12,7 @@ import type { ContractsService } from "@/modules/marketplace/contracts.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { StudentsService } from "@/modules/students/students.service";
 import type { UsersService } from "@/modules/users/users.service";
+import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Contract, Route, RouteStop } from "@prisma/client";
 
@@ -96,6 +96,7 @@ describe("RoutesService", () => {
   let contractsService: jest.Mocked<ContractsService>;
   let studentsService: jest.Mocked<StudentsService>;
   let usersService: jest.Mocked<UsersService>;
+  let vehiclesService: jest.Mocked<Pick<VehiclesService, "findByIdOrThrow">>;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
 
@@ -139,6 +140,9 @@ describe("RoutesService", () => {
       findActiveMembership: jest.fn(),
       findById: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
+    vehiclesService = {
+      findByIdOrThrow: jest.fn(),
+    };
     messagePersonalizationService = {
       motoristaAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       monitorAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
@@ -154,6 +158,7 @@ describe("RoutesService", () => {
       contractsService,
       studentsService,
       usersService,
+      vehiclesService as unknown as VehiclesService,
       eventEmitter,
       messagePersonalizationService,
     );
@@ -191,6 +196,52 @@ describe("RoutesService", () => {
         ),
       ).rejects.toThrow(BadRequestException);
       expect(routeRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("permite veiculoPadraoId em create — nenhum aluno vinculado ainda (capacidade sempre satisfeita)", async () => {
+      vehiclesService.findByIdOrThrow.mockResolvedValue({
+        capacidadePassageiros: 4,
+      } as never);
+      routeRepository.create.mockResolvedValue(buildRoute({ veiculoPadraoId: "veiculo-1" }));
+
+      await service.create(
+        {
+          nome: "Rota Manhã",
+          turno: SchoolShift.MANHA,
+          diasSemana: ["SEGUNDA"] as never,
+          veiculoPadraoId: "veiculo-1",
+        },
+        empresaActor,
+        {},
+      );
+
+      expect(routeRepository.create).toHaveBeenCalled();
+    });
+  });
+
+  describe("update — ROT-06/RN-CAP-01 (capacidade do veículo substituto)", () => {
+    it("rejeita quando a capacidade do veículo é menor que o número de alunos ativos vinculados", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      routeStudentRepository.listByRoute.mockResolvedValue(
+        Array.from({ length: 15 }, (_, i) => ({ id: `vinculo-${i}` }) as never),
+      );
+      vehiclesService.findByIdOrThrow.mockResolvedValue({ capacidadePassageiros: 12 } as never);
+
+      await expect(
+        service.update("route-1", { veiculoPadraoId: "veiculo-pequeno" }, empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(routeRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("permite quando a capacidade do veículo é suficiente", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      routeStudentRepository.listByRoute.mockResolvedValue([{ id: "vinculo-1" } as never]);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({ capacidadePassageiros: 12 } as never);
+      routeRepository.update.mockResolvedValue(buildRoute({ veiculoPadraoId: "veiculo-grande" }));
+
+      await service.update("route-1", { veiculoPadraoId: "veiculo-grande" }, empresaActor, {});
+
+      expect(routeRepository.update).toHaveBeenCalled();
     });
   });
 

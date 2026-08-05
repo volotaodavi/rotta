@@ -70,6 +70,21 @@ export interface CreateTripStudentEventInput {
   motivoAusencia?: string;
 }
 
+export interface SubstituirMotoristaInput {
+  motoristaId: string;
+  motivo?: string;
+}
+
+export interface SubstituirVeiculoInput {
+  veiculoId: string;
+  motivo?: string;
+}
+
+export interface SubstituirMonitorInput {
+  monitorId?: string | null;
+  motivo?: string;
+}
+
 export interface TripStudentEvent {
   id: string;
   tripId: string;
@@ -98,6 +113,32 @@ export function createTripsEndpoints(apiClient: ApiClient) {
 
     cancel: async (id: string): Promise<Trip> =>
       (await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/cancel`, { method: "PATCH" })).data,
+
+    // --- Substituição pontual do dia (ROT-05/06, tarefa #102) ---
+
+    substituirMotorista: async (id: string, input: SubstituirMotoristaInput): Promise<Trip> =>
+      (
+        await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/substituir-motorista`, {
+          method: "PATCH",
+          body: input,
+        })
+      ).data,
+
+    substituirVeiculo: async (id: string, input: SubstituirVeiculoInput): Promise<Trip> =>
+      (
+        await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/substituir-veiculo`, {
+          method: "PATCH",
+          body: input,
+        })
+      ).data,
+
+    substituirMonitor: async (id: string, input: SubstituirMonitorInput = {}): Promise<Trip> =>
+      (
+        await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/substituir-monitor`, {
+          method: "PATCH",
+          body: input,
+        })
+      ).data,
 
     listByRoute: async (routeId: string, page = 1, pageSize = 20): Promise<ListTripsResult> =>
       (

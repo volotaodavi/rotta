@@ -13,6 +13,10 @@ export interface UpdateTripData {
   status?: TripStatus;
   finalizadaEm?: Date | null;
   canceladaEm?: Date | null;
+  /** Substituição pontual do dia (`ROT-05`/`ROT-06`, tarefa #102) — nunca sobrescreve `Route.motoristaPadraoId`/`veiculoPadraoId`/`monitorPadraoId`. */
+  veiculoId?: string;
+  motoristaId?: string;
+  monitorId?: string | null;
 }
 
 /** Linha enriquecida para o mapa/localizador (GPS-01/03/06) — junta o veículo (posição) e nomes de motorista/rota. */

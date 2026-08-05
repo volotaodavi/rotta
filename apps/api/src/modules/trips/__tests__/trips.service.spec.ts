@@ -1,6 +1,5 @@
-import { BadRequestException, ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 import { TripStatus } from "@prisma/client";
-
 
 import { TripsService } from "../trips.service";
 
@@ -92,6 +91,8 @@ describe("TripsService", () => {
       findByIdOrThrow: jest.fn(),
       listStudents: jest.fn(),
       findActiveRouteIdsForStudent: jest.fn(),
+      notifyActiveStudents: jest.fn(),
+      assertVeiculoCapacidade: jest.fn(),
     } as unknown as jest.Mocked<RoutesService>;
     vehiclesService = {
       findByIdOrThrow: jest.fn(),
@@ -117,6 +118,9 @@ describe("TripsService", () => {
       alunoEmbarcou: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       alunoDesembarcou: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       alunoAusente: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      motoristaAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      monitorAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      veiculoAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
 
     routesService.listStudents.mockResolvedValue([]);
@@ -316,6 +320,148 @@ describe("TripsService", () => {
         ),
       ).rejects.toThrow(ConflictException);
       expect(studentEventRepository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("substituirMotorista/substituirVeiculo/substituirMonitor (ROT-05/06, tarefa #102)", () => {
+    const activeTrip = buildTrip();
+
+    beforeEach(() => {
+      tripRepository.findById.mockResolvedValue(activeTrip);
+    });
+
+    it("rejeita quando quem chama não é gestor/empresa/admin (ex. o próprio motorista)", async () => {
+      await expect(
+        service.substituirMotorista("trip-1", { motoristaId: "motorista-2" }, motoristaActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+      expect(tripRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("rejeita substituir motorista/veículo/monitor de uma viagem que não está em andamento", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ status: TripStatus.FINALIZADA }));
+
+      await expect(
+        service.substituirMotorista("trip-1", { motoristaId: "motorista-2" }, empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("rejeita motoristaId sem vínculo ativo de Motorista na empresa", async () => {
+      usersService.findActiveMembership.mockResolvedValue(null);
+
+      await expect(
+        service.substituirMotorista("trip-1", { motoristaId: "motorista-2" }, empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(tripRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("substitui o motorista, atualiza só a Trip e notifica os alunos ativos", async () => {
+      usersService.findActiveMembership.mockResolvedValue({ role: Role.MOTORISTA } as never);
+      usersService.findById.mockResolvedValue({ nome: "João" } as never);
+      tripRepository.update.mockResolvedValue(buildTrip({ motoristaId: "motorista-2" }));
+
+      const result = await service.substituirMotorista(
+        "trip-1",
+        { motoristaId: "motorista-2" },
+        empresaActor,
+        {},
+      );
+
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", { motoristaId: "motorista-2" });
+      expect(routesService.notifyActiveStudents).toHaveBeenCalledWith(
+        "route-1",
+        expect.any(Function),
+        "MOTORISTA_ALTERADO",
+        empresaActor,
+      );
+      expect(result.motoristaId).toBe("motorista-2");
+    });
+
+    it("é um no-op (sem update/auditoria/notificação) quando o motoristaId é o mesmo já em uso", async () => {
+      await service.substituirMotorista(
+        "trip-1",
+        { motoristaId: activeTrip.motoristaId },
+        empresaActor,
+        {},
+      );
+
+      expect(tripRepository.update).not.toHaveBeenCalled();
+      expect(routesService.notifyActiveStudents).not.toHaveBeenCalled();
+    });
+
+    it("rejeita substituir veículo sem capacidade suficiente (RN-CAP-01)", async () => {
+      routesService.assertVeiculoCapacidade.mockRejectedValue(
+        new BadRequestException("capacidade insuficiente"),
+      );
+
+      await expect(
+        service.substituirVeiculo("trip-1", { veiculoId: "vehicle-2" }, empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(tripRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("substitui o veículo, libera o anterior e ocupa o novo", async () => {
+      routesService.assertVeiculoCapacidade.mockResolvedValue(undefined);
+      tripRepository.update.mockResolvedValue(buildTrip({ veiculoId: "vehicle-2" }));
+      vehiclesService.findByIdOrThrow.mockResolvedValue({ placa: "ABC1D23" } as never);
+
+      const result = await service.substituirVeiculo(
+        "trip-1",
+        { veiculoId: "vehicle-2" },
+        empresaActor,
+        {},
+      );
+
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", { veiculoId: "vehicle-2" });
+      expect(vehiclesService.setCurrentTrip).toHaveBeenCalledWith("vehicle-1", null);
+      expect(vehiclesService.setCurrentTrip).toHaveBeenCalledWith("vehicle-2", "trip-1");
+      expect(routesService.notifyActiveStudents).toHaveBeenCalledWith(
+        "route-1",
+        expect.any(Function),
+        "VEICULO_ALTERADO",
+        empresaActor,
+      );
+      expect(result.veiculoId).toBe("vehicle-2");
+    });
+
+    it("rejeita monitorId sem vínculo ativo de Monitor na empresa", async () => {
+      usersService.findActiveMembership.mockResolvedValue(null);
+
+      await expect(
+        service.substituirMonitor("trip-1", { monitorId: "monitor-2" }, empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(tripRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("permite remover o monitor da viagem (monitorId ausente)", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ monitorId: "monitor-1" }));
+      tripRepository.update.mockResolvedValue(buildTrip({ monitorId: null }));
+
+      const result = await service.substituirMonitor("trip-1", {}, empresaActor, {});
+
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", { monitorId: null });
+      expect(result.monitorId).toBeNull();
+    });
+
+    it("substitui o monitor e notifica os alunos ativos", async () => {
+      usersService.findActiveMembership.mockResolvedValue({ role: Role.MONITOR } as never);
+      usersService.findById.mockResolvedValue({ nome: "Maria" } as never);
+      tripRepository.update.mockResolvedValue(buildTrip({ monitorId: "monitor-2" }));
+
+      const result = await service.substituirMonitor(
+        "trip-1",
+        { monitorId: "monitor-2" },
+        empresaActor,
+        {},
+      );
+
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", { monitorId: "monitor-2" });
+      expect(routesService.notifyActiveStudents).toHaveBeenCalledWith(
+        "route-1",
+        expect.any(Function),
+        "MONITOR_ALTERADO",
+        empresaActor,
+      );
+      expect(result.monitorId).toBe("monitor-2");
     });
   });
 });

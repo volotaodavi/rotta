@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { PrismaRouteStopRepository } from "./repositories/prisma-route-stop.repository";
 import { PrismaRouteStudentRepository } from "./repositories/prisma-route-student.repository";
 import { PrismaRouteRepository } from "./repositories/prisma-route.repository";
@@ -17,6 +16,7 @@ import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { UsersModule } from "@/modules/users/users.module";
+import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
 
 /**
  * Módulo Rotas (Dossiê 13, Seção 10 / Especificação Funcional Parte 4,
@@ -31,7 +31,9 @@ import { UsersModule } from "@/modules/users/users.module";
  * diretamente por `studentId`), `StudentsModule` (nome do aluno para o
  * Message Personalization AI), `UsersModule` (validar vínculo ativo de
  * Motorista/Monitor antes de definí-lo como padrão da rota, mesmo
- * princípio de `VehiclesService.assign`), `AuditModule` e
+ * princípio de `VehiclesService.assign`), `VehiclesModule`
+ * (`VehiclesService.findByIdOrThrow` para validar existência/capacidade
+ * do veículo padrão, `ROT-06`/`RN-CAP-01`, tarefa #102), `AuditModule` e
  * `MessagePersonalizationModule` (nunca `NotificationsModule` inteiro —
  * mesma justificativa de `marketplace.module.ts`). `EventEmitter2` é
  * injetado sem import extra (global em `AppModule`).
@@ -42,6 +44,7 @@ import { UsersModule } from "@/modules/users/users.module";
     MarketplaceModule,
     StudentsModule,
     UsersModule,
+    VehiclesModule,
     MessagePersonalizationModule,
   ],
   controllers: [RoutesController],

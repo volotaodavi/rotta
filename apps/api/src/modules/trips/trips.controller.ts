@@ -11,10 +11,12 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { CreateTripStudentEventDto } from "./dto/create-trip-student-event.dto";
 import { IngestPositionDto, IngestPositionsBatchDto } from "./dto/ingest-position.dto";
 import { StartTripDto } from "./dto/start-trip.dto";
+import { SubstituirMonitorDto } from "./dto/substituir-monitor.dto";
+import { SubstituirMotoristaDto } from "./dto/substituir-motorista.dto";
+import { SubstituirVeiculoDto } from "./dto/substituir-veiculo.dto";
 import { TripsService, type RequestMeta } from "./trips.service";
 
 import type { Request } from "express";
@@ -86,6 +88,42 @@ export class TripsController {
     @Req() req: Request,
   ) {
     return this.tripsService.cancel(id, actor, requestMeta(req));
+  }
+
+  // --- Substituição pontual do dia (ROT-05/06, tarefa #102) — só quem
+  // gerencia decide, nunca o próprio Motorista/Monitor. ---
+
+  @Patch(":id/substituir-motorista")
+  @Roles(...MANAGE_ROLES)
+  substituirMotorista(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SubstituirMotoristaDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tripsService.substituirMotorista(id, dto, actor, requestMeta(req));
+  }
+
+  @Patch(":id/substituir-veiculo")
+  @Roles(...MANAGE_ROLES)
+  substituirVeiculo(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SubstituirVeiculoDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tripsService.substituirVeiculo(id, dto, actor, requestMeta(req));
+  }
+
+  @Patch(":id/substituir-monitor")
+  @Roles(...MANAGE_ROLES)
+  substituirMonitor(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: SubstituirMonitorDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tripsService.substituirMonitor(id, dto, actor, requestMeta(req));
   }
 
   // --- Posições GPS (GPS-02/03/06) ---

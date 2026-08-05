@@ -10,7 +10,6 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Trip } from "@prisma/client";
 
-
 import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
 import { toTripPositionResponseDto } from "./mappers/trip-position.mapper";
 import { toTripStudentEventResponseDto } from "./mappers/trip-student-event.mapper";
@@ -25,6 +24,9 @@ import type { CreateTripStudentEventDto } from "./dto/create-trip-student-event.
 import type { IngestPositionDto, IngestPositionsBatchDto } from "./dto/ingest-position.dto";
 import type { MapVehicleResponseDto } from "./dto/map-vehicle-response.dto";
 import type { StartTripDto } from "./dto/start-trip.dto";
+import type { SubstituirMonitorDto } from "./dto/substituir-monitor.dto";
+import type { SubstituirMotoristaDto } from "./dto/substituir-motorista.dto";
+import type { SubstituirVeiculoDto } from "./dto/substituir-veiculo.dto";
 import type { TripPositionResponseDto } from "./dto/trip-position-response.dto";
 import type { ListTripsResponseDto, TripResponseDto } from "./dto/trip-response.dto";
 import type { TripStudentEventResponseDto } from "./dto/trip-student-event-response.dto";
@@ -65,12 +67,18 @@ function today(): Date {
  * APP MOBILE que ainda não existe; este backend já aceita lotes
  * atrasados via `capturadaEm` explícito, então o cliente mobile poderá
  * consumir este mesmo endpoint quando for implementado), checklist
- * manual EMBARCOU/AUSENTE/DESEMBARCOU. FORA DE ESCOPO (documentado, não
- * omitido): recálculo automático de rota por ausência (RN futura,
- * tarefa #99), notificação `VEICULO_PROXIMO` (exigiria rastrear "já
- * notificamos esta parada nesta viagem", um estado que não existe no
- * schema hoje) e `OCORRENCIA`/`EMERGENCIA` (já cobertas por
- * `VehicleOccurrence`, módulo Vehicles).
+ * manual EMBARCOU/AUSENTE/DESEMBARCOU e substituição PONTUAL ("só hoje")
+ * de motorista/veículo/monitor de uma viagem EM_ANDAMENTO
+ * (`substituirMotorista`/`substituirVeiculo`/`substituirMonitor`, tarefa
+ * #102) — grava só nas colunas da própria `Trip`, nunca no padrão da
+ * `Route` (esse fluxo é `RoutesService.update`), e reaproveita
+ * `RoutesService.notifyActiveStudents`/`assertVeiculoCapacidade` em vez
+ * de duplicar a lógica de notificação/validação de capacidade. FORA DE
+ * ESCOPO (documentado, não omitido): recálculo automático de rota por
+ * ausência (RN futura, tarefa #99), notificação `VEICULO_PROXIMO`
+ * (exigiria rastrear "já notificamos esta parada nesta viagem", um
+ * estado que não existe no schema hoje) e `OCORRENCIA`/`EMERGENCIA` (já
+ * cobertas por `VehicleOccurrence`, módulo Vehicles).
  */
 @Injectable()
 export class TripsService {
@@ -100,6 +108,7 @@ export class TripsService {
     entidadeId: string;
     acao: string;
     atorUserId: string;
+    dadosAntes?: Record<string, unknown>;
     dadosDepois?: Record<string, unknown>;
     ip?: string;
     userAgent?: string;
@@ -317,6 +326,180 @@ export class TripsService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+
+    return toTripResponseDto(updated);
+  }
+
+  // ---------------------------------------------------------------------
+  // Substituição pontual do dia (ROT-05/06, tarefa #102)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Só quem gerencia (Admin Rotta/Empresa/Gestor) decide uma substituição
+   * — nunca o próprio Motorista/Monitor, mesmo que operem a viagem
+   * (`assertCanOperateTrip` é sobre GPS/checklist, não sobre trocar quem
+   * está na viagem). Só é permitida com a viagem EM_ANDAMENTO: uma
+   * viagem que ainda não começou é resolvida por `start` (que já aceita
+   * `motoristaId`/`veiculoId`/`monitorId` explícitos), e uma já
+   * finalizada/cancelada não tem mais o que substituir.
+   */
+  private assertCanManageTrip(trip: Trip, actor: AuthenticatedUser): void {
+    const isManager =
+      actor.role === Role.ADMIN_ROTTA || actor.role === Role.EMPRESA || actor.role === Role.GESTOR;
+    if (!isManager) {
+      throw new ForbiddenException("Você não pode alterar motorista/veículo/monitor desta viagem.");
+    }
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException(
+        "Só é possível substituir motorista/veículo/monitor de uma viagem em andamento.",
+      );
+    }
+  }
+
+  async substituirMotorista(
+    id: string,
+    dto: SubstituirMotoristaDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    this.assertCanManageTrip(trip, actor);
+
+    if (dto.motoristaId === trip.motoristaId) {
+      return toTripResponseDto(trip);
+    }
+
+    const membership = await this.usersService.findActiveMembership(
+      dto.motoristaId,
+      trip.companyId,
+    );
+    if (!membership || (membership.role as Role) !== Role.MOTORISTA) {
+      throw new BadRequestException(
+        "motoristaId não possui vínculo ativo de Motorista nesta empresa.",
+      );
+    }
+
+    const updated = await this.tripRepository.update(id, { motoristaId: dto.motoristaId });
+
+    await this.recordAudit({
+      companyId: trip.companyId,
+      entidadeId: id,
+      acao: "MOTORISTA_SUBSTITUIDO",
+      atorUserId: actor.sub,
+      dadosDepois: { motoristaId: dto.motoristaId, motivo: dto.motivo },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    const motorista = await this.usersService.findById(dto.motoristaId);
+    if (motorista) {
+      await this.routesService.notifyActiveStudents(
+        trip.routeId,
+        (nomeAluno) =>
+          this.messagePersonalizationService.motoristaAlterado(nomeAluno, motorista.nome),
+        NotificationEventType.MOTORISTA_ALTERADO,
+        actor,
+      );
+    }
+
+    return toTripResponseDto(updated);
+  }
+
+  async substituirVeiculo(
+    id: string,
+    dto: SubstituirVeiculoDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    this.assertCanManageTrip(trip, actor);
+
+    if (dto.veiculoId === trip.veiculoId) {
+      return toTripResponseDto(trip);
+    }
+
+    // Mesma checagem de capacidade (RN-CAP-01) usada pela substituição
+    // PERMANENTE — `routeId` garante que a validação conta os alunos
+    // realmente vinculados à rota desta viagem.
+    await this.routesService.assertVeiculoCapacidade(dto.veiculoId, actor, trip.routeId);
+
+    const previousVeiculoId = trip.veiculoId;
+    const updated = await this.tripRepository.update(id, { veiculoId: dto.veiculoId });
+
+    // O veículo anterior deixa de estar "em viagem"; o novo passa a estar.
+    await this.vehiclesService.setCurrentTrip(previousVeiculoId, null);
+    await this.vehiclesService.setCurrentTrip(dto.veiculoId, id);
+
+    await this.recordAudit({
+      companyId: trip.companyId,
+      entidadeId: id,
+      acao: "VEICULO_SUBSTITUIDO",
+      atorUserId: actor.sub,
+      dadosAntes: { veiculoId: previousVeiculoId },
+      dadosDepois: { veiculoId: dto.veiculoId, motivo: dto.motivo },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    const veiculo = await this.vehiclesService.findByIdOrThrow(dto.veiculoId, actor);
+    await this.routesService.notifyActiveStudents(
+      trip.routeId,
+      (nomeAluno) => this.messagePersonalizationService.veiculoAlterado(nomeAluno, veiculo.placa),
+      NotificationEventType.VEICULO_ALTERADO,
+      actor,
+    );
+
+    return toTripResponseDto(updated);
+  }
+
+  async substituirMonitor(
+    id: string,
+    dto: SubstituirMonitorDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    this.assertCanManageTrip(trip, actor);
+
+    const monitorId = dto.monitorId ?? null;
+    if (monitorId === trip.monitorId) {
+      return toTripResponseDto(trip);
+    }
+
+    if (monitorId) {
+      const membership = await this.usersService.findActiveMembership(monitorId, trip.companyId);
+      if (!membership || (membership.role as Role) !== Role.MONITOR) {
+        throw new BadRequestException(
+          "monitorId não possui vínculo ativo de Monitor nesta empresa.",
+        );
+      }
+    }
+
+    const updated = await this.tripRepository.update(id, { monitorId });
+
+    await this.recordAudit({
+      companyId: trip.companyId,
+      entidadeId: id,
+      acao: "MONITOR_SUBSTITUIDO",
+      atorUserId: actor.sub,
+      dadosAntes: { monitorId: trip.monitorId },
+      dadosDepois: { monitorId, motivo: dto.motivo },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    if (monitorId) {
+      const monitor = await this.usersService.findById(monitorId);
+      if (monitor) {
+        await this.routesService.notifyActiveStudents(
+          trip.routeId,
+          (nomeAluno) =>
+            this.messagePersonalizationService.monitorAlterado(nomeAluno, monitor.nome),
+          NotificationEventType.MONITOR_ALTERADO,
+          actor,
+        );
+      }
+    }
 
     return toTripResponseDto(updated);
   }

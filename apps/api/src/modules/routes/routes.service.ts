@@ -9,7 +9,6 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Route, type RouteStop } from "@prisma/client";
 
-
 import { toRouteStopResponseDto } from "./mappers/route-stop.mapper";
 import { toRouteStudentResponseDto } from "./mappers/route-student.mapper";
 import { toListRoutesResponseDto, toRouteResponseDto } from "./mappers/route.mapper";
@@ -40,6 +39,7 @@ import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/co
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
+import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -55,15 +55,17 @@ export interface RequestMeta {
  * Communication Engine via `COMMUNICATION_REQUESTED_EVENT` (nunca
  * chama um canal diretamente).
  *
- * ESCOPO DESTA ENTREGA (ROT-01/02/04/07 + EMB-01 + RN-26): cadastro,
- * edição, listagem, paradas e vínculo de alunos. FORA DE ESCOPO (V2 no
- * próprio Dossiê 13/Especificação Funcional 18, não uma omissão desta
- * entrega): ROT-03 (duplicar rota), ROT-05/06 (histórico point-in-time
- * de substituição motorista/veículo — hoje a troca apenas sobrescreve
- * `motoristaPadraoId`/`veiculoPadraoId`, sem preservar quem era antes
- * fora do `AuditLog`), ROT-08 (otimização automática de trajeto),
- * calendário de feriados/recessos e escalas de substituto (tarefas
- * #101/#102 do board, ainda não iniciadas).
+ * ESCOPO DESTA ENTREGA (ROT-01/02/04/05/06/07 + EMB-01 + RN-26 +
+ * RN-CAP-01): cadastro, edição, listagem, paradas, vínculo de alunos e
+ * substituição PERMANENTE de motorista/veículo/monitor padrão (`update`,
+ * validando vínculo ativo do papel correto e capacidade do veículo —
+ * `assertValidDefaultResources`). A substituição PONTUAL ("só hoje", sem
+ * alterar o padrão da rota) vive em `TripsService.substituirMotorista`/
+ * `substituirVeiculo`/`substituirMonitor` (tarefa #102), que reaproveita
+ * `notifyActiveStudents` abaixo (por isso público, não `private`). FORA
+ * DE ESCOPO (V2 no próprio Dossiê 13/Especificação Funcional 18, não uma
+ * omissão desta entrega): ROT-03 (duplicar rota), ROT-08 (otimização
+ * automática de trajeto) e calendário de feriados/recessos (tarefa #101).
  */
 @Injectable()
 export class RoutesService {
@@ -78,6 +80,7 @@ export class RoutesService {
     private readonly contractsService: ContractsService,
     private readonly studentsService: StudentsService,
     private readonly usersService: UsersService,
+    private readonly vehiclesService: VehiclesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
   ) {}
@@ -122,7 +125,13 @@ export class RoutesService {
   }
 
   /** "Motorista X passou a ser o responsável pelo transporte de Y" — um evento por aluno ATIVO na rota. */
-  private async notifyActiveStudents(
+  /**
+   * Público (não `private`) porque `TripsService.substituirMotorista`/
+   * `substituirVeiculo`/`substituirMonitor` (tarefa #102, substituição
+   * PONTUAL) reaproveita este mesmo disparo de notificação — nunca
+   * duplicado ali.
+   */
+  async notifyActiveStudents(
     routeId: string,
     build: (studentNome: string) => { titulo: string; corpo: string } | null,
     eventType: NotificationEventType,
@@ -194,10 +203,16 @@ export class RoutesService {
    * `motoristaPadraoId`/`monitorPadraoId` precisam ter vínculo ATIVO do
    * papel correto com a empresa (mesmo princípio de
    * `VehiclesService.assign`) — nunca aceita qualquer UUID de usuário.
+   * `veiculoPadraoId` precisa existir/pertencer à empresa e ter
+   * capacidade ≥ alunos ativos já vinculados à rota (`ROT-06`,
+   * `RN-CAP-01`) — `routeId` só é conhecido em `update` (em `create` a
+   * rota ainda não tem nenhum aluno vinculado, então a checagem é
+   * sempre satisfeita).
    */
   private async assertValidDefaultResources(
     dto: Partial<CreateRouteDto>,
     actor: AuthenticatedUser,
+    routeId?: string,
   ): Promise<void> {
     const companyId = actor.tenantId!;
     if (dto.motoristaPadraoId) {
@@ -221,6 +236,26 @@ export class RoutesService {
           "monitorPadraoId não possui vínculo ativo de Monitor nesta empresa.",
         );
       }
+    }
+    if (dto.veiculoPadraoId) {
+      await this.assertVeiculoCapacidade(dto.veiculoPadraoId, actor, routeId);
+    }
+  }
+
+  /** Compartilhado com `TripsService.substituirVeiculo` (tarefa #102) via chamada direta — ver nota ali. */
+  async assertVeiculoCapacidade(
+    veiculoId: string,
+    actor: AuthenticatedUser,
+    routeId?: string,
+  ): Promise<void> {
+    const veiculo = await this.vehiclesService.findByIdOrThrow(veiculoId, actor);
+    const alunosAtivos = routeId
+      ? (await this.routeStudentRepository.listByRoute(routeId)).length
+      : 0;
+    if (veiculo.capacidadePassageiros < alunosAtivos) {
+      throw new BadRequestException(
+        `Este veículo tem capacidade para ${veiculo.capacidadePassageiros} alunos, mas a rota tem ${alunosAtivos} vinculados. Escolha outro veículo ou ajuste a rota.`,
+      );
     }
   }
 
@@ -249,7 +284,7 @@ export class RoutesService {
     meta: RequestMeta,
   ): Promise<RouteResponseDto> {
     const existing = await this.fetchOrThrow(id, actor);
-    await this.assertValidDefaultResources(dto, actor);
+    await this.assertValidDefaultResources(dto, actor, id);
 
     const updated = await this.routeRepository.update(id, {
       nome: dto.nome,
