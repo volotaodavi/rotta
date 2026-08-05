@@ -39,7 +39,7 @@ apps/api/prisma/migrations/dev/
 *.log
 npm-debug.log*
 pnpm-debug.log*
-logs/
+/logs/
 
 # Editor / OS
 .DS_Store
