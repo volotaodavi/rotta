@@ -93,6 +93,27 @@ jobs:
       - name: Test
         run: pnpm turbo run test --filter="...[origin/main]"
 
+      # Testes E2E do @rotta/api (test/*.e2e-spec.ts) rodam à parte do
+      # "Test" acima: só eles sobem o Nest completo contra um Postgres
+      # de verdade, migrado e com o catálogo de planos semeado — a
+      # única forma de pegar em CI um bug como "cadastro de Empresa
+      # falha porque o plano STARTER nunca foi inserido" (encontrado em
+      # produção, não em CI, exatamente porque esta etapa nunca existiu
+      # até agora).
+      - name: Preparar banco de testes E2E (@rotta/api)
+        env:
+          DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
+        run: |
+          pnpm --filter=@rotta/api prisma:generate
+          pnpm --filter=@rotta/api prisma:migrate:deploy
+          pnpm --filter=@rotta/api prisma:seed
+
+      - name: Testes E2E (@rotta/api)
+        env:
+          TEST_DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
+          TEST_REDIS_URL: "redis://localhost:6379"
+        run: pnpm --filter=@rotta/api test:e2e
+
   build:
     name: Build
     runs-on: ubuntu-latest

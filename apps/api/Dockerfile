@@ -42,4 +42,9 @@ EXPOSE 3333
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3333/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-CMD ["node", "apps/api/dist/main.js"]
+# Migra o schema e garante o catalogo de planos (prisma/seed.ts — upsert
+# idempotente do plano STARTER) ANTES de subir o processo. Sem o seed,
+# todo cadastro de Empresa falha com "Plano STARTER nao encontrado"
+# (CompaniesService.resolvePlanOrThrow) — bug real encontrado em
+# producao porque só a migration rodava, nunca o seed.
+CMD ["sh", "-c", "pnpm --filter=@rotta/api prisma:migrate:deploy && pnpm --filter=@rotta/api prisma:seed && node apps/api/dist/main.js"]

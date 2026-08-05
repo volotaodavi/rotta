@@ -7,6 +7,7 @@ import {
   IsLatitude,
   IsLongitude,
   IsNotEmpty,
+  IsNotEmptyObject,
   IsOptional,
   IsString,
   Length,
@@ -17,7 +18,6 @@ import {
 import { CreateCompanyAdminDto } from "./create-company-admin.dto";
 
 import { IsBrazilianPhone, IsCep, IsCpfOrCnpj } from "@/common/validators";
-
 
 /** Cadastro de Empresa (Dossiê 16, `EMP-01`) — sempre cria o tenant + o primeiro usuário administrador. */
 export class CreateCompanyDto {
@@ -131,6 +131,15 @@ export class CreateCompanyDto {
   planCode?: string;
 
   @ApiProperty({ type: CreateCompanyAdminDto })
+  // `@ValidateNested()` sozinho NAO rejeita `administrador` ausente —
+  // so valida o conteudo QUANDO o valor esta presente (comportamento
+  // documentado do class-validator). Sem `@IsNotEmptyObject()`, uma
+  // requisicao sem este campo passava a validacao com
+  // `dto.administrador === undefined` e so quebrava depois, dentro de
+  // `CompaniesService.create` ("Cannot read properties of undefined
+  // (reading 'cpf')"), como um 500 cru em vez de um 400 claro — bug
+  // real encontrado testando o endpoint em producao.
+  @IsNotEmptyObject()
   @ValidateNested()
   @Type(() => CreateCompanyAdminDto)
   administrador!: CreateCompanyAdminDto;

@@ -10,7 +10,6 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
-
 /**
  * E2E do módulo Empresas (Dossiê 16) — sobe a aplicação Nest completa
  * (guards/interceptors/filtros globais reais) contra o Postgres de
@@ -131,6 +130,20 @@ describe("Companies (e2e)", () => {
         .post("/v1/companies")
         .set("Authorization", `Bearer ${adminToken}`)
         .send(validCompanyPayload({ cpfCnpj: "11111111111111" }))
+        .expect(400);
+    });
+
+    it("rejeita payload sem administrador (400, nunca um 500 cru)", async () => {
+      // Regressão: `@ValidateNested()` sozinho não rejeita um campo
+      // ausente — sem `@IsNotEmptyObject()` em `administrador`
+      // (`CreateCompanyDto`), este payload chegava intacto a
+      // `CompaniesService.create` e quebrava com "Cannot read
+      // properties of undefined (reading 'cpf')", um 500 cru em vez de
+      // um erro de validação claro (bug real encontrado em produção).
+      await request(app.getHttpServer())
+        .post("/v1/companies")
+        .set("Authorization", `Bearer ${adminToken}`)
+        .send(validCompanyPayload({ administrador: undefined }))
         .expect(400);
     });
 
