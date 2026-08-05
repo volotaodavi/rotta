@@ -4,6 +4,7 @@ import { cn } from "../../utils/cn";
 
 /** Typography — Dossiê 25 §2.14. Nenhuma tela usa `font-size`/`font-weight` inline; sempre este componente. */
 export type TypographyVariant =
+  | "hero"
   | "display"
   | "headline"
   | "title"
@@ -23,6 +24,8 @@ export interface TypographyProps {
 }
 
 const VARIANT_CLASSES: Record<TypographyVariant, string> = {
+  /** Só para o headline principal da Landing Page (Dossiê 26 — reformulação Uber/AbacatePay) — nunca usado fora de uma hero. */
+  hero: "text-[44px] leading-[46px] tracking-tight font-black sm:text-[64px] sm:leading-[64px] lg:text-[76px] lg:leading-[76px]",
   display: "text-[40px] leading-[48px] font-bold",
   headline: "text-[32px] leading-[40px] font-bold",
   title: "text-2xl leading-8 font-semibold",
@@ -35,6 +38,7 @@ const VARIANT_CLASSES: Record<TypographyVariant, string> = {
 };
 
 const DEFAULT_ELEMENT: Record<TypographyVariant, ElementType> = {
+  hero: "h1",
   display: "h1",
   headline: "h1",
   title: "h2",

@@ -177,8 +177,8 @@ Componentes de responsabilidade única, sem partes internas com estado próprio 
 ### 2.14 Typography
 
 - **Camada**: átomo · `atoms/Typography/`
-- **Anatomia**: componente de texto puro, sem contêiner visual — um wrapper tipado sobre os 9 tokens da escala oficial (Dossiê 24 §4.4.2).
-- **API conceitual**: `variant: "display" | "headline" | "title" | "subtitle" | "body" | "bodySmall" | "caption" | "overline" | "button"`, `color?: token` (por padrão `Text`), `as?` (web: elemento HTML semântico a renderizar — `h1`-`h6`/`p`/`span`; native: sempre `Text` do RN com `accessibilityRole` correspondente), `numberOfLines?` (truncamento com reticências).
+- **Anatomia**: componente de texto puro, sem contêiner visual — um wrapper tipado sobre os 9 tokens da escala oficial (Dossiê 24 §4.4.2) mais `hero` (Dossiê 26 — headline gigante exclusivo da Landing Page, nunca usado em telas de produto).
+- **API conceitual**: `variant: "hero" | "display" | "headline" | "title" | "subtitle" | "body" | "bodySmall" | "caption" | "overline" | "button"`, `color?: token` (por padrão `Text`), `as?` (web: elemento HTML semântico a renderizar — `h1`-`h6`/`p`/`span`; native: sempre `Text` do RN com `accessibilityRole` correspondente), `numberOfLines?` (truncamento com reticências).
 - **Regra inegociável**: nenhuma tela usa `font-size`/`fontWeight` inline — toda apresentação de texto passa por este componente (Dossiê 24 §4.4.2, "hierarquia nunca por cor" se estende a "nunca por CSS solto").
 
 ---
