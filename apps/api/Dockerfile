@@ -8,7 +8,7 @@
 #
 # Build:  docker build -f apps/api/Dockerfile -t rotta/api .
 
-FROM node:20.11.0-slim AS base
+FROM node:22.11.0-slim AS base
 RUN corepack enable
 
 # ---------------------------------------------------------------------------
