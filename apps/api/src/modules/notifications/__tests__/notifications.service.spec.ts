@@ -10,10 +10,10 @@ import type { NotificationPriorityClassifierService } from "../notification-prio
 import type { NotificationDeliveryAttemptRepository } from "../repositories/notification-delivery-attempt.repository";
 import type { NotificationPreferenceRepository } from "../repositories/notification-preference.repository";
 import type { NotificationRepository } from "../repositories/notification.repository";
+import type { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { Notification, NotificationPreference } from "@prisma/client";
-import type { Queue } from "bullmq";
 
 function buildNotification(overrides: Partial<Notification> = {}): Notification {
   return {
@@ -52,8 +52,11 @@ function buildPreference(overrides: Partial<NotificationPreference> = {}): Notif
   } as NotificationPreference;
 }
 
-function buildQueue(): jest.Mocked<Queue<never>> {
-  return { add: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<Queue<never>>;
+/** Extrai a `flowControlKey` (equivalente à antiga fila BullMQ) de uma chamada de `publishJSON`. */
+function flowControlKeysCalled(
+  qstashPublisher: jest.Mocked<QstashPublisherService>,
+): (string | undefined)[] {
+  return qstashPublisher.publishJSON.mock.calls.map((call) => call[2]?.flowControlKey);
 }
 
 describe("NotificationsService", () => {
@@ -65,11 +68,7 @@ describe("NotificationsService", () => {
   let channelRegistry: jest.Mocked<Pick<ChannelRegistryService, "getSender">>;
   let companiesService: jest.Mocked<Pick<CompaniesService, "getEnabledChannels">>;
   let auditLogService: jest.Mocked<Pick<AuditLogService, "record">>;
-  let pushQueue: jest.Mocked<Queue<never>>;
-  let whatsappQueue: jest.Mocked<Queue<never>>;
-  let smsQueue: jest.Mocked<Queue<never>>;
-  let emailQueue: jest.Mocked<Queue<never>>;
-  let criticalQueue: jest.Mocked<Queue<never>>;
+  let qstashPublisher: jest.Mocked<QstashPublisherService>;
   let inAppSender: jest.Mocked<ChannelSender>;
   let service: NotificationsService;
 
@@ -107,11 +106,10 @@ describe("NotificationsService", () => {
     channelRegistry = { getSender: jest.fn().mockReturnValue(inAppSender) };
     companiesService = { getEnabledChannels: jest.fn() };
     auditLogService = { record: jest.fn().mockResolvedValue(undefined) };
-    pushQueue = buildQueue();
-    whatsappQueue = buildQueue();
-    smsQueue = buildQueue();
-    emailQueue = buildQueue();
-    criticalQueue = buildQueue();
+    qstashPublisher = {
+      publishJSON: jest.fn().mockResolvedValue("message-1"),
+      publishBatchJSON: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<QstashPublisherService>;
 
     notificationRepository.create.mockImplementation((data) =>
       Promise.resolve(buildNotification({ ...data } as Partial<Notification>)),
@@ -128,11 +126,7 @@ describe("NotificationsService", () => {
       channelRegistry as unknown as ChannelRegistryService,
       companiesService as unknown as CompaniesService,
       auditLogService as unknown as AuditLogService,
-      pushQueue,
-      whatsappQueue,
-      smsQueue,
-      emailQueue,
-      criticalQueue,
+      qstashPublisher,
     );
   });
 
@@ -203,7 +197,7 @@ describe("NotificationsService", () => {
 
       await service.notify(baseInput());
 
-      expect(pushQueue.add).not.toHaveBeenCalled();
+      expect(qstashPublisher.publishJSON).not.toHaveBeenCalled();
     });
 
     it("bloqueia um canal não habilitado pela EMPRESA quando há companyId", async () => {
@@ -214,7 +208,7 @@ describe("NotificationsService", () => {
       await service.notify(baseInput({ companyId: "company-1" }));
 
       expect(companiesService.getEnabledChannels).toHaveBeenCalledWith("company-1");
-      expect(pushQueue.add).not.toHaveBeenCalled();
+      expect(qstashPublisher.publishJSON).not.toHaveBeenCalled();
     });
 
     it("nunca consulta a empresa quando a notificação não tem companyId", async () => {
@@ -224,7 +218,7 @@ describe("NotificationsService", () => {
       await service.notify(baseInput());
 
       expect(companiesService.getEnabledChannels).not.toHaveBeenCalled();
-      expect(pushQueue.add).toHaveBeenCalled();
+      expect(qstashPublisher.publishJSON).toHaveBeenCalled();
     });
 
     it("Quiet Hours silencia canais externos mas nunca o IN_APP", async () => {
@@ -235,7 +229,7 @@ describe("NotificationsService", () => {
 
       await service.notify(baseInput());
 
-      expect(pushQueue.add).not.toHaveBeenCalled();
+      expect(qstashPublisher.publishJSON).not.toHaveBeenCalled();
       expect(notificationRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ canaisEscolhidos: [CommunicationChannel.IN_APP] }),
       );
@@ -249,12 +243,12 @@ describe("NotificationsService", () => {
 
       await service.notify(baseInput({ prioridade: NotificationPriority.EMERGENCIA }));
 
-      expect(criticalQueue.add).toHaveBeenCalled();
+      expect(flowControlKeysCalled(qstashPublisher)).toContain("notifications-critical");
     });
   });
 
   describe("dispatchChannel", () => {
-    it("IN_APP é resolvido de forma síncrona (nunca enfileirado)", async () => {
+    it("IN_APP é resolvido de forma síncrona (nunca publicado via QStash)", async () => {
       preferenceRepository.findByUser.mockResolvedValue(null);
       channelSelector.selectChannels.mockReturnValue([]);
 
@@ -265,31 +259,32 @@ describe("NotificationsService", () => {
         "attempt-1",
         expect.objectContaining({ status: "ENTREGUE" }),
       );
-      expect(pushQueue.add).not.toHaveBeenCalled();
+      expect(qstashPublisher.publishJSON).not.toHaveBeenCalled();
     });
 
-    it("canais externos são enfileirados na fila específica do canal (não EMERGENCIA)", async () => {
+    it("canais externos são publicados com a flowControlKey específica do canal (não EMERGENCIA)", async () => {
       preferenceRepository.findByUser.mockResolvedValue(buildPreference());
       channelSelector.selectChannels.mockReturnValue([CommunicationChannel.WHATSAPP]);
 
       await service.notify(baseInput());
 
-      expect(whatsappQueue.add).toHaveBeenCalledWith(
-        "whatsapp",
+      expect(qstashPublisher.publishJSON).toHaveBeenCalledWith(
+        "notifications/deliver",
         expect.objectContaining({ canal: CommunicationChannel.WHATSAPP }),
-        expect.any(Object),
+        expect.objectContaining({ flowControlKey: "notifications-whatsapp" }),
       );
-      expect(criticalQueue.add).not.toHaveBeenCalled();
+      expect(flowControlKeysCalled(qstashPublisher)).not.toContain("notifications-critical");
     });
 
-    it("EMERGENCIA sempre vai para a fila crítica, mesmo o canal tendo fila própria", async () => {
+    it("EMERGENCIA sempre publica com a flowControlKey crítica, mesmo o canal tendo a sua própria", async () => {
       preferenceRepository.findByUser.mockResolvedValue(buildPreference());
       channelSelector.selectChannels.mockReturnValue([CommunicationChannel.SMS]);
 
       await service.notify(baseInput({ prioridade: NotificationPriority.EMERGENCIA }));
 
-      expect(criticalQueue.add).toHaveBeenCalled();
-      expect(smsQueue.add).not.toHaveBeenCalled();
+      const chaves = flowControlKeysCalled(qstashPublisher);
+      expect(chaves).toContain("notifications-critical");
+      expect(chaves).not.toContain("notifications-sms");
     });
   });
 
@@ -376,7 +371,11 @@ describe("NotificationsService", () => {
         "notification-1",
         CommunicationChannel.WHATSAPP,
       );
-      expect(whatsappQueue.add).toHaveBeenCalled();
+      expect(qstashPublisher.publishJSON).toHaveBeenCalledWith(
+        "notifications/deliver",
+        expect.objectContaining({ canal: CommunicationChannel.WHATSAPP }),
+        expect.objectContaining({ flowControlKey: "notifications-whatsapp" }),
+      );
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ acao: "NOTIFICATION_CHANNEL_ESCALATED" }),
       );
@@ -392,7 +391,7 @@ describe("NotificationsService", () => {
       notificationRepository.findByIdInternal.mockResolvedValue(notificationWhats);
       notificationRepository.addChannel.mockResolvedValue(notificationWhats);
       await service.escalateToFallback("notification-1", CommunicationChannel.WHATSAPP);
-      expect(smsQueue.add).toHaveBeenCalled();
+      expect(flowControlKeysCalled(qstashPublisher)).toContain("notifications-sms");
 
       const notificationSms = buildNotification({
         prioridade: NotificationPriority.CRITICA,
@@ -401,7 +400,7 @@ describe("NotificationsService", () => {
       notificationRepository.findByIdInternal.mockResolvedValue(notificationSms);
       notificationRepository.addChannel.mockResolvedValue(notificationSms);
       await service.escalateToFallback("notification-1", CommunicationChannel.SMS);
-      expect(emailQueue.add).toHaveBeenCalled();
+      expect(flowControlKeysCalled(qstashPublisher)).toContain("notifications-email");
     });
 
     it("escalateToFallback nunca falha quando a auditoria de escalonamento falha", async () => {

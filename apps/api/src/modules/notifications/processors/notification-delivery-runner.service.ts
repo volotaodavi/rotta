@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { NotificationDeliveryStatus } from "@prisma/client";
-import { type Job, UnrecoverableError } from "bullmq";
 
 import { ChannelRegistryService } from "../channels/channel-registry.service";
 import {
@@ -13,28 +12,32 @@ import type { ChannelDeliveryJobData } from "./channel-delivery-job";
 import type { NotificationDeliveryAttemptRepository } from "../repositories/notification-delivery-attempt.repository";
 import type { NotificationRepository } from "../repositories/notification.repository";
 
+import { PermanentDeliveryError } from "@/infra/queue/qstash/permanent-delivery-error";
+
 /**
- * Lógica de entrega compartilhada pelos 5 processors (um por fila de
- * `QUEUE_NAMES`) — cada processor é uma classe `@Processor` distinta
- * (exigência do BullMQ, uma `WorkerHost` por fila), mas todas delegam a
- * este único serviço para nunca duplicar "carregar notificação, resolver
- * sender, atualizar `NotificationDeliveryAttempt`".
+ * Lógica de entrega compartilhada por todo job de canal externo
+ * (Push/WhatsApp/SMS/E-mail/Crítica) — chamada por
+ * `NotificationDeliveryController.deliver` (o endpoint HTTP que o
+ * QStash invoca, Dossiê 14), nunca diretamente por outro módulo.
  *
- * `NotImplementedException` (canal ainda em stub honesto — Push/
- * WhatsApp/SMS/E-mail antes das respectivas integrações reais) é tratada
- * como falha PERMANENTE (`UnrecoverableError`): nenhum retry resolve
- * sozinho a ausência de um provedor configurado. Qualquer outro erro
- * (rede, banco) é uma falha de INFRAESTRUTURA e propaga normalmente,
- * para o `attempts`/`backoff` do BullMQ (configurados em
- * `NotificationsService.notify`) tentarem de novo.
+ * `PermanentDeliveryError` (canal ainda em stub honesto — Push/
+ * WhatsApp/SMS/E-mail antes das respectivas integrações reais) é a
+ * única falha tratada como PERMANENTE: nenhum retry resolve sozinho a
+ * ausência de um provedor configurado, então quem chama `run()` deve
+ * responder 2xx ao QStash mesmo assim (ver `NotificationDeliveryController`)
+ * em vez de deixá-lo reagendar. Qualquer outro erro (rede, banco) é uma
+ * falha de INFRAESTRUTURA e propaga normalmente, para o controller
+ * responder um status de erro e o QStash tentar de novo sozinho
+ * (`retries` configurado em `NotificationsService.notify`).
  *
  * Delivery AI (briefing "AGENTE 03" — "Monitorar Entrega, Falha...
  * Tempo de resposta. Caso falhe: Reenviar automaticamente, Trocar
- * canal"): "Reenviar automaticamente" já é o retry nativo do BullMQ
- * acima; `isPermanentFailure`/`handlePermanentFailure` cobrem o "trocar
- * canal" — chamados pelos processors quando o BullMQ esgota as
- * tentativas (ou a falha já nasceu `UnrecoverableError`), delegando a
- * decisão de escalar para `NotificationsService.escalateToFallback`.
+ * canal"): "Reenviar automaticamente" já é o retry nativo do QStash
+ * acima; `handlePermanentFailure` cobre o "trocar canal" — chamado
+ * pelo controller tanto na falha imediata (`PermanentDeliveryError`)
+ * quanto quando o QStash esgota todas as tentativas sem sucesso (seu
+ * callback de falha, ver `failureCallbackRoute` em
+ * `NotificationsService.dispatchChannel`).
  */
 @Injectable()
 export class NotificationDeliveryRunnerService {
@@ -52,7 +55,7 @@ export class NotificationDeliveryRunnerService {
   async run(data: ChannelDeliveryJobData): Promise<void> {
     const notification = await this.notificationRepository.findByIdInternal(data.notificationId);
     if (!notification) {
-      throw new UnrecoverableError(`Notificação ${data.notificationId} não existe mais.`);
+      throw new PermanentDeliveryError(`Notificação ${data.notificationId} não existe mais.`);
     }
 
     const inicio = Date.now();
@@ -75,26 +78,20 @@ export class NotificationDeliveryRunnerService {
       });
 
       if (error instanceof Error && error.name === "NotImplementedException") {
-        throw new UnrecoverableError(mensagem);
+        throw new PermanentDeliveryError(mensagem);
       }
       throw error;
     }
   }
 
-  logFailure(data: ChannelDeliveryJobData | undefined, attemptsMade: number, error: Error): void {
+  /** Loga uma falha de entrega — chamado pelo controller tanto numa tentativa isolada quanto no callback de falha final do QStash. */
+  logFailure(data: ChannelDeliveryJobData | undefined, error: Error): void {
     this.logger.warn(
-      `Entrega da notificação ${data?.notificationId} via ${data?.canal} falhou (tentativa ${attemptsMade}): ${error.message}`,
+      `Entrega da notificação ${data?.notificationId} via ${data?.canal} falhou: ${error.message}`,
     );
   }
 
-  /** Verdadeiro quando o BullMQ NÃO vai tentar de novo — ou a falha já nasceu definitiva, ou esta foi a última tentativa configurada. */
-  isPermanentFailure(job: Job<ChannelDeliveryJobData>, error: Error): boolean {
-    if (error instanceof UnrecoverableError) return true;
-    const maxAttempts = job.opts.attempts ?? 1;
-    return job.attemptsMade >= maxAttempts;
-  }
-
-  /** "Trocar canal" (briefing "AGENTE 03") — nunca lança: uma falha ao escalar não pode derrubar o worker. */
+  /** "Trocar canal" (briefing "AGENTE 03") — nunca lança: uma falha ao escalar não pode derrubar a resposta ao QStash. */
   async handlePermanentFailure(data: ChannelDeliveryJobData): Promise<void> {
     try {
       await this.notificationsService.escalateToFallback(data.notificationId, data.canal);

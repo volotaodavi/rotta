@@ -17,6 +17,20 @@ export const envSchema = z.object({
 
   REDIS_URL: z.string().url(),
 
+  // QStash (Upstash) — motor de filas serverless que substitui o BullMQ
+  // na implantação 100% Vercel (Dossiê 14): sem estas 3 variáveis,
+  // `QstashPublisherService` loga um aviso e não publica nada (mesmo
+  // padrão "stub honesto" de `FIREBASE_*`/`WHATSAPP_*` abaixo) — a
+  // aplicação nunca falha o boot por causa delas. `API_PUBLIC_URL` é a
+  // URL pública desta implantação (ex.: a URL do próprio deploy Vercel):
+  // o QStash entrega os jobs via HTTP POST de volta para
+  // `${API_PUBLIC_URL}/v1/internal/queue/...`, então precisa ser
+  // alcançável pela internet, nunca `localhost`.
+  QSTASH_TOKEN: z.string().optional(),
+  QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
+  QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
+  API_PUBLIC_URL: z.string().url().or(z.literal("")).optional(),
+
   JWT_PRIVATE_KEY: z.string().min(1),
   JWT_PUBLIC_KEY: z.string().min(1),
   JWT_ACCESS_TOKEN_TTL: z.string().default("15m"),

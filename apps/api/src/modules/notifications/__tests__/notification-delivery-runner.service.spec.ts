@@ -1,5 +1,3 @@
-import { UnrecoverableError } from "bullmq";
-
 import { NotificationDeliveryRunnerService } from "../processors/notification-delivery-runner.service";
 
 import type { ChannelRegistryService } from "../channels/channel-registry.service";
@@ -9,7 +7,8 @@ import type { ChannelDeliveryJobData } from "../processors/channel-delivery-job"
 import type { NotificationDeliveryAttemptRepository } from "../repositories/notification-delivery-attempt.repository";
 import type { NotificationRepository } from "../repositories/notification.repository";
 import type { Notification } from "@prisma/client";
-import type { Job } from "bullmq";
+
+import { PermanentDeliveryError } from "@/infra/queue/qstash/permanent-delivery-error";
 
 function buildNotification(overrides: Partial<Notification> = {}): Notification {
   return { id: "notification-1", userId: "user-1", ...overrides } as Notification;
@@ -69,9 +68,9 @@ describe("NotificationDeliveryRunnerService", () => {
   });
 
   describe("run", () => {
-    it("lança UnrecoverableError quando a notificação não existe mais", async () => {
+    it("lança PermanentDeliveryError quando a notificação não existe mais", async () => {
       notificationRepository.findByIdInternal.mockResolvedValue(null);
-      await expect(runner.run(buildJobData())).rejects.toThrow(UnrecoverableError);
+      await expect(runner.run(buildJobData())).rejects.toThrow(PermanentDeliveryError);
     });
 
     it("em sucesso, marca ENVIADA (e ENTREGUE quando o provedor confirma entrega imediata)", async () => {
@@ -100,7 +99,7 @@ describe("NotificationDeliveryRunnerService", () => {
       expect(chamada?.entregueEm).toBeUndefined();
     });
 
-    it("em falha de infraestrutura, marca FALHOU e repropaga o erro original (para o retry do BullMQ)", async () => {
+    it("em falha de infraestrutura, marca FALHOU e repropaga o erro original (para o retry do QStash)", async () => {
       notificationRepository.findByIdInternal.mockResolvedValue(buildNotification());
       const erroDeRede = new Error("timeout");
       sender.send.mockRejectedValue(erroDeRede);
@@ -112,7 +111,7 @@ describe("NotificationDeliveryRunnerService", () => {
       );
     });
 
-    it("NotImplementedException vira falha PERMANENTE (UnrecoverableError) — nenhum retry resolve um canal sem provedor", async () => {
+    it("NotImplementedException vira falha PERMANENTE (PermanentDeliveryError) — nenhum retry resolve um canal sem provedor", async () => {
       notificationRepository.findByIdInternal.mockResolvedValue(buildNotification());
       class NotImplementedException extends Error {
         constructor(message: string) {
@@ -122,24 +121,7 @@ describe("NotificationDeliveryRunnerService", () => {
       }
       sender.send.mockRejectedValue(new NotImplementedException("canal ainda stub"));
 
-      await expect(runner.run(buildJobData())).rejects.toThrow(UnrecoverableError);
-    });
-  });
-
-  describe("isPermanentFailure", () => {
-    it("é permanente quando o erro já é UnrecoverableError", () => {
-      const job = { attemptsMade: 1, opts: { attempts: 3 } } as Job<ChannelDeliveryJobData>;
-      expect(runner.isPermanentFailure(job, new UnrecoverableError("x"))).toBe(true);
-    });
-
-    it("é permanente quando esgotou as tentativas configuradas", () => {
-      const job = { attemptsMade: 3, opts: { attempts: 3 } } as Job<ChannelDeliveryJobData>;
-      expect(runner.isPermanentFailure(job, new Error("x"))).toBe(true);
-    });
-
-    it("não é permanente quando ainda restam tentativas", () => {
-      const job = { attemptsMade: 1, opts: { attempts: 3 } } as Job<ChannelDeliveryJobData>;
-      expect(runner.isPermanentFailure(job, new Error("x"))).toBe(false);
+      await expect(runner.run(buildJobData())).rejects.toThrow(PermanentDeliveryError);
     });
   });
 
@@ -152,7 +134,7 @@ describe("NotificationDeliveryRunnerService", () => {
       );
     });
 
-    it("nunca lança, mesmo quando a escalação falha (não pode derrubar o worker)", async () => {
+    it("nunca lança, mesmo quando a escalação falha (não pode derrubar a resposta ao QStash)", async () => {
       notificationsService.escalateToFallback.mockRejectedValue(new Error("falha ao escalar"));
       await expect(runner.handlePermanentFailure(buildJobData())).resolves.toBeUndefined();
     });
@@ -160,7 +142,7 @@ describe("NotificationDeliveryRunnerService", () => {
 
   describe("logFailure", () => {
     it("nunca lança, mesmo com data undefined", () => {
-      expect(() => runner.logFailure(undefined, 1, new Error("x"))).not.toThrow();
+      expect(() => runner.logFailure(undefined, new Error("x"))).not.toThrow();
     });
   });
 });

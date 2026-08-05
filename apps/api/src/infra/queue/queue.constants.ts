@@ -1,9 +1,12 @@
 /**
- * Nomes das filas BullMQ da plataforma — catalogo completo do Dossie 14,
- * Secoes 2.1 e 3. Nenhum consumidor (Worker) foi implementado ainda
- * (fase de fundacao); esta lista existe para que o registro das filas
- * (`BullModule.registerQueue`) e os futuros processors usem sempre o
- * mesmo nome, nunca uma string solta divergente.
+ * Nomes logicos das filas da plataforma — catalogo completo do Dossie
+ * 14, Secoes 2.1 e 3. Com o motor QStash (Upstash — ver
+ * `infra/queue/qstash/`), estes nomes nao sao mais filas fisicas
+ * separadas: viram a `flowControlKey` passada a
+ * `QstashPublisherService.publishJSON`, isolando o throughput de cada
+ * tipo de job entre si mesmo todos batendo no mesmo endpoint HTTP de
+ * entrega. Cada consumidor real usa sempre o mesmo nome daqui, nunca
+ * uma string solta divergente.
  */
 export const QUEUE_NAMES = {
   NOTIFICATIONS_PUSH: "notifications-push",

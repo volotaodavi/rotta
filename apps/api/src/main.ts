@@ -24,7 +24,10 @@ import type { AppConfig } from "./config/app.config";
  * deles dependem de outros services injetados, ex. `PrismaService`).
  */
 async function bootstrap(): Promise<void> {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // `rawBody: true` expoe `req.rawBody` (Buffer) — necessario para
+  // `QstashSignatureGuard` validar a assinatura `Upstash-Signature` sobre
+  // os bytes exatos recebidos, antes do parse JSON (Dossie 14).
+  const app = await NestFactory.create(AppModule, { bufferLogs: true, rawBody: true });
 
   // Logger estruturado (Dossie 12, Secao 10.3) substitui o logger padrao
   // do Nest assim que a aplicacao sobe.

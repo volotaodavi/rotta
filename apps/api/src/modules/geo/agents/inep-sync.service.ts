@@ -1,16 +1,13 @@
-import { InjectQueue } from "@nestjs/bullmq";
 import { BadGatewayException, Inject, Injectable, Logger } from "@nestjs/common";
 import AdmZip from "adm-zip";
-
 
 import { SCHOOL_GEOCODE_QUEUE } from "../geo.constants";
 import { mapInepRowToSchoolData } from "../inep/inep-row.mapper";
 
-import type { SchoolGeocodeJobData } from "../processors/school-geocode.processor";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School } from "@prisma/client";
-import type { Queue } from "bullmq";
 
+import { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import { parseCsvRows } from "@/modules/schools/school-import.util";
 import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 
@@ -43,10 +40,10 @@ export interface InepSyncResumo {
  *     (`mapInepRowToSchoolData`) e compara contra a base atual por
  *     `codigoInep` (busca em lote, nunca N consultas individuais).
  *  4. Escola nova → cria (`status: EM_ANALISE`, `origemCadastro:
- *     "SYNC_INEP"`) e enfileira um job na fila `school-geocode`
- *     (BullMQ) para o `SchoolGeocodeProcessor` geocodificar de forma
- *     assíncrona — a escala nacional (~200 mil escolas) nunca cabe
- *     numa chamada em série dentro desta única requisição/execução.
+ *     "SYNC_INEP"`) e publica um job via QStash (`GeoQueueController.
+ *     schoolGeocode`) para geocodificar de forma assíncrona — a escala
+ *     nacional (~200 mil escolas) nunca cabe numa chamada em série
+ *     dentro desta única requisição/execução.
  *  5. Escola existente com endereço alterado → atualiza e enfileira o
  *     mesmo job de novo (endereço mudou, a coordenada antiga não vale
  *     mais). Sem alteração de endereço → não mexe (nunca sobrescreve
@@ -68,8 +65,7 @@ export class InepSyncService {
   constructor(
     @Inject(SCHOOL_REPOSITORY)
     private readonly schoolRepository: SchoolRepository,
-    @InjectQueue(SCHOOL_GEOCODE_QUEUE)
-    private readonly schoolGeocodeQueue: Queue<SchoolGeocodeJobData>,
+    private readonly qstashPublisher: QstashPublisherService,
   ) {}
 
   private async downloadCensoZip(ano: number): Promise<Buffer> {
@@ -244,18 +240,18 @@ export class InepSyncService {
   }
 
   /**
-   * Enfileira um job por escola na fila `school-geocode` (BullMQ) em vez
-   * de chamar `GeoPipelineService.geocodeSchool` direto — o
-   * `SchoolGeocodeProcessor` processa com concorrência limitada,
+   * Publica um job por escola via QStash (`GeoQueueController.schoolGeocode`)
+   * em vez de chamar `GeoPipelineService.geocodeSchool` direto — a
+   * entrega roda com `flowControl` limitado (isolado das demais
+   * publicações pela `flowControlKey` de `SCHOOL_GEOCODE_QUEUE`),
    * independente desta sincronização (que pode terminar antes de toda
    * geocodificação ter sido concluída; acompanhar o resultado real é
-   * responsabilidade dos logs do worker, não deste resumo).
+   * responsabilidade dos logs do "worker", não deste resumo).
    *
-   * `attempts`/`backoff` aqui cobrem falha de INFRAESTRUTURA (Redis
-   * momentaneamente indisponível ao enfileirar não é o caso — é o job
-   * já enfileirado falhando por rede/DB durante o processamento); não
-   * confundir com as 3 tentativas do Validation AI Agent, que são sobre
-   * PRECISÃO da geocodificação e resolvidas dentro do próprio job.
+   * `retries` aqui cobre falha de INFRAESTRUTURA (rede/DB durante o
+   * processamento do job já entregue) — não confundir com as 3
+   * tentativas do Validation AI Agent, que são sobre PRECISÃO da
+   * geocodificação e resolvidas dentro do próprio job.
    */
   private async enfileirarGeocodificacao(
     schoolIds: string[],
@@ -263,15 +259,20 @@ export class InepSyncService {
   ): Promise<void> {
     if (schoolIds.length === 0) return;
 
-    await this.schoolGeocodeQueue.addBulk(
+    await this.qstashPublisher.publishBatchJSON(
       schoolIds.map((schoolId) => ({
-        name: "geocode",
-        data: { schoolId },
-        opts: {
-          attempts: 3,
-          backoff: { type: "exponential", delay: 5_000 },
-          removeOnComplete: true,
-          removeOnFail: 1_000,
+        route: `geo/${SCHOOL_GEOCODE_QUEUE}`,
+        body: { schoolId },
+        options: {
+          retries: 3,
+          flowControlKey: SCHOOL_GEOCODE_QUEUE,
+          // Respeita a política de uso do Nominatim público (~1
+          // requisição/segundo — ver divulgação honesta em
+          // `GeoEngineService`); quem apontar `NOMINATIM_BASE_URL`
+          // para uma instância self-hosted pode aumentar com segurança.
+          flowControlParallelism: 1,
+          flowControlRate: 1,
+          flowControlPeriod: "1.1s",
         },
       })),
     );

@@ -1,6 +1,4 @@
-import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-
 
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { InepSyncSchedulerService } from "./agents/inep-sync-scheduler.service";
@@ -9,15 +7,9 @@ import { MapIntelligenceService } from "./agents/map-intelligence.service";
 import { ValidationAiAgentService } from "./agents/validation-ai-agent.service";
 import { GeoEngineService } from "./geo-engine.service";
 import { GeoPipelineService } from "./geo-pipeline.service";
-import {
-  INEP_SYNC_QUEUE,
-  SCHOOL_COORDINATE_REPOSITORY,
-  SCHOOL_GEOCODE_QUEUE,
-  SCHOOL_MARKER_REPOSITORY,
-} from "./geo.constants";
+import { GeoQueueController } from "./geo-queue.controller";
+import { SCHOOL_COORDINATE_REPOSITORY, SCHOOL_MARKER_REPOSITORY } from "./geo.constants";
 import { GeoController } from "./geo.controller";
-import { InepSyncProcessor } from "./processors/inep-sync.processor";
-import { SchoolGeocodeProcessor } from "./processors/school-geocode.processor";
 import { PrismaSchoolCoordinateRepository } from "./repositories/prisma-school-coordinate.repository";
 import { PrismaSchoolMarkerRepository } from "./repositories/prisma-school-marker.repository";
 
@@ -34,14 +26,18 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
  * ler/gravar `School.latitude`/`longitude` via `SCHOOL_REPOSITORY`, sem
  * depender do `SchoolsService` orientado a ator humano/RBAC (ver nota em
  * `schools.module.ts`). Não importa `RedisModule` (é `@Global()`,
- * `RedisService` já está disponível para `MapIntelligenceService`).
+ * `RedisService` já está disponível para `MapIntelligenceService`) nem
+ * `QueueModule` (também `@Global()` — `QstashPublisherService`/
+ * `QstashScheduleService` já disponíveis para `InepSyncService`/
+ * `GeoController`/`InepSyncSchedulerService`).
+ *
+ * `GeoQueueController` é o "worker" dos jobs assíncronos deste módulo
+ * (`school-geocode`/`inep-sync`, ver `geo-queue.types.ts`) — substitui
+ * `SchoolGeocodeProcessor`/`InepSyncProcessor` (BullMQ).
  */
 @Module({
-  imports: [
-    SchoolsModule,
-    BullModule.registerQueue({ name: SCHOOL_GEOCODE_QUEUE }, { name: INEP_SYNC_QUEUE }),
-  ],
-  controllers: [GeoController],
+  imports: [SchoolsModule],
+  controllers: [GeoController, GeoQueueController],
   providers: [
     GeoEngineService,
     GeocodingAiAgentService,
@@ -50,8 +46,6 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
     InepSyncService,
     InepSyncSchedulerService,
     MapIntelligenceService,
-    SchoolGeocodeProcessor,
-    InepSyncProcessor,
     { provide: SCHOOL_COORDINATE_REPOSITORY, useClass: PrismaSchoolCoordinateRepository },
     { provide: SCHOOL_MARKER_REPOSITORY, useClass: PrismaSchoolMarkerRepository },
   ],

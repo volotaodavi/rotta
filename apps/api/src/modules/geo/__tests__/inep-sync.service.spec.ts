@@ -3,10 +3,9 @@ import { BadGatewayException } from "@nestjs/common";
 import { InepSyncService } from "../agents/inep-sync.service";
 import { INEP_COLUMNS } from "../inep/inep-row.mapper";
 
-import type { SchoolGeocodeJobData } from "../processors/school-geocode.processor";
+import type { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School } from "@prisma/client";
-import type { Queue } from "bullmq";
 
 function buildSchool(overrides: Partial<School> = {}): School {
   return {
@@ -91,17 +90,18 @@ describe("InepSyncService", () => {
       ...schoolRepositoryOverrides,
     } as unknown as jest.Mocked<SchoolRepository>;
 
-    const schoolGeocodeQueue = {
-      addBulk: jest.fn().mockResolvedValue([]),
-    } as unknown as jest.Mocked<Queue<SchoolGeocodeJobData>>;
+    const qstashPublisher = {
+      publishJSON: jest.fn().mockResolvedValue("message-1"),
+      publishBatchJSON: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<QstashPublisherService>;
 
-    const service = new InepSyncService(schoolRepository, schoolGeocodeQueue);
-    return { service, schoolRepository, schoolGeocodeQueue };
+    const service = new InepSyncService(schoolRepository, qstashPublisher);
+    return { service, schoolRepository, qstashPublisher };
   }
 
   describe("sincronizarDeCsv", () => {
-    it("cria uma escola nova e enfileira um job na fila school-geocode para geocodificá-la", async () => {
-      const { service, schoolRepository, schoolGeocodeQueue } = buildService();
+    it("cria uma escola nova e publica um job de geocodificação via QStash", async () => {
+      const { service, schoolRepository, qstashPublisher } = buildService();
       schoolRepository.create.mockResolvedValue(buildSchool());
       const csv = buildCsv([buildInepRow()]);
 
@@ -122,14 +122,17 @@ describe("InepSyncService", () => {
           status: "EM_ANALISE",
         }),
       );
-      expect(schoolGeocodeQueue.addBulk).toHaveBeenCalledWith([
-        expect.objectContaining({ name: "geocode", data: { schoolId: "school-1" } }),
+      expect(qstashPublisher.publishBatchJSON).toHaveBeenCalledWith([
+        expect.objectContaining({
+          route: "geo/school-geocode",
+          body: { schoolId: "school-1" },
+        }),
       ]);
     });
 
-    it("atualiza e reenfileira geocodificação quando o endereço da escola já existente mudou", async () => {
+    it("atualiza e republica geocodificação quando o endereço da escola já existente mudou", async () => {
       const existente = buildSchool({ logradouro: "Rua Antiga", numero: "1" });
-      const { service, schoolRepository, schoolGeocodeQueue } = buildService({
+      const { service, schoolRepository, qstashPublisher } = buildService({
         findManyByCodigosInep: jest.fn().mockResolvedValue([existente]),
       });
       schoolRepository.update.mockResolvedValue(buildSchool());
@@ -142,15 +145,18 @@ describe("InepSyncService", () => {
         existente.id,
         expect.objectContaining({ logradouro: "Avenida Paulista" }),
       );
-      expect(schoolGeocodeQueue.addBulk).toHaveBeenCalledWith([
-        expect.objectContaining({ name: "geocode", data: { schoolId: existente.id } }),
+      expect(qstashPublisher.publishBatchJSON).toHaveBeenCalledWith([
+        expect.objectContaining({
+          route: "geo/school-geocode",
+          body: { schoolId: existente.id },
+        }),
       ]);
       expect(schoolRepository.create).not.toHaveBeenCalled();
     });
 
-    it("não mexe (nem reenfileira geocodificação) quando o endereço já existente é idêntico ao do Censo", async () => {
+    it("não mexe (nem republica geocodificação) quando o endereço já existente é idêntico ao do Censo", async () => {
       const existente = buildSchool();
-      const { service, schoolRepository, schoolGeocodeQueue } = buildService({
+      const { service, schoolRepository, qstashPublisher } = buildService({
         findManyByCodigosInep: jest.fn().mockResolvedValue([existente]),
       });
       const csv = buildCsv([buildInepRow()]);
@@ -164,7 +170,7 @@ describe("InepSyncService", () => {
         enfileiradasParaGeocodificacao: 0,
       });
       expect(schoolRepository.update).not.toHaveBeenCalled();
-      expect(schoolGeocodeQueue.addBulk).not.toHaveBeenCalled();
+      expect(qstashPublisher.publishBatchJSON).not.toHaveBeenCalled();
     });
 
     it("ignora escolas fora de atividade sem contar como erro", async () => {
@@ -190,8 +196,8 @@ describe("InepSyncService", () => {
       expect(resumo.erros).toHaveLength(1);
     });
 
-    it("enfileira um único job em lote (addBulk) para múltiplas escolas novas/alteradas na mesma sincronização", async () => {
-      const { service, schoolRepository, schoolGeocodeQueue } = buildService();
+    it("publica um único lote (publishBatchJSON) para múltiplas escolas novas/alteradas na mesma sincronização", async () => {
+      const { service, schoolRepository, qstashPublisher } = buildService();
       schoolRepository.create.mockResolvedValue(buildSchool());
       const csv = buildCsv([
         buildInepRow(),
@@ -202,8 +208,8 @@ describe("InepSyncService", () => {
 
       expect(resumo.novas).toBe(2);
       expect(resumo.enfileiradasParaGeocodificacao).toBe(2);
-      expect(schoolGeocodeQueue.addBulk).toHaveBeenCalledTimes(1);
-      expect((schoolGeocodeQueue.addBulk as jest.Mock).mock.calls[0][0]).toHaveLength(2);
+      expect(qstashPublisher.publishBatchJSON).toHaveBeenCalledTimes(1);
+      expect((qstashPublisher.publishBatchJSON as jest.Mock).mock.calls[0][0]).toHaveLength(2);
     });
   });
 

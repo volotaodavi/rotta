@@ -1,6 +1,4 @@
-import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
-
 
 import { ChannelRegistryService } from "./channels/channel-registry.service";
 import { EmailChannelSender } from "./channels/email-channel.sender";
@@ -12,6 +10,7 @@ import { CommunicationEventsListener } from "./events/communication-events.liste
 import { MessagePersonalizationModule } from "./message-personalization.module";
 import { NotificationChannelSelectorService } from "./notification-channel-selector.service";
 import { NotificationDashboardService } from "./notification-dashboard.service";
+import { NotificationDeliveryController } from "./notification-delivery.controller";
 import { NotificationInboxService } from "./notification-inbox.service";
 import { NotificationPriorityClassifierService } from "./notification-priority-classifier.service";
 import {
@@ -24,11 +23,6 @@ import {
 import { NotificationsController } from "./notifications.controller";
 import { NotificationsService } from "./notifications.service";
 import { NotificationDeliveryRunnerService } from "./processors/notification-delivery-runner.service";
-import { NotificationsCriticalProcessor } from "./processors/notifications-critical.processor";
-import { NotificationsEmailProcessor } from "./processors/notifications-email.processor";
-import { NotificationsPushProcessor } from "./processors/notifications-push.processor";
-import { NotificationsSmsProcessor } from "./processors/notifications-sms.processor";
-import { NotificationsWhatsappProcessor } from "./processors/notifications-whatsapp.processor";
 import { PrismaDeviceTokenRepository } from "./repositories/prisma-device-token.repository";
 import { PrismaNotificationDeliveryAttemptRepository } from "./repositories/prisma-notification-delivery-attempt.repository";
 import { PrismaNotificationPreferenceRepository } from "./repositories/prisma-notification-preference.repository";
@@ -36,7 +30,6 @@ import { PrismaNotificationRepository } from "./repositories/prisma-notification
 
 import { EmailModule } from "@/infra/email/email.module";
 import { PushModule } from "@/infra/push/push.module";
-import { QUEUE_NAMES } from "@/infra/queue/queue.constants";
 import { SmsModule } from "@/infra/sms/sms.module";
 import { WhatsappModule } from "@/infra/whatsapp/whatsapp.module";
 import { AuditModule } from "@/modules/audit/audit.module";
@@ -56,10 +49,11 @@ import { UsersModule } from "@/modules/users/users.module";
  * Importa `CompaniesModule` (nunca o contrário) só para
  * `CompaniesService.getEnabledChannels` — o teto de canais habilitados
  * pela EMPRESA, camada abaixo da preferência do usuário (ver
- * `NotificationsService.filterChannels`). Registra as 5 filas já
- * reservadas em `QUEUE_NAMES` (`NOTIFICATIONS_PUSH/WHATSAPP/SMS/EMAIL/
- * CRITICAL`), mesmo padrão de `GeoModule.registerQueue` — a conexão
- * Redis raiz já vem de `QueueModule` (`BullModule.forRootAsync` em
+ * `NotificationsService.filterChannels`). As 5 filas já reservadas em
+ * `QUEUE_NAMES` (`NOTIFICATIONS_PUSH/WHATSAPP/SMS/EMAIL/CRITICAL`)
+ * viram `flowControlKey`s do QStash em vez de filas BullMQ registradas
+ * aqui — `NotificationDeliveryController` é o único "worker" deste
+ * módulo (`QstashPublisherService` já vem global de `QueueModule`, ver
  * `AppModule`).
  *
  * `CommunicationEventsListener` é o único ponto de entrada assíncrono
@@ -88,15 +82,8 @@ import { UsersModule } from "@/modules/users/users.module";
     WhatsappModule,
     SmsModule,
     EmailModule,
-    BullModule.registerQueue(
-      { name: QUEUE_NAMES.NOTIFICATIONS_PUSH },
-      { name: QUEUE_NAMES.NOTIFICATIONS_WHATSAPP },
-      { name: QUEUE_NAMES.NOTIFICATIONS_SMS },
-      { name: QUEUE_NAMES.NOTIFICATIONS_EMAIL },
-      { name: QUEUE_NAMES.NOTIFICATIONS_CRITICAL },
-    ),
   ],
-  controllers: [NotificationsController],
+  controllers: [NotificationsController, NotificationDeliveryController],
   providers: [
     NotificationsService,
     NotificationInboxService,
@@ -106,11 +93,6 @@ import { UsersModule } from "@/modules/users/users.module";
     NotificationPriorityClassifierService,
     ChannelRegistryService,
     NotificationDeliveryRunnerService,
-    NotificationsPushProcessor,
-    NotificationsWhatsappProcessor,
-    NotificationsSmsProcessor,
-    NotificationsEmailProcessor,
-    NotificationsCriticalProcessor,
     { provide: NOTIFICATION_REPOSITORY, useClass: PrismaNotificationRepository },
     {
       provide: NOTIFICATION_DELIVERY_ATTEMPT_REPOSITORY,

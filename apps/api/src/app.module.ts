@@ -18,6 +18,7 @@ import emailConfig from "@/config/email.config";
 import { validate } from "@/config/env.validation";
 import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
+import qstashConfig from "@/config/qstash.config";
 import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
 import storageConfig from "@/config/storage.config";
@@ -65,6 +66,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
         authConfig,
         databaseConfig,
         redisConfig,
+        qstashConfig,
         storageConfig,
         geoConfig,
         fcmConfig,

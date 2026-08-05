@@ -1,11 +1,9 @@
-import { InjectQueue } from "@nestjs/bullmq";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
   CommunicationChannel,
   NotificationDeliveryStatus,
   NotificationPriority,
 } from "@prisma/client";
-
 
 import { ChannelRegistryService } from "./channels/channel-registry.service";
 import { NotificationChannelSelectorService } from "./notification-channel-selector.service";
@@ -18,23 +16,21 @@ import {
 import { isQuietHoursActive } from "./quiet-hours.util";
 
 import type { NotifyInput } from "./dto/notify-input";
-import type { ChannelDeliveryJobData } from "./processors/channel-delivery-job";
 import type { NotificationDeliveryAttemptRepository } from "./repositories/notification-delivery-attempt.repository";
 import type { NotificationPreferenceRepository } from "./repositories/notification-preference.repository";
 import type { NotificationRepository } from "./repositories/notification.repository";
 import type { NotificationChannel as CompanyNotificationChannel } from "@/modules/companies/dto/update-company-settings.dto";
 import type { Notification } from "@prisma/client";
-import type { Queue } from "bullmq";
 
+import { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import { QUEUE_NAMES } from "@/infra/queue/queue.constants";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService } from "@/modules/companies/companies.service";
 
+/** `retries`/`flowControlKey` de todo job de entrega de canal externo — mesmos 3 `attempts` que o BullMQ usava; `failureCallbackRoute` substitui o `OnWorkerEvent('failed')` de antes (ver `NotificationDeliveryController.deliverDlq`). */
 const EXTERNAL_CHANNEL_JOB_OPTS = {
-  attempts: 3,
-  backoff: { type: "exponential" as const, delay: 5_000 },
-  removeOnComplete: true,
-  removeOnFail: 1_000,
+  retries: 3,
+  failureCallbackRoute: "notifications/deliver/dlq",
 };
 
 type PreferenceChannelKey = "receberPush" | "receberWhatsapp" | "receberSms" | "receberEmail";
@@ -96,16 +92,20 @@ const ESCALATION_PRIORITIES: ReadonlySet<NotificationPriority> = new Set([
  *    liberado) e `IN_APP` está sempre no conjunto final.
  * 4. Um `NotificationDeliveryAttempt` por canal final: `IN_APP` é
  *    resolvido de forma síncrona (a própria linha já é a entrega); os
- *    demais são enfileirados via BullMQ (`NOTIFICATIONS_CRITICAL` para
- *    `EMERGENCIA`, a fila específica do canal nos demais casos) e
- *    processados pelos 5 processors deste módulo.
+ *    demais são publicados via QStash (`NOTIFICATIONS_CRITICAL` como
+ *    `flowControlKey` para `EMERGENCIA`, a chave específica do canal
+ *    nos demais casos) e entregues de volta a
+ *    `NotificationDeliveryController.deliver`.
  */
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
-  private readonly queueByChannel: Partial<
-    Record<CommunicationChannel, Queue<ChannelDeliveryJobData>>
-  >;
+  private readonly flowControlKeyByChannel: Partial<Record<CommunicationChannel, string>> = {
+    [CommunicationChannel.PUSH]: QUEUE_NAMES.NOTIFICATIONS_PUSH,
+    [CommunicationChannel.WHATSAPP]: QUEUE_NAMES.NOTIFICATIONS_WHATSAPP,
+    [CommunicationChannel.SMS]: QUEUE_NAMES.NOTIFICATIONS_SMS,
+    [CommunicationChannel.EMAIL]: QUEUE_NAMES.NOTIFICATIONS_EMAIL,
+  };
 
   constructor(
     @Inject(NOTIFICATION_REPOSITORY)
@@ -119,20 +119,8 @@ export class NotificationsService {
     private readonly channelRegistry: ChannelRegistryService,
     private readonly companiesService: CompaniesService,
     private readonly auditLogService: AuditLogService,
-    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS_PUSH) pushQueue: Queue<ChannelDeliveryJobData>,
-    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS_WHATSAPP) whatsappQueue: Queue<ChannelDeliveryJobData>,
-    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS_SMS) smsQueue: Queue<ChannelDeliveryJobData>,
-    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS_EMAIL) emailQueue: Queue<ChannelDeliveryJobData>,
-    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS_CRITICAL)
-    private readonly criticalQueue: Queue<ChannelDeliveryJobData>,
-  ) {
-    this.queueByChannel = {
-      [CommunicationChannel.PUSH]: pushQueue,
-      [CommunicationChannel.WHATSAPP]: whatsappQueue,
-      [CommunicationChannel.SMS]: smsQueue,
-      [CommunicationChannel.EMAIL]: emailQueue,
-    };
-  }
+    private readonly qstashPublisher: QstashPublisherService,
+  ) {}
 
   async notify(input: NotifyInput): Promise<Notification> {
     const prioridade = input.prioridade ?? this.priorityClassifier.classify(input.tipo);
@@ -271,19 +259,19 @@ export class NotificationsService {
       status: NotificationDeliveryStatus.ENFILEIRADA,
     });
 
-    const queue =
+    const flowControlKey =
       prioridade === NotificationPriority.EMERGENCIA
-        ? this.criticalQueue
-        : this.queueByChannel[canal];
-    if (!queue) {
+        ? QUEUE_NAMES.NOTIFICATIONS_CRITICAL
+        : this.flowControlKeyByChannel[canal];
+    if (!flowControlKey) {
       this.logger.warn(`Nenhuma fila registrada para o canal ${canal} — entrega não enfileirada.`);
       return;
     }
 
-    await queue.add(
-      canal.toLowerCase(),
+    await this.qstashPublisher.publishJSON(
+      "notifications/deliver",
       { notificationId: notification.id, deliveryAttemptId: attempt.id, canal },
-      EXTERNAL_CHANNEL_JOB_OPTS,
+      { ...EXTERNAL_CHANNEL_JOB_OPTS, flowControlKey },
     );
   }
 

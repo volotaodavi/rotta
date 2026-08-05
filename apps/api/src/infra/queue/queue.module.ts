@@ -1,32 +1,27 @@
-import { BullModule } from "@nestjs/bullmq";
-import { Module } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { Global, Module } from "@nestjs/common";
 
-import type { RedisConfig } from "@/config/redis.config";
+import { QstashPublisherService } from "./qstash/qstash-publisher.service";
+import { QstashScheduleService } from "./qstash/qstash-schedule.service";
+import { QstashSignatureGuard } from "./qstash/qstash-signature.guard";
 
 /**
- * Modulo de filas (BullMQ/Redis, Dossie 14). Registra apenas a conexao
- * raiz — o registro de cada fila individual (`QUEUE_NAMES`) e dos
- * respectivos processors acontece em `apps/worker` quando os jobs reais
- * forem implementados (fase de fundacao: apenas a infraestrutura).
+ * Modulo de filas (Dossie 14) — motor QStash (Upstash), nao BullMQ: a
+ * implantacao de producao roda 100% na Vercel (funcoes serverless),
+ * onde nao existe processo Node permanente para um Worker classico
+ * ficar escutando o Redis (ver racional completo em
+ * `infra/queue/qstash/qstash-publisher.service.ts`). Cada modulo que
+ * precisa publicar um job importa `QueueModule` e injeta
+ * `QstashPublisherService`; os "workers" viram endpoints HTTP publicos
+ * (`/internal/queue/<rota>`, protegidos por `QstashSignatureGuard`) nos
+ * proprios modulos de dominio (`NotificationsModule`, `GeoModule`).
+ *
+ * `@Global()` porque toda a plataforma compartilha a mesma instancia
+ * (mesmo padrao de `RedisModule`) — nenhum modulo de dominio registra
+ * sua propria conexao com o QStash.
  */
+@Global()
 @Module({
-  imports: [
-    BullModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => {
-        const redisConfig = configService.get<RedisConfig>("redis");
-        const url = new URL(redisConfig?.url ?? "redis://localhost:6379");
-
-        return {
-          connection: {
-            host: url.hostname,
-            port: Number(url.port || 6379),
-          },
-        };
-      },
-    }),
-  ],
-  exports: [BullModule],
+  providers: [QstashPublisherService, QstashScheduleService, QstashSignatureGuard],
+  exports: [QstashPublisherService, QstashScheduleService, QstashSignatureGuard],
 })
 export class QueueModule {}
