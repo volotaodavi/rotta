@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, NotImplementedException } from "@nestjs/common";
 
+
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
 import type { SchoolAddressAnalysisResponseDto } from "./dto/school-address-analysis-response.dto";
+import type { SuggestRouteOptimizationDto } from "./dto/suggest-route-optimization.dto";
 import type { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import type { ValidateDocumentResponseDto } from "./dto/validate-document-response.dto";
 import type { ValidateDocumentDto } from "./dto/validate-document.dto";
@@ -191,6 +193,29 @@ export class RottaAiService {
   async validarContratoAssinado(_dto: ValidarContratoAssinadoDto): Promise<never> {
     throw new NotImplementedException(
       "A validação automática de contrato assinado via Rotta AI ainda não está disponível — integração pendente de um provedor de análise documental.",
+    );
+  }
+
+  /**
+   * Rotta Route AI — otimização automática de sequência de paradas
+   * (ROT-08). Mesmo estado (stub honesto) dos demais métodos deste
+   * serviço: ROT-08 é explicitamente V2 na própria Especificação
+   * Funcional (Dossiê 3 §12.8) — precisaria de um provedor de rotas
+   * (Google Directions/OSRM, Dossiê 9 §2.6) capaz de calcular a
+   * sequência de menor tempo/distância total entre as paradas já
+   * cadastradas, mantendo fixos os pontos de origem/destino
+   * obrigatórios. Implementar um resultado fake aqui seria pior do que
+   * declarar honestamente que a sugestão ainda não está disponível —
+   * a rota atual nunca é alterada quando este método falha (regra de
+   * negócio de ROT-08: "a sugestão nunca altera a rota
+   * automaticamente"), então o chamador (`RoutesService`, quando
+   * existir) trata esta exceção como best-effort, exatamente como
+   * `analyzeVehicleDocument`.
+   */
+  // eslint-disable-next-line @typescript-eslint/require-await
+  async suggestRouteOptimization(_dto: SuggestRouteOptimizationDto): Promise<never> {
+    throw new NotImplementedException(
+      "A otimização automática de rota ainda não está disponível — integração pendente de um provedor de cálculo de trajeto (Google Directions/OSRM).",
     );
   }
 }

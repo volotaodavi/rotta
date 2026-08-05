@@ -1,7 +1,7 @@
 import { BadRequestException, NotImplementedException } from "@nestjs/common";
 
-import { RottaAiService } from "../rotta-ai.service";
 
+import { RottaAiService } from "../rotta-ai.service";
 
 import type { DiditService } from "@/infra/didit/didit.service";
 import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
@@ -253,6 +253,13 @@ describe("RottaAiService", () => {
     it("validarContratoAssinado continua um stub honesto (NotImplementedException)", async () => {
       const { service } = buildService();
       await expect(service.validarContratoAssinado({} as never)).rejects.toThrow(
+        NotImplementedException,
+      );
+    });
+
+    it("suggestRouteOptimization (ROT-08) continua um stub honesto (NotImplementedException)", async () => {
+      const { service } = buildService();
+      await expect(service.suggestRouteOptimization({} as never)).rejects.toThrow(
         NotImplementedException,
       );
     });

@@ -1,4 +1,5 @@
 import { ApiError, type Contract, type RatingTargetType } from "@rotta/api-client";
+import { RottaMap } from "@rotta/maps/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
@@ -17,6 +18,7 @@ import {
 import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
+import { useGpsForStudent } from "@/features/gps/hooks/use-gps";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import {
   StatusPill,
@@ -47,9 +49,11 @@ const RATING_TARGETS: {
  * estados do Responsável com dados reais (nunca texto fixo): solicitação
  * pendente, assinatura de contrato, transporte ativo (dados completos do
  * transportador/escola/contrato + avaliações após ativação) e transporte
- * encerrado. O acompanhamento em tempo real (mapa/GPS da viagem) fica
- * para o módulo de Rotas — aqui a limitação é dita de forma explícita,
- * nunca escondida atrás de um mapa falso.
+ * encerrado. O acompanhamento em tempo real (mapa/GPS/motorista/ETA)
+ * agora é real (`AcompanhamentoSection`, `GET /gps/students/:id`) —
+ * mostra o transporte no mapa quando há uma viagem em andamento, ou
+ * uma mensagem honesta quando não há ("nenhum transporte agora"),
+ * nunca um mapa falso.
  */
 export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -127,13 +131,7 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Text>
         <DetalhesContrato contrato={contratoAtivo} />
 
-        <VehicleCard>
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Acompanhamento</Text>
-          <Text style={{ color: theme.colors.textMuted }}>
-            O acompanhamento em tempo real da viagem (mapa, motorista, ETA) estará disponível assim
-            que o módulo de Rotas for lançado.
-          </Text>
-        </VehicleCard>
+        <AcompanhamentoSection contrato={contratoAtivo} />
 
         <AvaliacoesSection contrato={contratoAtivo} />
       </VehicleScreen>
@@ -184,6 +182,60 @@ function DetalhesContrato({ contrato }: { contrato: Contract }): JSX.Element {
           ? ` até ${new Date(contrato.vigenciaFim).toLocaleDateString("pt-BR")}`
           : ""}
       </Text>
+    </VehicleCard>
+  );
+}
+
+/**
+ * "Acompanhamento" (briefing "Marketplace" §"ACOMPANHAMENTO" —
+ * mapa/GPS/motorista/ETA em tempo real). `GET /gps/students/:id`
+ * (GPS-01/03/06) devolve a viagem ativa do aluno agora, ou `null`
+ * quando não há transporte em andamento — o card mostra sempre um
+ * estado real (mapa, ou mensagem honesta), nunca um mapa falso.
+ */
+function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX.Element {
+  const { theme } = useTheme();
+  const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
+
+  return (
+    <VehicleCard>
+      <Text style={[styles.secao, { color: theme.colors.text }]}>Acompanhamento</Text>
+
+      {isLoading ? (
+        <ActivityIndicator color={theme.colors.primary} />
+      ) : !viagem ? (
+        <Text style={{ color: theme.colors.textMuted }}>
+          Nenhum transporte em andamento no momento. O mapa aparece aqui assim que a viagem começar.
+        </Text>
+      ) : (
+        <>
+          {viagem.latitude && viagem.longitude ? (
+            <View style={styles.mapa}>
+              <RottaMap
+                markers={[
+                  {
+                    id: viagem.tripId,
+                    titulo: `${viagem.placa} — ${viagem.motoristaNome}`,
+                    latitude: viagem.latitude,
+                    longitude: viagem.longitude,
+                  },
+                ]}
+                initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
+                initialZoom={14}
+              />
+            </View>
+          ) : null}
+          <Text style={{ color: theme.colors.text }}>
+            {viagem.routeNome} — motorista {viagem.motoristaNome}
+            {viagem.monitorNome ? `, monitor ${viagem.monitorNome}` : ""}
+          </Text>
+          <Text style={{ color: theme.colors.textMuted }}>
+            {viagem.ultimaPosicaoEm
+              ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
+              : "Aguardando a primeira posição do motorista"}
+          </Text>
+        </>
+      )}
     </VehicleCard>
   );
 }
@@ -317,6 +369,7 @@ function RatingForm({
 const styles = StyleSheet.create({
   avaliacoes: { gap: 12 },
   header: { flexDirection: "row" },
+  mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
   mensalidade: { fontWeight: "600" },
   notas: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   rotuloAvaliacao: { fontWeight: "600" },

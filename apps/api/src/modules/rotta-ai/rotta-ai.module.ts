@@ -6,6 +6,7 @@ import { RottaAiService } from "./rotta-ai.service";
 import { DiditModule } from "@/infra/didit/didit.module";
 import { GeoModule } from "@/modules/geo/geo.module";
 
+
 /**
  * Importa `GeoModule` para `analyzeSchoolAddress` chamar o
  * `GeoEngineService` de verdade (briefing "ROTTA GEO PLATFORM") e
