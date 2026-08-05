@@ -9,22 +9,42 @@ import type { ValidateDocumentDto } from "./dto/validate-document.dto";
 
 import { DiditService } from "@/infra/didit/didit.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
+import { Role } from "@/shared/enums";
 
 const CEP_VALIDO = /^\d{5}-?\d{3}$/;
+
+/** Tipos de check que são, eles próprios, um documento de identidade (não Selfie/FaceMatch/EAR/Curso). */
+const IDENTITY_DOCUMENT_CHECK_TYPES = new Set(["CNH", "RG", "CIN", "PASSAPORTE"]);
 
 /**
  * Ponto de integração da Rotta AI (briefing: "Preparar integração para
  * validar automaticamente CNH, Selfie, Face Match, OCR, EAR, Cursos").
  *
- * CNH/SELFIE/FACE_MATCH/OCR: reais, via Didit (didit.me) — provedor de
+ * CNH/RG/CIN/PASSAPORTE/OCR: reais, via Didit (didit.me) — provedor de
  * verificação de identidade (`DiditService`). Mapeamento:
- *   - CNH/OCR  → ID Verification (OCR + autenticidade do documento)
+ *   - CNH/RG/CIN/PASSAPORTE/OCR → ID Verification (OCR + autenticidade
+ *                do documento; a Didit reconhece qualquer um desses
+ *                tipos, o mesmo endpoint `verifyId` serve para todos)
  *   - SELFIE   → Passive Liveness (confirma que é uma pessoa presente,
  *                não uma foto de foto/deepfake — não existe um check
  *                de "selfie" isolado na Didit; liveness é o
  *                equivalente real mais próximo)
  *   - FACE_MATCH → compara `referenciaArquivo` (selfie) com
  *                `referenciaArquivoComparacao` (retrato do documento)
+ *
+ * REGRA DE NEGÓCIO (papel do solicitante): Motorista só pode submeter
+ * CNH como documento de identidade — RG/CIN/Passaporte são REJEITADOS
+ * com 400 antes mesmo de chamar a Didit, porque só a CNH comprova a
+ * habilitação de categoria D/E exigida para dirigir veículo escolar
+ * (`DRV-02`, Dossiê 16 — "categoria mínima D é obrigatória para status
+ * aprovado, mesmo com data de validade correta"). Qualquer outro papel
+ * (Monitor, Despachante etc.) pode submeter CNH, RG, CIN ou Passaporte
+ * livremente. Quando um Gestor/Empresa (papel administrativo) cadastra
+ * o motorista em nome dele — "ajudante cadastrando o motorista" —, a
+ * mesma regra vale: é o papel do TITULAR do documento (Motorista) que
+ * importa, nunca o papel de quem está com a sessão ativa; por isso este
+ * método recebe `documentoTitularRole` explícito em vez de inferir do
+ * usuário autenticado (`@CurrentUser()`), que pode ser só o ajudante.
  *
  * EAR/CURSO permanecem stub honesto: não são documentos de identidade
  * reconhecidos mundialmente (catálogo da Didit é CNH/RG/passaporte/etc,
@@ -39,9 +59,25 @@ export class RottaAiService {
     private readonly diditService: DiditService,
   ) {}
 
-  async validateDocument(dto: ValidateDocumentDto): Promise<ValidateDocumentResponseDto> {
+  async validateDocument(
+    dto: ValidateDocumentDto,
+    documentoTitularRole?: Role,
+  ): Promise<ValidateDocumentResponseDto> {
+    if (
+      documentoTitularRole === Role.MOTORISTA &&
+      IDENTITY_DOCUMENT_CHECK_TYPES.has(dto.tipo) &&
+      dto.tipo !== "CNH"
+    ) {
+      throw new BadRequestException(
+        `Motoristas só podem enviar CNH como documento de identidade — ${dto.tipo} não é aceito, porque só a CNH comprova a categoria de habilitação exigida para dirigir veículo escolar.`,
+      );
+    }
+
     switch (dto.tipo) {
       case "CNH":
+      case "RG":
+      case "CIN":
+      case "PASSAPORTE":
       case "OCR": {
         const resultado = await this.diditService.verifyId(dto.referenciaArquivo);
         return {

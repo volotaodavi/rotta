@@ -1,9 +1,37 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { IsIn, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
-/** Tipos de verificação previstos para a Rotta AI (briefing "Rotta AI"). */
-export const ROTTA_AI_CHECK_TYPES = ["CNH", "SELFIE", "FACE_MATCH", "OCR", "EAR", "CURSO"] as const;
+/**
+ * Tipos de verificação previstos para a Rotta AI (briefing "Rotta AI").
+ *
+ * `RG`/`CIN`/`PASSAPORTE` existem para papéis QUE NÃO SÃO Motorista
+ * (Monitor, Despachante e afins — qualquer documento de identidade
+ * reconhecido serve). Para o papel Motorista, `RottaAiService` só
+ * aceita `CNH` — nunca RG/CIN/Passaporte — porque a CNH é o único
+ * documento que também comprova habilitação para dirigir veículo
+ * escolar (`DRV-02`, Dossiê 16); um motorista com RG aprovado não
+ * atenderia a exigência de categoria mínima D/E.
+ */
+export const ROTTA_AI_CHECK_TYPES = [
+  "CNH",
+  "RG",
+  "CIN",
+  "PASSAPORTE",
+  "SELFIE",
+  "FACE_MATCH",
+  "OCR",
+  "EAR",
+  "CURSO",
+] as const;
 export type RottaAiCheckType = (typeof ROTTA_AI_CHECK_TYPES)[number];
+
+/** Documentos de identidade aceitos para papéis que NÃO são Motorista (Monitor, Despachante etc.). */
+export const IDENTITY_DOCUMENT_TYPES_NAO_MOTORISTA: readonly RottaAiCheckType[] = [
+  "CNH",
+  "RG",
+  "CIN",
+  "PASSAPORTE",
+];
 
 export class ValidateDocumentDto {
   @ApiProperty({ enum: ROTTA_AI_CHECK_TYPES, example: "CNH" })

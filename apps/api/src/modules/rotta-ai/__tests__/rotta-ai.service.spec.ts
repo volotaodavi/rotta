@@ -2,8 +2,11 @@ import { BadRequestException, NotImplementedException } from "@nestjs/common";
 
 import { RottaAiService } from "../rotta-ai.service";
 
+
 import type { DiditService } from "@/infra/didit/didit.service";
 import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
+
+import { Role } from "@/shared/enums";
 
 function buildService(diditOverrides: Partial<DiditService> = {}) {
   const diditService = {
@@ -170,6 +173,73 @@ describe("RottaAiService", () => {
         ).rejects.toThrow(NotImplementedException);
       },
     );
+
+    it.each(["RG", "CIN", "PASSAPORTE"] as const)(
+      "%s: para um papel que NÃO é Motorista, delega normalmente a diditService.verifyId",
+      async (tipo) => {
+        const { service, diditService } = buildService({
+          verifyId: jest
+            .fn()
+            .mockResolvedValue({ status: "approved", aprovado: true, dadosBrutos: {} }),
+        });
+
+        const resultado = await service.validateDocument(
+          { tipo, referenciaArquivo: "https://storage.example/doc.jpg" },
+          Role.MONITOR,
+        );
+
+        expect(diditService.verifyId).toHaveBeenCalledWith("https://storage.example/doc.jpg");
+        expect(resultado.aprovado).toBe(true);
+      },
+    );
+  });
+
+  describe("regra de negócio: Motorista só pode enviar CNH como documento de identidade", () => {
+    it.each(["RG", "CIN", "PASSAPORTE"] as const)(
+      "%s para o papel Motorista lança BadRequestException (nunca chama a Didit)",
+      async (tipo) => {
+        const { service, diditService } = buildService();
+
+        await expect(
+          service.validateDocument(
+            { tipo, referenciaArquivo: "https://storage.example/doc.jpg" },
+            Role.MOTORISTA,
+          ),
+        ).rejects.toThrow(BadRequestException);
+        expect(diditService.verifyId).not.toHaveBeenCalled();
+      },
+    );
+
+    it("CNH para o papel Motorista continua funcionando normalmente", async () => {
+      const { service } = buildService({
+        verifyId: jest
+          .fn()
+          .mockResolvedValue({ status: "approved", aprovado: true, dadosBrutos: {} }),
+      });
+
+      const resultado = await service.validateDocument(
+        { tipo: "CNH", referenciaArquivo: "https://storage.example/cnh.jpg" },
+        Role.MOTORISTA,
+      );
+
+      expect(resultado.aprovado).toBe(true);
+    });
+
+    it("sem papel do titular informado (endpoint genérico), a restrição não se aplica", async () => {
+      const { service, diditService } = buildService({
+        verifyId: jest
+          .fn()
+          .mockResolvedValue({ status: "approved", aprovado: true, dadosBrutos: {} }),
+      });
+
+      const resultado = await service.validateDocument({
+        tipo: "RG",
+        referenciaArquivo: "https://storage.example/rg.jpg",
+      });
+
+      expect(diditService.verifyId).toHaveBeenCalled();
+      expect(resultado.aprovado).toBe(true);
+    });
   });
 
   describe("demais métodos (stub honesto, sem provedor contratado)", () => {
