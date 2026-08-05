@@ -1,9 +1,17 @@
-import { Camera, Callout, MapView, PointAnnotation } from "@maplibre/maplibre-react-native";
+import {
+  Camera,
+  Callout,
+  LineLayer,
+  MapView,
+  PointAnnotation,
+  ShapeSource,
+} from "@maplibre/maplibre-react-native";
 import { useRef } from "react";
 import { StyleSheet, View } from "react-native";
 
 import type { RottaMapProps } from "../types";
 import type { MapViewRef } from "@maplibre/maplibre-react-native";
+import type { Feature, LineString } from "geojson";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
@@ -12,13 +20,16 @@ const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/dark";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
+const DEFAULT_ROUTE_COLOR = "#3b6ef6";
 
 /**
  * `<RottaMap />` (mobile/native) — único componente do app que importa
  * `@maplibre/maplibre-react-native` diretamente (ver ADR em
  * `../types.ts`). Renderiza os marcadores já calculados pelo Map
  * Intelligence Agent (`GET /geo/mapa/marcadores`); NUNCA chama
- * Nominatim/OSRM do dispositivo.
+ * Nominatim/OSRM do dispositivo. `route` (opcional) desenha uma linha
+ * estática por cima do mapa via `ShapeSource`/`LineLayer` — mesmo uso
+ * de `./web`.
  *
  * Requer o config plugin `@maplibre/maplibre-react-native` registrado
  * em `apps/mobile/app.config.ts` e um build nativo (dev client/EAS) —
@@ -29,6 +40,8 @@ const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
  */
 export function RottaMap({
   markers,
+  route,
+  routeColor = DEFAULT_ROUTE_COLOR,
   initialCenter,
   initialZoom = DEFAULT_ZOOM,
   onBoundsChange,
@@ -44,6 +57,14 @@ export function RottaMap({
     : markers.length > 0
       ? ([markers[0]!.longitude, markers[0]!.latitude] as [number, number])
       : FALLBACK_CENTER;
+
+  const routeShape: Feature<LineString> | null = route
+    ? {
+        type: "Feature",
+        properties: {},
+        geometry: { type: "LineString", coordinates: route.map((c) => [c.longitude, c.latitude]) },
+      }
+    : null;
 
   return (
     <View style={styles.container}>
@@ -63,6 +84,14 @@ export function RottaMap({
         }}
       >
         <Camera defaultSettings={{ centerCoordinate: center, zoomLevel: initialZoom }} />
+        {routeShape ? (
+          <ShapeSource id="rotta-route" shape={routeShape}>
+            <LineLayer
+              id="rotta-route-line"
+              style={{ lineColor: routeColor, lineWidth: 4, lineCap: "round", lineJoin: "round" }}
+            />
+          </ShapeSource>
+        ) : null}
         {markers.map((marker) => (
           <PointAnnotation
             key={marker.id}

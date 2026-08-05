@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 /**
  * Layout do route group `(dashboard)` — Painel Administrativo autenticado
  * (Empresa, Gestor, Escola — Dossie 11, Secao 2/5), com o AppShell
@@ -71,15 +73,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
             </Link>
           </nav>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            void logout().then(() => router.replace("/entrar"));
-          }}
-        >
-          Sair
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              void logout().then(() => router.replace("/entrar"));
+            }}
+          >
+            Sair
+          </Button>
+        </div>
       </header>
       {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
       <main className="flex-1 p-6">{children}</main>

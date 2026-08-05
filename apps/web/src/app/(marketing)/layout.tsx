@@ -9,6 +9,7 @@ import type { Route } from "next";
 import type { ReactNode } from "react";
 
 import { RouteMark } from "@/components/route-mark";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
@@ -82,6 +83,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             ))}
           </nav>
           <div className="hidden items-center gap-3 md:flex">
+            <ThemeToggle />
             <Link href="/entrar">
               <Button variant="ghost" size="sm">
                 Entrar
@@ -93,15 +95,18 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               </Button>
             </Link>
           </div>
-          <button
-            type="button"
-            aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
-            aria-expanded={menuAberto}
-            onClick={() => setMenuAberto((aberto) => !aberto)}
-            className="flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors hover:bg-muted md:hidden"
-          >
-            {menuAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-1 md:hidden">
+            <ThemeToggle />
+            <button
+              type="button"
+              aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={menuAberto}
+              onClick={() => setMenuAberto((aberto) => !aberto)}
+              className="flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors hover:bg-muted"
+            >
+              {menuAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
 
         {menuAberto && (

@@ -18,6 +18,7 @@
   "devDependencies": {
     "@maplibre/maplibre-react-native": "^10.4.2",
     "@rotta/config": "workspace:*",
+    "@types/geojson": "^7946.0.16",
     "@types/react": "^18.3.17",
     "eslint": "^8.57.1",
     "maplibre-gl": "^6.1.0",

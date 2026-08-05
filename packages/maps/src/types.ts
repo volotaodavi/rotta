@@ -57,6 +57,15 @@ export interface RottaMapProps {
    */
   accessToken?: string;
   markers: RottaMapMarker[];
+  /**
+   * Trajeto a desenhar como linha (ex. sequência de paradas de uma
+   * rota, ou o exemplo interativo da landing page) — puramente visual,
+   * nunca calculado no cliente (a sequência já vem pronta de quem
+   * chama, seja um `RouteStop[]` real ou coordenadas de exemplo).
+   */
+  route?: Coordenada[];
+  /** Cor da linha do `route`, formato CSS (ex. `#3b6ef6`) — padrão: azul da marca Rotta. */
+  routeColor?: string;
   /** Centro inicial da câmera — se omitido, o mapa enquadra todos os `markers`. */
   initialCenter?: Coordenada;
   initialZoom?: number;

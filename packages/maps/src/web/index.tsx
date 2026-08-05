@@ -1,9 +1,17 @@
 "use client";
 
-import { LngLatBounds, MapLibreMap, Marker, NavigationControl, Popup } from "maplibre-gl";
+import {
+  LngLatBounds,
+  MapLibreMap,
+  Marker,
+  NavigationControl,
+  Popup,
+  type GeoJSONSource,
+} from "maplibre-gl";
 import { useEffect, useRef } from "react";
 
-import type { RottaMapProps } from "../types";
+import type { Coordenada, RottaMapProps } from "../types";
+import type { Feature, LineString } from "geojson";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -14,15 +22,53 @@ const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/dark";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
+const DEFAULT_ROUTE_COLOR = "#3b6ef6";
+const ROUTE_SOURCE_ID = "rotta-route";
+const ROUTE_LAYER_ID = "rotta-route-line";
+
+/** Desenha/atualiza a linha do `route` (GeoJSON LineString) — chamado só quando o estilo já carregou (ver nota no efeito abaixo). */
+function applyRoute(map: MapLibreMap, route: Coordenada[] | undefined, color: string): void {
+  const data: Feature<LineString> = {
+    type: "Feature",
+    properties: {},
+    geometry: {
+      type: "LineString",
+      coordinates: (route ?? []).map((c) => [c.longitude, c.latitude]),
+    },
+  };
+
+  const existingSource = map.getSource(ROUTE_SOURCE_ID) as GeoJSONSource | undefined;
+  if (existingSource) {
+    existingSource.setData(data);
+    if (map.getLayer(ROUTE_LAYER_ID)) {
+      map.setPaintProperty(ROUTE_LAYER_ID, "line-color", color);
+    }
+    return;
+  }
+
+  map.addSource(ROUTE_SOURCE_ID, { type: "geojson", data });
+  map.addLayer({
+    id: ROUTE_LAYER_ID,
+    type: "line",
+    source: ROUTE_SOURCE_ID,
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": color, "line-width": 4, "line-opacity": 0.9 },
+  });
+}
 
 /**
  * `<RottaMap />` (web) — único componente do app que importa
  * `maplibre-gl` diretamente (ver ADR em `../types.ts`). Renderiza os
  * marcadores já calculados pelo Map Intelligence Agent (`GET
  * /geo/mapa/marcadores`); NUNCA chama Nominatim/OSRM do navegador.
+ * `route` (opcional) desenha uma linha estática por cima do mapa — usado
+ * pela demonstração interativa da Landing Page e por telas reais de
+ * trajeto de rota (`RouteStop[]` em ordem).
  */
 export function RottaMap({
   markers,
+  route,
+  routeColor = DEFAULT_ROUTE_COLOR,
   initialCenter,
   initialZoom = DEFAULT_ZOOM,
   onBoundsChange,
@@ -98,6 +144,21 @@ export function RottaMap({
       map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 0 });
     }
   }, [markers, initialCenter]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // O estilo carrega de forma assíncrona (tiles remotos) — `addSource`/
+    // `addLayer` só são seguros depois de `load`, que pode já ter
+    // disparado (mapa recriado por troca de `styleUrl`) ou ainda não
+    // (primeira montagem).
+    if (map.isStyleLoaded()) {
+      applyRoute(map, route, routeColor);
+    } else {
+      map.once("load", () => applyRoute(map, route, routeColor));
+    }
+  }, [route, routeColor]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

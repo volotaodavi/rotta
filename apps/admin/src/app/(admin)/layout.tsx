@@ -6,6 +6,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
+
 /**
  * Layout do painel administrativo interno (Dossie 11, Secao 6) —
  * clientes/tenants, suporte, financeiro, logs, metricas.
@@ -41,15 +43,18 @@ export default function AdminLayout({ children }: { children: ReactNode }): JSX.
           <Image src="/brand/rotta-mark-512.png" alt="Rotta" width={28} height={28} priority />
           <Typography variant="subtitle">Rotta Admin</Typography>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            void logout().then(() => router.replace("/entrar"));
-          }}
-        >
-          Sair
-        </Button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              void logout().then(() => router.replace("/entrar"));
+            }}
+          >
+            Sair
+          </Button>
+        </div>
       </header>
       <main className="flex-1 p-6">{children}</main>
     </div>

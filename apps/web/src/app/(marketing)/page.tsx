@@ -17,6 +17,8 @@ import Link from "next/link";
 import type { Route } from "next";
 import type { ComponentType } from "react";
 
+import { RouteDemoSection } from "@/components/route-demo-section";
+
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
   { label: "Rastreamento em tempo real", icon: MapPin },
   { label: "Notificações automáticas", icon: Bell },
@@ -225,6 +227,8 @@ export default function LandingPage(): JSX.Element {
           <HeroVisual />
         </div>
       </section>
+
+      <RouteDemoSection />
 
       <section className="mx-auto w-full max-w-6xl px-6 pb-24">
         <Typography variant="headline" as="h2" className="mb-10 text-center">
