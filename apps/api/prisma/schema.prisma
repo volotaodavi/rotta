@@ -433,6 +433,9 @@ model Company {
   /// passa a existir quando a primeira movimentação acontece
   /// (`WalletService.getOrCreate`), nunca criada no cadastro da empresa.
   wallet                 Wallet?
+  /// Eventos de calendário (Dossiê 8 §14, tarefa #101) — feriados,
+  /// recessos, eventos escolares, ausências planejadas, etc.
+  eventosAgenda          EventoAgenda[]
 
   @@index([status])
   @@index([tipo])
@@ -582,6 +585,10 @@ model User {
   walletMotorista   Wallet?
   transacoesCriadas WalletTransaction[] @relation("WalletTransactionCriadaPor")
   saquesSolicitados WithdrawalRequest[] @relation("WithdrawalRequestSolicitadoPor")
+
+  /// Eventos de agenda criados por este usuário (tarefa #101) — nulo
+  /// para eventos `geradoAutomaticamente` (nenhum usuário os criou).
+  eventosAgendaCriados EventoAgenda[] @relation("EventoAgendaCriadoPor")
 
   @@map("users")
 }
@@ -2043,4 +2050,72 @@ model WithdrawalRequest {
 
   @@index([walletId, status])
   @@map("withdrawal_requests")
+}
+
+// =============================================================================
+// Agenda — Feriados, Recessos e Eventos (Dossiê 8, Seção 14 / EF Parte 6,
+// AGE-01 a AGE-05, tarefa #101)
+// =============================================================================
+
+/// Discriminador de `EventoAgenda` (Dossiê 8 §14.1). `VENCIMENTO_*` são
+/// sempre `geradoAutomaticamente = true` a partir de `data_validade` em
+/// `Motorista`/`Veiculo`/`Documento` (Dossiê 8 §14.2) — NÃO implementado
+/// nesta entrega (exigiria um job assíncrono varrendo validades, fora do
+/// escopo desta tarefa; ver `docs/27-rotta-agenda-calendario.md`).
+/// `TROCA_DE_ROTA_PONTUAL` é a projeção de `ROT-05`/`ROT-06` (`AGE-04`/
+/// `AGE-05`) — também não gerado automaticamente ainda pelo mesmo
+/// motivo: seria uma integração cross-módulo adicional, documentada como
+/// próximo passo, não uma omissão desta entrega.
+enum EventoAgendaTipo {
+  FERIADO
+  RECESSO
+  EVENTO_ESCOLAR
+  TROCA_DE_ROTA_PONTUAL
+  AUSENCIA_PLANEJADA
+  MANUTENCAO_VEICULO
+  VENCIMENTO_CNH
+  VENCIMENTO_SEGURO
+  VENCIMENTO_DOCUMENTO_GENERICO
+}
+
+/// Entidade única para todo evento de calendário (Dossiê 8 §14.1) — um
+/// discriminador de `tipo`, não uma tabela por tipo. `entidadeTipo`/
+/// `entidadeId` são a referência polimórfica opcional (rota, veículo,
+/// motorista, aluno — o campo relevante depende do `tipo`), mesmo
+/// trade-off de `AuditLog` (perde-se FK forte do Postgres, ganha-se não
+/// precisar de uma tabela satélite por tipo de entidade referenciada —
+/// aqui, diferente de `Wallet`, não é dinheiro, então o trade-off vale a
+/// pena). `dataFim` é opcional: nulo para um evento de um único dia
+/// (feriado, vencimento), preenchido para um período (recesso escolar,
+/// ausência planejada de motorista).
+model EventoAgenda {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  tipo      EventoAgendaTipo
+  data      DateTime         @db.Date
+  dataFim   DateTime?        @db.Date
+  titulo    String
+  /// Descrição livre (ex. "Feriado municipal") — AGE-01/02/03.
+  descricao String?
+
+  entidadeTipo String?
+  entidadeId   String?
+
+  /// Distingue eventos criados manualmente pelo Gestor de alertas
+  /// derivados automaticamente por outro módulo (Dossiê 8 §14.2) — nunca
+  /// editável pelo usuário quando `true` (`AgendaService` rejeita
+  /// update/delete manual nesse caso).
+  geradoAutomaticamente Boolean @default(false)
+
+  criadoPorId String? @db.Uuid
+  criadoPor   User?   @relation("EventoAgendaCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, tipo, data])
+  @@index([companyId, data])
+  @@map("eventos_agenda")
 }
