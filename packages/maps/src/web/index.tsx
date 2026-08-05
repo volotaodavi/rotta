@@ -7,6 +7,7 @@ import {
   NavigationControl,
   Popup,
   type GeoJSONSource,
+  type StyleSpecification,
 } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 
@@ -18,15 +19,30 @@ import "maplibre-gl/dist/maplibre-gl.css";
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
 /**
- * OpenFreeMap (https://openfreemap.org) — hospedagem gratuita de tiles
- * vetoriais OSM, sem token/conta/limite de uso. Os únicos estilos
- * publicados por eles são `liberty`, `bright` e `positron` — NÃO existe
- * `dark` (o valor usado aqui antes apontava para uma URL 404, e o mapa
- * ficava completamente preto: MapLibre GL não tem nenhum layer/cor de
- * fundo para pintar quando o carregamento do estilo falha). `liberty` é
- * o estilo mais completo/atual deles (equivalente ao OSM Liberty).
+ * Tiles RASTER puros do OpenStreetMap (tile.openstreetmap.org) — troca
+ * o estilo VETORIAL `liberty` do OpenFreeMap (tiles.openfreemap.org),
+ * que ficava com a tela branca: um estilo vetorial depende de VÁRIOS
+ * fetches extras (o próprio `style.json`, sprite, glyphs) além dos
+ * tiles em si — se qualquer um desses domínios estiver bloqueado/fora
+ * do ar, o MapLibre não desenha nada e não existe nenhum sinal visível
+ * disso fora do console (`map.on("error", ...)` abaixo). Um estilo
+ * raster inline como este só depende de UM tipo de requisição (a
+ * imagem do tile), então é muito mais resiliente como padrão —
+ * inclusive nesta sandbox, onde `openfreemap.org` responde mas outras
+ * chamadas dependentes podem não completar a tempo.
  */
-const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/liberty";
+const OSM_RASTER_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    "osm-raster": {
+      type: "raster",
+      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "&copy; OpenStreetMap contributors",
+    },
+  },
+  layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster" }],
+};
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
@@ -81,7 +97,7 @@ export function RottaMap({
   initialZoom = DEFAULT_ZOOM,
   onBoundsChange,
   onMarkerPress,
-  styleUrl = DEFAULT_STYLE,
+  styleUrl,
 }: RottaMapProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
@@ -100,7 +116,7 @@ export function RottaMap({
 
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: styleUrl,
+      style: styleUrl ?? OSM_RASTER_STYLE,
       center: initialCenter ? [initialCenter.longitude, initialCenter.latitude] : FALLBACK_CENTER,
       zoom: initialZoom,
     });
