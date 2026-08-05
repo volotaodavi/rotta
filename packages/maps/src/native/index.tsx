@@ -15,8 +15,15 @@ import type { Feature, LineString } from "geojson";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
-/** OpenFreeMap (https://openfreemap.org) — hospedagem gratuita de tiles vetoriais OSM, sem token/conta/limite de uso. Estilo "dark", visualmente equivalente ao estilo escuro do Mapbox usado antes. */
-const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/dark";
+/**
+ * OpenFreeMap (https://openfreemap.org) — hospedagem gratuita de tiles
+ * vetoriais OSM, sem token/conta/limite de uso. Os únicos estilos
+ * publicados por eles são `liberty`, `bright` e `positron` — NÃO existe
+ * `dark` (ver nota equivalente em `../web/index.tsx`, mesmo bug: URL
+ * 404 fazia o mapa renderizar completamente preto). `liberty` é o
+ * estilo mais completo/atual deles (equivalente ao OSM Liberty).
+ */
+const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];

@@ -17,8 +17,16 @@ import "maplibre-gl/dist/maplibre-gl.css";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
-/** OpenFreeMap (https://openfreemap.org) — hospedagem gratuita de tiles vetoriais OSM, sem token/conta/limite de uso. Estilo "dark", visualmente equivalente ao `mapbox://styles/mapbox/dark-v11` usado antes. */
-const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/dark";
+/**
+ * OpenFreeMap (https://openfreemap.org) — hospedagem gratuita de tiles
+ * vetoriais OSM, sem token/conta/limite de uso. Os únicos estilos
+ * publicados por eles são `liberty`, `bright` e `positron` — NÃO existe
+ * `dark` (o valor usado aqui antes apontava para uma URL 404, e o mapa
+ * ficava completamente preto: MapLibre GL não tem nenhum layer/cor de
+ * fundo para pintar quando o carregamento do estilo falha). `liberty` é
+ * o estilo mais completo/atual deles (equivalente ao OSM Liberty).
+ */
+const DEFAULT_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
@@ -97,6 +105,14 @@ export function RottaMap({
       zoom: initialZoom,
     });
     map.addControl(new NavigationControl(), "top-right");
+
+    // Sem isso, uma falha ao carregar o estilo (URL errada, tile server
+    // fora do ar) é silenciosa — o mapa fica com a tela preta padrão do
+    // WebGL e nenhum erro aparece em lugar nenhum, exceto o console.
+    map.on("error", (event) => {
+      // eslint-disable-next-line no-console -- único sinal visível de uma falha de estilo/tile.
+      console.error("[RottaMap] Falha ao carregar o mapa:", event.error);
+    });
 
     const emitBounds = (): void => {
       const bounds = map.getBounds();
