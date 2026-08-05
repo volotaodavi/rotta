@@ -25,7 +25,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,mdx,yml,yaml}\" --cache",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,mdx,yml,yaml}\" --cache",
     "clean": "turbo run clean && rm -rf node_modules",
-    "prepare": "husky",
+    "prepare": "husky || exit 0",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "turbo run build --filter=./packages/* && changeset publish"
