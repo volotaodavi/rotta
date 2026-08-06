@@ -127,7 +127,14 @@ export class AuthService {
 
     await this.usersService.recordLgpdConsent(adminUser.id);
 
-    return this.issueTokens(adminUser, company.id, Role.EMPRESA, membership.id, meta);
+    return this.issueTokens(
+      adminUser,
+      company.id,
+      Role.EMPRESA,
+      membership.id,
+      meta,
+      company.nomeFantasia,
+    );
   }
 
   /**
@@ -223,7 +230,14 @@ export class AuthService {
 
     if (memberships.length === 1) {
       const [only] = memberships;
-      return this.issueTokens(user, only!.companyId, only!.role as Role, only!.id, meta);
+      return this.issueTokens(
+        user,
+        only!.companyId,
+        only!.role as Role,
+        only!.id,
+        meta,
+        only!.company.nomeFantasia,
+      );
     }
 
     if (dto.companyId) {
@@ -231,7 +245,14 @@ export class AuthService {
       if (!selected) {
         throw new ForbiddenException("Vínculo informado não pertence a este usuário.");
       }
-      return this.issueTokens(user, selected.companyId, selected.role as Role, selected.id, meta);
+      return this.issueTokens(
+        user,
+        selected.companyId,
+        selected.role as Role,
+        selected.id,
+        meta,
+        selected.company.nomeFantasia,
+      );
     }
 
     return {
@@ -404,12 +425,28 @@ export class AuthService {
    * `AUTH-01-A1`: "aceita o convite... entra normalmente" — mesmo
    * mecanismo de login, nunca duplicado).
    */
+  /**
+   * `companyNameHint` (Dossiê 12 §7.4, otimização de latência do login):
+   * quase todo chamador daqui (`login`/`register`) JÁ tem o
+   * `nomeFantasia` da empresa em mãos no momento da chamada — veio de
+   * `Company` recém-criada ou de um `Membership` já carregado com
+   * `include: { company: true }` (`listActiveMembershipsWithCompany`).
+   * Antes, `issueTokens` sempre reconsultava o banco só para achar esse
+   * nome de novo — uma query redundante em TODO login com empresa,
+   * exatamente no caminho mais sensível a latência percebida pelo
+   * usuário. Passar o hint pronto pula essa query; só quando o
+   * chamador de fato não tem o dado à mão (`refresh`, sessão restaurada
+   * sem `Membership` carregado) é que ainda consultamos, `undefined`
+   * sinaliza esse caso — nunca `null`, que significa "sem empresa"
+   * (Responsável/Admin Rotta).
+   */
   async issueTokens(
     user: User,
     tenantId: string | null,
     role: Role,
     vinculoId: string,
     meta: AuthRequestMeta,
+    companyNameHint?: string | null,
   ): Promise<AuthTokensResponseDto> {
     const refreshTokenPlain = randomBytes(48).toString("hex");
     const refreshTtl = this.configService.get<AuthConfig>("auth")!.refreshTokenTtl;
@@ -436,8 +473,8 @@ export class AuthService {
     };
     const accessToken = await this.jwtService.signAsync(payload);
 
-    let companyName: string | null = null;
-    if (tenantId) {
+    let companyName: string | null = companyNameHint ?? null;
+    if (tenantId && companyNameHint === undefined) {
       const memberships = await this.usersService.listActiveMembershipsWithCompany(user.id);
       companyName = memberships.find((m) => m.companyId === tenantId)?.company.nomeFantasia ?? null;
     }

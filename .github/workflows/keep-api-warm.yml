@@ -1,0 +1,38 @@
+name: Keep API Warm
+
+# Mitigação de latência de login (Dossiê 12 §7.4 — "login demorando
+# muito", reportado pelo usuário em produção): o Render free tier
+# suspende `apps/api` após ~15min sem tráfego, e o primeiro request
+# depois disso paga o "cold start" — 30 a 90+ segundos, confirmado por
+# observação direta neste mesmo Render (múltiplas requisições em
+# sequência, a primeira levando 35s+ e as seguintes < 1s). Isso é
+# ortogonal a qualquer otimização de código no `AuthService`: mesmo o
+# login mais rápido do mundo ainda esperaria o container acordar.
+#
+# Ferramenta gratuita (sem custo, sem cadastro novo, já que o repo já
+# vive no GitHub): um cron do GitHub Actions batendo no endpoint de
+# liveness a cada poucos minutos, mantendo o processo sempre quente.
+# Isso NÃO é um substituto de um plano pago do Render — é só uma forma
+# honesta e gratuita de reduzir a chance de cold start durante o
+# horário em que a plataforma é usada.
+on:
+  schedule:
+    # A cada 10 minutos — abaixo da janela de suspensão de ~15min do
+    # Render free tier, com margem de segurança para variação de
+    # agendamento do GitHub Actions (cron de `schedule` não é
+    # garantido no minuto exato).
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    name: Ping /v1/health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API liveness endpoint
+        run: |
+          curl --fail --silent --show-error --max-time 90 \
+            -o /dev/null -w "HTTP %{http_code} em %{time_total}s\n" \
+            "${API_HEALTH_URL}"
+        env:
+          API_HEALTH_URL: "https://rotta-vt7i.onrender.com/v1/health"
