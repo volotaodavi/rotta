@@ -8,6 +8,7 @@ import helmet from "helmet";
 import { Logger } from "nestjs-pino";
 
 import { AppModule } from "./app.module";
+import { isCorsOriginAllowed } from "./config/cors-origin.util";
 
 import type { AppConfig } from "./config/app.config";
 
@@ -38,7 +39,21 @@ async function bootstrap(): Promise<void> {
   // --- Seguranca de borda (Dossie 12, Secao 7.1) ---
   app.use(helmet());
   app.enableCors({
-    origin: config.corsOrigins,
+    // Função em vez de array estático: além das origens exatas de
+    // CORS_ORIGINS (produção — apps/web e apps/admin na Vercel), aceita
+    // opcionalmente CORS_ORIGIN_REGEX (Preview Deployments, subdomínio
+    // novo a cada PR — não dá para listar de antemão). Requisição sem
+    // header `Origin` (health check, chamada server-to-server, curl)
+    // sempre passa — CORS é uma restrição de navegador, não existe
+    // "origem" fora de um browser para validar.
+    origin: (origin, callback) => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      const allowed = isCorsOriginAllowed(origin, config.corsOrigins, config.corsOriginRegex);
+      callback(allowed ? null : new Error(`Origem não permitida por CORS: ${origin}`), allowed);
+    },
     credentials: true,
   });
 

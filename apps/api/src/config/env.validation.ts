@@ -12,6 +12,13 @@ export const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(3333),
   API_PREFIX: z.string().min(1).default("v1"),
   CORS_ORIGINS: z.string().min(1),
+  // Complementa CORS_ORIGINS para origens que não dá para listar uma a
+  // uma — o caso real é a Vercel: cada Preview Deployment (um por PR)
+  // ganha um subdomínio novo (`rotta-web-<hash>-rottabr.vercel.app`),
+  // então uma lista fixa nunca cobre todos. Opcional: sem ela, só as
+  // origens exatas de CORS_ORIGINS são aceitas (comportamento anterior,
+  // inalterado). Ex.: `^https://rotta-(web|admin)-.*-rottabr\.vercel\.app$`.
+  CORS_ORIGIN_REGEX: z.string().optional(),
 
   DATABASE_URL: z.string().url(),
 
