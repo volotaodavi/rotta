@@ -25,7 +25,6 @@ import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
 
-
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
   { label: "Ao vivo, sempre", icon: MapPin },
   { label: "Sem grupo de WhatsApp", icon: Bell },
@@ -358,9 +357,12 @@ export default function LandingPage(): JSX.Element {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {SEGURANCA_ITENS.map((item) => (
-              <Card key={item.titulo}>
+              <Card
+                key={item.titulo}
+                className="group transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+              >
                 <Card.Body className="flex flex-col gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success transition-transform duration-200 group-hover:scale-110">
                     <item.icon className="h-5 w-5" />
                   </span>
                   <Typography variant="subtitle">{item.titulo}</Typography>
@@ -418,9 +420,12 @@ export default function LandingPage(): JSX.Element {
         </Typography>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {BENEFICIOS.map((beneficio) => (
-            <Card key={beneficio.titulo}>
+            <Card
+              key={beneficio.titulo}
+              className="group transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+            >
               <Card.Body className="flex flex-col gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
                   <beneficio.icon className="h-5 w-5" />
                 </span>
                 <Typography variant="subtitle">{beneficio.titulo}</Typography>
