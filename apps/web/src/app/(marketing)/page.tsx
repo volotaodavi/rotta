@@ -22,8 +22,15 @@ import Link from "next/link";
 import type { ComponentType } from "react";
 
 import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
+import {
+  MonitorIllustration,
+  MotoristaIllustration,
+  ResponsavelIllustration,
+  TransportadoraIllustration,
+} from "@/components/audience-illustrations";
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
+
 
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
   { label: "Ao vivo, sempre", icon: MapPin },
@@ -169,20 +176,29 @@ const BENEFICIOS: {
 ];
 
 /**
+ * Uma ilustração SVG própria por audiência (Responsável/Transportadora/
+ * Motorista/Monitor) — não um ícone genérico dentro de um círculo.
+ * Chaveada por `tone` porque `tone` já é 1:1 com a audiência em
+ * `AUDIENCIAS` (Dossiê 24 — nenhuma foto de estoque: a Rotta não tem
+ * fotografia real de motoristas/famílias ainda, então uma cena vetorial
+ * na paleta da marca substitui a fotografia que a Uber usa nesse mesmo
+ * tipo de seção, sem fingir uma autenticidade que a Rotta não tem).
+ */
+const AUDIENCE_ILLUSTRATION: Record<AudienceCard["tone"], ComponentType<{ className?: string }>> = {
+  primary: ResponsavelIllustration,
+  neutral: TransportadoraIllustration,
+  success: MotoristaIllustration,
+  info: MonitorIllustration,
+};
+
+/**
  * Painel visual das seções "para qual lado da rota você está" — mesma
  * linguagem de cartão "solto"/com glow do `HeroMapDemo`/`RottaPayVisual`
- * abaixo, só que com um ícone temático em vez de um mapa (nenhuma foto
- * de estoque: a Rotta não tem fotografia real de motoristas/famílias
- * ainda, então um ícone grande e honesto substitui a fotografia que a
- * Uber usa nesse mesmo tipo de seção).
+ * abaixo, agora com uma cena ilustrada (ver `AUDIENCE_ILLUSTRATION`) em
+ * vez do ícone-em-círculo anterior.
  */
-function AudienceVisual({
-  tone,
-  icon: Icon,
-}: {
-  tone: AudienceCard["tone"];
-  icon: ComponentType<{ className?: string }>;
-}): JSX.Element {
+function AudienceVisual({ tone }: { tone: AudienceCard["tone"] }): JSX.Element {
+  const Illustration = AUDIENCE_ILLUSTRATION[tone];
   return (
     <div className="relative aspect-square w-full max-w-sm">
       <div
@@ -192,11 +208,7 @@ function AudienceVisual({
       <div
         className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[32px] border border-border ${TONE_BG[tone]}/5`}
       >
-        <span
-          className={`flex h-28 w-28 items-center justify-center rounded-full ${TONE_BG[tone]} text-white shadow-xl`}
-        >
-          <Icon className="h-12 w-12" />
-        </span>
+        <Illustration className="h-full w-full p-6" />
       </div>
     </div>
   );
@@ -350,7 +362,7 @@ export default function LandingPage(): JSX.Element {
           );
           const visualBloco = (
             <div className="flex justify-center">
-              <AudienceVisual tone={audiencia.tone} icon={audiencia.icon} />
+              <AudienceVisual tone={audiencia.tone} />
             </div>
           );
 
