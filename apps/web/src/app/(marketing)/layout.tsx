@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { RouteMark } from "@/components/route-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
   { href: "/beneficios", label: "Benefícios" },
@@ -30,6 +31,7 @@ const FOOTER_COLUNAS: FooterColumn[] = [
     links: [
       { href: "/planos", label: "Planos" },
       { href: "/beneficios", label: "Benefícios" },
+      { href: "/#seguranca", label: "Segurança" },
       { href: "/blog", label: "Blog" },
     ],
   },

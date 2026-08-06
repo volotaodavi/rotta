@@ -7,8 +7,11 @@ import {
   Link2,
   MapPin,
   PiggyBank,
+  Repeat,
   Route as RouteIcon,
+  ScanFace,
   ShieldCheck,
+  UserCheck,
   UserPlus,
   Wallet,
   Zap,
@@ -16,81 +19,18 @@ import {
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
-
-import type { Route } from "next";
 import type { ComponentType } from "react";
 
+import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
+import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
+
 
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
   { label: "Ao vivo, sempre", icon: MapPin },
   { label: "Sem grupo de WhatsApp", icon: Bell },
   { label: "IA valida documentos", icon: ShieldCheck },
 ];
-
-interface AudienceCard {
-  titulo: string;
-  descricao: string;
-  bullets: string[];
-  ctaLabel: string;
-  ctaHref: Route;
-  tone: "primary" | "neutral" | "success";
-  icon: ComponentType<{ className?: string }>;
-}
-
-const AUDIENCIAS: AudienceCard[] = [
-  {
-    titulo: "Sou responsável",
-    descricao: "Encontre um transporte escolar de confiança e acompanhe cada trajeto ao vivo.",
-    bullets: [
-      "Localização do transporte em tempo real",
-      "Notificação a cada embarque e desembarque",
-      "Histórico completo de viagens",
-    ],
-    ctaLabel: "Encontrar transporte",
-    ctaHref: "/criar-conta/pessoal",
-    tone: "primary",
-    icon: MapPin,
-  },
-  {
-    titulo: "Sou transportadora",
-    descricao: "Centralize motoristas, veículos, rotas, alunos e recebimentos em um único painel.",
-    bullets: [
-      "Gestão completa da frota e da equipe",
-      "Rotas otimizadas e vínculo de alunos",
-      "Rotta Pay: acompanhe o que entra de cada contrato",
-    ],
-    ctaLabel: "Cadastrar minha empresa",
-    ctaHref: "/criar-conta/empresa",
-    tone: "neutral",
-    icon: LayoutGrid,
-  },
-  {
-    titulo: "Sou motorista ou monitor",
-    descricao: "Um app simples para conduzir a rota, registrar embarques e manter tudo em dia.",
-    bullets: [
-      "Rota do dia sempre à mão",
-      "Registro de embarque/desembarque em 1 toque",
-      "Checklist do veículo antes de cada viagem",
-    ],
-    ctaLabel: "Quero dirigir com a Rotta",
-    ctaHref: "/criar-conta/profissional",
-    tone: "success",
-    icon: RouteIcon,
-  },
-];
-
-const TONE_BG: Record<AudienceCard["tone"], string> = {
-  primary: "bg-primary",
-  neutral: "bg-secondary",
-  success: "bg-success",
-};
-
-const TONE_TEXT: Record<AudienceCard["tone"], string> = {
-  primary: "text-primary",
-  neutral: "text-secondary",
-  success: "text-success",
-};
 
 const COMO_FUNCIONA: {
   numero: string;
@@ -124,6 +64,43 @@ const COMO_FUNCIONA: {
   },
 ];
 
+/**
+ * Checklist da seção "Segurança" — só os 4 itens realmente
+ * implementados hoje (`RottaAiService.validateDocument`, integração
+ * Didit): CNH validada (OCR + autenticidade do documento), selfie com
+ * prova de vida (Passive Liveness — confirma que é uma pessoa real, ao
+ * vivo, não uma foto), reconhecimento facial (compara a selfie com o
+ * documento) e rastreamento GPS ao vivo (módulo Rotas/GPS, já em
+ * produção). Nenhum item aqui é aspiracional — cada um tem um serviço
+ * real por trás no backend.
+ */
+const SEGURANCA_ITENS: {
+  titulo: string;
+  descricao: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
+  {
+    titulo: "CNH validada por IA",
+    descricao: "OCR confere a autenticidade do documento e a categoria de habilitação exigida.",
+    icon: ScanFace,
+  },
+  {
+    titulo: "Selfie com prova de vida",
+    descricao: "Confirma que é uma pessoa real, presente na hora, e não uma foto ou vídeo.",
+    icon: UserCheck,
+  },
+  {
+    titulo: "Reconhecimento facial",
+    descricao: "A selfie é comparada com o documento antes de o motorista rodar.",
+    icon: ShieldCheck,
+  },
+  {
+    titulo: "Rastreamento GPS ao vivo",
+    descricao: "Do embarque à entrega, com confirmação automática de cada parada.",
+    icon: MapPin,
+  },
+];
+
 const BENEFICIOS: {
   titulo: string;
   descricao: string;
@@ -145,9 +122,9 @@ const BENEFICIOS: {
     icon: LayoutGrid,
   },
   {
-    titulo: "Documentos verificados por IA",
-    descricao: "CNH, veículo e antecedentes analisados automaticamente antes de qualquer viagem.",
-    icon: ShieldCheck,
+    titulo: "Escalas com substituição automática",
+    descricao: "Motorista ou veículo indisponível? O sistema já aponta quem pode assumir a rota.",
+    icon: Repeat,
   },
   {
     titulo: "Rotas inteligentes",
@@ -220,26 +197,33 @@ function RottaPayVisual(): JSX.Element {
 }
 
 /**
- * Landing Page (Dossiê 11, Secao 1 — reformulada no Dossiê 26 a pedido
- * direto do usuário: "sair do caráter genérico de IA", usando
- * Uber.com.br e AbacatePay.com.br como referência; a estrutura da hero
- * foi refeita para espelhar mais de perto a uber.com/br/pt-br — o
- * componente indisponível para conferência ao vivo nesta sessão pelo
- * bloqueio de rede do sandbox, então a estrutura foi recriada a partir
- * do padrão conhecido do site, nunca copiado literalmente). Da Uber:
- * hero com MAPA REAL ao vivo ao lado do texto (não uma ilustração
- * decorativa — `HeroMapDemo`, mesmo componente `@rotta/maps` do
- * produto real), tipografia enorme e confiante, seções por público
- * como blocos GRANDES alternados (texto de um lado, visual do outro —
- * não um grid compacto de 3 colunas), "como funciona" numerado. Da
- * AbacatePay: blocos de cor cheios (não só branco/cinza), cantos bem
- * arredondados, cartões "soltos"/inclinados como o visual da hero e do
- * Rotta Pay abaixo. Identidade de cor permanece 100% da Rotta
- * (azul/preto/branco/cinza, Dossiê 24) — nenhuma cor ou elemento de
- * marca das referências foi reaproveitado; nenhuma foto de estoque
- * (a Rotta não tem fotografia real ainda) — `AudienceVisual` usa um
- * ícone grande em vez de uma foto de pessoas, no lugar em que a Uber
- * usaria fotografia.
+ * Landing Page (Dossiê 11, Secao 1; revisitada no Dossiê 26 — desta vez
+ * com acesso liberado a uber.com.br, 99app.com, indrive.com/pt-br e
+ * cittamobi.com.br dentro da sessão, então a estrutura abaixo reflete
+ * as páginas REAIS, não mais reconstrução por conhecimento geral):
+ *
+ * - Uber: a hero NÃO é um mapa passivo — é um formulário funcional
+ *   (origem/destino/CTA). Traduzido pra realidade da Rotta (que não tem
+ *   busca pública de transportador antes do cadastro — isso é uma tela
+ *   autenticada do app mobile) como `HeroAudienceSwitch`: 3 pills que
+ *   decidem o alvo do CTA principal, o mesmo papel que o nav
+ *   "Viajar/Ganhe dinheiro" da Uber cumpre lá — sem fingir uma busca que
+ *   não existe.
+ * - Uber e inDrive: bloco de segurança GRANDE e dedicado (não um card
+ *   pequeno perdido num grid) — nova seção "Segurança", só com os 4
+ *   itens que a Rotta AI de fato verifica hoje via Didit
+ *   (`RottaAiService`).
+ * - Cittamobi (o mais parecido com a Rotta: também é "onde está meu
+ *   transporte" em tempo real, não ride-hailing) confirma que a divisão
+ *   por audiência (Passageiros/Operadores/Cidades lá; Responsável/
+ *   Transportadora/Motorista aqui) é o padrão certo — mantida como
+ *   blocos GRANDES alternados (texto de um lado, visual do outro).
+ *
+ * Identidade de cor 100% da Rotta (azul/preto/branco/cinza, Dossiê 24)
+ * — nenhuma cor/copy/elemento de marca das referências foi reaproveitado;
+ * nenhuma foto de estoque (`AudienceVisual` usa ícone, não fotografia de
+ * pessoas) nem badge de app store (o app da Rotta não tem ficha pública
+ * ainda).
  */
 export default function LandingPage(): JSX.Element {
   return (
@@ -255,18 +239,7 @@ export default function LandingPage(): JSX.Element {
             Rastreamento ao vivo, embarque e desembarque confirmados, e uma transportadora a um
             toque de distância — sem grupo de WhatsApp, sem ficar no escuro.
           </Typography>
-          <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-            <Link href="/criar-conta">
-              <Button variant="primary" size="lg">
-                Criar conta grátis
-              </Button>
-            </Link>
-            <Link href="/planos">
-              <Button variant="secondary" size="lg">
-                Ver planos
-              </Button>
-            </Link>
-          </div>
+          <HeroAudienceSwitch />
           <div className="flex flex-wrap gap-2 pt-2">
             {TRUST_CHIPS.map((chip) => (
               <Badge key={chip.label} variant="neutral">
@@ -366,6 +339,36 @@ export default function LandingPage(): JSX.Element {
                   {passo.descricao}
                 </Typography>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="seguranca" className="mx-auto w-full max-w-6xl px-6 py-24">
+        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
+          <div className="flex flex-col items-start gap-5">
+            <Badge variant="success">Segurança</Badge>
+            <Typography variant="headline" as="h2">
+              Antes de rodar, o motorista já passou pela Rotta AI.
+            </Typography>
+            <Typography variant="body" color="muted" className="max-w-lg">
+              Nenhum motorista sai com o veículo sem verificação de identidade — a mesma tecnologia
+              usada pelo mercado financeiro, aplicada ao transporte escolar.
+            </Typography>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {SEGURANCA_ITENS.map((item) => (
+              <Card key={item.titulo}>
+                <Card.Body className="flex flex-col gap-3">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success">
+                    <item.icon className="h-5 w-5" />
+                  </span>
+                  <Typography variant="subtitle">{item.titulo}</Typography>
+                  <Typography variant="bodySmall" color="muted">
+                    {item.descricao}
+                  </Typography>
+                </Card.Body>
+              </Card>
             ))}
           </div>
         </div>
