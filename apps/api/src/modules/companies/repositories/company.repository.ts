@@ -47,6 +47,8 @@ export interface UpdateCompanyData {
   fusoHorario?: string;
   status?: CompanyStatus;
   planId?: string;
+  /** ID da assinatura ativa na AbacatePay (`subs_...`) — ver nota no schema Prisma. */
+  abacatepaySubscriptionId?: string | null;
   deletedAt?: Date | null;
 }
 

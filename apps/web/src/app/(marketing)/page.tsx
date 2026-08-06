@@ -28,7 +28,7 @@ import { HeroMapDemo } from "@/components/hero-map-demo";
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
   { label: "Ao vivo, sempre", icon: MapPin },
   { label: "Sem grupo de WhatsApp", icon: Bell },
-  { label: "IA valida documentos", icon: ShieldCheck },
+  { label: "Motorista verificado por IA", icon: ShieldCheck },
 ];
 
 const COMO_FUNCIONA: {
@@ -100,39 +100,40 @@ const SEGURANCA_ITENS: {
   },
 ];
 
+/**
+ * Deliberadamente só 4 itens (não 6): os dois cortados nesta revisão
+ * ("Rastreamento em tempo real", "Comunicação automática") só repetiam,
+ * com outras palavras, o que a hero e a seção "Como funciona" já
+ * disseram — sintoma exato do "cara de IA" que o usuário reclamou
+ * (parágrafos diferentes reafirmando a mesma frase). Os 4 que restam
+ * são o que ainda não tinha sido dito na página.
+ */
 const BENEFICIOS: {
   titulo: string;
   descricao: string;
   icon: ComponentType<{ className?: string }>;
 }[] = [
   {
-    titulo: "Rastreamento em tempo real",
-    descricao: "Localização do transporte escolar ao vivo, do embarque ao desembarque.",
-    icon: MapPin,
-  },
-  {
-    titulo: "Comunicação automática",
-    descricao: "Responsáveis avisados a cada etapa da rota, sem ligações nem grupos de WhatsApp.",
-    icon: Bell,
-  },
-  {
-    titulo: "Gestão simples",
-    descricao: "Motoristas, veículos, rotas e alunos em um único painel.",
+    titulo: "Um painel, ponto final",
+    descricao:
+      "Motorista, veículo, rota e aluno vivem no mesmo lugar — sem planilha paralela que só uma pessoa da equipe sabe atualizar.",
     icon: LayoutGrid,
   },
   {
-    titulo: "Escalas com substituição automática",
-    descricao: "Motorista ou veículo indisponível? O sistema já aponta quem pode assumir a rota.",
+    titulo: "Motorista faltou? Já tem substituto",
+    descricao:
+      "Motorista ou veículo ficou indisponível de última hora — a Rotta já mostra quem pode assumir a rota, sem telefonema desesperado.",
     icon: Repeat,
   },
   {
-    titulo: "Rotas inteligentes",
-    descricao: "Sequência de embarque otimizada e recálculo automático quando um aluno falta.",
+    titulo: "Menos quilômetro rodado à toa",
+    descricao:
+      "A ordem de embarque é calculada pra economizar tempo e combustível, e se um aluno faltar, a rota se refaz sozinha.",
     icon: RouteIcon,
   },
   {
-    titulo: "Suporte dedicado",
-    descricao: "Time de suporte acompanhando empresas, motoristas e famílias todos os dias.",
+    titulo: "Suporte que responde de verdade",
+    descricao: "Quando algo trava, tem gente do outro lado — não um bot lendo um script de FAQ.",
     icon: Headset,
   },
 ];
@@ -235,8 +236,9 @@ export default function LandingPage(): JSX.Element {
             <br />A Rotta mostra.
           </Typography>
           <Typography variant="body" color="muted" className="max-w-lg">
-            Rastreamento ao vivo, embarque e desembarque confirmados, e uma transportadora a um
-            toque de distância — sem grupo de WhatsApp, sem ficar no escuro.
+            Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
+            desembarcou, e encontra uma transportadora de confiança perto de você — sem precisar
+            perguntar pra ninguém.
           </Typography>
           <HeroAudienceSwitch />
           <div className="flex flex-wrap gap-2 pt-2">
@@ -414,26 +416,29 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-6xl px-6 py-24">
-        <Typography variant="headline" as="h2" className="mb-10 text-center">
-          Tudo que uma rota escolar precisa
+      <section className="mx-auto w-full max-w-3xl px-6 py-24">
+        <Typography variant="headline" as="h2" className="mb-2 text-center">
+          Problemas do dia a dia que a Rotta já resolve
         </Typography>
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {BENEFICIOS.map((beneficio) => (
-            <Card
-              key={beneficio.titulo}
-              className="group transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
-            >
-              <Card.Body className="flex flex-col gap-3">
-                <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary transition-transform duration-200 group-hover:scale-110">
-                  <beneficio.icon className="h-5 w-5" />
-                </span>
+        <Typography variant="body" color="muted" className="mb-12 text-center">
+          Nada aspiracional aqui — cada item abaixo já roda em produção.
+        </Typography>
+        <div className="flex flex-col divide-y divide-border">
+          {BENEFICIOS.map((beneficio, index) => (
+            <div key={beneficio.titulo} className="flex items-start gap-5 py-7">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-primary">
+                <beneficio.icon className="h-5 w-5" />
+              </span>
+              <div className="flex flex-col gap-1.5">
+                <Typography variant="caption" color="muted">
+                  {String(index + 1).padStart(2, "0")}
+                </Typography>
                 <Typography variant="subtitle">{beneficio.titulo}</Typography>
                 <Typography variant="bodySmall" color="muted">
                   {beneficio.descricao}
                 </Typography>
-              </Card.Body>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       </section>
@@ -441,7 +446,7 @@ export default function LandingPage(): JSX.Element {
       <section className="w-full border-y border-border bg-surface px-6 py-20">
         <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
           <Typography variant="headline" as="h2">
-            Chega de ligar perguntando &ldquo;cadê o ônibus?&rdquo;
+            Chega de ligar perguntando &ldquo;cadê o transporte?&rdquo;
           </Typography>
           <Typography variant="body" color="muted">
             Leva menos de 5 minutos para criar sua conta e começar a acompanhar o transporte.

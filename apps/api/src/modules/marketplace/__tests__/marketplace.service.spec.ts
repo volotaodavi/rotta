@@ -47,6 +47,7 @@ function buildCompany(overrides: Partial<Company> = {}): Company & { plan: Plan 
     fusoHorario: "America/Sao_Paulo",
     status: "ATIVO",
     planId: "plan-1",
+    abacatepaySubscriptionId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,

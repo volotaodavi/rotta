@@ -404,6 +404,14 @@ model Company {
   planId String        @db.Uuid
   plan   Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
 
+  /// ID da assinatura na AbacatePay (formato `subs_...`) — preenchido pelo
+  /// webhook `subscription.completed` (Dossiê 26, Rotta Pay/Billing). Nulo
+  /// enquanto a empresa nunca concluiu um checkout de assinatura (inclui
+  /// todo o período `TRIAL`). Correlação inicial do checkout usa
+  /// `externalId: company.id` — este campo guarda o ID definitivo da
+  /// assinatura ATIVA para as próximas ações (cancelar, trocar plano).
+  abacatepaySubscriptionId String? @db.VarChar(64)
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   /// Soft delete (Dossie 16, "Excluir Empresa") — nunca DELETE físico.

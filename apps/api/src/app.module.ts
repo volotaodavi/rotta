@@ -11,6 +11,7 @@ import { LoggingInterceptor } from "@/common/interceptors/logging.interceptor";
 import { TenantContextInterceptor } from "@/common/interceptors/tenant-context.interceptor";
 import { TimeoutInterceptor } from "@/common/interceptors/timeout.interceptor";
 import { TransformResponseInterceptor } from "@/common/interceptors/transform-response.interceptor";
+import abacatepayConfig from "@/config/abacatepay.config";
 import appConfig from "@/config/app.config";
 import authConfig from "@/config/auth.config";
 import databaseConfig from "@/config/database.config";
@@ -35,6 +36,7 @@ import { AnalyticsModule } from "@/modules/analytics/analytics.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { AuthModule } from "@/modules/auth/auth.module";
 import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
+import { BillingModule } from "@/modules/billing/billing.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
@@ -78,6 +80,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         emailConfig,
         diditConfig,
         lytexConfig,
+        abacatepayConfig,
       ],
     }),
 
@@ -98,6 +101,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     AuthentiqueModule,
     UsersModule,
     CompaniesModule,
+    BillingModule,
     SchoolsModule,
     GeoModule,
     DriversModule,

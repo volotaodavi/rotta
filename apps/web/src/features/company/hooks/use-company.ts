@@ -2,10 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { CompanySettings, UpdateCompanyInput } from "@rotta/api-client";
+import type { CompanySettings, CreateCheckoutResult, UpdateCompanyInput } from "@rotta/api-client";
 
-import { companiesApi } from "@/lib/api-client";
-
+import { billingApi, companiesApi } from "@/lib/api-client";
 
 /**
  * Hooks de dados da "Minha Empresa" (Dossie 16) — visão da própria
@@ -43,6 +42,18 @@ export function useUpdateMyCompany(companyId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["my-company", companyId] });
     },
+  });
+}
+
+/**
+ * Inicia um checkout de assinatura da mensalidade da Rotta (Dossiê 26,
+ * R$ 39,90/mês) via AbacatePay — só chamado a partir de `TrialBanner`
+ * (empresa/transportadora/autônomo). Nunca usado por Responsável, que
+ * não tem `Company`/plano.
+ */
+export function useCreateCheckout() {
+  return useMutation<CreateCheckoutResult, unknown, { returnUrl: string }>({
+    mutationFn: (input) => billingApi.createCheckout(input),
   });
 }
 

@@ -125,6 +125,20 @@ export const envSchema = z.object({
   LYTEX_CLIENT_SECRET: z.string().optional(),
   LYTEX_BASE_URL: z.string().url().optional(),
 
+  // AbacatePay (abacatepay.com) — provedora que cobra a MENSALIDADE da
+  // Rotta das transportadoras/empresas/autônomos (Dossiê 26, R$ 39,90/mês
+  // — NUNCA o Responsável, que é 100% gratuito e não tem plano). Ao
+  // contrário da Lytex acima, o contrato real da API JÁ foi verificado
+  // (docs.abacatepay.com + chamadas reais confirmando a chave). Opcional:
+  // sem ABACATEPAY_API_KEY, `AbacatePayClientService` recusa a chamada
+  // com um erro claro, nunca falha o boot. ABACATEPAY_WEBHOOK_SECRET é
+  // escolhido por nós (não pela AbacatePay) e deve ser o mesmo valor
+  // colado no campo "Secret" do webhook criado no dashboard — ver
+  // `abacatepay-webhook.controller.ts`.
+  ABACATEPAY_API_KEY: z.string().optional(),
+  ABACATEPAY_BASE_URL: z.string().url().optional(),
+  ABACATEPAY_WEBHOOK_SECRET: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

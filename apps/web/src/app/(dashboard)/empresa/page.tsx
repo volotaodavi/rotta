@@ -2,14 +2,15 @@
 
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
-import { Sparkles } from "@rotta/icons";
+import { ExternalLink, Sparkles, X } from "@rotta/icons";
 import { Badge, Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import type { Company, UpdateCompanyInput } from "@rotta/api-client";
 
 import {
+  useCreateCheckout,
   useMyCompany,
   useMyCompanyDashboard,
   useMyCompanySettings,
@@ -17,19 +18,26 @@ import {
   useUpdateMyCompanySettings,
 } from "@/features/company/hooks/use-company";
 
-
 /**
  * Banner de assinatura (briefing "PLANO" — Dossiê 26: cadastro
  * self-service SEMPRE é permitido; a cobrança acontece depois, aqui,
  * nunca bloqueando a criação da conta). Mostrado enquanto
  * `company.status === "TRIAL"` — nunca finge uma data de expiração
  * (não existe nenhum campo de prazo de trial no schema hoje, ver
- * `Company` no Prisma) nem um botão de "assinar agora" que cobraria de
- * verdade (a Rotta Pay/Lytex ainda não processa esta cobrança
- * recorrente) — só direciona para `/planos`, a mesma página pública
- * que já mostra o valor real (R$ 39,90/mês).
+ * `Company` no Prisma). "Assinar agora" abre um checkout REAL da
+ * AbacatePay (`useCreateCheckout`/`CheckoutModal` abaixo) — só chamado
+ * para Empresa/Gestor (esta página nunca é alcançada por Responsável,
+ * que não tem `Company`/plano, ver `MinhaEmpresaPage`).
  */
-function TrialBanner({ status }: { status: Company["status"] }): JSX.Element | null {
+function TrialBanner({
+  status,
+  onSubscribe,
+  isLoading,
+}: {
+  status: Company["status"];
+  onSubscribe: () => void;
+  isLoading: boolean;
+}): JSX.Element | null {
   if (status !== "TRIAL") return null;
 
   return (
@@ -50,11 +58,53 @@ function TrialBanner({ status }: { status: Company["status"] }): JSX.Element | n
             </Typography>
           </div>
         </div>
-        <Link href="/planos" target="_blank" className="shrink-0">
-          <Button variant="primary">Ver plano</Button>
-        </Link>
+        <Button variant="primary" className="shrink-0" onClick={onSubscribe} isLoading={isLoading}>
+          Assinar agora — R$ 39,90/mês
+        </Button>
       </Card.Body>
     </Card>
+  );
+}
+
+/**
+ * Checkout embutido (briefing "pagar sem sair do site") — abre a página
+ * hospedada da AbacatePay dentro de um modal/iframe no próprio domínio
+ * da Rotta. Honestidade sobre o limite real: a AbacatePay não documenta
+ * `frame-ancestors`/`X-Frame-Options` da página de checkout, então o
+ * iframe pode aparecer em branco se ela bloquear ser embutida — por
+ * isso "Abrir em nova aba" fica sempre visível, nunca escondido atrás
+ * de um erro que talvez nunca dispare (um bloqueio de frame não gera
+ * evento de erro detectável em JS).
+ */
+function CheckoutModal({ url, onClose }: { url: string; onClose: () => void }): JSX.Element {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-neutral-900">
+        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-700">
+          <Typography variant="subtitle">Assinar plano Rotta</Typography>
+          <div className="flex items-center gap-3">
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Abrir em nova aba
+            </a>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Fechar"
+              className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+        <iframe src={url} title="Checkout AbacatePay" className="h-full w-full flex-1 border-0" />
+      </div>
+    </div>
   );
 }
 
@@ -91,9 +141,40 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
   const { data: settings } = useMyCompanySettings(companyId);
   const updateCompany = useUpdateMyCompany(companyId);
   const updateSettings = useUpdateMyCompanySettings(companyId);
+  const createCheckout = useCreateCheckout();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [form, setForm] = useState<UpdateCompanyInput | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  // Retorno do checkout hospedado (`completionUrl`/`returnUrl`, ver
+  // `BillingService.createCheckoutForCompany`) — o webhook da AbacatePay
+  // é a fonte de verdade do `status`, este `?billing=success` só limpa
+  // a URL e força um refetch para o usuário ver o novo status sem
+  // precisar recarregar a página manualmente.
+  useEffect(() => {
+    if (searchParams.get("billing") === "success") {
+      setCheckoutUrl(null);
+      router.replace("/empresa");
+    }
+  }, [searchParams, router]);
+
+  async function handleSubscribe(): Promise<void> {
+    setCheckoutError(null);
+    try {
+      const result = await createCheckout.mutateAsync({
+        returnUrl: `${window.location.origin}/empresa`,
+      });
+      setCheckoutUrl(result.url);
+    } catch (error) {
+      setCheckoutError(
+        error instanceof ApiError ? error.message : "Não foi possível iniciar o pagamento.",
+      );
+    }
+  }
 
   useEffect(() => {
     if (company && !form) {
@@ -154,7 +235,17 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
     <div className="flex flex-col gap-6">
       <Typography variant="title">Minha empresa</Typography>
 
-      <TrialBanner status={company.status} />
+      <TrialBanner
+        status={company.status}
+        onSubscribe={() => void handleSubscribe()}
+        isLoading={createCheckout.isPending}
+      />
+      {checkoutError && (
+        <Typography variant="bodySmall" color="danger">
+          {checkoutError}
+        </Typography>
+      )}
+      {checkoutUrl && <CheckoutModal url={checkoutUrl} onClose={() => setCheckoutUrl(null)} />}
 
       {dashboard && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">

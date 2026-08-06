@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -47,6 +46,11 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     { provide: COMPANY_SETTING_REPOSITORY, useClass: PrismaCompanySettingRepository },
     { provide: PLAN_REPOSITORY, useClass: PrismaPlanRepository },
   ],
-  exports: [CompaniesService],
+  // `COMPANY_REPOSITORY` também é exportado (além de `CompaniesService`)
+  // para o `BillingModule` (Dossiê 26) atualizar `Company.status`/
+  // `abacatepaySubscriptionId` a partir do webhook da AbacatePay sem
+  // reimplementar acesso a `Prisma.company` — o próprio Repository
+  // Pattern deste módulo, reusado por outro módulo de domínio.
+  exports: [CompaniesService, COMPANY_REPOSITORY],
 })
 export class CompaniesModule {}
