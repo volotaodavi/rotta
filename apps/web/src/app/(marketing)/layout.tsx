@@ -103,7 +103,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
-      <header className="sticky top-0 z-20 border-b border-border bg-background">
+      <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
             <RouteMark className="h-8 w-8" />
@@ -216,7 +216,10 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
         </div>
         <div className="border-t border-border px-6 py-6">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 text-xs text-text-muted sm:flex-row">
-            <p>© {new Date().getFullYear()} Rotta. Todos os direitos reservados.</p>
+            <p>
+              © {new Date().getFullYear()} Rotta do Brasil Tecnologia e Soluções de Transportes.
+              Todos os direitos reservados.
+            </p>
             <p>Brasil · Português</p>
           </div>
         </div>

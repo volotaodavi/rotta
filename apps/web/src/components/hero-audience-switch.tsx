@@ -51,11 +51,13 @@ export function HeroAudienceSwitch(): JSX.Element {
             {audiencia.ctaLabel}
           </Button>
         </Link>
-        <Link href="/planos">
-          <Button variant="secondary" size="lg">
-            Ver planos
-          </Button>
-        </Link>
+        {audiencia.temPlano && (
+          <Link href="/planos">
+            <Button variant="secondary" size="lg">
+              Ver planos
+            </Button>
+          </Link>
+        )}
       </div>
     </div>
   );

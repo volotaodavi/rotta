@@ -31,35 +31,65 @@ const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> 
   { label: "Motorista verificado por IA", icon: ShieldCheck },
 ];
 
+/**
+ * Faixa de confiança logo abaixo da hero (briefing inDrive — bloco
+ * curto e sólido reforçando os 3 diferenciais reais antes de qualquer
+ * outra seção, sem números inventados: a Rotta não tem estatística de
+ * uso pública pra citar aqui, então cada item é uma capacidade real do
+ * produto, nunca uma métrica fabricada).
+ */
+const FAIXA_CONFIANCA: {
+  titulo: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
+  { titulo: "GPS funciona em qualquer cidade do Brasil", icon: MapPin },
+  { titulo: "CNH, selfie e reconhecimento facial checados por IA", icon: ScanFace },
+  { titulo: "Motorista faltou? A escala se ajusta sozinha", icon: Repeat },
+];
+
+type ToneCor = "primary" | "info" | "success" | "warning";
+
+const TOM_ICONE: Record<ToneCor, string> = {
+  primary: "bg-primary text-white",
+  info: "bg-info text-white",
+  success: "bg-success text-white",
+  warning: "bg-warning text-white",
+};
+
 const COMO_FUNCIONA: {
   numero: string;
   titulo: string;
   descricao: string;
   icon: ComponentType<{ className?: string }>;
+  tom: ToneCor;
 }[] = [
   {
     numero: "01",
     titulo: "Cadastre-se",
     descricao: "Crie sua conta em minutos — sem burocracia, sem contrato de fidelidade.",
     icon: UserPlus,
+    tom: "primary",
   },
   {
     numero: "02",
     titulo: "Vincule sua rota",
     descricao: "Conecte motoristas, veículos, escolas e alunos em poucos cliques.",
     icon: Link2,
+    tom: "info",
   },
   {
     numero: "03",
     titulo: "Acompanhe em tempo real",
     descricao: "Veja o transporte se mover no mapa, do embarque até a entrega.",
     icon: MapPin,
+    tom: "success",
   },
   {
     numero: "04",
     titulo: "Fique tranquilo",
     descricao: "Notificações automáticas a cada etapa — chega de grupo de WhatsApp.",
     icon: ShieldCheck,
+    tom: "warning",
   },
 ];
 
@@ -228,32 +258,57 @@ function RottaPayVisual(): JSX.Element {
 export default function LandingPage(): JSX.Element {
   return (
     <div className="flex flex-col overflow-x-hidden">
-      <section className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-24 pt-16 sm:pt-24 lg:grid-cols-2">
-        <div className="flex flex-col items-start gap-6 text-left">
-          <Badge variant="info">Rastreamento ao vivo, sem enrolação</Badge>
-          <Typography variant="hero" as="h1">
-            Cadê o transporte?
-            <br />A Rotta mostra.
-          </Typography>
-          <Typography variant="body" color="muted" className="max-w-lg">
-            Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
-            desembarcou, e encontra uma transportadora de confiança perto de você — sem precisar
-            perguntar pra ninguém.
-          </Typography>
-          <HeroAudienceSwitch />
-          <div className="flex flex-wrap gap-2 pt-2">
-            {TRUST_CHIPS.map((chip) => (
-              <Badge key={chip.label} variant="neutral">
-                <span className="flex items-center gap-1.5">
-                  <chip.icon className="h-3.5 w-3.5" />
-                  {chip.label}
-                </span>
-              </Badge>
-            ))}
+      <section className="relative isolate overflow-hidden">
+        <div
+          className="pointer-events-none absolute -left-40 -top-40 -z-10 h-[520px] w-[520px] rounded-full bg-primary/40 blur-[100px]"
+          aria-hidden="true"
+        />
+        <div
+          className="pointer-events-none absolute -right-32 top-1/3 -z-10 h-[420px] w-[420px] rounded-full bg-success/25 blur-[100px]"
+          aria-hidden="true"
+        />
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-24 pt-16 sm:pt-24 lg:grid-cols-2">
+          <div className="flex flex-col items-start gap-6 text-left">
+            <Badge variant="info">Rastreamento ao vivo, sem enrolação</Badge>
+            <Typography variant="hero" as="h1">
+              Cadê o transporte?
+              <br />A Rotta mostra.
+            </Typography>
+            <Typography variant="body" color="muted" className="max-w-lg">
+              Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
+              desembarcou, e encontra uma transportadora de confiança perto de você — sem precisar
+              perguntar pra ninguém.
+            </Typography>
+            <HeroAudienceSwitch />
+            <div className="flex flex-wrap gap-2 pt-2">
+              {TRUST_CHIPS.map((chip) => (
+                <Badge key={chip.label} variant="neutral">
+                  <span className="flex items-center gap-1.5">
+                    <chip.icon className="h-3.5 w-3.5" />
+                    {chip.label}
+                  </span>
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <div className="flex justify-center pt-6 lg:justify-end lg:pt-0">
+            <HeroMapDemo />
           </div>
         </div>
-        <div className="flex justify-center pt-6 lg:justify-end lg:pt-0">
-          <HeroMapDemo />
+      </section>
+
+      <section className="w-full bg-white py-10 text-[#0B0F14]">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-6 sm:grid-cols-3">
+          {FAIXA_CONFIANCA.map((item) => (
+            <div key={item.titulo} className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <item.icon className="h-5 w-5" />
+              </span>
+              <Typography variant="bodySmall" className="font-semibold !text-[#0B0F14]">
+                {item.titulo}
+              </Typography>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -326,12 +381,17 @@ export default function LandingPage(): JSX.Element {
           </Typography>
           <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {COMO_FUNCIONA.map((passo) => (
-              <div key={passo.numero} className="flex flex-col gap-3">
+              <div
+                key={passo.numero}
+                className="group flex flex-col gap-3 rounded-3xl p-2 transition-transform duration-200 hover:-translate-y-1"
+              >
                 <div className="flex items-center gap-3">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
+                  <span
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-transform duration-200 group-hover:scale-110 ${TOM_ICONE[passo.tom]}`}
+                  >
                     <passo.icon className="h-5 w-5" />
                   </span>
-                  <Typography variant="headline" color="primary">
+                  <Typography variant="headline" className="text-text-muted/40">
                     {passo.numero}
                   </Typography>
                 </div>

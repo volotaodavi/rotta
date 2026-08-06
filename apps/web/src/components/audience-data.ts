@@ -11,6 +11,16 @@ export interface AudienceCard {
   ctaHref: Route;
   tone: "primary" | "neutral" | "success";
   icon: ComponentType<{ className?: string }>;
+  /**
+   * Só `Company` tem `Plan`/mensalidade (Dossiê 26) — Responsável é
+   * 100% gratuito (sem plano, nunca cobrado) e motorista/monitor
+   * vinculado (`Sou motorista ou monitor`) entra como funcionário via
+   * convite, não como conta que assina nada. Só "Sou transportadora"
+   * (empresa, inclusive autônomo com `tipo: AUTONOMO`) de fato tem uma
+   * mensalidade — só essa audiência mostra "Ver planos" no seletor da
+   * hero (`HeroAudienceSwitch`).
+   */
+  temPlano: boolean;
 }
 
 /**
@@ -32,6 +42,7 @@ export const AUDIENCIAS: AudienceCard[] = [
     ctaHref: "/criar-conta/pessoal",
     tone: "primary",
     icon: MapPin,
+    temPlano: false,
   },
   {
     titulo: "Sou transportadora",
@@ -45,6 +56,7 @@ export const AUDIENCIAS: AudienceCard[] = [
     ctaHref: "/criar-conta/empresa",
     tone: "neutral",
     icon: LayoutGrid,
+    temPlano: true,
   },
   {
     titulo: "Sou motorista ou monitor",
@@ -58,6 +70,7 @@ export const AUDIENCIAS: AudienceCard[] = [
     ctaHref: "/criar-conta/profissional",
     tone: "success",
     icon: RouteIcon,
+    temPlano: false,
   },
 ];
 
