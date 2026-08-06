@@ -8,7 +8,6 @@ import type { MapVehicle } from "@rotta/api-client";
 
 import { useGpsMap } from "@/features/gps/hooks/use-gps";
 
-
 /**
  * "Mapa"/localizador em tempo real (briefing "MAPA" — "mostrar todos
  * os veículos em tempo real"). Mapa real via `@rotta/maps/web`
@@ -38,6 +37,9 @@ export default function VeiculosMapaPage(): JSX.Element {
           titulo: `${v.placa} — ${v.routeNome} (${v.motoristaNome})`,
           latitude: v.latitude,
           longitude: v.longitude,
+          // Todo marcador aqui é uma viagem EM_ANDAMENTO agora — sempre
+          // um veículo em movimento, nunca uma posição estática.
+          emMovimento: true,
         })),
     [data],
   );

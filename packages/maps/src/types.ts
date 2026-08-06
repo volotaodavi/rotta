@@ -35,6 +35,15 @@ export interface RottaMapMarker extends Coordenada {
   id: string;
   /** Exibido no callout/popup ao tocar/clicar no marcador. */
   titulo: string;
+  /**
+   * `true` quando o marcador representa um veículo em viagem (GPS-01/03/06)
+   * — desenhado como um ícone de veículo em vez do pino de localização
+   * padrão. Omitido/`false` para posições estáticas (escola, parada,
+   * endereço da empresa), que continuam usando o pino. Quem chama já sabe
+   * essa distinção (uma viagem `EM_ANDAMENTO` vs. um cadastro fixo) —
+   * nunca inferida por delta de posição aqui.
+   */
+  emMovimento?: boolean;
 }
 
 export interface BoundingBox {

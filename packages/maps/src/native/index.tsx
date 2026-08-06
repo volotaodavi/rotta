@@ -119,7 +119,16 @@ export function RottaMap({
             coordinate={[marker.longitude, marker.latitude]}
             onSelected={() => onMarkerPress?.(marker)}
           >
-            <View style={styles.marker} />
+            {marker.emMovimento ? (
+              <View style={styles.vehicleMarker}>
+                <View style={styles.vehicleMarkerBody}>
+                  <View style={styles.vehicleMarkerWindow} />
+                  <View style={styles.vehicleMarkerWindow} />
+                </View>
+              </View>
+            ) : (
+              <View style={styles.marker} />
+            )}
             <Callout title={marker.titulo} />
           </PointAnnotation>
         ))}
@@ -138,5 +147,33 @@ const styles = StyleSheet.create({
     backgroundColor: "#2563eb",
     borderWidth: 2,
     borderColor: "#ffffff",
+  },
+  // Ícone de veículo (marker.emMovimento) — mesma linguagem visual do SVG
+  // web (`vehicle-icon.ts`), só que com Views puras (sem dependência de
+  // react-native-svg, ainda não usada neste pacote).
+  vehicleMarker: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#2563eb",
+    borderWidth: 2,
+    borderColor: "#ffffff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  vehicleMarkerBody: {
+    width: 14,
+    height: 18,
+    borderRadius: 3,
+    backgroundColor: "#ffffff",
+    justifyContent: "space-evenly",
+    alignItems: "center",
+    paddingVertical: 2,
+  },
+  vehicleMarkerWindow: {
+    width: 10,
+    height: 4,
+    borderRadius: 1,
+    backgroundColor: "#2563eb",
   },
 });

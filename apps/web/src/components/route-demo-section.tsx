@@ -5,49 +5,7 @@ import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-interface DemoStop {
-  id: string;
-  nome: string;
-  latitude: number;
-  longitude: number;
-  tipo: "garagem" | "embarque" | "escola";
-}
-
-/**
- * Pontos de exemplo (Pinheiros, São Paulo — nenhuma relação com um
- * cliente real) formando um trajeto plausível: garagem → 2 embarques →
- * escola. Só ilustrativo (ver aviso na UI); nunca chama o backend.
- */
-const DEMO_ROUTE: DemoStop[] = [
-  {
-    id: "garagem",
-    nome: "Saída — Garagem Rotta",
-    latitude: -23.5629,
-    longitude: -46.6979,
-    tipo: "garagem",
-  },
-  {
-    id: "aluno-1",
-    nome: "João — Rua Girassol, 210",
-    latitude: -23.5615,
-    longitude: -46.69,
-    tipo: "embarque",
-  },
-  {
-    id: "aluno-2",
-    nome: "Maria — Av. Rebouças, 1450",
-    latitude: -23.5661,
-    longitude: -46.6822,
-    tipo: "embarque",
-  },
-  {
-    id: "escola",
-    nome: "Escola Girassol",
-    latitude: -23.5601,
-    longitude: -46.675,
-    tipo: "escola",
-  },
-];
+import { DEMO_ROUTE, lerp, type DemoStop } from "./demo-route-data";
 
 const SEGMENT_MS = 4200;
 const STOP_PAUSE_MS = 1600;
@@ -55,10 +13,6 @@ const STOP_PAUSE_MS = 1600;
 interface DemoEvent {
   id: string;
   texto: string;
-}
-
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t;
 }
 
 function eventoParaStop(stop: DemoStop): string {
@@ -152,7 +106,7 @@ export function RouteDemoSection(): JSX.Element {
         latitude: stop.latitude,
         longitude: stop.longitude,
       })),
-      { id: "veiculo-demo", titulo: "Van — exemplo", ...veiculoPos },
+      { id: "veiculo-demo", titulo: "Van — exemplo", ...veiculoPos, emMovimento: true },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `veiculoPos` muda todo frame de propósito (é a posição animada).
     [veiculoPos.latitude, veiculoPos.longitude],

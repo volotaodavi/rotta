@@ -3,7 +3,6 @@ import { RottaMap } from "@rotta/maps/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
@@ -218,6 +217,8 @@ function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX.Elemen
                     titulo: `${viagem.placa} — ${viagem.motoristaNome}`,
                     latitude: viagem.latitude,
                     longitude: viagem.longitude,
+                    // Viagem em andamento agora — sempre um veículo em movimento.
+                    emMovimento: true,
                   },
                 ]}
                 initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}

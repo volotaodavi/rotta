@@ -11,6 +11,8 @@ import {
 } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 
+import { vehicleIconMarkup } from "../vehicle-icon";
+
 import type { Coordenada, RottaMapProps } from "../types";
 import type { Feature, LineString } from "geojson";
 
@@ -47,8 +49,17 @@ const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
 const DEFAULT_ROUTE_COLOR = "#3b6ef6";
+const MARKER_COLOR = "#2563eb";
 const ROUTE_SOURCE_ID = "rotta-route";
 const ROUTE_LAYER_ID = "rotta-route-line";
+
+/** Elemento DOM do ícone de veículo (`marker.emMovimento`) — ver `vehicle-icon.ts`. */
+function buildVehicleMarkerElement(): HTMLDivElement {
+  const el = document.createElement("div");
+  el.innerHTML = vehicleIconMarkup(MARKER_COLOR);
+  el.style.cursor = "pointer";
+  return el;
+}
 
 /** Desenha/atualiza a linha do `route` (GeoJSON LineString) — chamado só quando o estilo já carregou (ver nota no efeito abaixo). */
 function applyRoute(map: MapLibreMap, route: Coordenada[] | undefined, color: string): void {
@@ -157,7 +168,10 @@ export function RottaMap({
 
     markersRef.current.forEach((marker) => marker.remove());
     markersRef.current = markers.map((marker) => {
-      const mapMarker = new Marker({ color: "#2563eb" })
+      const mapMarker = marker.emMovimento
+        ? new Marker({ element: buildVehicleMarkerElement() })
+        : new Marker({ color: MARKER_COLOR });
+      mapMarker
         .setLngLat([marker.longitude, marker.latitude])
         .setPopup(new Popup({ offset: 24 }).setText(marker.titulo))
         .addTo(map);
