@@ -11,14 +11,14 @@ const SEGMENT_MS = 3600;
 const MINUTOS_POR_TRECHO = [8, 5, 2];
 
 /**
- * Miniatura animada do localizador para a HERO da Landing Page —
- * mesmo trajeto de exemplo de `RouteDemoSection` (`demo-route-data.ts`),
- * só que compacta: mapa + um único cartão flutuante de status, sem a
- * linha do tempo completa (essa fica na demonstração mais abaixo, para
- * quem quiser se aprofundar). Substitui o antigo painel decorativo
- * (SVG estático) por um mapa de verdade em movimento — mesmo padrão da
- * hero da Uber (mapa real + cartão de status ao vivo), com dados 100%
- * de exemplo (nunca chama o backend).
+ * Miniatura animada do localizador para a HERO da Landing Page — mapa +
+ * um único cartão flutuante de status, dados de exemplo (`demo-route-
+ * data.ts`, nunca chama o backend). Único mapa da Landing Page: havia
+ * uma segunda demonstração (`RouteDemoSection`, com linha do tempo
+ * completa) logo abaixo da hero, mostrando o mesmo trajeto — removida
+ * por duplicar o mapa na mesma página. Substitui o antigo painel
+ * decorativo (SVG estático) por um mapa de verdade em movimento —
+ * mesmo padrão da hero da Uber (mapa real + cartão de status ao vivo).
  */
 export function HeroMapDemo(): JSX.Element {
   const [segmentIndex, setSegmentIndex] = useState(0);

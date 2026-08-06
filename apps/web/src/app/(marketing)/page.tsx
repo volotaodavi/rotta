@@ -16,11 +16,11 @@ import {
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
+
 import type { Route } from "next";
 import type { ComponentType } from "react";
 
 import { HeroMapDemo } from "@/components/hero-map-demo";
-import { RouteDemoSection } from "@/components/route-demo-section";
 
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
   { label: "Ao vivo, sempre", icon: MapPin },
@@ -282,8 +282,6 @@ export default function LandingPage(): JSX.Element {
           <HeroMapDemo />
         </div>
       </section>
-
-      <RouteDemoSection />
 
       <section className="w-full pt-24">
         <Typography variant="headline" as="h2" className="px-6 text-center">

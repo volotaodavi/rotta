@@ -10,9 +10,9 @@ export interface DemoStop {
  * Pontos de exemplo (Pinheiros, São Paulo — nenhuma relação com um
  * cliente real) formando um trajeto plausível: garagem → 2 embarques →
  * escola. Só ilustrativo (avisado na UI de quem usa isto); nunca chama
- * o backend. Compartilhado entre `HeroMapDemo` (miniatura na hero) e
- * `RouteDemoSection` (demonstração completa, com linha do tempo) para
- * as duas usarem exatamente o mesmo trajeto de exemplo.
+ * o backend. Usado por `HeroMapDemo` (único mapa animado da Landing
+ * Page — a demonstração completa com linha do tempo/`RouteDemoSection`
+ * foi removida por duplicar o mesmo mapa logo abaixo da hero).
  */
 export const DEMO_ROUTE: DemoStop[] = [
   {
