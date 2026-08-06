@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  type OnModuleInit,
 } from "@nestjs/common";
 import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
 
@@ -84,7 +85,7 @@ function pick<T extends object, K extends keyof T>(source: T, keys: K[]): Partia
  * escrita aqui.
  */
 @Injectable()
-export class CompaniesService {
+export class CompaniesService implements OnModuleInit {
   private readonly logger = new Logger(CompaniesService.name);
 
   constructor(
@@ -98,6 +99,39 @@ export class CompaniesService {
     private readonly prisma: PrismaService,
     private readonly vehiclesService: VehiclesService,
   ) {}
+
+  /**
+   * Alarme de boot para o exato bug já encontrado uma vez em produção
+   * (comentário em `.github/workflows/ci.yml`, seção de testes E2E):
+   * "cadastro de Empresa falha porque o plano STARTER nunca foi
+   * inserido" — silencioso até um usuário real tentar se cadastrar
+   * (`register()`/`create()` abaixo chamam `resolvePlanOrThrow("STARTER")`
+   * e recebem um 404 sem contexto nenhum de causa). Sem nenhum plano
+   * ativo no catálogo, TODO cadastro self-service de Empresa (e de
+   * motorista autônomo, mesmo endpoint) falha — isso nunca deveria
+   * descobrir-se por um usuário reportando "não consigo criar conta".
+   * Só loga (nunca falha o boot nem cria um plano sozinho — preço e
+   * condições comerciais não são decisão de código): `prisma/seed.ts`
+   * é quem semeia o catálogo, rodar contra o banco de produção resolve.
+   */
+  async onModuleInit(): Promise<void> {
+    // `try/catch` de propósito: isto é só um alarme de diagnóstico —
+    // uma falha aqui (ex. banco ainda não aceitando conexões no exato
+    // instante do boot) nunca deve derrubar a aplicação inteira.
+    try {
+      const activePlans = await this.planRepository.listActive();
+      if (activePlans.length === 0) {
+        this.logger.error(
+          "Nenhum Plano ativo no catálogo — todo cadastro self-service de Empresa/motorista " +
+            'autônomo vai falhar com 404 ("Plano não encontrado") até isso ser corrigido. ' +
+            'Rode "pnpm --filter=@rotta/api prisma:seed" apontando para o DATABASE_URL de produção.',
+        );
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Não foi possível verificar o catálogo de Planos no boot: ${reason}`);
+    }
+  }
 
   /**
    * Só `Role.ADMIN_ROTTA` acessa qualquer empresa; os demais papéis só

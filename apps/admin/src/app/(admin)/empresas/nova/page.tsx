@@ -9,7 +9,6 @@ import type { CreateCompanyInput, CompanyType } from "@rotta/api-client";
 
 import { useCreateCompany } from "@/features/companies/hooks/use-companies";
 
-
 const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
   { value: "AUTONOMO", label: "Motorista Autônomo" },
   { value: "MEI", label: "MEI" },
@@ -233,7 +232,7 @@ export default function NovaEmpresaPage(): JSX.Element {
             <FormField
               label="Senha"
               isRequired
-              helperText="Mínimo 8 caracteres, com letra maiúscula, número e símbolo."
+              helperText="Mínimo 8 caracteres, com ao menos 1 letra e 1 número."
             >
               <Input
                 type="password"

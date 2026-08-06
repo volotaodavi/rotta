@@ -1,6 +1,5 @@
-import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ConflictException, Logger, NotFoundException } from "@nestjs/common";
 import { CompanyStatus, CompanyType } from "@prisma/client";
-
 
 import { CompaniesService } from "../companies.service";
 
@@ -223,6 +222,37 @@ describe("CompaniesService", () => {
       auditLogService.record.mockRejectedValue(new Error("falha de rede"));
 
       await expect(service.create(buildCreateDto(), adminActor, {})).resolves.toBeDefined();
+    });
+  });
+
+  describe("onModuleInit", () => {
+    it("loga um erro quando não há nenhum Plano ativo no catálogo", async () => {
+      const errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+      planRepository.listActive.mockResolvedValue([]);
+
+      await service.onModuleInit();
+
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Nenhum Plano ativo"));
+      errorSpy.mockRestore();
+    });
+
+    it("não loga nada quando há ao menos um Plano ativo", async () => {
+      const errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+      planRepository.listActive.mockResolvedValue([STARTER_PLAN]);
+
+      await service.onModuleInit();
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    it("nunca lança — só loga um aviso — quando a verificação falha (ex. banco indisponível no boot)", async () => {
+      const warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
+      planRepository.listActive.mockRejectedValue(new Error("conexão recusada"));
+
+      await expect(service.onModuleInit()).resolves.toBeUndefined();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("conexão recusada"));
+      warnSpy.mockRestore();
     });
   });
 

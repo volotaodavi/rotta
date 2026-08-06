@@ -123,7 +123,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
             <FormField
               label="Senha"
               isRequired
-              helperText="Mínimo 8 caracteres, com letra maiúscula, número e símbolo."
+              helperText="Mínimo 8 caracteres, com ao menos 1 letra e 1 número."
             >
               <Input
                 type="password"

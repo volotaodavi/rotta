@@ -78,7 +78,7 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
       <AuthTextField
         label="Senha"
         secureTextEntry
-        helperText="Mínimo 8 caracteres, com letra maiúscula, número e símbolo."
+        helperText="Mínimo 8 caracteres, com ao menos 1 letra e 1 número."
         value={senha}
         onChangeText={setSenha}
       />

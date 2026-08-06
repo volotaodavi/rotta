@@ -4,9 +4,12 @@ import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type FocusEvent, type FormEvent } from "react";
 
 import type { RegisterEmpresaInput } from "@rotta/api-client";
+
+import { useCepLookup } from "@/hooks/use-cep-lookup";
+
 
 const COMPANY_TYPE_OPTIONS: { value: RegisterEmpresaInput["tipo"]; label: string }[] = [
   { value: "AUTONOMO", label: "Motorista Autônomo" },
@@ -49,12 +52,30 @@ export default function CriarEmpresaPage(): JSX.Element {
   const [form, setForm] = useState<RegisterEmpresaInput>(INITIAL_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const cepLookup = useCepLookup();
 
   function updateField<K extends keyof RegisterEmpresaInput>(
     key: K,
     value: RegisterEmpresaInput[K],
   ): void {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  // Preenche endereço/bairro/cidade/estado a partir do CEP (ViaCEP) ao
+  // sair do campo — o formulário de Empresa é o mais longo do fluxo
+  // self-service (7 campos de endereço); isso corta 4 deles na maioria
+  // dos casos. Nunca sobrescreve o que a pessoa já digitou manualmente
+  // nem bloqueia o cadastro se o CEP não for encontrado.
+  async function handleCepBlur(event: FocusEvent<HTMLInputElement>): Promise<void> {
+    const endereco = await cepLookup.lookup(event.target.value);
+    if (!endereco) return;
+    setForm((current) => ({
+      ...current,
+      endereco: current.endereco || endereco.endereco,
+      bairro: current.bairro || endereco.bairro,
+      cidade: current.cidade || endereco.cidade,
+      estado: current.estado || endereco.estado,
+    }));
   }
 
   function updateAdminField<K extends keyof RegisterEmpresaInput["administrador"]>(
@@ -154,11 +175,22 @@ export default function CriarEmpresaPage(): JSX.Element {
         <Card>
           <Card.Header title="Endereço" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="CEP" isRequired>
+            <FormField
+              label="CEP"
+              isRequired
+              helperText={
+                cepLookup.isLoading
+                  ? "Buscando endereço…"
+                  : cepLookup.notFound
+                    ? "CEP não encontrado — preencha o endereço manualmente."
+                    : "Preenche o endereço automaticamente."
+              }
+            >
               <Input
                 required
                 value={form.cep}
                 onChange={(event) => updateField("cep", event.target.value)}
+                onBlur={(event) => void handleCepBlur(event)}
               />
             </FormField>
             <FormField label="Endereço" isRequired>
@@ -241,7 +273,7 @@ export default function CriarEmpresaPage(): JSX.Element {
             <FormField
               label="Senha"
               isRequired
-              helperText="Mínimo 8 caracteres, com letra maiúscula, número e símbolo."
+              helperText="Mínimo 8 caracteres, com ao menos 1 letra e 1 número."
             >
               <Input
                 type="password"

@@ -11,7 +11,6 @@ import type { ReactNode } from "react";
 import { RouteMark } from "@/components/route-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
   { href: "/beneficios", label: "Benefícios" },
@@ -23,6 +22,33 @@ const NAV_LINKS: { href: Route; label: string }[] = [
 interface FooterColumn {
   titulo: string;
   links: { href: Route; label: string }[];
+}
+
+const ROTTA_INSTAGRAM_URL = "https://www.instagram.com/rotta_app/";
+
+/**
+ * Glifo do Instagram desenhado à mão (contorno genérico de câmera —
+ * não é o logotipo/marca registrada da Meta) — a versão do Lucide
+ * Icons usada neste monorepo (Dossiê 10, Seção 4) não inclui ícones de
+ * marca de terceiros (removidos do pacote core há algumas versões).
+ */
+function InstagramGlyph({ className }: { className?: string }): JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
 }
 
 const FOOTER_COLUNAS: FooterColumn[] = [
@@ -161,6 +187,15 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             <p className="text-sm text-text-muted">
               Transporte escolar sob controle, do embarque à entrega.
             </p>
+            <a
+              href={ROTTA_INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="Rotta no Instagram (abre em nova aba)"
+              className="mt-1 flex h-8 w-8 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-muted hover:text-text"
+            >
+              <InstagramGlyph className="h-4 w-4" />
+            </a>
           </div>
           {FOOTER_COLUNAS.map((coluna) => (
             <div key={coluna.titulo} className="flex flex-col gap-3">
