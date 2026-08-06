@@ -14,13 +14,12 @@ import {
   Zap,
 } from "@rotta/icons";
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
-import Image from "next/image";
 import Link from "next/link";
-
 
 import type { Route } from "next";
 import type { ComponentType } from "react";
 
+import { HeroMapDemo } from "@/components/hero-map-demo";
 import { RouteDemoSection } from "@/components/route-demo-section";
 
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
@@ -36,6 +35,7 @@ interface AudienceCard {
   ctaLabel: string;
   ctaHref: Route;
   tone: "primary" | "neutral" | "success";
+  icon: ComponentType<{ className?: string }>;
 }
 
 const AUDIENCIAS: AudienceCard[] = [
@@ -50,6 +50,7 @@ const AUDIENCIAS: AudienceCard[] = [
     ctaLabel: "Encontrar transporte",
     ctaHref: "/criar-conta/pessoal",
     tone: "primary",
+    icon: MapPin,
   },
   {
     titulo: "Sou transportadora",
@@ -62,6 +63,7 @@ const AUDIENCIAS: AudienceCard[] = [
     ctaLabel: "Cadastrar minha empresa",
     ctaHref: "/criar-conta/empresa",
     tone: "neutral",
+    icon: LayoutGrid,
   },
   {
     titulo: "Sou motorista ou monitor",
@@ -74,13 +76,20 @@ const AUDIENCIAS: AudienceCard[] = [
     ctaLabel: "Quero dirigir com a Rotta",
     ctaHref: "/criar-conta/profissional",
     tone: "success",
+    icon: RouteIcon,
   },
 ];
 
-const TONE_CLASSES: Record<AudienceCard["tone"], { card: string; icon: string }> = {
-  primary: { card: "border-primary/25 bg-primary/5", icon: "bg-primary/15 text-primary" },
-  neutral: { card: "border-border-strong bg-card", icon: "bg-secondary/20 text-text" },
-  success: { card: "border-success/25 bg-success/5", icon: "bg-success/15 text-success" },
+const TONE_BG: Record<AudienceCard["tone"], string> = {
+  primary: "bg-primary",
+  neutral: "bg-secondary",
+  success: "bg-success",
+};
+
+const TONE_TEXT: Record<AudienceCard["tone"], string> = {
+  primary: "text-primary",
+  neutral: "text-secondary",
+  success: "text-success",
 };
 
 const COMO_FUNCIONA: {
@@ -153,49 +162,34 @@ const BENEFICIOS: {
 ];
 
 /**
- * Painel visual da hero — o logotipo real da Rotta (`public/brand`) em
- * destaque, levemente inclinado e sobreposto ao cartão de status
- * (tratamento "camadas soltas" de referência AbacatePay — Dossiê 26),
- * com o mesmo motivo de rota do restante da página ao redor.
+ * Painel visual das seções "para qual lado da rota você está" — mesma
+ * linguagem de cartão "solto"/com glow do `HeroMapDemo`/`RottaPayVisual`
+ * abaixo, só que com um ícone temático em vez de um mapa (nenhuma foto
+ * de estoque: a Rotta não tem fotografia real de motoristas/famílias
+ * ainda, então um ícone grande e honesto substitui a fotografia que a
+ * Uber usa nesse mesmo tipo de seção).
  */
-function HeroVisual(): JSX.Element {
+function AudienceVisual({
+  tone,
+  icon: Icon,
+}: {
+  tone: AudienceCard["tone"];
+  icon: ComponentType<{ className?: string }>;
+}): JSX.Element {
   return (
-    <div className="relative aspect-square w-full max-w-md">
-      <div className="absolute -inset-6 rounded-[40px] bg-primary/10 blur-2xl" aria-hidden="true" />
-      <div className="relative aspect-square w-full overflow-hidden rounded-[32px] border border-border bg-surface shadow-xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-muted via-transparent to-transparent" />
-        <svg viewBox="0 0 320 320" className="absolute inset-0 h-full w-full" aria-hidden="true">
-          <path
-            d="M40 260 C 40 180, 120 200, 150 150 S 260 60, 280 40"
-            stroke="currentColor"
-            className="text-primary"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeDasharray="2 10"
-            fill="none"
-          />
-          <circle cx="40" cy="260" r="8" className="fill-primary" />
-          <circle cx="280" cy="40" r="8" className="fill-secondary" />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="absolute h-56 w-56 rounded-full bg-primary/20 blur-3xl" />
-          <Image
-            src="/brand/rotta-mark-512.png"
-            alt="Rotta"
-            width={220}
-            height={220}
-            priority
-            className="relative drop-shadow-2xl"
-          />
-        </div>
-      </div>
-      <div className="absolute -bottom-6 -left-4 right-8 rotate-[-2deg] rounded-2xl border border-border bg-card p-4 shadow-2xl sm:right-10">
-        <Typography variant="caption" color="muted">
-          Rota em andamento
-        </Typography>
-        <Typography variant="subtitle" className="mt-1">
-          Chegada em 6 min
-        </Typography>
+    <div className="relative aspect-square w-full max-w-sm">
+      <div
+        className={`absolute -inset-6 rounded-[40px] ${TONE_BG[tone]}/10 blur-2xl`}
+        aria-hidden="true"
+      />
+      <div
+        className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[32px] border border-border ${TONE_BG[tone]}/5`}
+      >
+        <span
+          className={`flex h-28 w-28 items-center justify-center rounded-full ${TONE_BG[tone]} text-white shadow-xl`}
+        >
+          <Icon className="h-12 w-12" />
+        </span>
       </div>
     </div>
   );
@@ -228,13 +222,24 @@ function RottaPayVisual(): JSX.Element {
 /**
  * Landing Page (Dossiê 11, Secao 1 — reformulada no Dossiê 26 a pedido
  * direto do usuário: "sair do caráter genérico de IA", usando
- * Uber.com.br e AbacatePay.com.br como referência). Da Uber: tipografia
- * de hero enorme e confiante, tom direto, seções por público, "como
- * funciona" numerado. Da AbacatePay: blocos de cor cheios (não só
- * branco/cinza), cantos bem arredondados, cartões "soltos"/inclinados
- * como o visual da hero e do Rotta Pay abaixo. Identidade de cor
- * permanece 100% da Rotta (azul/preto/branco/cinza, Dossiê 24) — nenhuma
- * cor ou elemento de marca das referências foi reaproveitado.
+ * Uber.com.br e AbacatePay.com.br como referência; a estrutura da hero
+ * foi refeita para espelhar mais de perto a uber.com/br/pt-br — o
+ * componente indisponível para conferência ao vivo nesta sessão pelo
+ * bloqueio de rede do sandbox, então a estrutura foi recriada a partir
+ * do padrão conhecido do site, nunca copiado literalmente). Da Uber:
+ * hero com MAPA REAL ao vivo ao lado do texto (não uma ilustração
+ * decorativa — `HeroMapDemo`, mesmo componente `@rotta/maps` do
+ * produto real), tipografia enorme e confiante, seções por público
+ * como blocos GRANDES alternados (texto de um lado, visual do outro —
+ * não um grid compacto de 3 colunas), "como funciona" numerado. Da
+ * AbacatePay: blocos de cor cheios (não só branco/cinza), cantos bem
+ * arredondados, cartões "soltos"/inclinados como o visual da hero e do
+ * Rotta Pay abaixo. Identidade de cor permanece 100% da Rotta
+ * (azul/preto/branco/cinza, Dossiê 24) — nenhuma cor ou elemento de
+ * marca das referências foi reaproveitado; nenhuma foto de estoque
+ * (a Rotta não tem fotografia real ainda) — `AudienceVisual` usa um
+ * ícone grande em vez de uma foto de pessoas, no lugar em que a Uber
+ * usaria fotografia.
  */
 export default function LandingPage(): JSX.Element {
   return (
@@ -274,49 +279,72 @@ export default function LandingPage(): JSX.Element {
           </div>
         </div>
         <div className="flex justify-center pt-6 lg:justify-end lg:pt-0">
-          <HeroVisual />
+          <HeroMapDemo />
         </div>
       </section>
 
       <RouteDemoSection />
 
-      <section className="mx-auto w-full max-w-6xl px-6 pb-24">
-        <Typography variant="headline" as="h2" className="mb-10 text-center">
+      <section className="w-full pt-24">
+        <Typography variant="headline" as="h2" className="px-6 text-center">
           Para qual lado da rota você está?
         </Typography>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {AUDIENCIAS.map((audiencia) => (
-            <div
-              key={audiencia.titulo}
-              className={`flex flex-col rounded-3xl border p-6 ${TONE_CLASSES[audiencia.tone].card}`}
-            >
+
+        {AUDIENCIAS.map((audiencia, index) => {
+          const textoBloco = (
+            <div className="flex flex-col items-start gap-5">
               <span
-                className={`mb-4 flex h-11 w-11 items-center justify-center rounded-2xl ${TONE_CLASSES[audiencia.tone].icon}`}
+                className={`flex h-14 w-14 items-center justify-center rounded-2xl ${TONE_BG[audiencia.tone]}/15`}
               >
-                <Check className="h-5 w-5" />
+                <audiencia.icon className={`h-6 w-6 ${TONE_TEXT[audiencia.tone]}`} />
               </span>
-              <Typography variant="subtitle">{audiencia.titulo}</Typography>
-              <Typography variant="bodySmall" color="muted" className="mt-2">
+              <Typography variant="display" as="h3">
+                {audiencia.titulo}
+              </Typography>
+              <Typography variant="body" color="muted" className="max-w-md">
                 {audiencia.descricao}
               </Typography>
-              <ul className="mt-4 flex flex-1 flex-col gap-2">
+              <ul className="flex flex-col gap-3">
                 {audiencia.bullets.map((bullet) => (
-                  <li key={bullet} className="flex items-start gap-2">
+                  <li key={bullet} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <Typography variant="bodySmall" color="muted">
+                    <Typography variant="body" color="muted">
                       {bullet}
                     </Typography>
                   </li>
                 ))}
               </ul>
-              <Link href={audiencia.ctaHref} className="pt-5">
-                <Button variant="secondary" fullWidth>
+              <Link href={audiencia.ctaHref} className="pt-2">
+                <Button variant="primary" size="lg">
                   {audiencia.ctaLabel}
                 </Button>
               </Link>
             </div>
-          ))}
-        </div>
+          );
+          const visualBloco = (
+            <div className="flex justify-center">
+              <AudienceVisual tone={audiencia.tone} icon={audiencia.icon} />
+            </div>
+          );
+
+          return (
+            <div key={audiencia.titulo} className={index % 2 === 1 ? "bg-surface" : undefined}>
+              <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 py-20 lg:grid-cols-2">
+                {index % 2 === 1 ? (
+                  <>
+                    {visualBloco}
+                    {textoBloco}
+                  </>
+                ) : (
+                  <>
+                    {textoBloco}
+                    {visualBloco}
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </section>
 
       <section className="w-full bg-surface px-6 py-24">

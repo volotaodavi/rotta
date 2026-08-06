@@ -34,12 +34,18 @@ const FOOTER_COLUNAS: FooterColumn[] = [
     ],
   },
   {
-    titulo: "Conta",
+    titulo: "Para você",
     links: [
-      { href: "/entrar", label: "Entrar" },
       { href: "/criar-conta/pessoal", label: "Sou responsável" },
       { href: "/criar-conta/empresa", label: "Sou transportadora" },
       { href: "/criar-conta/profissional", label: "Sou motorista/monitor" },
+    ],
+  },
+  {
+    titulo: "Conta",
+    links: [
+      { href: "/entrar", label: "Entrar" },
+      { href: "/criar-conta", label: "Criar conta" },
     ],
   },
   {
@@ -55,10 +61,14 @@ const FOOTER_COLUNAS: FooterColumn[] = [
 /**
  * Layout do route group `(marketing)` — Landing Page + Site público
  * (Dossie 11, Secao 1; briefing "ROTTA DIGITAL EXPERIENCE"). Header
- * fixo (sticky + blur) com marca (ver `RouteMark`) e rodapé em colunas
- * — estrutura inspirada nos rodapés/cabeçalhos de Uber e 99, sem
- * reaproveitar cor ou copy das referências. Abaixo de `md`, a navegação
- * migra para um menu de disclosure (antes desaparecia sem substituto).
+ * fixo (sticky + blur) com marca (ver `RouteMark`) e rodapé denso em
+ * colunas (Produto/Para você/Conta/Ajuda + barra inferior com idioma) —
+ * estrutura inspirada no rodapé multi-coluna da Uber, sem reaproveitar
+ * cor ou copy das referências, e sem nenhum link fabricado (só rotas
+ * reais deste site — nenhum badge de app store, já que o app da Rotta
+ * ainda não tem ficha pública na App Store/Play Store). Abaixo de `md`,
+ * a navegação migra para um menu de disclosure (antes desaparecia sem
+ * substituto).
  */
 export default function MarketingLayout({ children }: { children: ReactNode }): JSX.Element {
   const [menuAberto, setMenuAberto] = useState(false);
@@ -140,8 +150,8 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
       <main className="flex-1">{children}</main>
 
       <footer className="w-full border-t border-border">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-4">
-          <div className="col-span-2 flex flex-col gap-2 sm:col-span-1">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="col-span-2 flex flex-col gap-2 sm:col-span-3 lg:col-span-1">
             <span className="flex items-center gap-2 text-base font-bold tracking-tight">
               <RouteMark className="h-6 w-6" />
               Rotta
@@ -168,9 +178,10 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
           ))}
         </div>
         <div className="border-t border-border px-6 py-6">
-          <p className="mx-auto w-full max-w-6xl text-center text-xs text-text-muted">
-            © {new Date().getFullYear()} Rotta. Todos os direitos reservados.
-          </p>
+          <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 text-xs text-text-muted sm:flex-row">
+            <p>© {new Date().getFullYear()} Rotta. Todos os direitos reservados.</p>
+            <p>Brasil · Português</p>
+          </div>
         </div>
       </footer>
     </div>
