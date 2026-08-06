@@ -3,13 +3,12 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FocusEvent, type FormEvent } from "react";
 
 import type { RegisterEmpresaInput } from "@rotta/api-client";
 
 import { useCepLookup } from "@/hooks/use-cep-lookup";
-
 
 const COMPANY_TYPE_OPTIONS: { value: RegisterEmpresaInput["tipo"]; label: string }[] = [
   { value: "AUTONOMO", label: "Motorista Autônomo" },
@@ -20,24 +19,32 @@ const COMPANY_TYPE_OPTIONS: { value: RegisterEmpresaInput["tipo"]; label: string
   { value: "OUTRO", label: "Outro" },
 ];
 
-const INITIAL_STATE: RegisterEmpresaInput = {
-  razaoSocial: "",
-  nomeFantasia: "",
-  cpfCnpj: "",
-  tipo: "LTDA",
-  email: "",
-  telefone: "",
-  whatsapp: "",
-  cep: "",
-  endereco: "",
-  numero: "",
-  complemento: "",
-  bairro: "",
-  cidade: "",
-  estado: "",
-  aceiteTermos: true,
-  administrador: { nome: "", email: "", telefone: "", cpf: "", senha: "" },
-};
+const VALID_TIPOS = new Set(COMPANY_TYPE_OPTIONS.map((option) => option.value));
+
+function initialState(tipoFromUrl: string | null): RegisterEmpresaInput {
+  const tipo =
+    tipoFromUrl && VALID_TIPOS.has(tipoFromUrl as RegisterEmpresaInput["tipo"])
+      ? (tipoFromUrl as RegisterEmpresaInput["tipo"])
+      : "LTDA";
+  return {
+    razaoSocial: "",
+    nomeFantasia: "",
+    cpfCnpj: "",
+    tipo,
+    email: "",
+    telefone: "",
+    whatsapp: "",
+    cep: "",
+    endereco: "",
+    numero: "",
+    complemento: "",
+    bairro: "",
+    cidade: "",
+    estado: "",
+    aceiteTermos: true,
+    administrador: { nome: "", email: "", telefone: "", cpf: "", senha: "" },
+  };
+}
 
 /**
  * Cadastro self-service de Empresa (Dossiê 15, `AUTH-01`) — "O cadastro
@@ -45,14 +52,24 @@ const INITIAL_STATE: RegisterEmpresaInput = {
  * automaticamente Empresa, Tenant, Administrador, Plano, Configurações
  * iniciais." A conta criada aqui já fica disponível no app (mesma
  * conta, "Não solicitar novo cadastro").
+ *
+ * `?tipo=AUTONOMO` (vindo de `/criar-conta/motorista`, "Sou autônomo
+ * ou MEI") pré-seleciona o campo Tipo e troca a copy da página pra
+ * linguagem de motorista — mesmo formulário/endpoint por baixo (um
+ * motorista autônomo É a transportadora, `Company` com
+ * `tipo: AUTONOMO`), só a apresentação muda.
  */
 export default function CriarEmpresaPage(): JSX.Element {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { registerEmpresa } = useAuth();
-  const [form, setForm] = useState<RegisterEmpresaInput>(INITIAL_STATE);
+  const [form, setForm] = useState<RegisterEmpresaInput>(() =>
+    initialState(searchParams.get("tipo")),
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const cepLookup = useCepLookup();
+  const isMotoristaAutonomo = form.tipo === "AUTONOMO";
 
   function updateField<K extends keyof RegisterEmpresaInput>(
     key: K,
@@ -106,20 +123,33 @@ export default function CriarEmpresaPage(): JSX.Element {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-10">
-      <Typography variant="title">Criar empresa</Typography>
+      <div className="flex flex-col gap-1">
+        <Typography variant="title">
+          {isMotoristaAutonomo ? "Cadastro de motorista autônomo" : "Criar empresa"}
+        </Typography>
+        {isMotoristaAutonomo && (
+          <Typography variant="bodySmall" color="muted">
+            Você é a própria transportadora — os mesmos dados de uma empresa, só que em seu nome. A
+            mensalidade da Rotta (R$ 39,90/mês) se aplica normalmente.
+          </Typography>
+        )}
+      </div>
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6">
         <Card>
-          <Card.Header title="Dados da empresa" />
+          <Card.Header title={isMotoristaAutonomo ? "Seus dados" : "Dados da empresa"} />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="Razão social" isRequired>
+            <FormField label={isMotoristaAutonomo ? "Nome completo" : "Razão social"} isRequired>
               <Input
                 required
                 value={form.razaoSocial}
                 onChange={(event) => updateField("razaoSocial", event.target.value)}
               />
             </FormField>
-            <FormField label="Nome fantasia" isRequired>
+            <FormField
+              label={isMotoristaAutonomo ? "Como quer aparecer para as famílias" : "Nome fantasia"}
+              isRequired
+            >
               <Input
                 required
                 value={form.nomeFantasia}
@@ -239,7 +269,9 @@ export default function CriarEmpresaPage(): JSX.Element {
         </Card>
 
         <Card>
-          <Card.Header title="Seus dados (administrador)" />
+          <Card.Header
+            title={isMotoristaAutonomo ? "Acesso à sua conta" : "Seus dados (administrador)"}
+          />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Nome" isRequired>
               <Input
