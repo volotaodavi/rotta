@@ -12,6 +12,7 @@ import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
+  DEFAULT_PLAN,
   PLAN_REPOSITORY,
 } from "./companies.constants";
 import { toCompanyResponseDto } from "./mappers/company.mapper";
@@ -101,35 +102,39 @@ export class CompaniesService implements OnModuleInit {
   ) {}
 
   /**
-   * Alarme de boot para o exato bug já encontrado uma vez em produção
+   * Autocura de boot para o exato bug já encontrado uma vez em produção
    * (comentário em `.github/workflows/ci.yml`, seção de testes E2E):
    * "cadastro de Empresa falha porque o plano STARTER nunca foi
    * inserido" — silencioso até um usuário real tentar se cadastrar
-   * (`register()`/`create()` abaixo chamam `resolvePlanOrThrow("STARTER")`
-   * e recebem um 404 sem contexto nenhum de causa). Sem nenhum plano
-   * ativo no catálogo, TODO cadastro self-service de Empresa (e de
-   * motorista autônomo, mesmo endpoint) falha — isso nunca deveria
-   * descobrir-se por um usuário reportando "não consigo criar conta".
-   * Só loga (nunca falha o boot nem cria um plano sozinho — preço e
-   * condições comerciais não são decisão de código): `prisma/seed.ts`
-   * é quem semeia o catálogo, rodar contra o banco de produção resolve.
+   * (`register()`/`create()` abaixo chamam `resolvePlanOrThrow` e
+   * recebem um 404 sem contexto nenhum de causa). Sem nenhum plano
+   * ativo no catálogo, TODO cadastro self-service de Empresa/motorista
+   * autônomo falhava — isso nunca deveria depender de alguém lembrar de
+   * rodar `prisma/seed.ts` manualmente contra produção. `DEFAULT_PLAN`
+   * (R$ 39,90/mês) não é mais um valor inventado aqui: é o único plano
+   * do produto hoje, confirmado pelo usuário e já publicado na página
+   * `/planos` — autoprovisionar o catálogo com exatamente esse valor
+   * garante que "criar conta" nunca falha por falta de seed, sem
+   * inventar preço/condições novas.
    */
   async onModuleInit(): Promise<void> {
-    // `try/catch` de propósito: isto é só um alarme de diagnóstico —
-    // uma falha aqui (ex. banco ainda não aceitando conexões no exato
-    // instante do boot) nunca deve derrubar a aplicação inteira.
+    // `try/catch` de propósito: uma falha aqui (ex. banco ainda não
+    // aceitando conexões no exato instante do boot) nunca deve derrubar
+    // a aplicação inteira — só fica sem o catálogo até o próximo boot.
     try {
       const activePlans = await this.planRepository.listActive();
       if (activePlans.length === 0) {
-        this.logger.error(
-          "Nenhum Plano ativo no catálogo — todo cadastro self-service de Empresa/motorista " +
-            'autônomo vai falhar com 404 ("Plano não encontrado") até isso ser corrigido. ' +
-            'Rode "pnpm --filter=@rotta/api prisma:seed" apontando para o DATABASE_URL de produção.',
+        this.logger.warn(
+          `Nenhum Plano ativo no catálogo — provisionando "${DEFAULT_PLAN.code}" ` +
+            "automaticamente para não bloquear o cadastro self-service.",
         );
+        await this.planRepository.upsertByCode({ ...DEFAULT_PLAN, isActive: true });
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Não foi possível verificar o catálogo de Planos no boot: ${reason}`);
+      this.logger.warn(
+        `Não foi possível verificar/provisionar o catálogo de Planos no boot: ${reason}`,
+      );
     }
   }
 
@@ -190,7 +195,7 @@ export class CompaniesService implements OnModuleInit {
       adminCpfDigits,
     );
 
-    const plan = await this.resolvePlanOrThrow(dto.planCode ?? "STARTER");
+    const plan = await this.resolvePlanOrThrow(dto.planCode ?? DEFAULT_PLAN.code);
 
     // Company + User (administrador) + Membership são uma única unidade
     // de negócio (Dossiê 16: "motorista autônomo automaticamente vira

@@ -110,7 +110,12 @@ describe("CompaniesService", () => {
       list: jest.fn(),
     };
     settingRepository = { upsertMany: jest.fn(), listByCompany: jest.fn() };
-    planRepository = { findByCode: jest.fn(), findById: jest.fn(), listActive: jest.fn() };
+    planRepository = {
+      findByCode: jest.fn(),
+      findById: jest.fn(),
+      listActive: jest.fn(),
+      upsertByCode: jest.fn(),
+    };
     usersService = {
       findByIdentifier: jest.fn(),
       assertNoDuplicateIdentity: jest.fn(),
@@ -226,24 +231,25 @@ describe("CompaniesService", () => {
   });
 
   describe("onModuleInit", () => {
-    it("loga um erro quando não há nenhum Plano ativo no catálogo", async () => {
-      const errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+    it("autoprovisiona o plano padrão quando não há nenhum Plano ativo no catálogo", async () => {
+      const warnSpy = jest.spyOn(Logger.prototype, "warn").mockImplementation();
       planRepository.listActive.mockResolvedValue([]);
 
       await service.onModuleInit();
 
-      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("Nenhum Plano ativo"));
-      errorSpy.mockRestore();
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Nenhum Plano ativo"));
+      expect(planRepository.upsertByCode).toHaveBeenCalledWith(
+        expect.objectContaining({ code: "STARTER", priceCents: 3990, isActive: true }),
+      );
+      warnSpy.mockRestore();
     });
 
-    it("não loga nada quando há ao menos um Plano ativo", async () => {
-      const errorSpy = jest.spyOn(Logger.prototype, "error").mockImplementation();
+    it("não provisiona nada quando já há ao menos um Plano ativo", async () => {
       planRepository.listActive.mockResolvedValue([STARTER_PLAN]);
 
       await service.onModuleInit();
 
-      expect(errorSpy).not.toHaveBeenCalled();
-      errorSpy.mockRestore();
+      expect(planRepository.upsertByCode).not.toHaveBeenCalled();
     });
 
     it("nunca lança — só loga um aviso — quando a verificação falha (ex. banco indisponível no boot)", async () => {

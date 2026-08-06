@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
-
-import type { PlanRepository } from "./plan.repository";
+import type { PlanRepository, UpsertPlanInput } from "./plan.repository";
 import type { Plan } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
@@ -20,5 +19,13 @@ export class PrismaPlanRepository implements PlanRepository {
 
   listActive(): Promise<Plan[]> {
     return this.prisma.plan.findMany({ where: { isActive: true }, orderBy: { priceCents: "asc" } });
+  }
+
+  upsertByCode(input: UpsertPlanInput): Promise<Plan> {
+    return this.prisma.plan.upsert({
+      where: { code: input.code },
+      update: { name: input.name, priceCents: input.priceCents, isActive: input.isActive },
+      create: input,
+    });
   }
 }
