@@ -164,6 +164,43 @@ function HeroTripPhoneMockup({ className }: { className?: string }): JSX.Element
 }
 
 /**
+ * Cartão flutuante curto sobre o visual da hero (ex.: "Segurança —
+ * Motorista verificado e viagem monitorada"). Cada instância descreve
+ * uma capacidade REAL já implementada (`RottaAiService`/Didit para
+ * verificação de motorista, GPS ao vivo do módulo Rotas) — nunca um
+ * selo decorativo vazio.
+ */
+function HeroFloatingBadge({
+  icon: Icon,
+  titulo,
+  descricao,
+  className,
+}: {
+  icon: ComponentType<{ className?: string }>;
+  titulo: string;
+  descricao: string;
+  className?: string;
+}): JSX.Element {
+  return (
+    <div
+      className={`flex w-56 items-start gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-xl ${className ?? ""}`}
+    >
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
+        <Icon className="h-4.5 w-4.5" />
+      </span>
+      <div>
+        <Typography variant="bodySmall" className="font-semibold">
+          {titulo}
+        </Typography>
+        <Typography variant="caption" color="muted">
+          {descricao}
+        </Typography>
+      </div>
+    </div>
+  );
+}
+
+/**
  * Faixa de confiança logo abaixo da hero (briefing inDrive — bloco
  * curto e sólido reforçando os 3 diferenciais reais antes de qualquer
  * outra seção, sem números inventados: a Rotta não tem estatística de
@@ -445,6 +482,12 @@ export default function LandingPage(): JSX.Element {
                 aria-hidden="true"
               />
               <HeroMapDemo />
+              <HeroFloatingBadge
+                icon={ShieldCheck}
+                titulo="Segurança"
+                descricao="Motorista verificado e viagem monitorada."
+                className="absolute -left-6 top-6 z-10 hidden sm:flex"
+              />
               <HeroTripPhoneMockup className="absolute -right-4 -top-10 z-10 hidden sm:block lg:-right-12" />
             </div>
           </div>
