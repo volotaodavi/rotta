@@ -444,6 +444,9 @@ model Company {
   /// Eventos de calendário (Dossiê 8 §14, tarefa #101) — feriados,
   /// recessos, eventos escolares, ausências planejadas, etc.
   eventosAgenda          EventoAgenda[]
+  /// Documentos de habilitação/qualificação (CNH/EAR/Cursos) dos
+  /// motoristas revisados por esta empresa (Dossiê 28).
+  documentosMotoristas   DriverDocument[]
 
   @@index([status])
   @@index([tipo])
@@ -547,6 +550,15 @@ model User {
   vinculosVeiculoCriados        VehicleAssignment[]  @relation("VehicleAssignmentCriadoPor")
   checklistsVeiculo             VehicleChecklist[]   @relation("VehicleChecklistMotorista")
   ocorrenciasVeiculoReportadas  VehicleOccurrence[]  @relation("VehicleOccurrenceReportadoPor")
+
+  /// Documentos de habilitação/qualificação do motorista (Dossiê 28 —
+  /// CNH/EAR/Cursos obrigatórios) — `documentosMotorista` é o dono do
+  /// documento (o próprio motorista), `documentosMotoristaEnviados`
+  /// é quem fez o upload (pode ser o próprio motorista ou um gestor da
+  /// empresa cadastrando em nome dele), mesmo padrão de
+  /// `documentosVeiculoEnviados`.
+  documentosMotorista         DriverDocument[] @relation("DriverDocumentUser")
+  documentosMotoristaEnviados DriverDocument[] @relation("DriverDocumentUploadedBy")
 
   /// Relações do módulo Escolas (Dossiê 13, Secao 10).
   escolasCriadas           School[]            @relation("SchoolCriadoPor")
@@ -1037,6 +1049,112 @@ model VehicleOccurrence {
 
   @@index([companyId, vehicleId, createdAt])
   @@map("vehicle_occurrences")
+}
+
+// =============================================================================
+// DriverDocument — CNH, EAR e cursos obrigatórios (Dossiê 28, auditoria de
+// arquitetura de banco — gap real identificado: `NotificationType.CNH_VENCENDO`
+// e `EventoAgendaTipo.VENCIMENTO_CNH` já existiam, mas nenhuma tabela
+// guardava o dado de origem — as duas notificações nunca podiam disparar
+// de verdade)
+// =============================================================================
+
+/// Tipo de documento de habilitação/qualificação do MOTORISTA (pessoa
+/// física, `User` — distinto de `VehicleDocumentType`, que é do veículo).
+/// `CNH` e `EAR` cobrem a exigência legal do CTB Art. 138/329 pra
+/// condução de transporte escolar (categoria D/E + Exercício de
+/// Atividade Remunerada); `CURSO_TRANSPORTE_ESCOLAR` cobre o curso
+/// especializado também exigido por lei (renovação periódica conforme
+/// legislação municipal/estadual); `ANTECEDENTES_CRIMINAIS` é o
+/// atestado de antecedentes, comum em editais municipais de transporte
+/// escolar. Modelado como enum extensível (não uma tabela por tipo) —
+/// mesma decisão de `VehicleDocumentType`: um novo tipo de qualificação
+/// exigida é uma migration de dado, nunca de schema.
+enum DriverDocumentType {
+  CNH
+  EAR
+  CURSO_TRANSPORTE_ESCOLAR
+  ANTECEDENTES_CRIMINAIS
+  OUTRO
+}
+
+/// Mesmo vocabulário de `VehicleDocumentAiStatus` — reaproveitado
+/// intencionalmente (não um novo enum por engano): o mesmo
+/// `RottaAiService` stub (Dossiê 15) que analisa documento de veículo
+/// analisará documento de motorista quando o provedor de visão
+/// computacional/OCR for contratado; `INDISPONIVEL` é o valor sempre
+/// atribuído hoje.
+enum DriverDocumentAiStatus {
+  PENDENTE
+  APROVADO
+  REPROVADO
+  INDISPONIVEL
+}
+
+/// Documento de habilitação/qualificação do motorista (briefing
+/// "CNH"/"EAR"/"Cursos obrigatórios") — mesmo formato de
+/// `VehicleDocument` de propósito (upload + vencimento + análise
+/// assíncrona da Rotta AI), só que preso ao `User` (pessoa física) em
+/// vez de ao `Vehicle`. Histórico nunca é sobrescrito: uma renovação de
+/// CNH é uma NOVA linha (a antiga vira soft-deleted), mesma convenção
+/// de `VehicleDocument` — a tela "Meus documentos" do app mostra sempre
+/// a mais recente não-deletada de cada `tipo`.
+///
+/// Diferente de `VehicleDocument.companyId` (desnormalizado, sem
+/// `@relation` própria, porque sempre é derivável de `vehicleId`), aqui
+/// `companyId` É uma `@relation` real: não existe nenhuma FK
+/// obrigatória no meio do caminho de onde derivar o tenant (o dono
+/// lógico é o `User`, que é GLOBAL, sem tenant) — sem a FK explícita,
+/// a integridade referencial de qual empresa está revisando o
+/// documento dependeria só de disciplina da camada de aplicação.
+/// Efeito prático: o mesmo motorista que atua em duas empresas (Dossiê
+/// 8 §2, múltiplos `Membership`) hoje precisa enviar o documento uma
+/// vez por empresa — aceito de propósito (cada transportadora
+/// responde legalmente por manter a cópia própria em arquivo).
+model DriverDocument {
+  id        String  @id @default(uuid()) @db.Uuid
+  userId    String  @db.Uuid
+  user      User    @relation("DriverDocumentUser", fields: [userId], references: [id], onDelete: Cascade)
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  tipo DriverDocumentType
+
+  /// Número do documento (nº da CNH, nº do certificado EAR, nº/turma do
+  /// curso) — `String?` porque nem todo `tipo` tem um número formal
+  /// (ex. atestado de antecedentes costuma não ter).
+  numero    String?
+  /// Categoria da CNH (ex. "D", "E") — só relevante quando `tipo = CNH`;
+  /// `null` para os demais tipos (sem `@@check` porque o Prisma não
+  /// suporta constraint condicional por coluna — validado na camada de
+  /// aplicação, mesmo trade-off de `SchoolCoordinate.precisao`).
+  categoria String?
+
+  nomeOriginal String
+  mimeType     String
+  fileUrl      String
+  vencimentoEm DateTime?
+
+  /// Análise assíncrona da Rotta AI (mesmo stub de
+  /// `VehicleDocument.rottaAiStatus` — ver comentário do enum acima).
+  rottaAiStatus              DriverDocumentAiStatus @default(PENDENTE)
+  rottaAiQualidadeOk         Boolean?
+  rottaAiLegivel             Boolean?
+  rottaAiSuspeitaAdulteracao Boolean?
+  rottaAiObservacoes         String?
+  rottaAiAnalisadoEm         DateTime?
+
+  uploadedByUserId String @db.Uuid
+  uploadedBy       User   @relation("DriverDocumentUploadedBy", fields: [uploadedByUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime  @default(now())
+  /// Soft delete — mesma convenção de `VehicleDocument.deletedAt`
+  /// (renovação = nova linha, nunca sobrescreve a anterior).
+  deletedAt DateTime?
+
+  @@index([companyId, userId, tipo])
+  @@index([companyId, vencimentoEm])
+  @@map("driver_documents")
 }
 
 // =============================================================================
