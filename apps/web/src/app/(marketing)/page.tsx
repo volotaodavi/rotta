@@ -18,18 +18,13 @@ import {
   Zap,
 } from "@rotta/icons";
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
+import Image from "next/image";
 import Link from "next/link";
 
 import type { Metadata } from "next";
 import type { ComponentType } from "react";
 
 import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
-import {
-  MonitorIllustration,
-  MotoristaIllustration,
-  ResponsavelIllustration,
-  TransportadoraIllustration,
-} from "@/components/audience-illustrations";
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
 
@@ -346,44 +341,85 @@ const BENEFICIOS: {
  * na paleta da marca substitui a fotografia que a Uber usa nesse mesmo
  * tipo de seção, sem fingir uma autenticidade que a Rotta não tem).
  */
-const AUDIENCE_ILLUSTRATION: Record<AudienceCard["tone"], ComponentType<{ className?: string }>> = {
-  primary: ResponsavelIllustration,
-  neutral: TransportadoraIllustration,
-  success: MotoristaIllustration,
-  info: MonitorIllustration,
+/**
+ * Fotos reais por audiência (`public/marketing/audiencia-*.jpg`,
+ * recortadas do banner enviado pelo usuário — 3 cartões no arquivo
+ * original: Responsável/Empresas/Motorista+Monitor combinados). Como o
+ * arquivo original funde Motorista e Monitor numa única foto, as duas
+ * audiências aqui reaproveitam a mesma imagem — o texto/bullets de cada
+ * uma continuam distintos (Dossiê 13: motorista dirige e faz checklist
+ * do veículo, monitor acompanha os alunos sem dirigir), só a foto é
+ * compartilhada por não existir uma terceira imagem separada no banner
+ * original. Chaveado por `titulo` (não por `tone`) exatamente por causa
+ * desse compartilhamento — duas audiências com `tone` diferente
+ * (`success`/`info`) apontam pra o mesmo arquivo de foto.
+ */
+const AUDIENCE_PHOTO: Record<string, { src: string; alt: string }> = {
+  "Sou responsável": {
+    src: "/marketing/audiencia-responsavel.jpg",
+    alt: "Responsável acompanhando o transporte escolar em tempo real pelo celular",
+  },
+  "Sou transportadora": {
+    src: "/marketing/audiencia-empresas.jpg",
+    alt: "Gestor de transportadora acompanhando a frota pelo painel da Rotta",
+  },
+  "Sou motorista": {
+    src: "/marketing/audiencia-motorista-monitor.jpg",
+    alt: "Motorista de transporte escolar usando o aplicativo da Rotta",
+  },
+  "Sou monitor": {
+    src: "/marketing/audiencia-motorista-monitor.jpg",
+    alt: "Monitor de transporte escolar usando o aplicativo da Rotta",
+  },
 };
 
 /**
  * Painel visual das seções "escolha como você utiliza a plataforma" —
  * mesma linguagem de cartão "solto"/com glow do
- * `HeroMapDemo`/`RottaPayVisual` abaixo, agora com uma cena ilustrada
- * (ver `AUDIENCE_ILLUSTRATION`) em vez do ícone-em-círculo anterior.
+ * `HeroMapDemo`/`RottaPayVisual` abaixo, agora com a foto real de cada
+ * audiência (ver `AUDIENCE_PHOTO`) em vez de ilustração/ícone.
  *
  * Clicável (pedido do usuário: "deixe essas imagens clicáveis") — quem
  * renderiza envolve isto num `<Link>` com a classe `group`; os efeitos
  * de hover abaixo (elevação, sombra, chip "Ver mais") reagem a esse
  * `group` do pai, então só aparecem quando o cartão inteiro é
- * hovarado/focado, não só o ícone interno.
+ * hovarado/focado, não só um ponto interno da foto.
  */
 function AudienceVisual({
   tone,
+  titulo,
   ctaLabel,
 }: {
   tone: AudienceCard["tone"];
+  titulo: string;
   ctaLabel: string;
 }): JSX.Element {
-  const Illustration = AUDIENCE_ILLUSTRATION[tone];
+  const photo = AUDIENCE_PHOTO[titulo];
   return (
     <div className="relative aspect-square w-full max-w-sm transition-transform duration-300 group-hover:-translate-y-1.5">
       <div
         className={`absolute -inset-6 rounded-[40px] ${TONE_BG[tone]}/10 blur-2xl transition-all duration-300 group-hover:blur-3xl group-hover:scale-105`}
         aria-hidden="true"
       />
-      <div
-        className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[32px] border border-border ${TONE_BG[tone]}/5 shadow-none transition-shadow duration-300 group-hover:border-border-strong group-hover:shadow-2xl`}
-      >
-        <Illustration className="h-full w-full p-6" />
-        <div className="absolute bottom-4 right-4 flex translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+      <div className="relative aspect-square w-full overflow-hidden rounded-[32px] border border-border shadow-none transition-shadow duration-300 group-hover:border-border-strong group-hover:shadow-2xl">
+        {photo && (
+          <Image
+            src={photo.src}
+            alt={photo.alt}
+            fill
+            sizes="(min-width: 1024px) 384px, 90vw"
+            className="object-cover"
+          />
+        )}
+        {/*
+          Chip de hover no canto SUPERIOR direito, nunca no rodapé — as
+          3 fotos (`AUDIENCE_PHOTO`) já têm o próprio botão desenhado
+          dentro da imagem, colado na base ("Entrar como responsável",
+          "Acessar plataforma", "Área profissional"); um chip embaixo
+          ficaria em cima desse botão já impresso na foto, duplicando a
+          call-to-action. Aqui em cima a área é sempre livre nas 3 fotos.
+        */}
+        <div className="absolute right-4 top-4 flex -translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Typography variant="caption" className={`font-semibold ${TONE_TEXT[tone]}`}>
             {ctaLabel}
           </Typography>
@@ -580,7 +616,11 @@ export default function LandingPage(): JSX.Element {
               aria-label={audiencia.ctaLabel}
               className="group flex justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background"
             >
-              <AudienceVisual tone={audiencia.tone} ctaLabel={audiencia.ctaLabel} />
+              <AudienceVisual
+                tone={audiencia.tone}
+                titulo={audiencia.titulo}
+                ctaLabel={audiencia.ctaLabel}
+              />
             </Link>
           );
 
