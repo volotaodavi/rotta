@@ -12,7 +12,6 @@ import {
 import { AppProviders } from "@/providers/app-providers";
 import { ServiceWorkerRegistration } from "@/providers/service-worker-registration";
 
-
 import "./globals.css";
 
 /**
@@ -93,6 +92,15 @@ function OrganizationJsonLd(): JSX.Element {
  * `data-theme` no JSX — se declarasse, a hidratação do React
  * reconciliaria o atributo de volta para o valor literal do servidor,
  * desfazendo exatamente o que este script acabou de aplicar.
+ *
+ * BUG corrigido: faltava `suppressHydrationWarning` no `<html>` — sem
+ * ele, o React comparava o HTML gerado pelo servidor (sem
+ * `data-theme`) com o DOM já modificado por este script (com
+ * `data-theme`) e logava "hidratação divergente" como ERRO em TODA
+ * navegação/reload da Landing Page (o badge vermelho "1 Issue" do dev
+ * overlay que aparecia nos prints). O mismatch em si sempre foi
+ * intencional (é o ponto do script), só faltava avisar o React pra não
+ * tratar como erro.
  */
 const THEME_INIT_SCRIPT = `
 (function () {
@@ -119,7 +127,7 @@ const THEME_INIT_SCRIPT = `
  */
 export default function RootLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <OrganizationJsonLd />
