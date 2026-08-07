@@ -11,6 +11,7 @@ export * from "./endpoints/agenda";
 export * from "./endpoints/auth";
 export * from "./endpoints/billing";
 export * from "./endpoints/companies";
+export * from "./endpoints/drivers";
 export * from "./endpoints/geo";
 export * from "./endpoints/gps";
 export * from "./endpoints/marketplace";
