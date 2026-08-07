@@ -14,8 +14,6 @@ import {
   ShieldCheck,
   UserCheck,
   UserPlus,
-  Wallet,
-  Zap,
 } from "@rotta/icons";
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
 import Image from "next/image";
@@ -430,26 +428,51 @@ function AudienceVisual({
   );
 }
 
-/** Mini visual do Rotta Pay — mesma referência do painel real (`(dashboard)/rotta-pay`), reconstruído aqui para não cruzar o boundary de route group. Cartão puramente ilustrativo: nenhum meio de pagamento real é emitido. */
+/**
+ * Visual do Rotta Pay — mockup real do app (recortado do banner que o
+ * usuário mandou pra essa seção), mostrando a tela de recebimentos com
+ * dados de exemplo (mesma convenção do `HeroMapDemo`/
+ * `HeroTripPhoneMockup`: nomes e valores são ilustrativos, nunca uma
+ * transação real). O logo "Rotta Pay" já vem desenhado na própria
+ * imagem — nenhum texto sobreposto aqui precisa reafirmar isso.
+ */
 function RottaPayVisual(): JSX.Element {
   return (
-    <div className="relative w-full max-w-sm rotate-[1.5deg] rounded-3xl bg-gradient-to-br from-white/15 to-transparent p-6 text-white shadow-2xl backdrop-blur">
-      <div className="flex items-center justify-between">
-        <span className="flex items-center gap-2 text-sm font-semibold">
-          <Wallet className="h-5 w-5" /> Rotta Pay
-        </span>
-        <span className="rounded-full bg-white/15 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide">
-          Novo
-        </span>
-      </div>
-      <div className="mt-8">
-        <p className="text-xs text-white/70">Saldo disponível</p>
-        <p className="mt-1 text-3xl font-bold">R$ 4.280,00</p>
-      </div>
-      <div className="mt-6 flex items-center gap-2 text-xs text-white/70">
-        <Zap className="h-3.5 w-3.5" />
-        Extrato atualizado a cada contrato ativado
-      </div>
+    <div className="relative w-full max-w-xs rotate-[1.5deg]">
+      <div
+        className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] bg-white/20 blur-3xl"
+        aria-hidden="true"
+      />
+      <Image
+        src="/marketing/rotta-pay-phone.jpg"
+        alt="Tela do Rotta Pay mostrando saldo disponível e últimos recebimentos, com dados de exemplo"
+        width={430}
+        height={877}
+        className="w-full rounded-[32px] shadow-2xl"
+      />
+    </div>
+  );
+}
+
+/**
+ * Selo "parceira oficial" — logo da LyTex Pagamentos (recortado do
+ * mesmo banner), a provedora de pagamento REAL escolhida para a Rotta
+ * Pay (Dossiê 26; `lytex.config.ts`/`RottaPayProviderService` já têm
+ * as credenciais reais fornecidas pelo usuário). Card branco de
+ * propósito — o logo original tem fundo claro, ficaria com uma faixa
+ * branca esquisita direto sobre o gradiente azul da seção sem esse
+ * cartão ao redor.
+ */
+function LytexPartnerBadge(): JSX.Element {
+  return (
+    <div className="inline-flex items-center rounded-2xl bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
+      <Image
+        src="/marketing/rotta-pay-lytex-logo.png"
+        alt="Rotta Pay, com tecnologia da LyTex Pagamentos — parceira oficial e provedora de pagamentos da Rotta"
+        width={770}
+        height={155}
+        className="h-8 w-auto sm:h-9"
+      />
     </div>
   );
 }
@@ -714,6 +737,7 @@ export default function LandingPage(): JSX.Element {
             <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
               Novidade
             </span>
+            <LytexPartnerBadge />
             <Typography variant="headline" as="h2" className="text-white">
               Rotta Pay: sua transportadora recebe, você acompanha.
             </Typography>
@@ -736,8 +760,8 @@ export default function LandingPage(): JSX.Element {
               ))}
             </ul>
             <Typography variant="caption" className="max-w-lg text-white/60">
-              Em rollout — a Rotta está integrando uma provedora de pagamento parceira para
-              processar as transferências.
+              Em rollout — a integração de pagamentos com a LyTex está sendo finalizada; até lá, os
+              saques passam por processamento manual da equipe Rotta.
             </Typography>
           </div>
           <div className="flex justify-center lg:justify-end">
