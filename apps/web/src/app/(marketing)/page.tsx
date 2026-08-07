@@ -340,34 +340,46 @@ const BENEFICIOS: {
  * tipo de seção, sem fingir uma autenticidade que a Rotta não tem).
  */
 /**
- * Fotos reais por audiência (`public/marketing/audiencia-*.jpg`,
- * recortadas do banner enviado pelo usuário — 3 cartões no arquivo
- * original: Responsável/Empresas/Motorista+Monitor combinados). Como o
- * arquivo original funde Motorista e Monitor numa única foto, as duas
- * audiências aqui reaproveitam a mesma imagem — o texto/bullets de cada
- * uma continuam distintos (Dossiê 13: motorista dirige e faz checklist
- * do veículo, monitor acompanha os alunos sem dirigir), só a foto é
- * compartilhada por não existir uma terceira imagem separada no banner
- * original. Chaveado por `titulo` (não por `tone`) exatamente por causa
- * desse compartilhamento — duas audiências com `tone` diferente
- * (`success`/`info`) apontam pra o mesmo arquivo de foto.
+ * Fotos reais por audiência (`public/marketing/audiencia-*.jpg`) — 2ª
+ * versão enviada pelo usuário: 3 arquivos separados (não mais um
+ * banner único recortado por mim), sem botão desenhado dentro da
+ * imagem desta vez ("são melhores, já que tem um botão do lado de cada
+ * um" — o botão de verdade já vem do nosso próprio `Button`/`Link`
+ * abaixo). Motorista e Monitor continuam reaproveitando o mesmo
+ * arquivo (só existe uma foto pros dois no material enviado) — texto/
+ * bullets de cada audiência continuam distintos (Dossiê 13: motorista
+ * dirige e faz checklist do veículo, monitor acompanha os alunos sem
+ * dirigir). Chaveado por `titulo`, não por `tone`, por causa desse
+ * compartilhamento.
+ *
+ * `ratio` = largura/altura REAL do arquivo (nunca forçado a quadrado):
+ * as fotos de Responsável/Empresas já vêm quase quadradas (~1,39), mas
+ * a de Motorista/Monitor é uma faixa bem mais larga (~4,25) — testado
+ * e confirmado que qualquer recorte pra encaixar num cartão quadrado
+ * cortava ou o texto "Motorista / Monitor" ou o motorista da foto
+ * inteiramente. Preservar a proporção original de cada uma é o único
+ * jeito de mostrar a foto completa sem perder nenhuma das duas partes.
  */
-const AUDIENCE_PHOTO: Record<string, { src: string; alt: string }> = {
+const AUDIENCE_PHOTO: Record<string, { src: string; alt: string; ratio: number }> = {
   "Sou responsável": {
     src: "/marketing/audiencia-responsavel.jpg",
     alt: "Responsável acompanhando o transporte escolar em tempo real pelo celular",
+    ratio: 695 / 501,
   },
   "Sou transportadora": {
     src: "/marketing/audiencia-empresas.jpg",
     alt: "Gestor de transportadora acompanhando a frota pelo painel da Rotta",
+    ratio: 699 / 501,
   },
   "Sou motorista": {
     src: "/marketing/audiencia-motorista-monitor.jpg",
     alt: "Motorista de transporte escolar usando o aplicativo da Rotta",
+    ratio: 1420 / 334,
   },
   "Sou monitor": {
     src: "/marketing/audiencia-motorista-monitor.jpg",
     alt: "Monitor de transporte escolar usando o aplicativo da Rotta",
+    ratio: 1420 / 334,
   },
 };
 
@@ -394,12 +406,15 @@ function AudienceVisual({
 }): JSX.Element {
   const photo = AUDIENCE_PHOTO[titulo];
   return (
-    <div className="relative aspect-square w-full max-w-sm transition-transform duration-300 group-hover:-translate-y-1.5">
+    <div
+      className="relative w-full max-w-sm transition-transform duration-300 group-hover:-translate-y-1.5"
+      style={{ aspectRatio: photo?.ratio ?? 1 }}
+    >
       <div
         className={`absolute -inset-6 rounded-[40px] ${TONE_BG[tone]}/10 blur-2xl transition-all duration-300 group-hover:blur-3xl group-hover:scale-105`}
         aria-hidden="true"
       />
-      <div className="relative aspect-square w-full overflow-hidden rounded-[32px] border border-border shadow-none transition-shadow duration-300 group-hover:border-border-strong group-hover:shadow-2xl">
+      <div className="relative h-full w-full overflow-hidden rounded-[32px] border border-border shadow-none transition-shadow duration-300 group-hover:border-border-strong group-hover:shadow-2xl">
         {photo && (
           <Image
             src={photo.src}
@@ -410,12 +425,9 @@ function AudienceVisual({
           />
         )}
         {/*
-          Chip de hover no canto SUPERIOR direito, nunca no rodapé — as
-          3 fotos (`AUDIENCE_PHOTO`) já têm o próprio botão desenhado
-          dentro da imagem, colado na base ("Entrar como responsável",
-          "Acessar plataforma", "Área profissional"); um chip embaixo
-          ficaria em cima desse botão já impresso na foto, duplicando a
-          call-to-action. Aqui em cima a área é sempre livre nas 3 fotos.
+          Chip de hover no canto superior direito — livre nas 3 fotos
+          atuais (2ª versão enviada pelo usuário, sem botão desenhado
+          dentro da imagem desta vez).
         */}
         <div className="absolute right-4 top-4 flex -translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Typography variant="caption" className={`font-semibold ${TONE_TEXT[tone]}`}>
