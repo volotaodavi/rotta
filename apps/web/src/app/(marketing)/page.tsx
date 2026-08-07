@@ -444,28 +444,25 @@ function AudienceVisual({
  * INTEIRO, sem recorte ("não é pra recortar, é pra poder visualizarem":
  * a 1ª versão eu recortei em pedaços e remontei com texto próprio —
  * `RottaPayVisual`/`LytexPartnerBadge`, ambos removidos — essa aqui é o
- * design pronto, publicado como veio). Mesma parceria já verificada
- * antes de publicar a 1ª versão (LyTex é o provedor real —
- * `lytex.config.ts`/`RottaPayProviderService`, Dossiê 26); a integração
- * de pagamento em si ainda é stub, por isso o aviso "Em rollout" logo
- * abaixo continua existindo fora da imagem. `width`/`height` = dimensão
- * real do arquivo (1774×887, ~2:1) — nunca forçado a quadrado/cortado.
+ * design pronto, publicado como veio) e sem moldura ao redor ("só o
+ * design, sem o quadrado azul servindo de borda" — a seção deixou de
+ * ter fundo colorido, é só a imagem sobre o fundo normal da página).
+ * Mesma parceria já verificada antes de publicar a 1ª versão (LyTex é o
+ * provedor real — `lytex.config.ts`/`RottaPayProviderService`, Dossiê
+ * 26); a integração de pagamento em si ainda é stub, por isso o aviso
+ * "Em rollout" logo abaixo continua existindo fora da imagem.
+ * `width`/`height` = dimensão real do arquivo (1774×887, ~2:1) — nunca
+ * forçado a quadrado/cortado.
  */
 function RottaPayBanner(): JSX.Element {
   return (
-    <div className="relative w-full max-w-4xl">
-      <div
-        className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] bg-white/10 blur-3xl"
-        aria-hidden="true"
-      />
-      <Image
-        src="/marketing/rotta-pay-banner.png"
-        alt="Rotta Pay, com tecnologia da LyTex Pagamentos: tela do app mostrando saldo disponível e últimos recebimentos, e os diferenciais receba direto na sua conta, taxas justas, mais segurança e saques rápidos"
-        width={1774}
-        height={887}
-        className="w-full rounded-[24px] shadow-2xl"
-      />
-    </div>
+    <Image
+      src="/marketing/rotta-pay-banner.png"
+      alt="Rotta Pay, com tecnologia da LyTex Pagamentos: tela do app mostrando saldo disponível e últimos recebimentos, e os diferenciais receba direto na sua conta, taxas justas, mais segurança e saques rápidos"
+      width={1774}
+      height={887}
+      className="w-full max-w-4xl rounded-[24px] shadow-xl"
+    />
   );
 }
 
@@ -723,7 +720,7 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="w-full bg-gradient-to-br from-primary to-primary-hover px-6 py-24">
+      <section className="w-full px-6 py-16">
         <div className="mx-auto flex w-full max-w-6xl justify-center">
           <RottaPayBanner />
         </div>
