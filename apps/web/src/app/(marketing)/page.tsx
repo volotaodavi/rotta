@@ -330,34 +330,23 @@ const BENEFICIOS: {
 ];
 
 /**
- * Uma ilustração SVG própria por audiência (Responsável/Transportadora/
- * Motorista/Monitor) — não um ícone genérico dentro de um círculo.
- * Chaveada por `tone` porque `tone` já é 1:1 com a audiência em
- * `AUDIENCIAS` (Dossiê 24 — nenhuma foto de estoque: a Rotta não tem
- * fotografia real de motoristas/famílias ainda, então uma cena vetorial
- * na paleta da marca substitui a fotografia que a Uber usa nesse mesmo
- * tipo de seção, sem fingir uma autenticidade que a Rotta não tem).
- */
-/**
- * Fotos reais por audiência (`public/marketing/audiencia-*.jpg`) — 2ª
- * versão enviada pelo usuário: 3 arquivos separados (não mais um
- * banner único recortado por mim), sem botão desenhado dentro da
- * imagem desta vez ("são melhores, já que tem um botão do lado de cada
- * um" — o botão de verdade já vem do nosso próprio `Button`/`Link`
- * abaixo). Motorista e Monitor continuam reaproveitando o mesmo
- * arquivo (só existe uma foto pros dois no material enviado) — texto/
- * bullets de cada audiência continuam distintos (Dossiê 13: motorista
- * dirige e faz checklist do veículo, monitor acompanha os alunos sem
- * dirigir). Chaveado por `titulo`, não por `tone`, por causa desse
- * compartilhamento.
+ * Fotos reais por audiência (`public/marketing/audiencia-*.jpg`) — 3ª
+ * rodada enviada pelo usuário: Motorista e Monitor agora têm cada um
+ * seu próprio post/banner (antes reaproveitavam o mesmo arquivo, só
+ * existia uma foto pros dois — Dossiê 13 já pedia telas distintas
+ * porque motorista dirige e faz checklist do veículo, monitor acompanha
+ * os alunos sem dirigir; agora as duas fotos também são distintas).
+ * Título/descrição/ícone-círculo já vêm desenhados dentro dessas duas
+ * imagens (mesmo padrão das fotos de Responsável/Empresas) — mantém a
+ * harmonia visual entre os 4 cartões sem duplicar esse texto de novo em
+ * HTML por cima. Chaveado por `titulo`, não por `tone`.
  *
- * `ratio` = largura/altura REAL do arquivo (nunca forçado a quadrado):
- * as fotos de Responsável/Empresas já vêm quase quadradas (~1,39), mas
- * a de Motorista/Monitor é uma faixa bem mais larga (~4,25) — testado
- * e confirmado que qualquer recorte pra encaixar num cartão quadrado
- * cortava ou o texto "Motorista / Monitor" ou o motorista da foto
- * inteiramente. Preservar a proporção original de cada uma é o único
- * jeito de mostrar a foto completa sem perder nenhuma das duas partes.
+ * `ratio` = largura/altura REAL de cada arquivo (nunca forçado a
+ * quadrado/cortado — mesmo cuidado da rodada anterior, que descobriu
+ * que forçar `aspect-square` cortava conteúdo essencial): Responsável/
+ * Empresas ~1,39, Motorista 1536×1024 (~1,5), Monitor 1254×1254
+ * (quadrado perfeito, ~1,0) — cada card no grid assume a proporção da
+ * própria foto via `AudienceVisual`.
  */
 const AUDIENCE_PHOTO: Record<string, { src: string; alt: string; ratio: number }> = {
   "Sou responsável": {
@@ -371,14 +360,14 @@ const AUDIENCE_PHOTO: Record<string, { src: string; alt: string; ratio: number }
     ratio: 699 / 501,
   },
   "Sou motorista": {
-    src: "/marketing/audiencia-motorista-monitor.jpg",
-    alt: "Motorista de transporte escolar usando o aplicativo da Rotta",
-    ratio: 1420 / 334,
+    src: "/marketing/audiencia-motorista.jpg",
+    alt: "Motorista de transporte escolar visualizando a próxima viagem e os próximos pontos pelo aplicativo da Rotta",
+    ratio: 1536 / 1024,
   },
   "Sou monitor": {
-    src: "/marketing/audiencia-motorista-monitor.jpg",
-    alt: "Monitor de transporte escolar usando o aplicativo da Rotta",
-    ratio: 1420 / 334,
+    src: "/marketing/audiencia-monitor.jpg",
+    alt: "Monitora de transporte escolar visualizando as rotas do dia pelo aplicativo da Rotta",
+    ratio: 1254 / 1254,
   },
 };
 
@@ -424,9 +413,8 @@ function AudienceVisual({
           />
         )}
         {/*
-          Chip de hover no canto superior direito — livre nas 3 fotos
-          atuais (2ª versão enviada pelo usuário, sem botão desenhado
-          dentro da imagem desta vez).
+          Chip de hover no canto superior direito — livre nas 4 fotos
+          atuais, nenhuma tem botão desenhado dentro da imagem.
         */}
         <div className="absolute right-4 top-4 flex -translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Typography variant="caption" className={`font-semibold ${TONE_TEXT[tone]}`}>
