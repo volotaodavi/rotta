@@ -2,6 +2,7 @@ import {
   ArrowRight,
   Bell,
   Check,
+  Gauge,
   Headset,
   LayoutGrid,
   Link2,
@@ -32,7 +33,6 @@ import {
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
 
-
 /**
  * Título/descrição herdam o padrão do root layout (já otimizados pra
  * home) — aqui só fixamos o `canonical` (Dossiê 12 §7.4: evita que o
@@ -51,11 +51,117 @@ export const metadata: Metadata = {
   ],
 };
 
-const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
-  { label: "Ao vivo, sempre", icon: MapPin },
-  { label: "Sem grupo de WhatsApp", icon: Bell },
-  { label: "Motorista verificado por IA", icon: ShieldCheck },
+/**
+ * Grade de 4 destaques logo abaixo do `HeroAudienceSwitch` — substitui
+ * os antigos `TRUST_CHIPS` (badges de texto solto) por um bloco mais
+ * denso visualmente (ícone + título + descrição curta), no mesmo
+ * espírito do banner de referência que o usuário trouxe. Cada item
+ * aqui é uma capacidade REAL já documentada em outras seções desta
+ * mesma página (`SEGURANCA_ITENS`, `BENEFICIOS`, `COMO_FUNCIONA`) —
+ * nunca uma promessa nova inventada só para preencher a grade.
+ */
+const HERO_DESTAQUES: {
+  titulo: string;
+  descricao: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
+  {
+    titulo: "Mais segurança",
+    descricao: "CNH, selfie e reconhecimento facial checados por IA.",
+    icon: ShieldCheck,
+  },
+  {
+    titulo: "Mais controle",
+    descricao: "Motoristas, veículos e rotas num painel só.",
+    icon: LayoutGrid,
+  },
+  {
+    titulo: "Mais comunicação",
+    descricao: "Notificação automática a cada embarque e desembarque.",
+    icon: Bell,
+  },
+  {
+    titulo: "Mais eficiência",
+    descricao: "Rota otimizada, recalculada sozinha se um aluno faltar.",
+    icon: Gauge,
+  },
 ];
+
+/**
+ * Mockup de celular flutuando sobre o `HeroMapDemo` (banner de
+ * referência trazido pelo usuário: foto de van + celular na mão). A
+ * Rotta não tem fotografia real de van/motorista ainda (Dossiê 24 —
+ * nenhuma foto de estoque), então em vez de uma foto genérica de banco
+ * de imagens (que pareceria falsa), este é um mockup ilustrado — moldura
+ * de aparelho desenhada (não uma foto de mão) com uma prévia da MESMA
+ * tela real do app (`TripsService`/embarque-desembarque, Dossiê 13):
+ * viagem em andamento, mini-rota e os dois papéis que aparecem nela
+ * (aluno a bordo, motorista). Nomes são de exemplo — mesma convenção já
+ * usada no cartão "Chegada em X min" do `HeroMapDemo` (dado de
+ * demonstração, nunca um cliente real).
+ */
+function HeroTripPhoneMockup({ className }: { className?: string }): JSX.Element {
+  return (
+    <div className={`w-40 rotate-[4deg] sm:w-48 ${className ?? ""}`}>
+      <div className="rounded-[26px] border-[3px] border-text bg-card p-1.5 shadow-2xl">
+        <div className="overflow-hidden rounded-[18px] bg-background">
+          <div className="flex justify-center pt-2">
+            <div className="h-1 w-10 rounded-full bg-border" />
+          </div>
+          <div className="px-3 pb-3 pt-2">
+            <Typography variant="caption" color="muted">
+              Viagem em andamento
+            </Typography>
+            <Typography variant="caption" className="mt-0.5 block font-semibold">
+              Trajeto para a escola
+            </Typography>
+
+            <svg viewBox="0 0 140 60" className="mt-2 h-auto w-full" aria-hidden="true">
+              <path
+                d="M 12 48 C 40 40, 55 30, 70 22 S 110 8, 128 12"
+                className="stroke-primary"
+                strokeWidth={3}
+                strokeDasharray="1 8"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <circle cx={12} cy={48} r={4} className="fill-secondary" />
+              <path
+                d="M128 4c-5 0-9 4-9 9 0 7 9 15 9 15s9-8 9-15c0-5-4-9-9-9z"
+                className="fill-primary"
+              />
+            </svg>
+
+            <div className="mt-2 flex flex-col gap-1.5">
+              <div className="flex items-center gap-1.5 rounded-lg bg-success/10 px-2 py-1.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success text-[9px] font-bold text-white">
+                  ML
+                </span>
+                <Typography variant="caption" className="flex-1 truncate font-medium">
+                  Maria Laura
+                </Typography>
+                <Typography variant="caption" className="shrink-0 font-semibold text-success">
+                  A bordo
+                </Typography>
+              </div>
+              <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1.5">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white">
+                  CA
+                </span>
+                <Typography variant="caption" className="flex-1 truncate font-medium">
+                  Carlos Alberto
+                </Typography>
+                <Typography variant="caption" className="shrink-0 font-semibold text-primary">
+                  Motorista
+                </Typography>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Faixa de confiança logo abaixo da hero (briefing inDrive — bloco
@@ -298,12 +404,16 @@ export default function LandingPage(): JSX.Element {
           className="pointer-events-none absolute -right-32 top-1/3 -z-10 h-[420px] w-[420px] rounded-full bg-success/25 blur-[100px]"
           aria-hidden="true"
         />
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-24 pt-16 sm:pt-24 lg:grid-cols-2">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-28 pt-16 sm:pt-24 lg:grid-cols-2">
           <div className="flex flex-col items-start gap-6 text-left">
-            <Badge variant="info">Rastreamento ao vivo, sem enrolação</Badge>
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
+              Tecnologia que conecta
+            </span>
             <Typography variant="hero" as="h1">
               Cadê o transporte?
-              <br />A Rotta mostra.
+              <br />
+              <span className="text-primary">A Rotta mostra.</span>
             </Typography>
             <Typography variant="body" color="muted" className="max-w-lg">
               Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
@@ -311,35 +421,59 @@ export default function LandingPage(): JSX.Element {
               perguntar pra ninguém.
             </Typography>
             <HeroAudienceSwitch />
-            <div className="flex flex-wrap gap-2 pt-2">
-              {TRUST_CHIPS.map((chip) => (
-                <Badge key={chip.label} variant="neutral">
-                  <span className="flex items-center gap-1.5">
-                    <chip.icon className="h-3.5 w-3.5" />
-                    {chip.label}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-5 pt-4 sm:grid-cols-4 sm:gap-x-4">
+              {HERO_DESTAQUES.map((item) => (
+                <div key={item.titulo} className="flex flex-col gap-2">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <item.icon className="h-4.5 w-4.5" />
                   </span>
-                </Badge>
+                  <Typography variant="bodySmall" className="font-semibold">
+                    {item.titulo}
+                  </Typography>
+                  <Typography variant="caption" color="muted">
+                    {item.descricao}
+                  </Typography>
+                </div>
               ))}
             </div>
           </div>
-          <div className="flex justify-center pt-6 lg:justify-end lg:pt-0">
-            <HeroMapDemo />
+          <div className="relative flex justify-center pt-6 lg:justify-end lg:pt-0">
+            <div className="relative w-full max-w-md">
+              <div
+                className="pointer-events-none absolute -inset-10 -z-10 bg-primary/15 blur-2xl"
+                style={{ borderRadius: "63% 37% 54% 46% / 55% 48% 52% 45%" }}
+                aria-hidden="true"
+              />
+              <HeroMapDemo />
+              <HeroTripPhoneMockup className="absolute -right-4 -top-10 z-10 hidden sm:block lg:-right-12" />
+            </div>
           </div>
         </div>
       </section>
 
-      <section className="w-full bg-white py-10 text-[#0B0F14]">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-6 sm:grid-cols-3">
-          {FAIXA_CONFIANCA.map((item) => (
-            <div key={item.titulo} className="flex items-center gap-3">
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <item.icon className="h-5 w-5" />
-              </span>
-              <Typography variant="bodySmall" className="font-semibold !text-[#0B0F14]">
-                {item.titulo}
+      <section className="relative z-10 mx-auto -mt-12 w-full max-w-6xl px-6 sm:-mt-16">
+        <div className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 shadow-xl sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+          <div className="flex items-center gap-4">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
+              <ShieldCheck className="h-6 w-6" />
+            </span>
+            <div>
+              <Typography variant="subtitle">Segurança em cada destino.</Typography>
+              <Typography variant="bodySmall" color="muted">
+                Confiança em cada trajeto.
               </Typography>
             </div>
-          ))}
+          </div>
+          <div className="flex flex-wrap gap-x-8 gap-y-3">
+            {FAIXA_CONFIANCA.map((item) => (
+              <div key={item.titulo} className="flex items-center gap-2.5">
+                <item.icon className="h-4 w-4 shrink-0 text-primary" />
+                <Typography variant="bodySmall" className="font-medium">
+                  {item.titulo}
+                </Typography>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
