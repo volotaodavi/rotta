@@ -441,49 +441,30 @@ function AudienceVisual({
 }
 
 /**
- * Visual do Rotta Pay — mockup real do app (recortado do banner que o
- * usuário mandou pra essa seção), mostrando a tela de recebimentos com
- * dados de exemplo (mesma convenção do `HeroMapDemo`/
- * `HeroTripPhoneMockup`: nomes e valores são ilustrativos, nunca uma
- * transação real). O logo "Rotta Pay" já vem desenhado na própria
- * imagem — nenhum texto sobreposto aqui precisa reafirmar isso.
+ * Banner completo do Rotta Pay — 2ª versão enviada pelo usuário, exibido
+ * INTEIRO, sem recorte ("não é pra recortar, é pra poder visualizarem":
+ * a 1ª versão eu recortei em pedaços e remontei com texto próprio —
+ * `RottaPayVisual`/`LytexPartnerBadge`, ambos removidos — essa aqui é o
+ * design pronto, publicado como veio). Mesma parceria já verificada
+ * antes de publicar a 1ª versão (LyTex é o provedor real —
+ * `lytex.config.ts`/`RottaPayProviderService`, Dossiê 26); a integração
+ * de pagamento em si ainda é stub, por isso o aviso "Em rollout" logo
+ * abaixo continua existindo fora da imagem. `width`/`height` = dimensão
+ * real do arquivo (1774×887, ~2:1) — nunca forçado a quadrado/cortado.
  */
-function RottaPayVisual(): JSX.Element {
+function RottaPayBanner(): JSX.Element {
   return (
-    <div className="relative w-full max-w-xs rotate-[1.5deg]">
+    <div className="relative w-full max-w-4xl">
       <div
-        className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] bg-white/20 blur-3xl"
+        className="pointer-events-none absolute -inset-8 -z-10 rounded-[48px] bg-white/10 blur-3xl"
         aria-hidden="true"
       />
       <Image
-        src="/marketing/rotta-pay-phone.jpg"
-        alt="Tela do Rotta Pay mostrando saldo disponível e últimos recebimentos, com dados de exemplo"
-        width={430}
-        height={877}
-        className="w-full rounded-[32px] shadow-2xl"
-      />
-    </div>
-  );
-}
-
-/**
- * Selo "parceira oficial" — logo da LyTex Pagamentos (recortado do
- * mesmo banner), a provedora de pagamento REAL escolhida para a Rotta
- * Pay (Dossiê 26; `lytex.config.ts`/`RottaPayProviderService` já têm
- * as credenciais reais fornecidas pelo usuário). Card branco de
- * propósito — o logo original tem fundo claro, ficaria com uma faixa
- * branca esquisita direto sobre o gradiente azul da seção sem esse
- * cartão ao redor.
- */
-function LytexPartnerBadge(): JSX.Element {
-  return (
-    <div className="inline-flex items-center rounded-2xl bg-white/95 px-4 py-3 shadow-lg backdrop-blur">
-      <Image
-        src="/marketing/rotta-pay-lytex-logo.png"
-        alt="Rotta Pay, com tecnologia da LyTex Pagamentos — parceira oficial e provedora de pagamentos da Rotta"
-        width={770}
-        height={155}
-        className="h-8 w-auto sm:h-9"
+        src="/marketing/rotta-pay-banner.png"
+        alt="Rotta Pay, com tecnologia da LyTex Pagamentos: tela do app mostrando saldo disponível e últimos recebimentos, e os diferenciais receba direto na sua conta, taxas justas, mais segurança e saques rápidos"
+        width={1774}
+        height={887}
+        className="w-full rounded-[24px] shadow-2xl"
       />
     </div>
   );
@@ -744,12 +725,11 @@ export default function LandingPage(): JSX.Element {
       </section>
 
       <section className="w-full bg-gradient-to-br from-primary to-primary-hover px-6 py-24 text-white">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
-          <div className="flex flex-col items-start gap-5">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-12">
+          <div className="flex max-w-2xl flex-col items-start gap-5">
             <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
               Novidade
             </span>
-            <LytexPartnerBadge />
             <Typography variant="headline" as="h2" className="text-white">
               Rotta Pay: sua transportadora recebe, você acompanha.
             </Typography>
@@ -776,9 +756,7 @@ export default function LandingPage(): JSX.Element {
               saques passam por processamento manual da equipe Rotta.
             </Typography>
           </div>
-          <div className="flex justify-center lg:justify-end">
-            <RottaPayVisual />
-          </div>
+          <RottaPayBanner />
         </div>
       </section>
 
