@@ -2,6 +2,15 @@ import { Headset, MessageCircle } from "@rotta/icons";
 import { Card, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Suporte",
+  description:
+    "Precisa de ajuda com a Rotta? Clientes abrem chamado direto pelo painel; quem ainda não é cliente fala com a gente em suporte@rotta.com.br.",
+  alternates: { canonical: "/suporte" },
+};
+
 /** Suporte (briefing "SITE RESPONSIVO") — canal público; suporte autenticado (tickets, Dossiê 20 `SUP-*`) vive no painel logado. */
 export default function SuportePage(): JSX.Element {
   return (

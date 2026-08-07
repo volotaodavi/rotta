@@ -19,6 +19,7 @@ import {
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
+import type { Metadata } from "next";
 import type { ComponentType } from "react";
 
 import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
@@ -31,6 +32,24 @@ import {
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
 
+
+/**
+ * Título/descrição herdam o padrão do root layout (já otimizados pra
+ * home) — aqui só fixamos o `canonical` (Dossiê 12 §7.4: evita que o
+ * Google trate `/` e `/?utm=...`/variações como páginas duplicadas) e
+ * as palavras-chave reais do produto (nunca termos que a Rotta não
+ * atende, tipo "ônibus urbano" ou "transporte de funcionários").
+ */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  keywords: [
+    "transporte escolar",
+    "rastreamento de transporte escolar em tempo real",
+    "app para acompanhar van escolar",
+    "gestão de transportadora escolar",
+    "sistema para motorista escolar",
+  ],
+};
 
 const TRUST_CHIPS: { label: string; icon: ComponentType<{ className?: string }> }[] = [
   { label: "Ao vivo, sempre", icon: MapPin },

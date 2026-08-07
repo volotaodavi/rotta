@@ -2,6 +2,14 @@ import { Mail } from "@rotta/icons";
 import { Card, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Contato",
+  description: "Fale com a Rotta por e-mail em contato@rotta.com.br.",
+  alternates: { canonical: "/contato" },
+};
+
 /** Contato (briefing "SITE RESPONSIVO"). */
 export default function ContatoPage(): JSX.Element {
   return (

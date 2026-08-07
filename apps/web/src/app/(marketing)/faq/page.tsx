@@ -1,64 +1,54 @@
-"use client";
-
-import { ChevronDown } from "@rotta/icons";
 import { Typography } from "@rotta/ui/web";
-import { useState } from "react";
 
-const FAQS = [
-  {
-    question: "Como faço para cadastrar minha empresa?",
-    answer:
-      'Clique em "Criar conta", escolha "Área Profissional" e depois "Criar Empresa". O cadastro leva poucos minutos.',
-  },
-  {
-    question: "Motoristas precisam se cadastrar sozinhos?",
-    answer:
-      "Não. A empresa gera um código de convite para cada motorista, que usa esse código no aplicativo para completar o cadastro.",
-  },
-  {
-    question: "A mesma conta funciona no site e no aplicativo?",
-    answer: "Sim. É uma única conta Rotta, compartilhada entre o painel Web e o aplicativo.",
-  },
-  {
-    question: "Posso trocar de plano depois?",
-    answer: "Sim, a qualquer momento pelo painel da empresa.",
-  },
-];
+import { FaqAccordion } from "./faq-accordion";
+import { FAQS } from "./faq-data";
 
-/** FAQ (briefing "SITE RESPONSIVO") — acordeão: cada pergunta expande sob demanda, sem preencher a tela toda de texto já visível. */
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Perguntas frequentes",
+  description:
+    "Tire dúvidas sobre como cadastrar sua empresa na Rotta, como motoristas entram por convite, se site e aplicativo usam a mesma conta e como trocar de plano.",
+  alternates: { canonical: "/faq" },
+};
+
+/**
+ * Dados estruturados JSON-LD (schema.org FAQPage, Dossiê 12 §7.4) —
+ * gerado a partir do mesmo array `FAQS` que alimenta o acordeão
+ * (`faq-accordion.tsx`), nunca duplicado à mão. Isso é o tipo de
+ * marcação que o Google pode usar para mostrar as perguntas direto no
+ * resultado de busca (rich result), sem custo nenhum além de já ter o
+ * conteúdo real na página — nunca uma pergunta que não existe visível
+ * no `<body>`.
+ */
+function FaqJsonLd(): JSX.Element {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: { "@type": "Answer", text: faq.answer },
+    })),
+  };
+  return (
+    // eslint-disable-next-line react/no-danger -- JSON-LD estático, nenhuma entrada de usuário envolvida.
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
+  );
+}
+
+/** FAQ (briefing "SITE RESPONSIVO") — Server Component (metadata + JSON-LD); o acordeão interativo vive em `faq-accordion.tsx`. */
 export default function FaqPage(): JSX.Element {
-  const [abertaIndex, setAbertaIndex] = useState<number | null>(0);
-
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-10 px-6 py-20">
+      <FaqJsonLd />
       <Typography variant="headline" as="h1" className="text-center">
         Perguntas frequentes
       </Typography>
-      <div className="flex flex-col divide-y divide-border">
-        {FAQS.map((faq, index) => {
-          const aberta = abertaIndex === index;
-          return (
-            <div key={faq.question} className="py-2">
-              <button
-                type="button"
-                onClick={() => setAbertaIndex(aberta ? null : index)}
-                aria-expanded={aberta}
-                className="flex w-full items-center justify-between gap-4 py-4 text-left"
-              >
-                <Typography variant="subtitle">{faq.question}</Typography>
-                <ChevronDown
-                  className={`h-5 w-5 shrink-0 text-text-muted transition-transform duration-150 ${aberta ? "rotate-180" : ""}`}
-                />
-              </button>
-              {aberta && (
-                <Typography variant="body" color="muted" className="pb-4">
-                  {faq.answer}
-                </Typography>
-              )}
-            </div>
-          );
-        })}
-      </div>
+      <FaqAccordion />
     </div>
   );
 }

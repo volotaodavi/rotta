@@ -2,6 +2,20 @@ import { Check } from "@rotta/icons";
 import { Button, Card, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Planos e preços",
+  description:
+    "Plano Starter da Rotta por R$ 39,90/mês: cadastro de motoristas e veículos, rastreamento em tempo real, notificações para responsáveis e painel de gestão completo. Sem taxa para responsável, motorista contratado ou monitor.",
+  alternates: { canonical: "/planos" },
+  keywords: [
+    "preço sistema transporte escolar",
+    "plano transportadora escolar",
+    "quanto custa app de transporte escolar",
+  ],
+};
+
 /** Planos (briefing "PLANO") — Starter é o único hoje; estrutura (Dossiê 16 `Plan`) já suporta novos planos sem migration de schema. */
 export default function PlanosPage(): JSX.Element {
   return (

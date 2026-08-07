@@ -1,15 +1,86 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
+import {
+  SITE_DESCRIPTION,
+  SITE_INSTAGRAM_URL,
+  SITE_LOGO_PATH,
+  SITE_NAME,
+  getGoogleSiteVerification,
+  getSiteUrl,
+} from "@/lib/site-config";
 import { AppProviders } from "@/providers/app-providers";
 import { ServiceWorkerRegistration } from "@/providers/service-worker-registration";
 
+
 import "./globals.css";
 
+/**
+ * Metadados globais (Dossiê 12 §7.4 — indexação gratuita no Google).
+ * `metadataBase` resolve todo `openGraph.images`/`canonical` relativo
+ * das páginas filhas para uma URL absoluta usando o domínio real do
+ * deployment (`getSiteUrl()`, nunca hardcoded — ver `site-config.ts`).
+ * `title.template` prefixa o título de cada página filha com "· Rotta"
+ * automaticamente — nenhuma página precisa repetir o nome da marca.
+ */
 export const metadata: Metadata = {
-  title: "Rotta",
-  description: "Gestão inteligente para transporte escolar.",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    default: `${SITE_NAME} — Transporte escolar rastreado em tempo real`,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: "website",
+    locale: "pt_BR",
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} — Transporte escolar rastreado em tempo real`,
+    description: SITE_DESCRIPTION,
+    images: [{ url: SITE_LOGO_PATH }],
+  },
+  twitter: {
+    card: "summary",
+    title: `${SITE_NAME} — Transporte escolar rastreado em tempo real`,
+    description: SITE_DESCRIPTION,
+    images: [SITE_LOGO_PATH],
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  verification: {
+    google: getGoogleSiteVerification(),
+  },
 };
+
+/**
+ * Dados estruturados JSON-LD (schema.org Organization) — ajuda o
+ * Google a entender "quem é a Rotta" fora do texto visível da página
+ * (pode alimentar o painel de conhecimento e a exibição da marca nos
+ * resultados de busca). `sameAs` só lista o Instagram porque é a única
+ * rede social real da Rotta hoje — nenhum perfil fabricado.
+ */
+function OrganizationJsonLd(): JSX.Element {
+  const siteUrl = getSiteUrl();
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Rotta do Brasil Tecnologia e Soluções de Transportes",
+    alternateName: SITE_NAME,
+    url: siteUrl,
+    logo: `${siteUrl}${SITE_LOGO_PATH}`,
+    description: SITE_DESCRIPTION,
+    sameAs: [SITE_INSTAGRAM_URL],
+  };
+  return (
+    // eslint-disable-next-line react/no-danger -- JSON-LD estático, nenhuma entrada de usuário envolvida.
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
+  );
+}
 
 /**
  * Script bloqueante (roda antes do primeiro paint, antes da hidratação
@@ -51,6 +122,7 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
     <html lang="pt-BR">
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        <OrganizationJsonLd />
       </head>
       <body>
         <ServiceWorkerRegistration />

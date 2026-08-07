@@ -2,6 +2,21 @@ import { Newspaper } from "@rotta/icons";
 import { Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
+/**
+ * `noindex` deliberado (Dossiê 12 §7.4, SEO): a página não tem
+ * conteúdo real ainda ("estrutura preparada"), só um aviso — indexar
+ * uma página vazia no Google não ajuda ninguém a te achar e ainda
+ * associa a marca a "conteúdo fraco". Tirar o `noindex` no dia em que
+ * o primeiro post real entrar (e então também incluir `/blog` de volta
+ * no `sitemap.ts`).
+ */
+export const metadata: Metadata = {
+  title: "Blog",
+  robots: { index: false, follow: true },
+};
+
 /**
  * Blog (briefing "SITE RESPONSIVO": "estrutura preparada") — nenhum
  * CMS/conteúdo real foi definido ainda; esta rota existe para que o

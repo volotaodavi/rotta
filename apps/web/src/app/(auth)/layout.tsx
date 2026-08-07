@@ -1,9 +1,26 @@
 import Link from "next/link";
 
+
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { RouteMark } from "@/components/route-mark";
 
+/**
+ * Todas as páginas de `(auth)` são "use client" (formulários
+ * interativos), então nenhuma delas pode exportar `metadata` própria
+ * (Dossiê 12 §7.4 — só Server Components exportam metadata). Este
+ * layout É um Server Component, então a metadata daqui é herdada por
+ * toda a árvore — cobertura genérica melhor que nenhuma. Nunca inclui
+ * `alternates.canonical` aqui de propósito: um canonical fixo neste
+ * nível apontaria a MESMA URL para `/entrar`, `/criar-conta`,
+ * `/convite` etc., o que é errado (cada uma é uma página distinta).
+ */
+export const metadata: Metadata = {
+  title: "Entrar ou criar conta",
+  description:
+    "Acesse sua conta Rotta ou crie uma nova — responsável, transportadora, motorista ou monitor. Mesmo login no site, no painel Web e no aplicativo.",
+};
 
 /**
  * Layout do route group `(auth)` — login, criar conta e recuperação de

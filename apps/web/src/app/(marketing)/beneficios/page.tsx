@@ -1,7 +1,15 @@
 import { Building2, Car, School, Users } from "@rotta/icons";
 import { Card, Typography } from "@rotta/ui/web";
 
+import type { Metadata } from "next";
 import type { ComponentType } from "react";
+
+export const metadata: Metadata = {
+  title: "Benefícios",
+  description:
+    "O que a Rotta resolve para cada lado da rota: gestão centralizada para transportadoras, app simples para motoristas, acompanhamento em tempo real para famílias e visibilidade do transporte para escolas.",
+  alternates: { canonical: "/beneficios" },
+};
 
 const BENEFITS: {
   title: string;
