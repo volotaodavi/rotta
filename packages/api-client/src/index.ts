@@ -9,6 +9,7 @@
 
 export * from "./endpoints/agenda";
 export * from "./endpoints/auth";
+export * from "./endpoints/backoffice";
 export * from "./endpoints/billing";
 export * from "./endpoints/companies";
 export * from "./endpoints/drivers";
@@ -19,6 +20,7 @@ export * from "./endpoints/notifications";
 export * from "./endpoints/routes";
 export * from "./endpoints/schools";
 export * from "./endpoints/students";
+export * from "./endpoints/support";
 export * from "./endpoints/trips";
 export * from "./endpoints/vehicles";
 export * from "./endpoints/wallet";

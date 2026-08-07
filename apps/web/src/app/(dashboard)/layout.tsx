@@ -77,6 +77,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
             >
               Notificações
             </Link>
+            <Link
+              href="/chamados"
+              className="text-sm text-text-muted transition-colors hover:text-text"
+            >
+              Chamados
+            </Link>
           </nav>
         </div>
         <div className="flex items-center gap-2">

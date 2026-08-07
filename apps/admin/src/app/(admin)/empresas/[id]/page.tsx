@@ -4,6 +4,7 @@ import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { use, useState } from "react";
 
+import { useAccessAsSupport } from "@/features/backoffice/hooks/use-backoffice";
 import { CompanyStatusBadge } from "@/features/companies/components/company-status-badge";
 import {
   useCompany,
@@ -33,6 +34,7 @@ export default function EmpresaDetalhesPage({
   const { data: dashboard } = useCompanyDashboard(id);
   const suspend = useSuspendCompany(id);
   const reactivate = useReactivateCompany(id);
+  const accessAsSupport = useAccessAsSupport();
   const [motivo, setMotivo] = useState("");
 
   if (isLoading) {
@@ -64,6 +66,23 @@ export default function EmpresaDetalhesPage({
           </Typography>
         </div>
         <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            isLoading={accessAsSupport.isPending}
+            onClick={() => {
+              // ADM-01/RN-10: exige justificativa, sempre auditado.
+              const reason = window.prompt(
+                "Este acesso será registrado em log de auditoria com sua justificativa. Motivo:",
+              );
+              if (reason && reason.trim().length >= 10) {
+                accessAsSupport.mutate({ companyId: id, motivo: reason });
+              } else if (reason !== null) {
+                window.alert("Informe uma justificativa com pelo menos 10 caracteres.");
+              }
+            }}
+          >
+            Acessar como suporte
+          </Button>
           <Link href={`/empresas/${id}/editar`}>
             <Button variant="secondary">Editar</Button>
           </Link>

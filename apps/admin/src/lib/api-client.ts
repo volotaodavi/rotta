@@ -1,6 +1,7 @@
 import {
   createApiClient,
   createAuthEndpoints,
+  createBackofficeEndpoints,
   createCompaniesEndpoints,
   createGeoEndpoints,
   createGpsEndpoints,
@@ -8,6 +9,7 @@ import {
   createNotificationsEndpoints,
   createRoutesEndpoints,
   createSchoolsEndpoints,
+  createSupportEndpoints,
   createTripsEndpoints,
   createVehiclesEndpoints,
 } from "@rotta/api-client";
@@ -35,3 +37,5 @@ export const notificationsApi = createNotificationsEndpoints(apiClient);
 export const routesApi = createRoutesEndpoints(apiClient);
 export const tripsApi = createTripsEndpoints(apiClient);
 export const gpsApi = createGpsEndpoints(apiClient);
+export const supportApi = createSupportEndpoints(apiClient);
+export const backofficeApi = createBackofficeEndpoints(apiClient);

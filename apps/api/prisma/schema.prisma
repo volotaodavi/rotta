@@ -447,6 +447,9 @@ model Company {
   /// Documentos de habilitação/qualificação (CNH/EAR/Cursos) dos
   /// motoristas revisados por esta empresa (Dossiê 28).
   documentosMotoristas   DriverDocument[]
+  /// Chamados de suporte abertos por esta empresa (Dossiê 20, `SUP-01`
+  /// a `SUP-03` / `ADM-04`, Dossiê 29).
+  chamadosSuporte        SupportTicket[]
 
   @@index([status])
   @@index([tipo])
@@ -609,6 +612,14 @@ model User {
   /// Eventos de agenda criados por este usuário (tarefa #101) — nulo
   /// para eventos `geradoAutomaticamente` (nenhum usuário os criou).
   eventosAgendaCriados EventoAgenda[] @relation("EventoAgendaCriadoPor")
+
+  /// Relações do módulo Suporte (Dossiê 20 `SUP-*`/`ADM-04`, Dossiê 29)
+  /// — chamados abertos por este usuário (Empresa/Gestor), os que este
+  /// usuário encerrou (Empresa/Gestor dono OU Admin Rotta atendendo) e
+  /// as mensagens que enviou em qualquer chamado (tenant ou Admin Rotta).
+  chamadosSuporteAbertos    SupportTicket[]  @relation("SupportTicketAbertoPor")
+  chamadosSuporteEncerrados SupportTicket[]  @relation("SupportTicketEncerradoPor")
+  mensagensSuporte          SupportMessage[] @relation("SupportMessageAutor")
 
   @@map("users")
 }
@@ -2244,4 +2255,97 @@ model EventoAgenda {
   @@index([companyId, tipo, data])
   @@index([companyId, data])
   @@map("eventos_agenda")
+}
+
+// =============================================================================
+// Suporte — Central de Atendimento (Dossiê 20, `SUP-01` a `SUP-03`/`ADM-04`;
+// Dossiê 29 — Prompt 21, Backoffice)
+// =============================================================================
+
+enum SupportTicketCategoria {
+  DUVIDA
+  PROBLEMA_TECNICO
+  COBRANCA
+  OUTRO
+}
+
+/// `EM_ANDAMENTO` é só um indicador de UI (Admin Rotta já respondeu ao
+/// menos uma vez) — a transição `ABERTO` → `EM_ANDAMENTO` é automática
+/// na primeira resposta de um Admin Rotta (`SupportService.addMessage`),
+/// nunca setada manualmente por nenhuma das partes.
+enum SupportTicketStatus {
+  ABERTO
+  EM_ANDAMENTO
+  ENCERRADO
+}
+
+/// Chamado de suporte (`SUP-01`) — sempre aberto por `Role.EMPRESA`/
+/// `Role.GESTOR` do próprio tenant (RN de `SUP-01`: "um tenant só
+/// visualiza os próprios tickets; Admin Rotta visualiza todos"), nunca
+/// pelo Responsável/Motorista/Monitor (fora de escopo do MVP — canal
+/// deles é o app, não este painel). RLS por `companyId` como qualquer
+/// outra tabela de tenant; Admin Rotta lê/responde/encerra cross-tenant
+/// via `withBypass` (mesmo mecanismo de `TenantGuard`, nunca uma policy
+/// de RLS "para todo mundo").
+model SupportTicket {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  abertoPorUserId String @db.Uuid
+  abertoPor       User   @relation("SupportTicketAbertoPor", fields: [abertoPorUserId], references: [id], onDelete: Restrict)
+
+  assunto   String
+  descricao String
+  categoria SupportTicketCategoria
+  status    SupportTicketStatus    @default(ABERTO)
+  /// Anexo opcional no momento da abertura (`SUP-01` — "anexo
+  /// opcional"); anexos adicionais durante a conversa vivem em
+  /// `SupportMessage.anexoUrl` (`SUP-02`).
+  anexoUrl  String?
+
+  /// `SUP-01`, fluxo alternativo: "reabertura de um ticket encerrado...
+  /// preservando o histórico da conversa original" — reabrir é só voltar
+  /// `status` para `ABERTO`/`EM_ANDAMENTO` e limpar estes dois campos;
+  /// NUNCA cria um ticket novo nem apaga `mensagens`.
+  encerradoEm        DateTime?
+  encerradoPorUserId String?   @db.Uuid
+  encerradoPor       User?     @relation("SupportTicketEncerradoPor", fields: [encerradoPorUserId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mensagens SupportMessage[]
+
+  @@index([companyId, status, createdAt])
+  @@index([status, createdAt])
+  @@map("support_tickets")
+}
+
+/// Mensagem dentro de um chamado (`SUP-02`) — `companyId` é
+/// desnormalizado a partir de `ticket.companyId` (mesma justificativa de
+/// `VehicleDocument.companyId`/`DriverDocument.companyId`: a policy de
+/// RLS precisa da coluna na própria linha, não pode "seguir" a FK até
+/// `support_tickets` em tempo de policy). `autorIsAdminRotta` é um
+/// snapshot do papel do ator no momento do envio (não deriva de um
+/// join com `User.isAdminRotta` em toda leitura) — usado só para estilo
+/// de UI (balão "Rotta" vs. balão do tenant).
+model SupportMessage {
+  id       String        @id @default(uuid()) @db.Uuid
+  ticketId String        @db.Uuid
+  ticket   SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  companyId String @db.Uuid
+
+  autorUserId       String  @db.Uuid
+  autor             User    @relation("SupportMessageAutor", fields: [autorUserId], references: [id], onDelete: Restrict)
+  autorIsAdminRotta Boolean @default(false)
+
+  mensagem String
+  anexoUrl String?
+
+  createdAt DateTime @default(now())
+
+  @@index([ticketId, createdAt])
+  @@map("support_messages")
 }

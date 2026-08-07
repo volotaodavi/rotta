@@ -36,6 +36,7 @@ import { AnalyticsModule } from "@/modules/analytics/analytics.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { AuthModule } from "@/modules/auth/auth.module";
 import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
+import { BackofficeModule } from "@/modules/backoffice/backoffice.module";
 import { BillingModule } from "@/modules/billing/billing.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
@@ -125,6 +126,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     LogsModule,
     AnalyticsModule,
     RottaAiModule,
+    BackofficeModule,
   ],
   providers: [
     // --- Guards globais (Dossie 12, Secao 5.1) ---

@@ -3,10 +3,21 @@
 import { useAuth } from "@rotta/auth/web";
 import { Button, Spinner, Typography } from "@rotta/ui/web";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
+
+const NAV_LINKS = [
+  { href: "/", label: "Painel" },
+  { href: "/empresas", label: "Empresas" },
+  { href: "/escolas", label: "Escolas" },
+  { href: "/veiculos", label: "Veículos" },
+  { href: "/marketplace/solicitacoes", label: "Marketplace" },
+  { href: "/aprovacoes", label: "Aprovações" },
+  { href: "/suporte", label: "Suporte" },
+] as const;
 
 /**
  * Layout do painel administrativo interno (Dossie 11, Secao 6) —
@@ -39,9 +50,22 @@ export default function AdminLayout({ children }: { children: ReactNode }): JSX.
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-2">
-          <Image src="/brand/rotta-mark-512.png" alt="Rotta" width={28} height={28} priority />
-          <Typography variant="subtitle">Rotta Admin</Typography>
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2">
+            <Image src="/brand/rotta-mark-512.png" alt="Rotta" width={28} height={28} priority />
+            <Typography variant="subtitle">Rotta Admin</Typography>
+          </div>
+          <nav className="flex items-center gap-4">
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="text-sm text-text-muted transition-colors hover:text-text"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
