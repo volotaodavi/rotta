@@ -440,7 +440,18 @@ function AudienceVisual({
  * 26); a integração de pagamento em si ainda é stub, por isso o aviso
  * "Em rollout" logo abaixo continua existindo fora da imagem.
  * `width`/`height` = dimensão real do arquivo (1774×887, ~2:1) — nunca
- * forçado a quadrado/cortado.
+ * forçado a quadrado/cortado. Sem `max-w-4xl` artificial: "está muito
+ * pequeno, aumente para melhor leitura" — o banner tem bastante texto
+ * miúdo (feature list, selos de confiança) desenhado nos próprios
+ * pixels, então ele precisa usar toda a largura que a seção permitir
+ * pra continuar legível — `w-full` simplesmente preenche o container
+ * (ver `max-w-7xl` na seção logo abaixo, maior que o `max-w-6xl` do
+ * resto da página só aqui, de propósito). No mobile vai até de ponta a
+ * ponta (`rounded-none`, sem o padding lateral da seção — ver
+ * `px-0 sm:px-6` abaixo): é o texto mais denso da página inteira dentro
+ * de uma única imagem, então cada pixel a mais de largura ajuda a
+ * leitura; a partir de `sm:` volta o respiro lateral normal e o
+ * cantinho arredondado.
  */
 function RottaPayBanner(): JSX.Element {
   return (
@@ -449,7 +460,8 @@ function RottaPayBanner(): JSX.Element {
       alt="Rotta Pay, com tecnologia da LyTex Pagamentos: tela do app mostrando saldo disponível e últimos recebimentos, e os diferenciais receba direto na sua conta, taxas justas, mais segurança e saques rápidos"
       width={1774}
       height={887}
-      className="w-full max-w-4xl rounded-[24px] shadow-xl"
+      sizes="(min-width: 1280px) 1280px, 100vw"
+      className="w-full rounded-none shadow-xl sm:rounded-[24px]"
     />
   );
 }
@@ -708,8 +720,8 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="w-full px-6 py-16">
-        <div className="mx-auto flex w-full max-w-6xl justify-center">
+      <section className="w-full px-0 py-16 sm:px-6">
+        <div className="mx-auto flex w-full max-w-7xl justify-center">
           <RottaPayBanner />
         </div>
       </section>
