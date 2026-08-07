@@ -7,7 +7,6 @@ import {
   LayoutGrid,
   Link2,
   MapPin,
-  PiggyBank,
   Repeat,
   Route as RouteIcon,
   ScanFace,
@@ -724,38 +723,8 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="w-full bg-gradient-to-br from-primary to-primary-hover px-6 py-24 text-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-12">
-          <div className="flex max-w-2xl flex-col items-start gap-5">
-            <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide">
-              Novidade
-            </span>
-            <Typography variant="headline" as="h2" className="text-white">
-              Rotta Pay: sua transportadora recebe, você acompanha.
-            </Typography>
-            <Typography variant="body" className="max-w-lg text-white/80">
-              Uma carteira digital dentro da própria Rotta — acompanhe o que entra de cada contrato
-              e organize seus saques via PIX, direto pelo painel ou pelo app do motorista.
-            </Typography>
-            <ul className="flex flex-col gap-2">
-              {[
-                "Extrato completo de cada contrato ativado",
-                "Saques via PIX, sem sair da plataforma",
-                "Carteira própria para motoristas autônomos",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2 text-white/90">
-                  <PiggyBank className="h-4 w-4 shrink-0" />
-                  <Typography variant="bodySmall" className="text-white/90">
-                    {item}
-                  </Typography>
-                </li>
-              ))}
-            </ul>
-            <Typography variant="caption" className="max-w-lg text-white/60">
-              Em rollout — a integração de pagamentos com a LyTex está sendo finalizada; até lá, os
-              saques passam por processamento manual da equipe Rotta.
-            </Typography>
-          </div>
+      <section className="w-full bg-gradient-to-br from-primary to-primary-hover px-6 py-24">
+        <div className="mx-auto flex w-full max-w-6xl justify-center">
           <RottaPayBanner />
         </div>
       </section>
