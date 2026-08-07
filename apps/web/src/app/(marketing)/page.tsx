@@ -354,23 +354,41 @@ const AUDIENCE_ILLUSTRATION: Record<AudienceCard["tone"], ComponentType<{ classN
 };
 
 /**
- * Painel visual das seções "para qual lado da rota você está" — mesma
- * linguagem de cartão "solto"/com glow do `HeroMapDemo`/`RottaPayVisual`
- * abaixo, agora com uma cena ilustrada (ver `AUDIENCE_ILLUSTRATION`) em
- * vez do ícone-em-círculo anterior.
+ * Painel visual das seções "escolha como você utiliza a plataforma" —
+ * mesma linguagem de cartão "solto"/com glow do
+ * `HeroMapDemo`/`RottaPayVisual` abaixo, agora com uma cena ilustrada
+ * (ver `AUDIENCE_ILLUSTRATION`) em vez do ícone-em-círculo anterior.
+ *
+ * Clicável (pedido do usuário: "deixe essas imagens clicáveis") — quem
+ * renderiza envolve isto num `<Link>` com a classe `group`; os efeitos
+ * de hover abaixo (elevação, sombra, chip "Ver mais") reagem a esse
+ * `group` do pai, então só aparecem quando o cartão inteiro é
+ * hovarado/focado, não só o ícone interno.
  */
-function AudienceVisual({ tone }: { tone: AudienceCard["tone"] }): JSX.Element {
+function AudienceVisual({
+  tone,
+  ctaLabel,
+}: {
+  tone: AudienceCard["tone"];
+  ctaLabel: string;
+}): JSX.Element {
   const Illustration = AUDIENCE_ILLUSTRATION[tone];
   return (
-    <div className="relative aspect-square w-full max-w-sm">
+    <div className="relative aspect-square w-full max-w-sm transition-transform duration-300 group-hover:-translate-y-1.5">
       <div
-        className={`absolute -inset-6 rounded-[40px] ${TONE_BG[tone]}/10 blur-2xl`}
+        className={`absolute -inset-6 rounded-[40px] ${TONE_BG[tone]}/10 blur-2xl transition-all duration-300 group-hover:blur-3xl group-hover:scale-105`}
         aria-hidden="true"
       />
       <div
-        className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[32px] border border-border ${TONE_BG[tone]}/5`}
+        className={`relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-[32px] border border-border ${TONE_BG[tone]}/5 shadow-none transition-shadow duration-300 group-hover:border-border-strong group-hover:shadow-2xl`}
       >
         <Illustration className="h-full w-full p-6" />
+        <div className="absolute bottom-4 right-4 flex translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+          <Typography variant="caption" className={`font-semibold ${TONE_TEXT[tone]}`}>
+            {ctaLabel}
+          </Typography>
+          <ArrowRight className={`h-3.5 w-3.5 ${TONE_TEXT[tone]}`} />
+        </div>
       </div>
     </div>
   );
@@ -522,7 +540,7 @@ export default function LandingPage(): JSX.Element {
 
       <section className="w-full pt-24">
         <Typography variant="headline" as="h2" className="px-6 text-center">
-          Para qual lado da rota você está?
+          Escolha como você utiliza a plataforma
         </Typography>
 
         {AUDIENCIAS.map((audiencia, index) => {
@@ -557,9 +575,13 @@ export default function LandingPage(): JSX.Element {
             </div>
           );
           const visualBloco = (
-            <div className="flex justify-center">
-              <AudienceVisual tone={audiencia.tone} />
-            </div>
+            <Link
+              href={audiencia.ctaHref}
+              aria-label={audiencia.ctaLabel}
+              className="group flex justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background"
+            >
+              <AudienceVisual tone={audiencia.tone} ctaLabel={audiencia.ctaLabel} />
+            </Link>
           );
 
           return (
