@@ -1,6 +1,5 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 
-import { haversineDistanceKm } from "./geo.util";
 import {
   toTransporterCardResponseDto,
   toTransporterDetailResponseDto,
@@ -17,6 +16,8 @@ import type {
   TransporterCandidate,
   TransporterRepository,
 } from "./repositories/transporter.repository";
+
+import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 const RECENT_RATINGS_LIMIT = 10;
 /** Cap razoável para o bloco "Escolas atendidas" do perfil público — evita uma lista infinita para redes grandes. */

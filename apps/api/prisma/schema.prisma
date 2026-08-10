@@ -1712,6 +1712,15 @@ model Trip {
   finalizadaEm DateTime?
   canceladaEm  DateTime?
 
+  /// Geofencing real (Prompt "Rotta Geo Platform" §25/§26 — "VEHICLE_APPROACHING") —
+  /// dedup do aviso de aproximação: guarda o id da última `RouteStop`
+  /// pendente cuja proximidade já gerou uma notificação `VEICULO_PROXIMO`
+  /// nesta viagem, para nunca reavisar a cada novo ping de GPS enquanto o
+  /// veículo permanece dentro do raio da MESMA parada. Muda sozinho
+  /// quando a próxima parada pendente muda (embarque/desembarque
+  /// registrado) — nunca precisa de limpeza manual.
+  ultimaParadaProximaNotificadaId String? @db.Uuid
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -6,14 +6,13 @@ function toRadians(degrees: number): number {
 
 /**
  * Distância em linha reta entre duas coordenadas (fórmula de Haversine)
- * — usada pela busca de transportadores (briefing "Marketplace" §"MAPA").
- * Calculada na camada de aplicação sobre o conjunto já filtrado por
- * status/RLS — aceitável para o volume esperado de Empresas ativas
- * hoje. PostGIS já foi habilitado (Map Intelligence Agent, módulo Geo
- * Platform — ver `School.pontoGeografico`/`SchoolMarkerRepository`),
- * mas migrar esta busca de transportadores para `ST_DWithin`/índice
- * espacial é um trabalho à parte (schema de `Company`, não de `School`)
- * — nenhuma mudança na assinatura pública deste util quando isso acontecer.
+ * — movida de `modules/marketplace/geo.util.ts` (Dossiê 39/40: passou a
+ * ter um segundo consumidor, `TripsService`/geofencing, então virou
+ * utilitário compartilhado em vez de específico do Marketplace — mesma
+ * função, nenhuma mudança de comportamento). PostGIS já foi habilitado
+ * (Map Intelligence Agent, módulo Geo Platform — ver
+ * `School.pontoGeografico`/`SchoolMarkerRepository`), mas migrar estes
+ * consumidores para `ST_DWithin`/índice espacial é um trabalho à parte.
  */
 export function haversineDistanceKm(
   lat1: number,

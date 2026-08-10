@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
-import { TripStatus } from "@prisma/client";
+import { NotificationEventType, TripStatus } from "@prisma/client";
+
 
 import { TripsService } from "../trips.service";
 
@@ -18,6 +19,7 @@ import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Trip } from "@prisma/client";
 
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { Role } from "@/shared/enums";
 
 function buildTrip(overrides: Partial<Trip> = {}): Trip {
@@ -775,6 +777,119 @@ describe("TripsService", () => {
           motoristaActor,
         ),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe("ingestPosition — geofencing real (Prompt 'Rotta Geo Platform' §25/26)", () => {
+    const paradaPerto = {
+      id: "stop-perto",
+      endereco: "Rua Perto",
+      // ~111m ao norte de -23.000/-46.000 (0.001° de latitude) — dentro do raio de 400m.
+      latitude: -22.999,
+      longitude: -46.0,
+      horarioPrevisto: "07:00",
+    };
+    const paradaLonge = {
+      id: "stop-longe",
+      endereco: "Rua Longe",
+      // ~11km ao norte — bem fora do raio de 400m.
+      latitude: -22.9,
+      longitude: -46.0,
+      horarioPrevisto: "07:30",
+    };
+    const vinculo = {
+      id: "vinculo-1",
+      routeId: "route-1",
+      contractId: "contract-1",
+      studentId: "student-1",
+      paradaEmbarqueId: paradaPerto.id,
+      paradaDesembarqueId: "stop-outra",
+      ativo: true,
+    };
+
+    const posicaoPerto = { latitude: -23.0, longitude: -46.0, capturadaEm: "2026-08-10T10:00:00Z" };
+
+    beforeEach(() => {
+      tripRepository.findById.mockResolvedValue(buildTrip());
+      positionRepository.create.mockResolvedValue({
+        id: "position-1",
+        tripId: "trip-1",
+        companyId: "company-1",
+        latitude: posicaoPerto.latitude,
+        longitude: posicaoPerto.longitude,
+        precisaoMetros: null,
+        velocidadeKmh: null,
+        capturadaEm: new Date(posicaoPerto.capturadaEm),
+        simuladoSuspeito: false,
+        createdAt: new Date(),
+      } as never);
+      vehiclesService.updateLocationFromTrip.mockResolvedValue(undefined);
+      routesService.listStudents.mockResolvedValue([vinculo] as never);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-1",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "Maria" } as never);
+    });
+
+    it("notifica VEICULO_PROXIMO quando a posição entra no raio da próxima parada pendente", async () => {
+      routesService.listStops.mockResolvedValue([paradaPerto] as never);
+
+      await service.ingestPosition("trip-1", posicaoPerto, motoristaActor);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        COMMUNICATION_REQUESTED_EVENT,
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.VEICULO_PROXIMO,
+        }),
+      );
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
+        ultimaParadaProximaNotificadaId: paradaPerto.id,
+      });
+    });
+
+    it("não notifica quando a posição ainda está fora do raio da próxima parada pendente", async () => {
+      routesService.listStops.mockResolvedValue([paradaLonge] as never);
+      routesService.listStudents.mockResolvedValue([
+        { ...vinculo, paradaEmbarqueId: paradaLonge.id },
+      ] as never);
+
+      await service.ingestPosition("trip-1", posicaoPerto, motoristaActor);
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      expect(tripRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("não notifica de novo a mesma parada (dedup via ultimaParadaProximaNotificadaId)", async () => {
+      tripRepository.findById.mockResolvedValue(
+        buildTrip({ ultimaParadaProximaNotificadaId: paradaPerto.id }),
+      );
+      routesService.listStops.mockResolvedValue([paradaPerto] as never);
+
+      await service.ingestPosition("trip-1", posicaoPerto, motoristaActor);
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
+      expect(tripRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("nunca lança mesmo se a notificação de aproximação falhar (best-effort)", async () => {
+      routesService.listStops.mockResolvedValue([paradaPerto] as never);
+      contractsService.findRawByIdOrThrow.mockRejectedValue(new Error("indisponível"));
+
+      await expect(
+        service.ingestPosition("trip-1", posicaoPerto as never, motoristaActor),
+      ).resolves.toBeDefined();
+    });
+
+    it("não notifica quando não há nenhuma parada pendente", async () => {
+      routesService.listStops.mockResolvedValue([paradaPerto] as never);
+      routesService.listStudents.mockResolvedValue([]);
+
+      await service.ingestPosition("trip-1", posicaoPerto, motoristaActor);
+
+      expect(eventEmitter.emit).not.toHaveBeenCalled();
     });
   });
 });

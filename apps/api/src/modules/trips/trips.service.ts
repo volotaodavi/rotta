@@ -34,6 +34,7 @@ import type { TripStudentEventResponseDto } from "./dto/trip-student-event-respo
 import type { TripPositionRepository } from "./repositories/trip-position.repository";
 import type { TripStudentEventRepository } from "./repositories/trip-student-event.repository";
 import type { TripRepository } from "./repositories/trip.repository";
+import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -46,6 +47,7 @@ import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
+import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 export interface RequestMeta {
   ip?: string;
@@ -57,6 +59,17 @@ function today(): Date {
   const now = new Date();
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
+
+/**
+ * Raio de geofencing "veículo se aproximando" (Prompt "Rotta Geo
+ * Platform" §25 — "VEHICLE_APPROACHING... utilizar tolerância
+ * geográfica"). 400m é conservador o bastante para não disparar em
+ * ruas paralelas/quadras vizinhas na maioria das cidades brasileiras,
+ * mas ainda dar alguns minutos de aviso ao responsável — sem dado de
+ * uso real ainda para calibrar por cidade/velocidade, um valor único e
+ * documentado é preferível a fingir uma calibração que não existe.
+ */
+const GEOFENCE_APPROACHING_METERS = 400;
 
 /**
  * Núcleo de negócio do módulo Trips (GPS-01/02/03/06 + EMB-01/05 +
@@ -638,6 +651,8 @@ export class TripsService {
       viagemId: tripId,
     });
 
+    await this.detectarAproximacaoBestEffort(trip, actor, dto.latitude, dto.longitude);
+
     return toTripPositionResponseDto(position);
   }
 
@@ -679,6 +694,13 @@ export class TripsService {
       capturadaEm: latest.capturadaEm,
       viagemId: tripId,
     });
+
+    await this.detectarAproximacaoBestEffort(
+      trip,
+      actor,
+      Number(latest.latitude),
+      Number(latest.longitude),
+    );
 
     return positions.map(toTripPositionResponseDto);
   }
@@ -845,20 +867,18 @@ export class TripsService {
    * "Pendente" = tem pelo menos um aluno ativo que ainda não passou por
    * esta parada hoje: sem EMBARCOU/AUSENTE registrado (falta embarque),
    * ou com EMBARCOU mas sem DESEMBARCOU (falta desembarque — um aluno
-   * AUSENTE nunca gera pendência de desembarque). Sem nenhuma posição
-   * GPS ainda, não há "onde o veículo está agora" para recalcular a
-   * partir daí — devolve vazio (nunca lança: ausência de GPS é normal
-   * nos primeiros segundos de uma viagem).
+   * AUSENTE nunca gera pendência de desembarque). Extraído para ser
+   * compartilhado com o geofencing (`detectarAproximacaoBestEffort`),
+   * que precisa da mesma "próxima parada pendente" mas SEM o custo de
+   * uma chamada OSRM a cada ping de GPS (Prompt "Rotta Geo Platform"
+   * §29 — "evitar consultas pesadas"). `stops` já vem ordenado por
+   * `ordem` (`RouteStopRepository.listByRoute`) — o `filter` preserva
+   * essa ordem.
    */
-  private async computeProximasEtas(
+  private async listParadasPendentes(
     trip: Trip,
     actor: AuthenticatedUser,
-  ): Promise<NextEtaResponseDto[]> {
-    const ultimaPosicao = await this.positionRepository.findLatestByTrip(trip.id);
-    if (!ultimaPosicao) {
-      return [];
-    }
-
+  ): Promise<RouteStopResponseDto[]> {
     const [stops, vinculos, eventos] = await Promise.all([
       this.routesService.listStops(trip.routeId, actor),
       this.routesService.listStudents(trip.routeId, actor),
@@ -884,10 +904,26 @@ export class TripsService {
       }
     }
 
-    // `stops` já vem ordenado por `ordem` (`RouteStopRepository.listByRoute`)
-    // — o `filter` preserva essa ordem, então `paradasPendentes` é
-    // exatamente a sequência que falta percorrer hoje.
-    const paradasPendentes = stops.filter((stop) => paradasPendentesIds.has(stop.id));
+    return stops.filter((stop) => paradasPendentesIds.has(stop.id));
+  }
+
+  /**
+   * ETA completo (com rota OSRM real) para cada parada pendente (ver
+   * `listParadasPendentes`). Sem nenhuma posição GPS ainda, não há
+   * "onde o veículo está agora" para recalcular a partir daí — devolve
+   * vazio (nunca lança: ausência de GPS é normal nos primeiros
+   * segundos de uma viagem).
+   */
+  private async computeProximasEtas(
+    trip: Trip,
+    actor: AuthenticatedUser,
+  ): Promise<NextEtaResponseDto[]> {
+    const ultimaPosicao = await this.positionRepository.findLatestByTrip(trip.id);
+    if (!ultimaPosicao) {
+      return [];
+    }
+
+    const paradasPendentes = await this.listParadasPendentes(trip, actor);
     if (paradasPendentes.length === 0) {
       return [];
     }
@@ -976,6 +1012,83 @@ export class TripsService {
       }
     } catch (error) {
       this.logger.warn(`Falha ao recalcular próximas ETAs da viagem ${trip.id} após ausência.`);
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /**
+   * Geofencing real (Prompt "Rotta Geo Platform" §25/§26 —
+   * "VEHICLE_APPROACHING"/"não disparar eventos com base apenas em uma
+   * coordenada isolada... utilizar tolerância geográfica"; Prompt
+   * "Communication Engine" §26 — "GPS + Communication Engine: o GPS não
+   * deve gerar mensagens a cada atualização... somente eventos
+   * relevantes chegam ao Communication Engine"). Disparado (`await`ado,
+   * mesma convenção de `recalcularEnotificarBestEffort`) a cada posição
+   * ingerida — nunca lança, e a posição em si já foi persistida antes
+   * desta chamada, então uma falha aqui nunca desfaz o registro do GPS.
+   *
+   * Distância em linha reta (Haversine), não rota OSRM — geofencing
+   * roda a cada ping de GPS (podem ser dezenas por viagem), então uma
+   * chamada de roteamento aqui violaria a Seção 29 ("evitar consultas
+   * pesadas"); `listParadasPendentes` já é o mesmo custo de
+   * `computeProximasEtas` sem o OSRM.
+   *
+   * Dedup via `Trip.ultimaParadaProximaNotificadaId`: notifica no
+   * máximo uma vez por parada pendente (nunca a cada novo ping dentro
+   * do raio — Prompt "Communication Engine" §20: "se o GPS oscilar, não
+   * enviar 'veículo está chegando' 10 vezes"). Muda sozinho quando a
+   * próxima parada pendente muda (embarque/desembarque registrado).
+   */
+  private async detectarAproximacaoBestEffort(
+    trip: Trip,
+    actor: AuthenticatedUser,
+    latitude: number,
+    longitude: number,
+  ): Promise<void> {
+    try {
+      const paradasPendentes = await this.listParadasPendentes(trip, actor);
+      const proxima = paradasPendentes[0];
+      if (!proxima) return;
+      if (trip.ultimaParadaProximaNotificadaId === proxima.id) return;
+
+      const distanciaMetros =
+        haversineDistanceKm(latitude, longitude, proxima.latitude, proxima.longitude) * 1000;
+      if (distanciaMetros > GEOFENCE_APPROACHING_METERS) return;
+
+      const vinculos = await this.routesService.listStudents(trip.routeId, actor);
+      for (const vinculo of vinculos) {
+        if (vinculo.paradaEmbarqueId !== proxima.id && vinculo.paradaDesembarqueId !== proxima.id) {
+          continue;
+        }
+        try {
+          const [contract, student] = await Promise.all([
+            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+            this.studentsService.findRawById(vinculo.studentId),
+          ]);
+          if (!student) continue;
+          const message = this.messagePersonalizationService.veiculoProximo(
+            student.nome,
+            proxima.horarioPrevisto,
+          );
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: contract.responsavelId,
+            companyId: contract.companyId,
+            tipo: NotificationEventType.VEICULO_PROXIMO,
+            titulo: message.titulo,
+            corpo: message.corpo,
+            dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao notificar responsável do vínculo ${vinculo.id} sobre aproximação do veículo (rota ${trip.routeId}).`,
+          );
+          this.logger.warn(error instanceof Error ? error.message : String(error));
+        }
+      }
+
+      await this.tripRepository.update(trip.id, { ultimaParadaProximaNotificadaId: proxima.id });
+    } catch (error) {
+      this.logger.warn(`Falha ao detectar aproximação por geofencing da viagem ${trip.id}.`);
       this.logger.warn(error instanceof Error ? error.message : String(error));
     }
   }
