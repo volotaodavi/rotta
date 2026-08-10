@@ -6,6 +6,7 @@ import { useTransporterDetail } from "../hooks/use-transporters";
 
 import type { MarketplaceStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { ReactNode } from "react";
 
 import {
   StatusPill,
@@ -18,10 +19,18 @@ import { useTheme } from "@/providers/theme-provider";
 type Props = NativeStackScreenProps<MarketplaceStackParamList, "TransportadorDetalhes">;
 
 /**
- * Detalhes do transportador (briefing "Marketplace" §"DETALHES DO
- * TRANSPORTADOR") — dados completos além do cartão de busca (endereço,
- * contato, avaliações recentes) e o botão "Solicitar Transporte" que
- * abre `SolicitarTransporteScreen` para o mesmo transportador.
+ * Perfil do transportador (Prompt "UX/UI Master do Marketplace" —
+ * "a página deve lembrar um site institucional... tudo organizado em
+ * blocos"). Reorganizado a partir da versão anterior (um único
+ * `VehicleCard` de métricas) em blocos nomeados — "primeira dobra" com
+ * o CTA "Solicitar transporte" logo no topo (nunca escondido no fim da
+ * tela), depois "Quem somos"/"Frota"/"Área atendida"/"Contato"/
+ * "Avaliações recentes", cada um só com dado que a API já expõe de
+ * verdade (`TransporterDetail`, `GET /marketplace/transporters/:id`).
+ *
+ * Fora desta entrega, por exigirem endpoint novo (não construído aqui —
+ * ver Dossiê 37 §4): lista de motoristas/monitores nomeados, lista de
+ * escolas atendidas, galeria de fotos, documentação pública, FAQ.
  */
 export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -52,48 +61,61 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
         <Text style={[styles.nome, { color: theme.colors.text }]}>{data.nomeFantasia}</Text>
         {data.verificado ? <StatusPill label="Verificado" tone="success" /> : null}
       </View>
-      <Text style={{ color: theme.colors.textMuted }}>{data.razaoSocial}</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
-        {data.cidade}/{data.estado} — {data.distanciaKm.toFixed(1)} km de distância
-      </Text>
+      {data.avaliacaoMedia !== null ? (
+        <View style={styles.avaliacao}>
+          <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
+          <Text style={{ color: theme.colors.text }}>
+            {data.avaliacaoMedia.toFixed(1)} ({data.totalAvaliacoes} avaliações)
+          </Text>
+        </View>
+      ) : (
+        <Text style={{ color: theme.colors.textMuted }}>Sem avaliações ainda</Text>
+      )}
 
-      <VehicleCard>
-        {data.avaliacaoMedia !== null ? (
-          <View style={styles.avaliacao}>
-            <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
-            <Text style={{ color: theme.colors.text }}>
-              {data.avaliacaoMedia.toFixed(1)} ({data.totalAvaliacoes} avaliações)
-            </Text>
-          </View>
-        ) : (
-          <Text style={{ color: theme.colors.text }}>Sem avaliações ainda</Text>
-        )}
+      <VehicleButton
+        label="Solicitar transporte"
+        onPress={() => navigation.navigate("SolicitarTransporte", { transportadorId })}
+      />
+
+      <Section title="Quem somos" theme={theme}>
+        <Text style={{ color: theme.colors.textMuted }}>{data.razaoSocial}</Text>
         <Text style={{ color: theme.colors.textMuted }}>
-          {data.veiculosAtivos} veículo(s) ativo(s)
+          {data.tiposVeiculo.length > 0
+            ? `Transportadora ${data.tipo === "MEI" ? "MEI" : data.tipo === "AUTONOMO" ? "autônoma" : "empresa"} atuando em ${data.cidade}/${data.estado}.`
+            : `Atua em ${data.cidade}/${data.estado}.`}
         </Text>
+      </Section>
+
+      <Section title="Frota" theme={theme}>
+        <Text style={{ color: theme.colors.text }}>{data.veiculosAtivos} veículo(s) ativo(s)</Text>
         <Text style={{ color: theme.colors.textMuted }}>
           {data.tiposVeiculo.join(", ") || "Tipo de veículo não informado"}
         </Text>
         <Text style={{ color: theme.colors.textMuted }}>
-          {data.alunosTransportados} aluno(s) transportado(s)
+          {data.alunosTransportados} aluno(s) transportado(s) atualmente
         </Text>
         <Text style={[styles.mensalidade, { color: theme.colors.primary }]}>
           {data.mensalidadeAPartirDeCentavos !== null
             ? `A partir de R$ ${(data.mensalidadeAPartirDeCentavos / 100).toFixed(2)}/mês`
             : "Consulte a mensalidade"}
         </Text>
-      </VehicleCard>
+      </Section>
+
+      <Section title="Área atendida" theme={theme}>
+        <Text style={{ color: theme.colors.textMuted }}>
+          {data.cidade}/{data.estado} — a {data.distanciaKm.toFixed(1)} km de você
+        </Text>
+      </Section>
 
       {(data.telefone ?? data.whatsapp) ? (
-        <VehicleCard>
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Contato</Text>
+        <Section title="Contato" theme={theme}>
           {data.telefone ? (
             <Text style={{ color: theme.colors.textMuted }}>Telefone: {data.telefone}</Text>
           ) : null}
           {data.whatsapp ? (
             <Text style={{ color: theme.colors.textMuted }}>WhatsApp: {data.whatsapp}</Text>
           ) : null}
-        </VehicleCard>
+        </Section>
       ) : null}
 
       <View style={styles.secaoAvaliacoes}>
@@ -116,12 +138,24 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
           ))
         )}
       </View>
-
-      <VehicleButton
-        label="Solicitar Transporte"
-        onPress={() => navigation.navigate("SolicitarTransporte", { transportadorId })}
-      />
     </VehicleScreen>
+  );
+}
+
+function Section({
+  title,
+  theme,
+  children,
+}: {
+  title: string;
+  theme: ReturnType<typeof useTheme>["theme"];
+  children: ReactNode;
+}): JSX.Element {
+  return (
+    <VehicleCard>
+      <Text style={[styles.secao, { color: theme.colors.text }]}>{title}</Text>
+      {children}
+    </VehicleCard>
   );
 }
 

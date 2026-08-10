@@ -1,18 +1,29 @@
-import { Check } from "@rotta/icons/native";
-import { RottaMap } from "@rotta/maps/native";
-import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Check, MapPin, Search, X } from "@rotta/icons/native";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
+import { BottomSheet } from "@rotta/ui/native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
 import { TransporterCard } from "../components/transporter-card";
 import { useLocation } from "../hooks/use-location";
+import { useSchoolsSearch } from "../hooks/use-school-picker";
 import { useTransportersSearch } from "../hooks/use-transporters";
 
 import { EnderecoManualScreen } from "./endereco-manual-screen";
 
 import type { MarketplaceStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-import type { SearchTransportersParams } from "@rotta/api-client";
+import type { School, SearchTransportersParams } from "@rotta/api-client";
 
 import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
@@ -28,25 +39,33 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 ];
 
 /**
- * "Mapa" (briefing "Marketplace" §"MAPA"/"FILTROS") — tela padrão sempre
- * que o Responsável abre o app (primeira tela da stack da aba `Mapa`).
- * Solicita localização automaticamente ao entrar; se negada, cai no
- * fallback de endereço manual.
+ * "Mapa" — Home do Responsável (Prompt "UX/UI Master do Marketplace da
+ * Rotta": "o mapa sempre será o protagonista"). Reescrita a partir da
+ * versão anterior (busca por proximidade + filtros dentro de uma
+ * ScrollView com um mapa pequeno de 220px no topo) para o fluxo
+ * "busca-primeiro-pela-escola" pedido pelo Prompt — mesma navegação,
+ * mesmos hooks/dados: `escolaId` já era um filtro real de
+ * `SearchTransportersParams`/`GET /marketplace/transporters` (Dossiê
+ * 16, nunca usado por esta tela até agora) e `School.latitude/longitude`
+ * já existiam — nenhuma mudança de backend foi necessária para este
+ * fluxo.
  *
- * Mapa real via `@rotta/maps/native`, mas só com o marcador da própria
- * localização do Responsável — `TransporterCard` (busca de
- * transportadores) não expõe `latitude`/`longitude` do transportador
- * (decisão deliberada de privacidade da busca, não uma lacuna desta
- * tela: a distância já vem calculada pelo backend em `distanciaKm`,
- * sem vazar o endereço-base de cada empresa). A lista abaixo do mapa
- * continua sendo o mecanismo real de descoberta/seleção de
- * transportadores, sem mudar a busca/filtros por baixo.
+ * O mapa agora ocupa a tela inteira (nunca reduzido a um card); a busca
+ * de escola e a lista de transportadores flutuam por cima dele (barra
+ * de busca fixa no topo, `BottomSheet` na base) — ver Dossiê 37 §3 para
+ * o raciocínio completo e o que fica de fora desta primeira entrega
+ * (ex.: múltiplos snap-points do Bottom Sheet, câmera acompanhando o
+ * veículo).
  */
 export function MapaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { status, coords, requestLocation, setManualCoords } = useLocation();
   const [sortBy, setSortBy] = useState<SortBy>("distancia");
   const [apenasVerificados, setApenasVerificados] = useState(false);
+  const [schoolQuery, setSchoolQuery] = useState("");
+  const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(true);
 
   useEffect(() => {
     if (status === "idle") {
@@ -54,9 +73,21 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
     }
   }, [status, requestLocation]);
 
-  const searchParams =
+  const { data: schoolResults } = useSchoolsSearch(schoolQuery);
+  const schoolsComCoordenada = useMemo(
+    () => (schoolResults?.items ?? []).filter((school) => school.latitude && school.longitude),
+    [schoolResults],
+  );
+
+  const searchParams: SearchTransportersParams | null =
     coords && status === "granted"
-      ? { ...coords, sortBy, apenasVerificados: apenasVerificados || undefined, pageSize: 20 }
+      ? {
+          ...coords,
+          sortBy,
+          apenasVerificados: apenasVerificados || undefined,
+          escolaId: selectedSchool?.id,
+          pageSize: 20,
+        }
       : null;
   const { data, isLoading, isError } = useTransportersSearch(searchParams);
 
@@ -75,94 +106,235 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
     return <EnderecoManualScreen onConfirm={setManualCoords} />;
   }
 
-  const mapaCabecalho = coords && (
-    <View style={styles.mapaCabecalho}>
-      <RottaMap
-        markers={[{ id: "origem", titulo: "Você está aqui", ...coords }]}
-        initialCenter={coords}
-        initialZoom={13}
-      />
-    </View>
-  );
-
-  const filtros = (
-    <View style={{ gap: theme.spacing[2] }}>
-      <View style={[styles.filtrosRow, { gap: theme.spacing[2] }]}>
-        {SORT_OPTIONS.map((option) => (
-          <VehicleButton
-            key={option.value}
-            label={option.label}
-            variant={sortBy === option.value ? "primary" : "secondary"}
-            onPress={() => setSortBy(option.value)}
-          />
-        ))}
-      </View>
-      <VehicleButton
-        label="Somente verificados"
-        icon={apenasVerificados ? <Check size={16} color="#FFFFFF" /> : undefined}
-        variant={apenasVerificados ? "primary" : "secondary"}
-        onPress={() => setApenasVerificados((prev) => !prev)}
-      />
-    </View>
-  );
-
-  if (isLoading) {
-    return (
-      <VehicleScreen>
-        {mapaCabecalho}
-        {filtros}
-        <ActivityIndicator color={theme.colors.primary} />
-      </VehicleScreen>
-    );
+  function handleSelectSchool(school: School): void {
+    setSelectedSchool(school);
+    setSchoolQuery("");
+    setSheetOpen(true);
   }
 
-  if (isError) {
-    return (
-      <VehicleScreen>
-        {mapaCabecalho}
-        {filtros}
-        <Text style={{ color: theme.colors.danger }}>
-          Não foi possível buscar transportadores agora. Tente novamente mais tarde.
-        </Text>
-        <VehicleButton label="Tentar novamente" onPress={() => void requestLocation()} />
-      </VehicleScreen>
-    );
+  function handleClearSchool(): void {
+    setSelectedSchool(null);
+    setSchoolQuery("");
   }
 
-  if (!data || data.items.length === 0) {
-    return (
-      <VehicleScreen>
-        {mapaCabecalho}
-        {filtros}
-        <Text style={{ color: theme.colors.textMuted }}>
-          Nenhum transportador encontrado perto de você ainda.
-        </Text>
-      </VehicleScreen>
-    );
-  }
+  const markers: RottaMapMarker[] = coords
+    ? [
+        { id: "origem", titulo: "Você está aqui", ...coords },
+        ...(schoolQuery.trim().length > 0
+          ? schoolsComCoordenada.map((school) => ({
+              id: school.id,
+              titulo: school.nomeOficial,
+              latitude: school.latitude as number,
+              longitude: school.longitude as number,
+            }))
+          : selectedSchool && selectedSchool.latitude && selectedSchool.longitude
+            ? [
+                {
+                  id: selectedSchool.id,
+                  titulo: selectedSchool.nomeOficial,
+                  latitude: selectedSchool.latitude,
+                  longitude: selectedSchool.longitude,
+                },
+              ]
+            : []),
+      ]
+    : [];
+
+  const sheetTitle = selectedSchool
+    ? `Transportadores que atendem ${selectedSchool.nomeFantasia ?? selectedSchool.nomeOficial}`
+    : "Transportadores próximos";
 
   return (
-    <VehicleScreen>
-      {mapaCabecalho}
-      {filtros}
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>Transportadores próximos</Text>
-      {data.items.map((transportador) => (
-        <Pressable
-          key={transportador.id}
-          onPress={() =>
-            navigation.navigate("TransportadorDetalhes", { transportadorId: transportador.id })
-          }
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <RottaMap
+        markers={markers}
+        initialCenter={
+          selectedSchool?.latitude && selectedSchool.longitude
+            ? { latitude: selectedSchool.latitude, longitude: selectedSchool.longitude }
+            : (coords ?? undefined)
+        }
+        initialZoom={13}
+        onMarkerPress={(marker) => {
+          const school = schoolsComCoordenada.find((item) => item.id === marker.id);
+          if (school) handleSelectSchool(school);
+        }}
+      />
+
+      <View style={[styles.topOverlay, { paddingTop: insets.top + theme.spacing[3] }]}>
+        <View
+          style={[
+            styles.searchBar,
+            { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.full },
+          ]}
         >
-          <TransporterCard transportador={transportador} />
+          <Search size={18} color={theme.colors.textMuted} />
+          <TextInput
+            value={
+              selectedSchool
+                ? (selectedSchool.nomeFantasia ?? selectedSchool.nomeOficial)
+                : schoolQuery
+            }
+            onChangeText={(text) => {
+              if (selectedSchool) setSelectedSchool(null);
+              setSchoolQuery(text);
+            }}
+            placeholder="Para qual escola seu filho vai?"
+            placeholderTextColor={theme.colors.placeholder}
+            style={[styles.searchInput, { color: theme.colors.text }]}
+          />
+          {selectedSchool || schoolQuery.length > 0 ? (
+            <Pressable
+              onPress={handleClearSchool}
+              accessibilityRole="button"
+              accessibilityLabel="Limpar busca"
+            >
+              <X size={18} color={theme.colors.textMuted} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        {schoolQuery.trim().length > 0 && !selectedSchool ? (
+          <View
+            style={[
+              styles.resultsCard,
+              { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
+            ]}
+          >
+            {(schoolResults?.items ?? []).length === 0 ? (
+              <Text style={[styles.resultsEmpty, { color: theme.colors.textMuted }]}>
+                Nenhuma escola encontrada com esse nome.
+              </Text>
+            ) : (
+              <ScrollView keyboardShouldPersistTaps="handled" style={styles.resultsList}>
+                {(schoolResults?.items ?? []).map((school) => (
+                  <Pressable
+                    key={school.id}
+                    onPress={() => handleSelectSchool(school)}
+                    style={[styles.resultRow, { borderColor: theme.colors.border }]}
+                  >
+                    <MapPin size={16} color={theme.colors.textMuted} />
+                    <View style={styles.resultText}>
+                      <Text style={[styles.resultNome, { color: theme.colors.text }]}>
+                        {school.nomeOficial}
+                      </Text>
+                      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                        {school.cidade}/{school.estado}
+                      </Text>
+                    </View>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        ) : null}
+      </View>
+
+      {!sheetOpen ? (
+        <Pressable
+          onPress={() => setSheetOpen(true)}
+          style={[
+            styles.reabrirPill,
+            { backgroundColor: theme.colors.primary, borderRadius: theme.radius.full },
+          ]}
+        >
+          <Text style={styles.reabrirLabel}>Ver lista</Text>
         </Pressable>
-      ))}
-    </VehicleScreen>
+      ) : null}
+
+      <BottomSheet
+        isOpen={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        theme={theme}
+        title={sheetTitle}
+      >
+        <ScrollView contentContainerStyle={{ padding: theme.spacing[4], gap: theme.spacing[3] }}>
+          {!selectedSchool ? (
+            <View style={{ gap: theme.spacing[2] }}>
+              <View style={[styles.filtrosRow, { gap: theme.spacing[2] }]}>
+                {SORT_OPTIONS.map((option) => (
+                  <VehicleButton
+                    key={option.value}
+                    label={option.label}
+                    variant={sortBy === option.value ? "primary" : "secondary"}
+                    onPress={() => setSortBy(option.value)}
+                  />
+                ))}
+              </View>
+              <VehicleButton
+                label="Somente verificados"
+                icon={apenasVerificados ? <Check size={16} color="#FFFFFF" /> : undefined}
+                variant={apenasVerificados ? "primary" : "secondary"}
+                onPress={() => setApenasVerificados((prev) => !prev)}
+              />
+            </View>
+          ) : null}
+
+          {isLoading ? (
+            <ActivityIndicator color={theme.colors.primary} />
+          ) : isError ? (
+            <>
+              <Text style={{ color: theme.colors.danger }}>
+                Não foi possível buscar transportadores agora. Tente novamente mais tarde.
+              </Text>
+              <VehicleButton label="Tentar novamente" onPress={() => void requestLocation()} />
+            </>
+          ) : !data || data.items.length === 0 ? (
+            <Text style={{ color: theme.colors.textMuted }}>
+              {selectedSchool
+                ? "Nenhum transportador atende esta escola ainda."
+                : "Nenhum transportador encontrado perto de você ainda."}
+            </Text>
+          ) : (
+            data.items.map((transportador) => (
+              <Pressable
+                key={transportador.id}
+                onPress={() =>
+                  navigation.navigate("TransportadorDetalhes", {
+                    transportadorId: transportador.id,
+                  })
+                }
+              >
+                <TransporterCard transportador={transportador} />
+              </Pressable>
+            ))
+          )}
+        </ScrollView>
+      </BottomSheet>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   center: { alignItems: "center" },
+  container: { flex: 1 },
   filtrosRow: { flexDirection: "row", flexWrap: "wrap" },
-  mapaCabecalho: { borderRadius: 12, height: 220, overflow: "hidden" },
-  titulo: { fontSize: 18, fontWeight: "700" },
+  reabrirLabel: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  reabrirPill: {
+    alignSelf: "center",
+    bottom: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    position: "absolute",
+  },
+  resultNome: { fontWeight: "600" },
+  resultRow: {
+    alignItems: "center",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    paddingVertical: 10,
+  },
+  resultText: { flex: 1 },
+  resultsCard: { marginTop: 8, maxHeight: 260, padding: 8 },
+  resultsEmpty: { padding: 12, textAlign: "center" },
+  resultsList: {},
+  searchBar: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  searchInput: { flex: 1, fontSize: 15 },
+  topOverlay: { left: 16, position: "absolute", right: 16, top: 0 },
 });

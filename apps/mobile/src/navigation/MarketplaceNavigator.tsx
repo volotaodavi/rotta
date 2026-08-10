@@ -20,7 +20,7 @@ const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
 export function MarketplaceNavigator(): JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
-      <Stack.Screen name="MapaHome" component={MapaScreen} options={{ title: "Transportadores" }} />
+      <Stack.Screen name="MapaHome" component={MapaScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="TransportadorDetalhes"
         component={TransportadorDetalhesScreen}

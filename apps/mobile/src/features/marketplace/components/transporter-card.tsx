@@ -1,4 +1,4 @@
-import { Star } from "@rotta/icons/native";
+import { ChevronRight, Star } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { TransporterCard as TransporterCardData } from "@rotta/api-client";
@@ -7,7 +7,15 @@ import { StatusPill, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 
-/** Cartão de transportador na busca (briefing "Marketplace" §"TRANSPORTADORES"). */
+/**
+ * Cartão de transportador na busca (briefing "Marketplace"
+ * §"TRANSPORTADORES") — perfil profissional, nunca um item de compra:
+ * o CTA é sempre "Conhecer empresa" (Prompt "UX/UI Master do
+ * Marketplace" — "nada de Comprar, nada de linguagem de marketplace"),
+ * nunca "Contratar"/"Comprar"/"Adicionar". O card inteiro já é
+ * clicável (`Pressable` de quem chama, `mapa-screen.tsx`) — o CTA aqui
+ * é só o afordance visual, não um toque separado.
+ */
 export function TransporterCard({
   transportador,
 }: {
@@ -52,12 +60,26 @@ export function TransporterCard({
           ? `A partir de R$ ${(transportador.mensalidadeAPartirDeCentavos / 100).toFixed(2)}/mês`
           : "Consulte a mensalidade"}
       </Text>
+
+      <View style={[styles.cta, { borderColor: theme.colors.border }]}>
+        <Text style={[styles.ctaLabel, { color: theme.colors.primary }]}>Conhecer empresa</Text>
+        <ChevronRight size={16} color={theme.colors.primary} />
+      </View>
     </VehicleCard>
   );
 }
 
 const styles = StyleSheet.create({
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
+  cta: {
+    alignItems: "center",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 4,
+    paddingTop: 8,
+  },
+  ctaLabel: { fontSize: 13, fontWeight: "700" },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   mensalidade: { fontWeight: "600" },
   nome: { fontSize: 16, fontWeight: "700" },
