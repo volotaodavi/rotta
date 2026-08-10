@@ -81,3 +81,103 @@ body {
   color: rgb(var(--color-text));
   font-family: var(--font-family-base);
 }
+
+/**
+ * Mascote animado do login (`components/login-mascot.tsx`, Dossiê 41)
+ * — 3 "blobs" que reagem ao foco dos campos via o atributo `data-mood`
+ * (definido pelo componente React a partir do estado real dos inputs,
+ * nunca lido daqui). CSS puro, sem biblioteca de animação — mesmo
+ * espírito do resto do app (`HeroTripPhoneMockup`, `RouteMark`: SVG/CSS
+ * desenhados à mão, nunca emoji).
+ */
+.login-mascot__face {
+  --lid: 0;
+  --tilt: 0deg;
+  --brow: 0px;
+  position: relative;
+  display: flex;
+  width: 52px;
+  height: 52px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 2px solid rgb(var(--face-tint));
+  border-radius: 999px 999px 42% 42% / 999px 999px 58% 58%;
+  background: rgb(var(--face-tint) / 0.14);
+  transform: rotate(var(--tilt));
+  transition: transform 320ms cubic-bezier(0.22, 0.8, 0.28, 1);
+}
+.login-mascot__face:nth-child(2) {
+  width: 60px;
+  height: 60px;
+}
+.login-mascot__eyes {
+  display: flex;
+  gap: 10px;
+}
+.login-mascot__eye {
+  position: relative;
+  width: 9px;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(var(--color-text));
+  transform: translateY(var(--brow));
+  transition: transform 260ms ease;
+}
+.login-mascot__lid {
+  position: absolute;
+  inset: 0;
+  transform: scaleY(var(--lid));
+  transform-origin: top;
+  background: rgb(var(--face-tint) / 0.14);
+  transition: transform 240ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.login-mascot__mouth {
+  width: 12px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgb(var(--color-text) / 0.65);
+  transition:
+    width 220ms ease,
+    height 220ms ease,
+    border-radius 220ms ease;
+}
+
+/* nosy — e-mail focado: sobrancelha sobe, boca vira "o" curioso. */
+.login-mascot[data-mood="nosy"] .login-mascot__eye {
+  --brow: -2px;
+}
+.login-mascot[data-mood="nosy"] .login-mascot__mouth {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+}
+
+/* shy — senha focada/sendo digitada: olhos fecham, cabeças viram. */
+.login-mascot[data-mood="shy"] .login-mascot__lid {
+  --lid: 1;
+}
+.login-mascot[data-mood="shy"] .login-mascot__face:nth-child(1) {
+  --tilt: -8deg;
+}
+.login-mascot[data-mood="shy"] .login-mascot__face:nth-child(2) {
+  --tilt: 10deg;
+}
+.login-mascot[data-mood="shy"] .login-mascot__face:nth-child(3) {
+  --tilt: -12deg;
+}
+.login-mascot[data-mood="shy"] .login-mascot__mouth {
+  width: 9px;
+}
+
+/* exposed — senha visível (toggle) e preenchida: olhos abrem, sorriso. */
+.login-mascot[data-mood="exposed"] .login-mascot__eye {
+  --brow: -2px;
+}
+.login-mascot[data-mood="exposed"] .login-mascot__mouth {
+  width: 18px;
+  height: 8px;
+  border-radius: 0 0 999px 999px;
+}

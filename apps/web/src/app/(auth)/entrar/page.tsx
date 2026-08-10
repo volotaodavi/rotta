@@ -2,12 +2,53 @@
 
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
+import { Eye, EyeOff } from "@rotta/icons";
 import { Button, FormField, Input, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useState, type ComponentProps, type FormEvent } from "react";
 
+
+import type { LoginMascotMood } from "@/components/login-mascot";
 import type { ProfileOption } from "@rotta/api-client";
+
+import { LoginMascot } from "@/components/login-mascot";
+
+/**
+ * Campo de senha com botão de mostrar/ocultar — recebe `id`/
+ * `aria-describedby`/`hasError` do `cloneElement` de `FormField`
+ * (Dossiê 25 §3.5) e repassa ao `Input` real por dentro, já que
+ * `FormField` clona só o filho DIRETO — não dava para simplesmente
+ * envolver o `Input` num `<div>` na página sem quebrar essa associação
+ * com o `<label htmlFor>`.
+ */
+function SenhaField({
+  mostrarSenha,
+  onToggleMostrarSenha,
+  className,
+  ...rest
+}: ComponentProps<typeof Input> & {
+  mostrarSenha: boolean;
+  onToggleMostrarSenha: () => void;
+}): JSX.Element {
+  return (
+    <div className="relative">
+      <Input
+        type={mostrarSenha ? "text" : "password"}
+        className={`pr-10 ${className ?? ""}`}
+        {...rest}
+      />
+      <button
+        type="button"
+        onClick={onToggleMostrarSenha}
+        aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-text"
+      >
+        {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
+  );
+}
 
 /**
  * Login único (Dossiê 15, `AUTH-02`) — mesma tela/API usada por
@@ -23,6 +64,17 @@ export default function EntrarPage(): JSX.Element {
   const [profiles, setProfiles] = useState<ProfileOption[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Mascote animado (Dossiê 41) — reage ao foco real dos campos, nunca
+  // a um timer/adivinhação: "nosy" (e-mail, dado não sensível), "shy"
+  // (senha sendo digitada, olhos fecham) e "exposed" (só quando a
+  // própria pessoa escolheu revelar a senha via `mostrarSenha` E ela já
+  // está preenchida — nunca antes disso).
+  const [identificadorFocado, setIdentificadorFocado] = useState(false);
+  const [senhaFocada, setSenhaFocada] = useState(false);
+  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const mood: LoginMascotMood =
+    mostrarSenha && senha ? "exposed" : senhaFocada ? "shy" : identificadorFocado ? "nosy" : "idle";
 
   async function attemptLogin(companyId?: string): Promise<void> {
     setErrorMessage(null);
@@ -79,6 +131,8 @@ export default function EntrarPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
+      <LoginMascot mood={mood} />
+
       <div className="flex flex-col gap-1 text-center">
         <Typography variant="title">Entrar na Rotta</Typography>
       </div>
@@ -90,15 +144,20 @@ export default function EntrarPage(): JSX.Element {
             autoComplete="username"
             value={identificador}
             onChange={(event) => setIdentificador(event.target.value)}
+            onFocus={() => setIdentificadorFocado(true)}
+            onBlur={() => setIdentificadorFocado(false)}
           />
         </FormField>
         <FormField label="Senha" isRequired>
-          <Input
-            type="password"
+          <SenhaField
             required
             autoComplete="current-password"
             value={senha}
             onChange={(event) => setSenha(event.target.value)}
+            onFocus={() => setSenhaFocada(true)}
+            onBlur={() => setSenhaFocada(false)}
+            mostrarSenha={mostrarSenha}
+            onToggleMostrarSenha={() => setMostrarSenha((atual) => !atual)}
           />
         </FormField>
 
