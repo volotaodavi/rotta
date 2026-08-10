@@ -19,6 +19,8 @@ export interface MeResponse {
   role: Role;
   companyId: string | null;
   companyName: string | null;
+  /** MFA/TOTP ativado (Dossiê 43) — só relevante para role "admin_rotta". */
+  mfaEnabled?: boolean;
 }
 
 export interface AuthTokensResponse {
@@ -38,7 +40,38 @@ export interface ProfileSelectionResponse {
   profiles: ProfileOption[];
 }
 
-export type LoginResponse = AuthTokensResponse | ProfileSelectionResponse;
+/**
+ * MFA obrigatório para Admin Rotta (Dossiê 43). Retornado em vez de
+ * tokens quando a conta é `admin_rotta` e ainda NÃO tem TOTP ativado —
+ * `mfaSetupToken` só serve para `authEndpoints.mfa.setup`/`mfa.enable`
+ * (nunca autentica nenhuma outra rota).
+ */
+export interface MfaSetupRequiredResponse {
+  mfaSetupRequired: true;
+  mfaSetupToken: string;
+}
+
+/** Retornado em vez de tokens quando a conta é `admin_rotta` e JÁ tem TOTP ativado — aguarda `authEndpoints.mfa.verifyLogin`. */
+export interface MfaChallengeResponse {
+  mfaRequired: true;
+  mfaChallengeToken: string;
+}
+
+export type LoginResponse =
+  AuthTokensResponse | ProfileSelectionResponse | MfaSetupRequiredResponse | MfaChallengeResponse;
+
+export interface MfaSetupResponse {
+  secret: string;
+  otpauthUrl: string;
+  /** PNG como data URL, pronto para `<img src>`. */
+  qrCodeDataUrl: string;
+}
+
+export interface MfaEnableResponse {
+  tokens: AuthTokensResponse;
+  /** Só aparecem nesta resposta — nunca mais tarde. Mostrar uma vez, avisar para salvar. */
+  recoveryCodes: string[];
+}
 
 export interface LoginInput {
   identificador: string;
@@ -138,6 +171,16 @@ export function isProfileSelectionResponse(
   response: LoginResponse,
 ): response is ProfileSelectionResponse {
   return "requiresProfileSelection" in response;
+}
+
+export function isMfaSetupRequiredResponse(
+  response: LoginResponse,
+): response is MfaSetupRequiredResponse {
+  return "mfaSetupRequired" in response;
+}
+
+export function isMfaChallengeResponse(response: LoginResponse): response is MfaChallengeResponse {
+  return "mfaRequired" in response;
 }
 
 export function createAuthEndpoints(apiClient: ApiClient) {
@@ -256,6 +299,41 @@ export function createAuthEndpoints(apiClient: ApiClient) {
           body: input,
         })
       ).data,
+
+    /** MFA obrigatório para Admin Rotta (Dossiê 43) — os 3 primeiros nunca exigem sessão (autenticados só pelo token de curta duração recebido do login). */
+    mfa: {
+      setup: async (mfaSetupToken: string): Promise<MfaSetupResponse> =>
+        (
+          await apiClient.request<ApiEnvelope<MfaSetupResponse>>("/auth/mfa/setup", {
+            method: "POST",
+            body: { mfaSetupToken },
+          })
+        ).data,
+
+      enable: async (mfaSetupToken: string, code: string): Promise<MfaEnableResponse> =>
+        (
+          await apiClient.request<ApiEnvelope<MfaEnableResponse>>("/auth/mfa/enable", {
+            method: "POST",
+            body: { mfaSetupToken, code },
+          })
+        ).data,
+
+      verifyLogin: async (
+        mfaChallengeToken: string,
+        credential: { code: string } | { recoveryCode: string },
+      ): Promise<AuthTokensResponse> =>
+        (
+          await apiClient.request<ApiEnvelope<AuthTokensResponse>>("/auth/mfa/verify-login", {
+            method: "POST",
+            body: { mfaChallengeToken, ...credential },
+          })
+        ).data,
+
+      /** Requer sessão autenticada — usa o access token já em uso, como qualquer outra rota protegida. */
+      disable: async (code: string): Promise<void> => {
+        await apiClient.request("/auth/mfa/disable", { method: "POST", body: { code } });
+      },
+    },
   };
 }
 

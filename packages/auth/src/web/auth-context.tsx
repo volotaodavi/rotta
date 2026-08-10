@@ -1,6 +1,10 @@
 "use client";
 
-import { isProfileSelectionResponse } from "@rotta/api-client";
+import {
+  isMfaChallengeResponse,
+  isMfaSetupRequiredResponse,
+  isProfileSelectionResponse,
+} from "@rotta/api-client";
 import {
   createContext,
   useCallback,
@@ -25,6 +29,7 @@ import type {
   LoginInput,
   LoginResponse,
   MeResponse,
+  MfaSetupResponse,
   RedeemInviteInput,
   RegisterEmpresaInput,
   RegisterPessoalInput,
@@ -40,6 +45,16 @@ interface AuthContextValue {
   registerPessoal: (input: RegisterPessoalInput) => Promise<MeResponse>;
   redeemInvite: (input: RedeemInviteInput) => Promise<MeResponse>;
   logout: () => Promise<void>;
+  /** MFA obrigatório para Admin Rotta (Dossiê 43) — os três só fazem sentido no meio do fluxo de login, nunca autenticados por si só. */
+  mfaSetup: (mfaSetupToken: string) => Promise<MfaSetupResponse>;
+  mfaEnable: (
+    mfaSetupToken: string,
+    code: string,
+  ) => Promise<{ user: MeResponse; recoveryCodes: string[] }>;
+  mfaVerifyLogin: (
+    mfaChallengeToken: string,
+    credential: { code: string } | { recoveryCode: string },
+  ) => Promise<MeResponse>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -126,10 +141,46 @@ export function AuthProvider({
   const login = useCallback(
     async (input: LoginInput): Promise<LoginResponse> => {
       const result = await authApi.login(input);
-      if (!isProfileSelectionResponse(result)) {
+      // Dossiê 43: `mfaSetupRequired`/`mfaRequired` (Admin Rotta) nunca
+      // carregam `accessToken`/`refreshToken` — aplicar sessão nesses
+      // ramos gravaria `undefined` como se fosse um token válido.
+      if (
+        !isProfileSelectionResponse(result) &&
+        !isMfaSetupRequiredResponse(result) &&
+        !isMfaChallengeResponse(result)
+      ) {
         applySession(result);
       }
       return result;
+    },
+    [authApi, applySession],
+  );
+
+  const mfaSetup = useCallback(
+    (mfaSetupToken: string): Promise<MfaSetupResponse> => authApi.mfa.setup(mfaSetupToken),
+    [authApi],
+  );
+
+  const mfaEnable = useCallback(
+    async (
+      mfaSetupToken: string,
+      code: string,
+    ): Promise<{ user: MeResponse; recoveryCodes: string[] }> => {
+      const result = await authApi.mfa.enable(mfaSetupToken, code);
+      applySession(result.tokens);
+      return { user: result.tokens.user, recoveryCodes: result.recoveryCodes };
+    },
+    [authApi, applySession],
+  );
+
+  const mfaVerifyLogin = useCallback(
+    async (
+      mfaChallengeToken: string,
+      credential: { code: string } | { recoveryCode: string },
+    ): Promise<MeResponse> => {
+      const tokens = await authApi.mfa.verifyLogin(mfaChallengeToken, credential);
+      applySession(tokens);
+      return tokens.user;
     },
     [authApi, applySession],
   );
@@ -176,7 +227,18 @@ export function AuthProvider({
 
   return (
     <AuthContext.Provider
-      value={{ status, user, login, registerEmpresa, registerPessoal, redeemInvite, logout }}
+      value={{
+        status,
+        user,
+        login,
+        registerEmpresa,
+        registerPessoal,
+        redeemInvite,
+        logout,
+        mfaSetup,
+        mfaEnable,
+        mfaVerifyLogin,
+      }}
     >
       {children}
     </AuthContext.Provider>

@@ -49,6 +49,17 @@ export const envSchema = z.object({
   JWT_ACCESS_TOKEN_TTL: z.string().default("15m"),
   JWT_REFRESH_TOKEN_TTL: z.string().default("30d"),
 
+  // MFA/2FA por TOTP (Dossiê 43 — previsto desde o Dossiê 12 §4.5).
+  // Chave simétrica (32 bytes, base64) usada só por `SecretCipherService`
+  // para cifrar/decifrar `User.totpSecretCriptografado` (AES-256-GCM) —
+  // precisa ser reversível (decifrar para comparar o código a cada
+  // login), por isso não é hasheada como `passwordHash`. Opcional aqui
+  // (mesmo padrão "stub honesto" de `SENTRY_DSN`/`LYTEX_*` acima): sem
+  // ela, `SecretCipherService` recusa cifrar/decifrar com um erro claro
+  // — nunca falha o boot — então o MFA fica indisponível (não quebrado)
+  // até a chave ser configurada.
+  MFA_ENCRYPTION_KEY: z.string().optional(),
+
   // `.or(z.literal(""))` porque `.env.example` documenta a variavel com
   // valor vazio (nenhum segredo real no repositorio) — string vazia e
   // "nao configurado" aqui, tratado como tal por `SupabaseStorageService`

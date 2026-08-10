@@ -178,4 +178,39 @@ export class UsersService {
   async recordLgpdConsent(userId: string): Promise<void> {
     await this.userRepository.updateAuthState(userId, { consentimentoLgpdAceitoEm: new Date() });
   }
+
+  /**
+   * MFA/2FA por TOTP (Dossiê 43). `savePendingMfaSecret` grava o segredo
+   * cifrado SEM ativar (`totpHabilitado` continua `false`) — só
+   * `confirmMfaEnabled` (chamado depois do primeiro código válido) liga
+   * a flag, para nunca travar a conta com um segredo nunca testado
+   * contra o app autenticador de verdade.
+   */
+  async savePendingMfaSecret(userId: string, secretEncrypted: string): Promise<void> {
+    await this.userRepository.updateAuthState(userId, { totpSecretCriptografado: secretEncrypted });
+  }
+
+  async confirmMfaEnabled(userId: string, recoveryCodeHashes: string[]): Promise<void> {
+    await this.userRepository.updateAuthState(userId, {
+      totpHabilitado: true,
+      totpHabilitadoEm: new Date(),
+      totpCodigosRecuperacaoHashes: recoveryCodeHashes,
+    });
+  }
+
+  async disableMfa(userId: string): Promise<void> {
+    await this.userRepository.updateAuthState(userId, {
+      totpHabilitado: false,
+      totpHabilitadoEm: null,
+      totpSecretCriptografado: null,
+      totpCodigosRecuperacaoHashes: [],
+    });
+  }
+
+  /** Consome (remove) um código de recuperação já usado — uso único, RN implícita do Dossiê 43 §21/§30 do briefing. */
+  async replaceMfaRecoveryCodeHashes(userId: string, remainingHashes: string[]): Promise<void> {
+    await this.userRepository.updateAuthState(userId, {
+      totpCodigosRecuperacaoHashes: remainingHashes,
+    });
+  }
 }

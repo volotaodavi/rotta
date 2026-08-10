@@ -17,17 +17,26 @@ import { NotificationEventType, UserStatus } from "@prisma/client";
 
 
 import { PASSWORD_RESET_TOKEN_REPOSITORY, SESSION_REPOSITORY } from "./auth.constants";
+import { MfaService } from "./mfa.service";
 import { PasswordResetNotifierService } from "./password-reset-notifier.service";
 
 import type {
   AuthTokensResponseDto,
   MeResponseDto,
+  MfaChallengeResponseDto,
+  MfaEnableResponseDto,
+  MfaSetupRequiredResponseDto,
+  MfaSetupResponseDto,
   ProfileSelectionResponseDto,
 } from "./dto/auth-response.dto";
 import type { ChangePasswordDto } from "./dto/change-password.dto";
 import type { DataExportResponseDto } from "./dto/data-export-response.dto";
 import type { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import type { LoginDto } from "./dto/login.dto";
+import type { MfaDisableDto } from "./dto/mfa-disable.dto";
+import type { MfaEnableDto } from "./dto/mfa-enable.dto";
+import type { MfaSetupDto } from "./dto/mfa-setup.dto";
+import type { MfaVerifyLoginDto } from "./dto/mfa-verify-login.dto";
 import type { RefreshTokenDto } from "./dto/refresh-token.dto";
 import type { RegisterEmpresaDto } from "./dto/register-empresa.dto";
 import type { RegisterPessoalDto } from "./dto/register-pessoal.dto";
@@ -37,11 +46,13 @@ import type { PasswordResetTokenRepository } from "./repositories/password-reset
 import type { SessionRepository } from "./repositories/session.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuthConfig } from "@/config/auth.config";
+import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 import type { User } from "@prisma/client";
 
 import { parseDurationToMs } from "@/common/utils/duration.util";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService, type RequestMeta } from "@/modules/companies/companies.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -54,6 +65,21 @@ export interface AuthRequestMeta extends RequestMeta {
 
 const GENERIC_LOGIN_ERROR = "Não foi possível entrar. Verifique os dados e tente novamente.";
 const PASSWORD_RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Tokens de MFA (Dossiê 43) — assinados com o MESMO par de chaves
+ * RS256 dos tokens de acesso (`JwtService` já configurado no módulo),
+ * mas com payload minimalista e TTL bem mais curto: nunca carregam
+ * `role`/`tenantId`/`vinculoId`, então mesmo que um vazasse não
+ * autenticariam NENHUMA rota protegida — o `TenantGuard` global rejeita
+ * qualquer papel fora de `ADMIN_ROTTA`/`RESPONSAVEL` sem `tenantId`
+ * (ver `tenant.guard.ts`), e este payload nunca declara `role`. O campo
+ * `purpose` é a segunda camada de defesa, verificada explicitamente por
+ * `verifyMfaToken` — um token de setup nunca é aceito onde se espera um
+ * de challenge, e vice-versa.
+ */
+type MfaTokenPurpose = "mfa_setup" | "mfa_challenge";
+const MFA_TOKEN_TTL = "5m";
 
 /**
  * Núcleo de negócio do módulo Auth (Dossiê 15) — login único
@@ -81,6 +107,8 @@ export class AuthService {
     private readonly passwordResetTokenRepository: PasswordResetTokenRepository,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly mfaService: MfaService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   /**
@@ -178,24 +206,49 @@ export class AuthService {
   /**
    * Login único (Dossiê 15, `AUTH-02`) — mesmo endpoint para toda
    * plataforma. Retorna tokens diretamente quando há exatamente um
-   * vínculo ativo (ou a conta é Admin Rotta/Responsável); com mais de
-   * um vínculo e nenhum `companyId` informado, retorna a lista de
-   * perfis para seleção em vez de tokens (ver `LoginDto`).
+   * vínculo ativo (ou a conta é Responsável); com mais de um vínculo e
+   * nenhum `companyId` informado, retorna a lista de perfis para seleção
+   * em vez de tokens (ver `LoginDto`).
+   *
+   * Admin Rotta (Dossiê 43 — MFA obrigatório, "não usar SUPER_ADMIN como
+   * desculpa para ignorar segurança") NUNCA recebe tokens diretamente
+   * daqui: senha correta só abre caminho para `mfaSetupRequired` (conta
+   * ainda sem TOTP — precisa terminar `POST /auth/mfa/setup` +
+   * `POST /auth/mfa/enable` antes de ganhar qualquer acesso) ou
+   * `mfaRequired` (conta já protegida — precisa de
+   * `POST /auth/mfa/verify-login`). Nenhum dos dois emite `access_token`/
+   * `refresh_token`.
    */
   async login(
     dto: LoginDto,
     meta: AuthRequestMeta,
-  ): Promise<AuthTokensResponseDto | ProfileSelectionResponseDto> {
+  ): Promise<
+    | AuthTokensResponseDto
+    | ProfileSelectionResponseDto
+    | MfaSetupRequiredResponseDto
+    | MfaChallengeResponseDto
+  > {
     const user = await this.usersService.findByIdentifier(dto.identificador.trim());
 
     // RN de não-enumeração (Dossiê 12 §7.4): mesma mensagem genérica
     // tanto para identificador inexistente quanto para senha incorreta.
+    // Sem auditoria aqui também por não-enumeração: um identificador que
+    // não existe não gera nenhum registro atribuível a um `User` real.
     if (!user || user.deletedAt || user.status !== UserStatus.ATIVO) {
       throw new UnauthorizedException(GENERIC_LOGIN_ERROR);
     }
 
     if (this.usersService.isLockedOut(user)) {
       const minutes = Math.ceil((user.bloqueadoAte!.getTime() - Date.now()) / 60_000);
+      await this.recordAuditBestEffort({
+        entidadeTipo: "User",
+        entidadeId: user.id,
+        acao: "LOGIN_FAILED",
+        atorUserId: user.id,
+        dadosDepois: { motivo: "bloqueado_por_tentativas" },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
       throw new UnauthorizedException(
         `Muitas tentativas. Tente novamente em ${minutes} minuto(s).`,
       );
@@ -204,13 +257,31 @@ export class AuthService {
     const passwordValid = await this.passwordHasher.verify(user.passwordHash, dto.senha);
     if (!passwordValid) {
       await this.usersService.recordLoginFailure(user);
+      await this.recordAuditBestEffort({
+        entidadeTipo: "User",
+        entidadeId: user.id,
+        acao: "LOGIN_FAILED",
+        atorUserId: user.id,
+        dadosDepois: { motivo: "senha_incorreta" },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
       throw new UnauthorizedException(GENERIC_LOGIN_ERROR);
     }
 
     await this.usersService.resetLoginFailures(user.id);
 
     if (user.isAdminRotta) {
-      return this.issueTokens(user, null, Role.ADMIN_ROTTA, user.id, meta);
+      if (!user.totpHabilitado) {
+        return {
+          mfaSetupRequired: true,
+          mfaSetupToken: await this.signMfaToken(user.id, "mfa_setup"),
+        };
+      }
+      return {
+        mfaRequired: true,
+        mfaChallengeToken: await this.signMfaToken(user.id, "mfa_challenge"),
+      };
     }
 
     const memberships = await this.usersService.listActiveMembershipsWithCompany(user.id);
@@ -223,7 +294,7 @@ export class AuthService {
     // opção "Área Pessoal" aparecer na lista — documentado, não um bug
     // escondido.
     if (user.isResponsavel && memberships.length === 0) {
-      return this.issueTokens(user, null, Role.RESPONSAVEL, user.id, meta);
+      return this.issueTokensWithLoginAudit(user, null, Role.RESPONSAVEL, user.id, meta);
     }
 
     if (memberships.length === 0) {
@@ -232,7 +303,7 @@ export class AuthService {
 
     if (memberships.length === 1) {
       const [only] = memberships;
-      return this.issueTokens(
+      return this.issueTokensWithLoginAudit(
         user,
         only!.companyId,
         only!.role as Role,
@@ -247,7 +318,7 @@ export class AuthService {
       if (!selected) {
         throw new ForbiddenException("Vínculo informado não pertence a este usuário.");
       }
-      return this.issueTokens(
+      return this.issueTokensWithLoginAudit(
         user,
         selected.companyId,
         selected.role as Role,
@@ -265,6 +336,227 @@ export class AuthService {
         role: membership.role as Role,
       })),
     };
+  }
+
+  /**
+   * MFA passo 1/2 (Dossiê 43) — gera um novo segredo TOTP e o mantém
+   * PENDENTE (`totpHabilitado` continua `false` até `enableMfa`
+   * confirmar com um código real do app autenticador). Chamar de novo
+   * antes de confirmar simplesmente substitui o segredo pendente
+   * anterior — seguro, nada foi ativado ainda.
+   */
+  async setupMfa(dto: MfaSetupDto): Promise<MfaSetupResponseDto> {
+    const userId = await this.verifyMfaToken(dto.mfaSetupToken, "mfa_setup");
+    const user = await this.requireActiveAdminRotta(userId);
+
+    if (user.totpHabilitado) {
+      throw new BadRequestException("MFA já está ativado para esta conta.");
+    }
+
+    const secretPlain = this.mfaService.generateSecret();
+    await this.usersService.savePendingMfaSecret(
+      user.id,
+      this.mfaService.encryptSecret(secretPlain),
+    );
+
+    const otpauthUrl = this.mfaService.buildOtpAuthUrl(secretPlain, user.email);
+    const qrCodeDataUrl = await this.mfaService.buildQrCodeDataUrl(otpauthUrl);
+    return { secret: secretPlain, otpauthUrl, qrCodeDataUrl };
+  }
+
+  /**
+   * MFA passo 2/2 — confirma a posse do app autenticador com o primeiro
+   * código real gerado, ativa o MFA, gera os 10 códigos de recuperação
+   * (mostrados só nesta resposta, nunca de novo) e finalmente emite os
+   * tokens de sessão — é o único caminho de um Admin Rotta sem MFA
+   * chegar a ter acesso de verdade.
+   */
+  async enableMfa(dto: MfaEnableDto, meta: AuthRequestMeta): Promise<MfaEnableResponseDto> {
+    const userId = await this.verifyMfaToken(dto.mfaSetupToken, "mfa_setup");
+    const user = await this.requireActiveAdminRotta(userId);
+
+    if (!user.totpSecretCriptografado) {
+      throw new BadRequestException(
+        "Nenhum setup de MFA pendente. Chame /auth/mfa/setup primeiro.",
+      );
+    }
+
+    const secretPlain = this.mfaService.decryptSecret(user.totpSecretCriptografado);
+    const codeValid = this.mfaService.verifyCode(secretPlain, dto.code);
+    if (!codeValid) {
+      throw new BadRequestException(
+        "Código inválido. Confira o horário do celular e tente de novo.",
+      );
+    }
+
+    const recoveryCodesPlain = this.mfaService.generateRecoveryCodes();
+    const recoveryCodeHashes = await this.mfaService.hashRecoveryCodes(recoveryCodesPlain);
+    await this.usersService.confirmMfaEnabled(user.id, recoveryCodeHashes);
+
+    await this.recordAuditBestEffort({
+      entidadeTipo: "User",
+      entidadeId: user.id,
+      acao: "MFA_ENABLED",
+      atorUserId: user.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    const tokens = await this.issueTokensWithLoginAudit(
+      user,
+      null,
+      Role.ADMIN_ROTTA,
+      user.id,
+      meta,
+    );
+    return { tokens, recoveryCodes: recoveryCodesPlain };
+  }
+
+  /**
+   * MFA — segundo fator do login de uma conta que JÁ tem TOTP ativado.
+   * Aceita ou o código de 6 dígitos do app autenticador, ou (perdeu o
+   * celular) um código de recuperação de uso único — nunca os dois.
+   */
+  async verifyMfaLogin(
+    dto: MfaVerifyLoginDto,
+    meta: AuthRequestMeta,
+  ): Promise<AuthTokensResponseDto> {
+    const userId = await this.verifyMfaToken(dto.mfaChallengeToken, "mfa_challenge");
+    const user = await this.requireActiveAdminRotta(userId);
+
+    if (!user.totpHabilitado || !user.totpSecretCriptografado) {
+      throw new UnauthorizedException();
+    }
+
+    if (dto.recoveryCode) {
+      const matchIndex = await this.mfaService.matchRecoveryCode(
+        dto.recoveryCode,
+        user.totpCodigosRecuperacaoHashes,
+      );
+      if (matchIndex === null) {
+        await this.recordAuditBestEffort({
+          entidadeTipo: "User",
+          entidadeId: user.id,
+          acao: "MFA_LOGIN_FAILED",
+          atorUserId: user.id,
+          dadosDepois: { metodo: "recovery_code" },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+        throw new UnauthorizedException("Código de recuperação inválido.");
+      }
+      const remainingHashes = user.totpCodigosRecuperacaoHashes.filter(
+        (_, index) => index !== matchIndex,
+      );
+      await this.usersService.replaceMfaRecoveryCodeHashes(user.id, remainingHashes);
+    } else if (dto.code) {
+      const secretPlain = this.mfaService.decryptSecret(user.totpSecretCriptografado);
+      const codeValid = this.mfaService.verifyCode(secretPlain, dto.code);
+      if (!codeValid) {
+        await this.recordAuditBestEffort({
+          entidadeTipo: "User",
+          entidadeId: user.id,
+          acao: "MFA_LOGIN_FAILED",
+          atorUserId: user.id,
+          dadosDepois: { metodo: "totp" },
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+        });
+        throw new UnauthorizedException("Código inválido.");
+      }
+    } else {
+      throw new BadRequestException(
+        "Informe o código do app autenticador ou um código de recuperação.",
+      );
+    }
+
+    return this.issueTokensWithLoginAudit(user, null, Role.ADMIN_ROTTA, user.id, meta);
+  }
+
+  /**
+   * Desativa o MFA de uma sessão JÁ autenticada — exige o código TOTP
+   * atual (briefing §31: "ações críticas exigem confirmação adicional"),
+   * nunca só a senha/sessão válida. Reativar depois exige `setupMfa` +
+   * `enableMfa` de novo, com um segredo novo (o antigo nunca é reusado).
+   */
+  async disableMfa(actor: AuthenticatedUser, dto: MfaDisableDto): Promise<void> {
+    const user = await this.usersService.findById(actor.sub);
+    if (!user || !user.totpHabilitado || !user.totpSecretCriptografado) {
+      throw new BadRequestException("MFA não está ativado para esta conta.");
+    }
+
+    const secretPlain = this.mfaService.decryptSecret(user.totpSecretCriptografado);
+    const codeValid = this.mfaService.verifyCode(secretPlain, dto.code);
+    if (!codeValid) {
+      throw new BadRequestException("Código inválido.");
+    }
+
+    await this.usersService.disableMfa(user.id);
+    await this.recordAuditBestEffort({
+      entidadeTipo: "User",
+      entidadeId: user.id,
+      acao: "MFA_DISABLED",
+      atorUserId: actor.sub,
+    });
+  }
+
+  private async signMfaToken(userId: string, purpose: MfaTokenPurpose): Promise<string> {
+    return this.jwtService.signAsync({ sub: userId, purpose }, { expiresIn: MFA_TOKEN_TTL });
+  }
+
+  private async verifyMfaToken(token: string, expectedPurpose: MfaTokenPurpose): Promise<string> {
+    let payload: { sub: string; purpose?: MfaTokenPurpose };
+    try {
+      payload = await this.jwtService.verifyAsync(token);
+    } catch {
+      throw new UnauthorizedException("Sessão de MFA inválida ou expirada. Faça login novamente.");
+    }
+    if (payload.purpose !== expectedPurpose) {
+      throw new UnauthorizedException("Sessão de MFA inválida ou expirada. Faça login novamente.");
+    }
+    return payload.sub;
+  }
+
+  private async requireActiveAdminRotta(userId: string): Promise<User> {
+    const user = await this.usersService.findById(userId);
+    if (!user || user.deletedAt || user.status !== UserStatus.ATIVO || !user.isAdminRotta) {
+      throw new UnauthorizedException();
+    }
+    return user;
+  }
+
+  /** `issueTokens` + auditoria `LOGIN_SUCCESS` — só para os caminhos de LOGIN de verdade (nunca `register*`/`refresh`, que não são "entrar", são "criar conta"/"renovar sessão"). */
+  private async issueTokensWithLoginAudit(
+    user: User,
+    tenantId: string | null,
+    role: Role,
+    vinculoId: string,
+    meta: AuthRequestMeta,
+    companyNameHint?: string | null,
+  ): Promise<AuthTokensResponseDto> {
+    const tokens = await this.issueTokens(user, tenantId, role, vinculoId, meta, companyNameHint);
+    await this.recordAuditBestEffort({
+      companyId: tenantId ?? undefined,
+      entidadeTipo: "User",
+      entidadeId: user.id,
+      acao: "LOGIN_SUCCESS",
+      atorUserId: user.id,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+    return tokens;
+  }
+
+  /** Auditoria nunca pode derrubar um login/MFA que já era válido — mesmo espírito "best-effort" de `TripsService.detectarAproximacaoBestEffort`. */
+  private async recordAuditBestEffort(input: RecordAuditLogInput): Promise<void> {
+    try {
+      await this.auditLogService.record(input);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao registrar auditoria (${input.acao}, ${input.entidadeTipo} ${input.entidadeId})`,
+      );
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
   }
 
   /**
@@ -551,6 +843,7 @@ export class AuthService {
       role,
       companyId: tenantId,
       companyName,
+      mfaEnabled: user.totpHabilitado,
     };
   }
 }

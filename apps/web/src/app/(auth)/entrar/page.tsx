@@ -85,6 +85,13 @@ export default function EntrarPage(): JSX.Element {
         setProfiles(result.profiles);
         return;
       }
+      // Dossiê 43: MFA obrigatório é exclusivo de Admin Rotta, que não
+      // usa este painel — se algum dia acontecer aqui, nenhum token foi
+      // emitido (nunca navegar como se tivesse logado).
+      if ("mfaSetupRequired" in result || "mfaRequired" in result) {
+        setErrorMessage("Esta conta requer o painel administrativo da Rotta para entrar.");
+        return;
+      }
       router.replace("/empresa");
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao entrar.");

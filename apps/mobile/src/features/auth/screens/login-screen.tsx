@@ -44,9 +44,17 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
       const result = await login({ identificador, senha, companyId });
       if (isProfileSelectionResponse(result)) {
         setProfiles(result.profiles);
+        return;
       }
-      // Quando não há seleção de perfil, o RootNavigator troca de tela
-      // sozinho assim que `status` vira "authenticated".
+      // Dossiê 43: MFA obrigatório é exclusivo de Admin Rotta, que não
+      // usa o app mobile — se algum dia acontecer aqui, nenhum token foi
+      // emitido (nunca deixar a tela "presa" esperando o RootNavigator).
+      if ("mfaSetupRequired" in result || "mfaRequired" in result) {
+        setErrorMessage("Esta conta requer o painel administrativo da Rotta para entrar.");
+        return;
+      }
+      // Quando não há seleção de perfil nem MFA, o RootNavigator troca
+      // de tela sozinho assim que `status` vira "authenticated".
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao entrar.");
     } finally {

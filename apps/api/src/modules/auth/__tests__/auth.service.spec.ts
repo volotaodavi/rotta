@@ -1,14 +1,16 @@
 import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { UserStatus } from "@prisma/client";
+import { authenticator } from "otplib";
 
 
 import { AuthService } from "../auth.service";
+import { MfaService } from "../mfa.service";
 
 import type { PasswordResetNotifierService } from "../password-reset-notifier.service";
 import type { PasswordResetTokenRepository } from "../repositories/password-reset-token.repository";
 import type { SessionRepository } from "../repositories/session.repository";
 import type { PrismaService } from "@/infra/database/prisma.service";
-import type { PasswordHasherService } from "@/infra/security/password-hasher.service";
+import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { MembershipWithCompany } from "@/modules/users/repositories/membership.repository";
@@ -18,6 +20,8 @@ import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { JwtService } from "@nestjs/jwt";
 import type { Session, User } from "@prisma/client";
 
+import { PasswordHasherService } from "@/infra/security/password-hasher.service";
+import { SecretCipherService } from "@/infra/security/secret-cipher.service";
 import { Role } from "@/shared/enums";
 
 function buildUser(overrides: Partial<User> = {}): User {
@@ -34,6 +38,11 @@ function buildUser(overrides: Partial<User> = {}): User {
     bloqueadoAte: null,
     consentimentoLgpdAceitoEm: null,
     isAdminRotta: false,
+    isResponsavel: false,
+    totpSecretCriptografado: null,
+    totpHabilitado: false,
+    totpHabilitadoEm: null,
+    totpCodigosRecuperacaoHashes: [],
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -91,6 +100,8 @@ describe("AuthService", () => {
   let passwordResetTokenRepository: jest.Mocked<PasswordResetTokenRepository>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
+  let mfaService: MfaService;
+  let auditLogService: jest.Mocked<AuditLogService>;
 
   beforeEach(() => {
     usersService = {
@@ -103,6 +114,10 @@ describe("AuthService", () => {
       resetLoginFailures: jest.fn(),
       updatePassword: jest.fn(),
       recordLgpdConsent: jest.fn(),
+      savePendingMfaSecret: jest.fn(),
+      confirmMfaEnabled: jest.fn(),
+      disableMfa: jest.fn(),
+      replaceMfaRecoveryCodeHashes: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
 
     companiesService = {
@@ -116,10 +131,15 @@ describe("AuthService", () => {
 
     jwtService = {
       signAsync: jest.fn().mockResolvedValue("signed.jwt.token"),
+      verifyAsync: jest.fn(),
     } as unknown as jest.Mocked<JwtService>;
 
     configService = {
-      get: jest.fn().mockReturnValue({ refreshTokenTtl: "30d" }),
+      get: jest.fn().mockReturnValue({
+        refreshTokenTtl: "30d",
+        // 32 bytes válidos para AES-256 (SecretCipherService) — determinístico só para os testes.
+        mfaEncryptionKey: Buffer.alloc(32, 7).toString("base64"),
+      }),
     } as unknown as jest.Mocked<ConfigService>;
 
     prisma = {
@@ -155,6 +175,20 @@ describe("AuthService", () => {
       novoResponsavel: jest.fn().mockReturnValue({ titulo: "Novo responsável", corpo: "..." }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
 
+    // MfaService real (não mockado): TOTP/hash são deterministicos o
+    // suficiente dado o mesmo segredo/relógio, e usar a implementação de
+    // verdade é o que permite os testes de `setupMfa`/`enableMfa`/
+    // `verifyMfaLogin` gerarem um código válido de verdade (ver
+    // `generateValidTotpCode`, mais abaixo).
+    mfaService = new MfaService(
+      new SecretCipherService(configService),
+      new PasswordHasherService(),
+    );
+
+    auditLogService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<AuditLogService>;
+
     service = new AuthService(
       usersService,
       companiesService,
@@ -167,6 +201,8 @@ describe("AuthService", () => {
       passwordResetTokenRepository,
       eventEmitter,
       messagePersonalizationService,
+      mfaService,
+      auditLogService,
     );
   });
 
@@ -204,14 +240,30 @@ describe("AuthService", () => {
       expect(usersService.recordLoginFailure).toHaveBeenCalledTimes(1);
     });
 
-    it("emite tokens diretamente para Admin Rotta (sem Membership)", async () => {
-      usersService.findByIdentifier.mockResolvedValue(buildUser({ isAdminRotta: true }));
-      passwordHasher.verify.mockResolvedValue(true);
-      const result = await service.login({ identificador: "x", senha: "y" }, {});
-      expect("accessToken" in result).toBe(true);
-      expect(sessionRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ tenantId: null, role: Role.ADMIN_ROTTA }),
+    it("Admin Rotta SEM MFA ativado nunca recebe tokens — só mfaSetupRequired (Dossiê 43)", async () => {
+      usersService.findByIdentifier.mockResolvedValue(
+        buildUser({ isAdminRotta: true, totpHabilitado: false }),
       );
+      passwordHasher.verify.mockResolvedValue(true);
+
+      const result = await service.login({ identificador: "x", senha: "y" }, {});
+
+      expect(result).toMatchObject({ mfaSetupRequired: true });
+      expect("accessToken" in result).toBe(false);
+      expect(sessionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("Admin Rotta COM MFA já ativado nunca recebe tokens direto — só mfaRequired (Dossiê 43)", async () => {
+      usersService.findByIdentifier.mockResolvedValue(
+        buildUser({ isAdminRotta: true, totpHabilitado: true }),
+      );
+      passwordHasher.verify.mockResolvedValue(true);
+
+      const result = await service.login({ identificador: "x", senha: "y" }, {});
+
+      expect(result).toMatchObject({ mfaRequired: true });
+      expect("accessToken" in result).toBe(false);
+      expect(sessionRepository.create).not.toHaveBeenCalled();
     });
 
     it("rejeita usuário sem nenhum vínculo ativo", async () => {
@@ -498,6 +550,204 @@ describe("AuthService", () => {
       expect(usersService.updatePassword).toHaveBeenCalledWith("user-1", "novo-hash");
       expect(passwordResetTokenRepository.markUsed).toHaveBeenCalledWith("t1");
       expect(sessionRepository.revokeAllForUser).toHaveBeenCalledWith("user-1");
+    });
+  });
+
+  describe("MFA (Dossiê 43 — Admin Rotta)", () => {
+    it("setupMfa gera um segredo pendente sem ativar o MFA", async () => {
+      const admin = buildUser({ isAdminRotta: true, totpHabilitado: false });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_setup" });
+
+      const result = await service.setupMfa({ mfaSetupToken: "token" });
+
+      expect(result.secret).toEqual(expect.any(String));
+      expect(result.otpauthUrl).toContain("otpauth://totp/");
+      expect(result.qrCodeDataUrl).toContain("data:image/png;base64,");
+      expect(usersService.savePendingMfaSecret).toHaveBeenCalledWith(admin.id, expect.any(String));
+    });
+
+    it("setupMfa rejeita um token com purpose diferente de mfa_setup", async () => {
+      jwtService.verifyAsync.mockResolvedValue({ sub: "user-1", purpose: "mfa_challenge" });
+      await expect(service.setupMfa({ mfaSetupToken: "token" })).rejects.toThrow(
+        UnauthorizedException,
+      );
+    });
+
+    it("setupMfa rejeita quando o MFA já está ativado", async () => {
+      const admin = buildUser({ isAdminRotta: true, totpHabilitado: true });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_setup" });
+
+      await expect(service.setupMfa({ mfaSetupToken: "token" })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("enableMfa ativa o MFA com um código válido, gera 10 códigos de recuperação e emite tokens", async () => {
+      const secretPlain = mfaService.generateSecret();
+      const admin = buildUser({
+        isAdminRotta: true,
+        totpHabilitado: false,
+        totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+      });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_setup" });
+
+      const validCode = authenticator.generate(secretPlain);
+      const result = await service.enableMfa({ mfaSetupToken: "token", code: validCode }, {});
+
+      expect(result.recoveryCodes).toHaveLength(10);
+      expect("accessToken" in result.tokens).toBe(true);
+      expect(usersService.confirmMfaEnabled).toHaveBeenCalledWith(admin.id, expect.any(Array));
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ acao: "MFA_ENABLED" }),
+      );
+    });
+
+    it("enableMfa rejeita código inválido e não ativa nada", async () => {
+      const secretPlain = mfaService.generateSecret();
+      const admin = buildUser({
+        isAdminRotta: true,
+        totpHabilitado: false,
+        totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+      });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_setup" });
+
+      await expect(
+        service.enableMfa({ mfaSetupToken: "token", code: "000000" }, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(usersService.confirmMfaEnabled).not.toHaveBeenCalled();
+    });
+
+    it("verifyMfaLogin emite tokens com o código TOTP correto", async () => {
+      const secretPlain = mfaService.generateSecret();
+      const admin = buildUser({
+        isAdminRotta: true,
+        totpHabilitado: true,
+        totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+      });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_challenge" });
+
+      const validCode = authenticator.generate(secretPlain);
+      const result = await service.verifyMfaLogin(
+        { mfaChallengeToken: "token", code: validCode },
+        {},
+      );
+
+      expect("accessToken" in result).toBe(true);
+    });
+
+    it("verifyMfaLogin rejeita código TOTP incorreto e audita MFA_LOGIN_FAILED", async () => {
+      const secretPlain = mfaService.generateSecret();
+      const admin = buildUser({
+        isAdminRotta: true,
+        totpHabilitado: true,
+        totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+      });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_challenge" });
+
+      await expect(
+        service.verifyMfaLogin({ mfaChallengeToken: "token", code: "000000" }, {}),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ acao: "MFA_LOGIN_FAILED" }),
+      );
+    });
+
+    it("verifyMfaLogin aceita um código de recuperação válido e o consome (uso único)", async () => {
+      const secretPlain = mfaService.generateSecret();
+      const recoveryCodes = mfaService.generateRecoveryCodes();
+      const hashes = await mfaService.hashRecoveryCodes(recoveryCodes);
+      const admin = buildUser({
+        isAdminRotta: true,
+        totpHabilitado: true,
+        totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+        totpCodigosRecuperacaoHashes: hashes,
+      });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_challenge" });
+
+      const result = await service.verifyMfaLogin(
+        { mfaChallengeToken: "token", recoveryCode: recoveryCodes[0] },
+        {},
+      );
+
+      expect("accessToken" in result).toBe(true);
+      expect(usersService.replaceMfaRecoveryCodeHashes).toHaveBeenCalledWith(
+        admin.id,
+        expect.any(Array),
+      );
+      const remainingHashes = usersService.replaceMfaRecoveryCodeHashes.mock.calls[0]![1];
+      expect(remainingHashes).toHaveLength(9);
+    });
+
+    it("verifyMfaLogin rejeita um código de recuperação inválido", async () => {
+      const secretPlain = mfaService.generateSecret();
+      const hashes = await mfaService.hashRecoveryCodes(mfaService.generateRecoveryCodes());
+      const admin = buildUser({
+        isAdminRotta: true,
+        totpHabilitado: true,
+        totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+        totpCodigosRecuperacaoHashes: hashes,
+      });
+      usersService.findById.mockResolvedValue(admin);
+      jwtService.verifyAsync.mockResolvedValue({ sub: admin.id, purpose: "mfa_challenge" });
+
+      await expect(
+        service.verifyMfaLogin({ mfaChallengeToken: "token", recoveryCode: "ZZZZ-9999" }, {}),
+      ).rejects.toThrow(UnauthorizedException);
+      expect(usersService.replaceMfaRecoveryCodeHashes).not.toHaveBeenCalled();
+    });
+
+    it("disableMfa exige o código TOTP atual e desativa", async () => {
+      const secretPlain = mfaService.generateSecret();
+      usersService.findById.mockResolvedValue(
+        buildUser({
+          totpHabilitado: true,
+          totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+        }),
+      );
+      const validCode = authenticator.generate(secretPlain);
+
+      await service.disableMfa(
+        { sub: "user-1", tenantId: null, role: Role.ADMIN_ROTTA, vinculoId: "user-1" },
+        { code: validCode },
+      );
+
+      expect(usersService.disableMfa).toHaveBeenCalledWith("user-1");
+    });
+
+    it("disableMfa rejeita código incorreto e não desativa nada", async () => {
+      const secretPlain = mfaService.generateSecret();
+      usersService.findById.mockResolvedValue(
+        buildUser({
+          totpHabilitado: true,
+          totpSecretCriptografado: mfaService.encryptSecret(secretPlain),
+        }),
+      );
+
+      await expect(
+        service.disableMfa(
+          { sub: "user-1", tenantId: null, role: Role.ADMIN_ROTTA, vinculoId: "user-1" },
+          { code: "000000" },
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(usersService.disableMfa).not.toHaveBeenCalled();
+    });
+
+    it("disableMfa rejeita quando o MFA não está ativado", async () => {
+      usersService.findById.mockResolvedValue(buildUser({ totpHabilitado: false }));
+
+      await expect(
+        service.disableMfa(
+          { sub: "user-1", tenantId: null, role: Role.ADMIN_ROTTA, vinculoId: "user-1" },
+          { code: "123456" },
+        ),
+      ).rejects.toThrow(BadRequestException);
     });
   });
 });

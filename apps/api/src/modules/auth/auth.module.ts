@@ -4,6 +4,7 @@ import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ThrottlerModule } from "@nestjs/throttler";
 
+
 import {
   INVITE_REPOSITORY,
   PASSWORD_RESET_TOKEN_REPOSITORY,
@@ -13,6 +14,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { InvitesController } from "./invites.controller";
 import { InvitesService } from "./invites.service";
+import { MfaService } from "./mfa.service";
 import { PasswordResetNotifierService } from "./password-reset-notifier.service";
 import { PrismaInviteRepository } from "./repositories/prisma-invite.repository";
 import { PrismaPasswordResetTokenRepository } from "./repositories/prisma-password-reset-token.repository";
@@ -22,6 +24,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
 import type { AuthConfig } from "@/config/auth.config";
 
 import { SecurityModule } from "@/infra/security/security.module";
+import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { UsersModule } from "@/modules/users/users.module";
@@ -78,6 +81,7 @@ import { UsersModule } from "@/modules/users/users.module";
     UsersModule,
     CompaniesModule,
     MessagePersonalizationModule,
+    AuditModule,
   ],
   controllers: [AuthController, InvitesController],
   providers: [
@@ -85,6 +89,7 @@ import { UsersModule } from "@/modules/users/users.module";
     AuthService,
     InvitesService,
     PasswordResetNotifierService,
+    MfaService,
     { provide: SESSION_REPOSITORY, useClass: PrismaSessionRepository },
     { provide: PASSWORD_RESET_TOKEN_REPOSITORY, useClass: PrismaPasswordResetTokenRepository },
     { provide: INVITE_REPOSITORY, useClass: PrismaInviteRepository },

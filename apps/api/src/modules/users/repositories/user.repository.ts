@@ -23,6 +23,11 @@ export interface UpdateUserAuthStateInput {
   tentativasLoginFalhas?: number;
   bloqueadoAte?: Date | null;
   consentimentoLgpdAceitoEm?: Date;
+  /** MFA/2FA por TOTP (Dossiê 43) — ver nota completa em `schema.prisma`, model `User`. */
+  totpSecretCriptografado?: string | null;
+  totpHabilitado?: boolean;
+  totpHabilitadoEm?: Date | null;
+  totpCodigosRecuperacaoHashes?: string[];
 }
 
 export interface UserRepository {

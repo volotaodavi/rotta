@@ -523,6 +523,25 @@ model User {
   bloqueadoAte              DateTime?
   consentimentoLgpdAceitoEm DateTime?
 
+  /// MFA/2FA por TOTP (Dossie 43 — campos ja previstos desde o Dossie 12
+  /// Secao 4.5: "o schema de Usuario ja reserva os campos (totp_secret
+  /// criptografado, totp_habilitado) desde o MVP... ativacao em V2 para
+  /// papeis administrativos"). `totpSecretCriptografado` guarda o
+  /// segredo TOTP cifrado (AES-256-GCM, `SecretCipherService`) — NUNCA
+  /// em texto puro, ao contrario de `passwordHash` (hash irreversivel):
+  /// aqui precisamos decifrar para comparar o codigo de 6 digitos a cada
+  /// login, entao e criptografia reversivel, nao hash. Populado já no
+  /// `POST /auth/mfa/setup` (antes de `totpHabilitado` virar true — só
+  /// confirma a ativação depois do primeiro código válido em
+  /// `POST /auth/mfa/enable`, para nunca travar a conta com um segredo
+  /// nunca testado). `totpCodigosRecuperacaoHashes` guarda hash
+  /// (argon2, mesmo `PasswordHasherService`) de cada código de
+  /// recuperação de uso único — nunca o código em si.
+  totpSecretCriptografado      String?
+  totpHabilitado               Boolean   @default(false)
+  totpHabilitadoEm             DateTime?
+  totpCodigosRecuperacaoHashes String[]  @default([])
+
   /// Marca a conta como Administrador Rotta (Dossie 8, Secao 2: "unico
   /// papel sem tenantId, funcionario da Rotta, contas criadas
   /// internamente pela equipe, nunca por self-service") — nao modelado

@@ -20,6 +20,10 @@ import { AuthService, type AuthRequestMeta } from "./auth.service";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
+import { MfaDisableDto } from "./dto/mfa-disable.dto";
+import { MfaEnableDto } from "./dto/mfa-enable.dto";
+import { MfaSetupDto } from "./dto/mfa-setup.dto";
+import { MfaVerifyLoginDto } from "./dto/mfa-verify-login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterEmpresaDto } from "./dto/register-empresa.dto";
 import { RegisterPessoalDto } from "./dto/register-pessoal.dto";
@@ -68,6 +72,48 @@ export class AuthController {
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.authService.login(dto, requestMeta(req, dto.deviceName));
+  }
+
+  /**
+   * MFA (Dossiê 43) — os três endpoints abaixo são `@Public()` de
+   * propósito: rodam ANTES de qualquer sessão existir, autenticados só
+   * pelo `mfaSetupToken`/`mfaChallengeToken` de curta duração (o próprio
+   * corpo do DTO), nunca por um JWT de acesso no header `Authorization`.
+   * `ThrottlerGuard` do controller já cobre — mais apertado aqui por
+   * serem, junto de `login`, os alvos mais óbvios de força bruta.
+   */
+  @Public()
+  @Post("mfa/setup")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  setupMfa(@Body() dto: MfaSetupDto) {
+    return this.authService.setupMfa(dto);
+  }
+
+  @Public()
+  @Post("mfa/enable")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  enableMfa(@Body() dto: MfaEnableDto, @Req() req: Request) {
+    return this.authService.enableMfa(dto, requestMeta(req));
+  }
+
+  @Public()
+  @Post("mfa/verify-login")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  verifyMfaLogin(@Body() dto: MfaVerifyLoginDto, @Req() req: Request) {
+    return this.authService.verifyMfaLogin(dto, requestMeta(req));
+  }
+
+  /** Requer sessão autenticada de verdade (nunca `@Public()`) — desativar MFA exige já estar dentro da conta. */
+  @Post("mfa/disable")
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async disableMfa(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Body() dto: MfaDisableDto,
+  ): Promise<void> {
+    await this.authService.disableMfa(actor, dto);
   }
 
   @Public()

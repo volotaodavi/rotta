@@ -5,6 +5,7 @@ export interface AuthConfig {
   jwtPublicKey: string;
   accessTokenTtl: string;
   refreshTokenTtl: string;
+  mfaEncryptionKey: string | undefined;
 }
 
 /**
@@ -31,4 +32,5 @@ export default registerAs("auth", (): AuthConfig => ({
   jwtPublicKey: normalizePemFromEnv(process.env.JWT_PUBLIC_KEY ?? ""),
   accessTokenTtl: process.env.JWT_ACCESS_TOKEN_TTL ?? "15m",
   refreshTokenTtl: process.env.JWT_REFRESH_TOKEN_TTL ?? "30d",
+  mfaEncryptionKey: process.env.MFA_ENCRYPTION_KEY,
 }));
