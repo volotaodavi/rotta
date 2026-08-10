@@ -77,6 +77,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
+      # Sem pooler neste ambiente — sempre igual a DATABASE_URL (Dossie 31).
+      DIRECT_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
       REDIS_URL: "redis://localhost:6379"
     steps:
       - uses: actions/checkout@v4
@@ -103,6 +105,8 @@ jobs:
       - name: Preparar banco de testes E2E (@rotta/api)
         env:
           DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
+          # Sem pooler neste ambiente — sempre igual a DATABASE_URL (Dossie 31).
+          DIRECT_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
         run: |
           pnpm --filter=@rotta/api prisma:generate
           pnpm --filter=@rotta/api prisma:migrate:deploy

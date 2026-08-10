@@ -21,6 +21,12 @@ export const envSchema = z.object({
   CORS_ORIGIN_REGEX: z.string().optional(),
 
   DATABASE_URL: z.string().url(),
+  // Conexao DIRETA (sem pooler), exigida só pelo CLI do Prisma
+  // (`migrate deploy`/`migrate dev`) quando `DATABASE_URL` é a conexao
+  // em pool da Supabase (PgBouncer, Dossiê 31) — a aplicação em
+  // execução (`PrismaService`) nunca lê esta variável, só `DATABASE_URL`;
+  // por isso opcional aqui (nunca bloqueia o boot do Nest).
+  DIRECT_URL: z.string().url().optional(),
 
   REDIS_URL: z.string().url(),
 

@@ -21,9 +21,20 @@ generator client {
   previewFeatures = ["postgresqlExtensions"]
 }
 
+/// `directUrl` (Dossie 31 — Postgres da Rotta hospedado na Supabase):
+/// exigencia do Prisma Migrate quando `DATABASE_URL` aponta para a
+/// conexao em POOL da Supabase (PgBouncer, modo transaction, porta
+/// 6543) — o pooler nao suporta os prepared statements que
+/// `migrate deploy`/`migrate dev` precisam emitir. Runtime normal da
+/// aplicacao (`PrismaService`) sempre usa `url` (pool); só o CLI do
+/// Prisma (migracoes) usa `directUrl` (conexao direta, porta 5432).
+/// Em ambientes sem pooler (ex. Postgres local do CI/docker-compose,
+/// que nao tem PgBouncer na frente) `DIRECT_URL` pode apontar para o
+/// mesmo valor de `DATABASE_URL` sem problema.
 datasource db {
   provider   = "postgresql"
   url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
   extensions = [postgis]
 }
 

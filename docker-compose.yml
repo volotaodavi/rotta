@@ -53,6 +53,8 @@ services:
       - apps/api/.env
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-rotta}:${POSTGRES_PASSWORD:-rotta_dev_only}@postgres:5432/${POSTGRES_DB:-rotta_dev}?schema=public
+      # Sem pooler neste ambiente — sempre igual a DATABASE_URL (Dossie 31).
+      DIRECT_URL: postgresql://${POSTGRES_USER:-rotta}:${POSTGRES_PASSWORD:-rotta_dev_only}@postgres:5432/${POSTGRES_DB:-rotta_dev}?schema=public
       REDIS_URL: redis://redis:6379
     ports:
       - "3333:3333"
