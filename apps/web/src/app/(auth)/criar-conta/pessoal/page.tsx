@@ -9,6 +9,9 @@ import { useState, type FormEvent } from "react";
 
 import type { RegisterPessoalInput } from "@rotta/api-client";
 
+import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
+
+
 const INITIAL_STATE: RegisterPessoalInput = {
   nome: "",
   email: "",
@@ -32,6 +35,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   function updateField<K extends keyof RegisterPessoalInput>(
     key: K,
@@ -133,13 +137,22 @@ export default function CriarContaPessoalPage(): JSX.Element {
               />
             </FormField>
           </Card.Body>
+          <Card.Body>
+            <TermsAcceptanceCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
+          </Card.Body>
           <Card.Footer>
             {errorMessage && (
               <Typography variant="bodySmall" color="danger" className="mr-auto">
                 {errorMessage}
               </Typography>
             )}
-            <Button type="submit" variant="primary" isLoading={isSubmitting} fullWidth>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isSubmitting}
+              disabled={!aceitouTermos}
+              fullWidth
+            >
               Criar conta
             </Button>
           </Card.Footer>

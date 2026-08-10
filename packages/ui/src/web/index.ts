@@ -7,13 +7,14 @@
  * reutilizados, conforme `packages/ui/README.md` — os demais chegam
  * junto com a tela que precisar deles pela primeira vez):
  *
- *   atoms/      Button, Input, Select, Badge, Spinner, Typography
+ *   atoms/      Button, Input, Select, Badge, Checkbox, Spinner, Typography
  *   molecules/  FormField, Pagination, Tabs
  *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven)
  */
 
 export * from "./atoms/Badge";
 export * from "./atoms/Button";
+export * from "./atoms/Checkbox";
 export * from "./atoms/Input";
 export * from "./atoms/Select";
 export * from "./atoms/Spinner";

@@ -8,7 +8,9 @@ import { useState, type FocusEvent, type FormEvent } from "react";
 
 import type { RegisterEmpresaInput } from "@rotta/api-client";
 
+import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
+
 
 const COMPANY_TYPE_OPTIONS: { value: RegisterEmpresaInput["tipo"]; label: string }[] = [
   { value: "AUTONOMO", label: "Motorista Autônomo" },
@@ -68,6 +70,7 @@ export default function CriarEmpresaPage(): JSX.Element {
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
   const cepLookup = useCepLookup();
   const isMotoristaAutonomo = form.tipo === "AUTONOMO";
 
@@ -315,13 +318,21 @@ export default function CriarEmpresaPage(): JSX.Element {
               />
             </FormField>
           </Card.Body>
+          <Card.Body>
+            <TermsAcceptanceCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
+          </Card.Body>
           <Card.Footer>
             {errorMessage && (
               <Typography variant="bodySmall" color="danger" className="mr-auto">
                 {errorMessage}
               </Typography>
             )}
-            <Button type="submit" variant="primary" isLoading={isSubmitting}>
+            <Button
+              type="submit"
+              variant="primary"
+              isLoading={isSubmitting}
+              disabled={!aceitouTermos}
+            >
               Criar empresa
             </Button>
           </Card.Footer>

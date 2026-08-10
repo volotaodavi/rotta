@@ -3,7 +3,8 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-import { AuthButton, AuthScreen, AuthTextField } from "../components";
+
+import { AuthButton, AuthScreen, AuthTermsCheckbox, AuthTextField } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -30,6 +31,7 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   const [senha, setSenha] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   async function handleSubmit(): Promise<void> {
     setErrorMessage(null);
@@ -83,6 +85,8 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
         onChangeText={setSenha}
       />
 
+      <AuthTermsCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
+
       {errorMessage ? (
         <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
       ) : null}
@@ -91,6 +95,7 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
         label="Criar conta"
         onPress={() => void handleSubmit()}
         isLoading={isSubmitting}
+        disabled={!aceitouTermos}
       />
 
       <Text

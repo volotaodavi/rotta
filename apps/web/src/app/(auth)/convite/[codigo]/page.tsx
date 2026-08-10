@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { use, useState, type FormEvent } from "react";
 
+import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
 import { authApi } from "@/lib/api-client";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -48,6 +49,7 @@ export default function ResgatarConvitePage({
   const [senha, setSenha] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -125,13 +127,21 @@ export default function ResgatarConvitePage({
           />
         </FormField>
 
+        <TermsAcceptanceCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
+
         {errorMessage && (
           <Typography variant="bodySmall" color="danger">
             {errorMessage}
           </Typography>
         )}
 
-        <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>
+        <Button
+          type="submit"
+          variant="primary"
+          fullWidth
+          isLoading={isSubmitting}
+          disabled={!aceitouTermos}
+        >
           Entrar
         </Button>
       </form>

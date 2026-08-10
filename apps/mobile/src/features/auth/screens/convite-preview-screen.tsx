@@ -5,7 +5,7 @@ import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 
-import { AuthButton, AuthScreen, AuthTextField } from "../components";
+import { AuthButton, AuthScreen, AuthTermsCheckbox, AuthTextField } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -51,6 +51,7 @@ export function ConvitePreviewScreen({ route }: Props): JSX.Element {
   const [senha, setSenha] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [aceitouTermos, setAceitouTermos] = useState(false);
 
   async function handleSubmit(): Promise<void> {
     setErrorMessage(null);
@@ -130,11 +131,18 @@ export function ConvitePreviewScreen({ route }: Props): JSX.Element {
         onChangeText={setSenha}
       />
 
+      <AuthTermsCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
+
       {errorMessage ? (
         <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
       ) : null}
 
-      <AuthButton label="Entrar" onPress={() => void handleSubmit()} isLoading={isSubmitting} />
+      <AuthButton
+        label="Entrar"
+        onPress={() => void handleSubmit()}
+        isLoading={isSubmitting}
+        disabled={!aceitouTermos}
+      />
     </AuthScreen>
   );
 }
