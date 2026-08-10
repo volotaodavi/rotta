@@ -53,8 +53,15 @@ export class TripsController {
   // Rota literal ("routes/:routeId/history") registrada ANTES de ":id"
   // — mesma precaução de `VehiclesController` ("dashboard"/"export"
   // antes de ":id") para nunca colidir com o parâmetro coringa.
+  // Motorista/Monitor também podem ver o histórico da PRÓPRIA rota
+  // (Prompt Mestre da Rotta, Seção 7 — o app do Motorista não vira um
+  // painel administrativo, mas o histórico da rota atribuída a ele é
+  // informação necessária, não interna da empresa). O controle de
+  // acesso por registro continua em `RoutesService.findByIdOrThrow`
+  // (chamado por `listByRoute`), que já restringe Motorista/Monitor às
+  // próprias rotas — nunca a operação inteira da empresa.
   @Get("routes/:routeId/history")
-  @Roles(...MANAGE_ROLES)
+  @Roles(...OPERATE_ROLES)
   listByRoute(
     @Param("routeId", ParseUUIDPipe) routeId: string,
     @CurrentUser() actor: AuthenticatedUser,
@@ -62,6 +69,19 @@ export class TripsController {
     @Query("pageSize") pageSize = 20,
   ) {
     return this.tripsService.listByRoute(routeId, actor, Number(page), Number(pageSize));
+  }
+
+  // Rota literal ("routes/:routeId/today") registrada ANTES de ":id"
+  // pelo mesmo motivo de "routes/:routeId/history" acima. Usada pelo
+  // app do Motorista/Monitor para saber se já existe viagem hoje sem
+  // precisar chutar via `start` + tratar o 409.
+  @Get("routes/:routeId/today")
+  @Roles(...OPERATE_ROLES)
+  findTodayByRoute(
+    @Param("routeId", ParseUUIDPipe) routeId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.findTodayByRoute(routeId, actor);
   }
 
   @Get(":id")
@@ -78,6 +98,26 @@ export class TripsController {
     @Req() req: Request,
   ) {
     return this.tripsService.finish(id, actor, requestMeta(req));
+  }
+
+  @Patch(":id/pause")
+  @Roles(...OPERATE_ROLES)
+  pause(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tripsService.pause(id, actor, requestMeta(req));
+  }
+
+  @Patch(":id/resume")
+  @Roles(...OPERATE_ROLES)
+  resume(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.tripsService.resume(id, actor, requestMeta(req));
   }
 
   @Patch(":id/cancel")

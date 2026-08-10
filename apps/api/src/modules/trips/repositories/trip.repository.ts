@@ -11,6 +11,7 @@ export interface CreateTripData {
 
 export interface UpdateTripData {
   status?: TripStatus;
+  pausadaEm?: Date | null;
   finalizadaEm?: Date | null;
   canceladaEm?: Date | null;
   /** Substituição pontual do dia (`ROT-05`/`ROT-06`, tarefa #102) — nunca sobrescreve `Route.motoristaPadraoId`/`veiculoPadraoId`/`monitorPadraoId`. */

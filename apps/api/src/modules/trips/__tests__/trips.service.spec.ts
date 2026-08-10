@@ -31,6 +31,7 @@ function buildTrip(overrides: Partial<Trip> = {}): Trip {
     motoristaId: "motorista-1",
     monitorId: null,
     iniciadaEm: new Date(),
+    pausadaEm: null,
     finalizadaEm: null,
     canceladaEm: null,
     createdAt: new Date(),
@@ -330,6 +331,84 @@ describe("TripsService", () => {
         ),
       ).rejects.toThrow(ConflictException);
       expect(studentEventRepository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("pause/resume (Prompt Mestre, Seção 8 — ONLINE/OFFLINE/EM_VIAGEM/PAUSADO/FINALIZADA)", () => {
+    it("pausa uma viagem em andamento e registra pausadaEm", async () => {
+      const activeTrip = buildTrip();
+      tripRepository.findById.mockResolvedValue(activeTrip);
+      tripRepository.update.mockResolvedValue(
+        buildTrip({ status: TripStatus.PAUSADA, pausadaEm: new Date() }),
+      );
+
+      const result = await service.pause("trip-1", motoristaActor, {});
+
+      expect(tripRepository.update).toHaveBeenCalledWith(
+        "trip-1",
+        expect.objectContaining({ status: TripStatus.PAUSADA }),
+      );
+      expect(result.status).toBe(TripStatus.PAUSADA);
+    });
+
+    it("rejeita pausar uma viagem que não está em andamento", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ status: TripStatus.PAUSADA }));
+
+      await expect(service.pause("trip-1", motoristaActor, {})).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(tripRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("rejeita pausar quando quem chama não é o motorista desta viagem (404, mesmo padrão de fetchOrThrow)", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ motoristaId: "outro-motorista" }));
+
+      await expect(service.pause("trip-1", motoristaActor, {})).rejects.toThrow(
+        "Viagem não encontrada.",
+      );
+    });
+
+    it("retoma uma viagem pausada e limpa pausadaEm", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ status: TripStatus.PAUSADA }));
+      tripRepository.update.mockResolvedValue(buildTrip({ status: TripStatus.EM_ANDAMENTO }));
+
+      const result = await service.resume("trip-1", motoristaActor, {});
+
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
+        status: TripStatus.EM_ANDAMENTO,
+        pausadaEm: null,
+      });
+      expect(result.status).toBe(TripStatus.EM_ANDAMENTO);
+    });
+
+    it("rejeita retomar uma viagem que não está pausada", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ status: TripStatus.EM_ANDAMENTO }));
+
+      await expect(service.resume("trip-1", motoristaActor, {})).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+  });
+
+  describe("findTodayByRoute", () => {
+    it("devolve null quando nenhuma viagem foi registrada hoje para a rota", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({ id: "route-1" } as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(null);
+
+      const result = await service.findTodayByRoute("route-1", motoristaActor);
+
+      expect(result).toBeNull();
+    });
+
+    it("devolve a viagem de hoje quando existe, seja qual for o status", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({ id: "route-1" } as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(
+        buildTrip({ status: TripStatus.PAUSADA }),
+      );
+
+      const result = await service.findTodayByRoute("route-1", motoristaActor);
+
+      expect(result?.status).toBe(TripStatus.PAUSADA);
     });
   });
 

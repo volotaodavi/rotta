@@ -316,6 +316,78 @@ export class TripsService {
     return toTripResponseDto(updated);
   }
 
+  /**
+   * Prompt Mestre da Rotta, Seção 8 ("PAUSADO" é um estado real, não um
+   * apelido de EM_ANDAMENTO): interrompe o envio de posição/checklist
+   * sem encerrar a viagem — o motorista retoma depois de onde parou
+   * (`resume`), nunca precisa reiniciar. Mesmas regras de quem pode
+   * operar de `finish`/`cancel` (`assertCanOperateTrip`).
+   */
+  async pause(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    this.assertCanOperateTrip(trip, actor);
+    if (trip.status !== "EM_ANDAMENTO") {
+      throw new BadRequestException("Esta viagem não está em andamento.");
+    }
+
+    const updated = await this.tripRepository.update(id, {
+      status: "PAUSADA",
+      pausadaEm: new Date(),
+    });
+
+    await this.recordAudit({
+      companyId: trip.companyId,
+      entidadeId: id,
+      acao: "PAUSED",
+      atorUserId: actor.sub,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toTripResponseDto(updated);
+  }
+
+  async resume(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<TripResponseDto> {
+    const trip = await this.fetchOrThrow(id, actor);
+    this.assertCanOperateTrip(trip, actor);
+    if (trip.status !== "PAUSADA") {
+      throw new BadRequestException("Esta viagem não está pausada.");
+    }
+
+    const updated = await this.tripRepository.update(id, {
+      status: "EM_ANDAMENTO",
+      pausadaEm: null,
+    });
+
+    await this.recordAudit({
+      companyId: trip.companyId,
+      entidadeId: id,
+      acao: "RESUMED",
+      atorUserId: actor.sub,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toTripResponseDto(updated);
+  }
+
+  /**
+   * "Existe viagem hoje para esta rota?" (qualquer status) — o app do
+   * Motorista usa isto para decidir entre mostrar "Iniciar viagem" ou
+   * retomar o acompanhamento de uma viagem já criada, sem precisar
+   * tentar `start` só para descobrir pelo 409 (`ConflictException`).
+   * `null` quando nenhuma viagem foi registrada hoje ainda.
+   */
+  async findTodayByRoute(
+    routeId: string,
+    actor: AuthenticatedUser,
+  ): Promise<TripResponseDto | null> {
+    // Valida acesso à rota (RBAC/tenant) antes de expor a viagem dela.
+    await this.routesService.findByIdOrThrow(routeId, actor);
+    const trip = await this.tripRepository.findByRouteAndDate(routeId, today());
+    return trip ? toTripResponseDto(trip) : null;
+  }
+
   async cancel(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<TripResponseDto> {
     const trip = await this.fetchOrThrow(id, actor);
     this.assertCanOperateTrip(trip, actor);

@@ -265,11 +265,17 @@ export class RoutesService {
   }
 
   async list(query: ListRoutesQueryDto, actor: AuthenticatedUser): Promise<ListRoutesResponseDto> {
+    // Prompt Mestre da Rotta, Seções 5/9: Motorista/Monitor só enxergam
+    // as próprias rotas (nunca a operação inteira da empresa) — quem
+    // gerencia (Admin Rotta/Empresa/Gestor) continua vendo tudo.
+    const isDriverOrMonitor = actor.role === Role.MOTORISTA || actor.role === Role.MONITOR;
+
     const result = await this.routeRepository.list({
       search: query.search,
       status: query.status,
       turno: query.turno,
       companyId: actor.role === Role.ADMIN_ROTTA ? query.companyId : undefined,
+      atribuidaAUserId: isDriverOrMonitor ? actor.sub : undefined,
       page: query.page,
       pageSize: query.pageSize,
     });

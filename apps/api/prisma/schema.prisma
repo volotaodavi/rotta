@@ -1671,6 +1671,7 @@ model RouteStudent {
 /// possível iniciar duas vezes" de `GPS-01`.
 enum TripStatus {
   EM_ANDAMENTO
+  PAUSADA
   FINALIZADA
   CANCELADA
 }
@@ -1702,6 +1703,12 @@ model Trip {
   monitor     User?   @relation("TripMonitor", fields: [monitorId], references: [id], onDelete: SetNull)
 
   iniciadaEm   DateTime  @default(now())
+  /// Preenchido enquanto a viagem está `PAUSADA` (Prompt Mestre §8: "o
+  /// sistema deve diferenciar ONLINE/OFFLINE/EM_VIAGEM/PAUSADO/
+  /// VIAGEM_FINALIZADA") — limpo (`null`) ao retomar. Nunca sobrescreve
+  /// `iniciadaEm`: uma pausa não reinicia a viagem, só interrompe o
+  /// envio de posição/checklist até a retomada.
+  pausadaEm    DateTime?
   finalizadaEm DateTime?
   canceladaEm  DateTime?
 

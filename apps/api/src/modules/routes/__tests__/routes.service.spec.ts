@@ -87,6 +87,13 @@ const empresaActor: AuthenticatedUser = {
   vinculoId: "vinculo-1",
 };
 
+const motoristaActor: AuthenticatedUser = {
+  sub: "motorista-1",
+  tenantId: "company-1",
+  role: Role.MOTORISTA,
+  vinculoId: "vinculo-2",
+};
+
 describe("RoutesService", () => {
   let service: RoutesService;
   let routeRepository: jest.Mocked<RouteRepository>;
@@ -216,6 +223,28 @@ describe("RoutesService", () => {
       );
 
       expect(routeRepository.create).toHaveBeenCalled();
+    });
+  });
+
+  describe("list — Prompt Mestre, Seções 5/9 (Motorista/Monitor não veem a operação inteira)", () => {
+    it("não restringe a listagem para Empresa/Gestor/Admin Rotta", async () => {
+      routeRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list({ page: 1, pageSize: 20 }, empresaActor);
+
+      expect(routeRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ atribuidaAUserId: undefined }),
+      );
+    });
+
+    it("restringe a listagem às próprias rotas quando o ator é Motorista", async () => {
+      routeRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list({ page: 1, pageSize: 20 }, motoristaActor);
+
+      expect(routeRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ atribuidaAUserId: "motorista-1" }),
+      );
     });
   });
 

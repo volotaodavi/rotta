@@ -27,6 +27,15 @@ export interface ListRoutesFilter {
   turno?: SchoolShift;
   /** Só relevante para Admin Rotta (bypass de RLS) — mesma convenção de `ListVehiclesFilter.companyId`. */
   companyId?: string;
+  /**
+   * Prompt Mestre da Rotta, Seções 5/9 ("o app do Motorista não deve
+   * virar um painel administrativo"/"o Monitor deve visualizar apenas o
+   * necessário") — quando presente, restringe a listagem às rotas onde
+   * este usuário é `motoristaPadraoId` OU `monitorPadraoId`. Setado por
+   * `RoutesService.list` sempre que o ator autenticado tem role
+   * MOTORISTA/MONITOR, nunca escolhido pelo próprio cliente.
+   */
+  atribuidaAUserId?: string;
   page: number;
   pageSize: number;
 }

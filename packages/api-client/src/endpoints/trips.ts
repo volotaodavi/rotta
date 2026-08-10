@@ -9,7 +9,7 @@ import type { ApiClient } from "../http";
  * em `endpoints/gps.ts`.
  */
 
-export type TripStatus = "EM_ANDAMENTO" | "FINALIZADA" | "CANCELADA";
+export type TripStatus = "EM_ANDAMENTO" | "PAUSADA" | "FINALIZADA" | "CANCELADA";
 export type TripStudentEventType = "EMBARCOU" | "AUSENTE" | "DESEMBARCOU";
 
 export interface StartTripInput {
@@ -29,6 +29,7 @@ export interface Trip {
   motoristaId: string;
   monitorId: string | null;
   iniciadaEm: string;
+  pausadaEm: string | null;
   finalizadaEm: string | null;
   canceladaEm: string | null;
   createdAt: string;
@@ -121,6 +122,13 @@ export function createTripsEndpoints(apiClient: ApiClient) {
     finish: async (id: string): Promise<Trip> =>
       (await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/finish`, { method: "PATCH" })).data,
 
+    /** Prompt Mestre da Rotta, Seção 8 — pausa sem encerrar a viagem (nunca reinicia `iniciadaEm`). */
+    pause: async (id: string): Promise<Trip> =>
+      (await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/pause`, { method: "PATCH" })).data,
+
+    resume: async (id: string): Promise<Trip> =>
+      (await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/resume`, { method: "PATCH" })).data,
+
     cancel: async (id: string): Promise<Trip> =>
       (await apiClient.request<ApiEnvelope<Trip>>(`/trips/${id}/cancel`, { method: "PATCH" })).data,
 
@@ -156,6 +164,10 @@ export function createTripsEndpoints(apiClient: ApiClient) {
           `/trips/routes/${routeId}/history${buildQueryString({ page, pageSize })}`,
         )
       ).data,
+
+    /** Viagem de hoje desta rota (qualquer status), ou `null` — usado pelo app do Motorista para decidir entre "Iniciar viagem" e retomar o acompanhamento de uma já criada. */
+    findTodayByRoute: async (routeId: string): Promise<Trip | null> =>
+      (await apiClient.request<ApiEnvelope<Trip | null>>(`/trips/routes/${routeId}/today`)).data,
 
     ingestPosition: async (id: string, input: IngestPositionInput): Promise<TripPosition> =>
       (

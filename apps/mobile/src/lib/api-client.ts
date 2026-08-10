@@ -5,8 +5,10 @@ import {
   createGpsEndpoints,
   createMarketplaceEndpoints,
   createNotificationsEndpoints,
+  createRoutesEndpoints,
   createSchoolsEndpoints,
   createStudentsEndpoints,
+  createTripsEndpoints,
   createVehiclesEndpoints,
   createWalletEndpoints,
 } from "@rotta/api-client";
@@ -34,3 +36,5 @@ export const geoApi = createGeoEndpoints(apiClient);
 export const notificationsApi = createNotificationsEndpoints(apiClient);
 export const gpsApi = createGpsEndpoints(apiClient);
 export const walletApi = createWalletEndpoints(apiClient);
+export const routesApi = createRoutesEndpoints(apiClient);
+export const tripsApi = createTripsEndpoints(apiClient);

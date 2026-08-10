@@ -12,6 +12,7 @@ export function toTripResponseDto(trip: Trip): TripResponseDto {
     motoristaId: trip.motoristaId,
     monitorId: trip.monitorId,
     iniciadaEm: trip.iniciadaEm,
+    pausadaEm: trip.pausadaEm,
     finalizadaEm: trip.finalizadaEm,
     canceladaEm: trip.canceladaEm,
     createdAt: trip.createdAt,

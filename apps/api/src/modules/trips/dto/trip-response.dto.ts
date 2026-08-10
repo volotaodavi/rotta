@@ -12,6 +12,7 @@ export class TripResponseDto {
   @ApiProperty() motoristaId!: string;
   @ApiPropertyOptional() monitorId?: string | null;
   @ApiProperty() iniciadaEm!: Date;
+  @ApiPropertyOptional() pausadaEm?: Date | null;
   @ApiPropertyOptional() finalizadaEm?: Date | null;
   @ApiPropertyOptional() canceladaEm?: Date | null;
   @ApiProperty() createdAt!: Date;

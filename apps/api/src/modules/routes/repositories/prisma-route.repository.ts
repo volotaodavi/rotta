@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CreateRouteData,
   ListRoutesFilter,
@@ -35,6 +34,14 @@ export class PrismaRouteRepository implements RouteRepository {
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.turno ? { turno: filter.turno } : {}),
       ...(filter.search ? { nome: { contains: filter.search, mode: "insensitive" } } : {}),
+      ...(filter.atribuidaAUserId
+        ? {
+            OR: [
+              { motoristaPadraoId: filter.atribuidaAUserId },
+              { monitorPadraoId: filter.atribuidaAUserId },
+            ],
+          }
+        : {}),
     };
 
     const [items, total] = await Promise.all([
