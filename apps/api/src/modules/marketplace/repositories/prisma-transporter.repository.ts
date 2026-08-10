@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
+  PublicSchoolLink,
+  PublicTeamMember,
   SearchTransportersFilter,
   TransporterCandidate,
   TransporterRepository,
@@ -99,5 +100,43 @@ export class PrismaTransporterRepository implements TransporterRepository {
         take: limit,
       }),
     );
+  }
+
+  async listActiveSchoolsForCompany(companyId: string, limit: number): Promise<PublicSchoolLink[]> {
+    const links = await this.prisma.withBypass(
+      this.prisma.schoolCompanyLink.findMany({
+        where: { companyId, desvinculadoEm: null },
+        select: { school: { select: { id: true, nomeOficial: true } } },
+        orderBy: { vinculadoEm: "asc" },
+        take: limit,
+      }),
+    );
+    return links.map((link) => link.school);
+  }
+
+  async listPublicTeamForCompany(companyId: string): Promise<PublicTeamMember[]> {
+    const memberships = await this.prisma.withBypass(
+      this.prisma.membership.findMany({
+        where: { companyId, role: { in: ["motorista", "monitor"] }, status: "ATIVO" },
+        select: { role: true, user: { select: { nome: true } } },
+        orderBy: { iniciadoEm: "asc" },
+      }),
+    );
+    return memberships.map((m) => ({ nome: m.user.nome, papel: m.role }));
+  }
+
+  async computeAverageResponseHours(companyId: string): Promise<number | null> {
+    const decididas = await this.prisma.withBypass(
+      this.prisma.transportRequest.findMany({
+        where: { companyId, status: { in: ["APROVADA", "RECUSADA"] } },
+        select: { createdAt: true, updatedAt: true },
+      }),
+    );
+    if (decididas.length === 0) return null;
+    const totalHoras = decididas.reduce(
+      (sum, r) => sum + (r.updatedAt.getTime() - r.createdAt.getTime()) / 3_600_000,
+      0,
+    );
+    return Math.round((totalHoras / decididas.length) * 10) / 10;
   }
 }

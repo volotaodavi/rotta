@@ -120,6 +120,9 @@ describe("MarketplaceService", () => {
       searchCandidates: jest.fn(),
       findCandidateById: jest.fn(),
       listRecentRatingsForCompany: jest.fn(),
+      listActiveSchoolsForCompany: jest.fn().mockResolvedValue([]),
+      listPublicTeamForCompany: jest.fn().mockResolvedValue([]),
+      computeAverageResponseHours: jest.fn().mockResolvedValue(null),
     };
     service = new MarketplaceService(transporterRepository);
   });
@@ -263,6 +266,39 @@ describe("MarketplaceService", () => {
       const result = await service.findByIdOrThrow("company-1");
 
       expect(result.distanciaKm).toBe(0);
+    });
+
+    it("retorna escolas atendidas, equipe e tempo médio de resposta reais (perfil público)", async () => {
+      transporterRepository.findCandidateById.mockResolvedValue(buildCandidate());
+      transporterRepository.listRecentRatingsForCompany.mockResolvedValue([]);
+      transporterRepository.listActiveSchoolsForCompany.mockResolvedValue([
+        { id: "school-1", nomeOficial: "Escola Modelo" },
+      ]);
+      transporterRepository.listPublicTeamForCompany.mockResolvedValue([
+        { nome: "João Motorista", papel: "motorista" },
+        { nome: "Ana Monitora", papel: "monitor" },
+      ]);
+      transporterRepository.computeAverageResponseHours.mockResolvedValue(4.5);
+
+      const result = await service.findByIdOrThrow("company-1");
+
+      expect(result.atuandoDesde).toBeInstanceOf(Date);
+      expect(result.escolasAtendidas).toEqual([{ id: "school-1", nomeOficial: "Escola Modelo" }]);
+      expect(result.equipe).toEqual([
+        { nome: "João Motorista", papel: "motorista" },
+        { nome: "Ana Monitora", papel: "monitor" },
+      ]);
+      expect(result.tempoMedioRespostaHoras).toBe(4.5);
+    });
+
+    it("retorna tempoMedioRespostaHoras null quando a empresa nunca decidiu nenhuma solicitação", async () => {
+      transporterRepository.findCandidateById.mockResolvedValue(buildCandidate());
+      transporterRepository.listRecentRatingsForCompany.mockResolvedValue([]);
+      transporterRepository.computeAverageResponseHours.mockResolvedValue(null);
+
+      const result = await service.findByIdOrThrow("company-1");
+
+      expect(result.tempoMedioRespostaHoras).toBeNull();
     });
   });
 });

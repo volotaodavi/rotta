@@ -1,7 +1,6 @@
 import { Star } from "@rotta/icons/native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { useTransporterDetail } from "../hooks/use-transporters";
 
 import type { MarketplaceStackParamList } from "@/navigation/types";
@@ -24,13 +23,21 @@ type Props = NativeStackScreenProps<MarketplaceStackParamList, "TransportadorDet
  * blocos"). Reorganizado a partir da versão anterior (um único
  * `VehicleCard` de métricas) em blocos nomeados — "primeira dobra" com
  * o CTA "Solicitar transporte" logo no topo (nunca escondido no fim da
- * tela), depois "Quem somos"/"Frota"/"Área atendida"/"Contato"/
- * "Avaliações recentes", cada um só com dado que a API já expõe de
- * verdade (`TransporterDetail`, `GET /marketplace/transporters/:id`).
+ * tela), depois "Quem somos"/"Frota"/"Equipe"/"Escolas atendidas"/
+ * "Área atendida"/"Contato"/"Avaliações recentes", cada um só com dado
+ * que a API já expõe de verdade (`TransporterDetail`, `GET
+ * /marketplace/transporters/:id`).
  *
- * Fora desta entrega, por exigirem endpoint novo (não construído aqui —
- * ver Dossiê 37 §4): lista de motoristas/monitores nomeados, lista de
- * escolas atendidas, galeria de fotos, documentação pública, FAQ.
+ * "Equipe" e "Escolas atendidas" foram fechadas na Fase 2 (Dossiê 38) —
+ * antes exigiam endpoint novo, registrado como gap no Dossiê 37 §4;
+ * "equipe" só mostra nome/papel, nunca CPF/telefone/e-mail (mesmo
+ * cuidado de nunca vazar dado pessoal além do que o perfil público
+ * precisa).
+ *
+ * Ainda fora desta entrega, por não terem modelo de dado nenhum hoje:
+ * galeria de fotos, documentação pública (documento de motorista é
+ * dado sensível — nunca exposto publicamente, decisão de segurança,
+ * não só de escopo), FAQ.
  */
 export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -84,6 +91,14 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
             ? `Transportadora ${data.tipo === "MEI" ? "MEI" : data.tipo === "AUTONOMO" ? "autônoma" : "empresa"} atuando em ${data.cidade}/${data.estado}.`
             : `Atua em ${data.cidade}/${data.estado}.`}
         </Text>
+        <Text style={{ color: theme.colors.textMuted }}>
+          {formatAtuandoDesde(data.atuandoDesde)}
+        </Text>
+        {data.tempoMedioRespostaHoras !== null ? (
+          <Text style={{ color: theme.colors.textMuted }}>
+            Responde solicitações em média em {formatTempoResposta(data.tempoMedioRespostaHoras)}
+          </Text>
+        ) : null}
       </Section>
 
       <Section title="Frota" theme={theme}>
@@ -100,6 +115,26 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
             : "Consulte a mensalidade"}
         </Text>
       </Section>
+
+      {data.equipe.length > 0 ? (
+        <Section title="Equipe" theme={theme}>
+          {data.equipe.map((membro, index) => (
+            <Text key={`${membro.nome}-${index}`} style={{ color: theme.colors.textMuted }}>
+              {membro.nome} — {membro.papel === "motorista" ? "Motorista" : "Monitor(a)"}
+            </Text>
+          ))}
+        </Section>
+      ) : null}
+
+      {data.escolasAtendidas.length > 0 ? (
+        <Section title="Escolas atendidas" theme={theme}>
+          {data.escolasAtendidas.map((escola) => (
+            <Text key={escola.id} style={{ color: theme.colors.textMuted }}>
+              {escola.nomeOficial}
+            </Text>
+          ))}
+        </Section>
+      ) : null}
 
       <Section title="Área atendida" theme={theme}>
         <Text style={{ color: theme.colors.textMuted }}>
@@ -140,6 +175,25 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
       </View>
     </VehicleScreen>
   );
+}
+
+/** "Atuando há X anos"/"há poucos meses" — sempre a partir de `Company.createdAt` real, nunca um número solto. */
+function formatAtuandoDesde(atuandoDesde: string): string {
+  const meses = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(atuandoDesde).getTime()) / (1000 * 60 * 60 * 24 * 30)),
+  );
+  if (meses < 12) {
+    return meses <= 1 ? "Na Rotta há poucas semanas" : `Na Rotta há ${meses} meses`;
+  }
+  const anos = Math.floor(meses / 12);
+  return `Na Rotta há ${anos} ano${anos > 1 ? "s" : ""}`;
+}
+
+function formatTempoResposta(horas: number): string {
+  if (horas < 1) return "menos de 1 hora";
+  if (horas < 24) return `${Math.round(horas)} hora(s)`;
+  return `${Math.round(horas / 24)} dia(s)`;
 }
 
 function Section({

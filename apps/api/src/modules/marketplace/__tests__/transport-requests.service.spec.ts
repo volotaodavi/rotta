@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-
 import { TransportRequestsService } from "../transport-requests.service";
 
 import type { TransportRequestRepository } from "../repositories/transport-request.repository";
@@ -87,6 +86,9 @@ describe("TransportRequestsService", () => {
       searchCandidates: jest.fn(),
       findCandidateById: jest.fn(),
       listRecentRatingsForCompany: jest.fn(),
+      listActiveSchoolsForCompany: jest.fn().mockResolvedValue([]),
+      listPublicTeamForCompany: jest.fn().mockResolvedValue([]),
+      computeAverageResponseHours: jest.fn().mockResolvedValue(null),
     };
     studentsService = {
       findByIdOrThrow: jest.fn(),

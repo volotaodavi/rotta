@@ -68,6 +68,17 @@ export interface TransporterRecentRating {
   createdAt: string;
 }
 
+export interface TransporterPublicSchoolLink {
+  id: string;
+  nomeOficial: string;
+}
+
+export interface TransporterPublicTeamMember {
+  nome: string;
+  /** Valor de `Role` (Dossie 8, Secao 2) — sempre "motorista" ou "monitor" aqui. */
+  papel: string;
+}
+
 export interface TransporterDetail extends TransporterCard {
   razaoSocial: string;
   cidade: string;
@@ -76,6 +87,14 @@ export interface TransporterDetail extends TransporterCard {
   whatsapp: string | null;
   fotoUrl: string | null;
   avaliacoesRecentes: TransporterRecentRating[];
+  /** Data de cadastro da empresa na Rotta — base de "atuando há X anos". */
+  atuandoDesde: string;
+  /** Escolas com vínculo ativo — perfil público (briefing "PERFIL DA EMPRESA"). */
+  escolasAtendidas: TransporterPublicSchoolLink[];
+  /** Motoristas/monitores ativos — só nome e papel, nunca dado pessoal sensível. */
+  equipe: TransporterPublicTeamMember[];
+  /** Média de horas entre envio e decisão de solicitações — null se a empresa ainda não decidiu nenhuma. */
+  tempoMedioRespostaHoras: number | null;
 }
 
 // --- Solicitação de transporte ----------------------------------------------

@@ -19,6 +19,8 @@ import type {
 } from "./repositories/transporter.repository";
 
 const RECENT_RATINGS_LIMIT = 10;
+/** Cap razoável para o bloco "Escolas atendidas" do perfil público — evita uma lista infinita para redes grandes. */
+const SCHOOLS_LIMIT = 30;
 
 function distanceToCandidate(
   candidate: TransporterCandidate,
@@ -116,12 +118,21 @@ export class MarketplaceService {
         ? distanceToCandidate(candidate, latitude, longitude)
         : 0;
 
-    const recentRatings = await this.transporterRepository.listRecentRatingsForCompany(
-      companyId,
-      RECENT_RATINGS_LIMIT,
-    );
+    const [recentRatings, escolasAtendidas, equipe, tempoMedioRespostaHoras] = await Promise.all([
+      this.transporterRepository.listRecentRatingsForCompany(companyId, RECENT_RATINGS_LIMIT),
+      this.transporterRepository.listActiveSchoolsForCompany(companyId, SCHOOLS_LIMIT),
+      this.transporterRepository.listPublicTeamForCompany(companyId),
+      this.transporterRepository.computeAverageResponseHours(companyId),
+    ]);
 
-    return toTransporterDetailResponseDto(candidate, distanciaKm, recentRatings);
+    return toTransporterDetailResponseDto(
+      candidate,
+      distanciaKm,
+      recentRatings,
+      escolasAtendidas,
+      equipe,
+      tempoMedioRespostaHoras,
+    );
   }
 }
 

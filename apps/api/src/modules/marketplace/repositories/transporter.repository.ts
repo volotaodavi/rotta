@@ -40,6 +40,17 @@ export interface TransporterCandidate {
  * nada além do que o cartão/detalhe público precisa — sem
  * `cpfCnpj`/dados internos de outra empresa vazando por aqui.
  */
+export interface PublicSchoolLink {
+  id: string;
+  nomeOficial: string;
+}
+
+export interface PublicTeamMember {
+  nome: string;
+  /** Valor de `Role` (Dossie 8, Secao 2) — sempre "motorista" ou "monitor" aqui. */
+  papel: string;
+}
+
 export interface TransporterRepository {
   /** Todas as Empresas `ATIVO`/`deletedAt: null` com coordenadas, já filtradas pelos critérios não-geográficos. */
   searchCandidates(filter: SearchTransportersFilter): Promise<TransporterCandidate[]>;
@@ -48,4 +59,19 @@ export interface TransporterRepository {
     companyId: string,
     limit: number,
   ): Promise<(Rating & { responsavel: { nome: string } })[]>;
+  /** Escolas com vínculo ativo (`desvinculadoEm: null`) — perfil público do transportador (briefing "PERFIL DA EMPRESA" §"Escolas atendidas"). */
+  listActiveSchoolsForCompany(companyId: string, limit: number): Promise<PublicSchoolLink[]>;
+  /**
+   * Motoristas/monitores com `Membership` `ATIVO` — só nome e papel,
+   * nunca CPF/telefone/e-mail (mesmo cuidado de nunca vazar dado
+   * pessoal além do que o cartão/perfil público precisa, documentado na
+   * nota da interface acima).
+   */
+  listPublicTeamForCompany(companyId: string): Promise<PublicTeamMember[]>;
+  /**
+   * Média de horas entre `TransportRequest.createdAt` e `updatedAt`
+   * para solicitações já decididas (`APROVADA`/`RECUSADA`) — `null` se
+   * a empresa ainda não decidiu nenhuma solicitação.
+   */
+  computeAverageResponseHours(companyId: string): Promise<number | null>;
 }

@@ -1,21 +1,16 @@
-import {
-  ApiError,
-  type Contract,
-  type RatingTargetType,
-  type TransportRequest,
-} from "@rotta/api-client";
+import { ApiError, type Contract, type RatingTargetType } from "@rotta/api-client";
 import { Star } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
-import { Timeline, type TimelineStep } from "@rotta/ui/native";
+import { Timeline } from "@rotta/ui/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
-
 
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
 import { useTransporterDetail } from "../hooks/use-transporters";
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "../labels";
+import { buildContratoSteps, buildSolicitacaoSteps } from "../timeline-steps";
 
 import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
@@ -157,59 +152,6 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   );
 }
 
-/** Etapas reais da solicitação (`TransportRequestStatus`) — nunca uma barra de progresso fake. */
-function buildSolicitacaoSteps(request: TransportRequest): TimelineStep[] {
-  if (request.status === "RECUSADA") {
-    return [
-      { key: "enviada", label: "Solicitação enviada", state: "done" },
-      { key: "analise", label: "Em análise pelo transportador", state: "done" },
-      { key: "resultado", label: "Recusada", state: "error" },
-    ];
-  }
-  return [
-    {
-      key: "enviada",
-      label: "Solicitação enviada",
-      state: request.status === "RECEBIDA" ? "current" : "done",
-    },
-    {
-      key: "analise",
-      label: "Em análise pelo transportador",
-      state:
-        request.status === "RECEBIDA"
-          ? "pending"
-          : request.status === "EM_ANALISE"
-            ? "current"
-            : "done",
-    },
-    {
-      key: "resultado",
-      label: "Aprovada",
-      state: request.status === "APROVADA" ? "done" : "pending",
-    },
-  ];
-}
-
-/** Etapas reais da geração/assinatura de contrato — `null` = ainda sem contrato gerado. */
-function buildContratoSteps(contrato: Contract | null): TimelineStep[] {
-  return [
-    { key: "aprovada", label: "Solicitação aprovada", state: "done" },
-    {
-      key: "contrato",
-      label: "Contrato enviado",
-      state: contrato ? "done" : "current",
-    },
-    {
-      key: "assinatura",
-      label: "Assinatura pendente",
-      state: !contrato ? "pending" : contrato.assinadoResponsavelEm ? "done" : "current",
-      description: contrato?.assinadoResponsavelEm
-        ? "Você já assinou — aguardando o transportador."
-        : undefined,
-    },
-  ];
-}
-
 function DetalhesContrato({ contrato }: { contrato: Contract }): JSX.Element {
   const { theme } = useTheme();
   const { data: transportador } = useTransporterDetail(contrato.companyId);
@@ -251,7 +193,8 @@ function DetalhesContrato({ contrato }: { contrato: Contract }): JSX.Element {
  * quando não há transporte em andamento — o card mostra sempre um
  * estado real (mapa, ou mensagem honesta), nunca um mapa falso.
  */
-function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX.Element {
+/** Exportado para a Home adaptativa da aba "Mapa" (Fase 2, Dossiê 38 §3) reusar a mesma seção de acompanhamento ao vivo. */
+export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX.Element {
   const { theme } = useTheme();
   const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
 

@@ -4,7 +4,11 @@ import type {
   TransporterCardResponseDto,
   TransporterDetailResponseDto,
 } from "../dto/transporter-response.dto";
-import type { TransporterCandidate } from "../repositories/transporter.repository";
+import type {
+  PublicSchoolLink,
+  PublicTeamMember,
+  TransporterCandidate,
+} from "../repositories/transporter.repository";
 import type { Rating } from "@prisma/client";
 
 function averageRating(ratings: Pick<Rating, "nota">[]): number | null {
@@ -41,6 +45,9 @@ export function toTransporterDetailResponseDto(
   candidate: TransporterCandidate,
   distanciaKm: number,
   recentRatings: (Rating & { responsavel: { nome: string } })[],
+  escolasAtendidas: PublicSchoolLink[],
+  equipe: PublicTeamMember[],
+  tempoMedioRespostaHoras: number | null,
 ): TransporterDetailResponseDto {
   const { company } = candidate;
   return {
@@ -57,5 +64,9 @@ export function toTransporterDetailResponseDto(
       responsavelNome: r.responsavel.nome,
       createdAt: r.createdAt,
     })),
+    atuandoDesde: company.createdAt,
+    escolasAtendidas,
+    equipe,
+    tempoMedioRespostaHoras,
   };
 }

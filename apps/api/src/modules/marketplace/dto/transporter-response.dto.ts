@@ -73,6 +73,22 @@ class RecentRatingDto {
   createdAt!: Date;
 }
 
+class PublicSchoolLinkDto {
+  @ApiProperty()
+  id!: string;
+
+  @ApiProperty()
+  nomeOficial!: string;
+}
+
+class PublicTeamMemberDto {
+  @ApiProperty()
+  nome!: string;
+
+  @ApiProperty({ description: '"motorista" ou "monitor" (valor de `Role`, Dossie 8 Secao 2)' })
+  papel!: string;
+}
+
 /** Página de detalhes do transportador (briefing "DETALHES"). */
 export class TransporterDetailResponseDto extends TransporterCardResponseDto {
   @ApiProperty()
@@ -95,4 +111,27 @@ export class TransporterDetailResponseDto extends TransporterCardResponseDto {
 
   @ApiProperty({ type: [RecentRatingDto] })
   avaliacoesRecentes!: RecentRatingDto[];
+
+  @ApiProperty({
+    description: 'Data de cadastro da empresa na Rotta — base de "atuando há X anos"',
+  })
+  atuandoDesde!: Date;
+
+  @ApiProperty({
+    type: [PublicSchoolLinkDto],
+    description: 'Escolas com vínculo ativo — perfil público (briefing "PERFIL DA EMPRESA")',
+  })
+  escolasAtendidas!: PublicSchoolLinkDto[];
+
+  @ApiProperty({
+    type: [PublicTeamMemberDto],
+    description: "Motoristas/monitores ativos — só nome e papel, nunca dado pessoal sensível",
+  })
+  equipe!: PublicTeamMemberDto[];
+
+  @ApiPropertyOptional({
+    description:
+      "Média de horas entre o envio e a decisão (aprovada/recusada) de solicitações — null se a empresa ainda não decidiu nenhuma",
+  })
+  tempoMedioRespostaHoras!: number | null;
 }
