@@ -152,7 +152,9 @@ export class DriversService {
     }
 
     const extension = file.originalname.split(".").pop() ?? (isPdf ? "pdf" : "jpg");
-    const url = await this.storageService.upload(
+    // uploadPrivate (Dossiê 32): documento pessoal (CNH/EAR/Cursos) — nunca
+    // exposto por URL pública previsível, só por URL assinada.
+    const url = await this.storageService.uploadPrivate(
       `drivers/${targetUserId}/documents/${randomUUID()}.${extension}`,
       file.buffer,
       file.mimetype,

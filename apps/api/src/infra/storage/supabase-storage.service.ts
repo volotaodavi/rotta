@@ -30,6 +30,24 @@ import type { StorageConfig } from "@/config/storage.config";
  * boot quando a configuração está ausente — visível direto no log de
  * deploy, em vez de só aparecer silenciosamente no primeiro upload que
  * um usuário tentar.
+ *
+ * Dois métodos de upload, dois buckets (Dossiê 32 — auditoria de
+ * segurança de dado pessoal): `upload()` grava no bucket PÚBLICO
+ * (`publicBucket`, ex. logo/foto de empresa e do veículo — ativos de
+ * marca, sem dado pessoal de terceiro) e devolve uma URL pública fixa.
+ * `uploadPrivate()` grava no bucket PRIVADO (`bucket`, ex. CNH/documento
+ * de motorista/veículo, foto de aluno — dado pessoal, em alguns casos de
+ * criança/adolescente, art. 14 da LGPD) e devolve uma URL ASSINADA
+ * (`createSignedUrl`, token não derivável do id da entidade) em vez de
+ * `getPublicUrl` — sem isso, qualquer um que adivinhasse o caminho
+ * previsível (`students/{id}/foto.png`) acessaria o arquivo sem estar
+ * autenticado. A URL assinada aqui tem validade longa (10 anos) porque a
+ * URL é armazenada e reexibida como está, sem um passo de re-assinatura
+ * no momento da leitura — resolve o problema de adivinhação/enumeração,
+ * mas não o de uma URL vazada continuar válida por muito tempo; a
+ * evolução natural é assinar sob demanda (curta validade, gerada a cada
+ * leitura) quando o mapper de resposta for capaz disso — não implementado
+ * nesta fase por exigir tornar os mappers de Drivers/Students assíncronos.
  */
 @Injectable()
 export class SupabaseStorageService implements OnModuleInit {
@@ -63,8 +81,39 @@ export class SupabaseStorageService implements OnModuleInit {
     return this.client;
   }
 
-  /** Envia um arquivo e retorna a URL pública. `path` inclui o tenant (ex. `companies/{id}/logo.png`). */
+  /**
+   * Envia um arquivo de MARCA (sem dado pessoal — logo/foto de empresa,
+   * foto de veículo) ao bucket PÚBLICO e retorna a URL pública fixa.
+   * `path` inclui o tenant (ex. `companies/{id}/logo.png`).
+   */
   async upload(path: string, file: Buffer, contentType: string): Promise<string> {
+    const client = this.getClient();
+
+    const { error } = await client.storage
+      .from(this.config.publicBucket)
+      .upload(path, file, { contentType, upsert: true });
+
+    if (error) {
+      throw new InternalServerErrorException(`Falha ao enviar arquivo: ${error.message}`);
+    }
+
+    const { data } = client.storage.from(this.config.publicBucket).getPublicUrl(path);
+    return data.publicUrl;
+  }
+
+  /**
+   * Envia um arquivo com DADO PESSOAL (CNH/documento de motorista ou
+   * veículo, foto de aluno) ao bucket PRIVADO e retorna uma URL
+   * ASSINADA (Dossiê 32) — nunca `getPublicUrl`, que exporia o arquivo a
+   * qualquer um capaz de adivinhar `path` (ex. `students/{id}/foto.png`
+   * é só o id do aluno) sem exigir autenticação nenhuma.
+   */
+  async uploadPrivate(
+    path: string,
+    file: Buffer,
+    contentType: string,
+    expiresInSeconds = SupabaseStorageService.SIGNED_URL_TTL_SECONDS,
+  ): Promise<string> {
     const client = this.getClient();
 
     const { error } = await client.storage
@@ -75,7 +124,19 @@ export class SupabaseStorageService implements OnModuleInit {
       throw new InternalServerErrorException(`Falha ao enviar arquivo: ${error.message}`);
     }
 
-    const { data } = client.storage.from(this.config.bucket).getPublicUrl(path);
-    return data.publicUrl;
+    const { data, error: signError } = await client.storage
+      .from(this.config.bucket)
+      .createSignedUrl(path, expiresInSeconds);
+
+    if (signError || !data) {
+      throw new InternalServerErrorException(
+        `Falha ao gerar URL assinada: ${signError?.message ?? "resposta vazia"}`,
+      );
+    }
+
+    return data.signedUrl;
   }
+
+  /** 10 anos — ver nota de classe sobre a limitação de assinar só no upload, não a cada leitura. */
+  private static readonly SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365 * 10;
 }

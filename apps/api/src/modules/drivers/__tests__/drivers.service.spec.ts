@@ -95,7 +95,10 @@ describe("DriversService", () => {
     };
     usersService = { findActiveMembership: jest.fn() } as unknown as jest.Mocked<UsersService>;
     auditLogService = { record: jest.fn() } as unknown as jest.Mocked<AuditLogService>;
-    storageService = { upload: jest.fn() } as unknown as jest.Mocked<SupabaseStorageService>;
+    storageService = {
+      upload: jest.fn(),
+      uploadPrivate: jest.fn(),
+    } as unknown as jest.Mocked<SupabaseStorageService>;
     rottaAiService = {
       validateDocument: jest.fn(),
     } as unknown as jest.Mocked<RottaAiService>;
@@ -108,8 +111,8 @@ describe("DriversService", () => {
       rottaAiService,
     );
 
-    storageService.upload.mockResolvedValue(
-      "https://storage.test/drivers/driver-1/documents/1.jpg",
+    storageService.uploadPrivate.mockResolvedValue(
+      "https://storage.test/drivers/driver-1/documents/1.jpg?token=signed",
     );
     documentRepository.create.mockResolvedValue(buildDocument());
     documentRepository.findById.mockResolvedValue(buildDocument());

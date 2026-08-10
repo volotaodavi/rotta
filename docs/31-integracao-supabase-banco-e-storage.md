@@ -135,14 +135,27 @@ prática:
 
 ### 4.2 Storage — terminar de conectar o que já existe no código
 
+> **Atualizado pelo Dossiê 32** (auditoria de segurança de dado
+> pessoal): o desenho de "um bucket público" abaixo foi substituído por
+> **dois buckets** — a orientação original ficou registrada só para
+> histórico, não siga o passo 2 como estava escrito originalmente.
+
 1. Confirmar `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (Project
    Settings → API) — se o banco também está na Supabase (passo 4.1), é
    o **mesmo projeto**, mesmas credenciais.
-2. **Criar o bucket** chamado exatamente `rotta-documents` (ou outro
-   nome, setando `SUPABASE_STORAGE_BUCKET` igual) em Storage → New
-   bucket, marcado como **público para leitura** — o código usa
-   `getPublicUrl()` (URL pública direta), não URL assinada.
-3. Configurar as 3 variáveis no Render (mesmo serviço do passo 4.1.5).
+2. **Criar DOIS buckets** (Dossiê 32):
+   - `rotta-documents` (`SUPABASE_STORAGE_BUCKET`) — **PRIVADO**
+     (desmarcado "Public bucket"). Guarda CNH/documentos de motorista,
+     documentos de veículo, foto de aluno — tudo servido só por URL
+     assinada (`createSignedUrl`, via `SUPABASE_SERVICE_ROLE_KEY`, que
+     ignora a privacidade do bucket ao gerar a URL).
+   - `rotta-public` (`SUPABASE_STORAGE_PUBLIC_BUCKET`) — **público para
+     leitura**. Guarda só logo/foto de empresa e foto de veículo —
+     ativos de marca sem dado pessoal de terceiro, servidos por
+     `getPublicUrl()`.
+3. Configurar as 4 variáveis no Render (mesmo serviço do passo 4.1.5):
+   `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`,
+   `SUPABASE_STORAGE_BUCKET`, `SUPABASE_STORAGE_PUBLIC_BUCKET`.
 4. Redeployar e testar um upload real (ex. logo de empresa) — a partir
    daí, a atividade aparece no painel da Supabase.
 
@@ -163,13 +176,14 @@ separados que dobram a janela de risco.
    padrão) — é exatamente o que `SupabaseStorageService` precisa para
    escrever em qualquer prefixo do bucket, mas nunca deve vazar para o
    frontend (nunca foi, nem vai ser — só o backend a conhece).
-3. **Bucket público**: qualquer um com a URL de um arquivo consegue
-   baixá-lo (sem exigir login) — mesmo modelo de exposição que
-   documentos hoje já têm (URLs previsíveis por `path`, ex.
-   `companies/{id}/logo.png`); se no futuro isso for um problema de
-   compliance (documentos de CNH, por exemplo), a evolução natural é
-   trocar `getPublicUrl` por `createSignedUrl` (URL com expiração) —
-   não implementado nesta fase por não ter sido pedido.
+3. **Bucket público → resolvido no Dossiê 32**: esta seção descrevia
+   originalmente um único bucket público, com todo documento (inclusive
+   CNH e foto de aluno) acessível por URL previsível sem login. O
+   Dossiê 32 (auditoria de segurança de dado pessoal, pedida
+   explicitamente pelo usuário) corrigiu isso: CNH/documentos e foto de
+   aluno agora vão a um bucket **privado**, servidos só por URL
+   assinada; só logo/foto de empresa e veículo continuam no bucket
+   público. Ver Dossiê 32 para o detalhe completo.
 
 ## 7. Testes
 

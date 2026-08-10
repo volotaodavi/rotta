@@ -2,6 +2,7 @@ import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } fro
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Student } from "@prisma/client";
 
+
 import { toStudentAuthorizedPersonResponseDto } from "./mappers/student-authorized-person.mapper";
 import { toStudentResponseDto } from "./mappers/student.mapper";
 import { STUDENT_AUTHORIZED_PERSON_REPOSITORY, STUDENT_REPOSITORY } from "./students.constants";
@@ -232,7 +233,10 @@ export class StudentsService {
     }
 
     const extension = file.originalname.split(".").pop() ?? "png";
-    const url = await this.storageService.upload(
+    // uploadPrivate (Dossiê 32): foto de aluno é dado pessoal de criança/
+    // adolescente (LGPD art. 14) — nunca exposta por URL pública
+    // previsível (`students/{id}/foto.png` seria adivinhável só com o id).
+    const url = await this.storageService.uploadPrivate(
       `students/${id}/foto.${extension}`,
       file.buffer,
       file.mimetype,

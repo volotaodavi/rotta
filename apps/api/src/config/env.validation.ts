@@ -55,7 +55,16 @@ export const envSchema = z.object({
   // (Dossie 16, upload de logo/foto), nunca como URL invalida.
   SUPABASE_URL: z.string().url().or(z.literal("")).optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+  // Bucket PRIVADO — CNH/documentos de motorista e veículo, foto de aluno
+  // (Dossiê 32, RN de segurança): nunca lido por `getPublicUrl`, só por
+  // `createSignedUrl` (URL assinada, com token — não adivinhável a partir
+  // do id da entidade, ao contrário de uma URL pública previsível).
   SUPABASE_STORAGE_BUCKET: z.string().default("rotta-documents"),
+  // Bucket público — só ativos de marca sem dado pessoal sensível (logo
+  // e foto do veículo/empresa): `getPublicUrl` continua correto aqui,
+  // não há necessidade de assinatura para o que já é intencionalmente
+  // público (Dossiê 32).
+  SUPABASE_STORAGE_PUBLIC_BUCKET: z.string().default("rotta-public"),
 
   // Rotta Geo Engine sobre OpenStreetMap (Nominatim/OSRM) — ao contrário
   // do Mapbox, nenhuma é obrigatória: sem elas, `GeoEngineService` usa as

@@ -166,7 +166,10 @@ describe("VehiclesService", () => {
       record: jest.fn(),
       listByCompany: jest.fn(),
     } as unknown as jest.Mocked<AuditLogService>;
-    storageService = { upload: jest.fn() } as unknown as jest.Mocked<SupabaseStorageService>;
+    storageService = {
+      upload: jest.fn(),
+      uploadPrivate: jest.fn(),
+    } as unknown as jest.Mocked<SupabaseStorageService>;
     rottaAiService = {
       validateDocument: jest.fn(),
       analyzeVehicleDocument: jest.fn(),
@@ -385,7 +388,7 @@ describe("VehiclesService", () => {
 
     it("cria o documento, marca a análise da Rotta AI como indisponível (stub) e gera lembrete de vencimento", async () => {
       vehicleRepository.findById.mockResolvedValue(buildVehicle());
-      storageService.upload.mockResolvedValue("https://storage.test/doc.pdf");
+      storageService.uploadPrivate.mockResolvedValue("https://storage.test/doc.pdf?token=signed");
       const created = buildDocument({ vencimentoEm: new Date("2027-01-01") });
       documentRepository.create.mockResolvedValue(created);
       rottaAiService.analyzeVehicleDocument.mockRejectedValue(new Error("stub"));

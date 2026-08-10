@@ -17,6 +17,7 @@ import {
 } from "@prisma/client";
 import { normalizePlate } from "@rotta/validators";
 
+
 import { toVehicleAssignmentResponseDto } from "./mappers/vehicle-assignment.mapper";
 import {
   toListVehicleChecklistsResponseDto,
@@ -537,7 +538,9 @@ export class VehiclesService {
     }
 
     const extension = file.originalname.split(".").pop() ?? (isPdf ? "pdf" : "jpg");
-    const url = await this.storageService.upload(
+    // uploadPrivate (Dossiê 32): documento oficial do veículo (ex. CRLV)
+    // pode conter dado pessoal do proprietário — nunca URL pública previsível.
+    const url = await this.storageService.uploadPrivate(
       `vehicles/${vehicleId}/documents/${randomUUID()}.${extension}`,
       file.buffer,
       file.mimetype,

@@ -1,5 +1,6 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
+
 import { StudentsService } from "../students.service";
 
 import type { StudentAuthorizedPersonRepository } from "../repositories/student-authorized-person.repository";
@@ -130,6 +131,9 @@ describe("StudentsService", () => {
     } as unknown as jest.Mocked<AuditLogService>;
     storageService = {
       upload: jest.fn().mockResolvedValue("https://storage.example.com/foto.png"),
+      uploadPrivate: jest
+        .fn()
+        .mockResolvedValue("https://storage.example.com/foto.png?token=signed"),
     } as unknown as jest.Mocked<SupabaseStorageService>;
     eventEmitter = {
       emit: jest.fn(),
