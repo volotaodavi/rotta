@@ -21,6 +21,7 @@ import { validate } from "@/config/env.validation";
 import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
 import lytexConfig from "@/config/lytex.config";
+import observabilityConfig from "@/config/observability.config";
 import qstashConfig from "@/config/qstash.config";
 import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
@@ -82,6 +83,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         diditConfig,
         lytexConfig,
         abacatepayConfig,
+        observabilityConfig,
       ],
     }),
 

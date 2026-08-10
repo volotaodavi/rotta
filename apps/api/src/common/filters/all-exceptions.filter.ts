@@ -9,8 +9,11 @@ import {
   type ExceptionFilter,
 } from "@nestjs/common";
 
+
 import type { ApiErrorBody } from "@/shared/types/api-error.type";
 import type { Response, Request } from "express";
+
+import { ErrorTrackingService } from "@/infra/observability/error-tracking.service";
 
 /**
  * Filtro global de excecoes — traduz qualquer erro lancado na aplicacao
@@ -24,10 +27,17 @@ import type { Response, Request } from "express";
  * genuino fica invisivel nos logs (gap real encontrado e corrigido
  * durante o modulo de Empresas, testando o fluxo de cadastro ponta a
  * ponta pela primeira vez).
+ *
+ * Dossiê 33 (Prompt 23, observabilidade): o mesmo 500 também é
+ * reportado ao `ErrorTrackingService` (Sentry, opcional) — o log
+ * estruturado sozinho exige alguém lendo-o ativamente para notar uma
+ * falha; o rastreamento de erro agrupa/alerta automaticamente.
  */
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
   private readonly logger = new Logger(AllExceptionsFilter.name);
+
+  constructor(private readonly errorTracking: ErrorTrackingService) {}
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const ctx = host.switchToHttp();
@@ -43,6 +53,11 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (status === Number(HttpStatus.INTERNAL_SERVER_ERROR)) {
       const stack = exception instanceof Error ? exception.stack : String(exception);
       this.logger.error(`[${correlationId}] ${request.method} ${request.url}`, stack);
+      this.errorTracking.captureException(exception, {
+        correlationId,
+        method: request.method,
+        url: request.url,
+      });
     }
 
     const body: ApiErrorBody = this.buildErrorBody(exception, correlationId);

@@ -15,6 +15,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
 import { NotificationEventType, UserStatus } from "@prisma/client";
 
+
 import { PASSWORD_RESET_TOKEN_REPOSITORY, SESSION_REPOSITORY } from "./auth.constants";
 import { PasswordResetNotifierService } from "./password-reset-notifier.service";
 
@@ -24,6 +25,7 @@ import type {
   ProfileSelectionResponseDto,
 } from "./dto/auth-response.dto";
 import type { ChangePasswordDto } from "./dto/change-password.dto";
+import type { DataExportResponseDto } from "./dto/data-export-response.dto";
 import type { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import type { LoginDto } from "./dto/login.dto";
 import type { RefreshTokenDto } from "./dto/refresh-token.dto";
@@ -412,6 +414,54 @@ export class AuthService {
     }
 
     return this.toMeResponse(user, actor.tenantId, actor.role, companyName);
+  }
+
+  /**
+   * Exportação autoatendida dos dados pessoais do próprio usuário
+   * (Dossiê 33 — Prompt 23, LGPD art. 18 II/V: confirmação de
+   * tratamento + portabilidade). Escopo desta entrega: identidade +
+   * vínculos + sessões — ver doc do `DataExportResponseDto` para o que
+   * fica de fora e por quê.
+   */
+  async dataExport(actor: AuthenticatedUser): Promise<DataExportResponseDto> {
+    const user = await this.usersService.findById(actor.sub);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const [memberships, sessoesAtivas] = await Promise.all([
+      this.usersService.listActiveMembershipsWithCompany(user.id),
+      this.listSessions(user.id, actor.sessionId),
+    ]);
+
+    return {
+      geradoEm: new Date(),
+      usuario: {
+        id: user.id,
+        nome: user.nome,
+        email: user.email,
+        telefone: user.telefone,
+        cpf: user.cpf,
+        avatarUrl: user.avatarUrl,
+        criadoEm: user.createdAt,
+        consentimentoLgpdAceitoEm: user.consentimentoLgpdAceitoEm,
+      },
+      vinculos: memberships.map((m) => ({
+        empresaId: m.companyId,
+        empresaNome: m.company.nomeFantasia,
+        papel: m.role,
+        status: m.status,
+        iniciadoEm: m.iniciadoEm,
+        encerradoEm: m.encerradoEm,
+      })),
+      sessoesAtivas,
+      escopo:
+        "Esta exportação cobre identidade (User), vínculos (Membership) e sessões ativas — os " +
+        "dados que o módulo Auth possui diretamente. Não inclui ainda dado de outros módulos " +
+        "(ex. alunos cadastrados, documentos enviados, histórico de viagens, chamados de " +
+        "suporte) — cada um exigiria integrar aquele módulo aqui; ver Dossiê 33 para o escopo " +
+        "completo e o plano de evolução (agregador cross-módulo).",
+    };
   }
 
   private hashToken(token: string): string {

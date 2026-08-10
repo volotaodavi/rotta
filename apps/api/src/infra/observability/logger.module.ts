@@ -4,6 +4,8 @@ import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { LoggerModule as PinoLoggerModule } from "nestjs-pino";
 
+import { ErrorTrackingService } from "./error-tracking.service";
+
 import type { IncomingMessage } from "node:http";
 
 /**
@@ -45,6 +47,7 @@ import type { IncomingMessage } from "node:http";
       }),
     }),
   ],
-  exports: [PinoLoggerModule],
+  providers: [ErrorTrackingService],
+  exports: [PinoLoggerModule, ErrorTrackingService],
 })
 export class LoggerModule {}

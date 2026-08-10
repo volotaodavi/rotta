@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { UserStatus } from "@prisma/client";
 
+
 import { AuthService } from "../auth.service";
 
 import type { PasswordResetNotifierService } from "../password-reset-notifier.service";
@@ -363,6 +364,43 @@ describe("AuthService", () => {
       const sessions = await service.listSessions("user-1", "s2");
       expect(sessions.find((s) => s.id === "s2")?.isCurrentSession).toBe(true);
       expect(sessions.find((s) => s.id === "s1")?.isCurrentSession).toBe(false);
+    });
+  });
+
+  describe("dataExport (Dossiê 33 — autoatendimento LGPD)", () => {
+    it("rejeita quando o usuário do token não existe mais", async () => {
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(
+        service.dataExport({
+          sub: "user-1",
+          tenantId: "company-1",
+          role: Role.EMPRESA,
+          vinculoId: "membership-1",
+        }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+
+    it("nunca inclui passwordHash e agrega identidade + vínculos + sessões", async () => {
+      usersService.findById.mockResolvedValue(buildUser());
+      usersService.listActiveMembershipsWithCompany.mockResolvedValue([buildMembership()]);
+      sessionRepository.listActiveByUser.mockResolvedValue([buildSession()]);
+
+      const result = await service.dataExport({
+        sub: "user-1",
+        tenantId: "company-1",
+        role: Role.EMPRESA,
+        vinculoId: "membership-1",
+        sessionId: "session-1",
+      });
+
+      expect(result.usuario).not.toHaveProperty("passwordHash");
+      expect(result.usuario.cpf).toBe("11122233396");
+      expect(result.vinculos).toHaveLength(1);
+      expect(result.vinculos[0]).toMatchObject({ empresaId: "company-1", papel: Role.EMPRESA });
+      expect(result.sessoesAtivas).toHaveLength(1);
+      expect(result.sessoesAtivas[0]!.isCurrentSession).toBe(true);
+      expect(result.escopo).toContain("Não inclui ainda dado de outros módulos");
     });
   });
 

@@ -90,6 +90,31 @@ export interface SessionInfo {
   isCurrentSession: boolean;
 }
 
+/** Autoatendimento LGPD (Dossiê 33) — espelha `DataExportResponseDto`. */
+export interface DataExportResponse {
+  geradoEm: string;
+  usuario: {
+    id: string;
+    nome: string;
+    email: string;
+    telefone: string;
+    cpf: string;
+    avatarUrl: string | null;
+    criadoEm: string;
+    consentimentoLgpdAceitoEm: string | null;
+  };
+  vinculos: Array<{
+    empresaId: string;
+    empresaNome: string;
+    papel: string;
+    status: string;
+    iniciadoEm: string;
+    encerradoEm: string | null;
+  }>;
+  sessoesAtivas: SessionInfo[];
+  escopo: string;
+}
+
 export interface InvitePreview {
   companyName: string;
   role: Role;
@@ -155,6 +180,9 @@ export function createAuthEndpoints(apiClient: ApiClient) {
 
     me: async (): Promise<MeResponse> =>
       (await apiClient.request<ApiEnvelope<MeResponse>>("/auth/me")).data,
+
+    dataExport: async (): Promise<DataExportResponse> =>
+      (await apiClient.request<ApiEnvelope<DataExportResponse>>("/auth/me/data-export")).data,
 
     changePassword: async (senhaAtual: string, novaSenha: string): Promise<{ message: string }> =>
       (

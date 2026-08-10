@@ -75,6 +75,10 @@ export const envSchema = z.object({
   NOMINATIM_USER_AGENT: z.string().optional(),
   OSRM_BASE_URL: z.string().url().or(z.literal("")).optional(),
 
+  // Rastreamento de erros (Sentry — Dossie 33, Prompt 23). Opcional:
+  // sem ela, `ErrorTrackingService` so avisa no boot e nao envia nada.
+  SENTRY_DSN: z.string().url().or(z.literal("")).optional(),
+
   // Sincronização automática do Education Sync Agent (BullMQ job
   // repetível, coordenado via Redis — nunca dispara em duplicidade
   // mesmo com múltiplas réplicas do `apps/api` em produção, ao

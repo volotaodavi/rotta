@@ -112,6 +112,12 @@ export class AuthController {
     return this.authService.me(actor);
   }
 
+  /** Autoatendimento LGPD (Dossiê 33) — portabilidade/confirmação de tratamento dos próprios dados. */
+  @Get("me/data-export")
+  dataExport(@CurrentUser() actor: AuthenticatedUser) {
+    return this.authService.dataExport(actor);
+  }
+
   @Patch("me/password")
   async changePassword(
     @CurrentUser() actor: AuthenticatedUser,
