@@ -13,12 +13,18 @@ import { useEffect, useRef } from "react";
 
 import { vehicleIconMarkup } from "../vehicle-icon";
 
-import type { Coordenada, RottaMapProps } from "../types";
-import type { Feature, LineString } from "geojson";
+import type { Coordenada, HeatmapPoint, RottaMapProps } from "../types";
+import type { Feature, FeatureCollection, LineString, Point } from "geojson";
 
 import "maplibre-gl/dist/maplibre-gl.css";
 
-export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
+export type {
+  RottaMapProps,
+  RottaMapMarker,
+  BoundingBox,
+  Coordenada,
+  HeatmapPoint,
+} from "../types";
 
 /**
  * Tiles RASTER puros do OpenStreetMap (tile.openstreetmap.org) — troca
@@ -52,6 +58,8 @@ const DEFAULT_ROUTE_COLOR = "#3b6ef6";
 const MARKER_COLOR = "#2563eb";
 const ROUTE_SOURCE_ID = "rotta-route";
 const ROUTE_LAYER_ID = "rotta-route-line";
+const HEATMAP_SOURCE_ID = "rotta-heatmap";
+const HEATMAP_LAYER_ID = "rotta-heatmap-layer";
 
 /** Elemento DOM do ícone de veículo (`marker.emMovimento`) — ver `vehicle-icon.ts`. */
 function buildVehicleMarkerElement(): HTMLDivElement {
@@ -92,6 +100,57 @@ function applyRoute(map: MapLibreMap, route: Coordenada[] | undefined, color: st
 }
 
 /**
+ * Camada de densidade (heatmap) — pontos já agregados pelo servidor
+ * (ex. `GET /analytics/national/heatmap`, Dossiê 30), nunca recalculado
+ * aqui. Tipo nativo `heatmap` do MapLibre (mesmo motor OSM de todo o
+ * resto do pacote, sem lib adicional tipo `leaflet.heat`).
+ */
+function applyHeatmap(map: MapLibreMap, points: HeatmapPoint[] | undefined): void {
+  const data: FeatureCollection<Point> = {
+    type: "FeatureCollection",
+    features: (points ?? []).map((point) => ({
+      type: "Feature",
+      properties: { peso: point.peso },
+      geometry: { type: "Point", coordinates: [point.longitude, point.latitude] },
+    })),
+  };
+
+  const existingSource = map.getSource(HEATMAP_SOURCE_ID) as GeoJSONSource | undefined;
+  if (existingSource) {
+    existingSource.setData(data);
+    return;
+  }
+
+  map.addSource(HEATMAP_SOURCE_ID, { type: "geojson", data });
+  map.addLayer({
+    id: HEATMAP_LAYER_ID,
+    type: "heatmap",
+    source: HEATMAP_SOURCE_ID,
+    paint: {
+      "heatmap-weight": ["interpolate", ["linear"], ["get", "peso"], 0, 0, 10, 1],
+      "heatmap-intensity": 1,
+      "heatmap-color": [
+        "interpolate",
+        ["linear"],
+        ["heatmap-density"],
+        0,
+        "rgba(59,110,246,0)",
+        0.2,
+        "rgba(59,110,246,0.35)",
+        0.4,
+        "rgba(37,99,235,0.55)",
+        0.6,
+        "rgba(29,78,216,0.75)",
+        1,
+        "rgba(30,58,138,0.9)",
+      ],
+      "heatmap-radius": 22,
+      "heatmap-opacity": 0.85,
+    },
+  });
+}
+
+/**
  * `<RottaMap />` (web) — único componente do app que importa
  * `maplibre-gl` diretamente (ver ADR em `../types.ts`). Renderiza os
  * marcadores já calculados pelo Map Intelligence Agent (`GET
@@ -104,6 +163,7 @@ export function RottaMap({
   markers,
   route,
   routeColor = DEFAULT_ROUTE_COLOR,
+  heatmapPoints,
   initialCenter,
   initialZoom = DEFAULT_ZOOM,
   onBoundsChange,
@@ -205,6 +265,17 @@ export function RottaMap({
       map.once("load", () => applyRoute(map, route, routeColor));
     }
   }, [route, routeColor]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (map.isStyleLoaded()) {
+      applyHeatmap(map, heatmapPoints);
+    } else {
+      map.once("load", () => applyHeatmap(map, heatmapPoints));
+    }
+  }, [heatmapPoints]);
 
   return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
 }

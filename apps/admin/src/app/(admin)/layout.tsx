@@ -17,6 +17,7 @@ const NAV_LINKS = [
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/aprovacoes", label: "Aprovações" },
   { href: "/suporte", label: "Suporte" },
+  { href: "/inteligencia", label: "Inteligência" },
 ] as const;
 
 /**

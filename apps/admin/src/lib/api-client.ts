@@ -1,4 +1,5 @@
 import {
+  createAnalyticsEndpoints,
   createApiClient,
   createAuthEndpoints,
   createBackofficeEndpoints,
@@ -39,3 +40,4 @@ export const tripsApi = createTripsEndpoints(apiClient);
 export const gpsApi = createGpsEndpoints(apiClient);
 export const supportApi = createSupportEndpoints(apiClient);
 export const backofficeApi = createBackofficeEndpoints(apiClient);
+export const analyticsApi = createAnalyticsEndpoints(apiClient);

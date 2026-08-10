@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -13,6 +14,7 @@ import { PrismaPlanRepository } from "./repositories/prisma-plan.repository";
 
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
+import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
 
@@ -35,10 +37,16 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
  * `Prisma.auditLog` diretamente. `VehiclesModule` é importado só para o
  * campo "Veículos" do dashboard (`getDashboard`) reusar
  * `VehiclesService.countActive`, em vez de reimplementar a contagem ou
- * deixá-la hardcoded em zero.
+ * deixá-la hardcoded em zero. `DashboardModule` (Prompt 22/Dossiê 30)
+ * completa os demais campos do mesmo dashboard (`alunos`/`rotas`/
+ * `viagens`/`documentosVencendo`) via `DashboardService.getCompanyDashboardById`
+ * — `DashboardModule` não importa nenhum módulo de domínio de volta
+ * (só `PrismaService`), então não há risco de ciclo (ao contrário de
+ * `MarketplaceModule`, que importa `CompaniesModule` e por isso NUNCA
+ * pode ser importado aqui — ver nota em `marketplace.module.ts`).
  */
 @Module({
-  imports: [UsersModule, AuditModule, StorageModule, VehiclesModule],
+  imports: [UsersModule, AuditModule, StorageModule, VehiclesModule, DashboardModule],
   controllers: [CompaniesController],
   providers: [
     CompaniesService,

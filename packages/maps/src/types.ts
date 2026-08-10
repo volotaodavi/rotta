@@ -53,6 +53,11 @@ export interface BoundingBox {
   neLng: number;
 }
 
+/** Um ponto de densidade do heatmap (Prompt 22/Dossiê 30 — Central de Inteligência Operacional) — `peso` alimenta a propriedade `heatmap-weight` do MapLibre, nunca desenhado como marcador individual. */
+export interface HeatmapPoint extends Coordenada {
+  peso: number;
+}
+
 export interface RottaMapProps {
   /**
    * Token do provedor de tiles — opcional (MapLibre + OpenFreeMap, o
@@ -73,6 +78,8 @@ export interface RottaMapProps {
    * chama, seja um `RouteStop[]` real ou coordenadas de exemplo).
    */
   route?: Coordenada[];
+  /** Camada de densidade (heatmap) — pontos já agregados pelo servidor (ex. `GET /analytics/national/heatmap`), nunca recalculado no cliente. Omitido = sem camada de heatmap. */
+  heatmapPoints?: HeatmapPoint[];
   /** Cor da linha do `route`, formato CSS (ex. `#3b6ef6`) — padrão: azul da marca Rotta. */
   routeColor?: string;
   /** Centro inicial da câmera — se omitido, o mapa enquadra todos os `markers`. */

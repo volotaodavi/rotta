@@ -18,6 +18,7 @@ import {
   useUpdateMyCompanySettings,
 } from "@/features/company/hooks/use-company";
 
+
 /**
  * Banner de assinatura (briefing "PLANO" — Dossiê 26: cadastro
  * self-service SEMPRE é permitido; a cobrança acontece depois, aqui,
@@ -270,16 +271,31 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
       )}
 
       {dashboard && (
-        <Card>
-          <Card.Body className="flex items-center justify-between">
-            <Typography variant="bodySmall" color="muted">
-              Receita estimada
-            </Typography>
-            <Typography variant="subtitle">
-              {centsToBRL(dashboard.receitaEstimadaCentavos)}
-            </Typography>
-          </Card.Body>
-        </Card>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Card>
+            <Card.Body className="flex items-center justify-between">
+              <Typography variant="bodySmall" color="muted">
+                Receita estimada
+              </Typography>
+              <Typography variant="subtitle">
+                {centsToBRL(dashboard.receitaEstimadaCentavos)}
+              </Typography>
+            </Card.Body>
+          </Card>
+          <Card>
+            <Card.Body className="flex items-center justify-between">
+              <Typography variant="bodySmall" color="muted">
+                Documentos vencendo (7 dias)
+              </Typography>
+              <Typography
+                variant="subtitle"
+                color={dashboard.documentosVencendo > 0 ? "danger" : undefined}
+              >
+                {dashboard.documentosVencendo}
+              </Typography>
+            </Card.Body>
+          </Card>
+        </div>
       )}
 
       {dashboard && dashboard.alertas.length > 0 && (

@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, Logger, NotFoundException } from "@nestjs/common";
 import { CompanyStatus, CompanyType } from "@prisma/client";
 
+
 import { CompaniesService } from "../companies.service";
 
 import type { CreateCompanyDto } from "../dto/create-company.dto";
@@ -11,6 +12,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { DashboardService } from "@/modules/dashboard/dashboard.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 
@@ -100,6 +102,7 @@ describe("CompaniesService", () => {
   let storageService: jest.Mocked<SupabaseStorageService>;
   let prisma: jest.Mocked<PrismaService>;
   let vehiclesService: jest.Mocked<VehiclesService>;
+  let dashboardService: jest.Mocked<DashboardService>;
 
   beforeEach(() => {
     companyRepository = {
@@ -132,6 +135,9 @@ describe("CompaniesService", () => {
       runInTenantTransaction: jest.fn((fn: (tx: unknown) => unknown) => fn({})),
     } as unknown as jest.Mocked<PrismaService>;
     vehiclesService = { countActive: jest.fn() } as unknown as jest.Mocked<VehiclesService>;
+    dashboardService = {
+      getCompanyDashboardById: jest.fn(),
+    } as unknown as jest.Mocked<DashboardService>;
 
     service = new CompaniesService(
       companyRepository,
@@ -142,6 +148,7 @@ describe("CompaniesService", () => {
       storageService,
       prisma,
       vehiclesService,
+      dashboardService,
     );
 
     planRepository.findByCode.mockResolvedValue(STARTER_PLAN);
@@ -293,22 +300,92 @@ describe("CompaniesService", () => {
   });
 
   describe("getDashboard", () => {
+    const ownActor: AuthenticatedUser = {
+      sub: "u1",
+      tenantId: "company-1",
+      role: Role.EMPRESA,
+      vinculoId: "v1",
+    };
+
+    function buildAgregado(overrides: Partial<ReturnType<typeof baseAgregado>> = {}) {
+      return { ...baseAgregado(), ...overrides };
+    }
+    function baseAgregado() {
+      return {
+        rotasAtivas: 5,
+        rotasTotal: 8,
+        viagensHoje: { total: 6, emAndamento: 2, concluidas: 4, canceladas: 0 },
+        motoristasAtivos: 0,
+        monitoresAtivos: 0,
+        veiculosTotal: 0,
+        alunosAtivos: 25,
+        chamadosAbertos: 0,
+        documentosVencendoEm7Dias: { motorista: 0, veiculo: 0 },
+        receitaEstimadaCentavos: 125_000,
+        contratosAtivos: 25,
+      };
+    }
+
     it("reflete a contagem real de veículos ativos (nunca hardcoded em zero)", async () => {
       const company = buildCompany();
       companyRepository.findById.mockResolvedValue(company);
       usersService.listMembershipsByCompany.mockResolvedValue([]);
       vehiclesService.countActive.mockResolvedValue(3);
-      const ownActor: AuthenticatedUser = {
-        sub: "u1",
-        tenantId: company.id,
-        role: Role.EMPRESA,
-        vinculoId: "v1",
-      };
+      dashboardService.getCompanyDashboardById.mockResolvedValue(buildAgregado());
 
       const result = await service.getDashboard(company.id, ownActor);
 
       expect(vehiclesService.countActive).toHaveBeenCalledWith(company.id);
       expect(result.veiculos).toBe(3);
+    });
+
+    it("completa alunos/rotas/viagens/receita a partir de DashboardService.getCompanyDashboardById (nunca hardcoded em zero)", async () => {
+      const company = buildCompany();
+      companyRepository.findById.mockResolvedValue(company);
+      usersService.listMembershipsByCompany.mockResolvedValue([]);
+      vehiclesService.countActive.mockResolvedValue(0);
+      dashboardService.getCompanyDashboardById.mockResolvedValue(buildAgregado());
+
+      const result = await service.getDashboard(company.id, ownActor);
+
+      expect(dashboardService.getCompanyDashboardById).toHaveBeenCalledWith(company.id);
+      expect(result.alunos).toBe(25);
+      expect(result.rotas).toBe(8);
+      expect(result.viagens).toBe(6);
+      expect(result.receitaEstimadaCentavos).toBe(125_000);
+    });
+
+    it("gera alertas reais a partir de chamados abertos e documentos vencendo, nunca uma lista fixa vazia", async () => {
+      const company = buildCompany();
+      companyRepository.findById.mockResolvedValue(company);
+      usersService.listMembershipsByCompany.mockResolvedValue([]);
+      vehiclesService.countActive.mockResolvedValue(0);
+      dashboardService.getCompanyDashboardById.mockResolvedValue(
+        buildAgregado({
+          chamadosAbertos: 2,
+          documentosVencendoEm7Dias: { motorista: 1, veiculo: 3 },
+        }),
+      );
+
+      const result = await service.getDashboard(company.id, ownActor);
+
+      expect(result.documentosVencendo).toBe(4);
+      expect(result.alertas).toEqual([
+        "2 chamado(s) de suporte aberto(s).",
+        "4 documento(s) vencendo nos próximos 7 dias.",
+      ]);
+    });
+
+    it("retorna alertas vazios quando não há chamados abertos nem documentos vencendo", async () => {
+      const company = buildCompany();
+      companyRepository.findById.mockResolvedValue(company);
+      usersService.listMembershipsByCompany.mockResolvedValue([]);
+      vehiclesService.countActive.mockResolvedValue(0);
+      dashboardService.getCompanyDashboardById.mockResolvedValue(buildAgregado());
+
+      const result = await service.getDashboard(company.id, ownActor);
+
+      expect(result.alertas).toEqual([]);
     });
   });
 

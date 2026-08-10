@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
 
+
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -41,6 +42,7 @@ import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log
 import { PrismaService } from "@/infra/database/prisma.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { DashboardService } from "@/modules/dashboard/dashboard.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
@@ -99,6 +101,7 @@ export class CompaniesService implements OnModuleInit {
     private readonly storageService: SupabaseStorageService,
     private readonly prisma: PrismaService,
     private readonly vehiclesService: VehiclesService,
+    private readonly dashboardService: DashboardService,
   ) {}
 
   /**
@@ -460,6 +463,21 @@ export class CompaniesService implements OnModuleInit {
     return toCompanyResponseDto(updated);
   }
 
+  /**
+   * Completo desde o Prompt 22 (Dossiê 30 §3.1) — até então, `alunos`/
+   * `rotas`/`viagens`/`documentosVencendo`/`alertas` ficavam hardcoded
+   * em `0`/`[]` porque os módulos que os alimentariam (Routes, Trips,
+   * Marketplace/Contract, Documents) ainda não existiam (ver o
+   * comentário histórico que ficava em `CompanyDashboardResponseDto`).
+   * Agora existem, então este método REUSA a mesma agregação que
+   * `DashboardModule` já expõe para Motorista/Monitor/Responsável
+   * (`DashboardService.getCompanyDashboardById`) — nunca uma segunda
+   * implementação da mesma contagem. `receitaEstimadaCentavos` também
+   * foi corrigido aqui: antes lia `company.plan.priceCents` (o que a
+   * EMPRESA paga a Rotta pela assinatura — Dossiê 28 §6.7), que não é
+   * "receita estimada" nenhuma; agora é a soma real de
+   * `Contract.valorMensalidadeCentavos` dos contratos `ATIVO` (`DASH-03`).
+   */
   async getDashboard(id: string, actor: AuthenticatedUser): Promise<CompanyDashboardResponseDto> {
     this.assertCanAccessCompany(id, actor);
     const company = await this.companyRepository.findById(id);
@@ -467,24 +485,34 @@ export class CompaniesService implements OnModuleInit {
       throw new NotFoundException("Empresa não encontrada.");
     }
 
-    const memberships = await this.usersService.listMembershipsByCompany(id);
+    const [memberships, agregado] = await Promise.all([
+      this.usersService.listMembershipsByCompany(id),
+      this.dashboardService.getCompanyDashboardById(id),
+    ]);
     const isActive = (role: Role): number =>
       memberships.filter((m) => (m.role as Role) === role && m.status === MembershipStatus.ATIVO)
         .length;
 
+    const alertas: string[] = [];
+    if (agregado.chamadosAbertos > 0) {
+      alertas.push(`${agregado.chamadosAbertos} chamado(s) de suporte aberto(s).`);
+    }
+    const documentosVencendo =
+      agregado.documentosVencendoEm7Dias.motorista + agregado.documentosVencendoEm7Dias.veiculo;
+    if (documentosVencendo > 0) {
+      alertas.push(`${documentosVencendo} documento(s) vencendo nos próximos 7 dias.`);
+    }
+
     return {
       motoristas: isActive(Role.MOTORISTA),
       responsaveis: isActive(Role.RESPONSAVEL),
-      // `alunos`/`rotas`/`viagens`/`documentosVencendo` seguem em 0: nenhum
-      // desses módulos existe ainda no monorepo (ver Dossiê 14/17-19) —
-      // `veiculos` já reflete a contagem real desde o módulo Veículos.
-      alunos: 0,
+      alunos: agregado.alunosAtivos,
       veiculos: await this.vehiclesService.countActive(id),
-      rotas: 0,
-      viagens: 0,
-      receitaEstimadaCentavos: company.plan.priceCents,
-      documentosVencendo: 0,
-      alertas: [],
+      rotas: agregado.rotasTotal,
+      viagens: agregado.viagensHoje.total,
+      receitaEstimadaCentavos: agregado.receitaEstimadaCentavos,
+      documentosVencendo,
+      alertas,
     };
   }
 
