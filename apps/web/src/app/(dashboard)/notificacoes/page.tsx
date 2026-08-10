@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "@rotta/icons";
 import { Badge, Button, Card, Input, Spinner, Tabs, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
@@ -13,7 +14,6 @@ import {
   useNotificationsList,
 } from "@/features/notifications/hooks/use-notifications";
 import { NOTIFICATION_TYPE_LABEL } from "@/features/notifications/labels";
-
 
 type FiltroRapido = "todas" | "nao_lidas" | "favoritas";
 
@@ -107,7 +107,11 @@ export default function NotificacoesPage(): JSX.Element {
                     </Typography>
                     <div className="flex items-center gap-2">
                       {!notification.lida && <Badge variant="info">Não lida</Badge>}
-                      {notification.favoritada && <Badge variant="neutral">★</Badge>}
+                      {notification.favoritada && (
+                        <Badge variant="neutral">
+                          <Star size={12} fill="currentColor" aria-label="Favoritada" />
+                        </Badge>
+                      )}
                       <NotificationPriorityBadge prioridade={notification.prioridade} />
                     </div>
                   </div>

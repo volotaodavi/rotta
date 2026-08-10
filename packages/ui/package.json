@@ -23,17 +23,23 @@
   "devDependencies": {
     "@rotta/config": "workspace:*",
     "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
     "eslint": "^8.57.1",
     "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-native": "^0.76.5",
     "typescript": "^5.7.2"
   },
   "peerDependencies": {
     "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-native": "*"
   },
   "peerDependenciesMeta": {
     "react-native": {
+      "optional": true
+    },
+    "react-dom": {
       "optional": true
     }
   }

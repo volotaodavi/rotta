@@ -1,8 +1,9 @@
 "use client";
 
-import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Star } from "@rotta/icons";
+import { Badge, Button, Card, Modal, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
-import { use, useEffect } from "react";
+import { use, useEffect, useState } from "react";
 
 import { NotificationPriorityBadge } from "@/features/notifications/components/notification-priority-badge";
 import {
@@ -30,6 +31,7 @@ export default function NotificacaoDetalhePage({
 }): JSX.Element {
   const { id } = use(params);
   const router = useRouter();
+  const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
   const { data: notification, isLoading } = useNotification(id);
   const markRead = useMarkNotificationRead();
   const setFavorita = useSetNotificationFavorita();
@@ -51,10 +53,7 @@ export default function NotificacaoDetalhePage({
     );
   }
 
-  function handleExcluir(): void {
-    if (!window.confirm("Esta notificação será removida do seu histórico. Deseja continuar?")) {
-      return;
-    }
+  function handleConfirmarExclusao(): void {
     deleteNotification.mutate(id, {
       onSuccess: () => router.push("/notificacoes"),
     });
@@ -102,7 +101,12 @@ export default function NotificacaoDetalhePage({
             setFavorita.mutate({ notificationId: id, valor: !notification.favoritada })
           }
         >
-          {notification.favoritada ? "★ Remover dos favoritos" : "☆ Favoritar"}
+          <Star
+            size={16}
+            className="mr-1.5 inline-block align-text-bottom"
+            fill={notification.favoritada ? "currentColor" : "none"}
+          />
+          {notification.favoritada ? "Remover dos favoritos" : "Favoritar"}
         </Button>
         <Button
           variant="secondary"
@@ -113,10 +117,33 @@ export default function NotificacaoDetalhePage({
         >
           {notification.arquivada ? "Desarquivar" : "Arquivar"}
         </Button>
-        <Button variant="ghost" isLoading={deleteNotification.isPending} onClick={handleExcluir}>
+        <Button variant="ghost" onClick={() => setConfirmandoExclusao(true)}>
           Excluir
         </Button>
       </div>
+
+      <Modal isOpen={confirmandoExclusao} onClose={() => setConfirmandoExclusao(false)}>
+        <Modal.Header onClose={() => setConfirmandoExclusao(false)}>
+          Excluir notificação
+        </Modal.Header>
+        <Modal.Body>
+          <Typography variant="body">
+            Esta notificação será removida do seu histórico. Deseja continuar?
+          </Typography>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="ghost" onClick={() => setConfirmandoExclusao(false)}>
+            Cancelar
+          </Button>
+          <Button
+            variant="danger"
+            isLoading={deleteNotification.isPending}
+            onClick={handleConfirmarExclusao}
+          >
+            Excluir
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Star } from "@rotta/icons";
 import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { use } from "react";
@@ -79,8 +80,10 @@ export default function ContratoAdminDetalhePage({
           ) : (
             ratings.map((rating) => (
               <div key={rating.id} className="border-b border-border pb-2 last:border-none">
-                <Typography variant="bodySmall">
-                  {RATING_TARGET_LABEL[rating.alvoTipo]}: ★ {rating.nota}
+                <Typography variant="bodySmall" className="flex items-center gap-1">
+                  {RATING_TARGET_LABEL[rating.alvoTipo]}:
+                  <Star size={14} fill="currentColor" className="text-warning" />
+                  {rating.nota}
                 </Typography>
                 {rating.comentario ? (
                   <Typography variant="bodySmall" color="muted">

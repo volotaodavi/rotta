@@ -1,5 +1,6 @@
 "use client";
 
+import { AlertTriangle } from "@rotta/icons";
 import { RottaMap, type HeatmapPoint } from "@rotta/maps/web";
 import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
 import { useMemo, useState } from "react";
@@ -113,8 +114,9 @@ export default function InteligenciaPage(): JSX.Element {
           <Card.Header title="Alertas automatizados" />
           <Card.Body className="flex flex-col gap-2">
             {data.alertas.map((alerta) => (
-              <Typography key={alerta} variant="bodySmall">
-                ⚠ {alerta}
+              <Typography key={alerta} variant="bodySmall" className="flex items-center gap-2">
+                <AlertTriangle size={16} className="shrink-0 text-warning" />
+                {alerta}
               </Typography>
             ))}
           </Card.Body>

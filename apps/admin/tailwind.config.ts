@@ -1,3 +1,5 @@
+import { elevation, zIndex } from "@rotta/theme";
+
 import type { Config } from "tailwindcss";
 
 /**
@@ -60,6 +62,22 @@ const config: Config = {
       },
       fontFamily: {
         sans: ["var(--font-family-base)"],
+      },
+      // Escala unica de z-index/sombra (Dossie 24 Secao 4.10, Dossie 36 —
+      // Modal): direto de `@rotta/theme`, nunca um numero solto ad-hoc.
+      zIndex: {
+        dropdown: String(zIndex.dropdown),
+        sticky: String(zIndex.sticky),
+        overlay: String(zIndex.overlay),
+        modal: String(zIndex.modal),
+        popover: String(zIndex.popover),
+        toast: String(zIndex.toast),
+        tooltip: String(zIndex.tooltip),
+      },
+      boxShadow: {
+        card: elevation.card.web,
+        dropdown: elevation.dropdown.web,
+        modal: elevation.modal.web,
       },
     },
   },

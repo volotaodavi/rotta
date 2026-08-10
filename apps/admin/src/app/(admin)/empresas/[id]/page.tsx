@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, Input, Modal, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { use, useState } from "react";
 
@@ -36,6 +36,29 @@ export default function EmpresaDetalhesPage({
   const reactivate = useReactivateCompany(id);
   const accessAsSupport = useAccessAsSupport();
   const [motivo, setMotivo] = useState("");
+  const [supportModalOpen, setSupportModalOpen] = useState(false);
+  const [supportMotivo, setSupportMotivo] = useState("");
+  const [supportError, setSupportError] = useState("");
+  const [suspendModalOpen, setSuspendModalOpen] = useState(false);
+  const [suspendMotivo, setSuspendMotivo] = useState(motivo);
+
+  function handleConfirmarAcessoSuporte(): void {
+    if (supportMotivo.trim().length < 10) {
+      setSupportError("Informe uma justificativa com pelo menos 10 caracteres.");
+      return;
+    }
+    accessAsSupport.mutate({ companyId: id, motivo: supportMotivo });
+    setSupportModalOpen(false);
+    setSupportMotivo("");
+    setSupportError("");
+  }
+
+  function handleConfirmarSuspensao(): void {
+    if (!suspendMotivo.trim()) return;
+    setMotivo(suspendMotivo);
+    suspend.mutate(suspendMotivo);
+    setSuspendModalOpen(false);
+  }
 
   if (isLoading) {
     return (
@@ -69,17 +92,7 @@ export default function EmpresaDetalhesPage({
           <Button
             variant="ghost"
             isLoading={accessAsSupport.isPending}
-            onClick={() => {
-              // ADM-01/RN-10: exige justificativa, sempre auditado.
-              const reason = window.prompt(
-                "Este acesso será registrado em log de auditoria com sua justificativa. Motivo:",
-              );
-              if (reason && reason.trim().length >= 10) {
-                accessAsSupport.mutate({ companyId: id, motivo: reason });
-              } else if (reason !== null) {
-                window.alert("Informe uma justificativa com pelo menos 10 caracteres.");
-              }
-            }}
+            onClick={() => setSupportModalOpen(true)}
           >
             Acessar como suporte
           </Button>
@@ -99,11 +112,8 @@ export default function EmpresaDetalhesPage({
               variant="danger"
               isLoading={suspend.isPending}
               onClick={() => {
-                const reason = window.prompt("Motivo da suspensão:", motivo);
-                if (reason) {
-                  setMotivo(reason);
-                  suspend.mutate(reason);
-                }
+                setSuspendMotivo(motivo);
+                setSuspendModalOpen(true);
               }}
             >
               Suspender
@@ -111,6 +121,53 @@ export default function EmpresaDetalhesPage({
           )}
         </div>
       </div>
+
+      <Modal isOpen={supportModalOpen} onClose={() => setSupportModalOpen(false)}>
+        <Modal.Header onClose={() => setSupportModalOpen(false)}>Acessar como suporte</Modal.Header>
+        <Modal.Body className="flex flex-col gap-3">
+          <Typography variant="bodySmall" color="muted">
+            Este acesso será registrado em log de auditoria com sua justificativa (ADM-01/RN-10).
+          </Typography>
+          <Input
+            placeholder="Motivo (mínimo 10 caracteres)"
+            value={supportMotivo}
+            onChange={(event) => {
+              setSupportMotivo(event.target.value);
+              setSupportError("");
+            }}
+          />
+          {supportError && (
+            <Typography variant="caption" color="danger">
+              {supportError}
+            </Typography>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="ghost" onClick={() => setSupportModalOpen(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={handleConfirmarAcessoSuporte}>Confirmar</Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal isOpen={suspendModalOpen} onClose={() => setSuspendModalOpen(false)}>
+        <Modal.Header onClose={() => setSuspendModalOpen(false)}>Suspender empresa</Modal.Header>
+        <Modal.Body>
+          <Input
+            placeholder="Motivo da suspensão"
+            value={suspendMotivo}
+            onChange={(event) => setSuspendMotivo(event.target.value)}
+          />
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="ghost" onClick={() => setSuspendModalOpen(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleConfirmarSuspensao}>
+            Suspender
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       {dashboard && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">

@@ -9,7 +9,8 @@
  *
  *   atoms/      Button, Input, Select, Badge, Checkbox, Spinner, Typography
  *   molecules/  FormField, Pagination, Tabs
- *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven)
+ *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven),
+ *               Modal (Compound: Modal.Header/Body/Footer, com portal/focus-trap)
  */
 
 export * from "./atoms/Badge";
@@ -23,4 +24,5 @@ export * from "./molecules/FormField";
 export * from "./molecules/Pagination";
 export * from "./molecules/Tabs";
 export * from "./organisms/Card";
+export * from "./organisms/Modal";
 export * from "./organisms/Table";

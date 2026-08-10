@@ -3,7 +3,16 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "outDir": "./dist",
-    "rootDir": "./src"
+    "rootDir": "./src",
+    // Gap real encontrado no Dossie 36 (Prompt 26): `base.json` só traz
+    // `lib: ["ES2022"]` — suficiente enquanto nenhum componente de
+    // `src/web` chamava API de DOM de verdade (Button/Input/Select só
+    // referenciam `HTMLButtonElement` etc. como tipo de prop, nunca
+    // `document`/`querySelectorAll`/`.focus()`). `Modal` é o primeiro a
+    // precisar de DOM real (portal, focus trap), por isso a extensão
+    // aqui (mesmo conjunto de `nextjs.json`) — `src/native` continua
+    // inofensivo (`export {}`, Dossie 22 Secao 5.1).
+    "lib": ["dom", "dom.iterable", "ES2022"]
   },
   "include": ["src"]
 }
