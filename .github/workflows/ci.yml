@@ -157,3 +157,35 @@ jobs:
       - name: Audit
         run: pnpm audit --audit-level=critical
         continue-on-error: false
+
+  lighthouse:
+    name: Lighthouse (apps/web)
+    runs-on: ubuntu-latest
+    needs: build
+    # Dossie 34 (Prompt 24) — mede Performance/Acessibilidade/Boas
+    # praticas/SEO das paginas publicas a cada push. Limiares em modo
+    # "warn" (nao bloqueia merge) ate uma primeira execucao real
+    # produzir uma baseline confiavel — ver `apps/web/lighthouserc.js`.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build apps/web
+        env:
+          NEXT_PUBLIC_API_URL: "https://rotta-vt7i.onrender.com/v1"
+        run: pnpm turbo run build --filter=@rotta/web
+
+      - name: Lighthouse CI
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: "https://rotta-vt7i.onrender.com/v1"
+        run: pnpm exec lhci autorun --config=./lighthouserc.js
+        continue-on-error: true

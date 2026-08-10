@@ -11,7 +11,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"[@rotta/web] nenhum teste ainda — ver Dossie 23, Secao 10\" && exit 0",
+    "test": "vitest run",
     "test:e2e": "echo \"[@rotta/web] Playwright sera configurado junto com o primeiro fluxo real\" && exit 0",
     "clean": "rm -rf .next .turbo"
   },
@@ -34,14 +34,20 @@
   "devDependencies": {
     "@rotta/config": "workspace:*",
     "@tanstack/react-query-devtools": "^5.62.11",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.3",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^6.0.5",
     "autoprefixer": "^10.4.20",
     "eslint": "^8.57.1",
     "eslint-config-next": "^15.1.3",
+    "jsdom": "^30.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.10"
   }
 }
