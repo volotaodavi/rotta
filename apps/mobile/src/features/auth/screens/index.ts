@@ -8,3 +8,4 @@ export * from "./criar-empresa-webview-screen";
 export * from "./entrada-screen";
 export * from "./login-screen";
 export * from "./painel-web-only-screen";
+export * from "./pin-lock-screen";
