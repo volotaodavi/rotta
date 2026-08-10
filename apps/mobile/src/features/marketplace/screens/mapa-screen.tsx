@@ -1,3 +1,4 @@
+import { Check } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
@@ -97,7 +98,8 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
         ))}
       </View>
       <VehicleButton
-        label={apenasVerificados ? "✓ Somente verificados" : "Somente verificados"}
+        label="Somente verificados"
+        icon={apenasVerificados ? <Check size={16} color="#FFFFFF" /> : undefined}
         variant={apenasVerificados ? "primary" : "secondary"}
         onPress={() => setApenasVerificados((prev) => !prev)}
       />

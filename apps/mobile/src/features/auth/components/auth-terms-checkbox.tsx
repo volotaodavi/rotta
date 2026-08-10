@@ -1,3 +1,4 @@
+import { Check } from "@rotta/icons/native";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { env } from "@/config/env";
@@ -41,7 +42,7 @@ export function AuthTermsCheckbox({
           },
         ]}
       >
-        {checked ? <Text style={styles.check}>✓</Text> : null}
+        {checked ? <Check size={13} color="#FFFFFF" strokeWidth={3} /> : null}
       </Pressable>
       <Text style={[styles.label, { color: theme.colors.textMuted }]}>
         Li e aceito os{" "}
@@ -74,7 +75,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
     width: 20,
   },
-  check: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   label: { flex: 1, fontSize: 13, lineHeight: 18 },
   row: { flexDirection: "row", gap: 8 },
 });

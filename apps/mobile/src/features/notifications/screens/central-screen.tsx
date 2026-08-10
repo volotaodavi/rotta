@@ -1,3 +1,4 @@
+import { Star } from "@rotta/icons/native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -120,43 +121,50 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
         </Text>
       ) : null}
 
-      {data?.items.map((notification) => (
-        <Pressable
-          key={notification.id}
-          onPress={() => handleAbrir(notification.id, notification.lida)}
-        >
-          <VehicleCard>
-            <View style={styles.linhaTitulo}>
-              <Text style={styles.icone}>{NOTIFICATION_TYPE_ICON[notification.tipo]}</Text>
-              <Text
-                style={[
-                  styles.titulo,
-                  { color: theme.colors.text, fontWeight: notification.lida ? "600" : "800" },
-                ]}
-                numberOfLines={1}
-              >
-                {notification.titulo}
+      {data?.items.map((notification) => {
+        const TipoIcone = NOTIFICATION_TYPE_ICON[notification.tipo];
+        return (
+          <Pressable
+            key={notification.id}
+            onPress={() => handleAbrir(notification.id, notification.lida)}
+          >
+            <VehicleCard>
+              <View style={styles.linhaTitulo}>
+                <TipoIcone size={18} color={theme.colors.textMuted} />
+                <Text
+                  style={[
+                    styles.titulo,
+                    { color: theme.colors.text, fontWeight: notification.lida ? "600" : "800" },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {notification.titulo}
+                </Text>
+                {!notification.lida ? (
+                  <View style={[styles.pontoNaoLida, { backgroundColor: theme.colors.primary }]} />
+                ) : null}
+              </View>
+              <Text style={{ color: theme.colors.textMuted }} numberOfLines={2}>
+                {notification.corpo}
               </Text>
-              {!notification.lida ? (
-                <View style={[styles.pontoNaoLida, { backgroundColor: theme.colors.primary }]} />
-              ) : null}
-            </View>
-            <Text style={{ color: theme.colors.textMuted }} numberOfLines={2}>
-              {notification.corpo}
-            </Text>
-            <View style={styles.linhaRodape}>
-              <StatusPill
-                label={notification.prioridade}
-                tone={NOTIFICATION_PRIORITY_TONE[notification.prioridade]}
-              />
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                {tempoRelativo(notification.createdAt)}
-                {notification.favoritada ? " · ★" : ""}
-              </Text>
-            </View>
-          </VehicleCard>
-        </Pressable>
-      ))}
+              <View style={styles.linhaRodape}>
+                <StatusPill
+                  label={notification.prioridade}
+                  tone={NOTIFICATION_PRIORITY_TONE[notification.prioridade]}
+                />
+                <View style={styles.linhaTempo}>
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    {tempoRelativo(notification.createdAt)}
+                  </Text>
+                  {notification.favoritada ? (
+                    <Star size={12} color={theme.colors.textMuted} fill={theme.colors.textMuted} />
+                  ) : null}
+                </View>
+              </View>
+            </VehicleCard>
+          </Pressable>
+        );
+      })}
 
       <VehicleButton
         label="Ver notificações arquivadas"
@@ -170,8 +178,8 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   filtrosRow: { flexDirection: "row", flexWrap: "wrap" },
-  icone: { fontSize: 18 },
   linhaRodape: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  linhaTempo: { alignItems: "center", flexDirection: "row", gap: 4 },
   linhaTitulo: { alignItems: "center", flexDirection: "row", gap: 8 },
   pontoNaoLida: { borderRadius: 4, height: 8, width: 8 },
   titulo: { flex: 1, fontSize: 15 },

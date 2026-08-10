@@ -1,3 +1,4 @@
+import { Star } from "@rotta/icons/native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 
@@ -57,11 +58,16 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
       </Text>
 
       <VehicleCard>
-        <Text style={{ color: theme.colors.text }}>
-          {data.avaliacaoMedia !== null
-            ? `★ ${data.avaliacaoMedia.toFixed(1)} (${data.totalAvaliacoes} avaliações)`
-            : "Sem avaliações ainda"}
-        </Text>
+        {data.avaliacaoMedia !== null ? (
+          <View style={styles.avaliacao}>
+            <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
+            <Text style={{ color: theme.colors.text }}>
+              {data.avaliacaoMedia.toFixed(1)} ({data.totalAvaliacoes} avaliações)
+            </Text>
+          </View>
+        ) : (
+          <Text style={{ color: theme.colors.text }}>Sem avaliações ainda</Text>
+        )}
         <Text style={{ color: theme.colors.textMuted }}>
           {data.veiculosAtivos} veículo(s) ativo(s)
         </Text>
@@ -97,9 +103,12 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
         ) : (
           data.avaliacoesRecentes.map((avaliacao, index) => (
             <VehicleCard key={`${avaliacao.responsavelNome}-${index}`}>
-              <Text style={{ color: theme.colors.text }}>
-                ★ {avaliacao.nota} — {avaliacao.responsavelNome}
-              </Text>
+              <View style={styles.avaliacao}>
+                <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
+                <Text style={{ color: theme.colors.text }}>
+                  {avaliacao.nota} — {avaliacao.responsavelNome}
+                </Text>
+              </View>
               {avaliacao.comentario ? (
                 <Text style={{ color: theme.colors.textMuted }}>{avaliacao.comentario}</Text>
               ) : null}
@@ -117,6 +126,7 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
 }
 
 const styles = StyleSheet.create({
+  avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   header: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
   mensalidade: { fontWeight: "600" },
   nome: { fontSize: 18, fontWeight: "700" },

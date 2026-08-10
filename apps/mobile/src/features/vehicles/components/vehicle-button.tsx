@@ -1,6 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+
+import type { ReactNode } from "react";
 
 import { useTheme } from "@/providers/theme-provider";
+
 
 type VehicleButtonVariant = "primary" | "secondary" | "ghost";
 
@@ -10,6 +13,8 @@ interface VehicleButtonProps {
   variant?: VehicleButtonVariant;
   isLoading?: boolean;
   disabled?: boolean;
+  /** Ícone opcional antes do texto (Dossiê 36 — nunca emoji, sempre `@rotta/icons/native`). */
+  icon?: ReactNode;
 }
 
 /** Botão base das telas de Veículos — ver nota de escopo em `vehicle-screen.tsx`. */
@@ -19,6 +24,7 @@ export function VehicleButton({
   variant = "primary",
   isLoading = false,
   disabled = false,
+  icon,
 }: VehicleButtonProps): JSX.Element {
   const { theme } = useTheme();
   const isDisabled = disabled || isLoading;
@@ -53,11 +59,14 @@ export function VehicleButton({
       {isLoading ? (
         <ActivityIndicator color={textColor} />
       ) : (
-        <Text
-          style={[styles.label, { color: textColor, fontSize: theme.typography.button.fontSize }]}
-        >
-          {label}
-        </Text>
+        <View style={styles.content}>
+          {icon}
+          <Text
+            style={[styles.label, { color: textColor, fontSize: theme.typography.button.fontSize }]}
+          >
+            {label}
+          </Text>
+        </View>
       )}
     </Pressable>
   );
@@ -65,5 +74,6 @@ export function VehicleButton({
 
 const styles = StyleSheet.create({
   base: { alignItems: "center", justifyContent: "center" },
+  content: { alignItems: "center", flexDirection: "row", gap: 6 },
   label: { fontWeight: "600" },
 });

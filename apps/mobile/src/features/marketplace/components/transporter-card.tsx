@@ -1,3 +1,4 @@
+import { Star } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { TransporterCard as TransporterCardData } from "@rotta/api-client";
@@ -28,11 +29,16 @@ export function TransporterCard({
       </Text>
 
       <View style={styles.row}>
-        <Text style={{ color: theme.colors.textMuted }}>
-          {transportador.avaliacaoMedia !== null
-            ? `★ ${transportador.avaliacaoMedia.toFixed(1)} (${transportador.totalAvaliacoes})`
-            : "Sem avaliações ainda"}
-        </Text>
+        {transportador.avaliacaoMedia !== null ? (
+          <View style={styles.avaliacao}>
+            <Star size={13} color={theme.colors.textMuted} fill={theme.colors.textMuted} />
+            <Text style={{ color: theme.colors.textMuted }}>
+              {transportador.avaliacaoMedia.toFixed(1)} ({transportador.totalAvaliacoes})
+            </Text>
+          </View>
+        ) : (
+          <Text style={{ color: theme.colors.textMuted }}>Sem avaliações ainda</Text>
+        )}
         <Text style={{ color: theme.colors.textMuted }}>
           {transportador.veiculosAtivos} veículo(s)
         </Text>
@@ -51,8 +57,9 @@ export function TransporterCard({
 }
 
 const styles = StyleSheet.create({
+  avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   mensalidade: { fontWeight: "600" },
   nome: { fontSize: 16, fontWeight: "700" },
-  row: { flexDirection: "row", gap: 12 },
+  row: { alignItems: "center", flexDirection: "row", gap: 12 },
 });

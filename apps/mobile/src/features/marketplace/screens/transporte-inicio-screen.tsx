@@ -1,7 +1,9 @@
 import { ApiError, type Contract, type RatingTargetType } from "@rotta/api-client";
+import { Star } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+
 
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
@@ -291,10 +293,13 @@ function AvaliacoesSection({ contrato }: { contrato: Contract }): JSX.Element {
       {isLoading ? <ActivityIndicator color={theme.colors.primary} /> : null}
       {(ratings ?? []).map((rating) => (
         <VehicleCard key={rating.id}>
-          <Text style={{ color: theme.colors.text }}>
-            {RATING_TARGETS.find((t) => t.tipo === rating.alvoTipo)?.label ?? rating.alvoTipo}: ★{" "}
-            {rating.nota}
-          </Text>
+          <View style={styles.avaliacao}>
+            <Text style={{ color: theme.colors.text }}>
+              {RATING_TARGETS.find((t) => t.tipo === rating.alvoTipo)?.label ?? rating.alvoTipo}:
+            </Text>
+            <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
+            <Text style={{ color: theme.colors.text }}>{rating.nota}</Text>
+          </View>
           {rating.comentario ? (
             <Text style={{ color: theme.colors.textMuted }}>{rating.comentario}</Text>
           ) : null}
@@ -368,6 +373,7 @@ function RatingForm({
 }
 
 const styles = StyleSheet.create({
+  avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },
   header: { flexDirection: "row" },
   mapa: { borderRadius: 12, height: 180, overflow: "hidden" },

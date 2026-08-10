@@ -1,3 +1,4 @@
+import { Star } from "@rotta/icons/native";
 import { useEffect } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 
@@ -86,11 +87,13 @@ export function DetalhesScreen({ route, navigation }: Props): JSX.Element {
     );
   }
 
+  const TipoIcone = NOTIFICATION_TYPE_ICON[notification.tipo];
+
   return (
     <VehicleScreen>
       <VehicleCard>
         <View style={styles.linhaTitulo}>
-          <Text style={styles.icone}>{NOTIFICATION_TYPE_ICON[notification.tipo]}</Text>
+          <TipoIcone size={22} color={theme.colors.text} />
           <Text style={[styles.titulo, { color: theme.colors.text }]}>{notification.titulo}</Text>
         </View>
         <StatusPill
@@ -112,7 +115,14 @@ export function DetalhesScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleButton
-        label={notification.favoritada ? "★ Remover dos favoritos" : "☆ Favoritar"}
+        label={notification.favoritada ? "Remover dos favoritos" : "Favoritar"}
+        icon={
+          <Star
+            size={16}
+            color={theme.colors.text}
+            fill={notification.favoritada ? theme.colors.text : "none"}
+          />
+        }
         variant="secondary"
         onPress={() =>
           setFavorita.mutate({ notificationId: notification.id, valor: !notification.favoritada })
@@ -139,7 +149,6 @@ export function DetalhesScreen({ route, navigation }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  icone: { fontSize: 22 },
   linhaTitulo: { alignItems: "center", flexDirection: "row", gap: 8 },
   titulo: { flex: 1, fontSize: 17, fontWeight: "700" },
 });

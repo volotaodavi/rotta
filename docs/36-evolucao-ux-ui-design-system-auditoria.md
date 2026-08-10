@@ -194,3 +194,51 @@ Exportado em `packages/ui/src/web/organisms/Modal/index.ts` e
   identificado para justificá-la — consistente com o próprio princípio
   do catálogo (`packages/ui/src/web/index.ts`): "componente chega junto
   com a tela que precisar dele pela primeira vez", nunca antecipado.
+
+## 7. Fechamento do gap de ícones em `apps/mobile` (pós-entrega)
+
+O item 2.2/6 documentava emoji em `apps/mobile` como gap conhecido, não
+corrigido na primeira passada por exigir uma nova capacidade
+(`lucide-react-native`), maior que uma correção pontual. Fechado nesta
+sessão de continuação:
+
+- **`@rotta/icons/native`** (`packages/icons/src/native.ts`, novo) —
+  `export * from "lucide-react-native"`, mesmo padrão de
+  `@rotta/icons` (web, `lucide-react`). `package.json` ganhou `exports`
+  (`"."` inalterado, `"./native"` novo) para não quebrar nenhum dos 21
+  imports existentes de `@rotta/icons` em `apps/web`/`apps/admin`.
+  `lucide-react-native` exige `react-native-svg` como peer — fixado em
+  `15.8.0`, a versão que o próprio Expo SDK 52 já usa internamente
+  (`bundledNativeModules.json`), evitando duas versões divergentes no
+  mesmo app.
+- **`apps/mobile/package.json`** — `@rotta/icons` e `react-native-svg`
+  adicionados como dependências reais (antes, `apps/mobile` não
+  dependia de `@rotta/icons` — o gap era literal, não só de uso).
+- **`VehicleButton`** (`features/vehicles/components/vehicle-button.tsx`)
+  ganhou um slot `icon?: ReactNode` opcional antes do label — extensão
+  mínima do componente já existente (mesmo princípio de evolução
+  incremental do Design System usado no `Modal` do item 3), necessária
+  porque nenhuma tela nova foi criada: os botões "Favoritar" e "Somente
+  verificados" já existiam, só precisavam de um jeito de mostrar um
+  ícone real em vez de prefixar o `label` com `"★ "`/`"✓ "`.
+- **Substituições reais**: `NOTIFICATION_TYPE_ICON` (`labels.ts`) —
+  de `Record<Tipo, string>` (emoji) para `Record<Tipo, LucideIcon>`,
+  consumido em 3 telas (`central-screen`, `detalhes-screen`,
+  `historico-screen`, a última encontrada só ao rodar `tsc` após a
+  mudança de tipo — não estava na varredura de emoji porque já usava a
+  mesma constante, sem caractere solto próprio); estrelas de avaliação
+  em `transporter-card.tsx`, `transportador-detalhes-screen.tsx` (2x) e
+  `transporte-inicio-screen.tsx`; "✓ Somente verificados" em
+  `mapa-screen.tsx`; "✓" do checkbox de aceite de Termos em
+  `auth-terms-checkbox.tsx`.
+- **Verificação**: `pnpm --filter @rotta/icons --filter @rotta/mobile
+run typecheck` — passou (0 erros). `eslint --fix` escopado aos 11
+  arquivos tocados — 0 erros, só avisos pré-existentes de
+  `import/order`/`no-inline-styles` já presentes antes desta mudança.
+  Varredura final por emoji em `apps/mobile/src` — zero ocorrências.
+
+`Alert.alert` (usado em `detalhes-screen.tsx` para confirmar exclusão)
+**não foi alterado** — ao contrário de `window.confirm` no web, é a
+API nativa idiomática do React Native para diálogo de confirmação
+(estilizado pelo próprio SO, não um HTML `<dialog>` genérico), portanto
+não é o mesmo anti-padrão do item 2.1.

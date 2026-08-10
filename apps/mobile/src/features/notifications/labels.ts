@@ -1,3 +1,25 @@
+import {
+  AlertTriangle,
+  Backpack,
+  Bus,
+  Car,
+  CheckCircle2,
+  Clock,
+  CreditCard,
+  FileText,
+  Flag,
+  IdCard,
+  MapPin,
+  MapPinned,
+  School,
+  Siren,
+  UserCog,
+  UserRoundX,
+  Users,
+  XCircle,
+  type LucideIcon,
+} from "@rotta/icons/native";
+
 import type { StatusPillTone } from "../vehicles/components";
 import type {
   CommunicationChannel,
@@ -7,33 +29,35 @@ import type {
 
 /**
  * Rótulos/ícones da Central de Notificações Internas (Dossiê 11 §4.4:
- * "ícone por tipo") — sem biblioteca de ícones nativa no monorepo ainda
- * (Dossiê 22/23), por isso emoji simples, mesma decisão de escopo já
- * registrada em `features/vehicles/components/vehicle-screen.tsx`.
+ * "ícone por tipo"). Até o Dossiê 36 (Prompt 26) usava emoji simples —
+ * gap documentado ali mesmo (Seção 2.2/6: "sem biblioteca de ícones
+ * nativa no monorepo ainda"), fechado nesta entrega com
+ * `@rotta/icons/native` (`lucide-react-native`), mesmo catálogo de
+ * nomes que o Design System web.
  */
-export const NOTIFICATION_TYPE_ICON: Record<NotificationEventType, string> = {
-  VIAGEM_INICIADA: "🚌",
-  VIAGEM_ENCERRADA: "🏁",
-  ALUNO_EMBARCOU: "🧒",
-  ALUNO_DESEMBARCOU: "🏫",
-  ALUNO_AUSENTE: "🚫",
-  VEICULO_PROXIMO: "📍",
-  MOTORISTA_ALTERADO: "🧑‍✈️",
-  MONITOR_ALTERADO: "🧑‍🏫",
-  VEICULO_ALTERADO: "🚐",
-  ROTA_ALTERADA: "🗺️",
-  OCORRENCIA: "⚠️",
-  EMERGENCIA: "🚨",
-  NOVO_CONTRATO: "📄",
-  CONTRATO_ASSINADO: "✅",
-  CNH_VENCENDO: "🪪",
-  DOCUMENTO_VENCENDO: "📑",
-  PAGAMENTO_APROVADO: "💳",
-  PAGAMENTO_RECUSADO: "❌",
-  PAGAMENTO_PENDENTE: "⏳",
-  NOVA_ESCOLA: "🏫",
-  NOVO_ALUNO: "🎒",
-  NOVO_RESPONSAVEL: "👪",
+export const NOTIFICATION_TYPE_ICON: Record<NotificationEventType, LucideIcon> = {
+  VIAGEM_INICIADA: Bus,
+  VIAGEM_ENCERRADA: Flag,
+  ALUNO_EMBARCOU: Backpack,
+  ALUNO_DESEMBARCOU: School,
+  ALUNO_AUSENTE: UserRoundX,
+  VEICULO_PROXIMO: MapPin,
+  MOTORISTA_ALTERADO: UserCog,
+  MONITOR_ALTERADO: UserCog,
+  VEICULO_ALTERADO: Car,
+  ROTA_ALTERADA: MapPinned,
+  OCORRENCIA: AlertTriangle,
+  EMERGENCIA: Siren,
+  NOVO_CONTRATO: FileText,
+  CONTRATO_ASSINADO: CheckCircle2,
+  CNH_VENCENDO: IdCard,
+  DOCUMENTO_VENCENDO: FileText,
+  PAGAMENTO_APROVADO: CreditCard,
+  PAGAMENTO_RECUSADO: XCircle,
+  PAGAMENTO_PENDENTE: Clock,
+  NOVA_ESCOLA: School,
+  NOVO_ALUNO: Backpack,
+  NOVO_RESPONSAVEL: Users,
 };
 
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {

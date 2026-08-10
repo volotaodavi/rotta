@@ -56,40 +56,42 @@ export function HistoricoScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      {data.items.map((notification) => (
-        <VehicleCard key={notification.id}>
-          <Pressable
-            onPress={() => navigation.navigate("Detalhes", { notificationId: notification.id })}
-          >
-            <View style={styles.linhaTitulo}>
-              <Text style={styles.icone}>{NOTIFICATION_TYPE_ICON[notification.tipo]}</Text>
-              <Text style={[styles.titulo, { color: theme.colors.text }]} numberOfLines={1}>
-                {notification.titulo}
+      {data.items.map((notification) => {
+        const TipoIcone = NOTIFICATION_TYPE_ICON[notification.tipo];
+        return (
+          <VehicleCard key={notification.id}>
+            <Pressable
+              onPress={() => navigation.navigate("Detalhes", { notificationId: notification.id })}
+            >
+              <View style={styles.linhaTitulo}>
+                <TipoIcone size={18} color={theme.colors.textMuted} />
+                <Text style={[styles.titulo, { color: theme.colors.text }]} numberOfLines={1}>
+                  {notification.titulo}
+                </Text>
+              </View>
+              <Text style={{ color: theme.colors.textMuted }} numberOfLines={2}>
+                {notification.corpo}
               </Text>
-            </View>
-            <Text style={{ color: theme.colors.textMuted }} numberOfLines={2}>
-              {notification.corpo}
-            </Text>
-            <StatusPill
-              label={notification.prioridade}
-              tone={NOTIFICATION_PRIORITY_TONE[notification.prioridade]}
+              <StatusPill
+                label={notification.prioridade}
+                tone={NOTIFICATION_PRIORITY_TONE[notification.prioridade]}
+              />
+            </Pressable>
+            <VehicleButton
+              label="Desarquivar"
+              variant="secondary"
+              onPress={() => setArquivada.mutate({ notificationId: notification.id, valor: false })}
+              isLoading={setArquivada.isPending}
             />
-          </Pressable>
-          <VehicleButton
-            label="Desarquivar"
-            variant="secondary"
-            onPress={() => setArquivada.mutate({ notificationId: notification.id, valor: false })}
-            isLoading={setArquivada.isPending}
-          />
-        </VehicleCard>
-      ))}
+          </VehicleCard>
+        );
+      })}
     </VehicleScreen>
   );
 }
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  icone: { fontSize: 18 },
   linhaTitulo: { alignItems: "center", flexDirection: "row", gap: 8 },
   titulo: { flex: 1, fontSize: 15, fontWeight: "700" },
 });
