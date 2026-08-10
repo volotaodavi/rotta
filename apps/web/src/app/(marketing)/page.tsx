@@ -25,6 +25,7 @@ import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
 
+
 /**
  * Título/descrição herdam o padrão do root layout (já otimizados pra
  * home) — aqui só fixamos o `canonical` (Dossiê 12 §7.4: evita que o
@@ -373,9 +374,9 @@ const AUDIENCE_PHOTO: Record<string, { src: string; alt: string; ratio: number }
 
 /**
  * Painel visual das seções "escolha como você utiliza a plataforma" —
- * mesma linguagem de cartão "solto"/com glow do
- * `HeroMapDemo`/`RottaPayVisual` abaixo, agora com a foto real de cada
- * audiência (ver `AUDIENCE_PHOTO`) em vez de ilustração/ícone.
+ * mesma linguagem de cartão "solto"/com glow do `HeroMapDemo` acima,
+ * agora com a foto real de cada audiência (ver `AUDIENCE_PHOTO`) em vez
+ * de ilustração/ícone.
  *
  * Clicável (pedido do usuário: "deixe essas imagens clicáveis") — quem
  * renderiza envolve isto num `<Link>` com a classe `group`; os efeitos
@@ -424,45 +425,6 @@ function AudienceVisual({
         </div>
       </div>
     </div>
-  );
-}
-
-/**
- * Banner completo do Rotta Pay — 2ª versão enviada pelo usuário, exibido
- * INTEIRO, sem recorte ("não é pra recortar, é pra poder visualizarem":
- * a 1ª versão eu recortei em pedaços e remontei com texto próprio —
- * `RottaPayVisual`/`LytexPartnerBadge`, ambos removidos — essa aqui é o
- * design pronto, publicado como veio) e sem moldura ao redor ("só o
- * design, sem o quadrado azul servindo de borda" — a seção deixou de
- * ter fundo colorido, é só a imagem sobre o fundo normal da página).
- * Mesma parceria já verificada antes de publicar a 1ª versão (LyTex é o
- * provedor real — `lytex.config.ts`/`RottaPayProviderService`, Dossiê
- * 26); a integração de pagamento em si ainda é stub, por isso o aviso
- * "Em rollout" logo abaixo continua existindo fora da imagem.
- * `width`/`height` = dimensão real do arquivo (1774×887, ~2:1) — nunca
- * forçado a quadrado/cortado. Sem `max-w-4xl` artificial: "está muito
- * pequeno, aumente para melhor leitura" — o banner tem bastante texto
- * miúdo (feature list, selos de confiança) desenhado nos próprios
- * pixels, então ele precisa usar toda a largura que a seção permitir
- * pra continuar legível — `w-full` simplesmente preenche o container
- * (ver `max-w-7xl` na seção logo abaixo, maior que o `max-w-6xl` do
- * resto da página só aqui, de propósito). No mobile vai até de ponta a
- * ponta (`rounded-none`, sem o padding lateral da seção — ver
- * `px-0 sm:px-6` abaixo): é o texto mais denso da página inteira dentro
- * de uma única imagem, então cada pixel a mais de largura ajuda a
- * leitura; a partir de `sm:` volta o respiro lateral normal e o
- * cantinho arredondado.
- */
-function RottaPayBanner(): JSX.Element {
-  return (
-    <Image
-      src="/marketing/rotta-pay-banner.png"
-      alt="Rotta Pay, com tecnologia da LyTex Pagamentos: tela do app mostrando saldo disponível e últimos recebimentos, e os diferenciais receba direto na sua conta, taxas justas, mais segurança e saques rápidos"
-      width={1774}
-      height={887}
-      sizes="(min-width: 1280px) 1280px, 100vw"
-      className="w-full rounded-none shadow-xl sm:rounded-[24px]"
-    />
   );
 }
 
@@ -717,12 +679,6 @@ export default function LandingPage(): JSX.Element {
               </Card>
             ))}
           </div>
-        </div>
-      </section>
-
-      <section className="w-full px-0 py-16 sm:px-6">
-        <div className="mx-auto flex w-full max-w-7xl justify-center">
-          <RottaPayBanner />
         </div>
       </section>
 
