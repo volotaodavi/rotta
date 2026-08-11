@@ -8,7 +8,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ComponentProps, type FormEvent } from "react";
 
-
 import type { LoginMascotMood } from "@/components/login-mascot";
 import type { ProfileOption } from "@rotta/api-client";
 
@@ -92,7 +91,11 @@ export default function EntrarPage(): JSX.Element {
         setErrorMessage("Esta conta requer o painel administrativo da Rotta para entrar.");
         return;
       }
-      router.replace("/empresa");
+      // Responsável (Área Pessoal) tem sua própria home no painel web —
+      // "Meus Alunos" (`/alunos`), não "Minha Empresa" (Área
+      // Profissional). Antes desta entrega o Responsável nem tinha
+      // nenhuma rota web própria para onde ir.
+      router.replace(result.user.role === "responsavel" ? "/alunos" : "/empresa");
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao entrar.");
     } finally {

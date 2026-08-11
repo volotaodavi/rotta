@@ -5,12 +5,12 @@ import { useAuth } from "@rotta/auth/web";
 import { CheckCircle2 } from "@rotta/icons";
 import { Button, Card, FormField, Input, Typography } from "@rotta/ui/web";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import type { RegisterPessoalInput } from "@rotta/api-client";
 
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
-
 
 const INITIAL_STATE: RegisterPessoalInput = {
   nome: "",
@@ -31,6 +31,7 @@ const INITIAL_STATE: RegisterPessoalInput = {
  */
 export default function CriarContaPessoalPage(): JSX.Element {
   const { registerPessoal } = useAuth();
+  const router = useRouter();
   const [form, setForm] = useState<RegisterPessoalInput>(INITIAL_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,11 +61,12 @@ export default function CriarContaPessoalPage(): JSX.Element {
     }
   }
 
-  // A experiência da Área Pessoal (Mapa, Marketplace, meus filhos) vive no
-  // app mobile (Dossiê 11 §2) — o painel web é o do Profissional
-  // (Empresa/Gestor/Escola). Por isso, ao concluir aqui, a conta já está
-  // autenticada (mesma sessão compartilhada), mas o próximo passo real é
-  // abrir o app, não navegar para dentro do painel web.
+  // Antes desta entrega, a experiência da Área Pessoal (meus filhos,
+  // acompanhamento ao vivo) só existia no app mobile — este passo
+  // mandava o Responsável "abrir o app" depois de criar a conta aqui.
+  // Agora que `/alunos` existe no próprio painel web (Dossiê 45 — gap
+  // C), a conta recém-criada (já autenticada, mesma sessão) segue
+  // direto para lá.
   if (isDone) {
     return (
       <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 py-20 text-center">
@@ -75,9 +77,13 @@ export default function CriarContaPessoalPage(): JSX.Element {
           Conta criada!
         </Typography>
         <Typography variant="body" color="muted">
-          Sua conta de Responsável já está pronta. Abra o app Rotta no seu celular e entre com o
-          mesmo e-mail e senha para cadastrar seus filhos e buscar transportadores.
+          Sua conta de Responsável já está pronta. Cadastre seu filho ou dependente para começar a
+          acompanhar o transporte escolar em tempo real — no painel web ou no app Rotta, com o mesmo
+          login.
         </Typography>
+        <Button variant="primary" fullWidth onClick={() => router.replace("/alunos/novo")}>
+          Cadastrar meu primeiro aluno
+        </Button>
       </div>
     );
   }

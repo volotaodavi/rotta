@@ -9,6 +9,7 @@ import {
   createNotificationsEndpoints,
   createRoutesEndpoints,
   createSchoolsEndpoints,
+  createStudentsEndpoints,
   createSupportEndpoints,
   createTripsEndpoints,
   createVehiclesEndpoints,
@@ -33,6 +34,7 @@ export const billingApi = createBillingEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
+export const studentsApi = createStudentsEndpoints(apiClient);
 export const marketplaceApi = createMarketplaceEndpoints(apiClient);
 export const geoApi = createGeoEndpoints(apiClient);
 export const notificationsApi = createNotificationsEndpoints(apiClient);
