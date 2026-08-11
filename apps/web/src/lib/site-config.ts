@@ -85,3 +85,11 @@ export const SUPPORT_EMAIL = "suporte@rotta.com.br";
  */
 export const SECURITY_CONTACT_EMAIL = CONTACT_EMAIL;
 export const SECURITY_CONTACT_SUBJECT_HINT = "[SEGURANÇA]";
+
+/**
+ * Caixa dedicada para leads do funil B2G (`/governo`) — pedido explícito
+ * do usuário para separar esse fluxo do `CONTACT_EMAIL` genérico, já
+ * que solicitações de secretarias/gestores públicos passam por uma
+ * triagem diferente (jurídico/institucional) do contato comum.
+ */
+export const GOVERNO_CONTACT_EMAIL = "rottadobrasil@gmail.com";

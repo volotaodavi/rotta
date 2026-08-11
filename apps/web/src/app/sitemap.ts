@@ -3,7 +3,6 @@ import type { MetadataRoute } from "next";
 import { LEGAL_DOCUMENTS } from "@/features/legal/documents";
 import { getSiteUrl } from "@/lib/site-config";
 
-
 /**
  * `sitemap.xml` gerado nativamente pelo Next.js 15 a partir deste
  * arquivo (Dossiê 12 §7.4 — indexação gratuita no Google: nenhuma
@@ -34,6 +33,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     changeFrequency: MetadataRoute.Sitemap[number]["changeFrequency"];
   }[] = [
     { path: "/", priority: 1, changeFrequency: "weekly" },
+    { path: "/governo", priority: 0.7, changeFrequency: "monthly" },
     { path: "/planos", priority: 0.8, changeFrequency: "monthly" },
     { path: "/beneficios", priority: 0.7, changeFrequency: "monthly" },
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" },
