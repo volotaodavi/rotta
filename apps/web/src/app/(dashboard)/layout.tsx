@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
+import { LegalFooter } from "@/components/legal/legal-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 /**
@@ -100,6 +101,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       </header>
       {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
       <main className="flex-1 p-6">{children}</main>
+      <LegalFooter />
     </div>
   );
 }

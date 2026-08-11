@@ -1,15 +1,11 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 
-
+import { DriverPerfilNavigator } from "./DriverPerfilNavigator";
 import { VeiculoNavigator } from "./VeiculoNavigator";
 
 import type { DriverTabParamList } from "./types";
 
-import {
-  DriverHistoricoScreen,
-  DriverInicioScreen,
-  DriverPerfilScreen,
-} from "@/features/driver/screens";
+import { DriverHistoricoScreen, DriverInicioScreen } from "@/features/driver/screens";
 
 const Tab = createBottomTabNavigator<DriverTabParamList>();
 
@@ -31,7 +27,7 @@ export function DriverNavigator(): JSX.Element {
         options={{ title: "Histórico" }}
       />
       <Tab.Screen name="Veiculo" component={VeiculoNavigator} options={{ title: "Veículo" }} />
-      <Tab.Screen name="Perfil" component={DriverPerfilScreen} options={{ title: "Perfil" }} />
+      <Tab.Screen name="Perfil" component={DriverPerfilNavigator} options={{ title: "Perfil" }} />
     </Tab.Navigator>
   );
 }

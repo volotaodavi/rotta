@@ -14,10 +14,11 @@ import { useTheme } from "@/providers/theme-provider";
  * completo (esse existe do lado web, `@rotta/ui/web`, Dossiê 34 §2.5 —
  * portá-lo para nativo é trabalho futuro, não bloqueia este fix).
  *
- * Os Termos/Política em si vivem só no site (`apps/web` — `/termos`,
- * `/privacidade`); aqui abrem no navegador do sistema (`Linking`), não
- * numa WebView interna, porque é conteúdo de leitura simples, sem
- * nenhuma interação que precise ficar dentro do app.
+ * Os Termos/Política em si vivem só no site (`apps/web` —
+ * `/legal/termos`, `/legal/privacidade` — Dossiê 45); aqui abrem no
+ * navegador do sistema (`Linking`), não numa WebView interna, porque é
+ * conteúdo de leitura simples, sem nenhuma interação que precise ficar
+ * dentro do app.
  */
 export function AuthTermsCheckbox({
   checked,
@@ -48,14 +49,14 @@ export function AuthTermsCheckbox({
         Li e aceito os{" "}
         <Text
           style={{ color: theme.colors.primary, fontWeight: "600" }}
-          onPress={() => void Linking.openURL(`${env.EXPO_PUBLIC_WEB_URL}/termos`)}
+          onPress={() => void Linking.openURL(`${env.EXPO_PUBLIC_WEB_URL}/legal/termos`)}
         >
           Termos de Uso
         </Text>{" "}
         e a{" "}
         <Text
           style={{ color: theme.colors.primary, fontWeight: "600" }}
-          onPress={() => void Linking.openURL(`${env.EXPO_PUBLIC_WEB_URL}/privacidade`)}
+          onPress={() => void Linking.openURL(`${env.EXPO_PUBLIC_WEB_URL}/legal/privacidade`)}
         >
           Política de Privacidade
         </Text>{" "}

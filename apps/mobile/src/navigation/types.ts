@@ -23,6 +23,18 @@ export type DriverTabParamList = {
   Perfil: undefined;
 };
 
+/**
+ * Stack aninhada na aba `Perfil` do Motorista/Monitor (Dossiê 45 —
+ * Rotta Legal, Trust & Community Center) — mesmo papel de
+ * `VeiculoStackParamList` dentro de `DriverNavigator`: a aba em si
+ * nunca muda, só a tela exibida dentro dela. `Documentacao` abre a
+ * WebView de `/legal` (ver `LegalWebViewScreen`).
+ */
+export type DriverPerfilStackParamList = {
+  PerfilHome: undefined;
+  Documentacao: undefined;
+};
+
 /** Stack de "Meu Veículo" (briefing "APP MOBILE"), aberta a partir da aba `Veiculo` do Motorista/Monitor. */
 export type VeiculoStackParamList = {
   MeuVeiculo: undefined;

@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { LEGAL_DOCUMENTS } from "@/features/legal/documents";
 import { getSiteUrl } from "@/lib/site-config";
 
 
@@ -38,12 +39,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" },
     { path: "/contato", priority: 0.4, changeFrequency: "yearly" },
     { path: "/suporte", priority: 0.4, changeFrequency: "yearly" },
+    { path: "/sobre", priority: 0.4, changeFrequency: "yearly" },
     { path: "/entrar", priority: 0.5, changeFrequency: "yearly" },
     { path: "/criar-conta", priority: 0.7, changeFrequency: "monthly" },
     { path: "/criar-conta/pessoal", priority: 0.6, changeFrequency: "monthly" },
     { path: "/criar-conta/empresa", priority: 0.6, changeFrequency: "monthly" },
     { path: "/criar-conta/motorista", priority: 0.6, changeFrequency: "monthly" },
     { path: "/criar-conta/profissional", priority: 0.5, changeFrequency: "monthly" },
+    { path: "/legal", priority: 0.5, changeFrequency: "monthly" },
+    ...LEGAL_DOCUMENTS.map((doc) => ({
+      path: `/legal/${doc.slug}`,
+      priority: 0.4,
+      changeFrequency: "yearly" as const,
+    })),
   ];
 
   return paginas.map(({ path, priority, changeFrequency }) => ({

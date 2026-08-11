@@ -1,9 +1,14 @@
 import { useAuth } from "@rotta/auth/native";
 import { StyleSheet, Text } from "react-native";
 
+import type { DriverPerfilStackParamList } from "@/navigation/types";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+
 import { PinSetupCard } from "@/features/auth/components";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
+
+type Props = NativeStackScreenProps<DriverPerfilStackParamList, "PerfilHome">;
 
 const ROLE_LABEL: Record<string, string> = {
   motorista: "Motorista",
@@ -15,9 +20,11 @@ const ROLE_LABEL: Record<string, string> = {
  * padrão de `painel-web-only-screen.tsx`, sem `window.confirm`/diálogo
  * nativo). O PIN de acesso rápido (Dossiê 42) só aparece para
  * `motorista` — pedido explícito do usuário ("caso os motoristas
- * queiram"), Monitor não ganha essa opção aqui.
+ * queiram"), Monitor não ganha essa opção aqui. "Documentação Rotta"
+ * (Dossiê 45) abre a Central de Documentação pública em uma WebView —
+ * disponível para os dois papéis.
  */
-export function DriverPerfilScreen(): JSX.Element {
+export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
 
@@ -36,6 +43,11 @@ export function DriverPerfilScreen(): JSX.Element {
 
       {user?.role === "motorista" ? <PinSetupCard /> : null}
 
+      <VehicleButton
+        label="Documentação Rotta"
+        variant="secondary"
+        onPress={() => navigation.navigate("Documentacao")}
+      />
       <VehicleButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </VehicleScreen>
   );

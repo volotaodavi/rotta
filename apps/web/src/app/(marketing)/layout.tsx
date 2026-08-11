@@ -8,9 +8,9 @@ import { useState } from "react";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 
+import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { RouteMark } from "@/components/route-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
-
 
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
@@ -84,6 +84,16 @@ const FOOTER_COLUNAS: FooterColumn[] = [
       { href: "/suporte", label: "Suporte" },
       { href: "/contato", label: "Contato" },
     ],
+  },
+  {
+    /**
+     * Dossiê 45 (Rotta Legal, Trust & Community Center) — a mesma lista
+     * (`LEGAL_FOOTER_LINKS`) usada no rodapé do painel autenticado
+     * (`(dashboard)/layout.tsx`) e no rodapé de `/legal/*`, nunca
+     * duplicada.
+     */
+    titulo: "Rotta",
+    links: LEGAL_FOOTER_LINKS,
   },
 ];
 
@@ -179,7 +189,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
       <main className="flex-1">{children}</main>
 
       <footer className="w-full border-t border-border">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2 flex flex-col gap-2 sm:col-span-3 lg:col-span-1">
             <span className="flex items-center gap-2 text-base font-bold tracking-tight">
               <RouteMark className="h-6 w-6" />

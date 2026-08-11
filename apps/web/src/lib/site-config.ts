@@ -56,3 +56,32 @@ export const SITE_INSTAGRAM_URL = "https://www.instagram.com/rotta_app/";
 export function getGoogleSiteVerification(): string | undefined {
   return process.env.GOOGLE_SITE_VERIFICATION || undefined;
 }
+
+/**
+ * Dados reais da empresa (Dossiê 45 — Rotta Legal, Trust & Community
+ * Center) — fonte única, consumida por Termos/Privacidade/rodapé/
+ * demais documentos legais. NUNCA inventar um dado que não exista
+ * aqui: os únicos fatos confirmados no código antes desta entrega são
+ * razão social/CNPJ/foro (já usados em `(marketing)/termos`,
+ * `(marketing)/privacidade`, `(marketing)/layout.tsx`) e os e-mails
+ * `contato@`/`suporte@`/`notificacoes@rotta.com.br`. Não existe (e não
+ * deve ser inventado) endereço físico, telefone, DPO nomeado ou e-mail
+ * dedicado de segurança — quando a Rotta definir esses dados, atualizar
+ * SÓ aqui.
+ */
+export const COMPANY_LEGAL_NAME = "Rotta do Brasil Tecnologia e Soluções de Transportes";
+export const COMPANY_CNPJ = "54.623.584/0001-80";
+export const COMPANY_FORUM = "Maricá/RJ";
+export const CONTACT_EMAIL = "contato@rotta.com.br";
+export const SUPPORT_EMAIL = "suporte@rotta.com.br";
+/**
+ * Não existe um endereço `security@rotta.com.br` dedicado hoje — em vez
+ * de inventar um (o prompt que originou esta entrega proíbe
+ * explicitamente inventar domínio/e-mail), o canal de divulgação
+ * responsável de vulnerabilidade reaproveita o e-mail real de contato,
+ * com o assunto pedindo `[SEGURANÇA]` para triagem prioritária. Trocar
+ * por um endereço dedicado aqui no dia em que ele existir — nenhum
+ * outro arquivo precisa mudar.
+ */
+export const SECURITY_CONTACT_EMAIL = CONTACT_EMAIL;
+export const SECURITY_CONTACT_SUBJECT_HINT = "[SEGURANÇA]";

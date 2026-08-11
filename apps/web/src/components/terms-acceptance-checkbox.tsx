@@ -10,9 +10,10 @@ import Link from "next/link";
  * [codigo]`) enviavam `aceiteTermos: true` fixo no corpo da requisição
  * — nenhum usuário jamais viu ou marcou um aceite real, e as próprias
  * páginas de Termos/Privacidade nem existiam. Corrigido nos dois
- * lados: as páginas existem (`/termos`, `/privacidade`) e este
- * checkbox precisa estar marcado antes do formulário poder ser
- * enviado (ver `disabled={!aceitou}` no botão de cada tela chamadora).
+ * lados: as páginas existem (`/legal/termos`, `/legal/privacidade` —
+ * Dossiê 45, Rotta Legal, Trust & Community Center) e este checkbox
+ * precisa estar marcado antes do formulário poder ser enviado (ver
+ * `disabled={!aceitou}` no botão de cada tela chamadora).
  */
 export function TermsAcceptanceCheckbox({
   checked,
@@ -30,11 +31,11 @@ export function TermsAcceptanceCheckbox({
       />
       <Typography variant="bodySmall" color="muted">
         Li e aceito os{" "}
-        <Link href="/termos" target="_blank" className="text-primary underline">
+        <Link href="/legal/termos" target="_blank" className="text-primary underline">
           Termos de Uso
         </Link>{" "}
         e a{" "}
-        <Link href="/privacidade" target="_blank" className="text-primary underline">
+        <Link href="/legal/privacidade" target="_blank" className="text-primary underline">
           Política de Privacidade
         </Link>{" "}
         da Rotta.

@@ -13,6 +13,19 @@ const nextConfig = {
     "@rotta/maps",
   ],
   typedRoutes: true,
+  /**
+   * Dossiê 45 (Rotta Legal, Trust & Community Center) — `/termos` e
+   * `/privacidade` migraram para dentro da Documentação Rotta
+   * (`/legal/termos`, `/legal/privacidade`), com navegação lateral,
+   * índice e versionamento. Redirect permanente para não quebrar links
+   * já publicados/indexados nas URLs antigas.
+   */
+  async redirects() {
+    return [
+      { source: "/termos", destination: "/legal/termos", permanent: true },
+      { source: "/privacidade", destination: "/legal/privacidade", permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;
