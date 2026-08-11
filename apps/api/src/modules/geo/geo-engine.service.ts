@@ -9,6 +9,17 @@ import type {
 } from "./geo-engine.types";
 import type { GeoConfig } from "@/config/geo.config";
 
+import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
+
+/**
+ * Nomes usados como chave nos snapshots de `IntegrationHealthService` —
+ * dois provedores reais atrás do mesmo `GeoEngineService` (Nominatim
+ * para geocodificação, OSRM para rotas), rastreados separadamente
+ * porque um pode estar `down` sem o outro estar.
+ */
+export const NOMINATIM_INTEGRATION_NAME = "nominatim";
+export const OSRM_INTEGRATION_NAME = "osrm";
+
 /** Nome completo (como o Nominatim devolve em `address.state`) → UF, para bater com `School.estado` (sempre a sigla, ex. `"SP"`). */
 const UF_POR_ESTADO: Record<string, string> = {
   acre: "AC",
@@ -127,7 +138,10 @@ interface OsrmRouteResponse {
 export class GeoEngineService {
   private readonly config: GeoConfig;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly integrationHealth: IntegrationHealthService,
+  ) {
     this.config = configService.get<GeoConfig>("geo")!;
   }
 
@@ -139,12 +153,18 @@ export class GeoEngineService {
   async geocode(endereco: string): Promise<GeocodeResult> {
     const url = `${this.config.nominatimBaseUrl}/search?q=${encodeURIComponent(endereco)}&format=jsonv2&addressdetails=1&countrycodes=br&limit=1`;
 
+    const startedAt = Date.now();
     const response = await fetch(url, { headers: this.nominatimHeaders() });
     if (!response.ok) {
+      void this.integrationHealth.recordFailure(
+        NOMINATIM_INTEGRATION_NAME,
+        `HTTP ${response.status} em /search (geocode).`,
+      );
       throw new BadGatewayException(
         `Rotta Geo Engine: falha ao geocodificar endereço (Nominatim retornou ${response.status}).`,
       );
     }
+    void this.integrationHealth.recordSuccess(NOMINATIM_INTEGRATION_NAME, Date.now() - startedAt);
 
     const body = (await response.json()) as NominatimResult[];
     const resultado = body[0];
@@ -170,12 +190,18 @@ export class GeoEngineService {
   async reverseGeocode(ponto: Coordenada): Promise<ReverseGeocodeResult> {
     const url = `${this.config.nominatimBaseUrl}/reverse?lat=${ponto.latitude}&lon=${ponto.longitude}&format=jsonv2&addressdetails=1`;
 
+    const startedAt = Date.now();
     const response = await fetch(url, { headers: this.nominatimHeaders() });
     if (!response.ok) {
+      void this.integrationHealth.recordFailure(
+        NOMINATIM_INTEGRATION_NAME,
+        `HTTP ${response.status} em /reverse (reverseGeocode).`,
+      );
       throw new BadGatewayException(
         `Rotta Geo Engine: falha ao geocodificar coordenada reversa (Nominatim retornou ${response.status}).`,
       );
     }
+    void this.integrationHealth.recordSuccess(NOMINATIM_INTEGRATION_NAME, Date.now() - startedAt);
 
     const body = (await response.json()) as NominatimResult;
     if (!body.address) {
@@ -202,12 +228,18 @@ export class GeoEngineService {
       .join(";");
     const url = `${this.config.osrmBaseUrl}/route/v1/driving/${pontos}?geometries=geojson&overview=full`;
 
+    const startedAt = Date.now();
     const response = await fetch(url);
     if (!response.ok) {
+      void this.integrationHealth.recordFailure(
+        OSRM_INTEGRATION_NAME,
+        `HTTP ${response.status} em /route (getRoute).`,
+      );
       throw new BadGatewayException(
         `Rotta Geo Engine: falha ao calcular rota (OSRM retornou ${response.status}).`,
       );
     }
+    void this.integrationHealth.recordSuccess(OSRM_INTEGRATION_NAME, Date.now() - startedAt);
 
     const body = (await response.json()) as OsrmRouteResponse;
     const route = body.routes?.[0];

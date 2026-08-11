@@ -10,6 +10,10 @@ import type {
 } from "./types/abacatepay.types";
 
 import abacatepayConfig from "@/config/abacatepay.config";
+import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
+
+/** Nome usado como chave nos snapshots de `IntegrationHealthService` — mesma string em toda parte que registra ou lê a saúde desta integração. */
+export const ABACATEPAY_INTEGRATION_NAME = "abacatepay";
 
 /**
  * Cliente HTTP de baixo nível para a API v2 da AbacatePay (Dossiê 26).
@@ -30,6 +34,7 @@ export class AbacatePayClientService {
   constructor(
     @Inject(abacatepayConfig.KEY)
     private readonly config: ConfigType<typeof abacatepayConfig>,
+    private readonly integrationHealth: IntegrationHealthService,
   ) {}
 
   isConfigured(): boolean {
@@ -38,6 +43,10 @@ export class AbacatePayClientService {
 
   private assertConfigured(): void {
     if (!this.isConfigured()) {
+      void this.integrationHealth.recordNotConfigured(
+        ABACATEPAY_INTEGRATION_NAME,
+        "ABACATEPAY_API_KEY ausente — nenhuma chamada real foi tentada.",
+      );
       throw new InternalServerErrorException(
         "AbacatePay não está configurada (ABACATEPAY_API_KEY ausente) — cobrança indisponível.",
       );
@@ -50,6 +59,7 @@ export class AbacatePayClientService {
   ): Promise<T> {
     this.assertConfigured();
 
+    const startedAt = Date.now();
     const response = await fetch(`${this.config.baseUrl}${path}`, {
       method: init.method,
       headers: {
@@ -64,6 +74,10 @@ export class AbacatePayClientService {
     try {
       envelope = (await response.json()) as AbacatePayEnvelope<T>;
     } catch {
+      void this.integrationHealth.recordFailure(
+        ABACATEPAY_INTEGRATION_NAME,
+        `Resposta inválida (HTTP ${response.status}) em ${path}.`,
+      );
       throw new InternalServerErrorException(
         `AbacatePay retornou uma resposta inválida (HTTP ${response.status}) em ${path}.`,
       );
@@ -73,11 +87,16 @@ export class AbacatePayClientService {
       this.logger.warn(
         `AbacatePay ${init.method} ${path} falhou: HTTP ${response.status} — ${envelope.error ?? "erro desconhecido"}`,
       );
+      void this.integrationHealth.recordFailure(
+        ABACATEPAY_INTEGRATION_NAME,
+        `HTTP ${response.status} em ${init.method} ${path} — ${envelope.error ?? "erro desconhecido"}`,
+      );
       throw new InternalServerErrorException(
         `Falha ao comunicar com a AbacatePay: ${envelope.error ?? `HTTP ${response.status}`}`,
       );
     }
 
+    void this.integrationHealth.recordSuccess(ABACATEPAY_INTEGRATION_NAME, Date.now() - startedAt);
     return envelope.data as T;
   }
 

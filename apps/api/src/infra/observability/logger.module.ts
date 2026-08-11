@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 
-import { Module } from "@nestjs/common";
+import { Global, Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { LoggerModule as PinoLoggerModule } from "nestjs-pino";
 
 import { ErrorTrackingService } from "./error-tracking.service";
+import { IntegrationHealthService } from "./integration-health.service";
 
 import type { IncomingMessage } from "node:http";
 
@@ -18,7 +19,15 @@ import type { IncomingMessage } from "node:http";
  * grava senha, token ou CPF completo — os `redact` abaixo cobrem os
  * campos mais obvios; cada modulo de negocio e responsavel por nao logar
  * dado sensivel adicional especifico do seu dominio.
+ *
+ * `@Global()` (mesmo padrão de `RedisModule`): `IntegrationHealthService`
+ * (PROMPT — ROTTA INTEGRATION & INTELLIGENCE AUDIT ENGINE, Seção 34) é
+ * consumido por módulos de domínio espalhados (`BillingModule`,
+ * `WalletModule`, `GeoModule`) — exigir import explícito de
+ * `LoggerModule` em cada um seria fricção sem benefício real, já que
+ * este módulo em si não tem estado por-módulo.
  */
+@Global()
 @Module({
   imports: [
     PinoLoggerModule.forRootAsync({
@@ -47,7 +56,7 @@ import type { IncomingMessage } from "node:http";
       }),
     }),
   ],
-  providers: [ErrorTrackingService],
-  exports: [PinoLoggerModule, ErrorTrackingService],
+  providers: [ErrorTrackingService, IntegrationHealthService],
+  exports: [PinoLoggerModule, ErrorTrackingService, IntegrationHealthService],
 })
 export class LoggerModule {}

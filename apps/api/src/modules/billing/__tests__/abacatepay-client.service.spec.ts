@@ -3,14 +3,28 @@ import { InternalServerErrorException } from "@nestjs/common";
 import { AbacatePayClientService } from "../abacatepay-client.service";
 
 import type { AbacatePayConfig } from "@/config/abacatepay.config";
+import type { IntegrationHealthService } from "@/infra/observability/integration-health.service";
+
+function buildIntegrationHealthMock(): jest.Mocked<IntegrationHealthService> {
+  return {
+    recordSuccess: jest.fn().mockResolvedValue(undefined),
+    recordFailure: jest.fn().mockResolvedValue(undefined),
+    recordNotConfigured: jest.fn().mockResolvedValue(undefined),
+    getSnapshot: jest.fn(),
+    getAllSnapshots: jest.fn(),
+  } as unknown as jest.Mocked<IntegrationHealthService>;
+}
 
 function buildService(config: Partial<AbacatePayConfig> = {}): AbacatePayClientService {
-  return new AbacatePayClientService({
-    apiKey: "abc_prod_test",
-    baseUrl: "https://api.abacatepay.com/v2",
-    webhookSecret: "shh",
-    ...config,
-  });
+  return new AbacatePayClientService(
+    {
+      apiKey: "abc_prod_test",
+      baseUrl: "https://api.abacatepay.com/v2",
+      webhookSecret: "shh",
+      ...config,
+    },
+    buildIntegrationHealthMock(),
+  );
 }
 
 describe("AbacatePayClientService", () => {

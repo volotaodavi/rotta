@@ -3,6 +3,11 @@ import { ConfigService } from "@nestjs/config";
 
 import type { LytexConfig } from "@/config/lytex.config";
 
+import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
+
+/** Nome usado como chave nos snapshots de `IntegrationHealthService` — mesma string em toda parte que registra ou lê a saúde desta integração. */
+export const LYTEX_INTEGRATION_NAME = "lytex";
+
 export interface IniciarTransferenciaPixResult {
   sucesso: boolean;
   /** Id da transferência no provedor real — só presente quando `sucesso = true`. */
@@ -41,7 +46,10 @@ export class RottaPayProviderService {
   private readonly logger = new Logger(RottaPayProviderService.name);
   private readonly config: LytexConfig;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly integrationHealth: IntegrationHealthService,
+  ) {
     this.config = configService.get<LytexConfig>("lytex")!;
   }
 
@@ -54,6 +62,10 @@ export class RottaPayProviderService {
       this.logger.warn(
         "Lytex não configurada (LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET ausentes) — saque registrado localmente e aguardando processamento manual.",
       );
+      void this.integrationHealth.recordNotConfigured(
+        LYTEX_INTEGRATION_NAME,
+        "LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET ausentes — nenhuma chamada real foi tentada.",
+      );
       return {
         sucesso: false,
         motivo: "Provedora de pagamento parceira (Lytex) ainda não configurada neste ambiente.",
@@ -62,6 +74,14 @@ export class RottaPayProviderService {
 
     this.logger.warn(
       "Lytex configurada (credenciais presentes), mas a chamada real de transferência PIX/split ainda não foi implementada — contrato da API pendente de verificação (docs.lytex.com.br). Saque registrado localmente e aguardando processamento manual.",
+    );
+    // Credenciais presentes, mas nenhuma chamada de rede real acontece
+    // aqui ainda (ver DIVULGAÇÃO HONESTA acima) — `not_configured` é o
+    // status correto, não `down`/`degraded` (que implicariam uma
+    // tentativa real de chamada que falhou).
+    void this.integrationHealth.recordNotConfigured(
+      LYTEX_INTEGRATION_NAME,
+      "Credenciais presentes, mas a chamada real de transferência PIX/split ainda não foi implementada nesta base de código (contrato da API pendente de verificação).",
     );
     return {
       sucesso: false,

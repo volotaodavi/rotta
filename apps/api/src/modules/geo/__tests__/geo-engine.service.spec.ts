@@ -3,6 +3,7 @@ import { BadGatewayException } from "@nestjs/common";
 import { GeoEngineService } from "../geo-engine.service";
 
 import type { GeoConfig } from "@/config/geo.config";
+import type { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 import type { ConfigService } from "@nestjs/config";
 
 function buildConfigService(overrides: Partial<GeoConfig> = {}): ConfigService {
@@ -15,6 +16,16 @@ function buildConfigService(overrides: Partial<GeoConfig> = {}): ConfigService {
     ...overrides,
   };
   return { get: () => config } as unknown as ConfigService;
+}
+
+function buildIntegrationHealthMock(): jest.Mocked<IntegrationHealthService> {
+  return {
+    recordSuccess: jest.fn().mockResolvedValue(undefined),
+    recordFailure: jest.fn().mockResolvedValue(undefined),
+    recordNotConfigured: jest.fn().mockResolvedValue(undefined),
+    getSnapshot: jest.fn(),
+    getAllSnapshots: jest.fn(),
+  } as unknown as jest.Mocked<IntegrationHealthService>;
 }
 
 function mockFetchOnce(status: number, body: unknown): void {
@@ -48,7 +59,7 @@ describe("GeoEngineService", () => {
         },
       ]);
 
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
       const resultado = await service.geocode("Avenida Paulista, 1000");
 
       expect(resultado).toEqual({
@@ -75,6 +86,7 @@ describe("GeoEngineService", () => {
       ]);
       const service = new GeoEngineService(
         buildConfigService({ nominatimUserAgent: "MeuAgente/2.0" }),
+        buildIntegrationHealthMock(),
       );
 
       await service.geocode("Avenida Paulista, 1000");
@@ -95,7 +107,7 @@ describe("GeoEngineService", () => {
           address: { city: "São Paulo", state: "São Paulo" },
         },
       ]);
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
 
       const resultado = await service.geocode("Avenida Paulista, 1000");
 
@@ -104,14 +116,14 @@ describe("GeoEngineService", () => {
 
     it("lança BadGatewayException quando o Nominatim não retorna nenhum resultado", async () => {
       mockFetchOnce(200, []);
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
 
       await expect(service.geocode("endereço inexistente")).rejects.toThrow(BadGatewayException);
     });
 
     it("lança BadGatewayException quando o Nominatim responde com erro HTTP", async () => {
       mockFetchOnce(429, {});
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
 
       await expect(service.geocode("Avenida Paulista, 1000")).rejects.toThrow(BadGatewayException);
     });
@@ -124,7 +136,7 @@ describe("GeoEngineService", () => {
         address: { city: "São Paulo", state: "São Paulo", "ISO3166-2-lvl4": "BR-SP" },
       });
 
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
       const resultado = await service.reverseGeocode({
         latitude: -23.561684,
         longitude: -46.655981,
@@ -136,7 +148,7 @@ describe("GeoEngineService", () => {
 
     it("lança BadGatewayException quando o Nominatim não devolve endereço para a coordenada", async () => {
       mockFetchOnce(200, { display_name: "" });
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
 
       await expect(service.reverseGeocode({ latitude: -23.5, longitude: -46.6 })).rejects.toThrow(
         BadGatewayException,
@@ -158,7 +170,7 @@ describe("GeoEngineService", () => {
         ],
       });
 
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
       const resultado = await service.getRoute(
         { latitude: -23.561684, longitude: -46.655981 },
         { latitude: -23.55052, longitude: -46.633309 },
@@ -185,7 +197,7 @@ describe("GeoEngineService", () => {
         ],
       });
 
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
       const resultado = await service.getRoute(
         { latitude: -23.561684, longitude: -46.655981 },
         { latitude: -23.55052, longitude: -46.633309 },
@@ -200,7 +212,7 @@ describe("GeoEngineService", () => {
 
     it("lança BadGatewayException quando o OSRM não encontra rota (code NoRoute, sem routes)", async () => {
       mockFetchOnce(200, { code: "NoRoute" });
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
 
       await expect(
         service.getRoute(
@@ -212,7 +224,7 @@ describe("GeoEngineService", () => {
 
     it("lança BadGatewayException quando o OSRM responde com erro HTTP", async () => {
       mockFetchOnce(503, {});
-      const service = new GeoEngineService(buildConfigService());
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
 
       await expect(
         service.getRoute(

@@ -17,6 +17,7 @@ export * from "./endpoints/dashboard";
 export * from "./endpoints/drivers";
 export * from "./endpoints/geo";
 export * from "./endpoints/gps";
+export * from "./endpoints/health";
 export * from "./endpoints/marketplace";
 export * from "./endpoints/notifications";
 export * from "./endpoints/routes";
