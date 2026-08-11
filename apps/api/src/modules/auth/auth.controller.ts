@@ -15,8 +15,8 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
 
-
 import { AuthService, type AuthRequestMeta } from "./auth.service";
+import { AcceptConsentDto } from "./dto/accept-consent.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -162,6 +162,12 @@ export class AuthController {
   @Get("me/data-export")
   dataExport(@CurrentUser() actor: AuthenticatedUser) {
     return this.authService.dataExport(actor);
+  }
+
+  /** Reaceite de Termos/Privacidade (Dossiê 45 FRENTE 5) — chamado quando `GET /auth/me` retorna `pendingConsents` não-vazio. */
+  @Post("me/consent")
+  acceptConsent(@CurrentUser() actor: AuthenticatedUser, @Body() dto: AcceptConsentDto) {
+    return this.authService.acceptConsent(actor, dto.tipos);
   }
 
   @Patch("me/password")

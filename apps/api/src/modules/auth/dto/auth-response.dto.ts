@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ConsentType } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -18,6 +19,13 @@ export class MeResponseDto {
       "MFA/TOTP ativado (Dossiê 43) — só relevante para Role.ADMIN_ROTTA, sempre false para os demais papéis.",
   })
   mfaEnabled?: boolean;
+  @ApiProperty({
+    enum: ConsentType,
+    isArray: true,
+    description:
+      "Consentimentos (Termos de Uso / Política de Privacidade, Dossiê 45 FRENTE 5) cuja versão vigente o usuário ainda não aceitou — vazio quando está tudo em dia. Cliente deve exibir um reaceite bloqueante quando não-vazio (mesma UX do cadastro, ver `POST /auth/me/consent`).",
+  })
+  pendingConsents!: ConsentType[];
 }
 
 /** Resposta de login/registro/refresh/resgate de convite bem-sucedidos (Dossiê 15). */

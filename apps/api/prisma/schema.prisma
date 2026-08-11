@@ -651,6 +651,9 @@ model User {
   chamadosSuporteEncerrados SupportTicket[]  @relation("SupportTicketEncerradoPor")
   mensagensSuporte          SupportMessage[] @relation("SupportMessageAutor")
 
+  /// Consentimentos versionados (Dossiê 45 FRENTE 5) — ver `ConsentRecord`.
+  consentRecords ConsentRecord[]
+
   @@map("users")
 }
 
@@ -2394,4 +2397,37 @@ model SupportMessage {
 
   @@index([ticketId, createdAt])
   @@map("support_messages")
+}
+
+/// Consentimento versionado (Dossiê 45 FRENTE 5; lacuna já registrada no
+/// Dossiê 43 §"Deferido" — "hoje só existe `consentimentoLgpdAceitoEm`,
+/// um timestamp único, sem versão"). Cada aceite (no cadastro, ou num
+/// reaceite futuro quando a versão do documento mudar) grava uma nova
+/// linha aqui — histórico completo, nunca sobrescrito (mesmo espírito de
+/// `AuditLog`: apenas insert, nunca update). O aceite "vigente" de um
+/// `tipo` é sempre o registro mais recente daquele `tipo` para o
+/// usuário; `UsersService.getPendingConsents` compara essa `versao` com
+/// `CURRENT_TERMS_VERSION`/`CURRENT_PRIVACY_VERSION`
+/// (`modules/auth/legal-versions.ts`) para decidir se precisa reavisar.
+enum ConsentType {
+  TERMOS_DE_USO
+  POLITICA_PRIVACIDADE
+}
+
+model ConsentRecord {
+  id     String      @id @default(uuid()) @db.Uuid
+  userId String      @db.Uuid
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tipo   ConsentType
+
+  /// Ex.: "1.1" — mesma string de `LegalDocumentMeta.versao`
+  /// (`apps/web/src/features/legal/documents.ts`); os dois lados não
+  /// compartilham pacote hoje, então precisam ser mantidos em sincronia
+  /// manualmente ao publicar uma nova versão (ver comentário em
+  /// `legal-versions.ts`).
+  versao   String
+  aceitoEm DateTime @default(now())
+
+  @@index([userId, tipo, aceitoEm])
+  @@map("consent_records")
 }

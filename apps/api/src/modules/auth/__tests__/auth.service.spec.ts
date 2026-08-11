@@ -2,7 +2,6 @@ import { BadRequestException, ForbiddenException, UnauthorizedException } from "
 import { UserStatus } from "@prisma/client";
 import { authenticator } from "otplib";
 
-
 import { AuthService } from "../auth.service";
 import { MfaService } from "../mfa.service";
 
@@ -114,6 +113,8 @@ describe("AuthService", () => {
       resetLoginFailures: jest.fn(),
       updatePassword: jest.fn(),
       recordLgpdConsent: jest.fn(),
+      recordConsent: jest.fn(),
+      getPendingConsents: jest.fn().mockResolvedValue([]),
       savePendingMfaSecret: jest.fn(),
       confirmMfaEnabled: jest.fn(),
       disableMfa: jest.fn(),

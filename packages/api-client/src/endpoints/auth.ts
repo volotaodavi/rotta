@@ -10,6 +10,9 @@ import type { ApiClient } from "../http";
 export type Role =
   "admin_rotta" | "empresa" | "gestor" | "motorista" | "monitor" | "responsavel" | "escola";
 
+/** Dossiê 45 FRENTE 5 — consentimento versionado (Termos de Uso / Política de Privacidade). */
+export type ConsentType = "TERMOS_DE_USO" | "POLITICA_PRIVACIDADE";
+
 export interface MeResponse {
   id: string;
   nome: string;
@@ -21,6 +24,8 @@ export interface MeResponse {
   companyName: string | null;
   /** MFA/TOTP ativado (Dossiê 43) — só relevante para role "admin_rotta". */
   mfaEnabled?: boolean;
+  /** Tipos cuja versão vigente o usuário ainda não aceitou (Dossiê 45 FRENTE 5) — vazio quando está tudo em dia. Não-vazio deve disparar um reaceite bloqueante (ver `authApi.acceptConsent`). */
+  pendingConsents: ConsentType[];
 }
 
 export interface AuthTokensResponse {
@@ -226,6 +231,15 @@ export function createAuthEndpoints(apiClient: ApiClient) {
 
     dataExport: async (): Promise<DataExportResponse> =>
       (await apiClient.request<ApiEnvelope<DataExportResponse>>("/auth/me/data-export")).data,
+
+    /** Reaceite de Termos/Privacidade (Dossiê 45 FRENTE 5) — chamar quando `MeResponse.pendingConsents` vier não-vazio; devolve o perfil já atualizado. */
+    acceptConsent: async (tipos: ConsentType[]): Promise<MeResponse> =>
+      (
+        await apiClient.request<ApiEnvelope<MeResponse>>("/auth/me/consent", {
+          method: "POST",
+          body: { tipos },
+        })
+      ).data,
 
     changePassword: async (senhaAtual: string, novaSenha: string): Promise<{ message: string }> =>
       (

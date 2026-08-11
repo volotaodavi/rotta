@@ -15,7 +15,6 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
 import { NotificationEventType, UserStatus } from "@prisma/client";
 
-
 import { PASSWORD_RESET_TOKEN_REPOSITORY, SESSION_REPOSITORY } from "./auth.constants";
 import { MfaService } from "./mfa.service";
 import { PasswordResetNotifierService } from "./password-reset-notifier.service";
@@ -47,7 +46,7 @@ import type { SessionRepository } from "./repositories/session.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuthConfig } from "@/config/auth.config";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
-import type { User } from "@prisma/client";
+import type { ConsentType, User } from "@prisma/client";
 
 import { parseDurationToMs } from "@/common/utils/duration.util";
 import { PrismaService } from "@/infra/database/prisma.service";
@@ -708,6 +707,12 @@ export class AuthService {
     return this.toMeResponse(user, actor.tenantId, actor.role, companyName);
   }
 
+  /** Reaceite de Termos/Privacidade (Dossiê 45 FRENTE 5) — chamado quando `GET /auth/me` retorna `pendingConsents` não-vazio; grava a versão vigente de cada `tipo` informado e devolve o perfil já atualizado. */
+  async acceptConsent(actor: AuthenticatedUser, tipos: ConsentType[]): Promise<MeResponseDto> {
+    await this.usersService.recordConsent(actor.sub, tipos);
+    return this.me(actor);
+  }
+
   /**
    * Exportação autoatendida dos dados pessoais do próprio usuário
    * (Dossiê 33 — Prompt 23, LGPD art. 18 II/V: confirmação de
@@ -824,16 +829,17 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: refreshTokenPlain,
-      user: this.toMeResponse(user, tenantId, role, companyName),
+      user: await this.toMeResponse(user, tenantId, role, companyName),
     };
   }
 
-  private toMeResponse(
+  private async toMeResponse(
     user: User,
     tenantId: string | null,
     role: Role,
     companyName: string | null,
-  ): MeResponseDto {
+  ): Promise<MeResponseDto> {
+    const pendingConsents = await this.usersService.getPendingConsents(user.id);
     return {
       id: user.id,
       nome: user.nome,
@@ -844,6 +850,7 @@ export class AuthService {
       companyId: tenantId,
       companyName,
       mfaEnabled: user.totpHabilitado,
+      pendingConsents,
     };
   }
 }

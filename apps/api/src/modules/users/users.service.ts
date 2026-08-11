@@ -1,18 +1,29 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import { passwordEqualsIdentifier } from "@rotta/validators";
 
+import {
+  CONSENT_RECORD_REPOSITORY,
+  MEMBERSHIP_REPOSITORY,
+  USER_REPOSITORY,
+} from "./users.constants";
 
-import { MEMBERSHIP_REPOSITORY, USER_REPOSITORY } from "./users.constants";
-
+import type { ConsentRecordRepository } from "./repositories/consent-record.repository";
 import type {
   CreateMembershipInput,
   MembershipRepository,
   MembershipWithCompany,
 } from "./repositories/membership.repository";
 import type { UserRepository } from "./repositories/user.repository";
-import type { Membership, Prisma, User } from "@prisma/client";
+import type { ConsentType, Membership, Prisma, User } from "@prisma/client";
 
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
+import { CURRENT_PRIVACY_VERSION, CURRENT_TERMS_VERSION } from "@/modules/auth/legal-versions";
+
+/** Versão vigente de cada tipo de consentimento (Dossiê 45 FRENTE 5) — única fonte usada por `recordConsent`/`getPendingConsents`. */
+const CURRENT_CONSENT_VERSION: Record<ConsentType, string> = {
+  TERMOS_DE_USO: CURRENT_TERMS_VERSION,
+  POLITICA_PRIVACIDADE: CURRENT_PRIVACY_VERSION,
+};
 
 /** `RN-AUTH-02` (Dossiê 15) — bloqueio temporário após tentativas malsucedidas. */
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
@@ -42,6 +53,8 @@ export class UsersService {
   constructor(
     @Inject(USER_REPOSITORY) private readonly userRepository: UserRepository,
     @Inject(MEMBERSHIP_REPOSITORY) private readonly membershipRepository: MembershipRepository,
+    @Inject(CONSENT_RECORD_REPOSITORY)
+    private readonly consentRecordRepository: ConsentRecordRepository,
     private readonly passwordHasher: PasswordHasherService,
   ) {}
 
@@ -174,9 +187,49 @@ export class UsersService {
     await this.userRepository.updateAuthState(userId, { passwordHash: newPasswordHash });
   }
 
-  /** Melhor esforço: nunca falha o fluxo chamador por si só (mesmo espírito de `AuditLogService.record`). */
+  /**
+   * Melhor esforço: nunca falha o fluxo chamador por si só (mesmo
+   * espírito de `AuditLogService.record`). Continua gravando o
+   * timestamp único de `consentimentoLgpdAceitoEm` (usado hoje em
+   * `dataExport`) E, a partir do Dossiê 45 FRENTE 5, também um
+   * `ConsentRecord` versionado para os dois documentos aceitos no
+   * cadastro (Termos de Uso + Política de Privacidade) — é o único
+   * ponto de aceite hoje (`aceiteTermos` nos DTOs de registro/convite),
+   * daí aceitar os dois tipos de uma vez.
+   */
   async recordLgpdConsent(userId: string): Promise<void> {
     await this.userRepository.updateAuthState(userId, { consentimentoLgpdAceitoEm: new Date() });
+    await this.recordConsent(userId, ["TERMOS_DE_USO", "POLITICA_PRIVACIDADE"]);
+  }
+
+  /** Grava um novo aceite (versão vigente de cada `tipo`) — usado no cadastro e no reaceite (`POST /auth/me/consent`) quando a versão de um documento muda. */
+  async recordConsent(userId: string, tipos: ConsentType[]): Promise<void> {
+    await this.consentRecordRepository.recordAcceptance(
+      userId,
+      tipos.map((tipo) => ({ tipo, versao: CURRENT_CONSENT_VERSION[tipo] })),
+    );
+  }
+
+  /**
+   * Quais tipos de consentimento o usuário ainda não aceitou na versão
+   * vigente — nunca aceitou nenhuma vez, ou aceitou uma versão anterior
+   * (Dossiê 45 FRENTE 5: "reprompt quando a versão relevante mudar").
+   * `listByUser` já vem ordenado do mais recente para o mais antigo
+   * (`PrismaConsentRecordRepository`), então o primeiro registro de cada
+   * `tipo` encontrado é sempre o aceite vigente daquele usuário.
+   */
+  async getPendingConsents(userId: string): Promise<ConsentType[]> {
+    const records = await this.consentRecordRepository.listByUser(userId);
+    const latestByTipo = new Map<ConsentType, string>();
+    for (const record of records) {
+      if (!latestByTipo.has(record.tipo)) {
+        latestByTipo.set(record.tipo, record.versao);
+      }
+    }
+
+    return (Object.keys(CURRENT_CONSENT_VERSION) as ConsentType[]).filter(
+      (tipo) => latestByTipo.get(tipo) !== CURRENT_CONSENT_VERSION[tipo],
+    );
   }
 
   /**

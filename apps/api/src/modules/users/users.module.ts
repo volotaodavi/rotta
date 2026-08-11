@@ -1,9 +1,13 @@
 import { Module } from "@nestjs/common";
 
-
+import { PrismaConsentRecordRepository } from "./repositories/prisma-consent-record.repository";
 import { PrismaMembershipRepository } from "./repositories/prisma-membership.repository";
 import { PrismaUserRepository } from "./repositories/prisma-user.repository";
-import { MEMBERSHIP_REPOSITORY, USER_REPOSITORY } from "./users.constants";
+import {
+  CONSENT_RECORD_REPOSITORY,
+  MEMBERSHIP_REPOSITORY,
+  USER_REPOSITORY,
+} from "./users.constants";
 import { UsersService } from "./users.service";
 
 import { SecurityModule } from "@/infra/security/security.module";
@@ -24,6 +28,7 @@ import { SecurityModule } from "@/infra/security/security.module";
     UsersService,
     { provide: USER_REPOSITORY, useClass: PrismaUserRepository },
     { provide: MEMBERSHIP_REPOSITORY, useClass: PrismaMembershipRepository },
+    { provide: CONSENT_RECORD_REPOSITORY, useClass: PrismaConsentRecordRepository },
   ],
   exports: [UsersService],
 })
