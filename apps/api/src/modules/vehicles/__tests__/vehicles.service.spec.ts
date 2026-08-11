@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { VehicleAssignmentRole, VehicleCategory, VehicleStatus, VehicleType } from "@prisma/client";
 
-
 import { VehiclesService } from "../vehicles.service";
 
 import type { CreateVehicleDto } from "../dto/create-vehicle.dto";
@@ -169,6 +168,7 @@ describe("VehiclesService", () => {
     storageService = {
       upload: jest.fn(),
       uploadPrivate: jest.fn(),
+      getSignedUrl: jest.fn(),
     } as unknown as jest.Mocked<SupabaseStorageService>;
     rottaAiService = {
       validateDocument: jest.fn(),
@@ -388,7 +388,10 @@ describe("VehiclesService", () => {
 
     it("cria o documento, marca a análise da Rotta AI como indisponível (stub) e gera lembrete de vencimento", async () => {
       vehicleRepository.findById.mockResolvedValue(buildVehicle());
-      storageService.uploadPrivate.mockResolvedValue("https://storage.test/doc.pdf?token=signed");
+      storageService.uploadPrivate.mockResolvedValue({
+        path: "vehicles/vehicle-1/documents/doc.pdf",
+        url: "https://storage.test/doc.pdf?token=signed",
+      });
       const created = buildDocument({ vencimentoEm: new Date("2027-01-01") });
       documentRepository.create.mockResolvedValue(created);
       rottaAiService.analyzeVehicleDocument.mockRejectedValue(new Error("stub"));
@@ -407,7 +410,12 @@ describe("VehiclesService", () => {
         {},
       );
 
-      expect(documentRepository.create).toHaveBeenCalled();
+      expect(documentRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fileUrl: "https://storage.test/doc.pdf?token=signed",
+          filePath: "vehicles/vehicle-1/documents/doc.pdf",
+        }),
+      );
       expect(reminderRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ tipo: "LICENCIAMENTO" }),
       );

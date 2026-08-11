@@ -38,16 +38,31 @@ export function TransporterCard({
 
       {/* Modalidade real da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR):
           nunca inferida da categoria da CNH de um motorista, sempre da frota
-          declarada em `Vehicle.categoria`. */}
+          declarada em `Vehicle.categoria`. O badge ESCOLAR distingue
+          "declarado pela empresa" de "verificado" (achado C1 da auditoria
+          Legal↔Produto) — nunca deixar o Responsável ler os dois como a
+          mesma garantia. */}
       <View style={styles.modalidades}>
         {transportador.categoriasVeiculo.length > 0 ? (
-          transportador.categoriasVeiculo.map((categoria) => (
-            <StatusPill
-              key={categoria}
-              label={VEHICLE_CATEGORY_LABEL[categoria]}
-              tone={VEHICLE_CATEGORY_TONE[categoria]}
-            />
-          ))
+          transportador.categoriasVeiculo.map((categoria) =>
+            categoria === "ESCOLAR" ? (
+              <StatusPill
+                key={categoria}
+                label={
+                  transportador.escolarVerificado
+                    ? "Transporte escolar (verificado)"
+                    : "Transporte escolar (não verificado)"
+                }
+                tone={transportador.escolarVerificado ? "success" : "warning"}
+              />
+            ) : (
+              <StatusPill
+                key={categoria}
+                label={VEHICLE_CATEGORY_LABEL[categoria]}
+                tone={VEHICLE_CATEGORY_TONE[categoria]}
+              />
+            ),
+          )
         ) : (
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Modalidade não informada

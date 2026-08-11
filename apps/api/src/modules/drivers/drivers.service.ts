@@ -154,8 +154,10 @@ export class DriversService {
 
     const extension = file.originalname.split(".").pop() ?? (isPdf ? "pdf" : "jpg");
     // uploadPrivate (Dossiê 32): documento pessoal (CNH/EAR/Cursos) — nunca
-    // exposto por URL pública previsível, só por URL assinada.
-    const url = await this.storageService.uploadPrivate(
+    // exposto por URL pública previsível, só por URL assinada. `filePath`
+    // é o que persiste (Dossiê 45, achado C3) — releituras assinam uma
+    // URL nova de curta validade em vez de reusar `url` para sempre.
+    const { path, url } = await this.storageService.uploadPrivate(
       `drivers/${targetUserId}/documents/${randomUUID()}.${extension}`,
       file.buffer,
       file.mimetype,
@@ -170,6 +172,7 @@ export class DriversService {
       nomeOriginal: file.originalname,
       mimeType: file.mimetype,
       fileUrl: url,
+      filePath: path,
       vencimentoEm: dto.vencimentoEm ? new Date(dto.vencimentoEm) : undefined,
       uploadedByUserId: actor.sub,
     });
@@ -187,7 +190,16 @@ export class DriversService {
 
     document = await this.analyzeDocumentWithRottaAi(document.id, document.tipo, url);
 
-    return toDriverDocumentResponseDto(document);
+    return toDriverDocumentResponseDto(document, await this.resolvePrivateFileUrl(document));
+  }
+
+  /** Ver nota em `toDriverDocumentResponseDto` (Dossiê 45, achado C3). */
+  private async resolvePrivateFileUrl(document: {
+    fileUrl: string;
+    filePath: string | null;
+  }): Promise<string> {
+    if (!document.filePath) return document.fileUrl;
+    return this.storageService.getSignedUrl(document.filePath);
   }
 
   /**
@@ -242,7 +254,11 @@ export class DriversService {
   ): Promise<DriverDocumentResponseDto[]> {
     await this.resolveCompanyContext(targetUserId, actor, companyIdOverride);
     const documents = await this.documentRepository.listByUser({ userId: targetUserId, tipo });
-    return documents.map(toDriverDocumentResponseDto);
+    return Promise.all(
+      documents.map(async (document) =>
+        toDriverDocumentResponseDto(document, await this.resolvePrivateFileUrl(document)),
+      ),
+    );
   }
 
   async removeDocument(

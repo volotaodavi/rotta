@@ -1,6 +1,5 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 
-
 import { DriversService } from "../drivers.service";
 
 import type { DriverDocumentRepository } from "../repositories/driver-document.repository";
@@ -98,6 +97,7 @@ describe("DriversService", () => {
     storageService = {
       upload: jest.fn(),
       uploadPrivate: jest.fn(),
+      getSignedUrl: jest.fn(),
     } as unknown as jest.Mocked<SupabaseStorageService>;
     rottaAiService = {
       validateDocument: jest.fn(),
@@ -111,9 +111,10 @@ describe("DriversService", () => {
       rottaAiService,
     );
 
-    storageService.uploadPrivate.mockResolvedValue(
-      "https://storage.test/drivers/driver-1/documents/1.jpg?token=signed",
-    );
+    storageService.uploadPrivate.mockResolvedValue({
+      path: "drivers/driver-1/documents/1.jpg",
+      url: "https://storage.test/drivers/driver-1/documents/1.jpg?token=signed",
+    });
     documentRepository.create.mockResolvedValue(buildDocument());
     documentRepository.findById.mockResolvedValue(buildDocument());
   });

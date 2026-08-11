@@ -1,3 +1,4 @@
+import { computeEscolarVerificado } from "../escolar-verification.util";
 import { computeVerified } from "../verification.util";
 
 import type {
@@ -34,6 +35,7 @@ export function toTransporterCardResponseDto(
     veiculosAtivos: candidate.veiculosAtivos.length,
     tiposVeiculo: [...new Set(candidate.veiculosAtivos.map((v) => v.tipo))],
     categoriasVeiculo: [...new Set(candidate.veiculosAtivos.map((v) => v.categoria))],
+    escolarVerificado: computeEscolarVerificado(candidate.veiculosAtivos),
     alunosTransportados: candidate.alunosTransportadosIds.length,
     mensalidadeAPartirDeCentavos:
       candidate.mensalidadesAtivasCentavos.length > 0

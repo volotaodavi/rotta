@@ -1,4 +1,12 @@
-import type { Company, CompanyType, Plan, Rating, Vehicle, VehicleDocument } from "@prisma/client";
+import type {
+  Company,
+  CompanyType,
+  DriverDocument,
+  Plan,
+  Rating,
+  Vehicle,
+  VehicleDocument,
+} from "@prisma/client";
 
 export type CompanyWithPlan = Company & { plan: Plan };
 
@@ -25,7 +33,22 @@ export interface SearchTransportersFilter {
  */
 export interface TransporterCandidate {
   company: CompanyWithPlan;
-  veiculosAtivos: (Vehicle & { documentos: VehicleDocument[] })[];
+  /**
+   * `ultimoMotorista` (Dossiê 45 — achado C1 da auditoria de consistência
+   * Legal↔Produto: o selo "ESCOLAR" no Marketplace vinha só de
+   * `Vehicle.categoria` auto-declarada pela empresa, sem checar se o
+   * motorista de fato atende os requisitos — o que `/legal/motoristas`
+   * promete publicamente) — carregado só para
+   * `MarketplaceService.computeEscolarVerificado` rodar
+   * `computeSchoolTransportEligibility` (mesmo motor puro do módulo
+   * Drivers, nunca duplicado) sobre os documentos do motorista
+   * atualmente vinculado a cada veículo `ESCOLAR`. `null` quando o
+   * veículo não tem motorista vinculado (`Vehicle.ultimoMotoristaId`).
+   */
+  veiculosAtivos: (Vehicle & {
+    documentos: VehicleDocument[];
+    ultimoMotorista: { documentosMotorista: DriverDocument[] } | null;
+  })[];
   alunosTransportadosIds: string[];
   ratings: Pick<Rating, "nota">[];
   mensalidadesAtivasCentavos: number[];

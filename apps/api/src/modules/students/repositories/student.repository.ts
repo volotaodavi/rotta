@@ -4,6 +4,8 @@ export interface CreateStudentData {
   responsavelId: string;
   nome: string;
   fotoUrl?: string;
+  /// Ver `Student.fotoPath`, `schema.prisma` (Dossiê 45, achado C3).
+  fotoPath?: string;
   dataNascimento: Date;
   sexo: StudentSex;
   schoolId: string;

@@ -19,7 +19,13 @@ const candidateInclude = {
   plan: true,
   vehicles: {
     where: { deletedAt: null, status: ACTIVE_VEHICLE_STATUS },
-    include: { documentos: { where: { deletedAt: null } } },
+    include: {
+      documentos: { where: { deletedAt: null } },
+      // Dossiê 45, achado C1 — ver nota em `TransporterCandidate.veiculosAtivos`.
+      ultimoMotorista: {
+        select: { documentosMotorista: { where: { deletedAt: null } } },
+      },
+    },
   },
   contratos: {
     where: { status: "ATIVO" as const },

@@ -145,6 +145,15 @@ describe("MarketplaceService", () => {
       expect(result.items[0].categoriasVeiculo).toEqual(["ESCOLAR"]);
     });
 
+    it("escolarVerificado é false quando o veículo ESCOLAR não tem motorista vinculado, mesmo com categoriasVeiculo=[ESCOLAR] (achado C1)", async () => {
+      transporterRepository.searchCandidates.mockResolvedValue([buildCandidate()]);
+
+      const result = await service.search(buildQuery());
+
+      expect(result.items[0].categoriasVeiculo).toEqual(["ESCOLAR"]);
+      expect(result.items[0].escolarVerificado).toBe(false);
+    });
+
     it("repassa categoriaVeiculo para o repositório, junto dos demais filtros da query SQL", async () => {
       transporterRepository.searchCandidates.mockResolvedValue([]);
 

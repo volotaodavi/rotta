@@ -932,6 +932,9 @@ model VehicleDocument {
   nomeOriginal String
   mimeType     String
   fileUrl      String
+  /// Ver `DriverDocument.filePath` (Dossiê 45, achado C3) — mesmo
+  /// mecanismo de reassinatura sob demanda com validade curta.
+  filePath     String?
   vencimentoEm DateTime?
 
   /// Análise assíncrona da Rotta AI (briefing "ROTTA AI") — sempre
@@ -1177,6 +1180,16 @@ model DriverDocument {
   nomeOriginal String
   mimeType     String
   fileUrl      String
+  /// Caminho no bucket privado do Supabase Storage (Dossiê 45 — achado
+  /// C3 da auditoria de consistência Legal↔Produto: `fileUrl` guardava
+  /// uma URL assinada válida por 10 anos, direto contrariando a
+  /// promessa de "curto período" em `/legal/seguranca`). Quando
+  /// presente, o serviço assina uma URL nova de curta validade a cada
+  /// leitura (`SupabaseStorageService.getSignedUrl`) em vez de reusar o
+  /// `fileUrl` armazenado — `null` só em linhas antigas, enviadas antes
+  /// desta correção, que continuam servindo o `fileUrl` de validade
+  /// longa já persistido até ele expirar.
+  filePath     String?
   vencimentoEm DateTime?
 
   /// Análise assíncrona da Rotta AI (mesmo stub de
@@ -1386,6 +1399,11 @@ model Student {
 
   nome           String
   fotoUrl        String?
+  /// Ver `DriverDocument.filePath` (Dossiê 45, achado C3) — mesmo
+  /// mecanismo de reassinatura sob demanda com validade curta; foto de
+  /// aluno é dado pessoal de criança/adolescente (LGPD art. 14), o caso
+  /// mais sensível dos três.
+  fotoPath       String?
   dataNascimento DateTime   @db.Date
   sexo           StudentSex
 

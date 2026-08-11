@@ -109,22 +109,42 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
         </Text>
         {/* Modalidade real da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE
             ESCOLAR): nunca inferida da categoria da CNH de um motorista,
-            sempre da frota declarada em `Vehicle.categoria`. */}
+            sempre da frota declarada em `Vehicle.categoria`. O badge
+            ESCOLAR distingue "declarado pela empresa" de "verificado"
+            (achado C1 da auditoria Legal↔Produto). */}
         <View style={styles.modalidades}>
           {data.categoriasVeiculo.length > 0 ? (
-            data.categoriasVeiculo.map((categoria) => (
-              <StatusPill
-                key={categoria}
-                label={VEHICLE_CATEGORY_LABEL[categoria]}
-                tone={VEHICLE_CATEGORY_TONE[categoria]}
-              />
-            ))
+            data.categoriasVeiculo.map((categoria) =>
+              categoria === "ESCOLAR" ? (
+                <StatusPill
+                  key={categoria}
+                  label={
+                    data.escolarVerificado
+                      ? "Transporte escolar (verificado)"
+                      : "Transporte escolar (não verificado)"
+                  }
+                  tone={data.escolarVerificado ? "success" : "warning"}
+                />
+              ) : (
+                <StatusPill
+                  key={categoria}
+                  label={VEHICLE_CATEGORY_LABEL[categoria]}
+                  tone={VEHICLE_CATEGORY_TONE[categoria]}
+                />
+              ),
+            )
           ) : (
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               Modalidade não informada
             </Text>
           )}
         </View>
+        {data.categoriasVeiculo.includes("ESCOLAR") && !data.escolarVerificado ? (
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            A empresa declarou veículo(s) para transporte escolar, mas nenhum motorista vinculado
+            teve CNH categoria D/E, EAR, curso e antecedentes totalmente verificados ainda.
+          </Text>
+        ) : null}
         <Text style={{ color: theme.colors.textMuted }}>
           {data.alunosTransportados} aluno(s) transportado(s) atualmente
         </Text>

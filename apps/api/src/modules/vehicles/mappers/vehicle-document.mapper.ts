@@ -1,8 +1,10 @@
 import type { VehicleDocumentResponseDto } from "../dto/vehicle-document-response.dto";
 import type { VehicleDocument } from "@prisma/client";
 
+/** `freshFileUrl` — ver nota equivalente em `toDriverDocumentResponseDto` (Dossiê 45, achado C3). */
 export function toVehicleDocumentResponseDto(
   document: VehicleDocument,
+  freshFileUrl?: string,
 ): VehicleDocumentResponseDto {
   return {
     id: document.id,
@@ -11,7 +13,7 @@ export function toVehicleDocumentResponseDto(
     tipo: document.tipo,
     nomeOriginal: document.nomeOriginal,
     mimeType: document.mimeType,
-    fileUrl: document.fileUrl,
+    fileUrl: freshFileUrl ?? document.fileUrl,
     vencimentoEm: document.vencimentoEm,
     rottaAiStatus: document.rottaAiStatus,
     rottaAiQualidadeOk: document.rottaAiQualidadeOk,

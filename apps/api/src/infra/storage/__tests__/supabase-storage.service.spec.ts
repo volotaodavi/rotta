@@ -64,11 +64,9 @@ describe("SupabaseStorageService", () => {
       const service = new SupabaseStorageService(buildConfigService(CONFIGURED));
       const from = jest.fn().mockReturnValue({
         upload: jest.fn().mockResolvedValue({ error: null }),
-        getPublicUrl: jest
-          .fn()
-          .mockReturnValue({
-            data: { publicUrl: "https://cdn.test/rotta-public/companies/1/logo.png" },
-          }),
+        getPublicUrl: jest.fn().mockReturnValue({
+          data: { publicUrl: "https://cdn.test/rotta-public/companies/1/logo.png" },
+        }),
       });
       service["client"] = { storage: { from } } as never;
 
@@ -95,30 +93,34 @@ describe("SupabaseStorageService", () => {
       ).rejects.toThrow(ServiceUnavailableException);
     });
 
-    it("envia ao bucket privado e retorna URL ASSINADA, nunca getPublicUrl (Dossiê 32)", async () => {
+    it("envia ao bucket privado e retorna { path, url } assinada de curta validade, nunca getPublicUrl (Dossiê 32)", async () => {
       const service = new SupabaseStorageService(buildConfigService(CONFIGURED));
       const getPublicUrl = jest.fn();
+      const createSignedUrl = jest.fn().mockResolvedValue({
+        data: { signedUrl: "https://cdn.test/rotta-documents/students/1/foto.png?token=abc" },
+        error: null,
+      });
       const from = jest.fn().mockReturnValue({
         upload: jest.fn().mockResolvedValue({ error: null }),
         getPublicUrl,
-        createSignedUrl: jest
-          .fn()
-          .mockResolvedValue({
-            data: { signedUrl: "https://cdn.test/rotta-documents/students/1/foto.png?token=abc" },
-            error: null,
-          }),
+        createSignedUrl,
       });
       service["client"] = { storage: { from } } as never;
 
-      const url = await service.uploadPrivate(
+      const result = await service.uploadPrivate(
         "students/1/foto.png",
         Buffer.from("fake"),
         "image/png",
       );
 
       expect(from).toHaveBeenCalledWith("rotta-documents");
-      expect(url).toBe("https://cdn.test/rotta-documents/students/1/foto.png?token=abc");
+      expect(result).toEqual({
+        path: "students/1/foto.png",
+        url: "https://cdn.test/rotta-documents/students/1/foto.png?token=abc",
+      });
       expect(getPublicUrl).not.toHaveBeenCalled();
+      // 15 minutos (Dossiê 45, achado C3) — nunca os 10 anos de antes.
+      expect(createSignedUrl).toHaveBeenCalledWith("students/1/foto.png", 60 * 15);
     });
 
     it("propaga erro claro quando a assinatura da URL falha", async () => {
@@ -134,6 +136,53 @@ describe("SupabaseStorageService", () => {
       await expect(
         service.uploadPrivate("drivers/1/documents/x.pdf", Buffer.from("fake"), "application/pdf"),
       ).rejects.toThrow("Falha ao gerar URL assinada");
+    });
+  });
+
+  describe("getSignedUrl (Dossiê 45, achado C3 — reassinatura de curta validade a cada leitura)", () => {
+    it("assina uma URL nova para um path já existente, com TTL curto por padrão", async () => {
+      const service = new SupabaseStorageService(buildConfigService(CONFIGURED));
+      const createSignedUrl = jest.fn().mockResolvedValue({
+        data: { signedUrl: "https://cdn.test/rotta-documents/drivers/1/cnh.pdf?token=fresh" },
+        error: null,
+      });
+      const from = jest.fn().mockReturnValue({ createSignedUrl });
+      service["client"] = { storage: { from } } as never;
+
+      const url = await service.getSignedUrl("drivers/1/cnh.pdf");
+
+      expect(from).toHaveBeenCalledWith("rotta-documents");
+      expect(createSignedUrl).toHaveBeenCalledWith("drivers/1/cnh.pdf", 60 * 15);
+      expect(url).toBe("https://cdn.test/rotta-documents/drivers/1/cnh.pdf?token=fresh");
+    });
+
+    it("aceita um TTL explícito quando o chamador precisa de outra duração", async () => {
+      const service = new SupabaseStorageService(buildConfigService(CONFIGURED));
+      const createSignedUrl = jest.fn().mockResolvedValue({
+        data: { signedUrl: "https://cdn.test/x?token=y" },
+        error: null,
+      });
+      const from = jest.fn().mockReturnValue({ createSignedUrl });
+      service["client"] = { storage: { from } } as never;
+
+      await service.getSignedUrl("drivers/1/cnh.pdf", 3600);
+
+      expect(createSignedUrl).toHaveBeenCalledWith("drivers/1/cnh.pdf", 3600);
+    });
+
+    it("recusa quando não configurado (nunca falha silenciosamente)", async () => {
+      const service = new SupabaseStorageService(
+        buildConfigService({
+          supabaseUrl: undefined,
+          supabaseServiceRoleKey: undefined,
+          bucket: "rotta-documents",
+          publicBucket: "rotta-public",
+        }),
+      );
+
+      await expect(service.getSignedUrl("drivers/1/cnh.pdf")).rejects.toThrow(
+        ServiceUnavailableException,
+      );
     });
   });
 });

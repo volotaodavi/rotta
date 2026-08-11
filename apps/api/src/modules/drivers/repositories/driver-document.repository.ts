@@ -9,6 +9,8 @@ export interface CreateDriverDocumentData {
   nomeOriginal: string;
   mimeType: string;
   fileUrl: string;
+  /// Ver `DriverDocument.filePath`, `schema.prisma` (Dossiê 45, achado C3).
+  filePath?: string;
   vencimentoEm?: Date;
   uploadedByUserId: string;
 }

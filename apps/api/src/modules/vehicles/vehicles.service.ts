@@ -17,7 +17,6 @@ import {
 } from "@prisma/client";
 import { normalizePlate } from "@rotta/validators";
 
-
 import { toVehicleAssignmentResponseDto } from "./mappers/vehicle-assignment.mapper";
 import {
   toListVehicleChecklistsResponseDto,
@@ -540,7 +539,9 @@ export class VehiclesService {
     const extension = file.originalname.split(".").pop() ?? (isPdf ? "pdf" : "jpg");
     // uploadPrivate (Dossiê 32): documento oficial do veículo (ex. CRLV)
     // pode conter dado pessoal do proprietário — nunca URL pública previsível.
-    const url = await this.storageService.uploadPrivate(
+    // `filePath` é o que persiste (Dossiê 45, achado C3) — releituras
+    // assinam uma URL nova de curta validade em vez de reusar `url`.
+    const { path, url } = await this.storageService.uploadPrivate(
       `vehicles/${vehicleId}/documents/${randomUUID()}.${extension}`,
       file.buffer,
       file.mimetype,
@@ -554,6 +555,7 @@ export class VehiclesService {
       nomeOriginal: file.originalname,
       mimeType: file.mimetype,
       fileUrl: url,
+      filePath: path,
       vencimentoEm: dto.vencimentoEm ? new Date(dto.vencimentoEm) : undefined,
       uploadedByUserId: actor.sub,
     });
@@ -581,7 +583,16 @@ export class VehiclesService {
 
     document = await this.analyzeDocumentWithRottaAi(document.id, document.tipo, url);
 
-    return toVehicleDocumentResponseDto(document);
+    return toVehicleDocumentResponseDto(document, await this.resolvePrivateFileUrl(document));
+  }
+
+  /** Ver nota em `toVehicleDocumentResponseDto` (Dossiê 45, achado C3). */
+  private async resolvePrivateFileUrl(document: {
+    fileUrl: string;
+    filePath: string | null;
+  }): Promise<string> {
+    if (!document.filePath) return document.fileUrl;
+    return this.storageService.getSignedUrl(document.filePath);
   }
 
   /**
@@ -655,7 +666,11 @@ export class VehiclesService {
   ): Promise<VehicleDocumentResponseDto[]> {
     await this.fetchOrThrow(vehicleId, actor);
     const documents = await this.documentRepository.listByVehicle({ vehicleId, tipo });
-    return documents.map(toVehicleDocumentResponseDto);
+    return Promise.all(
+      documents.map(async (document) =>
+        toVehicleDocumentResponseDto(document, await this.resolvePrivateFileUrl(document)),
+      ),
+    );
   }
 
   async removeDocument(

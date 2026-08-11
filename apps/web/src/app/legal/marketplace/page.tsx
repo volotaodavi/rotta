@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-document-shell";
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 
-
 export const metadata: Metadata = {
   title: "Política de Contratação e Marketplace",
   description: "Quem contrata, quem presta, quem paga, e qual é o papel da Rotta.",
@@ -73,11 +72,18 @@ export default function MarketplacePage(): JSX.Element {
 
       <LegalSection id="contratos" title="5. Contratos na Rotta">
         Quando a contratação envolve um contrato gerado pela plataforma, ele passa por geração (a
-        partir dos dados da contratação), apresentação às partes, e — quando configurado —
-        assinatura eletrônica através de um provedor especializado nesse serviço. O contrato
-        assinado fica armazenado e disponível para download pelas partes envolvidas, dentro do
-        painel/app. As responsabilidades sobre o conteúdo do contrato (cláusulas de prestação de
-        serviço, valores, condições) são das partes que o firmam.
+        partir dos dados da contratação) e apresentação às partes, que confirmam o aceite por uma
+        assinatura eletrônica simples feita dentro do próprio painel/app — cada parte (família e
+        transportadora) confirma individualmente, e o contrato só é ativado depois que as duas
+        confirmações existirem. O contrato assinado fica armazenado e disponível para download pelas
+        partes envolvidas.
+        <br />
+        <br />A Rotta está preparada para, no futuro, integrar essa assinatura a um provedor
+        especializado externo (adicionando uma camada extra de validade jurídica/cadeia de custódia
+        ao processo) — essa integração específica <strong>ainda não está ativa hoje</strong>: nenhum
+        contrato depende dela para ser válido na plataforma. As responsabilidades sobre o conteúdo
+        do contrato (cláusulas de prestação de serviço, valores, condições) são das partes que o
+        firmam.
       </LegalSection>
 
       <LegalSection id="ia-juridica" title="6. Uso de IA na análise de contratos">

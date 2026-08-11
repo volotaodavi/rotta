@@ -43,6 +43,12 @@ export class TransporterCardResponseDto {
   })
   categoriasVeiculo!: VehicleCategory[];
 
+  @ApiProperty({
+    description:
+      "Dossiê 45, achado C1 da auditoria de consistência Legal↔Produto: true somente quando a empresa tem ao menos 1 veículo ativo declarado ESCOLAR cujo motorista atualmente vinculado passa em `computeSchoolTransportEligibility` (CNH D/E + EAR + curso + antecedentes, todos verificados) — nunca apenas a categoria do veículo declarada pela empresa (`categoriasVeiculo` acima). Uma transportadora pode ter `categoriasVeiculo` incluindo ESCOLAR e `escolarVerificado: false` ao mesmo tempo.",
+  })
+  escolarVerificado!: boolean;
+
   @ApiProperty()
   alunosTransportados!: number;
 

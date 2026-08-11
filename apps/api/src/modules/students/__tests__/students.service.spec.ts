@@ -1,6 +1,5 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { StudentsService } from "../students.service";
 
 import type { StudentAuthorizedPersonRepository } from "../repositories/student-authorized-person.repository";
@@ -131,9 +130,11 @@ describe("StudentsService", () => {
     } as unknown as jest.Mocked<AuditLogService>;
     storageService = {
       upload: jest.fn().mockResolvedValue("https://storage.example.com/foto.png"),
-      uploadPrivate: jest
-        .fn()
-        .mockResolvedValue("https://storage.example.com/foto.png?token=signed"),
+      uploadPrivate: jest.fn().mockResolvedValue({
+        path: "students/student-1/foto.png",
+        url: "https://storage.example.com/foto.png?token=signed",
+      }),
+      getSignedUrl: jest.fn().mockResolvedValue("https://storage.example.com/foto.png?token=fresh"),
     } as unknown as jest.Mocked<SupabaseStorageService>;
     eventEmitter = {
       emit: jest.fn(),
@@ -302,6 +303,32 @@ describe("StudentsService", () => {
           {},
         ),
       ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("persiste fotoPath e devolve a URL de curta validade recém-assinada, nunca a de 10 anos (Dossiê 45, achado C3)", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      studentRepository.update.mockResolvedValue(
+        buildStudent({
+          fotoUrl: "https://storage.example.com/foto.png?token=signed",
+          fotoPath: "students/student-1/foto.png",
+        }),
+      );
+
+      const result = await service.uploadPhoto(
+        "student-1",
+        { mimetype: "image/png", originalname: "foto.png" } as Express.Multer.File,
+        responsavelActor,
+        {},
+      );
+
+      expect(studentRepository.update).toHaveBeenCalledWith("student-1", {
+        fotoUrl: "https://storage.example.com/foto.png?token=signed",
+        fotoPath: "students/student-1/foto.png",
+      });
+      // Não é a `getSignedUrl` mockada — a própria resposta do upload já é
+      // de curta validade, então `uploadPhoto` não precisa reassinar de novo.
+      expect(result.fotoUrl).toBe("https://storage.example.com/foto.png?token=signed");
+      expect(storageService.getSignedUrl).not.toHaveBeenCalled();
     });
   });
 });

@@ -37,17 +37,24 @@ import type { StorageConfig } from "@/config/storage.config";
  * marca, sem dado pessoal de terceiro) e devolve uma URL pública fixa.
  * `uploadPrivate()` grava no bucket PRIVADO (`bucket`, ex. CNH/documento
  * de motorista/veículo, foto de aluno — dado pessoal, em alguns casos de
- * criança/adolescente, art. 14 da LGPD) e devolve uma URL ASSINADA
- * (`createSignedUrl`, token não derivável do id da entidade) em vez de
- * `getPublicUrl` — sem isso, qualquer um que adivinhasse o caminho
- * previsível (`students/{id}/foto.png`) acessaria o arquivo sem estar
- * autenticado. A URL assinada aqui tem validade longa (10 anos) porque a
- * URL é armazenada e reexibida como está, sem um passo de re-assinatura
- * no momento da leitura — resolve o problema de adivinhação/enumeração,
- * mas não o de uma URL vazada continuar válida por muito tempo; a
- * evolução natural é assinar sob demanda (curta validade, gerada a cada
- * leitura) quando o mapper de resposta for capaz disso — não implementado
- * nesta fase por exigir tornar os mappers de Drivers/Students assíncronos.
+ * criança/adolescente, art. 14 da LGPD) e devolve `{ path, url }`: o
+ * `path` é o que os módulos chamadores devem persistir (`filePath`/
+ * `fotoPath`); a `url` assinada de curta validade retornada aqui só
+ * serve para exibição IMEDIATA logo após o upload — nunca deve ser
+ * armazenada como se fosse durável.
+ *
+ * `getSignedUrl(path)` (Dossiê 45, achado C3 da auditoria de
+ * consistência Legal↔Produto: a versão anterior gerava uma URL de 10
+ * anos NO UPLOAD e a reexibia como estava salva — contrariando
+ * diretamente a promessa de "curto período" em `/legal/seguranca`) é o
+ * método a chamar em TODA leitura de um documento/foto privado: assina
+ * uma URL nova, de validade curta (`SHORT_SIGNED_URL_TTL_SECONDS`), a
+ * cada vez. `DriversService`/`VehiclesService`/`StudentsService` chamam
+ * isso ao montar a resposta de listagem/detalhe sempre que a linha tem
+ * `filePath`/`fotoPath` preenchido; linhas antigas (só com a URL longa
+ * já persistida, sem `path`) continuam sendo servidas como estavam até
+ * a URL de 10 anos expirar — dívida técnica documentada, não um bug
+ * novo.
  */
 @Injectable()
 export class SupabaseStorageService implements OnModuleInit {
@@ -103,17 +110,19 @@ export class SupabaseStorageService implements OnModuleInit {
 
   /**
    * Envia um arquivo com DADO PESSOAL (CNH/documento de motorista ou
-   * veículo, foto de aluno) ao bucket PRIVADO e retorna uma URL
-   * ASSINADA (Dossiê 32) — nunca `getPublicUrl`, que exporia o arquivo a
-   * qualquer um capaz de adivinhar `path` (ex. `students/{id}/foto.png`
-   * é só o id do aluno) sem exigir autenticação nenhuma.
+   * veículo, foto de aluno) ao bucket PRIVADO. Nunca usa `getPublicUrl`,
+   * que exporia o arquivo a qualquer um capaz de adivinhar `path` (ex.
+   * `students/{id}/foto.png` é só o id do aluno) sem exigir autenticação
+   * nenhuma. Retorna `path` (o que deve ser persistido, ex.
+   * `filePath`/`fotoPath`) e `url` (assinada, curta duração — só para a
+   * exibição imediata da própria resposta deste upload; releituras
+   * futuras devem chamar `getSignedUrl(path)`, nunca reusar esta `url`).
    */
   async uploadPrivate(
     path: string,
     file: Buffer,
     contentType: string,
-    expiresInSeconds = SupabaseStorageService.SIGNED_URL_TTL_SECONDS,
-  ): Promise<string> {
+  ): Promise<{ path: string; url: string }> {
     const client = this.getClient();
 
     const { error } = await client.storage
@@ -123,6 +132,21 @@ export class SupabaseStorageService implements OnModuleInit {
     if (error) {
       throw new InternalServerErrorException(`Falha ao enviar arquivo: ${error.message}`);
     }
+
+    return { path, url: await this.getSignedUrl(path) };
+  }
+
+  /**
+   * Assina uma URL de curta validade para um `path` já existente no
+   * bucket PRIVADO (Dossiê 45, achado C3) — chamar a cada leitura de um
+   * documento/foto privado, nunca persistir o resultado como se fosse
+   * durável.
+   */
+  async getSignedUrl(
+    path: string,
+    expiresInSeconds = SupabaseStorageService.SHORT_SIGNED_URL_TTL_SECONDS,
+  ): Promise<string> {
+    const client = this.getClient();
 
     const { data, error: signError } = await client.storage
       .from(this.config.bucket)
@@ -137,6 +161,6 @@ export class SupabaseStorageService implements OnModuleInit {
     return data.signedUrl;
   }
 
-  /** 10 anos — ver nota de classe sobre a limitação de assinar só no upload, não a cada leitura. */
-  private static readonly SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365 * 10;
+  /** 15 minutos — suficiente para uma sessão de visualização, curto o bastante para fechar a janela de exposição de uma URL vazada (Dossiê 45, achado C3). */
+  private static readonly SHORT_SIGNED_URL_TTL_SECONDS = 60 * 15;
 }

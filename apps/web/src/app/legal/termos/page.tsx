@@ -6,7 +6,6 @@ import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-docum
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 import { COMPANY_CNPJ, COMPANY_FORUM, COMPANY_LEGAL_NAME, CONTACT_EMAIL } from "@/lib/site-config";
 
-
 export const metadata: Metadata = {
   title: "Termos de Uso",
   description: "Termos de Uso da plataforma Rotta.",
@@ -108,7 +107,7 @@ export default function TermosPage(): JSX.Element {
         presta, quem paga, e as responsabilidades de cada parte) é detalhada na{" "}
         <Link href="/legal/marketplace">Política de Contratação e Marketplace</Link>. Quando a
         contratação envolver um motorista/veículo, as categorias de habilitação e as modalidades de
-        transporte disponíveis (escolar, executivo infantil, particular) seguem as{" "}
+        transporte disponíveis (escolar, fretamento, particular) seguem as{" "}
         <Link href="/legal/motoristas">Diretrizes para Motoristas e Modalidades de Transporte</Link>{" "}
         — em especial, a categoria B da CNH não é apresentada pela Rotta como transporte escolar
         oficial.

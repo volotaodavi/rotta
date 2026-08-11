@@ -52,8 +52,10 @@ export interface TransporterCard {
   totalAvaliacoes: number;
   veiculosAtivos: number;
   tiposVeiculo: VehicleType[];
-  /** Modalidades da frota ativa (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): "ESCOLAR" só aparece quando a empresa tem pelo menos 1 veículo ativo declarado nessa categoria — nunca inferido da categoria da CNH de um motorista. */
+  /** Modalidades da frota ativa (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): "ESCOLAR" só aparece quando a empresa tem pelo menos 1 veículo ativo declarado nessa categoria — nunca inferido da categoria da CNH de um motorista. Isso é uma declaração da empresa, não uma verificação — ver `escolarVerificado`. */
   categoriasVeiculo: VehicleCategory[];
+  /** Dossiê 45, achado C1: true só quando pelo menos 1 veículo ESCOLAR tem motorista vinculado com elegibilidade completa verificada (CNH D/E + EAR + curso + antecedentes) — nunca apenas a categoria declarada em `categoriasVeiculo`. */
+  escolarVerificado: boolean;
   alunosTransportados: number;
   mensalidadeAPartirDeCentavos: number | null;
 }

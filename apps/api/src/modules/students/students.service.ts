@@ -2,7 +2,6 @@ import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } fro
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Student } from "@prisma/client";
 
-
 import { toStudentAuthorizedPersonResponseDto } from "./mappers/student-authorized-person.mapper";
 import { toStudentResponseDto } from "./mappers/student.mapper";
 import { STUDENT_AUTHORIZED_PERSON_REPOSITORY, STUDENT_REPOSITORY } from "./students.constants";
@@ -136,7 +135,7 @@ export class StudentsService {
       dadosContexto: { studentId: student.id },
     });
 
-    return toStudentResponseDto(student);
+    return toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student));
   }
 
   async list(
@@ -152,7 +151,11 @@ export class StudentsService {
     });
 
     return {
-      items: result.items.map(toStudentResponseDto),
+      items: await Promise.all(
+        result.items.map(async (student) =>
+          toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student)),
+        ),
+      ),
       total: result.total,
       page: query.page,
       pageSize: query.pageSize,
@@ -161,7 +164,16 @@ export class StudentsService {
 
   async findByIdOrThrow(id: string, actor: AuthenticatedUser): Promise<StudentResponseDto> {
     const student = await this.fetchOrThrow(id, actor);
-    return toStudentResponseDto(student);
+    return toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student));
+  }
+
+  /** Ver nota em `toStudentResponseDto` (Dossiê 45, achado C3). */
+  private async resolvePrivateFotoUrl(student: {
+    fotoUrl: string | null;
+    fotoPath: string | null;
+  }): Promise<string | null> {
+    if (!student.fotoPath) return student.fotoUrl;
+    return this.storageService.getSignedUrl(student.fotoPath);
   }
 
   /**
@@ -200,7 +212,7 @@ export class StudentsService {
       userAgent: meta.userAgent,
     });
 
-    return toStudentResponseDto(updated);
+    return toStudentResponseDto(updated, await this.resolvePrivateFotoUrl(updated));
   }
 
   async remove(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<void> {
@@ -236,12 +248,14 @@ export class StudentsService {
     // uploadPrivate (Dossiê 32): foto de aluno é dado pessoal de criança/
     // adolescente (LGPD art. 14) — nunca exposta por URL pública
     // previsível (`students/{id}/foto.png` seria adivinhável só com o id).
-    const url = await this.storageService.uploadPrivate(
+    // `fotoPath` é o que persiste (Dossiê 45, achado C3) — releituras
+    // assinam uma URL nova de curta validade em vez de reusar `url`.
+    const { path, url } = await this.storageService.uploadPrivate(
       `students/${id}/foto.${extension}`,
       file.buffer,
       file.mimetype,
     );
-    const updated = await this.studentRepository.update(id, { fotoUrl: url });
+    const updated = await this.studentRepository.update(id, { fotoUrl: url, fotoPath: path });
 
     await this.recordAudit({
       entidadeId: id,
@@ -251,7 +265,7 @@ export class StudentsService {
       userAgent: meta.userAgent,
     });
 
-    return toStudentResponseDto(updated);
+    return toStudentResponseDto(updated, url);
   }
 
   async listAuditLogs(
