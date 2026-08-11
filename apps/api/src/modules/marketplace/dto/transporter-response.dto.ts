@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { CompanyType, VehicleType } from "@prisma/client";
+import { CompanyType, VehicleCategory, VehicleType } from "@prisma/client";
 
 /** Cartão de transportador na busca (briefing "Marketplace" §"TRANSPORTADORES"). */
 export class TransporterCardResponseDto {
@@ -34,6 +34,14 @@ export class TransporterCardResponseDto {
 
   @ApiProperty({ enum: VehicleType, isArray: true })
   tiposVeiculo!: VehicleType[];
+
+  @ApiProperty({
+    enum: VehicleCategory,
+    isArray: true,
+    description:
+      "Modalidades da frota ativa (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): ESCOLAR só aparece aqui quando a empresa tem pelo menos 1 veículo ativo declarado nessa categoria — nunca inferido da categoria da CNH de um motorista.",
+  })
+  categoriasVeiculo!: VehicleCategory[];
 
   @ApiProperty()
   alunosTransportados!: number;

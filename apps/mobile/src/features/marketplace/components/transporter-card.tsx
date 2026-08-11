@@ -4,8 +4,8 @@ import { StyleSheet, Text, View } from "react-native";
 import type { TransporterCard as TransporterCardData } from "@rotta/api-client";
 
 import { StatusPill, VehicleCard } from "@/features/vehicles/components";
+import { VEHICLE_CATEGORY_LABEL, VEHICLE_CATEGORY_TONE } from "@/features/vehicles/labels";
 import { useTheme } from "@/providers/theme-provider";
-
 
 /**
  * Cartão de transportador na busca (briefing "Marketplace"
@@ -35,6 +35,25 @@ export function TransporterCard({
       <Text style={{ color: theme.colors.textMuted }}>
         {transportador.distanciaKm.toFixed(1)} km de distância
       </Text>
+
+      {/* Modalidade real da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR):
+          nunca inferida da categoria da CNH de um motorista, sempre da frota
+          declarada em `Vehicle.categoria`. */}
+      <View style={styles.modalidades}>
+        {transportador.categoriasVeiculo.length > 0 ? (
+          transportador.categoriasVeiculo.map((categoria) => (
+            <StatusPill
+              key={categoria}
+              label={VEHICLE_CATEGORY_LABEL[categoria]}
+              tone={VEHICLE_CATEGORY_TONE[categoria]}
+            />
+          ))
+        ) : (
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            Modalidade não informada
+          </Text>
+        )}
+      </View>
 
       <View style={styles.row}>
         {transportador.avaliacaoMedia !== null ? (
@@ -82,6 +101,7 @@ const styles = StyleSheet.create({
   ctaLabel: { fontSize: 13, fontWeight: "700" },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   mensalidade: { fontWeight: "600" },
+  modalidades: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   nome: { fontSize: 16, fontWeight: "700" },
   row: { alignItems: "center", flexDirection: "row", gap: 12 },
 });

@@ -3,12 +3,13 @@ import { randomUUID } from "node:crypto";
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { DriverDocumentType, type DriverDocumentAiStatus } from "@prisma/client";
 
-
 import { DRIVER_DOCUMENT_REPOSITORY } from "./drivers.constants";
 import { toDriverDocumentResponseDto } from "./mappers/driver-document.mapper";
+import { computeSchoolTransportEligibility } from "./school-transport-eligibility.util";
 
 import type { CreateDriverDocumentDto } from "./dto/create-driver-document.dto";
 import type { DriverDocumentResponseDto } from "./dto/driver-document-response.dto";
+import type { SchoolTransportEligibilityResponseDto } from "./dto/school-transport-eligibility-response.dto";
 import type { DriverDocumentRepository } from "./repositories/driver-document.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
@@ -269,5 +270,23 @@ export class DriversService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Elegibilidade para transporte escolar (Dossiê 45 — CATEGORIA B ≠
+  // TRANSPORTE ESCOLAR). Só lê os documentos já existentes e aplica a
+  // regra pura de `school-transport-eligibility.util.ts` — mesmo RBAC
+  // de `listDocuments` (motorista só vê a própria, empresa/gestor vê
+  // qualquer motorista da própria empresa, Admin Rotta com companyId).
+  // ---------------------------------------------------------------------
+
+  async getSchoolTransportEligibility(
+    targetUserId: string,
+    actor: AuthenticatedUser,
+    companyIdOverride: string | undefined,
+  ): Promise<SchoolTransportEligibilityResponseDto> {
+    await this.resolveCompanyContext(targetUserId, actor, companyIdOverride);
+    const documents = await this.documentRepository.listByUser({ userId: targetUserId });
+    return computeSchoolTransportEligibility(documents);
   }
 }

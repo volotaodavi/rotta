@@ -33,6 +33,7 @@ export function toTransporterCardResponseDto(
     totalAvaliacoes: candidate.ratings.length,
     veiculosAtivos: candidate.veiculosAtivos.length,
     tiposVeiculo: [...new Set(candidate.veiculosAtivos.map((v) => v.tipo))],
+    categoriasVeiculo: [...new Set(candidate.veiculosAtivos.map((v) => v.categoria))],
     alunosTransportados: candidate.alunosTransportadosIds.length,
     mensalidadeAPartirDeCentavos:
       candidate.mensalidadesAtivasCentavos.length > 0

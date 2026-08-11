@@ -137,6 +137,30 @@ describe("MarketplaceService", () => {
       expect(result.items[0].distanciaKm).toBeCloseTo(0, 1);
     });
 
+    it("expõe categoriasVeiculo no card (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR)", async () => {
+      transporterRepository.searchCandidates.mockResolvedValue([buildCandidate()]);
+
+      const result = await service.search(buildQuery());
+
+      expect(result.items[0].categoriasVeiculo).toEqual(["ESCOLAR"]);
+    });
+
+    it("repassa categoriaVeiculo para o repositório, junto dos demais filtros da query SQL", async () => {
+      transporterRepository.searchCandidates.mockResolvedValue([]);
+
+      await service.search(
+        buildQuery({ categoriaVeiculo: "ESCOLAR", tipoVeiculo: "VAN", escolaId: "school-1" }),
+      );
+
+      expect(transporterRepository.searchCandidates).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoriaVeiculo: "ESCOLAR",
+          tipoVeiculo: "VAN",
+          escolaId: "school-1",
+        }),
+      );
+    });
+
     it("exclui candidatos fora do raioKm", async () => {
       const longe = buildCandidate({
         company: buildCompany({

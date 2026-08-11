@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { CompanyType, VehicleType } from "@prisma/client";
+import { CompanyType, VehicleCategory, VehicleType } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
   IsBoolean,
@@ -57,6 +57,15 @@ export class SearchTransportersQueryDto {
   @IsOptional()
   @IsEnum(VehicleType)
   tipoVeiculo?: VehicleType;
+
+  @ApiPropertyOptional({
+    enum: VehicleCategory,
+    description:
+      "Modalidade da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): só retorna transportadoras com pelo menos 1 veículo ativo declarado nessa categoria.",
+  })
+  @IsOptional()
+  @IsEnum(VehicleCategory)
+  categoriaVeiculo?: VehicleCategory;
 
   @ApiPropertyOptional({ enum: CompanyType, description: "Empresa/MEI/Autônomo/..." })
   @IsOptional()

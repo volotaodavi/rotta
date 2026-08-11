@@ -59,6 +59,7 @@ export class MarketplaceService {
       escolaId: query.escolaId,
       tipoVeiculo: query.tipoVeiculo,
       tipoEmpresa: query.tipoEmpresa,
+      categoriaVeiculo: query.categoriaVeiculo,
     });
 
     let cards: TransporterCardResponseDto[] = candidates.map((candidate) =>

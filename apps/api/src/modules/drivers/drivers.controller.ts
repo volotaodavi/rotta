@@ -19,14 +19,13 @@ import { DriverDocumentType } from "@prisma/client";
 
 import { DriversService, type RequestMeta } from "./drivers.service";
 import { CreateDriverDocumentDto } from "./dto/create-driver-document.dto";
+import { SchoolTransportEligibilityResponseDto } from "./dto/school-transport-eligibility-response.dto";
 
 import type { Request } from "express";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
-
-
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
@@ -101,5 +100,20 @@ export class DriversController {
       requestMeta(req),
       companyId,
     );
+  }
+
+  /**
+   * Elegibilidade para TRANSPORTE ESCOLAR (Dossiê 45 — CATEGORIA B ≠
+   * TRANSPORTE ESCOLAR). Nunca deriva o resultado só da categoria da
+   * CNH — ver `school-transport-eligibility.util.ts`.
+   */
+  @Get(":userId/school-transport-eligibility")
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR)
+  getSchoolTransportEligibility(
+    @Param("userId", ParseUUIDPipe) userId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query("companyId") companyId?: string,
+  ): Promise<SchoolTransportEligibilityResponseDto> {
+    return this.driversService.getSchoolTransportEligibility(userId, actor, companyId);
   }
 }

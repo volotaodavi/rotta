@@ -13,6 +13,8 @@ export interface SearchTransportersFilter {
   escolaId?: string;
   tipoVeiculo?: Vehicle["tipo"];
   tipoEmpresa?: CompanyType;
+  /** Modalidade declarada da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR: só empresas com pelo menos 1 veículo ativo NESSA categoria aparecem). */
+  categoriaVeiculo?: Vehicle["categoria"];
 }
 
 /**

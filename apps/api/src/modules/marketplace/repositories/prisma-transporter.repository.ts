@@ -53,6 +53,20 @@ export class PrismaTransporterRepository implements TransporterRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async searchCandidates(filter: SearchTransportersFilter): Promise<TransporterCandidate[]> {
+    // `tipoVeiculo`/`categoriaVeiculo` são dois filtros distintos sobre o
+    // MESMO relacionamento `vehicles` — precisam entrar num único
+    // `some`, nunca em duas chaves `vehicles` separadas (a segunda
+    // sobrescreveria a primeira no spread abaixo).
+    const vehicleFilter: Prisma.VehicleWhereInput | undefined =
+      filter.tipoVeiculo || filter.categoriaVeiculo
+        ? {
+            deletedAt: null,
+            status: ACTIVE_VEHICLE_STATUS,
+            ...(filter.tipoVeiculo ? { tipo: filter.tipoVeiculo } : {}),
+            ...(filter.categoriaVeiculo ? { categoria: filter.categoriaVeiculo } : {}),
+          }
+        : undefined;
+
     const where: Prisma.CompanyWhereInput = {
       status: "ATIVO",
       deletedAt: null,
@@ -62,13 +76,7 @@ export class PrismaTransporterRepository implements TransporterRepository {
       ...(filter.escolaId
         ? { escolasVinculadas: { some: { schoolId: filter.escolaId, desvinculadoEm: null } } }
         : {}),
-      ...(filter.tipoVeiculo
-        ? {
-            vehicles: {
-              some: { tipo: filter.tipoVeiculo, deletedAt: null, status: ACTIVE_VEHICLE_STATUS },
-            },
-          }
-        : {}),
+      ...(vehicleFilter ? { vehicles: { some: vehicleFilter } } : {}),
     };
 
     const companies = await this.prisma.withBypass(

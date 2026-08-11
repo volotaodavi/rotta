@@ -40,6 +40,27 @@ export interface CreateDriverDocumentMeta {
   vencimentoEm?: string;
 }
 
+/**
+ * Espelha `SchoolTransportEligibilityResult` (Dossiê 45 — CATEGORIA B ≠
+ * TRANSPORTE ESCOLAR). Nunca derive "elegível" de `categoria` sozinha
+ * no cliente — sempre confie neste campo, calculado pelo backend a
+ * partir de TODOS os requisitos (CNH D/E + EAR + curso + antecedentes).
+ */
+export type SchoolTransportEligibilityStatus =
+  "PENDING" | "UNDER_REVIEW" | "ELIGIBLE" | "NOT_ELIGIBLE" | "EXPIRED" | "REQUIRES_UPDATE";
+
+export interface SchoolTransportEligibility {
+  status: SchoolTransportEligibilityStatus;
+  motivo: string;
+  categoriaCnh: string | null;
+  requisitosVerificados: {
+    cnhCategoriaValida: boolean;
+    ear: boolean;
+    cursoTransporteEscolar: boolean;
+    antecedentesCriminais: boolean;
+  };
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -86,6 +107,17 @@ export function createDriversEndpoints(apiClient: ApiClient) {
         { method: "DELETE" },
       );
     },
+
+    /** Dossiê 45 — motor de elegibilidade para transporte escolar (nunca deriva do lado do cliente). */
+    getSchoolTransportEligibility: async (
+      userId: string,
+      companyId?: string,
+    ): Promise<SchoolTransportEligibility> =>
+      (
+        await apiClient.request<ApiEnvelope<SchoolTransportEligibility>>(
+          `/drivers/${userId}/school-transport-eligibility${buildQueryString({ companyId })}`,
+        )
+      ).data,
   };
 }
 

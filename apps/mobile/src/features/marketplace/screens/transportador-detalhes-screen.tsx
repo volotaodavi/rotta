@@ -13,6 +13,7 @@ import {
   VehicleCard,
   VehicleScreen,
 } from "@/features/vehicles/components";
+import { VEHICLE_CATEGORY_LABEL, VEHICLE_CATEGORY_TONE } from "@/features/vehicles/labels";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<MarketplaceStackParamList, "TransportadorDetalhes">;
@@ -106,6 +107,24 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
         <Text style={{ color: theme.colors.textMuted }}>
           {data.tiposVeiculo.join(", ") || "Tipo de veículo não informado"}
         </Text>
+        {/* Modalidade real da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE
+            ESCOLAR): nunca inferida da categoria da CNH de um motorista,
+            sempre da frota declarada em `Vehicle.categoria`. */}
+        <View style={styles.modalidades}>
+          {data.categoriasVeiculo.length > 0 ? (
+            data.categoriasVeiculo.map((categoria) => (
+              <StatusPill
+                key={categoria}
+                label={VEHICLE_CATEGORY_LABEL[categoria]}
+                tone={VEHICLE_CATEGORY_TONE[categoria]}
+              />
+            ))
+          ) : (
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              Modalidade não informada
+            </Text>
+          )}
+        </View>
         <Text style={{ color: theme.colors.textMuted }}>
           {data.alunosTransportados} aluno(s) transportado(s) atualmente
         </Text>
@@ -217,6 +236,7 @@ const styles = StyleSheet.create({
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   header: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
   mensalidade: { fontWeight: "600" },
+  modalidades: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   nome: { fontSize: 18, fontWeight: "700" },
   secao: { fontSize: 16, fontWeight: "700" },
   secaoAvaliacoes: { gap: 8 },

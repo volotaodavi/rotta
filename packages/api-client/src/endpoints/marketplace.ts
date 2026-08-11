@@ -3,7 +3,7 @@ import { buildQueryString } from "../query.util";
 import type { CompanyType } from "./companies";
 import type { SchoolShift } from "./schools";
 import type { CreateStudentInput } from "./students";
-import type { VehicleType } from "./vehicles";
+import type { VehicleCategory, VehicleType } from "./vehicles";
 import type { ApiClient } from "../http";
 
 /**
@@ -31,6 +31,8 @@ export interface SearchTransportersParams {
   mensalidadeMaxCentavos?: number;
   escolaId?: string;
   tipoVeiculo?: VehicleType;
+  /** Modalidade da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): só retorna transportadoras com pelo menos 1 veículo ativo nessa categoria. */
+  categoriaVeiculo?: VehicleCategory;
   tipoEmpresa?: CompanyType;
   avaliacaoMin?: number;
   apenasVerificados?: boolean;
@@ -50,6 +52,8 @@ export interface TransporterCard {
   totalAvaliacoes: number;
   veiculosAtivos: number;
   tiposVeiculo: VehicleType[];
+  /** Modalidades da frota ativa (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): "ESCOLAR" só aparece quando a empresa tem pelo menos 1 veículo ativo declarado nessa categoria — nunca inferido da categoria da CNH de um motorista. */
+  categoriasVeiculo: VehicleCategory[];
   alunosTransportados: number;
   mensalidadeAPartirDeCentavos: number | null;
 }

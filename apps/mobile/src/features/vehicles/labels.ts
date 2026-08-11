@@ -1,5 +1,6 @@
 import type { StatusPillTone } from "./components/status-pill";
 import type {
+  VehicleCategory,
   VehicleDocumentAiStatus,
   VehicleDocumentType,
   VehicleMaintenanceType,
@@ -26,6 +27,27 @@ export const VEHICLE_TYPE_LABEL: Record<VehicleType, string> = {
   MICRO_ONIBUS: "Micro-ônibus",
   ONIBUS: "Ônibus",
   OUTRO: "Outro",
+};
+
+/**
+ * Modalidade de uso do veículo (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE
+ * ESCOLAR) — reaproveitado pelo Marketplace (`features/marketplace`)
+ * para mostrar ao Responsável a modalidade real da frota de uma
+ * transportadora, nunca inferida da categoria da CNH de um motorista.
+ * Fonte única: nenhum outro arquivo redeclara este rótulo.
+ */
+export const VEHICLE_CATEGORY_LABEL: Record<VehicleCategory, string> = {
+  ESCOLAR: "Transporte escolar",
+  FRETAMENTO: "Fretamento",
+  PARTICULAR: "Particular",
+  OUTRO: "Outro",
+};
+
+export const VEHICLE_CATEGORY_TONE: Record<VehicleCategory, StatusPillTone> = {
+  ESCOLAR: "success",
+  FRETAMENTO: "info",
+  PARTICULAR: "neutral",
+  OUTRO: "neutral",
 };
 
 export const VEHICLE_DOCUMENT_TYPE_LABEL: Record<VehicleDocumentType, string> = {
