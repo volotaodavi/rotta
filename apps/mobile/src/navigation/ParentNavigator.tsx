@@ -1,8 +1,8 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { StyleSheet, Text, View } from "react-native";
 
 import { MarketplaceNavigator } from "./MarketplaceNavigator";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
+import { ParentPerfilNavigator } from "./ParentPerfilNavigator";
 
 import type { ParentTabParamList } from "./types";
 
@@ -11,21 +11,7 @@ import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
 import { TransporteInicioScreen } from "@/features/marketplace/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
-
-
 const Tab = createBottomTabNavigator<ParentTabParamList>();
-
-/**
- * PLACEHOLDER — Perfil do Responsável (Dossie 11, Secao 4) a implementar
- * em outra tarefa; fora do escopo do módulo Marketplace/Communication.
- */
-function PlaceholderScreen({ label }: { label: string }): JSX.Element {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>{label} — em construção</Text>
-    </View>
-  );
-}
 
 /**
  * Navegação do Responsável (Dossie 10, Secao 11.1; briefing
@@ -50,12 +36,7 @@ export function ParentNavigator(): JSX.Element {
         component={NotificacoesNavigator}
         options={{ tabBarBadge: naoLidas ? naoLidas : undefined }}
       />
-      <Tab.Screen name="Perfil">{() => <PlaceholderScreen label="Perfil" />}</Tab.Screen>
+      <Tab.Screen name="Perfil" component={ParentPerfilNavigator} />
     </Tab.Navigator>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { alignItems: "center", flex: 1, justifyContent: "center" },
-  text: { fontSize: 16, opacity: 0.6 },
-});

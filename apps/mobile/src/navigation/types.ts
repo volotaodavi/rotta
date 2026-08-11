@@ -77,6 +77,18 @@ export type ParentTabParamList = {
 };
 
 /**
+ * Stack aninhada na aba `Perfil` do Responsável (Dossiê 45 — Rotta
+ * Legal, Trust & Community Center; mesma decisão de `DriverPerfilStackParamList`
+ * para Motorista/Monitor) — a aba em si nunca muda, só a tela exibida
+ * dentro dela. `Documentacao` abre a mesma WebView de `/legal`
+ * (`LegalWebViewScreen`).
+ */
+export type ParentPerfilStackParamList = {
+  PerfilHome: undefined;
+  Documentacao: undefined;
+};
+
+/**
  * Stack aninhada na aba `Mapa` do Responsável (briefing "Marketplace"
  * §"BUSCA"/"DETALHES DO TRANSPORTADOR"/"SOLICITAR TRANSPORTE") — mesmo
  * papel de `VeiculoStackParamList` dentro de `DriverNavigator`: a aba em
