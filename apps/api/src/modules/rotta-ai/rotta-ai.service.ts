@@ -6,9 +6,11 @@ import {
   NotImplementedException,
 } from "@nestjs/common";
 
+
 import type { AnalyzeDriverDocumentDto } from "./dto/analyze-driver-document.dto";
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
+import type { ContractSignatureValidationResponseDto } from "./dto/contract-signature-validation-response.dto";
 import type { RouteOptimizationResponseDto } from "./dto/route-optimization-response.dto";
 import type { SchoolAddressAnalysisResponseDto } from "./dto/school-address-analysis-response.dto";
 import type { SuggestRouteOptimizationDto } from "./dto/suggest-route-optimization.dto";
@@ -21,6 +23,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import { readImageMetadata } from "@/common/utils/image-metadata.util";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { DiditService } from "@/infra/didit/didit.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import { Role } from "@/shared/enums";
 
@@ -29,6 +32,9 @@ const LARGURA_MINIMA_PX = 800;
 const ALTURA_MINIMA_PX = 600;
 
 const CEP_VALIDO = /^\d{5}-?\d{3}$/;
+
+/** Abaixo deste intervalo entre a geração do contrato e uma assinatura, o tempo é curto demais pra ter lido o conteúdo — sinal de anomalia em `validarContratoAssinado` (Frente I), não uma regra formal/legal. */
+const SIGNATURE_TOO_FAST_SECONDS = 3;
 
 /** Tipos de check que são, eles próprios, um documento de identidade (não Selfie/FaceMatch/EAR/Curso). */
 const IDENTITY_DOCUMENT_CHECK_TYPES = new Set(["CNH", "RG", "CIN", "PASSAPORTE"]);
@@ -75,6 +81,7 @@ export class RottaAiService {
     private readonly geoEngine: GeoEngineService,
     private readonly diditService: DiditService,
     private readonly prisma: PrismaService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   async validateDocument(
@@ -282,24 +289,85 @@ export class RottaAiService {
   }
 
   /**
-   * Mesmo stub honesto, agora para a validação pós-assinatura do
-   * CONTRATO (briefing "Marketplace" §"ROTTA AI" — "valida o contrato
-   * assinado e ativa automaticamente o transporte"). Chamada por
-   * `ContractsService` de forma best-effort assim que as DUAS
-   * assinaturas (Responsável + Empresa) já estão presentes — mas,
-   * diferente dos demais usos da Rotta AI neste módulo, a ATIVAÇÃO do
-   * contrato em si NUNCA depende do resultado desta chamada: "ambas as
-   * partes assinaram" é um fato que o próprio banco já garante com
-   * certeza, sem precisar de nenhum provedor externo para confirmá-lo.
-   * Esta validação é uma camada adicional (ex. detecção de fraude/
-   * anomalia), best-effort, exatamente como `analyzeVehicleDocument`
-   * nunca bloqueia o upload em si.
+   * Validação pós-assinatura do CONTRATO (briefing "Marketplace"
+   * §"ROTTA AI" — "valida o contrato assinado e ativa automaticamente o
+   * transporte"). Chamada por `ContractsService` de forma best-effort
+   * assim que as DUAS assinaturas (Responsável + Empresa) já estão
+   * presentes — mas, diferente dos demais usos da Rotta AI neste
+   * módulo, a ATIVAÇÃO do contrato em si NUNCA depende do resultado
+   * desta chamada: "ambas as partes assinaram" é um fato que o próprio
+   * banco já garante com certeza, sem precisar de nenhum provedor
+   * externo para confirmá-lo.
+   *
+   * Frente I: REAL desde esta entrega, mas honesta sobre seu alcance —
+   * não é uma verificação certificada de assinatura eletrônica (isso
+   * exigiria contratar um provedor como a Authentique, que continua
+   * stub honesto em `AuthentiqueService` — nenhuma credencial
+   * contratada). O que É real: uma checagem HEURÍSTICA sobre os
+   * próprios metadados já coletados no momento de cada assinatura
+   * (`AuditLogService`, `ip`/`userAgent`/`createdAt` de
+   * `ASSINADO_RESPONSAVEL`/`ASSINADO_EMPRESA`), procurando os dois
+   * sinais mais baratos de fraude/erro:
+   *   1. Mesmo IP assinando dos dois lados (Responsável e Empresa) —
+   *      indício de uma única pessoa clicando os dois botões.
+   *   2. Assinatura ocorrendo poucos segundos após a geração do
+   *      contrato (`Contract.createdAt`) — tempo insuficiente para ter
+   *      lido o conteúdo.
+   * Nunca inventa uma anomalia que os dados não sustentam — lista vazia
+   * significa apenas "nada suspeito nos sinais disponíveis", nunca
+   * "contrato garantidamente legítimo".
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async validarContratoAssinado(_dto: ValidarContratoAssinadoDto): Promise<never> {
-    throw new NotImplementedException(
-      "A validação automática de contrato assinado via Rotta AI ainda não está disponível — integração pendente de um provedor de análise documental.",
+  async validarContratoAssinado(
+    dto: ValidarContratoAssinadoDto,
+    actor: AuthenticatedUser,
+  ): Promise<ContractSignatureValidationResponseDto> {
+    const contract = await this.prisma.withTenant(
+      this.prisma.contract.findFirst({ where: { id: dto.contractId } }),
     );
+    if (
+      !contract ||
+      (actor.role !== Role.ADMIN_ROTTA &&
+        contract.companyId !== actor.tenantId &&
+        contract.responsavelId !== actor.sub)
+    ) {
+      throw new NotFoundException("Contrato não encontrado.");
+    }
+
+    const { items: eventos } = await this.auditLogService.listByEntity(
+      "Contract",
+      dto.contractId,
+      1,
+      50,
+    );
+    const assinadoResponsavel = eventos.find((e) => e.acao === "ASSINADO_RESPONSAVEL");
+    const assinadoEmpresa = eventos.find((e) => e.acao === "ASSINADO_EMPRESA");
+
+    const anomaliasDetectadas: string[] = [];
+
+    if (
+      assinadoResponsavel?.ip &&
+      assinadoEmpresa?.ip &&
+      assinadoResponsavel.ip === assinadoEmpresa.ip
+    ) {
+      anomaliasDetectadas.push(
+        `Mesmo IP (${assinadoResponsavel.ip}) assinou como Responsável e como Empresa — confirme que as duas partes de fato usaram conexões/dispositivos diferentes.`,
+      );
+    }
+
+    for (const [rotulo, evento] of [
+      ["Responsável", assinadoResponsavel],
+      ["Empresa", assinadoEmpresa],
+    ] as const) {
+      if (!evento) continue;
+      const segundosAteAssinar = (evento.createdAt.getTime() - contract.createdAt.getTime()) / 1000;
+      if (segundosAteAssinar >= 0 && segundosAteAssinar < SIGNATURE_TOO_FAST_SECONDS) {
+        anomaliasDetectadas.push(
+          `Assinatura da ${rotulo} ocorreu ${Math.round(segundosAteAssinar)}s após a geração do contrato — tempo pouco provável para ter lido o conteúdo.`,
+        );
+      }
+    }
+
+    return { contractId: dto.contractId, anomaliasDetectadas, analiseCompleta: false };
   }
 
   /**

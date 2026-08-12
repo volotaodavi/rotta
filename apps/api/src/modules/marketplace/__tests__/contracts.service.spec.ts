@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
+
 import { ContractsService } from "../contracts.service";
 
 import type { ContractRepository } from "../repositories/contract.repository";
@@ -310,9 +311,10 @@ describe("ContractsService", () => {
 
       const result = await service.assinarComoResponsavel("contract-1", responsavelActor, {});
 
-      expect(rottaAiService.validarContratoAssinado).toHaveBeenCalledWith({
-        contractId: "contract-1",
-      });
+      expect(rottaAiService.validarContratoAssinado).toHaveBeenCalledWith(
+        { contractId: "contract-1" },
+        responsavelActor,
+      );
       expect(contractRepository.activate).toHaveBeenCalledWith("contract-1");
       expect(result.status).toBe("ATIVO");
       expect(result.ativadoEm).not.toBeNull();

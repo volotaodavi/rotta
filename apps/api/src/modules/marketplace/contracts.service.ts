@@ -233,7 +233,7 @@ export class ContractsService {
    */
   private async tryActivateAfterBothSigned(
     contract: Contract,
-    atorUserId: string,
+    actor: AuthenticatedUser,
     meta: RequestMeta,
   ): Promise<Contract> {
     if (!contract.assinadoResponsavelEm || !contract.assinadoEmpresaEm) {
@@ -241,7 +241,15 @@ export class ContractsService {
     }
 
     try {
-      await this.rottaAiService.validarContratoAssinado({ contractId: contract.id });
+      const validacao = await this.rottaAiService.validarContratoAssinado(
+        { contractId: contract.id },
+        actor,
+      );
+      if (validacao.anomaliasDetectadas.length > 0) {
+        this.logger.warn(
+          `Rotta AI detectou possível anomalia na assinatura do contrato ${contract.id} (ativação segue normalmente — checagem best-effort): ${validacao.anomaliasDetectadas.join(" | ")}`,
+        );
+      }
     } catch (error) {
       this.logger.warn(
         `Rotta AI indisponível para validar o contrato ${contract.id} — ativação segue apenas pela regra de negócio (ambas as assinaturas já presentes).`,
@@ -253,7 +261,7 @@ export class ContractsService {
     await this.recordAudit({
       entidadeId: contract.id,
       acao: "ATIVADO",
-      atorUserId,
+      atorUserId: actor.sub,
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
@@ -301,7 +309,7 @@ export class ContractsService {
       userAgent: meta.userAgent,
     });
 
-    const final = await this.tryActivateAfterBothSigned(updated, actor.sub, meta);
+    const final = await this.tryActivateAfterBothSigned(updated, actor, meta);
     return toContractResponseDto(final);
   }
 
@@ -329,7 +337,7 @@ export class ContractsService {
       userAgent: meta.userAgent,
     });
 
-    const final = await this.tryActivateAfterBothSigned(updated, actor.sub, meta);
+    const final = await this.tryActivateAfterBothSigned(updated, actor, meta);
     return toContractResponseDto(final);
   }
 }

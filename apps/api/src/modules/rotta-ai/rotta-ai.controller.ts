@@ -1,9 +1,11 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
 
+
 import { AnalyzeDriverDocumentDto } from "./dto/analyze-driver-document.dto";
 import { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
+import { ContractSignatureValidationResponseDto } from "./dto/contract-signature-validation-response.dto";
 import { RouteOptimizationResponseDto } from "./dto/route-optimization-response.dto";
 import { SuggestRouteOptimizationDto } from "./dto/suggest-route-optimization.dto";
 import { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
@@ -13,6 +15,8 @@ import { VehicleDocumentAnalysisResponseDto } from "./dto/vehicle-document-analy
 import { RottaAiService } from "./rotta-ai.service";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import { Roles } from "@/common/decorators/roles.decorator";
+import { Role } from "@/shared/enums";
 
 @ApiTags("rotta-ai")
 @ApiBearerAuth()
@@ -53,8 +57,13 @@ export class RottaAiController {
   }
 
   @Post("validar-contrato-assinado")
-  validarContratoAssinado(@Body() dto: ValidarContratoAssinadoDto) {
-    return this.rottaAiService.validarContratoAssinado(dto);
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR, Role.RESPONSAVEL)
+  @ApiResponse({ status: 201, type: ContractSignatureValidationResponseDto })
+  validarContratoAssinado(
+    @Body() dto: ValidarContratoAssinadoDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.rottaAiService.validarContratoAssinado(dto, actor);
   }
 
   @Post("suggest-route-optimization")

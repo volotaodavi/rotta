@@ -5,11 +5,13 @@ import {
   NotImplementedException,
 } from "@nestjs/common";
 
+
 import { RottaAiService } from "../rotta-ai.service";
 
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { DiditService } from "@/infra/didit/didit.service";
+import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
 
 import { Role } from "@/shared/enums";
@@ -24,7 +26,8 @@ const gestorActor: AuthenticatedUser = {
 function buildService(
   diditOverrides: Partial<DiditService> = {},
   geoOverrides: Partial<GeoEngineService> = {},
-  prismaOverrides: { route?: unknown; routeStop?: unknown } = {},
+  prismaOverrides: { route?: unknown; routeStop?: unknown; contract?: unknown } = {},
+  auditLogOverrides: Partial<AuditLogService> = {},
 ) {
   const diditService = {
     verifyId: jest.fn(),
@@ -44,14 +47,21 @@ function buildService(
     withTenant: jest.fn((operation: unknown) => operation),
     route: { findFirst: jest.fn() },
     routeStop: { findMany: jest.fn() },
+    contract: { findFirst: jest.fn() },
     ...prismaOverrides,
   } as unknown as PrismaService;
 
+  const auditLogService = {
+    listByEntity: jest.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 50 }),
+    ...auditLogOverrides,
+  } as unknown as AuditLogService;
+
   return {
-    service: new RottaAiService(geoEngine, diditService, prisma),
+    service: new RottaAiService(geoEngine, diditService, prisma, auditLogService),
     geoEngine,
     diditService,
     prisma,
+    auditLogService,
   };
 }
 
@@ -276,12 +286,145 @@ describe("RottaAiService", () => {
     });
   });
 
-  describe("demais métodos (stub honesto, sem provedor contratado)", () => {
-    it("validarContratoAssinado continua um stub honesto (NotImplementedException)", async () => {
-      const { service } = buildService();
-      await expect(service.validarContratoAssinado({} as never)).rejects.toThrow(
-        NotImplementedException,
+  describe("validarContratoAssinado (Frente I — checagem heurística real sobre metadados de assinatura)", () => {
+    const contratoBase = {
+      id: "contract-1",
+      companyId: gestorActor.tenantId,
+      responsavelId: "resp-1",
+    };
+
+    it("sem anomalias quando IPs diferem e as assinaturas levaram tempo razoável", async () => {
+      const criadoEm = new Date("2026-01-01T10:00:00Z");
+      const { service } = buildService(
+        {},
+        {},
+        {
+          contract: {
+            findFirst: jest.fn().mockResolvedValue({ ...contratoBase, createdAt: criadoEm }),
+          },
+        },
+        {
+          listByEntity: jest.fn().mockResolvedValue({
+            items: [
+              {
+                acao: "ASSINADO_RESPONSAVEL",
+                ip: "1.1.1.1",
+                createdAt: new Date("2026-01-01T10:05:00Z"),
+              },
+              {
+                acao: "ASSINADO_EMPRESA",
+                ip: "2.2.2.2",
+                createdAt: new Date("2026-01-01T10:10:00Z"),
+              },
+            ],
+            total: 2,
+            page: 1,
+            pageSize: 50,
+          }),
+        },
       );
+
+      const resultado = await service.validarContratoAssinado(
+        { contractId: "contract-1" },
+        gestorActor,
+      );
+
+      expect(resultado).toEqual({
+        contractId: "contract-1",
+        anomaliasDetectadas: [],
+        analiseCompleta: false,
+      });
+    });
+
+    it("aponta anomalia quando o mesmo IP assina como Responsável e como Empresa", async () => {
+      const criadoEm = new Date("2026-01-01T10:00:00Z");
+      const { service } = buildService(
+        {},
+        {},
+        {
+          contract: {
+            findFirst: jest.fn().mockResolvedValue({ ...contratoBase, createdAt: criadoEm }),
+          },
+        },
+        {
+          listByEntity: jest.fn().mockResolvedValue({
+            items: [
+              {
+                acao: "ASSINADO_RESPONSAVEL",
+                ip: "9.9.9.9",
+                createdAt: new Date("2026-01-01T10:05:00Z"),
+              },
+              {
+                acao: "ASSINADO_EMPRESA",
+                ip: "9.9.9.9",
+                createdAt: new Date("2026-01-01T10:10:00Z"),
+              },
+            ],
+            total: 2,
+            page: 1,
+            pageSize: 50,
+          }),
+        },
+      );
+
+      const resultado = await service.validarContratoAssinado(
+        { contractId: "contract-1" },
+        gestorActor,
+      );
+
+      expect(resultado.anomaliasDetectadas).toHaveLength(1);
+      expect(resultado.anomaliasDetectadas[0]).toContain("Mesmo IP");
+    });
+
+    it("aponta anomalia quando uma assinatura ocorre poucos segundos após a geração do contrato", async () => {
+      const criadoEm = new Date("2026-01-01T10:00:00.000Z");
+      const { service } = buildService(
+        {},
+        {},
+        {
+          contract: {
+            findFirst: jest.fn().mockResolvedValue({ ...contratoBase, createdAt: criadoEm }),
+          },
+        },
+        {
+          listByEntity: jest.fn().mockResolvedValue({
+            items: [
+              {
+                acao: "ASSINADO_RESPONSAVEL",
+                ip: "1.1.1.1",
+                createdAt: new Date("2026-01-01T10:00:01.000Z"),
+              },
+              {
+                acao: "ASSINADO_EMPRESA",
+                ip: "2.2.2.2",
+                createdAt: new Date("2026-01-01T10:10:00.000Z"),
+              },
+            ],
+            total: 2,
+            page: 1,
+            pageSize: 50,
+          }),
+        },
+      );
+
+      const resultado = await service.validarContratoAssinado(
+        { contractId: "contract-1" },
+        gestorActor,
+      );
+
+      expect(resultado.anomaliasDetectadas.some((a) => a.includes("Responsável"))).toBe(true);
+    });
+
+    it("lança NotFoundException quando o contrato não existe ou não pertence ao tenant do ator", async () => {
+      const { service } = buildService(
+        {},
+        {},
+        { contract: { findFirst: jest.fn().mockResolvedValue(null) } },
+      );
+
+      await expect(
+        service.validarContratoAssinado({ contractId: "inexistente" }, gestorActor),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
