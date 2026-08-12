@@ -22,6 +22,9 @@ export interface MapVehicle {
   motoristaNome: string;
   monitorNome: string | null;
   iniciadaEm: string;
+  /** Só vem preenchido no Mapa Nacional de Veículos (Admin Rotta chamando `getMap()` sem `companyId`). */
+  companyId?: string;
+  companyNome?: string;
 }
 
 interface ApiEnvelope<T> {

@@ -28,6 +28,8 @@ export interface ActiveTripWithDetails extends Trip {
   route: { id: string; nome: string; turno: string };
   motorista: { id: string; nome: string };
   monitor: { id: string; nome: string } | null;
+  /** Só populado por `listActiveNationwide` — o mapa por tenant já sabe de qual empresa é (é a própria empresa logada). */
+  company?: { id: string; nomeFantasia: string };
 }
 
 /**
@@ -42,6 +44,14 @@ export interface TripRepository {
   update(id: string, data: UpdateTripData): Promise<Trip>;
   /** Todas as viagens EM_ANDAMENTO do tenant, com dados do veículo/rota/motorista/monitor — usado pelo mapa. */
   listActiveByCompany(companyId: string): Promise<ActiveTripWithDetails[]>;
+  /**
+   * Todas as viagens EM_ANDAMENTO de TODAS as empresas — "Mapa Nacional
+   * de Veículos" do Admin Rotta (mesmo escopo cross-tenant do "Mapa
+   * Nacional de Escolas", `GeoController`/`MapIntelligenceService`).
+   * Nunca chamado para Empresa/Gestor (só `listActiveForMap` decide
+   * isso, com base em `actor.role`).
+   */
+  listActiveNationwide(): Promise<ActiveTripWithDetails[]>;
   /** A viagem EM_ANDAMENTO de hoje para uma rota específica, já enriquecida — usado pelo localizador do Responsável. */
   findActiveDetailedByRouteId(routeId: string, data: Date): Promise<ActiveTripWithDetails | null>;
   /** Histórico de viagens de uma rota (mais recentes primeiro) — GPS-07/histórico. */

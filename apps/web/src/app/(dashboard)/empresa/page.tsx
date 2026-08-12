@@ -3,11 +3,13 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { ExternalLink, Sparkles, X } from "@rotta/icons";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import type { Company, UpdateCompanyInput } from "@rotta/api-client";
+import type { Company, MapVehicle, UpdateCompanyInput } from "@rotta/api-client";
 
 import {
   useCreateCheckout,
@@ -17,7 +19,7 @@ import {
   useUpdateMyCompany,
   useUpdateMyCompanySettings,
 } from "@/features/company/hooks/use-company";
-
+import { useGpsMap } from "@/features/gps/hooks/use-gps";
 
 /**
  * Banner de assinatura (briefing "PLANO" — Dossiê 26: cadastro
@@ -140,6 +142,7 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
   const { data: company, isLoading, isError } = useMyCompany(companyId);
   const { data: dashboard } = useMyCompanyDashboard(companyId);
   const { data: settings } = useMyCompanySettings(companyId);
+  const { data: fleet, isLoading: isFleetLoading } = useGpsMap();
   const updateCompany = useUpdateMyCompany(companyId);
   const updateSettings = useUpdateMyCompanySettings(companyId);
   const createCheckout = useCreateCheckout();
@@ -216,6 +219,22 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
     }
   }
 
+  const fleetMarkers = useMemo<RottaMapMarker[]>(
+    () =>
+      (fleet ?? [])
+        .filter((v): v is MapVehicle & { latitude: number; longitude: number } =>
+          Boolean(v.latitude && v.longitude),
+        )
+        .map((v) => ({
+          id: v.tripId,
+          titulo: `${v.placa} — ${v.routeNome} (${v.motoristaNome})`,
+          latitude: v.latitude,
+          longitude: v.longitude,
+          emMovimento: true,
+        })),
+    [fleet],
+  );
+
   if (isLoading || !form) {
     return (
       <div className="flex justify-center py-12">
@@ -269,6 +288,37 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
           ))}
         </div>
       )}
+
+      <Card>
+        <Card.Header
+          title="Frota ao vivo"
+          action={
+            <Link href="/veiculos/mapa">
+              <Button variant="secondary" size="sm">
+                Ver mapa completo
+              </Button>
+            </Link>
+          }
+        />
+        <Card.Body className="flex flex-col gap-3">
+          <Typography variant="bodySmall" color="muted">
+            {fleet?.length ?? 0} veículo(s) em viagem agora.
+          </Typography>
+          {isFleetLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner size="md" />
+            </div>
+          ) : fleetMarkers.length === 0 ? (
+            <Typography variant="bodySmall" color="muted">
+              Nenhum veículo em viagem no momento.
+            </Typography>
+          ) : (
+            <div style={{ height: 320 }}>
+              <RottaMap markers={fleetMarkers} />
+            </div>
+          )}
+        </Card.Body>
+      </Card>
 
       {dashboard && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 import { NotificationEventType, TripStatus } from "@prisma/client";
 
-
 import { TripsService } from "../trips.service";
 
 import type { TripPositionRepository } from "../repositories/trip-position.repository";
@@ -56,6 +55,13 @@ const empresaActor: AuthenticatedUser = {
   vinculoId: "vinculo-2",
 };
 
+const adminActor: AuthenticatedUser = {
+  sub: "admin-1",
+  tenantId: null,
+  role: Role.ADMIN_ROTTA,
+  vinculoId: "admin-1",
+};
+
 describe("TripsService", () => {
   let service: TripsService;
   let tripRepository: jest.Mocked<TripRepository>;
@@ -78,6 +84,7 @@ describe("TripsService", () => {
       findByRouteAndDate: jest.fn(),
       update: jest.fn(),
       listActiveByCompany: jest.fn(),
+      listActiveNationwide: jest.fn(),
       findActiveDetailedByRouteId: jest.fn(),
       listByRoute: jest.fn(),
     };
@@ -890,6 +897,56 @@ describe("TripsService", () => {
       await service.ingestPosition("trip-1", posicaoPerto, motoristaActor);
 
       expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("listActiveForMap", () => {
+    it("Empresa/Gestor: usa sempre o próprio tenantId, nunca lê `companyIdParam`", async () => {
+      tripRepository.listActiveByCompany.mockResolvedValue([]);
+
+      await service.listActiveForMap(empresaActor, "outra-empresa-tentando-passar-por-query");
+
+      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith("company-1");
+      expect(tripRepository.listActiveNationwide).not.toHaveBeenCalled();
+    });
+
+    it("Admin Rotta COM companyId: mapa de uma empresa só, igual Empresa/Gestor", async () => {
+      tripRepository.listActiveByCompany.mockResolvedValue([]);
+
+      await service.listActiveForMap(adminActor, "company-9");
+
+      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith("company-9");
+      expect(tripRepository.listActiveNationwide).not.toHaveBeenCalled();
+    });
+
+    it("Admin Rotta SEM companyId: Mapa Nacional de Veículos (cross-tenant), com nome da empresa em cada marcador", async () => {
+      tripRepository.listActiveNationwide.mockResolvedValue([
+        {
+          ...buildTrip({ companyId: "company-1" }),
+          veiculo: {
+            id: "vehicle-1",
+            placa: "ABC1D23",
+            ultimaLatitude: -23.5,
+            ultimaLongitude: -46.6,
+            ultimaPosicaoEm: new Date(),
+          } as never,
+          route: { id: "route-1", nome: "Rota A", turno: "MANHA" },
+          motorista: { id: "motorista-1", nome: "João" },
+          monitor: null,
+          company: { id: "company-1", nomeFantasia: "Transportadora Azul" },
+        },
+      ]);
+
+      const result = await service.listActiveForMap(adminActor);
+
+      expect(tripRepository.listActiveNationwide).toHaveBeenCalledTimes(1);
+      expect(tripRepository.listActiveByCompany).not.toHaveBeenCalled();
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({
+        companyId: "company-1",
+        companyNome: "Transportadora Azul",
+        placa: "ABC1D23",
+      });
     });
   });
 });

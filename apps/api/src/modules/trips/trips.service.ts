@@ -1097,14 +1097,24 @@ export class TripsService {
   // Mapa/localizador (GPS-01/03/06)
   // ---------------------------------------------------------------------
 
-  /** Todos os veículos em viagem no momento — a fonte de dados do mapa (Empresa/Gestor). */
+  /**
+   * Todos os veículos em viagem no momento — a fonte de dados do mapa
+   * (Empresa/Gestor: só a própria frota). Admin Rotta sem `companyId`
+   * recebe o "Mapa Nacional de Veículos" — TODAS as empresas de uma vez
+   * (mesmo padrão cross-tenant do Mapa Nacional de Escolas) — em vez do
+   * antigo 400 que obrigava escolher uma empresa primeiro.
+   */
   async listActiveForMap(
     actor: AuthenticatedUser,
     companyIdParam?: string,
   ): Promise<MapVehicleResponseDto[]> {
+    if (actor.role === Role.ADMIN_ROTTA && !companyIdParam) {
+      const nationwide = await this.tripRepository.listActiveNationwide();
+      return nationwide.map(toMapVehicleResponseDto);
+    }
     const companyId = actor.role === Role.ADMIN_ROTTA ? companyIdParam : actor.tenantId;
     if (!companyId) {
-      throw new BadRequestException("Informe `companyId` para consultar o mapa como Admin Rotta.");
+      throw new BadRequestException("Não foi possível determinar a empresa para o mapa.");
     }
     const trips = await this.tripRepository.listActiveByCompany(companyId);
     return trips.map(toMapVehicleResponseDto);

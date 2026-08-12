@@ -15,5 +15,7 @@ export function toMapVehicleResponseDto(trip: ActiveTripWithDetails): MapVehicle
     motoristaNome: trip.motorista.nome,
     monitorNome: trip.monitor?.nome ?? null,
     iniciadaEm: trip.iniciadaEm,
+    companyId: trip.company?.id,
+    companyNome: trip.company?.nomeFantasia,
   };
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, Input, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import { Button, Card, Input, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import Link from "next/link";
 import { useState } from "react";
 
 import type { ListVehiclesParams, Vehicle, VehicleStatus, VehicleType } from "@rotta/api-client";
@@ -8,7 +9,6 @@ import type { ListVehiclesParams, Vehicle, VehicleStatus, VehicleType } from "@r
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
-
 
 /**
  * Listagem de veículos — visão CROSS-TENANT exclusiva do Admin Rotta
@@ -43,7 +43,12 @@ export default function VeiculosAdminPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <Typography variant="title">Veículos</Typography>
+      <div className="flex items-center justify-between">
+        <Typography variant="title">Veículos</Typography>
+        <Link href="/veiculos/mapa">
+          <Button variant="secondary">Ver mapa nacional</Button>
+        </Link>
+      </div>
       <Typography variant="bodySmall" color="muted">
         Visão consolidada da frota de todas as empresas cadastradas na plataforma.
       </Typography>

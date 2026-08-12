@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   ActiveTripWithDetails,
   CreateTripData,
@@ -42,6 +41,29 @@ export class PrismaTripRepository implements TripRepository {
           route: { select: { id: true, nome: true, turno: true } },
           motorista: { select: { id: true, nome: true } },
           monitor: { select: { id: true, nome: true } },
+        },
+      }),
+    );
+  }
+
+  /**
+   * `withBypass` de propósito (mesmo padrão de `findActiveDetailedByRouteId`
+   * logo abaixo) — sem filtro de `companyId`, único jeito de um Admin
+   * Rotta enxergar a frota de TODAS as empresas num mapa só. Volume
+   * naturalmente pequeno (só viagens EM_ANDAMENTO agora, nunca o
+   * histórico completo), então não precisa de paginação/janela por
+   * bounding box como o mapa nacional de Escolas.
+   */
+  listActiveNationwide(): Promise<ActiveTripWithDetails[]> {
+    return this.prisma.withBypass(
+      this.prisma.trip.findMany({
+        where: { status: "EM_ANDAMENTO" },
+        include: {
+          veiculo: true,
+          route: { select: { id: true, nome: true, turno: true } },
+          motorista: { select: { id: true, nome: true } },
+          monitor: { select: { id: true, nome: true } },
+          company: { select: { id: true, nomeFantasia: true } },
         },
       }),
     );

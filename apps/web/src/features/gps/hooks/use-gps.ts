@@ -1,8 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+
+import type { MapVehicle } from "@rotta/api-client";
 
 import { gpsApi } from "@/lib/api-client";
+
 
 /**
  * Hooks de dados do "localizador"/mapa (GPS-01/03/06, painel web —
@@ -42,5 +45,33 @@ export function useGpsForStudent(studentId: string | undefined) {
     queryFn: () => gpsApi.getForStudent(studentId as string),
     enabled: Boolean(studentId),
     refetchInterval: 10_000,
+  });
+}
+
+/**
+ * Mapa combinado de "Meus Alunos" (`/alunos`) — um marcador por filho
+ * que tenha viagem em curso agora, todos no mesmo mapa em vez de só o
+ * badge "Em viagem" por card. Mesma `queryKey` (`["gps", "student", id]`)
+ * de `useGpsForStudent`, então react-query DEDUPLICA com as chamadas já
+ * feitas por cada `StudentCard` — nenhuma requisição extra à API, só
+ * agrega o que os cards já buscam. Recebe `{id, nome}` (não só o id) —
+ * `MapVehicle` não carrega o nome do aluno, só da rota/motorista.
+ */
+export function useGpsForStudents(students: { id: string; nome: string }[]) {
+  return useQueries({
+    queries: students.map(({ id }) => ({
+      queryKey: ["gps", "student", id],
+      queryFn: () => gpsApi.getForStudent(id),
+      refetchInterval: 10_000,
+    })),
+    combine: (results) => ({
+      isLoading: results.some((r) => r.isLoading),
+      data: results
+        .map((r, index) => ({ student: students[index]!, vehicle: r.data }))
+        .filter(
+          (row): row is { student: { id: string; nome: string }; vehicle: MapVehicle } =>
+            row.vehicle !== null && row.vehicle !== undefined,
+        ),
+    }),
   });
 }

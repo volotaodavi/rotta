@@ -1,9 +1,14 @@
 "use client";
 
-import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
+import { useMemo } from "react";
+
+import type { MapVehicle } from "@rotta/api-client";
 
 import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffice";
+import { useGpsMapNationwide } from "@/features/gps/hooks/use-gps";
 
 /**
  * Tela inicial do Admin Rotta (`ADM-01`, Dossiê 11 §6.1 — "KPIs de
@@ -13,6 +18,23 @@ import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffi
  */
 export default function AdminHomePage(): JSX.Element {
   const { data, isLoading, isError } = useBackofficeDashboard();
+  const { data: fleet, isLoading: isFleetLoading } = useGpsMapNationwide();
+
+  const fleetMarkers = useMemo<RottaMapMarker[]>(
+    () =>
+      (fleet ?? [])
+        .filter((v): v is MapVehicle & { latitude: number; longitude: number } =>
+          Boolean(v.latitude && v.longitude),
+        )
+        .map((v) => ({
+          id: v.tripId,
+          titulo: `${v.placa} — ${v.companyNome ?? "Empresa"}`,
+          latitude: v.latitude,
+          longitude: v.longitude,
+          emMovimento: true,
+        })),
+    [fleet],
+  );
 
   if (isLoading) {
     return (
@@ -58,6 +80,37 @@ export default function AdminHomePage(): JSX.Element {
           highlight={data.aprovacoesPendentesTotal > 0}
         />
       </div>
+
+      <Card>
+        <Card.Header
+          title="Frota em tempo real"
+          action={
+            <Link href="/veiculos/mapa">
+              <Button variant="secondary" size="sm">
+                Ver mapa nacional
+              </Button>
+            </Link>
+          }
+        />
+        <Card.Body className="flex flex-col gap-3">
+          <Typography variant="bodySmall" color="muted">
+            {fleet?.length ?? 0} veículo(s) em viagem agora, em todas as empresas.
+          </Typography>
+          {isFleetLoading ? (
+            <div className="flex justify-center py-8">
+              <Spinner size="md" />
+            </div>
+          ) : fleetMarkers.length === 0 ? (
+            <Typography variant="bodySmall" color="muted">
+              Nenhum veículo em viagem no momento.
+            </Typography>
+          ) : (
+            <div style={{ height: 320 }}>
+              <RottaMap markers={fleetMarkers} initialZoom={4} />
+            </div>
+          )}
+        </Card.Body>
+      </Card>
 
       <Card>
         <Card.Header title="Empresas por status" />

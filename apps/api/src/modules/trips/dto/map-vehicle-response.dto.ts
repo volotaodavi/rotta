@@ -19,4 +19,7 @@ export class MapVehicleResponseDto {
   @ApiProperty() motoristaNome!: string;
   @ApiPropertyOptional() monitorNome?: string | null;
   @ApiProperty() iniciadaEm!: Date;
+  /** Só populado no Mapa Nacional de Veículos (Admin Rotta sem `companyId`) — identifica de qual empresa é cada marcador. */
+  @ApiPropertyOptional() companyId?: string;
+  @ApiPropertyOptional() companyNome?: string;
 }

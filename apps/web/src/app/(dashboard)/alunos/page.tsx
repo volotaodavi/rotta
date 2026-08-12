@@ -1,13 +1,14 @@
 "use client";
 
 import { MapPin, Plus, Radio } from "@rotta/icons";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, Input, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { Student } from "@rotta/api-client";
 
-import { useGpsForStudent } from "@/features/gps/hooks/use-gps";
+import { useGpsForStudent, useGpsForStudents } from "@/features/gps/hooks/use-gps";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useStudentsList } from "@/features/students/hooks/use-students";
 
@@ -40,6 +41,8 @@ export default function AlunosPage(): JSX.Element {
           </Button>
         </Link>
       </div>
+
+      {data && data.items.length > 0 ? <MapaAoVivoWidget students={data.items} /> : null}
 
       <Input
         placeholder="Buscar por nome"
@@ -75,6 +78,47 @@ export default function AlunosPage(): JSX.Element {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Mapa combinado no topo de "Meus Alunos" — antes desta entrega, a
+ * única forma de ver a posição de um filho era abrir `/alunos/:id/mapa`
+ * um de cada vez; quem tem mais de um filho não enxergava os dois ao
+ * mesmo tempo. Só aparece quando pelo menos um tem viagem em curso
+ * agora — sem viagem nenhuma, o mapa vazio só ocuparia espaço à toa
+ * (os badges "Sem viagem agora" nos cards abaixo já cobrem esse caso).
+ */
+function MapaAoVivoWidget({ students }: { students: Student[] }): JSX.Element | null {
+  const { data: emViagem } = useGpsForStudents(students.map((s) => ({ id: s.id, nome: s.nome })));
+
+  const markers = useMemo<RottaMapMarker[]>(
+    () =>
+      emViagem
+        .filter((row): row is typeof row & { vehicle: { latitude: number; longitude: number } } =>
+          Boolean(row.vehicle.latitude && row.vehicle.longitude),
+        )
+        .map((row) => ({
+          id: row.vehicle.tripId,
+          titulo: `${row.student.nome} — ${row.vehicle.routeNome} (${row.vehicle.motoristaNome})`,
+          latitude: row.vehicle.latitude,
+          longitude: row.vehicle.longitude,
+          emMovimento: true,
+        })),
+    [emViagem],
+  );
+
+  if (markers.length === 0) return null;
+
+  return (
+    <Card>
+      <Card.Header title={`${markers.length} em viagem agora`} />
+      <Card.Body>
+        <div style={{ height: 320 }}>
+          <RottaMap markers={markers} />
+        </div>
+      </Card.Body>
+    </Card>
   );
 }
 
