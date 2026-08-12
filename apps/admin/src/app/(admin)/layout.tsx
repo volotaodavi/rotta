@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { href: "/veiculos", label: "Veículos" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/aprovacoes", label: "Aprovações" },
+  { href: "/verificacao-identidade", label: "Verificação de Identidade" },
   { href: "/suporte", label: "Suporte" },
   { href: "/inteligencia", label: "Inteligência" },
   { href: "/saude", label: "Saúde" },
