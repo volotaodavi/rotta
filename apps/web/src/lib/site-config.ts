@@ -61,35 +61,40 @@ export function getGoogleSiteVerification(): string | undefined {
  * Dados reais da empresa (Dossiê 45 — Rotta Legal, Trust & Community
  * Center) — fonte única, consumida por Termos/Privacidade/rodapé/
  * demais documentos legais. NUNCA inventar um dado que não exista
- * aqui: os únicos fatos confirmados no código antes desta entrega são
- * razão social/CNPJ/foro (já usados em `(marketing)/termos`,
- * `(marketing)/privacidade`, `(marketing)/layout.tsx`) e os e-mails
- * `contato@`/`suporte@`/`notificacoes@rotta.com.br`. Não existe (e não
- * deve ser inventado) endereço físico, telefone, DPO nomeado ou e-mail
- * dedicado de segurança — quando a Rotta definir esses dados, atualizar
- * SÓ aqui.
+ * aqui: os únicos fatos confirmados são razão social/CNPJ/foro (já
+ * usados em `(marketing)/termos`, `(marketing)/privacidade`,
+ * `(marketing)/layout.tsx`). Não existe (e não deve ser inventado)
+ * endereço físico, telefone ou DPO nomeado.
+ *
+ * `rotta.com.br` **não pertence à Rotta hoje** (confirmado ao vivo:
+ * hoje é uma página de domínio à venda de terceiro) — os antigos
+ * `contato@`/`suporte@rotta.com.br` eram endereços que ninguém
+ * consegue receber. Pedido explícito do usuário: até o domínio ser
+ * comprado, toda comunicação (contato, suporte, segurança e o funil
+ * `/governo`) usa a MESMA caixa real, `rottadobrasil@gmail.com` — um
+ * único ponto de origem, trocar só aqui no dia em que existirem
+ * endereços dedicados em domínio próprio.
  */
 export const COMPANY_LEGAL_NAME = "Rotta do Brasil Tecnologia e Soluções de Transportes";
 export const COMPANY_CNPJ = "54.623.584/0001-80";
 export const COMPANY_FORUM = "Maricá/RJ";
-export const CONTACT_EMAIL = "contato@rotta.com.br";
-export const SUPPORT_EMAIL = "suporte@rotta.com.br";
+export const CONTACT_EMAIL = "rottadobrasil@gmail.com";
+export const SUPPORT_EMAIL = CONTACT_EMAIL;
 /**
- * Não existe um endereço `security@rotta.com.br` dedicado hoje — em vez
- * de inventar um (o prompt que originou esta entrega proíbe
- * explicitamente inventar domínio/e-mail), o canal de divulgação
- * responsável de vulnerabilidade reaproveita o e-mail real de contato,
- * com o assunto pedindo `[SEGURANÇA]` para triagem prioritária. Trocar
- * por um endereço dedicado aqui no dia em que ele existir — nenhum
- * outro arquivo precisa mudar.
+ * Não existe um endereço de segurança dedicado hoje — o canal de
+ * divulgação responsável de vulnerabilidade reaproveita o e-mail real
+ * de contato, com o assunto pedindo `[SEGURANÇA]` para triagem
+ * prioritária. Trocar por um endereço dedicado aqui no dia em que ele
+ * existir — nenhum outro arquivo precisa mudar.
  */
 export const SECURITY_CONTACT_EMAIL = CONTACT_EMAIL;
 export const SECURITY_CONTACT_SUBJECT_HINT = "[SEGURANÇA]";
 
 /**
- * Caixa dedicada para leads do funil B2G (`/governo`) — pedido explícito
- * do usuário para separar esse fluxo do `CONTACT_EMAIL` genérico, já
- * que solicitações de secretarias/gestores públicos passam por uma
- * triagem diferente (jurídico/institucional) do contato comum.
+ * Leads do funil B2G (`/governo`) — mesma caixa real que o resto do
+ * site (`CONTACT_EMAIL`) até existir um domínio próprio; mantido como
+ * export separado (em vez de importar `CONTACT_EMAIL` direto em
+ * `governo/page.tsx`) só para deixar explícito, em quem lê aquele
+ * arquivo, que aquele e-mail é o canal do funil B2G especificamente.
  */
-export const GOVERNO_CONTACT_EMAIL = "rottadobrasil@gmail.com";
+export const GOVERNO_CONTACT_EMAIL = CONTACT_EMAIL;

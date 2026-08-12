@@ -1,4 +1,4 @@
-import { getSiteUrl } from "@/lib/site-config";
+import { CONTACT_EMAIL, getSiteUrl } from "@/lib/site-config";
 
 /**
  * `llms.txt` (Dossiê 12 §7.4) — convenção emergente (não é um padrão do
@@ -32,7 +32,7 @@ Quatro perfis de conta, cada um com funcionalidades próprias:
 - [Planos](${siteUrl}/planos): preço e o que está incluso no plano Starter.
 - [Benefícios](${siteUrl}/beneficios): o que a Rotta resolve para cada perfil.
 - [Perguntas frequentes](${siteUrl}/faq): dúvidas comuns sobre cadastro, convite e conta.
-- [Contato](${siteUrl}/contato): contato@rotta.com.br
+- [Contato](${siteUrl}/contato): ${CONTACT_EMAIL}
 - [Suporte](${siteUrl}/suporte): canal para clientes e não clientes.
 - [Criar conta](${siteUrl}/criar-conta): ponto de entrada dos 4 fluxos de cadastro.
 

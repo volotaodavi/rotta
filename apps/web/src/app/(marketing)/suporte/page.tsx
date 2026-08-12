@@ -4,10 +4,11 @@ import Link from "next/link";
 
 import type { Metadata } from "next";
 
+import { SUPPORT_EMAIL } from "@/lib/site-config";
+
 export const metadata: Metadata = {
   title: "Suporte",
-  description:
-    "Precisa de ajuda com a Rotta? Clientes abrem chamado direto pelo painel; quem ainda não é cliente fala com a gente em suporte@rotta.com.br.",
+  description: `Precisa de ajuda com a Rotta? Clientes abrem chamado direto pelo painel; quem ainda não é cliente fala com a gente em ${SUPPORT_EMAIL}.`,
   alternates: { canonical: "/suporte" },
 };
 
@@ -44,8 +45,8 @@ export default function SuportePage(): JSX.Element {
             <Typography variant="subtitle">Ainda não é cliente</Typography>
             <Typography variant="bodySmall" color="muted">
               Tem dúvidas antes de começar? Fale conosco em{" "}
-              <Link href="mailto:suporte@rotta.com.br" className="text-primary hover:underline">
-                suporte@rotta.com.br
+              <Link href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">
+                {SUPPORT_EMAIL}
               </Link>
               .
             </Typography>

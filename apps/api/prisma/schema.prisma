@@ -654,6 +654,14 @@ model User {
   /// Consentimentos versionados (Dossiê 45 FRENTE 5) — ver `ConsentRecord`.
   consentRecords ConsentRecord[]
 
+  /// CMS de documentos legais (Dossiê 45 FRENTE 4) — versões que este
+  /// usuário redigiu/editou e, separadamente, versões que este usuário
+  /// aprovou (RASCUNHO→REVISAO→APROVACAO precisa de um segundo par de
+  /// olhos: `LegalDocumentsService` recusa a transição para APROVACAO
+  /// quando `aprovadoPorId === autorId`).
+  documentosLegaisAutor    LegalDocumentVersion[] @relation("LegalDocumentVersionAutor")
+  documentosLegaisAprovados LegalDocumentVersion[] @relation("LegalDocumentVersionAprovador")
+
   @@map("users")
 }
 
@@ -2448,4 +2456,67 @@ model ConsentRecord {
 
   @@index([userId, tipo, aceitoEm])
   @@map("consent_records")
+}
+
+/// FRENTE 4 (Dossiê 45, tarefa #205) — CMS de documentos legais do
+/// Admin Rotta. Fluxo de status linear e sempre pra frente
+/// (RASCUNHO→REVISAO→APROVACAO→PUBLICADO, `LegalDocumentsService`
+/// valida a transição — nunca pula etapa nem volta). Escopo desta
+/// entrega, deliberadamente: esta é uma ferramenta de workflow/versão
+/// interna do Admin, DESACOPLADA das páginas públicas reais
+/// (`apps/web/src/app/legal/*`, ainda componentes React estáticos) —
+/// religar as páginas públicas para renderizar a partir daqui é um
+/// passo futuro já antecipado no comentário de
+/// `apps/web/src/features/legal/documents.ts`: "o histórico versionado
+/// de verdade... depende do CMS do Admin ainda não construído". Migrar
+/// esse acoplamento de uma vez, sem versão prévia deste CMS existindo
+/// pra validar o fluxo primeiro, seria arriscar quebrar 10 páginas
+/// legais já auditadas — feito à parte, não nesta entrega.
+enum LegalDocumentVersionStatus {
+  RASCUNHO
+  REVISAO
+  APROVACAO
+  PUBLICADO
+}
+
+model LegalDocument {
+  id     String @id @default(uuid()) @db.Uuid
+  /// Mesmo `slug` de `LegalDocumentMeta` (`apps/web/src/features/legal/documents.ts`) — chave de correlação manual entre os dois lados até a migração futura citada acima.
+  slug   String @unique
+  titulo String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  versoes LegalDocumentVersion[]
+
+  @@map("legal_documents")
+}
+
+model LegalDocumentVersion {
+  id         String        @id @default(uuid()) @db.Uuid
+  documentId String        @db.Uuid
+  documento  LegalDocument @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  /// Sequencial por documento (1, 2, 3...) — nunca reaproveitado mesmo
+  /// se uma versão for descartada ainda em RASCUNHO, mesmo espírito de
+  /// nunca sobrescrever histórico de `AuditLog`/`ConsentRecord`.
+  versao           Int
+  conteudoMarkdown String                      @db.Text
+  /// Nota curta de "o que mudou nesta versão" — preenchida por quem move de RASCUNHO para REVISAO.
+  changelog        String?
+  status           LegalDocumentVersionStatus  @default(RASCUNHO)
+
+  autorId       String @db.Uuid
+  autor         User   @relation("LegalDocumentVersionAutor", fields: [autorId], references: [id])
+  aprovadoPorId String? @db.Uuid
+  aprovadoPor   User?   @relation("LegalDocumentVersionAprovador", fields: [aprovadoPorId], references: [id])
+
+  publicadoEm DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([documentId, versao])
+  @@map("legal_document_versions")
 }

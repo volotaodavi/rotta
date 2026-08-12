@@ -45,6 +45,7 @@ import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
 import { GeoModule } from "@/modules/geo/geo.module";
 import { GpsModule } from "@/modules/gps/gps.module";
+import { LegalDocumentsModule } from "@/modules/legal-documents/legal-documents.module";
 import { LogsModule } from "@/modules/logs/logs.module";
 import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
 import { MonitorsModule } from "@/modules/monitors/monitors.module";
@@ -129,6 +130,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     AnalyticsModule,
     RottaAiModule,
     BackofficeModule,
+    LegalDocumentsModule,
   ],
   providers: [
     // --- Guards globais (Dossie 12, Secao 5.1) ---

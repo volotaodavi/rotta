@@ -4,9 +4,11 @@ import Link from "next/link";
 
 import type { Metadata } from "next";
 
+import { CONTACT_EMAIL } from "@/lib/site-config";
+
 export const metadata: Metadata = {
   title: "Contato",
-  description: "Fale com a Rotta por e-mail em contato@rotta.com.br.",
+  description: `Fale com a Rotta por e-mail em ${CONTACT_EMAIL}.`,
   alternates: { canonical: "/contato" },
 };
 
@@ -23,10 +25,10 @@ export default function ContatoPage(): JSX.Element {
             <Mail className="h-5 w-5" />
           </span>
           <Link
-            href="mailto:contato@rotta.com.br"
+            href={`mailto:${CONTACT_EMAIL}`}
             className="text-lg font-semibold text-text transition-colors hover:text-primary"
           >
-            contato@rotta.com.br
+            {CONTACT_EMAIL}
           </Link>
           <Typography variant="bodySmall" color="muted">
             Já é cliente? Um atendimento mais rápido está no{" "}

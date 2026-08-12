@@ -19,6 +19,8 @@ const NAV_LINKS = [
   { href: "/suporte", label: "Suporte" },
   { href: "/inteligencia", label: "Inteligência" },
   { href: "/saude", label: "Saúde" },
+  { href: "/documentos-legais", label: "Documentos Legais" },
+  { href: "/auditoria-legal", label: "Auditoria Legal" },
 ] as const;
 
 /**
