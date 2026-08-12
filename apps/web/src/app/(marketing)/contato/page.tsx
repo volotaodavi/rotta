@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import type { Metadata } from "next";
 
+import { GeneralContactButton } from "@/components/general-contact-button";
 import { CONTACT_EMAIL } from "@/lib/site-config";
 
 export const metadata: Metadata = {
@@ -12,7 +13,13 @@ export const metadata: Metadata = {
   alternates: { canonical: "/contato" },
 };
 
-/** Contato (briefing "SITE RESPONSIVO"). */
+/**
+ * Contato (briefing "SITE RESPONSIVO"). Antes era só um link `mailto:`
+ * estático (sem cliente de e-mail configurado no navegador, "nada
+ * abria"); agora usa o mesmo `LeadContactModal` do `/governo` (variante
+ * `"geral"`, Frente A — harmonizar a experiência de contato em vez de
+ * um site com formulário e outro com mailto cru).
+ */
 export default function ContatoPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-8 px-6 py-20 text-center">
@@ -20,16 +27,13 @@ export default function ContatoPage(): JSX.Element {
         Fale com a gente
       </Typography>
       <Card className="w-full">
-        <Card.Body className="flex flex-col items-center gap-3 text-center">
+        <Card.Body className="flex flex-col items-center gap-4 text-center">
           <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
             <Mail className="h-5 w-5" />
           </span>
-          <Link
-            href={`mailto:${CONTACT_EMAIL}`}
-            className="text-lg font-semibold text-text transition-colors hover:text-primary"
-          >
-            {CONTACT_EMAIL}
-          </Link>
+          <GeneralContactButton variant="primary" iconLeft={<Mail className="h-4 w-4" />}>
+            Enviar mensagem
+          </GeneralContactButton>
           <Typography variant="bodySmall" color="muted">
             Já é cliente? Um atendimento mais rápido está no{" "}
             <Link href="/suporte" className="text-primary hover:underline">

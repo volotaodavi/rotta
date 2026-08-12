@@ -4,7 +4,6 @@ import {
   BookOpenCheck,
   Building2,
   CalendarClock,
-  Mail,
   MapPin,
   ScrollText,
   ShieldCheck,
@@ -16,8 +15,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import type { ComponentType } from "react";
 
+import { GovernoContactButton } from "@/components/governo-contact-button";
 import { HeroMapDemo } from "@/components/hero-map-demo";
 import { RouteMark } from "@/components/route-mark";
+import { ScrollToDemoButton } from "@/components/scroll-to-demo-button";
 import {
   COMPANY_CNPJ,
   COMPANY_FORUM,
@@ -37,10 +38,18 @@ import {
  * Revisão 2 (pedido do usuário): tom mais direto/conversacional com o
  * gestor público, mais foco em conversão; GPS em tempo real como
  * demonstração central (não só mais um item de lista — é a primeira
- * coisa que aparece na hero); trocado o formulário multi-campo por um
- * único CTA de e-mail (`GOVERNO_CONTACT_EMAIL`) pedindo reunião — sem
- * formulário, sem backend novo, só um `mailto:` com assunto/corpo
- * pré-preenchidos. A seção "Capacidades reais" deixa explícito que é a
+ * coisa que aparece na hero).
+ *
+ * Revisão 3 (pedido do usuário): os CTAs de contato eram um `mailto:`
+ * estático — sem cliente de e-mail configurado no navegador, "nada
+ * abria" e o botão parecia quebrado. `GovernoContactButton` (Frente A)
+ * abre um formulário de verdade (`LeadContactModal`) que monta um
+ * `mailto:` PERSONALIZADO a partir do que a pessoa preencheu — ainda
+ * sem backend novo (mesmo princípio, e-mail continua sendo a única
+ * "fila" de leads), só que com conteúdo real em vez de um template que
+ * a pessoa tinha que editar à mão. O tipo de órgão escolhido no
+ * formulário mostra as soluções da Rotta mais relevantes pra ele. A
+ * seção "Capacidades reais" deixa explícito que é a
  * MESMA plataforma usada por transportadoras privadas — nenhuma versão
  * separada ou reduzida para o setor público, o produto inteiro (GPS,
  * verificação, comunicação, auditoria) já está pronto para atender
@@ -118,30 +127,6 @@ const METRICAS_EXEMPLO: { label: string; valor: string }[] = [
   { label: "Notificações de embarque hoje", valor: "2.470" },
 ];
 
-/** O que ajuda a Rotta a preparar uma reunião mais útil — reduz o atrito de escrever um e-mail do zero, sem virar um formulário de campos obrigatórios. */
-const ROTEIRO_REUNIAO = [
-  "Município/UF e órgão (ex.: Secretaria Municipal de Educação)",
-  "Tamanho aproximado da frota escolar e nº de rotas",
-  "Melhor horário para uma conversa de 20-30 minutos",
-];
-
-const REUNIAO_ASSUNTO = "Quero agendar uma reunião com a Rotta";
-const REUNIAO_CORPO = [
-  "Olá, equipe Rotta!",
-  "",
-  "Sou [nome], [cargo] em [órgão/secretaria], no município de [cidade/UF].",
-  "",
-  "Gostaria de agendar uma reunião para conhecer a plataforma e conversar sobre o transporte escolar público do nosso município.",
-  "",
-  "Frota aproximada: ",
-  "Número de rotas: ",
-  "Melhor horário para conversar: ",
-  "",
-  "Aguardo retorno!",
-].join("\n");
-
-const MAILTO_REUNIAO = `mailto:${GOVERNO_CONTACT_EMAIL}?subject=${encodeURIComponent(REUNIAO_ASSUNTO)}&body=${encodeURIComponent(REUNIAO_CORPO)}`;
-
 export default function GovernoPage(): JSX.Element {
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -159,11 +144,9 @@ export default function GovernoPage(): JSX.Element {
             >
               Voltar ao site
             </Link>
-            <a href="#contato">
-              <Button variant="primary" size="sm">
-                Marcar uma reunião
-              </Button>
-            </a>
+            <GovernoContactButton variant="primary" size="sm">
+              Marcar uma reunião
+            </GovernoContactButton>
           </div>
         </div>
       </header>
@@ -187,20 +170,16 @@ export default function GovernoPage(): JSX.Element {
               veículo.
             </Typography>
             <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-              <a href={MAILTO_REUNIAO}>
-                <Button variant="primary" size="lg" iconRight={<ArrowRight className="h-4 w-4" />}>
-                  Marcar uma reunião
-                </Button>
-              </a>
-              <a href="#demonstracao">
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="bg-white/10 text-white hover:bg-white/20"
-                >
-                  Ver o GPS em tempo real
-                </Button>
-              </a>
+              <GovernoContactButton variant="primary" size="lg">
+                Marcar uma reunião
+              </GovernoContactButton>
+              <ScrollToDemoButton
+                variant="secondary"
+                size="lg"
+                className="bg-white/10 text-white hover:bg-white/20"
+              >
+                Ver o GPS em tempo real
+              </ScrollToDemoButton>
             </div>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2">
               {["LGPD", "Lei nº 14.133/2021", "LC 182/2021"].map((item) => (
@@ -216,7 +195,7 @@ export default function GovernoPage(): JSX.Element {
           </div>
           <div
             id="demonstracao"
-            className="relative flex scroll-mt-24 justify-center pt-4 lg:justify-end lg:pt-0"
+            className="relative flex scroll-mt-24 justify-center rounded-[32px] pt-4 ring-0 transition-shadow duration-500 lg:justify-end lg:pt-0"
           >
             <HeroMapDemo />
           </div>
@@ -331,7 +310,7 @@ export default function GovernoPage(): JSX.Element {
         </div>
       </section>
 
-      {/* CTA final — só e-mail pedindo reunião, sem formulário */}
+      {/* CTA final — formulário real (Frente A), sem coletar dados num backend novo: o envio ainda é um mailto:, só que montado a partir do que a pessoa preencheu. */}
       <section id="contato" className="w-full bg-slate-950 px-6 py-20">
         <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
           <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/20 text-primary">
@@ -341,38 +320,13 @@ export default function GovernoPage(): JSX.Element {
             Vamos marcar uma reunião?
           </Typography>
           <Typography variant="body" className="max-w-lg text-white/70">
-            Escreva para{" "}
-            <a
-              href={`mailto:${GOVERNO_CONTACT_EMAIL}`}
-              className="font-semibold text-white underline"
-            >
-              {GOVERNO_CONTACT_EMAIL}
-            </a>{" "}
-            pedindo para agendar uma conversa — nossa equipe responde pelo mesmo canal, sem
-            cadastro, sem formulário.
+            Conte um pouco sobre o seu órgão — a gente monta o e-mail pra {GOVERNO_CONTACT_EMAIL},
+            já pronto pra enviar do seu próprio cliente de e-mail, sem cadastro nenhum na Rotta.
           </Typography>
 
-          <a href={MAILTO_REUNIAO}>
-            <Button variant="primary" size="lg" iconLeft={<Mail className="h-4 w-4" />}>
-              Enviar e-mail pedindo reunião
-            </Button>
-          </a>
-
-          <div className="mt-4 w-full rounded-2xl border border-white/10 bg-white/5 p-5 text-left">
-            <Typography variant="bodySmall" className="font-semibold text-white/90">
-              Para agilizar, vale incluir na mensagem:
-            </Typography>
-            <ul className="mt-3 flex flex-col gap-2">
-              {ROTEIRO_REUNIAO.map((item) => (
-                <li key={item} className="flex items-start gap-2.5">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                  <Typography variant="bodySmall" className="text-white/70">
-                    {item}
-                  </Typography>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <GovernoContactButton variant="primary" size="lg" showIcon>
+            Enviar e-mail pedindo reunião
+          </GovernoContactButton>
         </div>
       </section>
 
