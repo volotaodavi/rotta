@@ -1,14 +1,26 @@
-import { BadRequestException, NotImplementedException } from "@nestjs/common";
-
+import { BadRequestException, NotFoundException, NotImplementedException } from "@nestjs/common";
 
 import { RottaAiService } from "../rotta-ai.service";
 
+import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { PrismaService } from "@/infra/database/prisma.service";
 import type { DiditService } from "@/infra/didit/didit.service";
 import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
 
 import { Role } from "@/shared/enums";
 
-function buildService(diditOverrides: Partial<DiditService> = {}) {
+const gestorActor: AuthenticatedUser = {
+  sub: "user-1",
+  tenantId: "company-1",
+  role: Role.GESTOR,
+  vinculoId: "vinculo-1",
+};
+
+function buildService(
+  diditOverrides: Partial<DiditService> = {},
+  geoOverrides: Partial<GeoEngineService> = {},
+  prismaOverrides: { route?: unknown; routeStop?: unknown } = {},
+) {
   const diditService = {
     verifyId: jest.fn(),
     faceMatch: jest.fn(),
@@ -16,9 +28,26 @@ function buildService(diditOverrides: Partial<DiditService> = {}) {
     ...diditOverrides,
   } as unknown as DiditService;
 
-  const geoEngine = { geocode: jest.fn() } as unknown as GeoEngineService;
+  const geoEngine = {
+    geocode: jest.fn(),
+    getRoute: jest.fn(),
+    optimizeTrip: jest.fn(),
+    ...geoOverrides,
+  } as unknown as GeoEngineService;
 
-  return { service: new RottaAiService(geoEngine, diditService), geoEngine, diditService };
+  const prisma = {
+    withTenant: jest.fn((operation: unknown) => operation),
+    route: { findFirst: jest.fn() },
+    routeStop: { findMany: jest.fn() },
+    ...prismaOverrides,
+  } as unknown as PrismaService;
+
+  return {
+    service: new RottaAiService(geoEngine, diditService, prisma),
+    geoEngine,
+    diditService,
+    prisma,
+  };
 }
 
 describe("RottaAiService", () => {
@@ -256,12 +285,164 @@ describe("RottaAiService", () => {
         NotImplementedException,
       );
     });
+  });
 
-    it("suggestRouteOptimization (ROT-08) continua um stub honesto (NotImplementedException)", async () => {
-      const { service } = buildService();
-      await expect(service.suggestRouteOptimization({} as never)).rejects.toThrow(
-        NotImplementedException,
+  describe("suggestRouteOptimization (ROT-08, Frente D — Rotta Route AI real via OSRM)", () => {
+    function buildStops() {
+      return [
+        { id: "stop-1", ordem: 1, latitude: -23.55, longitude: -46.63 },
+        { id: "stop-2", ordem: 2, latitude: -23.56, longitude: -46.64 },
+        { id: "stop-3", ordem: 3, latitude: -23.57, longitude: -46.65 },
+        { id: "stop-4", ordem: 4, latitude: -23.58, longitude: -46.66 },
+      ];
+    }
+
+    it("compara a ordem atual com a sugestão do OSRM e calcula a economia de tempo", async () => {
+      const stops = buildStops();
+      const { service, geoEngine, prisma } = buildService(
+        {},
+        {
+          getRoute: jest.fn().mockResolvedValue({ duracaoSegundos: 900, distanciaMetros: 8000 }),
+          optimizeTrip: jest.fn().mockResolvedValue({
+            ordemSugerida: [0, 2, 1, 3],
+            duracaoSegundos: 700,
+            distanciaMetros: 7000,
+          }),
+        },
+        {
+          route: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValue({ id: "route-1", companyId: gestorActor.tenantId }),
+          },
+          routeStop: { findMany: jest.fn().mockResolvedValue(stops) },
+        },
       );
+
+      const resultado = await service.suggestRouteOptimization({ routeId: "route-1" }, gestorActor);
+
+      expect(resultado.ordemAtualIds).toEqual(["stop-1", "stop-2", "stop-3", "stop-4"]);
+      expect(resultado.ordemSugeridaIds).toEqual(["stop-1", "stop-3", "stop-2", "stop-4"]);
+      expect(resultado.duracaoAtualSegundos).toBe(900);
+      expect(resultado.duracaoSugeridaSegundos).toBe(700);
+      expect(resultado.economiaSegundos).toBe(200);
+      expect(resultado.distanciaSugeridaMetros).toBe(7000);
+      expect(resultado.jaOtimizada).toBe(false);
+
+      // origem/destino fixos: `getRoute` recebe stop-1 e stop-4 como origem/destino, stop-2/stop-3 como intermediárias.
+      expect(geoEngine.getRoute).toHaveBeenCalledWith(
+        { latitude: -23.55, longitude: -46.63 },
+        { latitude: -23.58, longitude: -46.66 },
+        [
+          { latitude: -23.56, longitude: -46.64 },
+          { latitude: -23.57, longitude: -46.65 },
+        ],
+      );
+      expect(prisma.withTenant).toHaveBeenCalled();
+    });
+
+    it("marca jaOtimizada=true quando a ordem sugerida é idêntica à atual", async () => {
+      const stops = buildStops();
+      const { service } = buildService(
+        {},
+        {
+          getRoute: jest.fn().mockResolvedValue({ duracaoSegundos: 700, distanciaMetros: 7000 }),
+          optimizeTrip: jest.fn().mockResolvedValue({
+            ordemSugerida: [0, 1, 2, 3],
+            duracaoSegundos: 700,
+            distanciaMetros: 7000,
+          }),
+        },
+        {
+          route: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValue({ id: "route-1", companyId: gestorActor.tenantId }),
+          },
+          routeStop: { findMany: jest.fn().mockResolvedValue(stops) },
+        },
+      );
+
+      const resultado = await service.suggestRouteOptimization({ routeId: "route-1" }, gestorActor);
+
+      expect(resultado.jaOtimizada).toBe(true);
+      expect(resultado.economiaSegundos).toBe(0);
+    });
+
+    it("nunca devolve economia negativa mesmo se, por alguma razão, a sugestão for pior que a atual", async () => {
+      const stops = buildStops();
+      const { service } = buildService(
+        {},
+        {
+          getRoute: jest.fn().mockResolvedValue({ duracaoSegundos: 500, distanciaMetros: 5000 }),
+          optimizeTrip: jest.fn().mockResolvedValue({
+            ordemSugerida: [0, 2, 1, 3],
+            duracaoSegundos: 600,
+            distanciaMetros: 6000,
+          }),
+        },
+        {
+          route: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValue({ id: "route-1", companyId: gestorActor.tenantId }),
+          },
+          routeStop: { findMany: jest.fn().mockResolvedValue(stops) },
+        },
+      );
+
+      const resultado = await service.suggestRouteOptimization({ routeId: "route-1" }, gestorActor);
+
+      expect(resultado.economiaSegundos).toBe(0);
+    });
+
+    it("rejeita rotas com menos de 3 paradas — abaixo disso não há ganho relevante a calcular", async () => {
+      const { service } = buildService(
+        {},
+        {},
+        {
+          route: {
+            findFirst: jest
+              .fn()
+              .mockResolvedValue({ id: "route-1", companyId: gestorActor.tenantId }),
+          },
+          routeStop: {
+            findMany: jest.fn().mockResolvedValue(buildStops().slice(0, 2)),
+          },
+        },
+      );
+
+      await expect(
+        service.suggestRouteOptimization({ routeId: "route-1" }, gestorActor),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("lança NotFoundException quando a rota não existe ou não pertence ao tenant do ator (RLS filtra, nunca vaza qual dos dois casos)", async () => {
+      const { service } = buildService(
+        {},
+        {},
+        { route: { findFirst: jest.fn().mockResolvedValue(null) } },
+      );
+
+      await expect(
+        service.suggestRouteOptimization({ routeId: "route-inexistente" }, gestorActor),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("lança NotFoundException (defesa em profundidade) quando a rota devolvida pertence a outro tenant", async () => {
+      const { service } = buildService(
+        {},
+        {},
+        {
+          route: {
+            findFirst: jest.fn().mockResolvedValue({ id: "route-1", companyId: "outra-empresa" }),
+          },
+        },
+      );
+
+      await expect(
+        service.suggestRouteOptimization({ routeId: "route-1" }, gestorActor),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

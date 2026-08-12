@@ -234,4 +234,84 @@ describe("GeoEngineService", () => {
       ).rejects.toThrow(BadGatewayException);
     });
   });
+
+  describe("optimizeTrip", () => {
+    it("traduz waypoint_index do OSRM /trip para a ordem sugerida de índices de entrada", async () => {
+      // 4 pontos de entrada (0,1,2,3) — OSRM devolve a posição de cada um
+      // na sequência otimizada; aqui o ponto de entrada 2 deveria vir
+      // antes do 1 (0 → 1º, 2 → 2º, 1 → 3º, 3 → 4º/fixo).
+      mockFetchOnce(200, {
+        code: "Ok",
+        trips: [{ distance: 4200, duration: 600 }],
+        waypoints: [
+          { waypoint_index: 0 },
+          { waypoint_index: 2 },
+          { waypoint_index: 1 },
+          { waypoint_index: 3 },
+        ],
+      });
+
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+      const resultado = await service.optimizeTrip([
+        { latitude: -23.5, longitude: -46.6 },
+        { latitude: -23.51, longitude: -46.61 },
+        { latitude: -23.52, longitude: -46.62 },
+        { latitude: -23.53, longitude: -46.63 },
+      ]);
+
+      expect(resultado.ordemSugerida).toEqual([0, 2, 1, 3]);
+      expect(resultado.distanciaMetros).toBe(4200);
+      expect(resultado.duracaoSegundos).toBe(600);
+    });
+
+    it("chama o OSRM /trip com source=first&destination=last&roundtrip=false (origem/destino fixos)", async () => {
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve({
+            code: "Ok",
+            trips: [{ distance: 1000, duration: 100 }],
+            waypoints: [{ waypoint_index: 0 }, { waypoint_index: 1 }],
+          }),
+      });
+      global.fetch = fetchMock;
+
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+      await service.optimizeTrip([
+        { latitude: -23.5, longitude: -46.6 },
+        { latitude: -23.6, longitude: -46.7 },
+      ]);
+
+      const [url] = fetchMock.mock.calls[0] as [string];
+      expect(url).toContain("/trip/v1/driving/");
+      expect(url).toContain("source=first");
+      expect(url).toContain("destination=last");
+      expect(url).toContain("roundtrip=false");
+    });
+
+    it("lança BadGatewayException quando o OSRM não encontra uma sequência (code NoTrips, sem trips)", async () => {
+      mockFetchOnce(200, { code: "NoTrips" });
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+
+      await expect(
+        service.optimizeTrip([
+          { latitude: -23.5, longitude: -46.6 },
+          { latitude: -23.6, longitude: -46.7 },
+        ]),
+      ).rejects.toThrow(BadGatewayException);
+    });
+
+    it("lança BadGatewayException quando o OSRM responde com erro HTTP", async () => {
+      mockFetchOnce(502, {});
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+
+      await expect(
+        service.optimizeTrip([
+          { latitude: -23.5, longitude: -46.6 },
+          { latitude: -23.6, longitude: -46.7 },
+        ]),
+      ).rejects.toThrow(BadGatewayException);
+    });
+  });
 });

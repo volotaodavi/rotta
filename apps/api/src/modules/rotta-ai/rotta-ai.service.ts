@@ -1,14 +1,21 @@
-import { BadRequestException, Injectable, NotImplementedException } from "@nestjs/common";
-
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  NotImplementedException,
+} from "@nestjs/common";
 
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
+import type { RouteOptimizationResponseDto } from "./dto/route-optimization-response.dto";
 import type { SchoolAddressAnalysisResponseDto } from "./dto/school-address-analysis-response.dto";
 import type { SuggestRouteOptimizationDto } from "./dto/suggest-route-optimization.dto";
 import type { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import type { ValidateDocumentResponseDto } from "./dto/validate-document-response.dto";
 import type { ValidateDocumentDto } from "./dto/validate-document.dto";
+import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
+import { PrismaService } from "@/infra/database/prisma.service";
 import { DiditService } from "@/infra/didit/didit.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import { Role } from "@/shared/enums";
@@ -59,6 +66,7 @@ export class RottaAiService {
   constructor(
     private readonly geoEngine: GeoEngineService,
     private readonly diditService: DiditService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async validateDocument(
@@ -198,24 +206,77 @@ export class RottaAiService {
 
   /**
    * Rotta Route AI — otimização automática de sequência de paradas
-   * (ROT-08). Mesmo estado (stub honesto) dos demais métodos deste
-   * serviço: ROT-08 é explicitamente V2 na própria Especificação
-   * Funcional (Dossiê 3 §12.8) — precisaria de um provedor de rotas
-   * (Google Directions/OSRM, Dossiê 9 §2.6) capaz de calcular a
-   * sequência de menor tempo/distância total entre as paradas já
-   * cadastradas, mantendo fixos os pontos de origem/destino
-   * obrigatórios. Implementar um resultado fake aqui seria pior do que
-   * declarar honestamente que a sugestão ainda não está disponível —
-   * a rota atual nunca é alterada quando este método falha (regra de
-   * negócio de ROT-08: "a sugestão nunca altera a rota
-   * automaticamente"), então o chamador (`RoutesService`, quando
-   * existir) trata esta exceção como best-effort, exatamente como
-   * `analyzeVehicleDocument`.
+   * (ROT-08, Dossiê 18). Real desde esta entrega: usa
+   * `GeoEngineService.optimizeTrip` (OSRM `/trip`) para calcular a
+   * sequência de menor tempo total, mantendo fixos os pontos de
+   * origem/destino obrigatórios (`RouteStop` de menor e maior `ordem` —
+   * "chegada final na escola no horário certo"); só os pontos
+   * INTERMEDIÁRIOS são reordenados.
+   *
+   * NUNCA altera a rota (regra de negócio de ROT-08: "a sugestão nunca
+   * altera a rota automaticamente") — só devolve a comparação lado a
+   * lado (ordem atual × sugerida, com a economia de tempo estimada)
+   * para o Gestor decidir. Lê `Route`/`RouteStop` direto via
+   * `PrismaService.withTenant` (mesmo padrão de
+   * `DashboardRepository`/`AnalyticsRepository`: leitura pontual de um
+   * modelo de outro módulo sem precisar depender do módulo inteiro —
+   * `RoutesModule` já importa `MarketplaceModule`/`VehiclesModule`, que
+   * por sua vez importam `RottaAiModule`; um import de volta criaria um
+   * ciclo). RLS via `TenantGuard`/`withTenant` já filtra a query pelo
+   * tenant correto — o segundo confere `route.companyId === actor.tenantId`
+   * abaixo é defesa em profundidade explícita (mesmo raciocínio do
+   * comentário de `PrismaService.withTenant`), não a única barreira.
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async suggestRouteOptimization(_dto: SuggestRouteOptimizationDto): Promise<never> {
-    throw new NotImplementedException(
-      "A otimização automática de rota ainda não está disponível — integração pendente de um provedor de cálculo de trajeto (Google Directions/OSRM).",
+  async suggestRouteOptimization(
+    dto: SuggestRouteOptimizationDto,
+    actor: AuthenticatedUser,
+  ): Promise<RouteOptimizationResponseDto> {
+    const route = await this.prisma.withTenant(
+      this.prisma.route.findFirst({ where: { id: dto.routeId, deletedAt: null } }),
     );
+    if (!route || (actor.role !== Role.ADMIN_ROTTA && route.companyId !== actor.tenantId)) {
+      throw new NotFoundException("Rota não encontrada.");
+    }
+
+    const stops = await this.prisma.withTenant(
+      this.prisma.routeStop.findMany({
+        where: { routeId: dto.routeId },
+        orderBy: { ordem: "asc" },
+      }),
+    );
+
+    if (stops.length < 3) {
+      throw new BadRequestException(
+        "A otimização de rota exige pelo menos 3 paradas cadastradas — abaixo disso não há ganho relevante a calcular (Dossiê 18, ROT-08).",
+      );
+    }
+
+    const pontos = stops.map((stop) => ({
+      latitude: Number(stop.latitude),
+      longitude: Number(stop.longitude),
+    }));
+    const origem = pontos[0]!;
+    const destino = pontos[pontos.length - 1]!;
+    const intermediarios = pontos.slice(1, -1);
+
+    const [atual, sugestao] = await Promise.all([
+      this.geoEngine.getRoute(origem, destino, intermediarios),
+      this.geoEngine.optimizeTrip(pontos),
+    ]);
+
+    const ordemAtualIds = stops.map((stop) => stop.id);
+    const ordemSugeridaIds = sugestao.ordemSugerida.map((indice) => stops[indice]!.id);
+    const jaOtimizada = ordemAtualIds.every((id, indice) => id === ordemSugeridaIds[indice]);
+
+    return {
+      routeId: dto.routeId,
+      ordemAtualIds,
+      ordemSugeridaIds,
+      duracaoAtualSegundos: atual.duracaoSegundos,
+      duracaoSugeridaSegundos: sugestao.duracaoSegundos,
+      economiaSegundos: Math.max(0, atual.duracaoSegundos - sugestao.duracaoSegundos),
+      distanciaSugeridaMetros: sugestao.distanciaMetros,
+      jaOtimizada,
+    };
   }
 }

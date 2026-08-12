@@ -50,3 +50,18 @@ export interface DirectionsResult {
    */
   pernas: DirectionsLeg[];
 }
+
+/**
+ * Resultado de `optimizeTrip` (OSRM `/trip`, usado pelo Rotta Route AI —
+ * ROT-08). `ordemSugerida` são ÍNDICES na lista de pontos que foi
+ * passada para `optimizeTrip` (0 = primeiro ponto de entrada), já
+ * reordenados do mais eficiente para o menos — nunca IDs de negócio
+ * (`RouteStop.id`): a tradução índice → ID é responsabilidade de quem
+ * chama (`RottaAiService`), que é quem sabe a que cada índice
+ * corresponde.
+ */
+export interface TripOptimizationResult {
+  ordemSugerida: number[];
+  distanciaMetros: number;
+  duracaoSegundos: number;
+}

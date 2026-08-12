@@ -2,11 +2,10 @@ import { ApiProperty } from "@nestjs/swagger";
 import { IsUUID } from "class-validator";
 
 /**
- * Otimização de rota (ROT-08, V2 na própria Especificação Funcional —
- * Dossiê 3 §12.8). Só o identificador da rota: a sugestão em si (nova
- * sequência de paradas) seria resolvida, numa integração real, a partir
- * das paradas já persistidas (`RouteStop`) via um provedor de rotas
- * (Google Directions/OSRM).
+ * Otimização de rota (ROT-08, Dossiê 18). Só o identificador da rota —
+ * a sugestão em si (`RouteOptimizationResponseDto`) é resolvida a
+ * partir das paradas já persistidas (`RouteStop`), via
+ * `GeoEngineService.optimizeTrip` (OSRM `/trip`).
  */
 export class SuggestRouteOptimizationDto {
   @ApiProperty()

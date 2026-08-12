@@ -6,6 +6,7 @@ import type {
   DirectionsResult,
   GeocodeResult,
   ReverseGeocodeResult,
+  TripOptimizationResult,
 } from "./geo-engine.types";
 import type { GeoConfig } from "@/config/geo.config";
 
@@ -107,6 +108,23 @@ interface OsrmRouteResponse {
   code: string;
   /** Ausente quando `code !== "Ok"` (ex. `"NoRoute"`) — nunca assumir presente. */
   routes?: OsrmRoute[];
+}
+
+interface OsrmTrip {
+  distance: number;
+  duration: number;
+}
+
+/** Um por ponto de ENTRADA (mesma ordem em que os pontos foram passados na URL) — `waypoint_index` é a posição desse ponto na sequência OTIMIZADA. */
+interface OsrmWaypoint {
+  waypoint_index: number;
+}
+
+interface OsrmTripResponse {
+  code: string;
+  /** Ausentes quando `code !== "Ok"` (ex. `"NoTrips"`) — nunca assumir presentes. */
+  trips?: OsrmTrip[];
+  waypoints?: OsrmWaypoint[];
 }
 
 /**
@@ -257,6 +275,57 @@ export class GeoEngineService {
         distanciaMetros: leg.distance,
         duracaoSegundos: leg.duration,
       })),
+    };
+  }
+
+  /**
+   * Sequência de menor tempo total entre N pontos, com origem e destino
+   * FIXOS (OSRM `/trip`, `source=first&destination=last&roundtrip=false`)
+   * — usado pelo Rotta Route AI (ROT-08) para sugerir uma nova ordem de
+   * paradas mantendo fixos os pontos de origem/destino obrigatórios
+   * (Dossiê 18 §ROT-08: "chegada final na escola no horário certo"). Só
+   * reordena os pontos INTERMEDIÁRIOS — `pontos[0]` e
+   * `pontos[pontos.length - 1]` sempre permanecem na mesma posição no
+   * resultado.
+   */
+  async optimizeTrip(pontos: Coordenada[]): Promise<TripOptimizationResult> {
+    const coords = pontos.map((ponto) => `${ponto.longitude},${ponto.latitude}`).join(";");
+    const url = `${this.config.osrmBaseUrl}/trip/v1/driving/${coords}?source=first&destination=last&roundtrip=false&overview=false`;
+
+    const startedAt = Date.now();
+    const response = await fetch(url);
+    if (!response.ok) {
+      void this.integrationHealth.recordFailure(
+        OSRM_INTEGRATION_NAME,
+        `HTTP ${response.status} em /trip (optimizeTrip).`,
+      );
+      throw new BadGatewayException(
+        `Rotta Geo Engine: falha ao otimizar a sequência de paradas (OSRM retornou ${response.status}).`,
+      );
+    }
+    void this.integrationHealth.recordSuccess(OSRM_INTEGRATION_NAME, Date.now() - startedAt);
+
+    const body = (await response.json()) as OsrmTripResponse;
+    const trip = body.trips?.[0];
+    if (!trip || !body.waypoints) {
+      throw new BadGatewayException(
+        "Rotta Geo Engine: não foi possível calcular uma sequência otimizada para os pontos informados.",
+      );
+    }
+
+    // `waypoints[i].waypoint_index` é a posição do i-ésimo ponto de
+    // ENTRADA na sequência otimizada — invertendo (ordenando os índices
+    // de entrada pela posição otimizada) chegamos em `ordemSugerida`:
+    // para cada posição da nova sequência, qual ponto de entrada vai lá.
+    const ordemSugerida = body.waypoints
+      .map((waypoint, indiceEntrada) => ({ indiceEntrada, posicao: waypoint.waypoint_index }))
+      .sort((a, b) => a.posicao - b.posicao)
+      .map((item) => item.indiceEntrada);
+
+    return {
+      ordemSugerida,
+      distanciaMetros: trip.distance,
+      duracaoSegundos: trip.duration,
     };
   }
 }

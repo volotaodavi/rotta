@@ -1,9 +1,9 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
 
-
 import { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
+import { RouteOptimizationResponseDto } from "./dto/route-optimization-response.dto";
 import { SuggestRouteOptimizationDto } from "./dto/suggest-route-optimization.dto";
 import { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import { ValidateDocumentResponseDto } from "./dto/validate-document-response.dto";
@@ -49,7 +49,11 @@ export class RottaAiController {
   }
 
   @Post("suggest-route-optimization")
-  suggestRouteOptimization(@Body() dto: SuggestRouteOptimizationDto) {
-    return this.rottaAiService.suggestRouteOptimization(dto);
+  @ApiResponse({ status: 201, type: RouteOptimizationResponseDto })
+  suggestRouteOptimization(
+    @Body() dto: SuggestRouteOptimizationDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.rottaAiService.suggestRouteOptimization(dto, actor);
   }
 }
