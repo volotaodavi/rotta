@@ -79,10 +79,24 @@ export class MfaService {
     return Array.from({ length: count }, () => this.randomRecoveryCode());
   }
 
+  /**
+   * Sequencial de propósito (nunca `Promise.all`) — igual a
+   * `matchRecoveryCode` acima, mas aqui o motivo é recurso, não tempo
+   * constante: Argon2id com os parâmetros padrão já pede ~64MB/thread
+   * dedicada por chamada, então hashear os 10 códigos de uma vez pediria
+   * ~640MB simultâneos. Em ambientes com pouca RAM/CPU (ex. free tier),
+   * isso estoura o `TimeoutInterceptor` (10s) — a rota nunca completa,
+   * qualquer que seja o código informado. Sequencial paga em latência
+   * (soma os hashes em vez de rodar em paralelo) o que evita em pico de
+   * memória; para 10 códigos isso ainda fica bem dentro do timeout.
+   */
   async hashRecoveryCodes(codesPlain: string[]): Promise<string[]> {
-    return Promise.all(
-      codesPlain.map((code) => this.passwordHasher.hash(this.normalizeRecoveryCode(code))),
-    );
+    const hashes: string[] = [];
+    for (const code of codesPlain) {
+      // eslint-disable-next-line no-await-in-loop
+      hashes.push(await this.passwordHasher.hash(this.normalizeRecoveryCode(code)));
+    }
+    return hashes;
   }
 
   /** Retorna o índice do hash correspondente (para o chamador remover só aquele código, uso único) ou `null` se nenhum bater. */
