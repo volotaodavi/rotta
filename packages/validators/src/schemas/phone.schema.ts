@@ -2,7 +2,19 @@ import { z } from "zod";
 
 /** Telefone brasileiro (fixo ou celular), com DDD — Dossiê 15 `AUTH-01`. */
 export function isValidBrazilianPhone(value: string): boolean {
-  const digits = value.replace(/\D/g, "");
+  let digits = value.replace(/\D/g, "");
+
+  // Código do país (+55) opcional na frente — muito comum quando o
+  // número é copiado do WhatsApp/agenda em formato internacional
+  // ("+55 11 98765-4321"). Sem isso, todo número colado assim batia
+  // "Telefone inválido" (13/12 dígitos nunca bate os tamanhos abaixo).
+  // Sem ambiguidade com DDD 55 (Rio Grande do Sul): um número de 11
+  // dígitos começando em "55" já é aceito direto pelo bloco abaixo —
+  // esta remoção só entra em 12/13 dígitos, tamanho que nunca é válido
+  // sem o código do país.
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    digits = digits.slice(2);
+  }
 
   if (digits.length === 11) {
     // Celular: DDD (11-99) + 9 (nono dígito) + 8 dígitos.

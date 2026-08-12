@@ -21,4 +21,20 @@ describe("isValidBrazilianPhone", () => {
   it("rejeita tamanho incorreto", () => {
     expect(isValidBrazilianPhone("123456")).toBe(false);
   });
+
+  it("aceita celular/fixo com código do país (+55) na frente", () => {
+    expect(isValidBrazilianPhone("+55 11 98765-4321")).toBe(true);
+    expect(isValidBrazilianPhone("5511987654321")).toBe(true);
+    expect(isValidBrazilianPhone("+55 (11) 3265-4321")).toBe(true);
+    expect(isValidBrazilianPhone("551132654321")).toBe(true);
+  });
+
+  it("não confunde DDD 55 (Rio Grande do Sul) com código do país", () => {
+    expect(isValidBrazilianPhone("55987654321")).toBe(true);
+    expect(isValidBrazilianPhone("5532654321")).toBe(true);
+  });
+
+  it("rejeita número com código do país mas dígitos internos inválidos", () => {
+    expect(isValidBrazilianPhone("+55 11 88765-4321")).toBe(false);
+  });
 });
