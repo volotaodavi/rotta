@@ -4,6 +4,7 @@ import {
   createDriversEndpoints,
   createGeoEndpoints,
   createGpsEndpoints,
+  createIdentityVerificationEndpoints,
   createMarketplaceEndpoints,
   createNotificationsEndpoints,
   createRoutesEndpoints,
@@ -40,3 +41,4 @@ export const gpsApi = createGpsEndpoints(apiClient);
 export const walletApi = createWalletEndpoints(apiClient);
 export const routesApi = createRoutesEndpoints(apiClient);
 export const tripsApi = createTripsEndpoints(apiClient);
+export const identityVerificationApi = createIdentityVerificationEndpoints(apiClient);

@@ -8,6 +8,8 @@ import { ParentNavigator } from "./ParentNavigator";
 
 import { usePinLock } from "@/features/auth/hooks/use-pin-lock";
 import { PainelWebOnlyScreen, PinLockScreen } from "@/features/auth/screens";
+import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
+import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
 import { useTheme } from "@/providers/theme-provider";
 
 
@@ -35,7 +37,18 @@ export function RootNavigator(): JSX.Element {
   const { theme } = useTheme();
   const { isLocked, unlock } = usePinLock({ userId: user?.id ?? null, status });
 
-  if (status === "loading") {
+  // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor
+  // — o único papel de gestão com telas reais neste app; Empresa/Gestor
+  // já caem em `PainelWebOnlyScreen` antes de chegar aqui, e Responsável
+  // não usa este fluxo (backend nem aceita `SELF_VERIFICATION_ROLES`
+  // pra ele). A query nem dispara fora desse papel.
+  const isMotoristaOuMonitor =
+    status === "authenticated" && (user?.role === "motorista" || user?.role === "monitor");
+  const { data: identityVerification, isLoading: isIdentityLoading } = useMyIdentityVerification({
+    enabled: isMotoristaOuMonitor,
+  });
+
+  if (status === "loading" || (isMotoristaOuMonitor && isIdentityLoading)) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
         <ActivityIndicator color={theme.colors.primary} />
@@ -45,6 +58,10 @@ export function RootNavigator(): JSX.Element {
 
   if (status === "authenticated" && user && isLocked) {
     return <PinLockScreen onUnlock={unlock} />;
+  }
+
+  if (isMotoristaOuMonitor && identityVerification?.status === "REPROVADA") {
+    return <IdentityVerificationBlockedScreen />;
   }
 
   return (
