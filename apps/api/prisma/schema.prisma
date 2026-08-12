@@ -599,6 +599,14 @@ model User {
   /// aplicado — auditoria/debug, nunca lido para decisão de negócio (só
   /// `identityVerificationStatus` é).
   identityVerificationDecisao   Json?
+  /// Motivo legível extraído de `identityVerificationDecisao`
+  /// (`extractIdentityVerificationReason`) — populado tanto pelo
+  /// webhook quanto pela sincronização manual do Admin Rotta
+  /// (`GET /v3/session/{id}/decision/`). Existe como campo próprio (e
+  /// não só derivado do JSON em runtime) porque é o que a UI mostra
+  /// direto pro usuário reprovado — nunca deixamos "reprovado, motivo
+  /// desconhecido" na tela por preguiça de reprocessar o JSON.
+  identityVerificationMotivo    String?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

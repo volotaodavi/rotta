@@ -1,9 +1,14 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
+
 import { CreateIdentityVerificationSessionDto } from "./dto/create-identity-verification-session.dto";
+import { DecideIdentityVerificationDto } from "./dto/decide-identity-verification.dto";
+import { ListIdentityVerificationsQueryDto } from "./dto/list-identity-verifications-query.dto";
 import {
   IdentityVerificationService,
+  type AdminIdentityVerificationDetail,
+  type AdminIdentityVerificationListResult,
   type IdentityVerificationSessionResult,
   type IdentityVerificationStatusResult,
 } from "./identity-verification.service";
@@ -12,7 +17,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /** Quem verifica a PRÓPRIA identidade hoje (Motorista/Monitor dirigem; Empresa/Gestor administram a conta) — Responsável/Escola/Admin Rotta não usam este fluxo. */
 const SELF_VERIFICATION_ROLES = [Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR] as const;
 
@@ -20,6 +24,11 @@ const SELF_VERIFICATION_ROLES = [Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role
  * API REST da verificação de identidade hospedada via Didit
  * (`identity-verification/me/*`) — sempre a PRÓPRIA identidade do ator
  * autenticado (`actor.sub`), nunca um `userId` recebido do cliente.
+ *
+ * `identity-verification/admin/*` é a contraparte do Admin Rotta —
+ * visão de todos os usuários, sincronização pull com a Didit e decisão
+ * manual (aprovar/recusar) direto do painel, sem precisar abrir o
+ * Business Console dela.
  */
 @ApiTags("identity-verification")
 @ApiBearerAuth()
@@ -41,5 +50,34 @@ export class IdentityVerificationController {
     @Body() dto: CreateIdentityVerificationSessionDto,
   ): Promise<IdentityVerificationSessionResult> {
     return this.service.createSession(actor.sub, dto.callbackUrl);
+  }
+
+  @Get("admin")
+  @Roles(Role.ADMIN_ROTTA)
+  listAdmin(
+    @Query() query: ListIdentityVerificationsQueryDto,
+  ): Promise<AdminIdentityVerificationListResult> {
+    return this.service.listForAdmin(query);
+  }
+
+  @Get("admin/:userId")
+  @Roles(Role.ADMIN_ROTTA)
+  getAdmin(@Param("userId") userId: string): Promise<AdminIdentityVerificationDetail> {
+    return this.service.getForAdmin(userId);
+  }
+
+  @Post("admin/:userId/refresh")
+  @Roles(Role.ADMIN_ROTTA)
+  refreshAdmin(@Param("userId") userId: string): Promise<AdminIdentityVerificationDetail> {
+    return this.service.refreshForAdmin(userId);
+  }
+
+  @Post("admin/:userId/decision")
+  @Roles(Role.ADMIN_ROTTA)
+  decideAdmin(
+    @Param("userId") userId: string,
+    @Body() dto: DecideIdentityVerificationDto,
+  ): Promise<AdminIdentityVerificationDetail> {
+    return this.service.decideForAdmin(userId, dto);
   }
 }

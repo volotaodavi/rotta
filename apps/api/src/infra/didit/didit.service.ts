@@ -36,6 +36,16 @@ export interface DiditVerificationSession {
   status: string;
 }
 
+/** Retorno de `getSessionDecision` — `status` já normalizado (minúsculo) só para logging/health; quem decide o enum interno é `mapDiditStatus` (`didit-decision.util.ts`) sobre `raw.status`, o literal original da Didit ("Approved"/"Declined"/...). */
+export interface DiditSessionDecision {
+  sessionId: string;
+  status: string;
+  raw: Record<string, unknown>;
+}
+
+/** Os únicos três valores que `PATCH /v3/session/{id}/update-status/` aceita em `new_status` (docs.didit.me/sessions-api/update-status). */
+export type DiditManualStatus = "Approved" | "Declined" | "Resubmitted";
+
 /** A Didit usa "Approved"/"Declined"/"In Review" — só o primeiro conta como aprovado. */
 const STATUS_APROVADO = "approved";
 
@@ -153,6 +163,45 @@ export class DiditService {
     return { sessionId, url, status: normalizeStatus(body.status) };
   }
 
+  /**
+   * Busca o payload completo de decisão de uma sessão (`GET /v3/session/
+   * {sessionId}/decision/`) — pull, complementar ao webhook. Existe
+   * porque um evento aplicado manualmente no Business Console da Didit
+   * (ex. um revisor recusando o usuário por lá) só chega à Rotta pelo
+   * webhook SE o destino estiver configurado e a entrega não falhar;
+   * este método é o que `IdentityVerificationService.refreshForAdmin`
+   * usa como sincronização puxada, pra nunca deixar uma decisão da
+   * Didit "presa" sem refletir na Rotta. Diferente do envelope do
+   * webhook (que aninha os campos de verificação sob `event.decision`),
+   * aqui eles já vêm direto na raiz do JSON.
+   */
+  async getSessionDecision(sessionId: string): Promise<DiditSessionDecision> {
+    this.assertConfigured();
+    const raw = await this.getJson(`/v3/session/${sessionId}/decision/`);
+    return { sessionId, status: normalizeStatus(raw.status), raw };
+  }
+
+  /**
+   * Aplica uma decisão manual sobre uma sessão (`PATCH /v3/session/
+   * {sessionId}/update-status/`) — o que dá ao Admin Rotta o poder de
+   * aprovar/recusar/pedir reenvio direto do painel, sem precisar abrir
+   * o Business Console da Didit. A resposta só confirma `session_id`;
+   * não traz a decisão atualizada — por isso `IdentityVerificationService.
+   * decideForAdmin` sempre chama `getSessionDecision` logo em seguida
+   * para persistir o estado já refletido do lado da Didit.
+   */
+  async updateSessionStatus(
+    sessionId: string,
+    newStatus: DiditManualStatus,
+    comment?: string,
+  ): Promise<void> {
+    this.assertConfigured();
+    await this.patchJson(`/v3/session/${sessionId}/update-status/`, {
+      new_status: newStatus,
+      ...(comment ? { comment } : {}),
+    });
+  }
+
   /** Checagem em memória, sem I/O — roda ANTES de qualquer download de imagem, para nunca vazar um erro de rede confuso no lugar de "Didit não configurada". */
   private assertConfigured(): void {
     if (!this.config.apiKey) {
@@ -187,7 +236,27 @@ export class DiditService {
     });
   }
 
-  /** Núcleo compartilhado por `post`/`postJson`: mede duração, registra em `IntegrationHealthService` e nunca deixa um corpo não-JSON virar um erro de parsing confuso. */
+  /** Mesmo contrato de `postJson`, mas para `GET /v3/session/{id}/decision/` — sem corpo. */
+  private async getJson(path: string): Promise<Record<string, unknown>> {
+    return this.send(path, {
+      method: "GET",
+      headers: { "x-api-key": this.config.apiKey! },
+    });
+  }
+
+  /** Mesmo contrato de `postJson`, mas para `PATCH /v3/session/{id}/update-status/`. */
+  private async patchJson(
+    path: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.send(path, {
+      method: "PATCH",
+      headers: { "x-api-key": this.config.apiKey!, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /** Núcleo compartilhado por `post`/`postJson`/`getJson`/`patchJson`: mede duração, registra em `IntegrationHealthService` e nunca deixa um corpo não-JSON virar um erro de parsing confuso. */
   private async send(path: string, init: RequestInit): Promise<Record<string, unknown>> {
     const startedAt = Date.now();
     const response = await fetch(`${this.config.baseUrl}${path}`, init);

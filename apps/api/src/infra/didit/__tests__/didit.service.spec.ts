@@ -211,4 +211,86 @@ describe("DiditService", () => {
       );
     });
   });
+
+  describe("getSessionDecision", () => {
+    it("faz GET em /v3/session/{id}/decision/ com x-api-key e devolve o payload bruto", async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ status: "Declined", reviews: [{ comment: "Documento ilegível." }] }),
+        );
+      global.fetch = fetchMock;
+
+      const integrationHealth = buildIntegrationHealthMock();
+      const service = new DiditService(buildConfigService({}), integrationHealth);
+
+      const resultado = await service.getSessionDecision("sess_1");
+
+      expect(resultado).toEqual({
+        sessionId: "sess_1",
+        status: "declined",
+        raw: { status: "Declined", reviews: [{ comment: "Documento ilegível." }] },
+      });
+
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://verification.didit.me/v3/session/sess_1/decision/");
+      expect(options.method).toBe("GET");
+      expect((options.headers as Record<string, string>)["x-api-key"]).toBe("test-key");
+      expect(integrationHealth.recordSuccess).toHaveBeenCalledWith("didit", expect.any(Number));
+    });
+
+    it("recusa quando DIDIT_API_KEY não está configurada", async () => {
+      const service = new DiditService(
+        buildConfigService({ apiKey: undefined }),
+        buildIntegrationHealthMock(),
+      );
+
+      await expect(service.getSessionDecision("sess_1")).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+  });
+
+  describe("updateSessionStatus", () => {
+    it("faz PATCH em /v3/session/{id}/update-status/ com new_status e comment", async () => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({ session_id: "sess_1" }));
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+
+      await service.updateSessionStatus("sess_1", "Declined", "Documento ilegível.");
+
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://verification.didit.me/v3/session/sess_1/update-status/");
+      expect(options.method).toBe("PATCH");
+      expect((options.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
+      expect(JSON.parse(options.body as string)).toEqual({
+        new_status: "Declined",
+        comment: "Documento ilegível.",
+      });
+    });
+
+    it("omite comment do body quando não é passado", async () => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({ session_id: "sess_1" }));
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+
+      await service.updateSessionStatus("sess_1", "Approved");
+
+      const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(JSON.parse(options.body as string)).toEqual({ new_status: "Approved" });
+    });
+
+    it("recusa quando DIDIT_API_KEY não está configurada", async () => {
+      const service = new DiditService(
+        buildConfigService({ apiKey: undefined }),
+        buildIntegrationHealthMock(),
+      );
+
+      await expect(service.updateSessionStatus("sess_1", "Approved")).rejects.toThrow(
+        ServiceUnavailableException,
+      );
+    });
+  });
 });

@@ -29,8 +29,52 @@ describe("DiditWebhookController", () => {
         identityVerificationStatus: "APROVADA",
         identityVerifiedAt: expect.any(Date),
         identityVerificationDecisao: { id_verifications: [] },
+        identityVerificationMotivo: null,
       },
     });
+  });
+
+  it("popula identityVerificationMotivo com o comentário de reviews[] quando o status é REPROVADA", async () => {
+    const prisma = buildPrismaMock();
+    const controller = new DiditWebhookController(prisma as unknown as PrismaService);
+
+    await controller.handle({
+      event_id: "evt_1",
+      webhook_type: "status.updated",
+      status: "Declined",
+      session_id: "sess_1",
+      vendor_data: "user-1",
+      decision: { reviews: [{ comment: "Documento ilegível." }] },
+    });
+
+    expect(prisma.user.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ identityVerificationMotivo: "Documento ilegível." }),
+      }),
+    );
+  });
+
+  it("usa o motivo padrão quando o status é REPROVADA mas a decisão não trouxe nada aproveitável", async () => {
+    const prisma = buildPrismaMock();
+    const controller = new DiditWebhookController(prisma as unknown as PrismaService);
+
+    await controller.handle({
+      event_id: "evt_1",
+      webhook_type: "status.updated",
+      status: "Declined",
+      session_id: "sess_1",
+      vendor_data: "user-1",
+      decision: { id_verification: { warnings: [] } },
+    });
+
+    expect(prisma.user.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          identityVerificationMotivo:
+            "Verificação recusada pela Didit, sem motivo detalhado informado pelo revisor.",
+        }),
+      }),
+    );
   });
 
   it("mapeia cada status literal da Didit pro enum interno correto", async () => {

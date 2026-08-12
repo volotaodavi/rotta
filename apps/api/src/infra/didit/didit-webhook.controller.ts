@@ -1,7 +1,12 @@
 import { Body, Controller, HttpCode, HttpStatus, Logger, Post, UseGuards } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
-import { Prisma, type IdentityVerificationStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
+import {
+  DEFAULT_REJECTION_REASON,
+  extractDiditDecisionReason,
+  mapDiditStatus,
+} from "./didit-decision.util";
 import { DiditWebhookGuard } from "./didit-webhook.guard";
 
 import { Public } from "@/common/decorators/public.decorator";
@@ -25,34 +30,6 @@ interface DiditWebhookEnvelope {
   decision?: Record<string, unknown>;
   /** Presente em status "Resubmitted" — substitui `decision`. */
   resubmit_info?: Record<string, unknown>;
-}
-
-/**
- * Traduz o `status` literal da Didit (docs.didit.me/integration/
- * verification-statuses) para o enum interno da Rotta — ver comentário
- * de `IdentityVerificationStatus` no schema Prisma para o mapeamento
- * completo. Desconhecido/ausente vira `NAO_INICIADA` (nunca lança —
- * um evento de sessão/status novo que a Didit venha a adicionar não
- * pode derrubar o webhook).
- */
-function mapDiditStatus(status: string | undefined): IdentityVerificationStatus {
-  switch (status) {
-    case "In Progress":
-    case "Awaiting User":
-    case "Resubmitted":
-      return "EM_ANDAMENTO";
-    case "In Review":
-      return "EM_ANALISE";
-    case "Approved":
-      return "APROVADA";
-    case "Declined":
-      return "REPROVADA";
-    case "Expired":
-    case "Kyc Expired":
-      return "EXPIRADA";
-    default:
-      return "NAO_INICIADA";
-  }
 }
 
 /**
@@ -109,7 +86,17 @@ export class DiditWebhookController {
   /** Só chamado quando `vendor_data`/`session_id` estão presentes — `updateMany` (não `update`) porque um `id`+`identityVerificationSessionId` que não batem não deve lançar, só ser ignorado. */
   private async applyToIdentityVerification(event: DiditWebhookEnvelope): Promise<void> {
     const status = mapDiditStatus(event.status);
-    const decisao = (event.decision ?? event.resubmit_info) as Prisma.InputJsonValue | undefined;
+    const decisionPayload = event.decision ?? event.resubmit_info ?? null;
+    const decisao = decisionPayload as Prisma.InputJsonValue | undefined;
+
+    // Motivo só é computado quando este evento de fato trouxe uma
+    // decisão (`decisionPayload`) — eventos de progresso puro (ex.
+    // "In Progress") não têm nada a extrair e não devem apagar um
+    // motivo já registrado por um evento anterior.
+    const motivo = decisionPayload
+      ? (extractDiditDecisionReason(decisionPayload) ??
+        (status === "REPROVADA" ? DEFAULT_REJECTION_REASON : null))
+      : undefined;
 
     try {
       const updated = await this.prisma.user.updateMany({
@@ -118,6 +105,7 @@ export class DiditWebhookController {
           identityVerificationStatus: status,
           identityVerifiedAt: status === "APROVADA" ? new Date() : undefined,
           identityVerificationDecisao: decisao,
+          identityVerificationMotivo: motivo,
         },
       });
 
