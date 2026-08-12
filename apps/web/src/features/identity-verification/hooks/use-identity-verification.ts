@@ -6,13 +6,23 @@ import type { IdentityVerificationSessionResponse } from "@rotta/api-client";
 
 import { identityVerificationApi } from "@/lib/api-client";
 
+
 const QUERY_KEY = ["identity-verification", "me"];
 
-/** Status atual da verificação de identidade do usuário logado — Motorista/Monitor/Empresa/Gestor (Roles em `IdentityVerificationController`). */
-export function useMyIdentityVerification() {
+/**
+ * Status atual da verificação de identidade do usuário logado —
+ * Motorista/Monitor/Empresa/Gestor (Roles em
+ * `IdentityVerificationController`). `enabled` default `true` — quem
+ * chama passa `false` pro papel Responsável, que o backend nem aceita
+ * neste endpoint (`SELF_VERIFICATION_ROLES` não inclui `responsavel`),
+ * usado por `(dashboard)/layout.tsx` para o bloqueio total quando
+ * `status === "REPROVADA"`.
+ */
+export function useMyIdentityVerification(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: QUERY_KEY,
     queryFn: () => identityVerificationApi.getMyStatus(),
+    enabled: options?.enabled ?? true,
   });
 }
 

@@ -10,6 +10,9 @@ import type { Route } from "next";
 
 import { LegalFooter } from "@/components/legal/legal-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
+import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
+
 
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
@@ -72,7 +75,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     }
   }, [status, router]);
 
-  if (status !== "authenticated") {
+  const isResponsavel = user?.role === "responsavel";
+
+  // Responsável não usa este fluxo (`SELF_VERIFICATION_ROLES` no
+  // backend não inclui `responsavel`) — a query nem dispara pra ele,
+  // pra nunca gerar um 403 à toa nem atrasar a home dele.
+  const shouldCheckIdentity = status === "authenticated" && !isResponsavel;
+  const { data: identityVerification, isLoading: isIdentityLoading } = useMyIdentityVerification({
+    enabled: shouldCheckIdentity,
+  });
+
+  if (status !== "authenticated" || (shouldCheckIdentity && isIdentityLoading)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Spinner size="lg" />
@@ -80,8 +93,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     );
   }
 
-  const isResponsavel = user?.role === "responsavel";
   const navLinks = isResponsavel ? RESPONSAVEL_NAV : PROFISSIONAL_NAV;
+  const isBlockedByIdentityVerification = identityVerification?.status === "REPROVADA";
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
@@ -90,17 +103,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           <Typography variant="subtitle">
             {isResponsavel ? (user?.nome ?? "Rotta") : (user?.companyName ?? "Rotta")}
           </Typography>
-          <nav className="flex items-center gap-4">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="text-sm text-text-muted transition-colors hover:text-text"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
+          {!isBlockedByIdentityVerification && (
+            <nav className="flex items-center gap-4">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-text-muted transition-colors hover:text-text"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <ThemeToggle />
@@ -115,9 +130,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           </Button>
         </div>
       </header>
-      {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
-      <main className="flex-1 p-6">{children}</main>
-      <LegalFooter />
+      {isBlockedByIdentityVerification ? (
+        <IdentityVerificationBlockScreen motivo={identityVerification?.motivo ?? null} />
+      ) : (
+        <>
+          {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
+          <main className="flex-1 p-6">{children}</main>
+          <LegalFooter />
+        </>
+      )}
     </div>
   );
 }
