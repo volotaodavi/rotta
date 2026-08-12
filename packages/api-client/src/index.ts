@@ -18,6 +18,7 @@ export * from "./endpoints/drivers";
 export * from "./endpoints/geo";
 export * from "./endpoints/gps";
 export * from "./endpoints/health";
+export * from "./endpoints/identity-verification";
 export * from "./endpoints/legal-documents";
 export * from "./endpoints/marketplace";
 export * from "./endpoints/notifications";

@@ -44,6 +44,11 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
       {user?.role === "motorista" ? <PinSetupCard /> : null}
 
       <VehicleButton
+        label="Verificar identidade"
+        variant="secondary"
+        onPress={() => navigation.navigate("VerificacaoIdentidade")}
+      />
+      <VehicleButton
         label="Documentação Rotta"
         variant="secondary"
         onPress={() => navigation.navigate("Documentacao")}

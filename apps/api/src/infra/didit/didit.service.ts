@@ -5,6 +5,7 @@ import type { DiditConfig } from "@/config/didit.config";
 
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
+
 /** Chave nos snapshots de `IntegrationHealthService` (Admin Rotta → `GET /health/integrations`). */
 export const DIDIT_INTEGRATION_NAME = "didit";
 
@@ -28,6 +29,13 @@ export interface DiditLivenessResult {
   dadosBrutos: Record<string, unknown>;
 }
 
+/** Retorno de `createVerificationSession` — só o que o chamador precisa para abrir o fluxo hospedado e correlacionar o webhook depois. */
+export interface DiditVerificationSession {
+  sessionId: string;
+  url: string;
+  status: string;
+}
+
 /** A Didit usa "Approved"/"Declined"/"In Review" — só o primeiro conta como aprovado. */
 const STATUS_APROVADO = "approved";
 
@@ -47,6 +55,15 @@ const STATUS_APROVADO = "approved";
  * de VEÍCULO (CRLV/Seguro/Vistoria) nem EAR/Curso, que não são
  * documentos de identidade no catálogo da Didit; esses continuam como
  * stub honesto em `RottaAiService.analyzeVehicleDocument`.
+ *
+ * `createVerificationSession` é um segundo modo de uso — a API de
+ * SESSÃO (`POST /v3/session/`, JSON puro) da Didit, não uma das
+ * standalone acima: em vez da Rotta enviar uma imagem já capturada,
+ * abre-se uma URL hospedada pela própria Didit (captura guiada por ela)
+ * e a decisão chega depois via webhook (`DiditWebhookController`).
+ * Usado por `IdentityVerificationModule` (Motorista/Empresa-Gestor
+ * verificando a própria identidade), complementar — não um substituto —
+ * do fluxo standalone acima.
  */
 @Injectable()
 export class DiditService {
@@ -103,6 +120,39 @@ export class DiditService {
     return { status, aprovado: status === STATUS_APROVADO, dadosBrutos: body };
   }
 
+  /**
+   * Cria uma sessão de verificação hospedada (`POST /v3/session/`) — a
+   * Didit devolve uma `url` (SDK web/iframe/redirect) que o usuário abre
+   * para completar a captura pelo lado dela; a decisão final chega
+   * depois via webhook, não na resposta desta chamada (`status` aqui é
+   * sempre "Not Started"/"In Progress" logo após a criação).
+   *
+   * `vendorData` é o identificador estável da Rotta para a pessoa (aqui,
+   * `User.id`) — é o que o webhook devolve em `vendor_data` pra
+   * correlacionar o evento de volta a ela. `callbackUrl` é opcional
+   * (Didit docs: "where Didit returns the user after the flow") — quem
+   * chama decide pra onde redirecionar de volta, mesmo padrão de
+   * `BillingService.createCheckoutForCompany(returnUrl)`.
+   */
+  async createVerificationSession(
+    vendorData: string,
+    callbackUrl?: string,
+  ): Promise<DiditVerificationSession> {
+    this.assertConfigured();
+    const body = await this.postJson("/v3/session/", {
+      workflow_id: this.config.workflowId,
+      vendor_data: vendorData,
+      ...(callbackUrl ? { callback: callbackUrl } : {}),
+    });
+
+    const sessionId = typeof body.session_id === "string" ? body.session_id : "";
+    const url = typeof body.url === "string" ? body.url : "";
+    if (!sessionId || !url) {
+      throw new Error("Resposta da Didit sem session_id/url em POST /v3/session/.");
+    }
+    return { sessionId, url, status: normalizeStatus(body.status) };
+  }
+
   /** Checagem em memória, sem I/O — roda ANTES de qualquer download de imagem, para nunca vazar um erro de rede confuso no lugar de "Didit não configurada". */
   private assertConfigured(): void {
     if (!this.config.apiKey) {
@@ -118,12 +168,29 @@ export class DiditService {
 
   /** Só chamado a partir de métodos que já rodaram `assertConfigured` antes de qualquer download — `apiKey` garantidamente presente aqui. */
   private async post(path: string, form: FormData): Promise<Record<string, unknown>> {
-    const startedAt = Date.now();
-    const response = await fetch(`${this.config.baseUrl}${path}`, {
+    return this.send(path, {
       method: "POST",
       headers: { "x-api-key": this.config.apiKey! },
       body: form,
     });
+  }
+
+  /** Mesmo contrato de `post`, mas para `/v3/session/` — JSON puro, não `multipart/form-data`. */
+  private async postJson(
+    path: string,
+    payload: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    return this.send(path, {
+      method: "POST",
+      headers: { "x-api-key": this.config.apiKey!, "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+  }
+
+  /** Núcleo compartilhado por `post`/`postJson`: mede duração, registra em `IntegrationHealthService` e nunca deixa um corpo não-JSON virar um erro de parsing confuso. */
+  private async send(path: string, init: RequestInit): Promise<Record<string, unknown>> {
+    const startedAt = Date.now();
+    const response = await fetch(`${this.config.baseUrl}${path}`, init);
 
     const rawBody = await response.text();
     const body = parseJsonSafely(rawBody) ?? {};

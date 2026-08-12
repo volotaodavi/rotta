@@ -33,6 +33,7 @@ export type DriverTabParamList = {
 export type DriverPerfilStackParamList = {
   PerfilHome: undefined;
   Documentacao: undefined;
+  VerificacaoIdentidade: undefined;
 };
 
 /** Stack de "Meu Veículo" (briefing "APP MOBILE"), aberta a partir da aba `Veiculo` do Motorista/Monitor. */

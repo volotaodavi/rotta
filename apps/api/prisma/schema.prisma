@@ -71,6 +71,25 @@ enum UserStatus {
   INATIVO
 }
 
+/// Estado da verificação de identidade hospedada via Didit (sessão v3,
+/// `POST /v3/session/`) — cobre Motorista e dono de Empresa/Gestor (ver
+/// `User.identityVerificationStatus`). Mapeamento a partir do `status`
+/// literal que a Didit manda no webhook (`docs.didit.me/integration/
+/// verification-statuses`): "Not Started"/"Abandoned" → NAO_INICIADA,
+/// "In Progress"/"Awaiting User"/"Resubmitted" → EM_ANDAMENTO,
+/// "In Review" → EM_ANALISE, "Approved" → APROVADA, "Declined" →
+/// REPROVADA, "Expired"/"Kyc Expired" → EXPIRADA. O status literal
+/// bruto sempre fica preservado em `identityVerificationDecisao` (Json)
+/// para auditoria — este enum é só o resumo usado pela UI/regras.
+enum IdentityVerificationStatus {
+  NAO_INICIADA
+  EM_ANDAMENTO
+  EM_ANALISE
+  APROVADA
+  REPROVADA
+  EXPIRADA
+}
+
 /// Status do vinculo Usuario<->Empresa<->Papel (Dossie 8, Secao 2 —
 /// `VinculoPapel`). Um `Membership` `REMOVIDO` e preservado (nunca
 /// apagado) para trilha de auditoria de quem já pertenceu ao tenant.
@@ -558,6 +577,28 @@ model User {
   /// nesse caso o login oferece as duas identidades como perfis
   /// distintos, mesmo padrão de `requiresProfileSelection`.
   isResponsavel Boolean @default(false)
+
+  /// Verificação de identidade hospedada via Didit (sessão v3) — cobre
+  /// Motorista e dono de Empresa/Gestor (Responsável/Escola/Admin Rotta
+  /// não usam este fluxo hoje). Diferente do fluxo standalone existente
+  /// (`DriverDocument.rottaAiStatus` — OCR/Face Match por documento
+  /// avulso já enviado ao Storage), este é o fluxo hospedado da própria
+  /// Didit (`verify.didit.me`, captura guiada por ela): o usuário abre
+  /// a URL da sessão, completa lá, e a Didit devolve a decisão via
+  /// webhook (`DiditWebhookController`) — `identityVerificationSessionId`
+  /// é o que correlaciona o evento de volta a este `User`
+  /// (`vendor_data` da sessão = `User.id`).
+  identityVerificationStatus    IdentityVerificationStatus @default(NAO_INICIADA)
+  /// `session_id` da última sessão Didit criada para este usuário — o
+  /// webhook só aplica um evento se `session_id` bater com este campo,
+  /// pra nunca deixar uma sessão velha/abandonada sobrescrever o
+  /// resultado de uma sessão mais nova.
+  identityVerificationSessionId String?
+  identityVerifiedAt            DateTime?
+  /// Corpo bruto de `decision` (ou `resubmit_info`) do último webhook
+  /// aplicado — auditoria/debug, nunca lido para decisão de negócio (só
+  /// `identityVerificationStatus` é).
+  identityVerificationDecisao   Json?
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

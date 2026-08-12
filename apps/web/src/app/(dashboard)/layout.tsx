@@ -28,6 +28,7 @@ const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/escolas", label: "Escolas" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/rotta-pay", label: "Rotta Pay" },
+  { href: "/verificacao-identidade", label: "Verificar identidade" },
   { href: "/notificacoes", label: "Notificações" },
   { href: "/chamados", label: "Chamados" },
 ];
