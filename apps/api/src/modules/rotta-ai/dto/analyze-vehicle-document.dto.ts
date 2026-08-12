@@ -9,6 +9,12 @@ import { IsIn, IsNotEmpty, IsString } from "class-validator";
  * contrato separado de `ValidateDocumentDto`/`RottaAiCheckType`: aquele
  * é escopo de identidade da PESSOA (CNH/Selfie/Face Match — Dossiê 15);
  * este é escopo de documentação do VEÍCULO (CRLV/Seguro/Laudo/Vistoria).
+ *
+ * `RottaAiService.analyzeVehicleDocument` (Frente E) cobre a parte de
+ * "qualidade das imagens"/"documentos ilegíveis" — formato + resolução,
+ * lidos direto do arquivo. "Detectar possíveis adulterações" continua
+ * pendente de um provedor de visão computacional/OCR (ver
+ * `VehicleDocumentAnalysisResponseDto.analiseCompleta`).
  */
 export const VEHICLE_DOCUMENT_AI_CHECK_TYPES = [
   "CRLV",

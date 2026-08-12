@@ -15,11 +15,12 @@ import { GeoModule } from "@/modules/geo/geo.module";
  * `suggestRouteOptimization` lê `Route`/`RouteStop` direto via
  * `PrismaService` (global, não precisa import aqui — ver o porquê no
  * doc comment do método em `RottaAiService`, para não criar um ciclo
- * com `RoutesModule`). Os demais métodos
- * (`analyzeVehicleDocument`/`validarContratoAssinado`, e os tipos
- * EAR/CURSO de `validateDocument`) continuam stub honesto — nenhum
- * provedor cobre documento de veículo/certificado específico ou análise
- * de contrato assinado.
+ * com `RoutesModule`). `analyzeVehicleDocument` (Frente E) não precisa
+ * de import nenhum — só faz `fetch()` nativo + leitura de bytes
+ * (`readImageMetadata`), sem provedor externo. `validarContratoAssinado`
+ * e os tipos EAR/CURSO de `validateDocument` continuam stub honesto —
+ * nenhum provedor cobre análise de contrato assinado ou certificado
+ * específico (DETRAN/curso).
  */
 @Module({
   imports: [GeoModule, DiditModule],

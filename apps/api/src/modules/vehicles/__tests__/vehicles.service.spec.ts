@@ -386,7 +386,7 @@ describe("VehiclesService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it("cria o documento, marca a análise da Rotta AI como indisponível (stub) e gera lembrete de vencimento", async () => {
+    it("cria o documento, marca a análise da Rotta AI como indisponível quando o download do arquivo falha, e gera lembrete de vencimento", async () => {
       vehicleRepository.findById.mockResolvedValue(buildVehicle());
       storageService.uploadPrivate.mockResolvedValue({
         path: "vehicles/vehicle-1/documents/doc.pdf",
@@ -394,7 +394,7 @@ describe("VehiclesService", () => {
       });
       const created = buildDocument({ vencimentoEm: new Date("2027-01-01") });
       documentRepository.create.mockResolvedValue(created);
-      rottaAiService.analyzeVehicleDocument.mockRejectedValue(new Error("stub"));
+      rottaAiService.analyzeVehicleDocument.mockRejectedValue(new Error("download falhou"));
       documentRepository.updateAiResult.mockResolvedValue({
         ...created,
         rottaAiStatus: "INDISPONIVEL",
@@ -420,6 +420,70 @@ describe("VehiclesService", () => {
         expect.objectContaining({ tipo: "LICENCIAMENTO" }),
       );
       expect(result.rottaAiStatus).toBe("INDISPONIVEL");
+    });
+
+    it("qualidadeAdequada=true (Frente E) grava PENDENTE — nunca APROVADO, o conteúdo do documento não foi verificado", async () => {
+      vehicleRepository.findById.mockResolvedValue(buildVehicle());
+      storageService.uploadPrivate.mockResolvedValue({
+        path: "vehicles/vehicle-1/documents/doc.pdf",
+        url: "https://storage.test/doc.pdf?token=signed",
+      });
+      documentRepository.create.mockResolvedValue(buildDocument());
+      rottaAiService.analyzeVehicleDocument.mockResolvedValue({
+        tipo: "CRLV",
+        formatoValido: true,
+        formatoDetectado: "jpeg",
+        larguraPx: 1200,
+        alturaPx: 900,
+        qualidadeAdequada: true,
+        tamanhoBytes: 50_000,
+        avisos: ["Esta análise cobre apenas formato e resolução da imagem."],
+        analiseCompleta: false,
+      });
+      documentRepository.updateAiResult.mockResolvedValue(
+        buildDocument({ rottaAiStatus: "PENDENTE" }),
+      );
+      reminderRepository.findPendingByVehicleAndType.mockResolvedValue(null);
+
+      const file = { mimetype: "image/jpeg", originalname: "crlv.jpg" } as Express.Multer.File;
+      await service.uploadDocument("vehicle-1", { tipo: "CRLV" } as never, file, empresaActor, {});
+
+      expect(documentRepository.updateAiResult).toHaveBeenCalledWith(
+        "document-1",
+        expect.objectContaining({ rottaAiStatus: "PENDENTE" }),
+      );
+    });
+
+    it("qualidadeAdequada=false (Frente E — resolução baixa/formato inválido) grava REPROVADO", async () => {
+      vehicleRepository.findById.mockResolvedValue(buildVehicle());
+      storageService.uploadPrivate.mockResolvedValue({
+        path: "vehicles/vehicle-1/documents/doc.pdf",
+        url: "https://storage.test/doc.pdf?token=signed",
+      });
+      documentRepository.create.mockResolvedValue(buildDocument());
+      rottaAiService.analyzeVehicleDocument.mockResolvedValue({
+        tipo: "CRLV",
+        formatoValido: true,
+        formatoDetectado: "jpeg",
+        larguraPx: 100,
+        alturaPx: 80,
+        qualidadeAdequada: false,
+        tamanhoBytes: 2_000,
+        avisos: ["Resolução baixa (100x80px)."],
+        analiseCompleta: false,
+      });
+      documentRepository.updateAiResult.mockResolvedValue(
+        buildDocument({ rottaAiStatus: "REPROVADO" }),
+      );
+      reminderRepository.findPendingByVehicleAndType.mockResolvedValue(null);
+
+      const file = { mimetype: "image/jpeg", originalname: "crlv.jpg" } as Express.Multer.File;
+      await service.uploadDocument("vehicle-1", { tipo: "CRLV" } as never, file, empresaActor, {});
+
+      expect(documentRepository.updateAiResult).toHaveBeenCalledWith(
+        "document-1",
+        expect.objectContaining({ rottaAiStatus: "REPROVADO" }),
+      );
     });
   });
 

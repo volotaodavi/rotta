@@ -596,11 +596,19 @@ export class VehiclesService {
   }
 
   /**
-   * Best-effort: a Rotta AI é um stub (`RottaAiService.analyzeVehicleDocument`
-   * sempre lança `NotImplementedException` hoje) — o upload já está
-   * concluído e persistido antes desta chamada; uma falha (ou a
-   * indisponibilidade esperada) aqui só atualiza o status da análise,
+   * Best-effort: o upload já está concluído e persistido antes desta
+   * chamada; uma falha (ex. Supabase Storage indisponível para o Rotta
+   * AI baixar o arquivo de volta) aqui só atualiza o status da análise,
    * nunca desfaz o upload.
+   *
+   * `RottaAiService.analyzeVehicleDocument` (Frente E) hoje só verifica
+   * formato/resolução da imagem — nunca o conteúdo do documento. Por
+   * isso o mapeamento é deliberadamente assimétrico:
+   * `qualidadeAdequada: false` é um defeito real e concreto → REPROVADO;
+   * `qualidadeAdequada: true` só significa "não achamos problema no que
+   * conseguimos checar" → continua PENDENTE (nunca APROVADO, que
+   * exigiria verificar o conteúdo em si — ver `resultado.avisos` para o
+   * aviso de escopo, sempre gravado em `rottaAiObservacoes`).
    */
   private async analyzeDocumentWithRottaAi(
     documentId: string,
@@ -612,9 +620,15 @@ export class VehiclesService {
     }
 
     try {
-      await this.rottaAiService.analyzeVehicleDocument({ tipo, referenciaArquivo: fileUrl });
-      // Inalcançável hoje (o stub sempre lança) — mantido para quando um provedor real existir.
-      return this.documentRepository.findById(documentId).then((doc) => doc!);
+      const resultado = await this.rottaAiService.analyzeVehicleDocument({
+        tipo,
+        referenciaArquivo: fileUrl,
+      });
+      return this.documentRepository.updateAiResult(documentId, {
+        rottaAiStatus: resultado.qualidadeAdequada ? "PENDENTE" : "REPROVADO",
+        rottaAiAnalisadoEm: new Date(),
+        rottaAiObservacoes: resultado.avisos.join(" "),
+      });
     } catch (error) {
       this.logger.warn(
         `Rotta AI indisponível para análise do documento ${documentId} — mantendo status pendente/indisponível.`,
@@ -624,7 +638,7 @@ export class VehiclesService {
         rottaAiStatus: "INDISPONIVEL",
         rottaAiAnalisadoEm: new Date(),
         rottaAiObservacoes:
-          "Integração com provedor de OCR/visão computacional ainda não configurada.",
+          "Não foi possível baixar o arquivo para análise de qualidade de imagem.",
       });
     }
   }

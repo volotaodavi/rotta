@@ -1,4 +1,9 @@
-import { BadRequestException, NotFoundException, NotImplementedException } from "@nestjs/common";
+import {
+  BadGatewayException,
+  BadRequestException,
+  NotFoundException,
+  NotImplementedException,
+} from "@nestjs/common";
 
 import { RottaAiService } from "../rotta-ai.service";
 
@@ -272,18 +277,98 @@ describe("RottaAiService", () => {
   });
 
   describe("demais métodos (stub honesto, sem provedor contratado)", () => {
-    it("analyzeVehicleDocument continua um stub honesto (NotImplementedException)", async () => {
-      const { service } = buildService();
-      await expect(service.analyzeVehicleDocument({} as never)).rejects.toThrow(
-        NotImplementedException,
-      );
-    });
-
     it("validarContratoAssinado continua um stub honesto (NotImplementedException)", async () => {
       const { service } = buildService();
       await expect(service.validarContratoAssinado({} as never)).rejects.toThrow(
         NotImplementedException,
       );
+    });
+  });
+
+  describe("analyzeVehicleDocument (Frente E — formato/resolução real, sem OCR)", () => {
+    const originalFetch = global.fetch;
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    function buildMinimalPng(largura: number, altura: number): Buffer {
+      const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const length = Buffer.alloc(4);
+      length.writeUInt32BE(13, 0);
+      const width = Buffer.alloc(4);
+      width.writeUInt32BE(largura, 0);
+      const height = Buffer.alloc(4);
+      height.writeUInt32BE(altura, 0);
+      return Buffer.concat([signature, length, Buffer.from("IHDR"), width, height]);
+    }
+
+    function mockFetchOk(buffer: Buffer): void {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        arrayBuffer: () =>
+          Promise.resolve(
+            buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+          ),
+      });
+    }
+
+    it("qualidadeAdequada=true para uma imagem PNG acima da resolução mínima", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(1200, 900));
+
+      const resultado = await service.analyzeVehicleDocument({
+        tipo: "CRLV",
+        referenciaArquivo: "https://storage.example/crlv.png",
+      });
+
+      expect(resultado.formatoValido).toBe(true);
+      expect(resultado.formatoDetectado).toBe("png");
+      expect(resultado.larguraPx).toBe(1200);
+      expect(resultado.alturaPx).toBe(900);
+      expect(resultado.qualidadeAdequada).toBe(true);
+      expect(resultado.analiseCompleta).toBe(false);
+      // sempre inclui a ressalva de escopo, mesmo quando a qualidade está OK.
+      expect(resultado.avisos.some((aviso) => aviso.includes("não faz OCR"))).toBe(true);
+    });
+
+    it("qualidadeAdequada=false para uma imagem abaixo da resolução mínima legível", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(200, 150));
+
+      const resultado = await service.analyzeVehicleDocument({
+        tipo: "CRLV",
+        referenciaArquivo: "https://storage.example/crlv-pequeno.png",
+      });
+
+      expect(resultado.qualidadeAdequada).toBe(false);
+      expect(resultado.avisos.some((aviso) => aviso.includes("Resolução baixa"))).toBe(true);
+    });
+
+    it("formatoValido=false para um arquivo que não é JPEG nem PNG (ex. PDF)", async () => {
+      const { service } = buildService();
+      mockFetchOk(Buffer.from("%PDF-1.4\n", "utf-8"));
+
+      const resultado = await service.analyzeVehicleDocument({
+        tipo: "CRLV",
+        referenciaArquivo: "https://storage.example/crlv.pdf",
+      });
+
+      expect(resultado.formatoValido).toBe(false);
+      expect(resultado.qualidadeAdequada).toBe(false);
+      expect(resultado.formatoDetectado).toBeNull();
+    });
+
+    it("lança BadGatewayException quando o download do arquivo falha", async () => {
+      const { service } = buildService();
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+
+      await expect(
+        service.analyzeVehicleDocument({
+          tipo: "CRLV",
+          referenciaArquivo: "https://storage.example/inexistente.png",
+        }),
+      ).rejects.toThrow(BadGatewayException);
     });
   });
 

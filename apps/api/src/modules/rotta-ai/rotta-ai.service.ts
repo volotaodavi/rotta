@@ -1,4 +1,5 @@
 import {
+  BadGatewayException,
   BadRequestException,
   Injectable,
   NotFoundException,
@@ -13,12 +14,18 @@ import type { SuggestRouteOptimizationDto } from "./dto/suggest-route-optimizati
 import type { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import type { ValidateDocumentResponseDto } from "./dto/validate-document-response.dto";
 import type { ValidateDocumentDto } from "./dto/validate-document.dto";
+import type { VehicleDocumentAnalysisResponseDto } from "./dto/vehicle-document-analysis-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
+import { readImageMetadata } from "@/common/utils/image-metadata.util";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { DiditService } from "@/infra/didit/didit.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import { Role } from "@/shared/enums";
+
+/** Resolução mínima para considerar o texto de um documento legível a olho nu — abaixo disso, letras pequenas (RENAVAM, placa, datas) tendem a virar borrão. Limiar conservador, não uma norma técnica formal. */
+const LARGURA_MINIMA_PX = 800;
+const ALTURA_MINIMA_PX = 600;
 
 const CEP_VALIDO = /^\d{5}-?\d{3}$/;
 
@@ -134,21 +141,74 @@ export class RottaAiService {
   }
 
   /**
-   * Mesmo estado (stub honesto) da análise de identidade acima, agora
-   * para documentação de VEÍCULO (briefing "ROTTA AI" do módulo
-   * Veículos — "analisar documentos, verificar qualidade, detectar
-   * ilegibilidade/adulteração"). Contrato separado de `validateDocument`
-   * porque o domínio é distinto (documento do veículo, não da pessoa) —
-   * ver nota em `AnalyzeVehicleDocumentDto`. Chamado por
-   * `VehiclesService` de forma best-effort logo após cada upload de
-   * documento: o upload em si NUNCA fica bloqueado esperando esta
-   * análise.
+   * Documentação de VEÍCULO (briefing "ROTTA AI" do módulo Veículos —
+   * "analisar documentos, verificar qualidade, detectar
+   * ilegibilidade/adulteração"). Contrato separado de
+   * `validateDocument` porque o domínio é distinto (documento do
+   * veículo, não da pessoa) — ver nota em `AnalyzeVehicleDocumentDto`.
+   * Chamado por `VehiclesService` de forma best-effort logo após cada
+   * upload de documento: o upload em si NUNCA fica bloqueado esperando
+   * esta análise.
+   *
+   * ESCOPO REAL desta entrega (Frente E): só formato + resolução da
+   * imagem, lidos direto dos bytes do arquivo (`readImageMetadata`) —
+   * sem chamar nenhum provedor externo, sem credencial nenhuma. Isso
+   * responde de verdade a "verificar qualidade das imagens, detectar
+   * documentos ilegíveis" (uma imagem pequena/em formato não suportado
+   * está, de fato, ilegível). NÃO faz OCR do conteúdo (não lê
+   * RENAVAM/placa/datas) nem detecta adulteração — isso exigiria um
+   * provedor de visão computacional/OCR contratado (a Didit, usada para
+   * documentos de identidade, não cobre documentos de veículo — ver
+   * `DiditService`); documentado como pendente, nunca fingido aqui.
+   * `analiseCompleta: false` no retorno é o sinal explícito disso para
+   * quem chama.
    */
-  // eslint-disable-next-line @typescript-eslint/require-await
-  async analyzeVehicleDocument(_dto: AnalyzeVehicleDocumentDto): Promise<never> {
-    throw new NotImplementedException(
-      "A análise automática de documentos de veículo via Rotta AI ainda não está disponível — integração pendente de um provedor de OCR/visão computacional.",
+  async analyzeVehicleDocument(
+    dto: AnalyzeVehicleDocumentDto,
+  ): Promise<VehicleDocumentAnalysisResponseDto> {
+    const response = await fetch(dto.referenciaArquivo);
+    if (!response.ok) {
+      throw new BadGatewayException(
+        `Não foi possível baixar o arquivo para análise (${dto.referenciaArquivo}): HTTP ${response.status}.`,
+      );
+    }
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const metadata = readImageMetadata(buffer);
+
+    const avisos: string[] = [];
+    let qualidadeAdequada = false;
+
+    if (!metadata.formato) {
+      avisos.push(
+        "Formato de arquivo não reconhecido como imagem (esperado JPEG ou PNG) — não é possível avaliar a qualidade.",
+      );
+    } else if (metadata.larguraPx === null || metadata.alturaPx === null) {
+      avisos.push(
+        "Não foi possível ler as dimensões da imagem — o arquivo pode estar corrompido ou incompleto.",
+      );
+    } else if (metadata.larguraPx < LARGURA_MINIMA_PX || metadata.alturaPx < ALTURA_MINIMA_PX) {
+      avisos.push(
+        `Resolução baixa (${metadata.larguraPx}x${metadata.alturaPx}px) — abaixo do mínimo recomendado (${LARGURA_MINIMA_PX}x${ALTURA_MINIMA_PX}px); o texto do documento pode ficar ilegível.`,
+      );
+    } else {
+      qualidadeAdequada = true;
+    }
+
+    avisos.push(
+      "Esta análise cobre apenas formato e resolução da imagem — não faz OCR do conteúdo nem detecta adulteração; isso continua exigindo um provedor de visão computacional/OCR contratado.",
     );
+
+    return {
+      tipo: dto.tipo,
+      formatoValido: metadata.formato !== null,
+      formatoDetectado: metadata.formato,
+      larguraPx: metadata.larguraPx,
+      alturaPx: metadata.alturaPx,
+      qualidadeAdequada,
+      tamanhoBytes: buffer.length,
+      avisos,
+      analiseCompleta: false,
+    };
   }
 
   /**

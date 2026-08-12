@@ -8,6 +8,7 @@ import { SuggestRouteOptimizationDto } from "./dto/suggest-route-optimization.dt
 import { ValidarContratoAssinadoDto } from "./dto/validar-contrato-assinado.dto";
 import { ValidateDocumentResponseDto } from "./dto/validate-document-response.dto";
 import { ValidateDocumentDto } from "./dto/validate-document.dto";
+import { VehicleDocumentAnalysisResponseDto } from "./dto/vehicle-document-analysis-response.dto";
 import { RottaAiService } from "./rotta-ai.service";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
@@ -34,6 +35,7 @@ export class RottaAiController {
   }
 
   @Post("analyze-vehicle-document")
+  @ApiResponse({ status: 201, type: VehicleDocumentAnalysisResponseDto })
   analyzeVehicleDocument(@Body() dto: AnalyzeVehicleDocumentDto) {
     return this.rottaAiService.analyzeVehicleDocument(dto);
   }
