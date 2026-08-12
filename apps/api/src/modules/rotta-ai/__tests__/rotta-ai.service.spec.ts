@@ -14,7 +14,15 @@ import type { DiditService } from "@/infra/didit/didit.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
 
+import { extractTextFromImage } from "@/common/utils/ocr.util";
 import { Role } from "@/shared/enums";
+
+// Nunca chama o Tesseract.js de verdade num teste unitário (custo/rede/
+// não-determinismo) — cada teste controla explicitamente o que o OCR
+// "leu", exatamente como os demais provedores externos deste arquivo
+// (Didit, OSRM) já são mockados.
+jest.mock("@/common/utils/ocr.util", () => ({ extractTextFromImage: jest.fn() }));
+const extractTextFromImageMock = extractTextFromImage as jest.Mock;
 
 const gestorActor: AuthenticatedUser = {
   sub: "user-1",
@@ -66,6 +74,13 @@ function buildService(
 }
 
 describe("RottaAiService", () => {
+  beforeEach(() => {
+    // Default: OCR "não encontrou nada" (mesmo comportamento de uma
+    // falha silenciosa real) — testes que querem simular um OCR
+    // bem-sucedido sobrescrevem com `mockResolvedValueOnce`.
+    extractTextFromImageMock.mockReset().mockResolvedValue(null);
+  });
+
   describe("analyzeSchoolAddress", () => {
     it("delega ao Rotta Geo Engine e retorna cepValido + os campos sugeridos pelo Nominatim", async () => {
       const { service, geoEngine } = buildService();
@@ -428,7 +443,7 @@ describe("RottaAiService", () => {
     });
   });
 
-  describe("analyzeVehicleDocument (Frente E — formato/resolução real, sem OCR)", () => {
+  describe("analyzeVehicleDocument (Frentes E/G — formato/resolução + OCR real de campos)", () => {
     const originalFetch = global.fetch;
     afterEach(() => {
       global.fetch = originalFetch;
@@ -472,7 +487,9 @@ describe("RottaAiService", () => {
       expect(resultado.qualidadeAdequada).toBe(true);
       expect(resultado.analiseCompleta).toBe(false);
       // sempre inclui a ressalva de escopo, mesmo quando a qualidade está OK.
-      expect(resultado.avisos.some((aviso) => aviso.includes("não faz OCR"))).toBe(true);
+      expect(resultado.avisos.some((aviso) => aviso.includes("não confirma autenticidade"))).toBe(
+        true,
+      );
     });
 
     it("qualidadeAdequada=false para uma imagem abaixo da resolução mínima legível", async () => {
@@ -486,6 +503,61 @@ describe("RottaAiService", () => {
 
       expect(resultado.qualidadeAdequada).toBe(false);
       expect(resultado.avisos.some((aviso) => aviso.includes("Resolução baixa"))).toBe(true);
+      // imagem ilegível: nem tenta rodar OCR.
+      expect(extractTextFromImageMock).not.toHaveBeenCalled();
+      expect(resultado.ocrExecutado).toBe(false);
+    });
+
+    it("Frente G: roda OCR quando a imagem está legível e encontra RENAVAM/placa no texto de um CRLV", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(1200, 900));
+      extractTextFromImageMock.mockResolvedValueOnce(
+        "CERTIFICADO DE REGISTRO E LICENCIAMENTO\nRENAVAM 12345678901\nPLACA ABC1D23",
+      );
+
+      const resultado = await service.analyzeVehicleDocument({
+        tipo: "CRLV",
+        referenciaArquivo: "https://storage.example/crlv.png",
+      });
+
+      expect(resultado.ocrExecutado).toBe(true);
+      expect(resultado.camposEncontrados).toEqual(
+        expect.arrayContaining(["RENAVAM (11 dígitos)", "Placa em formato válido"]),
+      );
+    });
+
+    it("Frente G: camposEncontrados vazio e aviso explícito quando o OCR roda mas não acha nada esperado", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(1200, 900));
+      extractTextFromImageMock.mockResolvedValueOnce("texto qualquer sem nada relevante");
+
+      const resultado = await service.analyzeVehicleDocument({
+        tipo: "CRLV",
+        referenciaArquivo: "https://storage.example/crlv.png",
+      });
+
+      expect(resultado.ocrExecutado).toBe(true);
+      expect(resultado.camposEncontrados).toEqual([]);
+      expect(
+        resultado.avisos.some((aviso) => aviso.includes("não encontrou nenhum dos campos")),
+      ).toBe(true);
+    });
+
+    it("Frente G: aviso explícito (sem derrubar a análise) quando o OCR falha", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(1200, 900));
+      extractTextFromImageMock.mockResolvedValueOnce(null);
+
+      const resultado = await service.analyzeVehicleDocument({
+        tipo: "CRLV",
+        referenciaArquivo: "https://storage.example/crlv.png",
+      });
+
+      expect(resultado.ocrExecutado).toBe(false);
+      expect(resultado.camposEncontrados).toEqual([]);
+      expect(
+        resultado.avisos.some((aviso) => aviso.includes("Não foi possível extrair texto")),
+      ).toBe(true);
     });
 
     it("formatoValido=false para um arquivo que não é JPEG nem PNG (ex. PDF)", async () => {
@@ -515,7 +587,7 @@ describe("RottaAiService", () => {
     });
   });
 
-  describe("analyzeDriverDocument (Frente F — EAR/Curso, mesma análise de formato/resolução)", () => {
+  describe("analyzeDriverDocument (Frentes F/H — EAR/Curso, formato/resolução + OCR real de campos)", () => {
     const originalFetch = global.fetch;
     afterEach(() => {
       global.fetch = originalFetch;
@@ -555,6 +627,50 @@ describe("RottaAiService", () => {
       expect(resultado.tipo).toBe("EAR");
       expect(resultado.qualidadeAdequada).toBe(true);
       expect(resultado.analiseCompleta).toBe(false);
+    });
+
+    it("Frente H: encontra a sigla EAR no texto extraído por OCR", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(1200, 900));
+      extractTextFromImageMock.mockResolvedValueOnce(
+        "AUTORIZAÇÃO ESPECIALIZADA EAR - TRANSPORTE ESCOLAR",
+      );
+
+      const resultado = await service.analyzeDriverDocument({
+        tipo: "EAR",
+        referenciaArquivo: "https://storage.example/ear.png",
+      });
+
+      expect(resultado.ocrExecutado).toBe(true);
+      expect(resultado.camposEncontrados).toEqual(
+        expect.arrayContaining([
+          'Sigla "EAR"',
+          'Palavra "especializado"',
+          'Expressão "transporte escolar"',
+        ]),
+      );
+    });
+
+    it("Frente H: encontra 'curso'/'conclusão' no texto extraído de um CURSO", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(1200, 900));
+      extractTextFromImageMock.mockResolvedValueOnce(
+        "CERTIFICADO DE CONCLUSÃO DE CURSO - CARGA HORÁRIA 40H",
+      );
+
+      const resultado = await service.analyzeDriverDocument({
+        tipo: "CURSO",
+        referenciaArquivo: "https://storage.example/curso.png",
+      });
+
+      expect(resultado.ocrExecutado).toBe(true);
+      expect(resultado.camposEncontrados).toEqual(
+        expect.arrayContaining([
+          'Palavra "curso"',
+          'Palavra "conclusão"/"certificado"',
+          'Expressão "carga horária"',
+        ]),
+      );
     });
 
     it("qualidadeAdequada=false para um CURSO com resolução abaixo do mínimo legível", async () => {

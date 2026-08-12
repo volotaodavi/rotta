@@ -7,6 +7,11 @@ import {
 } from "@nestjs/common";
 
 
+import {
+  detectDriverDocumentFields,
+  detectVehicleDocumentFields,
+} from "./document-field-detection.util";
+
 import type { AnalyzeDriverDocumentDto } from "./dto/analyze-driver-document.dto";
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
@@ -21,6 +26,7 @@ import type { VehicleDocumentAnalysisResponseDto } from "./dto/vehicle-document-
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
 import { readImageMetadata } from "@/common/utils/image-metadata.util";
+import { extractTextFromImage } from "@/common/utils/ocr.util";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { DiditService } from "@/infra/didit/didit.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -158,59 +164,78 @@ export class RottaAiService {
    * upload de documento: o upload em si NUNCA fica bloqueado esperando
    * esta análise.
    *
-   * ESCOPO REAL desta entrega (Frente E): só formato + resolução da
-   * imagem, lidos direto dos bytes do arquivo (`readImageMetadata`) —
-   * sem chamar nenhum provedor externo, sem credencial nenhuma. Isso
-   * responde de verdade a "verificar qualidade das imagens, detectar
-   * documentos ilegíveis" (uma imagem pequena/em formato não suportado
-   * está, de fato, ilegível). NÃO faz OCR do conteúdo (não lê
-   * RENAVAM/placa/datas) nem detecta adulteração — isso exigiria um
-   * provedor de visão computacional/OCR contratado (a Didit, usada para
-   * documentos de identidade, não cobre documentos de veículo — ver
-   * `DiditService`); documentado como pendente, nunca fingido aqui.
-   * `analiseCompleta: false` no retorno é o sinal explícito disso para
-   * quem chama.
+   * ESCOPO REAL: formato + resolução da imagem, lidos direto dos bytes
+   * do arquivo (`readImageMetadata` — Frente E), MAIS, desde a Frente G,
+   * OCR real via Tesseract.js (`ocr.util.ts`, self-hosted, sem provedor
+   * pago) checando se RENAVAM/placa/palavras esperadas do tipo de
+   * documento aparecem no texto lido (`document-field-detection.
+   * util.ts`). Isso responde de verdade a "verificar qualidade das
+   * imagens, detectar documentos ilegíveis" E cobre boa parte de
+   * "detectar campo ausente" — mas ainda NÃO detecta adulteração/fraude
+   * (confirmar que um RENAVAM/placa lido é o VERDADEIRO do veículo, não
+   * só que "parece" um RENAVAM/placa, exigiria um provedor de visão
+   * computacional com base de dados contratado — a Didit, usada para
+   * documentos de identidade, não cobre documentos de veículo; ver
+   * `DiditService`). `analiseCompleta: false` no retorno é o sinal
+   * explícito disso para quem chama.
    */
   async analyzeVehicleDocument(
     dto: AnalyzeVehicleDocumentDto,
   ): Promise<VehicleDocumentAnalysisResponseDto> {
-    return { tipo: dto.tipo, ...(await this.analyzeImageQuality(dto.referenciaArquivo)) };
+    return {
+      tipo: dto.tipo,
+      ...(await this.analyzeImageQuality(dto.referenciaArquivo, (texto) =>
+        detectVehicleDocumentFields(texto, dto.tipo),
+      )),
+    };
   }
 
   /**
    * Qualificação do MOTORISTA que a Didit não cobre — EAR/Curso
    * especializado (Frente F, Dossiê 28 `DRV-03`/`DRV-04`). Mesma análise
-   * de `analyzeVehicleDocument` (só formato/resolução da imagem, sem
-   * OCR/detecção de fraude — ver a ressalva completa lá), reaproveitada
-   * porque o problema é idêntico: nenhum provedor cobre certificado
-   * específico de trânsito brasileiro (a Didit só reconhece documento de
-   * identidade mundial).
+   * de `analyzeVehicleDocument` (formato/resolução + OCR de
+   * palavras-chave desde a Frente H — ver a ressalva completa lá),
+   * reaproveitada porque o problema é idêntico: nenhum provedor cobre
+   * certificado específico de trânsito brasileiro (a Didit só reconhece
+   * documento de identidade mundial).
    *
    * CUIDADO ao mapear o resultado em `DriversService`: NUNCA usar
-   * `qualidadeAdequada: true` para marcar `rottaAiStatus = APROVADO` —
-   * isso alimentaria `computeSchoolTransportEligibility` com uma
-   * aprovação que não verificou o conteúdo (validade do registro EAR/
+   * `qualidadeAdequada: true`/`camposEncontrados` não-vazio para marcar
+   * `rottaAiStatus = APROVADO` — isso alimentaria
+   * `computeSchoolTransportEligibility` com uma aprovação que não
+   * verificou a AUTENTICIDADE do conteúdo (validade do registro EAR/
    * conclusão do curso), inflando indevidamente o selo "Transportador
    * Verificado" do Marketplace. `qualidadeAdequada: false` (defeito
    * real, verificado) é seguro para REPROVADO; `true` deve continuar
    * `INDISPONIVEL` — mesmo comportamento de hoje (aguardando revisão
    * humana ou um provedor real), só que agora com o defeito óbvio
-   * (ilegível/formato errado) efetivamente barrado.
+   * (ilegível/formato errado/palavras-chave ausentes) efetivamente
+   * barrado.
    */
   async analyzeDriverDocument(
     dto: AnalyzeDriverDocumentDto,
   ): Promise<VehicleDocumentAnalysisResponseDto> {
-    return { tipo: dto.tipo, ...(await this.analyzeImageQuality(dto.referenciaArquivo)) };
+    return {
+      tipo: dto.tipo,
+      ...(await this.analyzeImageQuality(dto.referenciaArquivo, (texto) =>
+        detectDriverDocumentFields(texto, dto.tipo),
+      )),
+    };
   }
 
   /**
    * Núcleo compartilhado de `analyzeVehicleDocument`/`analyzeDriverDocument`
-   * (Frentes E/F) — baixa o arquivo e aplica `readImageMetadata` +
-   * limiar de resolução mínima. Só formato/resolução, nunca conteúdo —
-   * ver a ressalva completa no doc comment de `analyzeVehicleDocument`.
+   * (Frentes E/F/G/H) — baixa o arquivo, aplica `readImageMetadata` +
+   * limiar de resolução mínima e, quando a imagem está legível, roda OCR
+   * (`extractTextFromImage`) e a checagem de campos específica do tipo
+   * (`detectFields`, injetado por quem chama). OCR só roda quando
+   * `qualidadeAdequada` — não vale a pena tentar ler texto de uma imagem
+   * já sabidamente ilegível. Autenticidade continua fora de escopo — ver
+   * a ressalva completa no doc comment de `analyzeVehicleDocument`.
    */
   private async analyzeImageQuality(
     referenciaArquivo: string,
+    detectFields: (texto: string) => string[],
   ): Promise<Omit<VehicleDocumentAnalysisResponseDto, "tipo">> {
     const response = await fetch(referenciaArquivo);
     if (!response.ok) {
@@ -240,8 +265,27 @@ export class RottaAiService {
       qualidadeAdequada = true;
     }
 
+    let ocrExecutado = false;
+    let camposEncontrados: string[] = [];
+    if (qualidadeAdequada) {
+      const texto = await extractTextFromImage(buffer);
+      if (texto) {
+        ocrExecutado = true;
+        camposEncontrados = detectFields(texto);
+        if (camposEncontrados.length === 0) {
+          avisos.push(
+            "O OCR rodou mas não encontrou nenhum dos campos esperados pra este tipo de documento — confira se o arquivo enviado é mesmo o documento certo.",
+          );
+        }
+      } else {
+        avisos.push(
+          "Não foi possível extrair texto da imagem via OCR desta vez (pode ser uma falha temporária do OCR, não necessariamente um problema com o documento) — a checagem de campos foi pulada.",
+        );
+      }
+    }
+
     avisos.push(
-      "Esta análise cobre apenas formato e resolução da imagem — não faz OCR do conteúdo nem detecta adulteração; isso continua exigindo um provedor de visão computacional/OCR contratado.",
+      "Esta análise cobre formato, resolução e presença de palavras/números esperados via OCR — não confirma autenticidade nem detecta adulteração; isso continua exigindo um provedor de visão computacional contratado.",
     );
 
     return {
@@ -251,6 +295,8 @@ export class RottaAiService {
       alturaPx: metadata.alturaPx,
       qualidadeAdequada,
       tamanhoBytes: buffer.length,
+      ocrExecutado,
+      camposEncontrados,
       avisos,
       analiseCompleta: false,
     };

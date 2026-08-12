@@ -3,15 +3,17 @@ import { ApiProperty } from "@nestjs/swagger";
 /**
  * Resposta real de `RottaAiService.analyzeVehicleDocument` (Frente E) e
  * `analyzeDriverDocument` (Frente F, tipos EAR/CURSO — mesma análise,
- * documento de pessoa em vez de veículo) — cobre APENAS formato e
- * resolução da imagem (lidos direto dos bytes do arquivo,
- * `readImageMetadata`), não OCR de conteúdo nem detecção de
- * adulteração/fraude. `analiseCompleta: false` é permanente até um
- * provedor de visão computacional/OCR ser contratado — ver o porquê no
- * doc comment do método em `RottaAiService`. Nunca tratar
- * `qualidadeAdequada: true` como "documento aprovado": significa só
- * "a imagem está nítida o bastante para alguém LER" — não que o
- * conteúdo foi conferido.
+ * documento de pessoa em vez de veículo) — formato/resolução da imagem
+ * (`readImageMetadata`) MAIS, desde as Frentes G/H, OCR real via
+ * Tesseract.js (`ocr.util.ts`) checando se palavras/números esperados
+ * pro tipo de documento aparecem no texto lido (`document-field-
+ * detection.util.ts`). Continua NÃO confirmando autenticidade nem
+ * detectando adulteração — `analiseCompleta` é permanentemente `false`
+ * até um provedor de visão computacional ser contratado. Nunca tratar
+ * `qualidadeAdequada: true` ou `camposEncontrados` não-vazio como
+ * "documento aprovado": significa só "a imagem está legível e contém
+ * palavras/números compatíveis com o tipo declarado" — não que o
+ * conteúdo foi verificado/autenticado.
  */
 export class VehicleDocumentAnalysisResponseDto {
   @ApiProperty() tipo!: string;
@@ -37,15 +39,29 @@ export class VehicleDocumentAnalysisResponseDto {
   @ApiProperty() tamanhoBytes!: number;
 
   @ApiProperty({
+    description:
+      "true quando o OCR (Tesseract.js) conseguiu extrair algum texto da imagem — só roda quando qualidadeAdequada é true. false não significa documento inválido, pode ser falha temporária do OCR.",
+  })
+  ocrExecutado!: boolean;
+
+  @ApiProperty({
     type: [String],
-    description: "Avisos legíveis — sempre inclui a ressalva de escopo (só formato/resolução).",
+    description:
+      'Palavras/números esperados pro tipo de documento que o OCR encontrou no texto (ex. RENAVAM, placa, "apólice") — vazio não significa documento inválido, só que nada do esperado foi lido.',
+  })
+  camposEncontrados!: string[];
+
+  @ApiProperty({
+    type: [String],
+    description:
+      "Avisos legíveis — sempre inclui a ressalva de escopo (formato/resolução/OCR de palavras-chave, nunca autenticidade).",
   })
   avisos!: string[];
 
   @ApiProperty({
     example: false,
     description:
-      "Sempre false hoje — nenhum provedor de OCR/detecção de adulteração está contratado.",
+      "Sempre false hoje — o OCR (Frentes G/H) lê texto e confere campos esperados, mas nenhum provedor de detecção de adulteração/autenticidade está contratado.",
   })
   analiseCompleta!: false;
 }
