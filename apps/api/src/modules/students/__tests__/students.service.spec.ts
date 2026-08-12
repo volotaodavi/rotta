@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
 import { StudentsService } from "../students.service";
 
@@ -8,8 +8,9 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
-import type { Student, StudentAuthorizedPerson } from "@prisma/client";
+import type { School, Student, StudentAuthorizedPerson } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -101,6 +102,43 @@ const adminActor: AuthenticatedUser = {
   vinculoId: "admin-1",
 };
 
+function buildSchool(overrides: Partial<School> = {}): School {
+  return {
+    id: "school-1",
+    codigoInterno: "ESC-000001",
+    codigoInep: null,
+    nomeOficial: "EMEF Professora Ana Souza",
+    nomeFantasia: null,
+    redeEnsino: null,
+    dependenciaAdministrativa: "MUNICIPAL",
+    cnpj: null,
+    telefone: null,
+    whatsapp: null,
+    email: null,
+    website: null,
+    cep: "01310100",
+    logradouro: "Avenida Paulista",
+    numero: "1000",
+    complemento: null,
+    bairro: "Bela Vista",
+    cidade: "São Paulo",
+    estado: "SP",
+    pais: "Brasil",
+    latitude: null,
+    longitude: null,
+    observacoesLocalizacao: null,
+    tipos: ["FUNDAMENTAL"],
+    turnosAtendidos: ["MANHA", "TARDE"],
+    status: "ATIVA",
+    origemCadastro: "MANUAL",
+    criadoPorId: "user-1",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  };
+}
+
 describe("StudentsService", () => {
   let service: StudentsService;
   let studentRepository: jest.Mocked<StudentRepository>;
@@ -109,6 +147,7 @@ describe("StudentsService", () => {
   let storageService: jest.Mocked<SupabaseStorageService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<Pick<MessagePersonalizationService, "novoAluno">>;
+  let schoolRepository: jest.Mocked<SchoolRepository>;
 
   beforeEach(() => {
     studentRepository = {
@@ -142,6 +181,16 @@ describe("StudentsService", () => {
     messagePersonalizationService = {
       novoAluno: jest.fn().mockReturnValue({ titulo: "Novo aluno", corpo: "..." }),
     };
+    schoolRepository = {
+      create: jest.fn(),
+      findById: jest.fn().mockResolvedValue(buildSchool()),
+      findByCodigoInep: jest.fn(),
+      findManyByCodigosInep: jest.fn(),
+      update: jest.fn(),
+      list: jest.fn(),
+      listAllActive: jest.fn(),
+      nextCodigoInternoSequence: jest.fn(),
+    };
 
     service = new StudentsService(
       studentRepository,
@@ -150,6 +199,7 @@ describe("StudentsService", () => {
       storageService,
       eventEmitter,
       messagePersonalizationService as unknown as MessagePersonalizationService,
+      schoolRepository,
     );
   });
 
@@ -185,6 +235,37 @@ describe("StudentsService", () => {
       expect(studentRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ responsavelId: "responsavel-1" }),
       );
+    });
+
+    it("rejeita (400, não o 500 cru de FK do Postgres) quando schoolId não existe", async () => {
+      schoolRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.create(
+          {
+            nome: "Maria Souza",
+            dataNascimento: "2015-03-20",
+            sexo: "FEMININO",
+            schoolId: "school-inexistente",
+            turno: "MANHA",
+            embarqueCep: "01310100",
+            embarqueLogradouro: "Avenida Paulista",
+            embarqueNumero: "1000",
+            embarqueBairro: "Bela Vista",
+            embarqueCidade: "São Paulo",
+            embarqueEstado: "SP",
+            desembarqueCep: "01310100",
+            desembarqueLogradouro: "Avenida Paulista",
+            desembarqueNumero: "1000",
+            desembarqueBairro: "Bela Vista",
+            desembarqueCidade: "São Paulo",
+            desembarqueEstado: "SP",
+          },
+          responsavelActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(studentRepository.create).not.toHaveBeenCalled();
     });
   });
 
@@ -247,6 +328,16 @@ describe("StudentsService", () => {
       const result = await service.update("student-1", { nome: "Novo nome" }, responsavelActor, {});
 
       expect(result.nome).toBe("Novo nome");
+    });
+
+    it("rejeita (400) update trocando para um schoolId que não existe", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      schoolRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.update("student-1", { schoolId: "school-inexistente" }, responsavelActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(studentRepository.update).not.toHaveBeenCalled();
     });
 
     it("soft delete seta deletedAt, nunca remove a linha", async () => {

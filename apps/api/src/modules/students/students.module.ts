@@ -9,6 +9,7 @@ import { StudentsService } from "./students.service";
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
+import { SchoolsModule } from "@/modules/schools/schools.module";
 
 /**
  * Módulo Alunos (briefing "Marketplace" §"CADASTRO DO ALUNO") —
@@ -21,6 +22,11 @@ import { MessagePersonalizationModule } from "@/modules/notifications/message-pe
  * PRECISA de `StudentsService` para montar contratos) fosse importado
  * de volta por aqui.
  *
+ * `SchoolsModule` importado (achado desta auditoria: `create`/`update`
+ * aceitavam qualquer `schoolId`, inclusive inexistente, e o Postgres
+ * devolvia um 500 de violação de FK em vez de um erro claro) — sem
+ * risco de ciclo, `SchoolsModule` não depende de `StudentsModule`.
+ *
  * Importa `MessagePersonalizationModule` (nunca `NotificationsModule`
  * inteiro, ver nota em `notifications.module.ts`) só para
  * `MessagePersonalizationService` (compor `novoAluno`); `EventEmitter2`
@@ -29,7 +35,7 @@ import { MessagePersonalizationModule } from "@/modules/notifications/message-pe
  * global (`AppModule`). Nunca chama `NotificationsService` diretamente.
  */
 @Module({
-  imports: [AuditModule, StorageModule, MessagePersonalizationModule],
+  imports: [AuditModule, StorageModule, MessagePersonalizationModule, SchoolsModule],
   controllers: [StudentsController],
   providers: [
     StudentsService,

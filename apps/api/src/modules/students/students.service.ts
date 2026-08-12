@@ -1,4 +1,11 @@
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Student } from "@prisma/client";
 
@@ -16,11 +23,13 @@ import type { StudentAuthorizedPersonRepository } from "./repositories/student-a
 import type { StudentAccessScope, StudentRepository } from "./repositories/student.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { ListAuditLogsResponseDto } from "@/common/dto/audit-log-response.dto";
+import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -52,7 +61,22 @@ export class StudentsService {
     private readonly storageService: SupabaseStorageService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
+    @Inject(SCHOOL_REPOSITORY) private readonly schoolRepository: SchoolRepository,
   ) {}
+
+  /**
+   * Achado desta auditoria: `create`/`update` aceitavam qualquer
+   * `schoolId` (inclusive inexistente) e o `create`/`update` do Prisma
+   * estourava a FK no Postgres, virando um 500 cru em vez de um erro
+   * claro pro cliente. Só chama quando `schoolId` está presente no DTO
+   * (em `update`, o campo é opcional — `undefined` significa "não mexer").
+   */
+  private async assertSchoolExists(schoolId: string): Promise<void> {
+    const school = await this.schoolRepository.findById(schoolId);
+    if (!school) {
+      throw new BadRequestException("Escola informada não existe.");
+    }
+  }
 
   private async recordAudit(input: {
     entidadeId: string;
@@ -111,6 +135,8 @@ export class StudentsService {
     actor: AuthenticatedUser,
     meta: RequestMeta,
   ): Promise<StudentResponseDto> {
+    await this.assertSchoolExists(dto.schoolId);
+
     const student = await this.studentRepository.create({
       ...dto,
       responsavelId: actor.sub,
@@ -196,6 +222,10 @@ export class StudentsService {
   ): Promise<StudentResponseDto> {
     const existing = await this.fetchOrThrow(id, actor);
     this.assertOwnedByActor(existing, actor);
+
+    if (dto.schoolId) {
+      await this.assertSchoolExists(dto.schoolId);
+    }
 
     const updated = await this.studentRepository.update(id, {
       ...dto,
