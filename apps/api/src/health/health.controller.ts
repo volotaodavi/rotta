@@ -7,6 +7,7 @@ import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { RedisService } from "@/infra/cache/redis.service";
 import { PrismaService } from "@/infra/database/prisma.service";
+import { DIDIT_INTEGRATION_NAME } from "@/infra/didit/didit.service";
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 import { ABACATEPAY_INTEGRATION_NAME } from "@/modules/billing/abacatepay-client.service";
 import {
@@ -16,12 +17,13 @@ import {
 import { LYTEX_INTEGRATION_NAME } from "@/modules/wallet/rotta-pay-provider.service";
 import { Role } from "@/shared/enums";
 
-/** As 3 integrações externas explicitamente citadas como exemplo pelo PROMPT — ROTTA INTEGRATION & INTELLIGENCE AUDIT ENGINE (Seção 34: "LYTEX... ABACATEPAY... GEO PROVIDER") — únicas com instrumentação real de saúde até esta entrega (Dossiê 44). */
+/** As integrações externas com instrumentação real de saúde (Dossiê 44 — PROMPT ROTTA INTEGRATION & INTELLIGENCE AUDIT ENGINE, Seção 34: "LYTEX... ABACATEPAY... GEO PROVIDER"; Didit — verificação de identidade — adicionada na Frente C do acompanhamento pós-Dossiê 45). */
 const TRACKED_INTEGRATIONS = [
   ABACATEPAY_INTEGRATION_NAME,
   LYTEX_INTEGRATION_NAME,
   NOMINATIM_INTEGRATION_NAME,
   OSRM_INTEGRATION_NAME,
+  DIDIT_INTEGRATION_NAME,
 ];
 
 interface HealthScore {

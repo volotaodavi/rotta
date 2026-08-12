@@ -36,6 +36,7 @@ const INTEGRATION_LABEL: Record<string, string> = {
   lytex: "Lytex (Rotta Pay — split/transferência PIX)",
   nominatim: "Nominatim (Rotta Geo Engine — geocodificação)",
   osrm: "OSRM (Rotta Geo Engine — rotas)",
+  didit: "Didit (verificação de identidade — CNH/Selfie/Face Match)",
 };
 
 function formatDateTime(iso: string | null): string {
@@ -48,10 +49,10 @@ function formatDateTime(iso: string | null): string {
  * INTELLIGENCE AUDIT ENGINE, Seção 35) — saúde REAL das integrações
  * externas rastreadas por `IntegrationHealthService`, derivada do
  * tráfego real de produção (nunca um ping artificial). Escopo desta
- * primeira entrega: as 4 integrações com instrumentação real até agora
- * (AbacatePay, Lytex, Nominatim, OSRM) — o restante do Dossiê 44 (KPIs
- * de negócio, funil, reconciliação com provedores, tracing distribuído)
- * fica documentado como deferido, não fingido aqui.
+ * entrega: as integrações com instrumentação real até agora (AbacatePay,
+ * Lytex, Nominatim, OSRM, Didit — adicionada na Frente C) — o restante
+ * do Dossiê 44 (KPIs de negócio, funil, reconciliação com provedores,
+ * tracing distribuído) fica documentado como deferido, não fingido aqui.
  */
 export default function SaudePage(): JSX.Element {
   const { data, isLoading, isError } = useIntegrationsHealth();

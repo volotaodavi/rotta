@@ -3,10 +3,21 @@ import { ServiceUnavailableException } from "@nestjs/common";
 import { DiditService } from "../didit.service";
 
 import type { DiditConfig } from "@/config/didit.config";
+import type { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 import type { ConfigService } from "@nestjs/config";
 
 function buildConfigService(didit: DiditConfig): ConfigService {
   return { get: jest.fn().mockReturnValue(didit) } as unknown as ConfigService;
+}
+
+function buildIntegrationHealthMock(): jest.Mocked<IntegrationHealthService> {
+  return {
+    recordSuccess: jest.fn().mockResolvedValue(undefined),
+    recordFailure: jest.fn().mockResolvedValue(undefined),
+    recordNotConfigured: jest.fn().mockResolvedValue(undefined),
+    getSnapshot: jest.fn(),
+    getAllSnapshots: jest.fn(),
+  } as unknown as jest.Mocked<IntegrationHealthService>;
 }
 
 function jsonResponse(body: unknown, ok = true, status = 200): Response {
@@ -25,13 +36,19 @@ describe("DiditService", () => {
     jest.resetAllMocks();
   });
 
-  it("recusa a chamada com um erro claro quando DIDIT_API_KEY não está configurada", async () => {
+  it("recusa a chamada com um erro claro quando DIDIT_API_KEY não está configurada, e registra not_configured no health tracking", async () => {
+    const integrationHealth = buildIntegrationHealthMock();
     const service = new DiditService(
       buildConfigService({ apiKey: undefined, baseUrl: "https://verification.didit.me" }),
+      integrationHealth,
     );
 
     await expect(service.verifyId("https://storage.example/cnh.jpg")).rejects.toThrow(
       ServiceUnavailableException,
+    );
+    expect(integrationHealth.recordNotConfigured).toHaveBeenCalledWith(
+      "didit",
+      expect.stringContaining("DIDIT_API_KEY"),
     );
   });
 
@@ -46,8 +63,10 @@ describe("DiditService", () => {
       );
     global.fetch = fetchMock;
 
+    const integrationHealth = buildIntegrationHealthMock();
     const service = new DiditService(
       buildConfigService({ apiKey: "test-key", baseUrl: "https://verification.didit.me" }),
+      integrationHealth,
     );
 
     const resultado = await service.verifyId("https://storage.example/cnh.jpg");
@@ -62,6 +81,7 @@ describe("DiditService", () => {
     const [url, options] = fetchMock.mock.calls[1] as [string, RequestInit];
     expect(url).toBe("https://verification.didit.me/v3/id-verification/");
     expect((options.headers as Record<string, string>)["x-api-key"]).toBe("test-key");
+    expect(integrationHealth.recordSuccess).toHaveBeenCalledWith("didit", expect.any(Number));
   });
 
   it("faceMatch retorna aprovado=false e o score quando o status não é Approved", async () => {
@@ -74,6 +94,7 @@ describe("DiditService", () => {
 
     const service = new DiditService(
       buildConfigService({ apiKey: "test-key", baseUrl: "https://verification.didit.me" }),
+      buildIntegrationHealthMock(),
     );
 
     const resultado = await service.faceMatch(
@@ -85,19 +106,25 @@ describe("DiditService", () => {
     expect(resultado.score).toBe(0.42);
   });
 
-  it("passiveLiveness lança um erro claro quando a Didit responde HTTP não-2xx", async () => {
+  it("passiveLiveness lança um erro claro quando a Didit responde HTTP não-2xx, e registra a falha no health tracking", async () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValueOnce({ ok: true, arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)) })
       .mockResolvedValueOnce(jsonResponse({ error: "invalid image" }, false, 400));
     global.fetch = fetchMock;
 
+    const integrationHealth = buildIntegrationHealthMock();
     const service = new DiditService(
       buildConfigService({ apiKey: "test-key", baseUrl: "https://verification.didit.me" }),
+      integrationHealth,
     );
 
     await expect(service.passiveLiveness("https://storage.example/selfie.jpg")).rejects.toThrow(
       "Falha na verificação Didit",
+    );
+    expect(integrationHealth.recordFailure).toHaveBeenCalledWith(
+      "didit",
+      expect.stringContaining("400"),
     );
   });
 
@@ -107,6 +134,7 @@ describe("DiditService", () => {
 
     const service = new DiditService(
       buildConfigService({ apiKey: "test-key", baseUrl: "https://verification.didit.me" }),
+      buildIntegrationHealthMock(),
     );
 
     await expect(service.verifyId("https://storage.example/inexistente.jpg")).rejects.toThrow(

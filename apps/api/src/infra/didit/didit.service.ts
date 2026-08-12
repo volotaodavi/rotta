@@ -3,6 +3,11 @@ import { ConfigService } from "@nestjs/config";
 
 import type { DiditConfig } from "@/config/didit.config";
 
+import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
+
+/** Chave nos snapshots de `IntegrationHealthService` (Admin Rotta → `GET /health/integrations`). */
+export const DIDIT_INTEGRATION_NAME = "didit";
+
 export interface DiditIdVerificationResult {
   status: string;
   aprovado: boolean;
@@ -48,7 +53,10 @@ export class DiditService {
   private readonly logger = new Logger(DiditService.name);
   private readonly config: DiditConfig;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly integrationHealth: IntegrationHealthService,
+  ) {
     this.config = configService.get<DiditConfig>("didit")!;
   }
 
@@ -98,6 +106,10 @@ export class DiditService {
   /** Checagem em memória, sem I/O — roda ANTES de qualquer download de imagem, para nunca vazar um erro de rede confuso no lugar de "Didit não configurada". */
   private assertConfigured(): void {
     if (!this.config.apiKey) {
+      void this.integrationHealth.recordNotConfigured(
+        DIDIT_INTEGRATION_NAME,
+        "DIDIT_API_KEY ausente neste ambiente.",
+      );
       throw new ServiceUnavailableException(
         "Didit não configurada neste ambiente (DIDIT_API_KEY ausente).",
       );
@@ -106,6 +118,7 @@ export class DiditService {
 
   /** Só chamado a partir de métodos que já rodaram `assertConfigured` antes de qualquer download — `apiKey` garantidamente presente aqui. */
   private async post(path: string, form: FormData): Promise<Record<string, unknown>> {
+    const startedAt = Date.now();
     const response = await fetch(`${this.config.baseUrl}${path}`, {
       method: "POST",
       headers: { "x-api-key": this.config.apiKey! },
@@ -117,9 +130,14 @@ export class DiditService {
 
     if (!response.ok) {
       this.logger.warn(`Didit respondeu ${response.status} em ${path}: ${rawBody.slice(0, 300)}`);
+      void this.integrationHealth.recordFailure(
+        DIDIT_INTEGRATION_NAME,
+        `HTTP ${response.status} em ${path}.`,
+      );
       throw new Error(`Falha na verificação Didit (${path}): HTTP ${response.status}.`);
     }
 
+    void this.integrationHealth.recordSuccess(DIDIT_INTEGRATION_NAME, Date.now() - startedAt);
     return body;
   }
 
