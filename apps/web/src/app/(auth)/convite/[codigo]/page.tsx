@@ -2,7 +2,15 @@
 
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
-import { Button, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Button,
+  FormField,
+  Input,
+  PhoneInput,
+  Spinner,
+  Typography,
+  isCompleteBrazilianCellphone,
+} from "@rotta/ui/web";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { use, useState, type FormEvent } from "react";
@@ -54,6 +62,12 @@ export default function ResgatarConvitePage({
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setErrorMessage(null);
+
+    if (!isCompleteBrazilianCellphone(telefone)) {
+      setErrorMessage("Telefone incompleto — digite o DDD e os 9 dígitos do celular.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await redeemInvite({ codigo, nome, email, telefone, cpf, senha, aceiteTermos: true });
@@ -108,8 +122,8 @@ export default function ResgatarConvitePage({
             onChange={(event) => setEmail(event.target.value)}
           />
         </FormField>
-        <FormField label="Telefone" isRequired>
-          <Input required value={telefone} onChange={(event) => setTelefone(event.target.value)} />
+        <FormField label="Telefone" isRequired helperText="Só DDD + celular, ex. (11) 98765-4321">
+          <PhoneInput required value={telefone} onValueChange={setTelefone} />
         </FormField>
         <FormField label="CPF" isRequired>
           <Input required value={cpf} onChange={(event) => setCpf(event.target.value)} />

@@ -1,14 +1,13 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Button, Card, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
+import { Button, Card, FormField, Input, PhoneInput, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState, type FormEvent } from "react";
 
 import type { UpdateCompanyInput } from "@rotta/api-client";
 
 import { useCompany, useUpdateCompany } from "@/features/companies/hooks/use-companies";
-
 
 type FormState = UpdateCompanyInput;
 
@@ -100,11 +99,15 @@ export default function EditarEmpresaPage({
                 onChange={(event) => updateField("email", event.target.value)}
               />
             </FormField>
-            <FormField label="Telefone" isRequired>
-              <Input
+            <FormField
+              label="Telefone"
+              isRequired
+              helperText="Só DDD + celular, ex. (11) 98765-4321"
+            >
+              <PhoneInput
                 required
-                value={form.telefone}
-                onChange={(event) => updateField("telefone", event.target.value)}
+                value={form.telefone ?? ""}
+                onValueChange={(digits) => updateField("telefone", digits)}
               />
             </FormField>
             <FormField label="WhatsApp">

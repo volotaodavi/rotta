@@ -1,7 +1,16 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
+import {
+  Button,
+  Card,
+  FormField,
+  Input,
+  PhoneInput,
+  Select,
+  Typography,
+  isCompleteBrazilianCellphone,
+} from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -66,6 +75,22 @@ export default function NovaEmpresaPage(): JSX.Element {
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setErrorMessage(null);
+
+    if (!isCompleteBrazilianCellphone(form.telefone)) {
+      setErrorMessage("Telefone incompleto — digite o DDD e os 9 dígitos do celular.");
+      return;
+    }
+    if (!isCompleteBrazilianCellphone(form.administrador.telefone)) {
+      setErrorMessage(
+        "Telefone do administrador incompleto — digite o DDD e os 9 dígitos do celular.",
+      );
+      return;
+    }
+    if (form.whatsapp && !isCompleteBrazilianCellphone(form.whatsapp)) {
+      setErrorMessage("WhatsApp incompleto — digite o DDD e os 9 dígitos do celular.");
+      return;
+    }
+
     try {
       const created = await createCompany.mutateAsync(form);
       router.push(`/empresas/${created.id}`);
@@ -126,17 +151,21 @@ export default function NovaEmpresaPage(): JSX.Element {
                 onChange={(event) => updateField("email", event.target.value)}
               />
             </FormField>
-            <FormField label="Telefone" isRequired>
-              <Input
+            <FormField
+              label="Telefone"
+              isRequired
+              helperText="Só DDD + celular, ex. (11) 98765-4321"
+            >
+              <PhoneInput
                 required
                 value={form.telefone}
-                onChange={(event) => updateField("telefone", event.target.value)}
+                onValueChange={(digits) => updateField("telefone", digits)}
               />
             </FormField>
-            <FormField label="WhatsApp">
-              <Input
-                value={form.whatsapp}
-                onChange={(event) => updateField("whatsapp", event.target.value)}
+            <FormField label="WhatsApp" helperText="Só DDD + celular, ex. (11) 98765-4321">
+              <PhoneInput
+                value={form.whatsapp ?? ""}
+                onValueChange={(digits) => updateField("whatsapp", digits)}
               />
             </FormField>
           </Card.Body>
@@ -215,11 +244,15 @@ export default function NovaEmpresaPage(): JSX.Element {
                 onChange={(event) => updateAdminField("email", event.target.value)}
               />
             </FormField>
-            <FormField label="Telefone" isRequired>
-              <Input
+            <FormField
+              label="Telefone"
+              isRequired
+              helperText="Só DDD + celular, ex. (11) 98765-4321"
+            >
+              <PhoneInput
                 required
                 value={form.administrador.telefone}
-                onChange={(event) => updateAdminField("telefone", event.target.value)}
+                onValueChange={(digits) => updateAdminField("telefone", digits)}
               />
             </FormField>
             <FormField label="CPF" isRequired>

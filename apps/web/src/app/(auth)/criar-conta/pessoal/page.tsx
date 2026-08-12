@@ -3,7 +3,15 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { CheckCircle2 } from "@rotta/icons";
-import { Button, Card, FormField, Input, Typography } from "@rotta/ui/web";
+import {
+  Button,
+  Card,
+  FormField,
+  Input,
+  PhoneInput,
+  Typography,
+  isCompleteBrazilianCellphone,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -48,6 +56,12 @@ export default function CriarContaPessoalPage(): JSX.Element {
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setErrorMessage(null);
+
+    if (!isCompleteBrazilianCellphone(form.telefone)) {
+      setErrorMessage("Telefone incompleto — digite o DDD e os 9 dígitos do celular.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await registerPessoal(form);
@@ -116,11 +130,15 @@ export default function CriarContaPessoalPage(): JSX.Element {
                 onChange={(event) => updateField("email", event.target.value)}
               />
             </FormField>
-            <FormField label="Telefone" isRequired>
-              <Input
+            <FormField
+              label="Telefone"
+              isRequired
+              helperText="Só DDD + celular, ex. (11) 98765-4321"
+            >
+              <PhoneInput
                 required
                 value={form.telefone}
-                onChange={(event) => updateField("telefone", event.target.value)}
+                onValueChange={(digits) => updateField("telefone", digits)}
               />
             </FormField>
             <FormField label="CPF" isRequired>
