@@ -372,6 +372,74 @@ describe("RottaAiService", () => {
     });
   });
 
+  describe("analyzeDriverDocument (Frente F — EAR/Curso, mesma análise de formato/resolução)", () => {
+    const originalFetch = global.fetch;
+    afterEach(() => {
+      global.fetch = originalFetch;
+    });
+
+    function buildMinimalPng(largura: number, altura: number): Buffer {
+      const signature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      const length = Buffer.alloc(4);
+      length.writeUInt32BE(13, 0);
+      const width = Buffer.alloc(4);
+      width.writeUInt32BE(largura, 0);
+      const height = Buffer.alloc(4);
+      height.writeUInt32BE(altura, 0);
+      return Buffer.concat([signature, length, Buffer.from("IHDR"), width, height]);
+    }
+
+    function mockFetchOk(buffer: Buffer): void {
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        arrayBuffer: () =>
+          Promise.resolve(
+            buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength),
+          ),
+      });
+    }
+
+    it("qualidadeAdequada=true para um EAR em PNG acima da resolução mínima", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(1200, 900));
+
+      const resultado = await service.analyzeDriverDocument({
+        tipo: "EAR",
+        referenciaArquivo: "https://storage.example/ear.png",
+      });
+
+      expect(resultado.tipo).toBe("EAR");
+      expect(resultado.qualidadeAdequada).toBe(true);
+      expect(resultado.analiseCompleta).toBe(false);
+    });
+
+    it("qualidadeAdequada=false para um CURSO com resolução abaixo do mínimo legível", async () => {
+      const { service } = buildService();
+      mockFetchOk(buildMinimalPng(200, 150));
+
+      const resultado = await service.analyzeDriverDocument({
+        tipo: "CURSO",
+        referenciaArquivo: "https://storage.example/curso-pequeno.png",
+      });
+
+      expect(resultado.qualidadeAdequada).toBe(false);
+      expect(resultado.avisos.some((aviso) => aviso.includes("Resolução baixa"))).toBe(true);
+    });
+
+    it("lança BadGatewayException quando o download do arquivo falha", async () => {
+      const { service } = buildService();
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+
+      await expect(
+        service.analyzeDriverDocument({
+          tipo: "EAR",
+          referenciaArquivo: "https://storage.example/inexistente.png",
+        }),
+      ).rejects.toThrow(BadGatewayException);
+    });
+  });
+
   describe("suggestRouteOptimization (ROT-08, Frente D — Rotta Route AI real via OSRM)", () => {
     function buildStops() {
       return [

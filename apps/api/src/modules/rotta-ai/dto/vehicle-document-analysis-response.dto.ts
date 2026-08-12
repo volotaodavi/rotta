@@ -1,9 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger";
 
 /**
- * Resposta real de `RottaAiService.analyzeVehicleDocument` (Frente E) —
- * cobre APENAS formato e resolução da imagem (lidos direto dos bytes do
- * arquivo, `readImageMetadata`), não OCR de conteúdo nem detecção de
+ * Resposta real de `RottaAiService.analyzeVehicleDocument` (Frente E) e
+ * `analyzeDriverDocument` (Frente F, tipos EAR/CURSO — mesma análise,
+ * documento de pessoa em vez de veículo) — cobre APENAS formato e
+ * resolução da imagem (lidos direto dos bytes do arquivo,
+ * `readImageMetadata`), não OCR de conteúdo nem detecção de
  * adulteração/fraude. `analiseCompleta: false` é permanente até um
  * provedor de visão computacional/OCR ser contratado — ver o porquê no
  * doc comment do método em `RottaAiService`. Nunca tratar

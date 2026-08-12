@@ -13,7 +13,7 @@ import type { SchoolTransportEligibilityResponseDto } from "./dto/school-transpo
 import type { DriverDocumentRepository } from "./repositories/driver-document.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
-import type { RottaAiCheckType } from "@/modules/rotta-ai/dto/validate-document.dto";
+import type { DriverDocumentImageQualityCheckType } from "@/modules/rotta-ai/dto/analyze-driver-document.dto";
 
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -27,16 +27,29 @@ export interface RequestMeta {
 }
 
 /**
- * `DriverDocumentType` que a Rotta AI sabe checar hoje (Dossiê 28/
- * `RottaAiService.validateDocument`) — CNH é real (Didit); EAR/CURSO
- * são stub honesto (`NotImplementedException`). `ANTECEDENTES_CRIMINAIS`
+ * `DriverDocumentType` que a Rotta AI verifica de verdade hoje (CNH,
+ * via `RottaAiService.validateDocument` → Didit). `ANTECEDENTES_CRIMINAIS`
  * e `OUTRO` não têm check correspondente ainda — mesmo tratamento de
  * `VehicleDocumentType.OUTRO` em `VehiclesService`: análise pulada, o
  * upload nunca fica bloqueado esperando por um provedor que não existe
- * pra aquele tipo.
+ * pra aquele tipo. EAR/CURSO_TRANSPORTE_ESCOLAR vão por um caminho
+ * separado — ver `DRIVER_DOCUMENT_TYPE_TO_IMAGE_QUALITY_CHECK` abaixo.
  */
-const DRIVER_DOCUMENT_TYPE_TO_AI_CHECK: Partial<Record<DriverDocumentType, RottaAiCheckType>> = {
-  CNH: "CNH",
+const DRIVER_DOCUMENT_TYPE_WITH_DIDIT_CHECK = new Set<DriverDocumentType>(["CNH"]);
+
+/**
+ * EAR/Curso especializado (Frente F, Dossiê 28 `DRV-03`/`DRV-04`) — a
+ * Didit não cobre (catálogo dela é documento de identidade mundial, não
+ * certificado específico de trânsito brasileiro), então passam por
+ * `RottaAiService.analyzeDriverDocument` (só formato/resolução da
+ * imagem) em vez de `validateDocument`. Ver o porquê do mapeamento de
+ * status ser DIFERENTE do de CNH em `analyzeImageQualityDocument`
+ * abaixo — nunca reaproveitar a mesma lógica binária aprovado/reprovado
+ * de Didit aqui.
+ */
+const DRIVER_DOCUMENT_TYPE_TO_IMAGE_QUALITY_CHECK: Partial<
+  Record<DriverDocumentType, DriverDocumentImageQualityCheckType>
+> = {
   EAR: "EAR",
   CURSO_TRANSPORTE_ESCOLAR: "CURSO",
 };
@@ -204,26 +217,39 @@ export class DriversService {
 
   /**
    * Best-effort, nunca bloqueia o upload — mesmo padrão de
-   * `VehiclesService.analyzeDocumentWithRottaAi`. Reaproveita
-   * `RottaAiService.validateDocument` (já usado no cadastro de
-   * identidade do motorista) em vez de duplicar um método novo —
-   * `documentoTitularRole: Role.MOTORISTA` é sempre passado porque só
-   * motoristas têm `DriverDocument` do tipo CNH neste módulo hoje
-   * (monitores não dirigem, `Dossiê 13`).
+   * `VehiclesService.analyzeDocumentWithRottaAi`. Despacha por tipo:
+   * CNH (real, via Didit) segue um caminho, EAR/CURSO_TRANSPORTE_ESCOLAR
+   * (Frente F, só formato/resolução) seguem outro — nunca a mesma lógica
+   * binária aprovado/reprovado, ver `analyzeImageQualityDocument`.
    */
   private async analyzeDocumentWithRottaAi(
     documentId: string,
     tipo: DriverDocumentType,
     fileUrl: string,
   ) {
-    const checkType = DRIVER_DOCUMENT_TYPE_TO_AI_CHECK[tipo];
-    if (!checkType) {
-      return this.documentRepository.findById(documentId).then((doc) => doc!);
+    if (DRIVER_DOCUMENT_TYPE_WITH_DIDIT_CHECK.has(tipo)) {
+      return this.analyzeIdentityDocument(documentId, fileUrl);
     }
 
+    const imageQualityCheckType = DRIVER_DOCUMENT_TYPE_TO_IMAGE_QUALITY_CHECK[tipo];
+    if (!imageQualityCheckType) {
+      return this.documentRepository.findById(documentId).then((doc) => doc!);
+    }
+    return this.analyzeImageQualityDocument(documentId, imageQualityCheckType, fileUrl);
+  }
+
+  /**
+   * CNH — real via Didit (`RottaAiService.validateDocument`, já usado
+   * no cadastro de identidade do motorista). `documentoTitularRole:
+   * Role.MOTORISTA` sempre passado porque só motoristas têm
+   * `DriverDocument` do tipo CNH neste módulo hoje (monitores não
+   * dirigem, Dossiê 13). Binário: a Didit realmente verificou o
+   * conteúdo do documento, então `aprovado: true` justifica APROVADO.
+   */
+  private async analyzeIdentityDocument(documentId: string, fileUrl: string) {
     try {
       const resultado = await this.rottaAiService.validateDocument(
-        { tipo: checkType, referenciaArquivo: fileUrl },
+        { tipo: "CNH", referenciaArquivo: fileUrl },
         Role.MOTORISTA,
       );
       const status: DriverDocumentAiStatus = resultado.aprovado ? "APROVADO" : "REPROVADO";
@@ -234,6 +260,62 @@ export class DriversService {
       });
     } catch (error) {
       this.logger.warn(
+        `Rotta AI (Didit) indisponível para análise do documento ${documentId} — mantendo status pendente/indisponível.`,
+        error as Error,
+      );
+      return this.documentRepository.updateAiResult(documentId, {
+        rottaAiStatus: "INDISPONIVEL",
+        rottaAiAnalisadoEm: new Date(),
+        rottaAiObservacoes: "Integração com a Didit indisponível no momento do upload.",
+      });
+    }
+  }
+
+  /**
+   * EAR/Curso especializado (Frente F) — `RottaAiService.analyzeDriverDocument`
+   * só verifica formato/resolução da imagem, NUNCA o conteúdo (validade
+   * do registro EAR, conclusão do curso). Por isso o mapeamento é
+   * assimétrico, igual à mesma decisão em
+   * `VehiclesService.analyzeDocumentWithRottaAi` (Frente E):
+   * `qualidadeAdequada: false` é um defeito real e concreto (imagem
+   * ilegível/formato errado) → REPROVADO, bloqueia
+   * `computeSchoolTransportEligibility` corretamente (`NOT_ELIGIBLE`).
+   * `qualidadeAdequada: true` NÃO vira APROVADO nem PENDENTE — vira
+   * INDISPONIVEL, o mesmo status que este documento já tinha antes desta
+   * entrega. A diferença é deliberada: `computeSchoolTransportEligibility`
+   * trata `PENDENTE` como bloqueio permanente (`UNDER_REVIEW`, e não
+   * existe hoje uma tela de aprovação manual para tirar o documento
+   * dessse estado) — usar `PENDENTE` aqui prenderia todo motorista com
+   * EAR/curso "sem defeito óbvio" num limbo sem saída, uma regressão
+   * real do selo "Transportador Verificado" no Marketplace.
+   * `INDISPONIVEL` preserva o comportamento já existente (não bloqueia
+   * elegibilidade) enquanto ainda barra o caso que hoje passava batido:
+   * uma imagem manifestamente ilegível ou do formato errado.
+   */
+  private async analyzeImageQualityDocument(
+    documentId: string,
+    checkType: DriverDocumentImageQualityCheckType,
+    fileUrl: string,
+  ) {
+    try {
+      const resultado = await this.rottaAiService.analyzeDriverDocument({
+        tipo: checkType,
+        referenciaArquivo: fileUrl,
+      });
+      if (!resultado.qualidadeAdequada) {
+        return this.documentRepository.updateAiResult(documentId, {
+          rottaAiStatus: "REPROVADO",
+          rottaAiAnalisadoEm: new Date(),
+          rottaAiObservacoes: resultado.avisos.join(" "),
+        });
+      }
+      return this.documentRepository.updateAiResult(documentId, {
+        rottaAiStatus: "INDISPONIVEL",
+        rottaAiAnalisadoEm: new Date(),
+        rottaAiObservacoes: resultado.avisos.join(" "),
+      });
+    } catch (error) {
+      this.logger.warn(
         `Rotta AI indisponível para análise do documento ${documentId} — mantendo status pendente/indisponível.`,
         error as Error,
       );
@@ -241,7 +323,7 @@ export class DriversService {
         rottaAiStatus: "INDISPONIVEL",
         rottaAiAnalisadoEm: new Date(),
         rottaAiObservacoes:
-          "Integração com provedor de verificação de identidade/documentos ainda não disponível para este tipo.",
+          "Não foi possível baixar o arquivo para análise de qualidade de imagem.",
       });
     }
   }

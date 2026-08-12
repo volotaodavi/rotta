@@ -1,6 +1,7 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
 
+import { AnalyzeDriverDocumentDto } from "./dto/analyze-driver-document.dto";
 import { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
 import { RouteOptimizationResponseDto } from "./dto/route-optimization-response.dto";
@@ -38,6 +39,12 @@ export class RottaAiController {
   @ApiResponse({ status: 201, type: VehicleDocumentAnalysisResponseDto })
   analyzeVehicleDocument(@Body() dto: AnalyzeVehicleDocumentDto) {
     return this.rottaAiService.analyzeVehicleDocument(dto);
+  }
+
+  @Post("analyze-driver-document")
+  @ApiResponse({ status: 201, type: VehicleDocumentAnalysisResponseDto })
+  analyzeDriverDocument(@Body() dto: AnalyzeDriverDocumentDto) {
+    return this.rottaAiService.analyzeDriverDocument(dto);
   }
 
   @Post("analyze-school-address")

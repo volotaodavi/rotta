@@ -6,6 +6,7 @@ import {
   NotImplementedException,
 } from "@nestjs/common";
 
+import type { AnalyzeDriverDocumentDto } from "./dto/analyze-driver-document.dto";
 import type { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import type { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";
 import type { RouteOptimizationResponseDto } from "./dto/route-optimization-response.dto";
@@ -166,10 +167,48 @@ export class RottaAiService {
   async analyzeVehicleDocument(
     dto: AnalyzeVehicleDocumentDto,
   ): Promise<VehicleDocumentAnalysisResponseDto> {
-    const response = await fetch(dto.referenciaArquivo);
+    return { tipo: dto.tipo, ...(await this.analyzeImageQuality(dto.referenciaArquivo)) };
+  }
+
+  /**
+   * Qualificação do MOTORISTA que a Didit não cobre — EAR/Curso
+   * especializado (Frente F, Dossiê 28 `DRV-03`/`DRV-04`). Mesma análise
+   * de `analyzeVehicleDocument` (só formato/resolução da imagem, sem
+   * OCR/detecção de fraude — ver a ressalva completa lá), reaproveitada
+   * porque o problema é idêntico: nenhum provedor cobre certificado
+   * específico de trânsito brasileiro (a Didit só reconhece documento de
+   * identidade mundial).
+   *
+   * CUIDADO ao mapear o resultado em `DriversService`: NUNCA usar
+   * `qualidadeAdequada: true` para marcar `rottaAiStatus = APROVADO` —
+   * isso alimentaria `computeSchoolTransportEligibility` com uma
+   * aprovação que não verificou o conteúdo (validade do registro EAR/
+   * conclusão do curso), inflando indevidamente o selo "Transportador
+   * Verificado" do Marketplace. `qualidadeAdequada: false` (defeito
+   * real, verificado) é seguro para REPROVADO; `true` deve continuar
+   * `INDISPONIVEL` — mesmo comportamento de hoje (aguardando revisão
+   * humana ou um provedor real), só que agora com o defeito óbvio
+   * (ilegível/formato errado) efetivamente barrado.
+   */
+  async analyzeDriverDocument(
+    dto: AnalyzeDriverDocumentDto,
+  ): Promise<VehicleDocumentAnalysisResponseDto> {
+    return { tipo: dto.tipo, ...(await this.analyzeImageQuality(dto.referenciaArquivo)) };
+  }
+
+  /**
+   * Núcleo compartilhado de `analyzeVehicleDocument`/`analyzeDriverDocument`
+   * (Frentes E/F) — baixa o arquivo e aplica `readImageMetadata` +
+   * limiar de resolução mínima. Só formato/resolução, nunca conteúdo —
+   * ver a ressalva completa no doc comment de `analyzeVehicleDocument`.
+   */
+  private async analyzeImageQuality(
+    referenciaArquivo: string,
+  ): Promise<Omit<VehicleDocumentAnalysisResponseDto, "tipo">> {
+    const response = await fetch(referenciaArquivo);
     if (!response.ok) {
       throw new BadGatewayException(
-        `Não foi possível baixar o arquivo para análise (${dto.referenciaArquivo}): HTTP ${response.status}.`,
+        `Não foi possível baixar o arquivo para análise (${referenciaArquivo}): HTTP ${response.status}.`,
       );
     }
     const buffer = Buffer.from(await response.arrayBuffer());
@@ -199,7 +238,6 @@ export class RottaAiService {
     );
 
     return {
-      tipo: dto.tipo,
       formatoValido: metadata.formato !== null,
       formatoDetectado: metadata.formato,
       larguraPx: metadata.larguraPx,

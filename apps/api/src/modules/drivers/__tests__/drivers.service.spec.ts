@@ -101,6 +101,7 @@ describe("DriversService", () => {
     } as unknown as jest.Mocked<SupabaseStorageService>;
     rottaAiService = {
       validateDocument: jest.fn(),
+      analyzeDriverDocument: jest.fn(),
     } as unknown as jest.Mocked<RottaAiService>;
 
     service = new DriversService(
@@ -218,12 +219,12 @@ describe("DriversService", () => {
       ).rejects.toThrow(BadRequestException);
     });
 
-    it("marca INDISPONIVEL quando a Rotta AI está fora do ar (EAR/CURSO, stub honesto)", async () => {
+    it("marca INDISPONIVEL quando o download do arquivo falha (EAR/CURSO, Frente F)", async () => {
       documentRepository.create.mockResolvedValue(buildDocument({ tipo: "EAR" }));
       documentRepository.updateAiResult.mockResolvedValue(
         buildDocument({ tipo: "EAR", rottaAiStatus: "INDISPONIVEL" }),
       );
-      rottaAiService.validateDocument.mockRejectedValue(new Error("stub"));
+      rottaAiService.analyzeDriverDocument.mockRejectedValue(new Error("download falhou"));
 
       const result = await service.uploadDocument(
         "driver-1",
@@ -233,10 +234,81 @@ describe("DriversService", () => {
         {},
       );
 
-      expect(rottaAiService.validateDocument).toHaveBeenCalledWith(
-        { tipo: "EAR", referenciaArquivo: expect.any(String) },
-        Role.MOTORISTA,
+      expect(rottaAiService.analyzeDriverDocument).toHaveBeenCalledWith({
+        tipo: "EAR",
+        referenciaArquivo: expect.any(String),
+      });
+      expect(rottaAiService.validateDocument).not.toHaveBeenCalled();
+      expect(documentRepository.updateAiResult).toHaveBeenCalledWith(
+        "document-1",
+        expect.objectContaining({ rottaAiStatus: "INDISPONIVEL" }),
       );
+      expect(result.rottaAiStatus).toBe("INDISPONIVEL");
+    });
+
+    it("marca REPROVADO quando o EAR/CURSO tem defeito real de imagem (Frente F, qualidadeAdequada=false)", async () => {
+      documentRepository.create.mockResolvedValue(buildDocument({ tipo: "EAR" }));
+      documentRepository.updateAiResult.mockResolvedValue(
+        buildDocument({ tipo: "EAR", rottaAiStatus: "REPROVADO" }),
+      );
+      rottaAiService.analyzeDriverDocument.mockResolvedValue({
+        tipo: "EAR",
+        formatoValido: true,
+        formatoDetectado: "jpeg",
+        larguraPx: 100,
+        alturaPx: 80,
+        qualidadeAdequada: false,
+        tamanhoBytes: 2_000,
+        avisos: ["Resolução baixa (100x80px)."],
+        analiseCompleta: false,
+      });
+
+      const result = await service.uploadDocument(
+        "driver-1",
+        { tipo: "EAR" } as never,
+        buildFile(),
+        motoristaActor,
+        {},
+      );
+
+      expect(documentRepository.updateAiResult).toHaveBeenCalledWith(
+        "document-1",
+        expect.objectContaining({ rottaAiStatus: "REPROVADO" }),
+      );
+      expect(result.rottaAiStatus).toBe("REPROVADO");
+    });
+
+    it("marca INDISPONIVEL (nunca APROVADO/PENDENTE) quando o EAR/CURSO tem qualidade de imagem OK (Frente F) — conteúdo não verificado, e PENDENTE prenderia a elegibilidade escolar num limbo sem saída", async () => {
+      documentRepository.create.mockResolvedValue(
+        buildDocument({ tipo: "CURSO_TRANSPORTE_ESCOLAR" }),
+      );
+      documentRepository.updateAiResult.mockResolvedValue(
+        buildDocument({ tipo: "CURSO_TRANSPORTE_ESCOLAR", rottaAiStatus: "INDISPONIVEL" }),
+      );
+      rottaAiService.analyzeDriverDocument.mockResolvedValue({
+        tipo: "CURSO",
+        formatoValido: true,
+        formatoDetectado: "png",
+        larguraPx: 1200,
+        alturaPx: 900,
+        qualidadeAdequada: true,
+        tamanhoBytes: 50_000,
+        avisos: ["Esta análise cobre apenas formato e resolução da imagem."],
+        analiseCompleta: false,
+      });
+
+      const result = await service.uploadDocument(
+        "driver-1",
+        { tipo: "CURSO_TRANSPORTE_ESCOLAR" } as never,
+        buildFile(),
+        motoristaActor,
+        {},
+      );
+
+      expect(rottaAiService.analyzeDriverDocument).toHaveBeenCalledWith({
+        tipo: "CURSO",
+        referenciaArquivo: expect.any(String),
+      });
       expect(documentRepository.updateAiResult).toHaveBeenCalledWith(
         "document-1",
         expect.objectContaining({ rottaAiStatus: "INDISPONIVEL" }),
