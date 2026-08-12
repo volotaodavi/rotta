@@ -16,6 +16,16 @@ export function isValidBrazilianPhone(value: string): boolean {
     digits = digits.slice(2);
   }
 
+  // Prefixo de tronco "0" opcional antes do DDD — formato antigo
+  // ("0xx" + DDD, ex. discagem interurbana) que muita gente ainda
+  // digita por hábito: "(011) 98765-4321"/"011991234567". Sem
+  // ambiguidade: nenhum DDD real começa em "0", então um número de
+  // 11/12 dígitos começando em "0" nunca seria válido sem remover esse
+  // prefixo primeiro.
+  if ((digits.length === 11 || digits.length === 12) && digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
   if (digits.length === 11) {
     // Celular: DDD (11-99) + 9 (nono dígito) + 8 dígitos.
     return /^[1-9]{2}9\d{8}$/.test(digits);
