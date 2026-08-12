@@ -27,26 +27,37 @@ export type {
 } from "../types";
 
 /**
- * Tiles RASTER puros do OpenStreetMap (tile.openstreetmap.org) — troca
- * o estilo VETORIAL `liberty` do OpenFreeMap (tiles.openfreemap.org),
- * que ficava com a tela branca: um estilo vetorial depende de VÁRIOS
- * fetches extras (o próprio `style.json`, sprite, glyphs) além dos
- * tiles em si — se qualquer um desses domínios estiver bloqueado/fora
- * do ar, o MapLibre não desenha nada e não existe nenhum sinal visível
- * disso fora do console (`map.on("error", ...)` abaixo). Um estilo
- * raster inline como este só depende de UM tipo de requisição (a
- * imagem do tile), então é muito mais resiliente como padrão —
- * inclusive nesta sandbox, onde `openfreemap.org` responde mas outras
- * chamadas dependentes podem não completar a tempo.
+ * Tiles RASTER com dados do OpenStreetMap, servidos pela CDN da CARTO
+ * (`basemaps.cartocdn.com`, estilo "Voyager") — NÃO usa mais
+ * `tile.openstreetmap.org` direto: hotlinking de app de produção contra
+ * esse host viola a Tile Usage Policy da OSM Foundation
+ * (operations.osmfoundation.org/policies/tiles) e passou a ser
+ * bloqueado por lá (`HTTP 200` com header `x-blocked: Access denied`,
+ * sem nenhum erro visível — o mapa só fica em branco). A CARTO publica
+ * a mesma base de dados do OSM como CDN gratuita, sem token, feita
+ * exatamente para uso direto de app (troca aqui feita depois de
+ * confirmar via `curl` que `tile.openstreetmap.org` está bloqueado e
+ * `basemaps.cartocdn.com` responde `200 image/png` normalmente).
+ * `attribution` inclui os dois créditos exigidos (OSM + CARTO).
+ *
+ * Antes desta troca, o padrão era um estilo VETORIAL `liberty` do
+ * OpenFreeMap (tiles.openfreemap.org), que ficava com a tela branca:
+ * um estilo vetorial depende de VÁRIOS fetches extras (o próprio
+ * `style.json`, sprite, glyphs) além dos tiles em si — se qualquer um
+ * desses domínios estiver bloqueado/fora do ar, o MapLibre não desenha
+ * nada e não existe nenhum sinal visível disso fora do console
+ * (`map.on("error", ...)` abaixo). Um estilo raster inline como este só
+ * depende de UM tipo de requisição (a imagem do tile), então é muito
+ * mais resiliente como padrão.
  */
 const OSM_RASTER_STYLE: StyleSpecification = {
   version: 8,
   sources: {
     "osm-raster": {
       type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
       tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors",
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
     },
   },
   layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster" }],

@@ -16,23 +16,24 @@ import type { Feature, LineString } from "geojson";
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
 /**
- * Tiles RASTER puros do OpenStreetMap (tile.openstreetmap.org) — troca
- * o estilo VETORIAL `liberty` do OpenFreeMap (ver nota equivalente e
- * mais detalhada em `../web/index.tsx`: um estilo vetorial depende de
- * vários fetches extras — style.json, sprite, glyphs — que podem falhar
- * silenciosamente e deixar o mapa em branco; um raster puro só depende
- * da imagem do tile em si). `mapStyle` aceita `string | object`
- * (`MapView` do `@maplibre/maplibre-react-native`), então o mesmo
- * objeto de estilo inline funciona aqui igual à web.
+ * Tiles RASTER com dados do OpenStreetMap, servidos pela CDN da CARTO
+ * (`basemaps.cartocdn.com`, estilo "Voyager") — NÃO usa mais
+ * `tile.openstreetmap.org` direto (ver nota completa em
+ * `../web/index.tsx`: hotlinking de app de produção contra esse host
+ * viola a Tile Usage Policy da OSM Foundation e passou a ser bloqueado
+ * por lá, sem erro visível — o mapa só fica em branco). `mapStyle`
+ * aceita `string | object` (`MapView` do
+ * `@maplibre/maplibre-react-native`), então o mesmo objeto de estilo
+ * inline funciona aqui igual à web.
  */
 const OSM_RASTER_STYLE = {
   version: 8,
   sources: {
     "osm-raster": {
       type: "raster",
-      tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
       tileSize: 256,
-      attribution: "© OpenStreetMap contributors",
+      attribution: "© OpenStreetMap contributors © CARTO",
     },
   },
   layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster" }],
