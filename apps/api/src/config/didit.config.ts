@@ -3,6 +3,8 @@ import { registerAs } from "@nestjs/config";
 export interface DiditConfig {
   apiKey: string | undefined;
   baseUrl: string;
+  /** Segredo do destino de webhook (`secret_shared_key`, Business Console → API & Webhooks → Add destination). Ver `didit-webhook.guard.ts`. */
+  webhookSecret: string | undefined;
 }
 
 const DEFAULT_BASE_URL = "https://verification.didit.me";
@@ -21,8 +23,15 @@ const DEFAULT_BASE_URL = "https://verification.didit.me";
  * precisar criar sessão/workflow, ideal para o fluxo da Rotta onde o
  * app já fez upload do arquivo para o Supabase Storage e só precisa
  * validar o que já foi enviado.
+ *
+ * `webhookSecret`: a Didit exige pelo menos um destino de webhook
+ * cadastrado para liberar a aplicação no Business Console, mesmo quando
+ * o fluxo de verificação usado é o standalone (síncrono, sem sessão) —
+ * ver `didit-webhook.guard.ts`/`didit-webhook.controller.ts` para o
+ * endpoint real que recebe esses eventos.
  */
 export default registerAs("didit", (): DiditConfig => ({
   apiKey: process.env.DIDIT_API_KEY || undefined,
   baseUrl: process.env.DIDIT_BASE_URL || DEFAULT_BASE_URL,
+  webhookSecret: process.env.DIDIT_WEBHOOK_SECRET || undefined,
 }));

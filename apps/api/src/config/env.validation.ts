@@ -144,6 +144,11 @@ export const envSchema = z.object({
   // nunca finge um resultado de verificação.
   DIDIT_API_KEY: z.string().optional(),
   DIDIT_BASE_URL: z.string().url().optional(),
+  // Segredo do destino de webhook (Business Console → API & Webhooks →
+  // Add destination → "secret_shared_key", mostrado só na criação).
+  // Opcional: sem ela, `DiditWebhookGuard` recusa toda entrega com um
+  // erro claro em vez de aceitar sem verificar assinatura.
+  DIDIT_WEBHOOK_SECRET: z.string().optional(),
 
   // Lytex (lytex.com.br) — provedora de pagamento parceira da Rotta Pay
   // (Dossiê 26). Opcional: sem LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET,
