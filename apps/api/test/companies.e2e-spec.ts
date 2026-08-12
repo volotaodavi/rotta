@@ -8,7 +8,24 @@ import request from "supertest";
 import { signTestToken } from "./jwt-test.helper";
 
 import { AppModule } from "@/app.module";
+import { ReceitaFederalService } from "@/infra/receita-federal/receita-federal.service";
 import { Role } from "@/shared/enums";
+
+/**
+ * `ReceitaFederalService` real bateria a BrasilAPI de verdade (Frente
+ * B) — os CNPJs fixos/aleatórios usados nestes testes não correspondem
+ * a empresas reais cadastradas, então a busca sempre devolveria 404 e
+ * `CompaniesService.create` bloquearia o cadastro. Mesmo padrão já
+ * usado em `geo.e2e-spec.ts` pra `GeoEngineService`/`QstashPublisherService`:
+ * simula "serviço indisponível" (erro genérico, não
+ * `NotFoundException`) — cai no caminho de degradação graciosa e o
+ * cadastro segue com os dados que o teste já envia, sem depender de
+ * rede externa nem do conteúdo real da Receita Federal.
+ */
+const fakeReceitaFederal: Pick<ReceitaFederalService, "lookupCnpj" | "isAtiva"> = {
+  lookupCnpj: jest.fn().mockRejectedValue(new Error("Receita Federal desligada nos testes e2e")),
+  isAtiva: jest.fn(),
+};
 
 /**
  * E2E do módulo Empresas (Dossiê 16) — sobe a aplicação Nest completa
@@ -48,7 +65,10 @@ describe("Companies (e2e)", () => {
   });
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+      .overrideProvider(ReceitaFederalService)
+      .useValue(fakeReceitaFederal)
+      .compile();
     app = moduleRef.createNestApplication();
     app.setGlobalPrefix("v1");
     app.useGlobalPipes(

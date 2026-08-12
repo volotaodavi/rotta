@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, Logger, NotFoundException } from "@nestjs/common";
 import { CompanyStatus, CompanyType } from "@prisma/client";
 
-
 import { CompaniesService } from "../companies.service";
 
 import type { CreateCompanyDto } from "../dto/create-company.dto";
@@ -10,6 +9,7 @@ import type { CompanyRepository, CompanyWithPlan } from "../repositories/company
 import type { PlanRepository } from "../repositories/plan.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { PrismaService } from "@/infra/database/prisma.service";
+import type { ReceitaFederalService } from "@/infra/receita-federal/receita-federal.service";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { DashboardService } from "@/modules/dashboard/dashboard.service";
@@ -103,6 +103,7 @@ describe("CompaniesService", () => {
   let prisma: jest.Mocked<PrismaService>;
   let vehiclesService: jest.Mocked<VehiclesService>;
   let dashboardService: jest.Mocked<DashboardService>;
+  let receitaFederalService: jest.Mocked<ReceitaFederalService>;
 
   beforeEach(() => {
     companyRepository = {
@@ -138,6 +139,10 @@ describe("CompaniesService", () => {
     dashboardService = {
       getCompanyDashboardById: jest.fn(),
     } as unknown as jest.Mocked<DashboardService>;
+    receitaFederalService = {
+      lookupCnpj: jest.fn(),
+      isAtiva: jest.fn(),
+    } as unknown as jest.Mocked<ReceitaFederalService>;
 
     service = new CompaniesService(
       companyRepository,
@@ -149,11 +154,18 @@ describe("CompaniesService", () => {
       prisma,
       vehiclesService,
       dashboardService,
+      receitaFederalService,
     );
 
     planRepository.findByCode.mockResolvedValue(STARTER_PLAN);
     companyRepository.findByCpfCnpj.mockResolvedValue(null);
     usersService.assertNoDuplicateIdentity.mockResolvedValue(undefined);
+    // Indisponibilidade "genérica" por padrão (não `NotFoundException`) —
+    // cai no caminho de degradação graciosa (`resolveDadosCadastrais`),
+    // preservando os dados do `dto` como sempre foi, pra não quebrar os
+    // testes de `create` que já existiam antes da Receita Federal entrar
+    // em cena. Os testes da Frente B (abaixo) sobrescrevem isso.
+    receitaFederalService.lookupCnpj.mockRejectedValue(new Error("BrasilAPI indisponível"));
   });
 
   describe("create", () => {
@@ -234,6 +246,143 @@ describe("CompaniesService", () => {
       auditLogService.record.mockRejectedValue(new Error("falha de rede"));
 
       await expect(service.create(buildCreateDto(), adminActor, {})).resolves.toBeDefined();
+    });
+
+    describe("confirmação de CNPJ na Receita Federal (Frente B)", () => {
+      const receitaAtiva = {
+        cnpj: "11222333000181",
+        razaoSocial: "TRANSPORTES ROTTA LTDA (RECEITA FEDERAL)",
+        nomeFantasia: "ROTTA (RECEITA FEDERAL)",
+        situacaoCadastral: "ATIVA",
+        cep: "01310200",
+        endereco: "Rua da Receita Federal",
+        numero: "500",
+        complemento: "Sala 9",
+        bairro: "Bairro da Receita",
+        cidade: "São Paulo",
+        estado: "SP",
+      };
+
+      it("sobrescreve razão social e endereço com os dados da Receita Federal — nunca os que o cliente enviou", async () => {
+        receitaFederalService.lookupCnpj.mockResolvedValue(receitaAtiva);
+        receitaFederalService.isAtiva.mockReturnValue(true);
+        companyRepository.create.mockResolvedValue(buildCompany());
+        usersService.createUserWithPassword.mockResolvedValue({
+          id: "user-1",
+          nome: "Ana Souza",
+          email: "ana@rottatransportes.com.br",
+          telefone: "11912345678",
+          cpf: "52998224725",
+          passwordHash: "hash",
+          status: "ATIVO",
+          avatarUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+        });
+
+        const dto = buildCreateDto({
+          nomeFantasia: "Nome que o cliente escolheu",
+          razaoSocial: "Razão social que o cliente tentou mandar",
+          endereco: "Endereço que o cliente tentou mandar",
+        });
+        await service.create(dto, adminActor, {});
+
+        expect(receitaFederalService.lookupCnpj).toHaveBeenCalledWith("11222333000181");
+        expect(companyRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({
+            razaoSocial: receitaAtiva.razaoSocial,
+            endereco: receitaAtiva.endereco,
+            numero: receitaAtiva.numero,
+            bairro: receitaAtiva.bairro,
+            cidade: receitaAtiva.cidade,
+            estado: receitaAtiva.estado,
+            // nomeFantasia é o ÚNICO campo que continua vindo do cliente.
+            nomeFantasia: "Nome que o cliente escolheu",
+          }),
+          expect.anything(),
+        );
+      });
+
+      it("rejeita CNPJ com situação cadastral diferente de ATIVA", async () => {
+        receitaFederalService.lookupCnpj.mockResolvedValue({
+          ...receitaAtiva,
+          situacaoCadastral: "BAIXADA",
+        });
+        receitaFederalService.isAtiva.mockReturnValue(false);
+
+        await expect(service.create(buildCreateDto(), adminActor, {})).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(companyRepository.create).not.toHaveBeenCalled();
+      });
+
+      it("rejeita CNPJ não encontrado na Receita Federal", async () => {
+        receitaFederalService.lookupCnpj.mockRejectedValue(
+          new NotFoundException("CNPJ não encontrado."),
+        );
+
+        await expect(service.create(buildCreateDto(), adminActor, {})).rejects.toThrow(
+          BadRequestException,
+        );
+      });
+
+      it("segue com os dados do cliente (sem travar) quando a BrasilAPI está indisponível", async () => {
+        receitaFederalService.lookupCnpj.mockRejectedValue(new Error("timeout"));
+        companyRepository.create.mockResolvedValue(buildCompany());
+        usersService.createUserWithPassword.mockResolvedValue({
+          id: "user-1",
+          nome: "Ana Souza",
+          email: "ana@rottatransportes.com.br",
+          telefone: "11912345678",
+          cpf: "52998224725",
+          passwordHash: "hash",
+          status: "ATIVO",
+          avatarUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+        });
+
+        const dto = buildCreateDto({ razaoSocial: "Razão social enviada pelo cliente" });
+        await expect(service.create(dto, adminActor, {})).resolves.toBeDefined();
+        expect(companyRepository.create).toHaveBeenCalledWith(
+          expect.objectContaining({ razaoSocial: "Razão social enviada pelo cliente" }),
+          expect.anything(),
+        );
+      });
+
+      it("nunca consulta a Receita Federal para motorista autônomo (CPF, não CNPJ)", async () => {
+        companyRepository.create.mockResolvedValue(buildCompany());
+        usersService.createUserWithPassword.mockResolvedValue({
+          id: "user-1",
+          nome: "João",
+          email: "joao@rotta.com.br",
+          telefone: "11911112222",
+          cpf: "11144477735",
+          passwordHash: "hash",
+          status: "ATIVO",
+          avatarUrl: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          deletedAt: null,
+        });
+
+        const dto = buildCreateDto({
+          tipo: CompanyType.AUTONOMO,
+          cpfCnpj: "11144477735",
+          administrador: {
+            nome: "João",
+            email: "joao@rotta.com.br",
+            telefone: "11911112222",
+            cpf: "11144477735",
+            senha: "SenhaForte123",
+          },
+        });
+        await service.create(dto, adminActor, {});
+
+        expect(receitaFederalService.lookupCnpj).not.toHaveBeenCalled();
+      });
     });
   });
 

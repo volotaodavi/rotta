@@ -6,7 +6,21 @@ import { PrismaClient } from "@prisma/client";
 import request from "supertest";
 
 import { AppModule } from "@/app.module";
+import { ReceitaFederalService } from "@/infra/receita-federal/receita-federal.service";
 import { PasswordResetNotifierService } from "@/modules/auth/password-reset-notifier.service";
+
+/**
+ * `ReceitaFederalService` real bateria a BrasilAPI de verdade (Frente
+ * B) com os CNPJs sintéticos de `randomValidCnpj()` — checksum válido,
+ * mas quase certamente nenhum corresponde a uma empresa real, então a
+ * busca devolveria 404 e bloquearia o cadastro. Mesmo padrão de
+ * `companies.e2e-spec.ts`: simula "serviço indisponível" (degradação
+ * graciosa), o cadastro segue com os dados que o teste já envia.
+ */
+const fakeReceitaFederal: Pick<ReceitaFederalService, "lookupCnpj" | "isAtiva"> = {
+  lookupCnpj: jest.fn().mockRejectedValue(new Error("Receita Federal desligada nos testes e2e")),
+  isAtiva: jest.fn(),
+};
 
 /**
  * E2E do módulo Auth (Dossiê 15) — sobe a aplicação Nest completa
@@ -60,6 +74,8 @@ describe("Auth (e2e)", () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PasswordResetNotifierService)
       .useValue({ notify: notifySpy })
+      .overrideProvider(ReceitaFederalService)
+      .useValue(fakeReceitaFederal)
       .compile();
 
     app = moduleRef.createNestApplication();

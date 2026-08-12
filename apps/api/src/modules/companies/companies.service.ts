@@ -9,7 +9,6 @@ import {
 } from "@nestjs/common";
 import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
 
-
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -40,6 +39,10 @@ import type {
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 
 import { PrismaService } from "@/infra/database/prisma.service";
+import {
+  type ReceitaFederalCompanyData,
+  ReceitaFederalService,
+} from "@/infra/receita-federal/receita-federal.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { DashboardService } from "@/modules/dashboard/dashboard.service";
@@ -102,6 +105,7 @@ export class CompaniesService implements OnModuleInit {
     private readonly prisma: PrismaService,
     private readonly vehiclesService: VehiclesService,
     private readonly dashboardService: DashboardService,
+    private readonly receitaFederalService: ReceitaFederalService,
   ) {}
 
   /**
@@ -154,12 +158,134 @@ export class CompaniesService implements OnModuleInit {
     }
   }
 
+  /**
+   * Prévia pública da consulta de CNPJ (`GET /companies/cnpj/:cnpj`) —
+   * usada pelo formulário de cadastro (`useCnpjLookup`, web/mobile via
+   * WebView) pra mostrar/travar os campos ANTES de enviar. Só um espelho
+   * de leitura de `ReceitaFederalService.lookupCnpj`; a confirmação que
+   * realmente vale é a que `resolveDadosCadastrais` faz de novo dentro
+   * de `create()` — nunca confia no que esta rota devolveu antes.
+   */
+  async previewCnpj(cnpjDigits: string): Promise<{
+    cnpj: string;
+    razaoSocial: string;
+    nomeFantasiaSugerido: string;
+    situacaoCadastral: string;
+    ativa: boolean;
+    cep: string;
+    endereco: string;
+    numero: string;
+    complemento: string | null;
+    bairro: string;
+    cidade: string;
+    estado: string;
+  }> {
+    const receita = await this.receitaFederalService.lookupCnpj(cnpjDigits);
+    return {
+      cnpj: receita.cnpj,
+      razaoSocial: receita.razaoSocial,
+      nomeFantasiaSugerido: receita.nomeFantasia,
+      situacaoCadastral: receita.situacaoCadastral,
+      ativa: this.receitaFederalService.isAtiva(receita),
+      cep: receita.cep,
+      endereco: receita.endereco,
+      numero: receita.numero,
+      complemento: receita.complemento,
+      bairro: receita.bairro,
+      cidade: receita.cidade,
+      estado: receita.estado,
+    };
+  }
+
   private async resolvePlanOrThrow(planCode: string) {
     const plan = await this.planRepository.findByCode(planCode);
     if (!plan) {
       throw new NotFoundException(`Plano "${planCode}" não encontrado.`);
     }
     return plan;
+  }
+
+  /**
+   * Confirma o CNPJ na Receita Federal (BrasilAPI, `ReceitaFederalService`
+   * — pedido do usuário: "fazer uma busca na Receita Federal, ver se
+   * está ativo e colocar no cadastro, não podendo alterar os dados").
+   * Razão social e endereço vêm DAQUI quando a consulta funciona — nunca
+   * do que o cliente enviou —, então não tem como burlar mandando outro
+   * endereço direto na requisição. `nomeFantasia` nunca é tocado aqui: é
+   * o único campo que o usuário pode escolher, mesmo com CNPJ confirmado.
+   *
+   * `AUTONOMO` usa CPF (pessoa física, sem CNPJ) — não há o que
+   * consultar, mantém os dados enviados como sempre foi.
+   *
+   * Situação cadastral diferente de ATIVA e CNPJ não encontrado BLOQUEIAM
+   * o cadastro (é exatamente o que foi pedido). Já uma falha de rede/
+   * timeout da BrasilAPI NÃO bloqueia — mesma disciplina de "nunca cair
+   * o cadastro por causa de um serviço de terceiro instável" do resto do
+   * projeto —, só loga o aviso e segue com os dados que o cliente enviou,
+   * sem a trava de imutabilidade (o cliente não tem culpa da BrasilAPI
+   * estar fora do ar).
+   */
+  private async resolveDadosCadastrais(
+    dto: CreateCompanyDto,
+    cpfCnpjDigits: string,
+  ): Promise<{
+    razaoSocial: string;
+    cep: string;
+    endereco: string;
+    numero: string;
+    complemento?: string;
+    bairro: string;
+    cidade: string;
+    estado: string;
+  }> {
+    const dadosDoCliente = {
+      razaoSocial: dto.razaoSocial,
+      cep: dto.cep,
+      endereco: dto.endereco,
+      numero: dto.numero,
+      complemento: dto.complemento,
+      bairro: dto.bairro,
+      cidade: dto.cidade,
+      estado: dto.estado,
+    };
+
+    if (dto.tipo === CompanyType.AUTONOMO) {
+      return dadosDoCliente;
+    }
+
+    let receita: ReceitaFederalCompanyData;
+    try {
+      receita = await this.receitaFederalService.lookupCnpj(cpfCnpjDigits);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw new BadRequestException(
+          "CNPJ não encontrado na Receita Federal. Confira o número informado.",
+        );
+      }
+      this.logger.warn(
+        `Consulta de CNPJ ${cpfCnpjDigits} na Receita Federal indisponível — seguindo com os dados enviados pelo cliente, sem confirmação. ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return dadosDoCliente;
+    }
+
+    if (!this.receitaFederalService.isAtiva(receita)) {
+      throw new BadRequestException(
+        `Este CNPJ está com situação cadastral "${receita.situacaoCadastral}" na Receita Federal — só é possível cadastrar empresas com situação ATIVA.`,
+      );
+    }
+
+    return {
+      razaoSocial: receita.razaoSocial,
+      cep: receita.cep || dadosDoCliente.cep,
+      endereco: receita.endereco || dadosDoCliente.endereco,
+      numero: receita.numero || dadosDoCliente.numero,
+      complemento: receita.complemento ?? dadosDoCliente.complemento,
+      bairro: receita.bairro || dadosDoCliente.bairro,
+      cidade: receita.cidade || dadosDoCliente.cidade,
+      estado: receita.estado || dadosDoCliente.estado,
+    };
   }
 
   async create(
@@ -191,6 +317,8 @@ export class CompaniesService implements OnModuleInit {
       throw new ConflictException("Já existe uma empresa cadastrada com este CPF/CNPJ.");
     }
 
+    const dadosCadastrais = await this.resolveDadosCadastrais(dto, cpfCnpjDigits);
+
     const adminEmail = dto.administrador.email.trim().toLowerCase();
     await this.usersService.assertNoDuplicateIdentity(
       adminEmail,
@@ -212,20 +340,24 @@ export class CompaniesService implements OnModuleInit {
     const { company, adminUser } = await this.prisma.runInTenantTransaction(async (tx) => {
       const createdCompany = await this.companyRepository.create(
         {
-          razaoSocial: dto.razaoSocial,
+          razaoSocial: dadosCadastrais.razaoSocial,
+          // `nomeFantasia` é o ÚNICO campo que o próprio usuário controla
+          // quando o CNPJ foi confirmado na Receita Federal (pedido
+          // explícito: "não podendo alterar os dados, apenas possível
+          // alterar o nome fantasia") — é o nome que aparece na Rotta.
           nomeFantasia: dto.nomeFantasia,
           cpfCnpj: cpfCnpjDigits,
           tipo: dto.tipo,
           email: dto.email.trim().toLowerCase(),
           telefone: onlyDigits(dto.telefone),
           whatsapp: dto.whatsapp ? onlyDigits(dto.whatsapp) : undefined,
-          cep: onlyDigits(dto.cep),
-          endereco: dto.endereco,
-          numero: dto.numero,
-          complemento: dto.complemento,
-          bairro: dto.bairro,
-          cidade: dto.cidade,
-          estado: dto.estado.toUpperCase(),
+          cep: onlyDigits(dadosCadastrais.cep),
+          endereco: dadosCadastrais.endereco,
+          numero: dadosCadastrais.numero,
+          complemento: dadosCadastrais.complemento,
+          bairro: dadosCadastrais.bairro,
+          cidade: dadosCadastrais.cidade,
+          estado: dadosCadastrais.estado.toUpperCase(),
           latitude: dto.latitude,
           longitude: dto.longitude,
           corPrimaria: dto.corPrimaria,

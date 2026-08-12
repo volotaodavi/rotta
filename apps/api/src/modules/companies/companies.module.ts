@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -12,6 +11,7 @@ import { PrismaCompanySettingRepository } from "./repositories/prisma-company-se
 import { PrismaCompanyRepository } from "./repositories/prisma-company.repository";
 import { PrismaPlanRepository } from "./repositories/prisma-plan.repository";
 
+import { ReceitaFederalModule } from "@/infra/receita-federal/receita-federal.module";
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
@@ -46,7 +46,14 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
  * pode ser importado aqui — ver nota em `marketplace.module.ts`).
  */
 @Module({
-  imports: [UsersModule, AuditModule, StorageModule, VehiclesModule, DashboardModule],
+  imports: [
+    UsersModule,
+    AuditModule,
+    StorageModule,
+    VehiclesModule,
+    DashboardModule,
+    ReceitaFederalModule,
+  ],
   controllers: [CompaniesController],
   providers: [
     CompaniesService,

@@ -123,8 +123,28 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
+/** Prévia de `GET /companies/cnpj/:cnpj` (Frente B — confirmação de CNPJ na Receita Federal). */
+export interface CnpjPreview {
+  cnpj: string;
+  razaoSocial: string;
+  nomeFantasiaSugerido: string;
+  situacaoCadastral: string;
+  ativa: boolean;
+  cep: string;
+  endereco: string;
+  numero: string;
+  complemento: string | null;
+  bairro: string;
+  cidade: string;
+  estado: string;
+}
+
 export function createCompaniesEndpoints(apiClient: ApiClient) {
   return {
+    /** Público — roda antes de existir conta, na tela de cadastro (`useCnpjLookup`). */
+    lookupCnpj: async (cnpj: string): Promise<CnpjPreview> =>
+      (await apiClient.request<ApiEnvelope<CnpjPreview>>(`/companies/cnpj/${cnpj}`)).data,
+
     create: async (input: CreateCompanyInput): Promise<Company> =>
       (
         await apiClient.request<ApiEnvelope<Company>>("/companies", {
