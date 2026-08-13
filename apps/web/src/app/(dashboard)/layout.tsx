@@ -3,7 +3,7 @@
 import { useAuth } from "@rotta/auth/web";
 import { Button, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
 import type { Route } from "next";
@@ -22,9 +22,10 @@ interface NavLink {
 }
 
 /**
- * Navegação da Área Profissional (Empresa/Gestor/Escola/Motorista/
- * Monitor) — a mesma lista que já existia antes desta entrega ser
- * role-aware.
+ * Navegação da Área Profissional de gestão (Empresa/Gestor/Escola) —
+ * Motorista/Monitor FUNCIONÁRIO nunca vê esta lista (Frente H, ver
+ * `EMPLOYEE_DRIVER_NAV` logo abaixo) nem o dono autônomo/MEI em "Modo
+ * Ação" (`ACTION_NAV`).
  */
 const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/empresa", label: "Minha Empresa" },
@@ -52,6 +53,27 @@ const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
 const ACTION_NAV: NavLink[] = [
   MINHA_ROTA_LINK,
   { href: "/rotta-pay", label: "Rotta Pay" },
+  { href: "/notificacoes", label: "Notificações" },
+  { href: "/chamados", label: "Chamados" },
+];
+
+/**
+ * Motorista/Monitor FUNCIONÁRIO de uma empresa (Frente H, pedido do
+ * usuário em produção — "readequação... eles só possuem uma função,
+ * não precisa acumular todas"). `role` é `"motorista"`/`"monitor"`
+ * (nunca `"empresa"` — esse é o dono autônomo/MEI, tratado por
+ * `ACTION_NAV` acima), então nunca gerencia Empresa/Equipe/Veículos/
+ * Escolas/Marketplace — só roda a rota. "Minha Rota" é a MESMA página
+ * usada pelo dono autônomo (`RoutesService.list`/`TripsService` já
+ * escopam por `motoristaPadraoId`/`monitorPadraoId` no backend
+ * independente de quem é dono da empresa) — nenhuma tela nova
+ * precisou ser criada, só apontada pra quem tinha sido esquecido.
+ * Sem "Rotta Pay" aqui: hoje é só um placeholder "Em breve"
+ * (`(dashboard)/rotta-pay/page.tsx`) pra qualquer papel — nada a
+ * mostrar ainda pro funcionário também.
+ */
+const EMPLOYEE_DRIVER_NAV: NavLink[] = [
+  MINHA_ROTA_LINK,
   { href: "/notificacoes", label: "Notificações" },
   { href: "/chamados", label: "Chamados" },
 ];
@@ -88,6 +110,7 @@ const RESPONSAVEL_NAV: NavLink[] = [
 export default function DashboardLayout({ children }: { children: ReactNode }): JSX.Element {
   const { status, user, logout } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -96,6 +119,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   }, [status, router]);
 
   const isResponsavel = user?.role === "responsavel";
+  const isEmployeeDriver = user?.role === "motorista" || user?.role === "monitor";
   const { mode, canToggle, setMode } = useAppMode(user);
 
   // Responsável não usa este fluxo (`SELF_VERIFICATION_ROLES` no
@@ -107,13 +131,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   });
   const isBlockedByIdentityVerification = identityVerification?.status === "REPROVADA";
 
-  // "Em viagem agora" (Frente G, "inove"): só busca quando faz sentido — elegível
-  // ao alternador, navegando em "Visão completa" (em "Modo Ação" já está na
-  // própria "Minha Rota", o aviso seria redundante) e sem nada bloqueando a tela.
-  // Chamado incondicionalmente (Regra dos Hooks) — quem controla o custo de
+  // "Em viagem agora" (Frente G, "inove"; Frente H estende pro
+  // funcionário): só busca quando faz sentido — elegível ao alternador
+  // OU motorista/monitor funcionário, fora da própria "Minha Rota"
+  // (lá o aviso seria redundante) e sem nada bloqueando a tela. Chamado
+  // incondicionalmente (Regra dos Hooks) — quem controla o custo de
   // rede é o `enabled` interno do hook, nunca pular a chamada em si.
+  const isOnMinhaRota = pathname?.startsWith("/minha-rota") ?? false;
   const activeTrip = useMyActiveTrip(
-    canToggle && mode !== "acao" && !isBlockedByIdentityVerification,
+    (canToggle || isEmployeeDriver) && !isOnMinhaRota && !isBlockedByIdentityVerification,
   );
 
   if (status !== "authenticated" || (shouldCheckIdentity && isIdentityLoading)) {
@@ -126,11 +152,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
 
   const navLinks = isResponsavel
     ? RESPONSAVEL_NAV
-    : canToggle && mode === "acao"
-      ? ACTION_NAV
-      : canToggle
-        ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
-        : PROFISSIONAL_NAV;
+    : isEmployeeDriver
+      ? EMPLOYEE_DRIVER_NAV
+      : canToggle && mode === "acao"
+        ? ACTION_NAV
+        : canToggle
+          ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
+          : PROFISSIONAL_NAV;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">

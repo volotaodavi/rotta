@@ -12,8 +12,8 @@ import type { LoginMascotMood } from "@/components/login-mascot";
 import type { ProfileOption } from "@rotta/api-client";
 
 import { LoginMascot } from "@/components/login-mascot";
+import { defaultRouteForRole } from "@/lib/default-route";
 import { getAdminUrl } from "@/lib/site-config";
-
 
 /**
  * Campo de senha com botão de mostrar/ocultar — recebe `id`/
@@ -100,11 +100,7 @@ export default function EntrarPage(): JSX.Element {
         setRequiresAdminPanel(true);
         return;
       }
-      // Responsável (Área Pessoal) tem sua própria home no painel web —
-      // "Meus Alunos" (`/alunos`), não "Minha Empresa" (Área
-      // Profissional). Antes desta entrega o Responsável nem tinha
-      // nenhuma rota web própria para onde ir.
-      router.replace(result.user.role === "responsavel" ? "/alunos" : "/empresa");
+      router.replace(defaultRouteForRole(result.user.role));
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao entrar.");
     } finally {

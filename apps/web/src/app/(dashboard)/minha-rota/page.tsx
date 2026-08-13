@@ -61,6 +61,14 @@ const TRIP_STATUS_BADGE: Record<
  * Motorista (nunca o Monitor) inicia/pausa/finaliza.
  */
 export default function MinhaRotaPage(): JSX.Element {
+  const { user } = useAuth();
+  // "Cadastre uma rota você mesmo" só faz sentido pra quem TEM esse
+  // botão (dono autônomo/MEI, `role === "empresa"`) — Motorista/Monitor
+  // funcionário (Frente H) nunca vê "Visão completa", então nunca vê
+  // essa segunda frase, só a orientação real pra ele: falar com a
+  // transportadora.
+  const podeCadastrarRota = user?.role === "empresa";
+
   const { data: rotasResult, isLoading } = useMinhasRotas();
   const rotas = useMemo(() => rotasResult?.items ?? [], [rotasResult]);
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -82,8 +90,10 @@ export default function MinhaRotaPage(): JSX.Element {
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-2">
         <Typography variant="title">Nenhuma rota atribuída</Typography>
         <Typography variant="bodySmall" color="muted">
-          Você ainda não está vinculado a nenhuma rota. Fale com sua transportadora — ou, se você é
-          o dono, cadastre uma rota em &ldquo;Rotas&rdquo; na Visão completa.
+          Você ainda não está vinculado a nenhuma rota. Fale com sua transportadora
+          {podeCadastrarRota
+            ? ` — ou, se você é o dono, cadastre uma rota em "Rotas" na Visão completa.`
+            : "."}
         </Typography>
       </div>
     );

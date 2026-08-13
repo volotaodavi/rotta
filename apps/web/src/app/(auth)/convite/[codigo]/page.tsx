@@ -17,6 +17,7 @@ import { use, useState, type FormEvent } from "react";
 
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
 import { authApi } from "@/lib/api-client";
+import { defaultRouteForRole } from "@/lib/default-route";
 
 const ROLE_LABEL: Record<string, string> = {
   gestor: "Gestor",
@@ -70,8 +71,19 @@ export default function ResgatarConvitePage({
 
     setIsSubmitting(true);
     try {
-      await redeemInvite({ codigo, nome, email, telefone, cpf, senha, aceiteTermos: true });
-      router.replace("/empresa");
+      const user = await redeemInvite({
+        codigo,
+        nome,
+        email,
+        telefone,
+        cpf,
+        senha,
+        aceiteTermos: true,
+      });
+      // Antes, ia sempre pra "/empresa" — quebrava um convite de
+      // Motorista/Monitor (ele nem enxerga esse item no menu, ver
+      // `defaultRouteForRole`). Mesma decisão do login normal.
+      router.replace(defaultRouteForRole(user.role));
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Erro inesperado ao completar o cadastro.",
