@@ -243,19 +243,16 @@ export class AuthService {
    * nenhum `companyId` informado, retorna a lista de perfis para seleção
    * em vez de tokens (ver `LoginDto`).
    *
-   * Admin Rotta (Dossiê 43 — MFA disponível, não mais obrigatório: pedido
-   * explícito do usuário em produção, "tire o MFA do admin, pois eu não
-   * usei o google authenticator para fazer" — travava o único admin fora
-   * por exigir um app que ele não tinha instalado). Senha correta só
-   * NÃO recebe tokens diretamente quando a conta já tem TOTP ativado
-   * (`totpHabilitado`, alguém que passou por `POST /auth/mfa/setup` +
-   * `POST /auth/mfa/enable` de propósito) — nesse caso ainda exige
-   * `mfaRequired` (`POST /auth/mfa/verify-login`), porque quem já
-   * configurou o segundo fator não deveria vê-lo silenciosamente
-   * desativado. Toda a infraestrutura de MFA (`setupMfa`/`enableMfa`/
-   * `disableMfa`) continua de pé — quem quiser proteger a própria conta
-   * de Admin Rotta com TOTP ainda pode, só deixou de ser obrigatório
-   * pra logar.
+   * Admin Rotta (Dossiê 43, atualizado depois — pedido explícito do
+   * usuário em produção: "desative a verificação de duas etapas para os
+   * admins... deixe o login livre, apenas com a senha"). Senha correta
+   * SEMPRE recebe tokens diretamente agora, mesmo pra uma conta com
+   * `totpHabilitado` de uma configuração de MFA anterior — o login
+   * nunca mais checa esse campo. `setupMfa`/`enableMfa`/`verifyMfaLogin`/
+   * `disableMfa` continuam existindo no código (não removidos), mas
+   * `verifyMfaLogin` ficou inalcançável: nada mais emite o
+   * `mfaChallengeToken` que ele exige, porque este método não devolve
+   * mais `mfaRequired` pra ninguém.
    */
   async login(
     dto: LoginDto,
@@ -310,12 +307,6 @@ export class AuthService {
     await this.usersService.resetLoginFailures(user.id);
 
     if (user.isAdminRotta) {
-      if (user.totpHabilitado) {
-        return {
-          mfaRequired: true,
-          mfaChallengeToken: await this.signMfaToken(user.id, "mfa_challenge"),
-        };
-      }
       return this.issueTokensWithLoginAudit(user, null, Role.ADMIN_ROTTA, user.id, meta);
     }
 

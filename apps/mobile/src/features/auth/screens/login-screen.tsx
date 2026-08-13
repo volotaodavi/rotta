@@ -1,8 +1,13 @@
-import { ApiError, isProfileSelectionResponse, type ProfileOption } from "@rotta/api-client";
+import {
+  ApiError,
+  isMfaChallengeResponse,
+  isMfaSetupRequiredResponse,
+  isProfileSelectionResponse,
+  type ProfileOption,
+} from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
-
 
 import { AuthButton, AuthScreen, AuthTextField } from "../components";
 
@@ -29,7 +34,7 @@ const ROLE_LABEL: Record<string, string> = {
  */
 export function LoginScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   const [identificador, setIdentificador] = useState("");
   const [senha, setSenha] = useState("");
@@ -46,15 +51,26 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
         setProfiles(result.profiles);
         return;
       }
-      // Dossiê 43: MFA obrigatório é exclusivo de Admin Rotta, que não
-      // usa o app mobile — se algum dia acontecer aqui, nenhum token foi
-      // emitido (nunca deixar a tela "presa" esperando o RootNavigator).
-      if ("mfaSetupRequired" in result || "mfaRequired" in result) {
+      // `login()` não devolve mais nenhuma das duas pra ninguém (login
+      // nunca mais exige MFA) — guard só por tipo, pra manter o
+      // TypeScript feliz sem afirmar `result.user` num branch que não
+      // tem `user`.
+      if (isMfaSetupRequiredResponse(result) || isMfaChallengeResponse(result)) {
+        return;
+      }
+      // Admin Rotta não tem tela própria neste app (`RootNavigator`) —
+      // `login()` acima já persistiu a sessão antes de chegarmos aqui
+      // (login não exige mais MFA pra nenhum papel, pedido do usuário
+      // em produção), então `logout()` desfaz na hora em vez de deixar
+      // um token de Admin Rotta válido guardado no aparelho.
+      if (result.user.role === "admin_rotta") {
+        await logout();
         setErrorMessage("Esta conta requer o painel administrativo da Rotta para entrar.");
         return;
       }
-      // Quando não há seleção de perfil nem MFA, o RootNavigator troca
-      // de tela sozinho assim que `status` vira "authenticated".
+      // Quando não há seleção de perfil nem conta de Admin Rotta, o
+      // RootNavigator troca de tela sozinho assim que `status` vira
+      // "authenticated".
     } catch (error) {
       setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao entrar.");
     } finally {

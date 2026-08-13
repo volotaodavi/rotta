@@ -49,17 +49,25 @@ export interface ProfileSelectionResponse {
 }
 
 /**
- * MFA obrigatório para Admin Rotta (Dossiê 43). Retornado em vez de
- * tokens quando a conta é `admin_rotta` e ainda NÃO tem TOTP ativado —
- * `mfaSetupToken` só serve para `authEndpoints.mfa.setup`/`mfa.enable`
- * (nunca autentica nenhuma outra rota).
+ * `login()` nunca mais devolve isto pra ninguém — pedido do usuário em
+ * produção: "desative a verificação de duas etapas para os admins...
+ * deixe o login livre, apenas com a senha". O tipo continua declarado
+ * (union de `LoginResponse` abaixo) só porque `authEndpoints.mfa.setup`/
+ * `mfa.enable` — o fluxo self-service de quem QUISER ativar TOTP na
+ * própria conta de Admin Rotta por conta própria, nunca mais exigido
+ * no login — ainda usam esse mesmo formato de token de curta duração.
  */
 export interface MfaSetupRequiredResponse {
   mfaSetupRequired: true;
   mfaSetupToken: string;
 }
 
-/** Retornado em vez de tokens quando a conta é `admin_rotta` e JÁ tem TOTP ativado — aguarda `authEndpoints.mfa.verifyLogin`. */
+/**
+ * `login()` nunca mais devolve isto pra ninguém, pelo mesmo motivo do
+ * comentário acima — nem pra uma conta com TOTP configurado de antes.
+ * `authEndpoints.mfa.verifyLogin` continua existindo, mas ficou
+ * inalcançável: nada mais emite o `mfaChallengeToken` que ele exige.
+ */
 export interface MfaChallengeResponse {
   mfaRequired: true;
   mfaChallengeToken: string;

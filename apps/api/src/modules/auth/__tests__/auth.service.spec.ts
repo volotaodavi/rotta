@@ -254,7 +254,7 @@ describe("AuthService", () => {
       expect(sessionRepository.create).toHaveBeenCalled();
     });
 
-    it("Admin Rotta COM MFA já ativado nunca recebe tokens direto — só mfaRequired (Dossiê 43)", async () => {
+    it("Admin Rotta COM MFA configurado de antes também recebe tokens direto — login nunca mais checa totpHabilitado (pedido do usuário em produção)", async () => {
       usersService.findByIdentifier.mockResolvedValue(
         buildUser({ isAdminRotta: true, totpHabilitado: true }),
       );
@@ -262,9 +262,8 @@ describe("AuthService", () => {
 
       const result = await service.login({ identificador: "x", senha: "y" }, {});
 
-      expect(result).toMatchObject({ mfaRequired: true });
-      expect("accessToken" in result).toBe(false);
-      expect(sessionRepository.create).not.toHaveBeenCalled();
+      expect("accessToken" in result).toBe(true);
+      expect(sessionRepository.create).toHaveBeenCalled();
     });
 
     it("rejeita usuário sem nenhum vínculo ativo", async () => {

@@ -46,7 +46,7 @@ interface AuthContextValue {
   registerAutonomo: (input: RegisterAutonomoInput) => Promise<MeResponse>;
   redeemInvite: (input: RedeemInviteInput) => Promise<MeResponse>;
   logout: () => Promise<void>;
-  /** MFA obrigatório para Admin Rotta (Dossiê 43) — Admin Rotta não usa o app mobile hoje (`RootNavigator` não tem tela para o papel), mas a interface fica paritária com `../web/auth-context.tsx` para não divergir os dois contratos. */
+  /** MFA de Admin Rotta (Dossiê 43) — nunca mais exigido no login (pedido do usuário em produção); Admin Rotta também não usa o app mobile (`RootNavigator` não tem tela para o papel), mas a interface fica paritária com `../web/auth-context.tsx` para não divergir os dois contratos. */
   mfaSetup: (mfaSetupToken: string) => Promise<MfaSetupResponse>;
   mfaEnable: (
     mfaSetupToken: string,
@@ -140,9 +140,11 @@ export function AuthProvider({
   const login = useCallback(
     async (input: LoginInput): Promise<LoginResponse> => {
       const result = await authApi.login(input);
-      // Dossiê 43: `mfaSetupRequired`/`mfaRequired` (Admin Rotta) nunca
-      // carregam `accessToken`/`refreshToken` — aplicar sessão nesses
-      // ramos gravaria `undefined` como se fosse um token válido.
+      // `mfaSetupRequired`/`mfaRequired` não carregam `accessToken`/
+      // `refreshToken` — o backend não emite mais nenhum dos dois pra
+      // ninguém (login nunca mais exige MFA), mas o guard continua
+      // aqui: aplicar sessão nesses ramos gravaria `undefined` como se
+      // fosse um token válido, caso esse contrato volte a existir.
       if (
         !isProfileSelectionResponse(result) &&
         !isMfaSetupRequiredResponse(result) &&

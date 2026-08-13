@@ -12,13 +12,18 @@ import { getWebUrl } from "@/lib/site-config";
 type Step = "credenciais" | "mfa-configurar" | "mfa-codigos-recuperacao" | "mfa-verificar";
 
 /**
- * Login do Admin Rotta (Dossiê 15, `AUTH-02` + Dossiê 43 — MFA
- * obrigatório) — mesma conta/API do restante da plataforma; o backend
- * rejeita quem não tiver `isAdminRotta`. A partir do Dossiê 43, senha
- * correta sozinha NUNCA basta para este papel: `login()` retorna
- * `mfaSetupRequired` (conta ainda sem TOTP — precisa configurar agora,
- * sem exceção) ou `mfaRequired` (conta já protegida — precisa do código
- * do app autenticador ou de um código de recuperação).
+ * Login do Admin Rotta (Dossiê 15, `AUTH-02`) — mesma conta/API do
+ * restante da plataforma; a tela de credenciais recusa quem não tiver
+ * `role === "admin_rotta"` (ver `handleCredenciaisSubmit` abaixo).
+ * Senha correta sozinha já basta — pedido do usuário em produção:
+ * "desative a verificação de duas etapas para os admins... deixe o
+ * login livre, apenas com a senha". `login()` não devolve mais
+ * `mfaSetupRequired`/`mfaRequired` pra ninguém, então os passos
+ * "mfa-configurar"/"mfa-codigos-recuperacao"/"mfa-verificar" abaixo
+ * ficaram inalcançáveis na prática — mantidos porque `POST
+ * /auth/mfa/setup/start`+`/auth/mfa/enable` continuam existindo pra
+ * quem QUISER proteger a própria conta com TOTP por conta própria
+ * (fora deste fluxo de login).
  */
 export default function EntrarPage(): JSX.Element {
   const router = useRouter();

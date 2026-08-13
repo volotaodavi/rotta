@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiError } from "@rotta/api-client";
+import { ApiError, isMfaChallengeResponse, isMfaSetupRequiredResponse } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Eye, EyeOff } from "@rotta/icons";
 import { Button, FormField, Input, Modal, Typography } from "@rotta/ui/web";
@@ -59,7 +59,7 @@ function SenhaField({
  */
 export default function EntrarPage(): JSX.Element {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
   const [identificador, setIdentificador] = useState("");
   const [senha, setSenha] = useState("");
   const [profiles, setProfiles] = useState<ProfileOption[] | null>(null);
@@ -67,9 +67,9 @@ export default function EntrarPage(): JSX.Element {
   // Pedido do usuário em produção: nenhum link/botão pro Painel
   // Administrativo deve ficar visível pra todo mundo — só aparece (como
   // pop-up) quando o backend confirma que o identificador digitado é de
-  // fato uma conta da equipe Rotta (MFA obrigatório, Dossiê 43), nunca
-  // antes disso. Antes havia também um link estático e permanente no
-  // fim da página, visível pra qualquer visitante — removido.
+  // fato uma conta da equipe Rotta, nunca antes disso. Antes havia
+  // também um link estático e permanente no fim da página, visível pra
+  // qualquer visitante — removido.
   const [requiresAdminPanel, setRequiresAdminPanel] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -94,10 +94,23 @@ export default function EntrarPage(): JSX.Element {
         setProfiles(result.profiles);
         return;
       }
-      // Dossiê 43: MFA obrigatório é exclusivo de Admin Rotta, que não
-      // usa este painel — se algum dia acontecer aqui, nenhum token foi
-      // emitido (nunca navegar como se tivesse logado).
-      if ("mfaSetupRequired" in result || "mfaRequired" in result) {
+      // `login()` não devolve mais nenhuma das duas pra ninguém (login
+      // nunca mais exige MFA) — guard só por tipo, pra manter o
+      // TypeScript feliz sem afirmar `result.user` num branch que não
+      // tem `user`.
+      if (isMfaSetupRequiredResponse(result) || isMfaChallengeResponse(result)) {
+        return;
+      }
+      // Admin Rotta não usa este painel — domínio/deploy isolados de
+      // propósito (Dossiê 22 §4.3). O backend não recusa a senha certa
+      // pra este papel (login() emite tokens pra qualquer conta válida,
+      // pedido do usuário em produção: "desative a verificação de duas
+      // etapas para os admins... deixe o login livre, apenas com a
+      // senha"), e `login()` acima já persistiu essa sessão antes de
+      // chegarmos aqui — `logout()` desfaz na hora, nunca deixa uma
+      // sessão de Admin Rotta válida dentro do Painel Web.
+      if (result.user.role === "admin_rotta") {
+        await logout();
         setRequiresAdminPanel(true);
         return;
       }
@@ -197,12 +210,11 @@ export default function EntrarPage(): JSX.Element {
 
       {/* Pop-up de saída pra quem é da equipe Rotta (Admin Rotta) —
           aparece SÓ depois que o backend confirma que o identificador
-          digitado é de fato uma conta da equipe (MFA obrigatório,
-          Dossiê 43), nunca antes, nunca pra quem não digitou esse
-          e-mail. Aponta pro app `apps/admin`, deploy e domínio isolados
-          por decisão de segurança (Dossiê 22 §4.3) — "integrar na
-          mesma área de entrar" é este pop-up, nunca fundir os dois
-          logins num só domínio/processo. */}
+          digitado é de fato uma conta da equipe, nunca antes, nunca pra
+          quem não digitou esse e-mail. Aponta pro app `apps/admin`,
+          deploy e domínio isolados por decisão de segurança (Dossiê 22
+          §4.3) — "integrar na mesma área de entrar" é este pop-up,
+          nunca fundir os dois logins num só domínio/processo. */}
       {requiresAdminPanel && (
         <Modal
           isOpen
