@@ -3,7 +3,7 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Eye, EyeOff } from "@rotta/icons";
-import { Button, FormField, Input, Typography } from "@rotta/ui/web";
+import { Button, FormField, Input, Modal, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type ComponentProps, type FormEvent } from "react";
@@ -64,11 +64,12 @@ export default function EntrarPage(): JSX.Element {
   const [senha, setSenha] = useState("");
   const [profiles, setProfiles] = useState<ProfileOption[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  // Distinto de `errorMessage`: quando a conta é da equipe Rotta (MFA
-  // obrigatório, Dossiê 43), o problema não é "senha errada" — é "você
-  // está no painel errado". Guardar como estado próprio, em vez de só
-  // um texto de erro, permite renderizar um link real de saída (não dá
-  // pra colocar um `<a>` dentro de uma `string`).
+  // Pedido do usuário em produção: nenhum link/botão pro Painel
+  // Administrativo deve ficar visível pra todo mundo — só aparece (como
+  // pop-up) quando o backend confirma que o identificador digitado é de
+  // fato uma conta da equipe Rotta (MFA obrigatório, Dossiê 43), nunca
+  // antes disso. Antes havia também um link estático e permanente no
+  // fim da página, visível pra qualquer visitante — removido.
   const [requiresAdminPanel, setRequiresAdminPanel] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -176,25 +177,10 @@ export default function EntrarPage(): JSX.Element {
           />
         </FormField>
 
-        {requiresAdminPanel ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3">
-            <Typography variant="bodySmall" color="danger">
-              Esta conta é da equipe Rotta e exige o Painel Administrativo (login com verificação em
-              duas etapas).
-            </Typography>
-            <a
-              href={`${getAdminUrl()}/entrar`}
-              className="text-sm font-semibold text-primary underline underline-offset-2"
-            >
-              Entrar no Painel Administrativo →
-            </a>
-          </div>
-        ) : (
-          errorMessage && (
-            <Typography variant="bodySmall" color="danger">
-              {errorMessage}
-            </Typography>
-          )
+        {errorMessage && (
+          <Typography variant="bodySmall" color="danger">
+            {errorMessage}
+          </Typography>
         )}
 
         <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>
@@ -209,18 +195,41 @@ export default function EntrarPage(): JSX.Element {
         </Link>
       </Typography>
 
-      {/* Link discreto de saída para quem é da equipe Rotta (Admin
-          Rotta) — não precisa errar a senha primeiro pra descobrir que
-          está no painel errado. Aponta pro app `apps/admin`, deploy e
-          domínio isolados por decisão de segurança (Dossiê 22 §4.3);
-          "integrar na mesma área de entrar" é este link, nunca fundir
-          os dois logins num só domínio/processo. */}
-      <Typography variant="bodySmall" color="muted" className="text-center">
-        É da equipe Rotta?{" "}
-        <a href={`${getAdminUrl()}/entrar`} className="font-semibold text-primary">
-          Entrar no Painel Administrativo
-        </a>
-      </Typography>
+      {/* Pop-up de saída pra quem é da equipe Rotta (Admin Rotta) —
+          aparece SÓ depois que o backend confirma que o identificador
+          digitado é de fato uma conta da equipe (MFA obrigatório,
+          Dossiê 43), nunca antes, nunca pra quem não digitou esse
+          e-mail. Aponta pro app `apps/admin`, deploy e domínio isolados
+          por decisão de segurança (Dossiê 22 §4.3) — "integrar na
+          mesma área de entrar" é este pop-up, nunca fundir os dois
+          logins num só domínio/processo. */}
+      {requiresAdminPanel && (
+        <Modal
+          isOpen
+          onClose={() => setRequiresAdminPanel(false)}
+          ariaLabel="Conta da equipe Rotta"
+        >
+          <Modal.Header onClose={() => setRequiresAdminPanel(false)}>
+            Conta da equipe Rotta
+          </Modal.Header>
+          <Modal.Body className="flex flex-col items-center gap-3 py-4 text-center">
+            <Typography variant="bodySmall" color="muted">
+              Esta conta é da equipe Rotta e exige o Painel Administrativo (login com verificação em
+              duas etapas).
+            </Typography>
+          </Modal.Body>
+          <Modal.Footer className="flex justify-center">
+            <Button
+              variant="primary"
+              onClick={() => {
+                window.location.href = `${getAdminUrl()}/entrar`;
+              }}
+            >
+              Entrar no Painel Administrativo
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      )}
     </div>
   );
 }
