@@ -2,16 +2,17 @@
 
 import { ApiError } from "@rotta/api-client";
 import { Check, MapPin } from "@rotta/icons";
-import { RottaMap } from "@rotta/maps/web";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 import type { CreateStudentInput, School, SchoolShift, StudentSex } from "@rotta/api-client";
 
 import { useSchoolsList } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useCreateStudent } from "@/features/students/hooks/use-students";
+import { useTracedRoute } from "@/features/students/hooks/use-traced-route";
 import { STUDENT_SEX_LABEL } from "@/features/students/labels";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 
@@ -34,6 +35,20 @@ const INITIAL_STATE: CreateStudentInput = {
   desembarqueCidade: "",
   desembarqueEstado: "",
 };
+
+/** Legenda curta da rota traçada (distância + tempo estimado, ambos calculados pelo OSRM — nunca inventados no front). */
+function formatRouteSummary(
+  distanciaMetros: number | null,
+  duracaoSegundos: number | null,
+): string {
+  if (distanciaMetros === null || duracaoSegundos === null) return "Rota traçada até a escola.";
+  const distancia =
+    distanciaMetros >= 1000
+      ? `${(distanciaMetros / 1000).toFixed(1)} km`
+      : `${Math.round(distanciaMetros)} m`;
+  const minutos = Math.max(1, Math.round(duracaoSegundos / 60));
+  return `Rota traçada até a escola: ${distancia}, cerca de ${minutos} min.`;
+}
 
 /**
  * Cadastro de Aluno (briefing "Marketplace" §"CADASTRO DO ALUNO") — o
@@ -61,6 +76,40 @@ export default function NovoAlunoPage(): JSX.Element {
 
   const embarqueCep = useCepLookup();
   const desembarqueCep = useCepLookup();
+
+  // Endereço de embarque, montado só quando os campos obrigatórios já
+  // foram preenchidos — `null` antes disso desativa a geocodificação
+  // (nunca busca um endereço pela metade). Pedido do usuário em
+  // produção: "clicando na escola correspondente ela já aparece no
+  // mapa (com um pino), onde ali ele vai ver a rota traçada".
+  const embarqueEnderecoCompleto = useMemo(() => {
+    const {
+      embarqueCep,
+      embarqueLogradouro,
+      embarqueNumero,
+      embarqueBairro,
+      embarqueCidade,
+      embarqueEstado,
+    } = form;
+    if (
+      !embarqueCep ||
+      !embarqueLogradouro ||
+      !embarqueNumero ||
+      !embarqueBairro ||
+      !embarqueCidade ||
+      !embarqueEstado
+    ) {
+      return null;
+    }
+    return `${embarqueLogradouro}, ${embarqueNumero}, ${embarqueBairro}, ${embarqueCidade}, ${embarqueEstado}, ${embarqueCep}`;
+  }, [form]);
+
+  const escolaDestino =
+    selectedSchool?.latitude && selectedSchool.longitude
+      ? { latitude: selectedSchool.latitude, longitude: selectedSchool.longitude }
+      : null;
+
+  const tracedRoute = useTracedRoute(embarqueEnderecoCompleto, escolaDestino);
 
   function updateField<K extends keyof CreateStudentInput>(
     key: K,
@@ -100,9 +149,22 @@ export default function NovoAlunoPage(): JSX.Element {
       setErrorMessage("Escolha a escola do aluno.");
       return;
     }
+    // Coordenada de embarque já geocodificada em segundo plano (pino +
+    // rota traçada no mapa acima) — reaproveitada aqui pra salvar de
+    // vez `embarqueLatitude`/`embarqueLongitude` (campos que já
+    // existiam no schema, mas nenhuma tela preenchia até agora). Nunca
+    // bloqueia o cadastro se a geocodificação ainda não terminou ou
+    // falhou — os campos continuam `undefined`, exatamente como antes.
+    const embarqueCoords = tracedRoute.origem
+      ? {
+          embarqueLatitude: tracedRoute.origem.latitude,
+          embarqueLongitude: tracedRoute.origem.longitude,
+        }
+      : {};
     const input: CreateStudentInput = mesmoEndereco
       ? {
           ...form,
+          ...embarqueCoords,
           desembarqueCep: form.embarqueCep,
           desembarqueLogradouro: form.embarqueLogradouro,
           desembarqueNumero: form.embarqueNumero,
@@ -110,8 +172,14 @@ export default function NovoAlunoPage(): JSX.Element {
           desembarqueBairro: form.embarqueBairro,
           desembarqueCidade: form.embarqueCidade,
           desembarqueEstado: form.embarqueEstado,
+          ...(tracedRoute.origem
+            ? {
+                desembarqueLatitude: tracedRoute.origem.latitude,
+                desembarqueLongitude: tracedRoute.origem.longitude,
+              }
+            : {}),
         }
-      : form;
+      : { ...form, ...embarqueCoords };
     try {
       const student = await createStudent.mutateAsync(input);
       router.replace(`/alunos/${student.id}`);
@@ -184,27 +252,46 @@ export default function NovoAlunoPage(): JSX.Element {
                     {/*
                       Pedido do usuário em produção: "clicando na escola
                       correspondente ela já aparece no mapa (com um
-                      pino)". `latitude`/`longitude` vêm do Geocoding AI
-                      Agent (Rotta Geo Platform) — nem toda escola
+                      pino), onde ali ele vai ver a rota traçada".
+                      `latitude`/`longitude` da escola vêm do Geocoding
+                      AI Agent (Rotta Geo Platform) — nem toda escola
                       recém-importada já tem coordenada confirmada, por
                       isso o aviso honesto em vez de um mapa vazio/errado
-                      quando faltam.
+                      quando faltam. O pino de embarque + a rota traçada
+                      (`useTracedRoute`, OSRM via Rotta Geo Engine) só
+                      aparecem depois que o endereço de embarque, mais
+                      abaixo no formulário, também estiver completo —
+                      até lá, o mapa mostra só o pino da escola.
                     */}
                     {selectedSchool.latitude && selectedSchool.longitude ? (
-                      <div style={{ height: 220 }} className="overflow-hidden rounded-lg">
+                      <div style={{ height: 260 }} className="overflow-hidden rounded-lg">
                         <RottaMap
-                          markers={[
-                            {
-                              id: selectedSchool.id,
-                              titulo: selectedSchool.nomeOficial,
-                              latitude: selectedSchool.latitude,
-                              longitude: selectedSchool.longitude,
-                            },
-                          ]}
-                          initialCenter={{
-                            latitude: selectedSchool.latitude,
-                            longitude: selectedSchool.longitude,
-                          }}
+                          markers={
+                            tracedRoute.origem
+                              ? ([
+                                  {
+                                    id: "embarque",
+                                    titulo: "Embarque do aluno",
+                                    latitude: tracedRoute.origem.latitude,
+                                    longitude: tracedRoute.origem.longitude,
+                                  },
+                                  {
+                                    id: selectedSchool.id,
+                                    titulo: selectedSchool.nomeOficial,
+                                    latitude: selectedSchool.latitude,
+                                    longitude: selectedSchool.longitude,
+                                  },
+                                ] satisfies RottaMapMarker[])
+                              : ([
+                                  {
+                                    id: selectedSchool.id,
+                                    titulo: selectedSchool.nomeOficial,
+                                    latitude: selectedSchool.latitude,
+                                    longitude: selectedSchool.longitude,
+                                  },
+                                ] satisfies RottaMapMarker[])
+                          }
+                          route={tracedRoute.route ?? undefined}
                           initialZoom={15}
                         />
                       </div>
@@ -216,6 +303,24 @@ export default function NovoAlunoPage(): JSX.Element {
                         </Typography>
                       </div>
                     )}
+                    {selectedSchool.latitude &&
+                    selectedSchool.longitude &&
+                    embarqueEnderecoCompleto ? (
+                      <Typography variant="caption" color="muted">
+                        {tracedRoute.isGeocoding || tracedRoute.isRouting
+                          ? "Buscando o trajeto até a escola…"
+                          : tracedRoute.geocodeFailed
+                            ? "Não foi possível localizar o endereço de embarque no mapa. O cadastro continua normalmente."
+                            : tracedRoute.routeFailed
+                              ? "Não foi possível traçar a rota até a escola agora. O cadastro continua normalmente."
+                              : tracedRoute.route
+                                ? formatRouteSummary(
+                                    tracedRoute.distanciaMetros,
+                                    tracedRoute.duracaoSegundos,
+                                  )
+                                : null}
+                      </Typography>
+                    ) : null}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">

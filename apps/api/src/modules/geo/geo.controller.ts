@@ -15,9 +15,12 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { MapIntelligenceService } from "./agents/map-intelligence.service";
+import { GeocodeAddressDto } from "./dto/geocode-address.dto";
 import { ListMapMarkersQueryDto } from "./dto/list-map-markers-query.dto";
 import { ListNearbySchoolsQueryDto } from "./dto/list-nearby-schools-query.dto";
 import { RevisarCoordinateDto } from "./dto/revisar-coordinate.dto";
+import { RoutePreviewDto } from "./dto/route-preview.dto";
+import { GeoEngineService } from "./geo-engine.service";
 import { GeoPipelineService } from "./geo-pipeline.service";
 import { INEP_SYNC_QUEUE, SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
 
@@ -50,6 +53,7 @@ export class GeoController {
   constructor(
     private readonly geoPipeline: GeoPipelineService,
     private readonly mapIntelligence: MapIntelligenceService,
+    private readonly geoEngine: GeoEngineService,
     @Inject(SCHOOL_COORDINATE_REPOSITORY)
     private readonly coordinateRepository: SchoolCoordinateRepository,
     private readonly qstashPublisher: QstashPublisherService,
@@ -114,5 +118,30 @@ export class GeoController {
       { latitude: query.lat, longitude: query.lng },
       query.raioKm,
     );
+  }
+
+  /**
+   * Endereço em texto livre → coordenada (Nominatim, via
+   * `GeoEngineService.geocode`) — hoje usado pelo cadastro de Aluno pra
+   * geocodificar o endereço de embarque digitado no formulário, mesmas
+   * roles de quem já enxerga marcadores/escolas próximas.
+   */
+  @Post("geocode")
+  @Roles(...VIEW_ROLES)
+  geocodeEndereco(@Body() dto: GeocodeAddressDto) {
+    return this.geoEngine.geocode(dto.endereco);
+  }
+
+  /**
+   * Prévia de rota entre dois pontos (OSRM, via
+   * `GeoEngineService.getRoute`) — mesma peça que faltava no cadastro
+   * de Aluno pra desenhar o trajeto embarque → escola no formulário
+   * (pedido do usuário em produção: "ele vai ver a rota traçada").
+   * Não persiste nada — é só visualização, igual `geocode` acima.
+   */
+  @Post("rota-previa")
+  @Roles(...VIEW_ROLES)
+  rotaPrevia(@Body() dto: RoutePreviewDto) {
+    return this.geoEngine.getRoute(dto.origem, dto.destino, dto.paradas ?? []);
   }
 }

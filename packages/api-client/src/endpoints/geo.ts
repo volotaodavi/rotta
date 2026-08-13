@@ -35,6 +35,32 @@ export interface SchoolMarkerComDistancia extends SchoolMarker {
   distanciaMetros: number;
 }
 
+export interface Coordenada {
+  latitude: number;
+  longitude: number;
+}
+
+/** Espelha `GeocodeResult` (`apps/api/src/modules/geo/geo-engine.types.ts`). */
+export interface GeocodeResult {
+  latitude: number;
+  longitude: number;
+  /** Texto livre do provedor (`importance` do Nominatim, 0 a 1) — não é uma métrica de confiança calibrada, só um sinal relativo. */
+  precisao: string;
+  enderecoFormatado: string;
+  logradouro: string | null;
+  bairro: string | null;
+  cidade: string | null;
+  estado: string | null;
+}
+
+/** Espelha `DirectionsResult` — `geometria` é um GeoJSON `LineString` (`{ coordinates: [lng, lat][] }`), pronto pra virar o `route` de `RottaMap` depois de inverter cada par. */
+export interface RoutePreviewResult {
+  distanciaMetros: number;
+  duracaoSegundos: number;
+  geometria: { type: "LineString"; coordinates: [number, number][] };
+  pernas: { distanciaMetros: number; duracaoSegundos: number }[];
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -73,6 +99,32 @@ export function createGeoEndpoints(apiClient: ApiClient) {
           `/geo/inep-sync${buildQueryString({ ano })}`,
           { method: "POST" },
         )
+      ).data,
+
+    /**
+     * Endereço em texto livre → coordenada (Nominatim). Usado pelo
+     * cadastro de Aluno pra achar o ponto de embarque digitado no
+     * formulário e desenhar a rota traçada até a escola escolhida.
+     */
+    geocodeAddress: async (endereco: string): Promise<GeocodeResult> =>
+      (
+        await apiClient.request<ApiEnvelope<GeocodeResult>>("/geo/geocode", {
+          method: "POST",
+          body: { endereco },
+        })
+      ).data,
+
+    /** Prévia de rota entre dois pontos (OSRM) — só visualização, não persiste nada. */
+    getRoutePreview: async (input: {
+      origem: Coordenada;
+      destino: Coordenada;
+      paradas?: Coordenada[];
+    }): Promise<RoutePreviewResult> =>
+      (
+        await apiClient.request<ApiEnvelope<RoutePreviewResult>>("/geo/rota-previa", {
+          method: "POST",
+          body: input,
+        })
       ).data,
   };
 }
