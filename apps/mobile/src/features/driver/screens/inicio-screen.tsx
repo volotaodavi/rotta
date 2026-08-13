@@ -1,8 +1,18 @@
 import { useAuth } from "@rotta/auth/native";
-import { Check, Clock, MapPin, Navigation, Pause, Play, Square, UserX } from "@rotta/icons/native";
+import { Check, Clock, MapPin, Navigation, Pause, Square, UserX } from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 import { PanelGreeting } from "../components";
 import {
@@ -26,6 +36,7 @@ import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
 import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "@rotta/api-client";
 
+import { SlideToAction } from "@/components/slide-to-action";
 import {
   StatusPill,
   VehicleButton,
@@ -118,22 +129,30 @@ export function DriverInicioScreen(): JSX.Element {
  * Mapa "onde eu estou" — respaldo baseado só na posição do telefone
  * (`useMyLocation`), usado sempre que não há paradas de rota pra
  * mostrar em vez disso. Porta exata de `MeuMapa` do Painel Web
- * (Frente I) — nunca esconde a tela atrás de um carregamento
+ * (Frente I/P4) — nunca esconde a tela atrás de um carregamento
  * indefinido: pedir/negar permissão e "sem suporte" têm cada um sua
  * própria mensagem.
  */
 function MeuMapa({
   location,
   status,
+  fill = false,
 }: {
   location: MyLocation | null;
   status: MyLocationStatus;
+  /** `true` dentro do mapa em tela cheia de `RotaOperacional` — ocupa 100% do pai (`StyleSheet.absoluteFillObject`), sem cantos arredondados/altura fixa. */
+  fill?: boolean;
 }): JSX.Element {
   const { theme } = useTheme();
 
   if (!location) {
     return (
-      <VehicleCard style={styles.mapaVazio}>
+      <View
+        style={[
+          fill ? styles.mapaVazioFill : styles.mapaVazio,
+          { backgroundColor: theme.colors.card },
+        ]}
+      >
         {status === "requesting" || status === "idle" ? (
           <>
             <ActivityIndicator color={theme.colors.primary} />
@@ -143,17 +162,17 @@ function MeuMapa({
           </>
         ) : status === "denied" ? (
           <Text style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: "center" }}>
-            Localização negada — permita o acesso nas configurações do app para ver o mapa.
+            Localização negada. Permita o acesso nas configurações do app para ver o mapa.
           </Text>
         ) : (
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Mapa indisponível.</Text>
         )}
-      </VehicleCard>
+      </View>
     );
   }
 
   return (
-    <View style={styles.mapa}>
+    <View style={fill ? styles.absoluteFill : styles.mapa}>
       <RottaMap
         markers={[
           {
@@ -236,6 +255,8 @@ function RotaOperacional({
 }): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const isMotorista = user?.role === "motorista";
 
   const { data: trip, isLoading: isLoadingTrip } = useTodayTrip(rota.id);
@@ -249,7 +270,6 @@ function RotaOperacional({
   const finishTrip = useFinishTrip(rota.id);
 
   const isActive = trip?.status === "EM_ANDAMENTO";
-  const isPaused = trip?.status === "PAUSADA";
   const { status: gpsStatus } = useTripGpsReporting(
     isMotorista && isActive && trip ? trip.id : null,
   );
@@ -269,125 +289,191 @@ function RotaOperacional({
   const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
   const proximaParada = proximasEtas?.[0];
 
+  const gpsAvisoTexto =
+    gpsStatus === "reporting"
+      ? "Compartilhando sua localização com os responsáveis."
+      : gpsStatus === "requesting"
+        ? "Solicitando permissão de localização…"
+        : gpsStatus === "denied"
+          ? "Localização negada. Os responsáveis não verão o veículo no mapa até você permitir."
+          : null;
+
+  // Mesma altura mínima do Painel Web (Frente P4/P5, pedido do usuário
+  // em produção: "o mapa não deve ser um painel quadrado, ele deverá
+  // ser a interface toda do 'início'") — saudação, status da rota, ETA
+  // e os controles da viagem (botão deslizante, estilo Uber) flutuam
+  // por cima do mapa em cartões, em vez de empurrar o mapa pra uma
+  // caixinha fixa de 180pt como antes.
+  const mapSectionHeight = Math.max(windowHeight * 0.65, 420);
+
   return (
-    <VehicleScreen>
-      <PanelGreeting nome={user?.nome ?? rota.nome} />
+    <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
+      <ScrollView contentContainerStyle={styles.opScrollContent}>
+        <View style={[styles.mapSection, { height: mapSectionHeight }]}>
+          <View style={styles.absoluteFill}>
+            {markers.length > 0 ? (
+              <RottaMap
+                markers={markers}
+                route={paradasOrdenadas.map((p) => ({
+                  latitude: p.latitude,
+                  longitude: p.longitude,
+                }))}
+                initialZoom={12}
+              />
+            ) : (
+              <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} fill />
+            )}
+          </View>
 
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.titulo, { color: theme.colors.text }]}>{rota.nome}</Text>
-          <Text style={{ color: theme.colors.textMuted }}>{TURNO_LABEL[rota.turno]}</Text>
-        </View>
-        {trip ? (
-          <StatusPill
-            label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
-            tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
-          />
-        ) : null}
-      </View>
-
-      {showTrocarRota ? (
-        <VehicleButton label="Trocar de rota" variant="secondary" onPress={onTrocarRota} />
-      ) : null}
-
-      {markers.length > 0 ? (
-        <View style={styles.mapa}>
-          <RottaMap
-            markers={markers}
-            route={paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }))}
-            initialZoom={12}
-          />
-        </View>
-      ) : (
-        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
-      )}
-
-      {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
-
-      {isLoadingTrip ? (
-        <ActivityIndicator color={theme.colors.primary} />
-      ) : !trip ? (
-        <VehicleCard>
-          <Text style={{ color: theme.colors.text }}>Nenhuma viagem registrada hoje ainda.</Text>
-          {isMotorista ? (
-            <VehicleButton
-              label="Iniciar viagem"
-              icon={<Play size={16} color="#FFFFFF" />}
-              onPress={() => startTrip.mutate({ routeId: rota.id })}
-              isLoading={startTrip.isPending}
-            />
-          ) : (
-            <Text style={{ color: theme.colors.textMuted }}>
-              Aguardando o motorista iniciar a viagem.
-            </Text>
-          )}
-        </VehicleCard>
-      ) : trip.status === "FINALIZADA" || trip.status === "CANCELADA" ? (
-        <VehicleCard>
-          <Text style={{ color: theme.colors.text }}>
-            A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
-          </Text>
-        </VehicleCard>
-      ) : (
-        <>
-          {isMotorista ? (
-            <VehicleCard>
-              <View style={styles.controlesRow}>
-                {isActive ? (
-                  <VehicleButton
-                    label="Pausar"
-                    variant="secondary"
-                    icon={<Pause size={16} color={theme.colors.text} />}
-                    onPress={() => pauseTrip.mutate(trip.id)}
-                    isLoading={pauseTrip.isPending}
-                  />
-                ) : isPaused ? (
-                  <VehicleButton
-                    label="Retomar"
-                    icon={<Play size={16} color="#FFFFFF" />}
-                    onPress={() => resumeTrip.mutate(trip.id)}
-                    isLoading={resumeTrip.isPending}
+          <View
+            style={[styles.topOverlay, { top: insets.top + theme.spacing[3] }]}
+            pointerEvents="box-none"
+          >
+            <View
+              style={[
+                styles.overlayCard,
+                { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
+                theme.elevation.dropdown.native,
+              ]}
+            >
+              <PanelGreeting nome={user?.nome ?? ""} />
+            </View>
+            <View
+              style={[
+                styles.overlayCard,
+                styles.overlayRow,
+                { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
+                theme.elevation.dropdown.native,
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: "700" }}>
+                  {rota.nome}
+                </Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  {TURNO_LABEL[rota.turno]}
+                </Text>
+              </View>
+              <View style={styles.overlayActions}>
+                {trip ? (
+                  <StatusPill
+                    label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
+                    tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
                   />
                 ) : null}
-                <VehicleButton
-                  label="Finalizar viagem"
-                  variant="secondary"
-                  icon={<Square size={16} color={theme.colors.text} />}
-                  onPress={() => finishTrip.mutate(trip.id)}
-                  isLoading={finishTrip.isPending}
-                />
+                {showTrocarRota ? (
+                  <Pressable onPress={onTrocarRota} accessibilityRole="button">
+                    <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: "600" }}>
+                      Trocar
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
-              {isActive ? (
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  {gpsStatus === "reporting"
-                    ? "Compartilhando sua localização com os responsáveis."
-                    : gpsStatus === "requesting"
-                      ? "Solicitando permissão de localização…"
-                      : gpsStatus === "denied"
-                        ? "Localização negada — os responsáveis não verão o veículo no mapa até você permitir."
-                        : null}
-                </Text>
-              ) : null}
-            </VehicleCard>
-          ) : null}
+            </View>
+          </View>
 
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Paradas</Text>
-          {paradasOrdenadas.map((parada) => (
-            <ParadaCard
-              key={parada.id}
-              parada={parada}
-              alunos={(routeStudents ?? []).filter(
-                (aluno) =>
-                  aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
-              )}
-              eventos={studentEvents ?? []}
-              tripId={trip.id}
-              podeOperar={isActive}
-            />
-          ))}
-        </>
-      )}
-    </VehicleScreen>
+          <View
+            style={[
+              styles.bottomPanel,
+              {
+                backgroundColor: theme.colors.surfaceElevated,
+                borderTopLeftRadius: theme.radius.xl,
+                borderTopRightRadius: theme.radius.xl,
+              },
+              theme.elevation.modal.native,
+            ]}
+          >
+            {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
+
+            {isLoadingTrip ? (
+              <ActivityIndicator color={theme.colors.primary} />
+            ) : !trip ? (
+              isMotorista ? (
+                <SlideToAction
+                  label="Deslize para iniciar viagem"
+                  theme={theme}
+                  onComplete={() => startTrip.mutate({ routeId: rota.id })}
+                  isLoading={startTrip.isPending}
+                />
+              ) : (
+                <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                  Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
+                </Text>
+              )
+            ) : trip.status === "FINALIZADA" || trip.status === "CANCELADA" ? (
+              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
+              </Text>
+            ) : isMotorista ? (
+              <>
+                {gpsAvisoTexto ? (
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    {gpsAvisoTexto}
+                  </Text>
+                ) : null}
+                {isActive ? (
+                  <>
+                    <VehicleButton
+                      label="Pausar"
+                      variant="secondary"
+                      icon={<Pause size={16} color={theme.colors.text} />}
+                      onPress={() => pauseTrip.mutate(trip.id)}
+                      isLoading={pauseTrip.isPending}
+                    />
+                    <SlideToAction
+                      label="Deslize para finalizar viagem"
+                      theme={theme}
+                      thumbColor={theme.colors.danger}
+                      onComplete={() => finishTrip.mutate(trip.id)}
+                      isLoading={finishTrip.isPending}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <SlideToAction
+                      label="Deslize para retomar viagem"
+                      theme={theme}
+                      onComplete={() => resumeTrip.mutate(trip.id)}
+                      isLoading={resumeTrip.isPending}
+                    />
+                    <VehicleButton
+                      label="Finalizar viagem"
+                      variant="secondary"
+                      icon={<Square size={16} color={theme.colors.text} />}
+                      onPress={() => finishTrip.mutate(trip.id)}
+                      isLoading={finishTrip.isPending}
+                    />
+                  </>
+                )}
+              </>
+            ) : (
+              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                Viagem em andamento. Só o motorista inicia, pausa ou finaliza.
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? (
+          <View style={styles.paradasSection}>
+            <Text style={[styles.secao, { color: theme.colors.text }]}>Paradas</Text>
+            {paradasOrdenadas.map((parada) => (
+              <ParadaCard
+                key={parada.id}
+                parada={parada}
+                alunos={(routeStudents ?? []).filter(
+                  (aluno) =>
+                    aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
+                )}
+                eventos={studentEvents ?? []}
+                tripId={trip.id}
+                podeOperar={isActive}
+              />
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
+    </View>
   );
 }
 
@@ -515,6 +601,7 @@ function AlunoParadaRow({
 }
 
 const styles = StyleSheet.create({
+  absoluteFill: { ...StyleSheet.absoluteFillObject },
   alunoActions: { flexDirection: "row", gap: 16 },
   alunoRow: {
     alignItems: "center",
@@ -523,13 +610,35 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   ausenciaForm: { alignItems: "center" },
-  controlesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  bottomPanel: {
+    bottom: 0,
+    gap: 12,
+    left: 0,
+    padding: 16,
+    position: "absolute",
+    right: 0,
+  },
   etaCard: { alignItems: "center", flexDirection: "row", gap: 12 },
   etaHorario: { alignItems: "center", flexDirection: "row", gap: 4 },
-  header: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
+  mapSection: { overflow: "hidden", position: "relative", width: "100%" },
   mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
   mapaVazio: { alignItems: "center", gap: 8, height: 180, justifyContent: "center" },
+  mapaVazioFill: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
+    padding: 16,
+  },
+  opScreen: { flex: 1 },
+  opScrollContent: { flexGrow: 1 },
+  overlayActions: { alignItems: "center", flexDirection: "row", gap: 12 },
+  overlayCard: { padding: 16 },
+  overlayRow: { alignItems: "center", flexDirection: "row" },
+  painelTexto: { paddingVertical: 8, textAlign: "center" },
   paradaHeader: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
+  paradasSection: { gap: 16, padding: 24 },
   secao: { fontSize: 16, fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
+  topOverlay: { gap: 12, left: 16, position: "absolute", right: 16 },
 });

@@ -1,7 +1,8 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Check } from "@rotta/icons";
+import { Check, MapPin } from "@rotta/icons";
+import { RottaMap } from "@rotta/maps/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -162,21 +163,59 @@ export default function NovoAlunoPage(): JSX.Element {
             <div className="sm:col-span-2">
               <FormField label="Escola" isRequired helperText="Busque pelo nome da escola">
                 {selectedSchool ? (
-                  <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-2.5">
-                    <Typography variant="bodySmall">
-                      {selectedSchool.nomeOficial} — {selectedSchool.cidade}/{selectedSchool.estado}
-                    </Typography>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedSchool(null);
-                        updateField("schoolId", "");
-                      }}
-                    >
-                      Trocar
-                    </Button>
+                  <div className="flex flex-col gap-3">
+                    <div className="flex items-center justify-between rounded-md border border-border bg-surface px-4 py-2.5">
+                      <Typography variant="bodySmall">
+                        {selectedSchool.nomeOficial}, {selectedSchool.cidade}/
+                        {selectedSchool.estado}
+                      </Typography>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedSchool(null);
+                          updateField("schoolId", "");
+                        }}
+                      >
+                        Trocar
+                      </Button>
+                    </div>
+                    {/*
+                      Pedido do usuário em produção: "clicando na escola
+                      correspondente ela já aparece no mapa (com um
+                      pino)". `latitude`/`longitude` vêm do Geocoding AI
+                      Agent (Rotta Geo Platform) — nem toda escola
+                      recém-importada já tem coordenada confirmada, por
+                      isso o aviso honesto em vez de um mapa vazio/errado
+                      quando faltam.
+                    */}
+                    {selectedSchool.latitude && selectedSchool.longitude ? (
+                      <div style={{ height: 220 }} className="overflow-hidden rounded-lg">
+                        <RottaMap
+                          markers={[
+                            {
+                              id: selectedSchool.id,
+                              titulo: selectedSchool.nomeOficial,
+                              latitude: selectedSchool.latitude,
+                              longitude: selectedSchool.longitude,
+                            },
+                          ]}
+                          initialCenter={{
+                            latitude: selectedSchool.latitude,
+                            longitude: selectedSchool.longitude,
+                          }}
+                          initialZoom={15}
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 rounded-md border border-border bg-card px-4 py-3">
+                        <MapPin size={16} className="shrink-0 text-text-muted" />
+                        <Typography variant="caption" color="muted">
+                          Localização desta escola ainda não foi confirmada no mapa.
+                        </Typography>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
@@ -199,7 +238,7 @@ export default function NovoAlunoPage(): JSX.Element {
                             }}
                           >
                             <span>
-                              {school.nomeOficial} — {school.cidade}/{school.estado}
+                              {school.nomeOficial}, {school.cidade}/{school.estado}
                             </span>
                             <Check className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100" />
                           </button>

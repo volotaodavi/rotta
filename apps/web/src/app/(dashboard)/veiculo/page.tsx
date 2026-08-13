@@ -53,7 +53,7 @@ export default function MeuVeiculoPage(): JSX.Element {
             // eslint-disable-next-line @next/next/no-img-element -- foto vem de URL externa (upload do usuário), sem domínio fixo pra configurar em `next/image`.
             <img
               src={vehicle.fotoUrl}
-              alt={`${vehicle.modelo} — ${vehicle.placa}`}
+              alt={`${vehicle.modelo}, placa ${vehicle.placa}`}
               className="h-48 w-full rounded-t-lg object-cover"
             />
           ) : null}
@@ -63,8 +63,8 @@ export default function MeuVeiculoPage(): JSX.Element {
               <VehicleStatusBadge status={vehicle.status} />
             </div>
             <Typography variant="bodySmall" color="muted">
-              {vehicle.modelo} {vehicle.marca ? `— ${vehicle.marca}` : ""} ·{" "}
-              {VEHICLE_TYPE_LABEL[vehicle.tipo]}
+              {vehicle.modelo}
+              {vehicle.marca ? `, ${vehicle.marca}` : ""} · {VEHICLE_TYPE_LABEL[vehicle.tipo]}
             </Typography>
             <Typography variant="bodySmall" color="muted">
               Capacidade: {vehicle.capacidadePassageiros} passageiros ·{" "}

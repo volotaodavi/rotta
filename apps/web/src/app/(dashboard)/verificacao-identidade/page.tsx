@@ -12,6 +12,7 @@ import type { BadgeVariant } from "@rotta/ui/web";
 import {
   useCreateIdentityVerificationSession,
   useMyIdentityVerification,
+  useRefreshMyIdentityVerification,
 } from "@/features/identity-verification/hooks/use-identity-verification";
 
 const STATUS_LABEL: Record<IdentityVerificationStatus, string> = {
@@ -52,8 +53,9 @@ const RESTARTABLE: IdentityVerificationStatus[] = ["NAO_INICIADA", "REPROVADA", 
  */
 export default function VerificacaoIdentidadePage(): JSX.Element {
   const { user } = useAuth();
-  const { data, isLoading, refetch, isFetching } = useMyIdentityVerification();
+  const { data, isLoading, refetch } = useMyIdentityVerification();
   const createSession = useCreateIdentityVerificationSession();
+  const refreshStatus = useRefreshMyIdentityVerification();
   const [aviso, setAviso] = useState<string | null>(null);
 
   async function iniciarVerificacao(): Promise<void> {
@@ -145,6 +147,11 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
               {aviso}
             </Typography>
           ) : null}
+          {refreshStatus.isError ? (
+            <Typography variant="caption" color="danger">
+              Não foi possível sincronizar com a Didit agora. Tente de novo em instantes.
+            </Typography>
+          ) : null}
 
           {podeIniciar ? (
             <Button
@@ -155,7 +162,11 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
               Verificar identidade
             </Button>
           ) : (
-            <Button variant="secondary" isLoading={isFetching} onClick={() => void refetch()}>
+            <Button
+              variant="secondary"
+              isLoading={refreshStatus.isPending}
+              onClick={() => refreshStatus.mutate()}
+            >
               Atualizar status
             </Button>
           )}

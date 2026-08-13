@@ -12,7 +12,6 @@ import {
 } from "@/infra/didit/didit-decision.util";
 import { DiditService } from "@/infra/didit/didit.service";
 
-
 export interface IdentityVerificationSessionResult {
   url: string;
   sessionId: string;
@@ -201,6 +200,25 @@ export class IdentityVerificationService {
     const decision = await this.didit.getSessionDecision(sessionId);
     await this.applyDecisionToUser(userId, decision.raw);
     return this.getForAdmin(userId);
+  }
+
+  /**
+   * `POST /identity-verification/me/refresh` — mesmo pull de
+   * `refreshForAdmin`, só que self-service (o próprio usuário, sem
+   * precisar de um Admin Rotta pra destravar). Fechamento de um gap
+   * real relatado em produção: o botão "Atualizar status" da tela de
+   * bloqueio só reexibia `getStatus` (um `SELECT` no nosso banco) —
+   * enquanto o webhook da Didit não chega (destino mal configurado,
+   * entrega falhando, etc.), nosso banco nunca muda, então o botão
+   * parecia não fazer nada, pra sempre "Em andamento". Este método
+   * busca a decisão direto na Didit (mesma API que o Admin usa), sem
+   * depender do webhook ter chegado.
+   */
+  async refreshForSelf(userId: string): Promise<IdentityVerificationStatusResult> {
+    const sessionId = await this.requireSessionId(userId);
+    const decision = await this.didit.getSessionDecision(sessionId);
+    await this.applyDecisionToUser(userId, decision.raw);
+    return this.getStatus(userId);
   }
 
   /**

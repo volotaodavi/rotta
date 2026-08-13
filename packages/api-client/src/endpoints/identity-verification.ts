@@ -93,6 +93,15 @@ export function createIdentityVerificationEndpoints(apiClient: ApiClient) {
         )
       ).data,
 
+    /** Sincroniza (pull) o estado atual direto da Didit, sem depender do webhook ter chegado — corrige o caso de "Em andamento" travado pra sempre. */
+    refreshMyStatus: async (): Promise<IdentityVerificationStatusResponse> =>
+      (
+        await apiClient.request<ApiEnvelope<IdentityVerificationStatusResponse>>(
+          "/identity-verification/me/refresh",
+          { method: "POST" },
+        )
+      ).data,
+
     /** Admin Rotta — todos os usuários que já iniciaram ao menos uma sessão Didit. */
     listAdmin: async (
       params: ListAdminIdentityVerificationsParams = {},

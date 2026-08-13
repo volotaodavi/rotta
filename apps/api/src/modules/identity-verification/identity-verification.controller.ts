@@ -1,7 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { CreateIdentityVerificationSessionDto } from "./dto/create-identity-verification-session.dto";
 import { DecideIdentityVerificationDto } from "./dto/decide-identity-verification.dto";
 import { ListIdentityVerificationsQueryDto } from "./dto/list-identity-verifications-query.dto";
@@ -50,6 +49,15 @@ export class IdentityVerificationController {
     @Body() dto: CreateIdentityVerificationSessionDto,
   ): Promise<IdentityVerificationSessionResult> {
     return this.service.createSession(actor.sub, dto.callbackUrl);
+  }
+
+  /** Pull-based, self-service — mesmo endpoint da Didit que `admin/:userId/refresh` usa, aqui escopado ao próprio ator. Corrige o caso relatado: "Em andamento" travado porque o webhook nunca chegou. */
+  @Post("me/refresh")
+  @Roles(...SELF_VERIFICATION_ROLES)
+  refreshMyStatus(
+    @CurrentUser() actor: AuthenticatedUser,
+  ): Promise<IdentityVerificationStatusResult> {
+    return this.service.refreshForSelf(actor.sub);
   }
 
   @Get("admin")

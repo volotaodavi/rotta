@@ -2,10 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { IdentityVerificationSessionResponse } from "@rotta/api-client";
+import type {
+  IdentityVerificationSessionResponse,
+  IdentityVerificationStatusResponse,
+} from "@rotta/api-client";
 
 import { identityVerificationApi } from "@/lib/api-client";
-
 
 const QUERY_KEY = ["identity-verification", "me"];
 
@@ -39,6 +41,27 @@ export function useCreateIdentityVerificationSession() {
     mutationFn: (input) => identityVerificationApi.createMySession(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
+    },
+  });
+}
+
+/**
+ * Sincroniza (pull) o status direto na Didit — gap real relatado em
+ * produção: "Atualizar status" chamava só `refetch()` do `useQuery`
+ * acima, ou seja, um `SELECT` no nosso banco. Enquanto o webhook da
+ * Didit não aplica nada (destino mal configurado, entrega falhando
+ * etc.), esse `SELECT` nunca muda — o botão parecia clicável à toa,
+ * "Em andamento" para sempre. Este hook chama
+ * `POST /identity-verification/me/refresh`, que busca a decisão direto
+ * na Didit (mesmo mecanismo que o Admin Rotta já usa desde a Frente C)
+ * e já devolve o status atualizado, sem depender do webhook.
+ */
+export function useRefreshMyIdentityVerification() {
+  const queryClient = useQueryClient();
+  return useMutation<IdentityVerificationStatusResponse, unknown, void>({
+    mutationFn: () => identityVerificationApi.refreshMyStatus(),
+    onSuccess: (result) => {
+      queryClient.setQueryData(QUERY_KEY, result);
     },
   });
 }

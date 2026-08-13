@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { Check, Clock, MapPin, Navigation, Pause, Play, Square, UserX } from "@rotta/icons";
+import { Check, Clock, MapPin, Navigation, Pause, Square, UserX } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, PanelGreeting, Spinner, Typography } from "@rotta/ui/web";
 import { useEffect, useMemo, useState } from "react";
@@ -14,6 +14,7 @@ import type {
   TripStudentEventType,
 } from "@rotta/api-client";
 
+import { SlideToAction } from "@/components/slide-to-action";
 import { useBeforeUnloadWarning } from "@/features/driver/hooks/use-before-unload-warning";
 import {
   useMinhasRotas,
@@ -79,12 +80,6 @@ const TURNO_LABEL: Record<string, string> = {
  */
 export default function MinhaRotaPage(): JSX.Element {
   const { user } = useAuth();
-  // "Cadastre uma rota você mesmo" só faz sentido pra quem TEM esse
-  // botão (dono autônomo/MEI, `role === "empresa"`) — Motorista/Monitor
-  // funcionário (Frente H) nunca vê "Visão completa", então nunca vê
-  // essa segunda frase, só a orientação real pra ele: falar com a
-  // transportadora.
-  const podeCadastrarRota = user?.role === "empresa";
 
   const { data: rotasResult, isLoading } = useMinhasRotas();
   const rotas = useMemo(() => rotasResult?.items ?? [], [rotasResult]);
@@ -116,10 +111,16 @@ export default function MinhaRotaPage(): JSX.Element {
         <div>
           <Typography variant="title">Nenhuma rota atribuída</Typography>
           <Typography variant="bodySmall" color="muted">
-            Você ainda não está vinculado a nenhuma rota. Fale com sua transportadora
-            {podeCadastrarRota
-              ? ` — ou, se você é o dono, cadastre uma rota em "Rotas" na Visão completa.`
-              : "."}
+            {/*
+              Antes esta frase mandava "cadastrar uma rota em 'Rotas' na
+              Visão completa" — não existe (nem nunca existiu) nenhuma
+              página de gestão de Rotas no Painel Web, só a operação em
+              "Minha Rota" (esta tela). Corrigido pra não apontar pra um
+              lugar que não existe — quem cadastra uma rota é sempre o
+              suporte Rotta.
+            */}
+            Você ainda não está vinculado a nenhuma rota. Fale com o suporte Rotta ou com sua
+            transportadora para vincular uma rota a você.
           </Typography>
         </div>
         <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
@@ -166,13 +167,22 @@ export default function MinhaRotaPage(): JSX.Element {
 function MeuMapa({
   location,
   status,
+  fill = false,
 }: {
   location: MyLocation | null;
   status: MyLocationStatus;
+  /** `true` dentro do container em tela cheia de `RotaOperacional` — sem cantos arredondados/altura fixa, ocupa 100% do pai. */
+  fill?: boolean;
 }): JSX.Element {
   if (!location) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card p-4 text-center">
+      <div
+        className={
+          fill
+            ? "flex h-full flex-col items-center justify-center gap-2 bg-card p-4 text-center"
+            : "flex h-64 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card p-4 text-center"
+        }
+      >
         {status === "requesting" || status === "idle" ? (
           <>
             <Spinner size="md" />
@@ -182,7 +192,7 @@ function MeuMapa({
           </>
         ) : status === "denied" ? (
           <Typography variant="caption" color="muted" className="max-w-xs">
-            Localização negada pelo navegador — permita o acesso (ícone de cadeado na barra de
+            Localização negada pelo navegador. Permita o acesso (ícone de cadeado na barra de
             endereço) para ver o mapa.
           </Typography>
         ) : (
@@ -195,7 +205,10 @@ function MeuMapa({
   }
 
   return (
-    <div style={{ height: 280 }} className="overflow-hidden rounded-lg">
+    <div
+      style={fill ? undefined : { height: 280 }}
+      className={fill ? "h-full w-full" : "overflow-hidden rounded-lg"}
+    >
       <RottaMap
         markers={[
           {
@@ -282,7 +295,6 @@ function RotaOperacional({
   const finishTrip = useFinishTrip(rota.id);
 
   const isActive = trip?.status === "EM_ANDAMENTO";
-  const isPaused = trip?.status === "PAUSADA";
   const { status: gpsStatus } = useTripGpsReporting(
     isMotorista && isActive && trip ? trip.id : null,
   );
@@ -313,124 +325,140 @@ function RotaOperacional({
   const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
   const proximaParada = proximasEtas?.[0];
 
+  const gpsAvisoTexto =
+    gpsStatus === "reporting"
+      ? "Compartilhando sua localização com os responsáveis."
+      : gpsStatus === "requesting"
+        ? "Solicitando permissão de localização…"
+        : gpsStatus === "denied"
+          ? "Localização negada pelo navegador. Permita o acesso (ícone de cadeado na barra de endereço) pros responsáveis verem o veículo no mapa."
+          : null;
+
   return (
-    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-      <PanelGreeting nome={user?.nome ?? ""} />
-
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <Typography variant="title">{rota.nome}</Typography>
-          <Typography variant="bodySmall" color="muted">
-            {TURNO_LABEL[rota.turno] ?? rota.turno}
-          </Typography>
-        </div>
-        {trip ? (
-          <Badge variant={TRIP_STATUS_BADGE[trip.status]?.variant ?? "neutral"}>
-            {TRIP_STATUS_BADGE[trip.status]?.label ?? trip.status}
-          </Badge>
-        ) : null}
-      </div>
-
-      {showTrocarRota ? (
-        <Button variant="secondary" size="sm" onClick={onTrocarRota} className="self-start">
-          Trocar de rota
-        </Button>
-      ) : null}
-
-      {markers.length > 0 ? (
-        <div style={{ height: 280 }} className="overflow-hidden rounded-lg">
+    // `-m-6` cancela o padding do <main> de `(dashboard)/layout.tsx` só
+    // nesta tela — pedido do usuário em produção: "o mapa não deve ser
+    // um painel quadrado, ele deverá ser a interface toda do 'início'".
+    // Saudação, status da rota, ETA e os controles da viagem (botão
+    // deslizante, estilo Uber) flutuam por cima do mapa em cartões
+    // translúcidos, em vez de empurrar o mapa pra uma caixinha.
+    <div className="-m-6 flex flex-col">
+      <div className="relative h-[65vh] min-h-[420px] w-full">
+        {markers.length > 0 ? (
           <RottaMap
             markers={markers}
             route={paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }))}
             initialZoom={12}
           />
-        </div>
-      ) : (
-        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
-      )}
+        ) : (
+          <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} fill />
+        )}
 
-      {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
-
-      {isLoadingTrip ? (
-        <div className="flex justify-center py-8">
-          <Spinner size="lg" />
-        </div>
-      ) : !trip ? (
-        <Card>
-          <Card.Body className="flex flex-col gap-3">
-            <Typography variant="body">Nenhuma viagem registrada hoje ainda.</Typography>
-            {isMotorista ? (
-              <Button
-                iconLeft={<Play size={16} />}
-                onClick={() => startTrip.mutate({ routeId: rota.id })}
-                isLoading={startTrip.isPending}
-                className="self-start"
-              >
-                Iniciar viagem
-              </Button>
-            ) : (
-              <Typography variant="bodySmall" color="muted">
-                Aguardando o motorista iniciar a viagem.
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-3 p-4">
+          <PanelGreeting
+            nome={user?.nome ?? ""}
+            className="pointer-events-auto rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur"
+          />
+          <div className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur">
+            <div>
+              <Typography variant="subtitle">{rota.nome}</Typography>
+              <Typography variant="caption" color="muted">
+                {TURNO_LABEL[rota.turno] ?? rota.turno}
               </Typography>
-            )}
-          </Card.Body>
-        </Card>
-      ) : trip.status === "FINALIZADA" || trip.status === "CANCELADA" ? (
-        <Card>
-          <Card.Body>
-            <Typography variant="body">
+            </div>
+            <div className="flex items-center gap-2">
+              {trip ? (
+                <Badge variant={TRIP_STATUS_BADGE[trip.status]?.variant ?? "neutral"}>
+                  {TRIP_STATUS_BADGE[trip.status]?.label ?? trip.status}
+                </Badge>
+              ) : null}
+              {showTrocarRota ? (
+                <Button variant="secondary" size="sm" onClick={onTrocarRota}>
+                  Trocar
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-elevated p-4 shadow-lg">
+          {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
+
+          {isLoadingTrip ? (
+            <div className="flex justify-center py-2">
+              <Spinner size="md" />
+            </div>
+          ) : !trip ? (
+            isMotorista ? (
+              <SlideToAction
+                label="Deslize para iniciar viagem"
+                onComplete={() => startTrip.mutate({ routeId: rota.id })}
+                isLoading={startTrip.isPending}
+              />
+            ) : (
+              <Typography variant="bodySmall" color="muted" className="py-2 text-center">
+                Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
+              </Typography>
+            )
+          ) : trip.status === "FINALIZADA" || trip.status === "CANCELADA" ? (
+            <Typography variant="bodySmall" color="muted" className="py-2 text-center">
               A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
             </Typography>
-          </Card.Body>
-        </Card>
-      ) : (
-        <>
-          {isMotorista ? (
-            <Card>
-              <Card.Body className="flex flex-col gap-3">
-                <div className="flex flex-wrap gap-2">
-                  {isActive ? (
-                    <Button
-                      variant="secondary"
-                      iconLeft={<Pause size={16} />}
-                      onClick={() => pauseTrip.mutate(trip.id)}
-                      isLoading={pauseTrip.isPending}
-                    >
-                      Pausar
-                    </Button>
-                  ) : isPaused ? (
-                    <Button
-                      iconLeft={<Play size={16} />}
-                      onClick={() => resumeTrip.mutate(trip.id)}
-                      isLoading={resumeTrip.isPending}
-                    >
-                      Retomar
-                    </Button>
-                  ) : null}
+          ) : isMotorista ? (
+            <>
+              {gpsAvisoTexto ? (
+                <Typography variant="caption" color="muted">
+                  {gpsAvisoTexto}
+                </Typography>
+              ) : null}
+              {isActive ? (
+                <>
                   <Button
                     variant="secondary"
+                    size="sm"
+                    iconLeft={<Pause size={16} />}
+                    onClick={() => pauseTrip.mutate(trip.id)}
+                    isLoading={pauseTrip.isPending}
+                    className="self-start"
+                  >
+                    Pausar
+                  </Button>
+                  <SlideToAction
+                    label="Deslize para finalizar viagem"
+                    thumbColorClassName="bg-danger"
+                    onComplete={() => finishTrip.mutate(trip.id)}
+                    isLoading={finishTrip.isPending}
+                  />
+                </>
+              ) : (
+                <>
+                  <SlideToAction
+                    label="Deslize para retomar viagem"
+                    onComplete={() => resumeTrip.mutate(trip.id)}
+                    isLoading={resumeTrip.isPending}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     iconLeft={<Square size={16} />}
                     onClick={() => finishTrip.mutate(trip.id)}
                     isLoading={finishTrip.isPending}
+                    className="self-start"
                   >
                     Finalizar viagem
                   </Button>
-                </div>
-                {isActive ? (
-                  <Typography variant="caption" color="muted">
-                    {gpsStatus === "reporting"
-                      ? "Compartilhando sua localização com os responsáveis."
-                      : gpsStatus === "requesting"
-                        ? "Solicitando permissão de localização…"
-                        : gpsStatus === "denied"
-                          ? "Localização negada pelo navegador — os responsáveis não verão o veículo no mapa até você permitir (ícone de cadeado na barra de endereço)."
-                          : null}
-                  </Typography>
-                ) : null}
-              </Card.Body>
-            </Card>
-          ) : null}
+                </>
+              )}
+            </>
+          ) : (
+            <Typography variant="bodySmall" color="muted" className="py-2 text-center">
+              Viagem em andamento. Só o motorista inicia, pausa ou finaliza.
+            </Typography>
+          )}
+        </div>
+      </div>
 
+      {trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? (
+        <div className="flex flex-col gap-4 p-6">
           <Typography variant="subtitle">Paradas</Typography>
           {paradasOrdenadas.map((parada) => (
             <ParadaCard
@@ -445,8 +473,8 @@ function RotaOperacional({
               podeOperar={isActive}
             />
           ))}
-        </>
-      )}
+        </div>
+      ) : null}
     </div>
   );
 }

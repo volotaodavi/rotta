@@ -145,6 +145,55 @@ describe("IdentityVerificationService", () => {
     expect(didit.getSessionDecision).not.toHaveBeenCalled();
   });
 
+  // Gap relatado em produção: "Em andamento" travado porque o webhook da
+  // Didit nunca chegou — `refreshForSelf` é a mesma busca pull-based de
+  // `refreshForAdmin`, só que o próprio usuário aciona (sem precisar de
+  // um Admin Rotta pra destravar).
+  it("refreshForSelf busca a decisão na Didit e devolve o status já atualizado", async () => {
+    const prisma = buildPrismaMock();
+    (prisma.user.findUniqueOrThrow as jest.Mock)
+      .mockResolvedValueOnce({ identityVerificationSessionId: "sess_1" })
+      .mockResolvedValueOnce({
+        identityVerificationStatus: "APROVADA",
+        identityVerifiedAt: new Date("2026-08-13T00:00:00Z"),
+        identityVerificationMotivo: null,
+      });
+    const didit = buildDiditMock();
+    didit.getSessionDecision.mockResolvedValue({
+      sessionId: "sess_1",
+      status: "approved",
+      raw: { status: "Approved" },
+    });
+
+    const service = buildService(prisma, didit);
+
+    const resultado = await service.refreshForSelf("user-1");
+
+    expect(didit.getSessionDecision).toHaveBeenCalledWith("sess_1");
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: {
+        identityVerificationStatus: "APROVADA",
+        identityVerifiedAt: expect.any(Date),
+        identityVerificationDecisao: { status: "Approved" },
+        identityVerificationMotivo: null,
+      },
+    });
+    expect(resultado.status).toBe("APROVADA");
+  });
+
+  it("refreshForSelf lança BadRequestException quando o usuário nunca iniciou uma sessão", async () => {
+    const prisma = buildPrismaMock();
+    (prisma.user.findUniqueOrThrow as jest.Mock).mockResolvedValue({
+      identityVerificationSessionId: null,
+    });
+    const didit = buildDiditMock();
+    const service = buildService(prisma, didit);
+
+    await expect(service.refreshForSelf("user-1")).rejects.toBeInstanceOf(BadRequestException);
+    expect(didit.getSessionDecision).not.toHaveBeenCalled();
+  });
+
   it("decideForAdmin exige comment ao recusar", async () => {
     const prisma = buildPrismaMock();
     const didit = buildDiditMock();
