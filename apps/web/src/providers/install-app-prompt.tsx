@@ -12,17 +12,23 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-/** `localStorage` — quando o usuário recusa/fecha o convite, não pergunta de novo por esse tempo (evita "nagging" a cada visita). */
-const SNOOZE_KEY = "rotta-install-prompt-snoozed-until";
-const SNOOZE_DAYS = 14;
+/**
+ * `sessionStorage` (não `localStorage`) — de propósito: pedido explícito
+ * do usuário é "isso deve se repetir até ele instalar o app". Fechar
+ * com o "×" só cala o convite pelo RESTO desta sessão (não fica
+ * reabrindo a cada troca de página dentro da mesma visita); numa
+ * próxima visita (nova aba/sessão), se ainda não instalou
+ * (`isStandalone()` continua `false`), o convite volta a aparecer —
+ * sem prazo de validade, sem parar sozinho.
+ */
+const DISMISSED_KEY = "rotta-install-prompt-dismissed-session";
 
-function isSnoozed(): boolean {
-  const until = localStorage.getItem(SNOOZE_KEY);
-  return until !== null && Date.now() < Number(until);
+function isDismissedThisSession(): boolean {
+  return sessionStorage.getItem(DISMISSED_KEY) === "1";
 }
 
-function snooze(): void {
-  localStorage.setItem(SNOOZE_KEY, String(Date.now() + SNOOZE_DAYS * 24 * 60 * 60 * 1000));
+function dismissForSession(): void {
+  sessionStorage.setItem(DISMISSED_KEY, "1");
 }
 
 /**
@@ -41,13 +47,17 @@ function snooze(): void {
  * esse evento) — o banner simplesmente nunca aparece lá; instalar no
  * iOS continua sendo "Compartilhar → Adicionar à Tela de Início", fora
  * do escopo deste componente.
+ *
+ * Renderizado no layout raiz (`app/layout.tsx`) — aparece em TODO o
+ * site, Landing Page incluída (nenhuma rota o desliga), pra qualquer
+ * visitante que ainda não tenha o app instalado.
  */
 export function InstallAppPrompt(): JSX.Element | null {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (isStandalone() || isSnoozed()) return;
+    if (isStandalone() || isDismissedThisSession()) return;
 
     function handleBeforeInstallPrompt(event: Event): void {
       event.preventDefault();
@@ -73,17 +83,18 @@ export function InstallAppPrompt(): JSX.Element | null {
   async function handleInstall(): Promise<void> {
     if (!deferredPrompt) return;
     await deferredPrompt.prompt();
-    // O resultado (`accepted`/`dismissed`) só decide se soneca — o
-    // evento `beforeinstallprompt` em si só dispara de novo numa visita
-    // futura de qualquer forma (o Chrome não reemite na mesma sessão).
+    // Se aceitar, o evento `appinstalled` (acima) já esconde o convite
+    // pra sempre (`isStandalone()` passa a `true`). Se recusar no diálogo
+    // nativo do Chrome, cala só pelo resto desta sessão — volta a
+    // aparecer na próxima visita, mesmo comportamento do "×".
     await deferredPrompt.userChoice;
-    snooze();
+    dismissForSession();
     setVisible(false);
     setDeferredPrompt(null);
   }
 
   function handleDismiss(): void {
-    snooze();
+    dismissForSession();
     setVisible(false);
   }
 
@@ -100,7 +111,7 @@ export function InstallAppPrompt(): JSX.Element | null {
         <div className="flex-1">
           <p className="text-sm font-semibold text-text">Instale o app da Rotta</p>
           <p className="text-xs text-text-muted">
-            Acesso mais rápido, direto da tela inicial do seu celular.
+            Para uma performance melhor, instale o app na tela inicial do seu celular.
           </p>
         </div>
         <Button variant="primary" onClick={() => void handleInstall()}>
