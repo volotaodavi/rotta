@@ -107,7 +107,16 @@ export function InstallAppPrompt(): JSX.Element | null {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center p-4 sm:p-6">
+    // `bottom` calculado (não `bottom-0`) — este componente é global
+    // (renderizado uma vez no layout raiz, sem saber se a rota atual
+    // tem `DriverBottomNav` fixa por baixo, Frente O). Sem esse
+    // respiro o convite ficaria empilhado por cima da barra de 4
+    // ícones de Motorista/Monitor/autônomo/MEI; nas demais rotas só
+    // sobe um pouco a mais em vez de ficar colado na borda.
+    <div
+      className="fixed inset-x-0 z-50 flex justify-center p-4 sm:p-6"
+      style={{ bottom: "calc(4rem + env(safe-area-inset-bottom))" }}
+    >
       <div className="flex w-full max-w-md items-center gap-3 rounded-xl border border-border bg-surface-elevated p-4 shadow-lg">
         <Image
           src="/brand/rotta-mark-192.png"

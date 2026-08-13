@@ -37,6 +37,21 @@ export function useVehicle(id: string) {
   });
 }
 
+/**
+ * "Meu Veículo" — `GET /vehicles/me` (`@Roles(MOTORISTA, MONITOR)`,
+ * Dossiê 13 §RBAC) já existia no backend e no app mobile (Frente L,
+ * tarefa #59), mas nunca tinha sido ligado no Painel Web (Frente O,
+ * pedido do usuário: barra de navegação reduzida a Início/Atividades/
+ * Veículo/Perfil). `null` quando não há vínculo ativo — nunca os dados
+ * de outro veículo.
+ */
+export function useMyVehicle() {
+  return useQuery({
+    queryKey: ["vehicles", "me"],
+    queryFn: () => vehiclesApi.getMyVehicle(),
+  });
+}
+
 export function useVehicleDashboard() {
   return useQuery({
     queryKey: ["vehicles", "dashboard"],

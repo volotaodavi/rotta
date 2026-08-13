@@ -24,9 +24,10 @@ interface NavLink {
 
 /**
  * Navegação da Área Profissional de gestão (Empresa/Gestor/Escola) —
- * Motorista/Monitor FUNCIONÁRIO nunca vê esta lista (Frente H, ver
- * `EMPLOYEE_DRIVER_NAV` logo abaixo) nem o dono autônomo/MEI em "Modo
- * Ação" (`ACTION_NAV`).
+ * Motorista/Monitor FUNCIONÁRIO nunca vê esta lista (Frente H) nem o
+ * dono autônomo/MEI em "Modo Ação" (Frente O, ver `showDriverNavBar`
+ * mais abaixo): nenhum dos dois tem MAIS nenhum link de texto no
+ * cabeçalho, só a barra de 4 ícones do `DriverBottomNav`.
  */
 const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/empresa", label: "Minha Empresa" },
@@ -41,49 +42,6 @@ const PROFISSIONAL_NAV: NavLink[] = [
 ];
 
 const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
-// "Atividades" (Frente K) — histórico de viagens, mesma página pro
-// dono autônomo/MEI e pro funcionário Motorista/Monitor (mesmo
-// raciocínio de `MINHA_ROTA_LINK`: uma página, dois públicos).
-const ATIVIDADES_LINK: NavLink = { href: "/atividades", label: "Atividades" };
-
-/**
- * Modo Ação (Frente G, pedido do usuário em produção) — só existe para
- * Motorista/Monitor autônomo/MEI (`useAppMode`: `role === "empresa"` +
- * `companyType` `AUTONOMO`/`MEI`, ou seja o dono que também dirige).
- * Reduz o menu ao essencial do dia a dia rodando a rota — o resto
- * (Empresa, Equipe, Veículos, Escolas, Marketplace, Verificação de
- * identidade) continua a um clique de distância em "Visão completa",
- * nunca removido de verdade, só fora do caminho enquanto dirige.
- */
-const ACTION_NAV: NavLink[] = [
-  MINHA_ROTA_LINK,
-  ATIVIDADES_LINK,
-  { href: "/rotta-pay", label: "Rotta Pay" },
-  { href: "/notificacoes", label: "Notificações" },
-  { href: "/chamados", label: "Chamados" },
-];
-
-/**
- * Motorista/Monitor FUNCIONÁRIO de uma empresa (Frente H, pedido do
- * usuário em produção — "readequação... eles só possuem uma função,
- * não precisa acumular todas"). `role` é `"motorista"`/`"monitor"`
- * (nunca `"empresa"` — esse é o dono autônomo/MEI, tratado por
- * `ACTION_NAV` acima), então nunca gerencia Empresa/Equipe/Veículos/
- * Escolas/Marketplace — só roda a rota. "Minha Rota" é a MESMA página
- * usada pelo dono autônomo (`RoutesService.list`/`TripsService` já
- * escopam por `motoristaPadraoId`/`monitorPadraoId` no backend
- * independente de quem é dono da empresa) — nenhuma tela nova
- * precisou ser criada, só apontada pra quem tinha sido esquecido.
- * Sem "Rotta Pay" aqui: hoje é só um placeholder "Em breve"
- * (`(dashboard)/rotta-pay/page.tsx`) pra qualquer papel — nada a
- * mostrar ainda pro funcionário também.
- */
-const EMPLOYEE_DRIVER_NAV: NavLink[] = [
-  MINHA_ROTA_LINK,
-  ATIVIDADES_LINK,
-  { href: "/notificacoes", label: "Notificações" },
-  { href: "/chamados", label: "Chamados" },
-];
 
 /**
  * Navegação da Área Pessoal (Responsável) — gap fechado nesta entrega:
@@ -157,21 +115,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     );
   }
 
+  // Quem roda a rota no dia a dia (Frente K/O) — dono autônomo/MEI em
+  // "Modo Ação" e Motorista/Monitor funcionário (esse nunca tem
+  // `canToggle`, então nunca precisa do botão pra trocar de modo —
+  // pedido do usuário: "sem questão botão para trocar o modo"). Pra
+  // este público a barra de navegação vira só os 4 ícones do
+  // `DriverBottomNav` (Início/Atividades/Veículo/Perfil, igual à
+  // imagem de referência) — NENHUM link de texto adicional no
+  // cabeçalho, nem em telas grandes (pedido explícito: "para todas as
+  // plataformas, sem exceção").
+  const showDriverNavBar = isEmployeeDriver || (canToggle && mode === "acao");
+
   const navLinks = isResponsavel
     ? RESPONSAVEL_NAV
-    : isEmployeeDriver
-      ? EMPLOYEE_DRIVER_NAV
-      : canToggle && mode === "acao"
-        ? ACTION_NAV
-        : canToggle
-          ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
-          : PROFISSIONAL_NAV;
-
-  // Quem roda a rota no dia a dia pelo celular (Frente K) — mesmo
-  // público de `EMPLOYEE_DRIVER_NAV`/`ACTION_NAV` acima, nunca
-  // Responsável/Empresa em Visão completa (esses continuam só com o
-  // cabeçalho, pensado pra tela grande).
-  const showDriverBottomNav = isEmployeeDriver || (canToggle && mode === "acao");
+    : showDriverNavBar
+      ? []
+      : canToggle
+        ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
+        : PROFISSIONAL_NAV;
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
@@ -180,7 +141,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           <Typography variant="subtitle">
             {isResponsavel ? (user?.nome ?? "Rotta") : (user?.companyName ?? "Rotta")}
           </Typography>
-          {!isBlockedByIdentityVerification && (
+          {!isBlockedByIdentityVerification && navLinks.length > 0 && (
             <nav className="flex items-center gap-4">
               {navLinks.map((link) => (
                 <Link
@@ -251,12 +212,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       ) : (
         <>
           {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
-          {/* `pb-20` (Frente K) abre espaço pra `DriverBottomNav` fixa não cobrir o fim do conteúdo em tela pequena — `md:pb-6` volta ao normal onde ela some. */}
-          <main className={`flex-1 p-6 ${showDriverBottomNav ? "pb-20 md:pb-6" : ""}`}>
-            {children}
-          </main>
+          {/* `pb-20` (Frente K/O) abre espaço pra `DriverBottomNav` fixa não cobrir o fim do conteúdo — agora sempre visível pra este público (Frente O, "todas as plataformas, sem exceção"), então sem exceção de breakpoint aqui também. */}
+          <main className={`flex-1 p-6 ${showDriverNavBar ? "pb-20" : ""}`}>{children}</main>
           <LegalFooter />
-          {showDriverBottomNav && <DriverBottomNav />}
+          {showDriverNavBar && <DriverBottomNav />}
         </>
       )}
     </div>
