@@ -12,6 +12,8 @@ import type { LoginMascotMood } from "@/components/login-mascot";
 import type { ProfileOption } from "@rotta/api-client";
 
 import { LoginMascot } from "@/components/login-mascot";
+import { getAdminUrl } from "@/lib/site-config";
+
 
 /**
  * Campo de senha com botão de mostrar/ocultar — recebe `id`/
@@ -62,6 +64,12 @@ export default function EntrarPage(): JSX.Element {
   const [senha, setSenha] = useState("");
   const [profiles, setProfiles] = useState<ProfileOption[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Distinto de `errorMessage`: quando a conta é da equipe Rotta (MFA
+  // obrigatório, Dossiê 43), o problema não é "senha errada" — é "você
+  // está no painel errado". Guardar como estado próprio, em vez de só
+  // um texto de erro, permite renderizar um link real de saída (não dá
+  // pra colocar um `<a>` dentro de uma `string`).
+  const [requiresAdminPanel, setRequiresAdminPanel] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Mascote animado (Dossiê 41) — reage ao foco real dos campos, nunca
@@ -77,6 +85,7 @@ export default function EntrarPage(): JSX.Element {
 
   async function attemptLogin(companyId?: string): Promise<void> {
     setErrorMessage(null);
+    setRequiresAdminPanel(false);
     setIsSubmitting(true);
     try {
       const result = await login({ identificador, senha, companyId });
@@ -88,7 +97,7 @@ export default function EntrarPage(): JSX.Element {
       // usa este painel — se algum dia acontecer aqui, nenhum token foi
       // emitido (nunca navegar como se tivesse logado).
       if ("mfaSetupRequired" in result || "mfaRequired" in result) {
-        setErrorMessage("Esta conta requer o painel administrativo da Rotta para entrar.");
+        setRequiresAdminPanel(true);
         return;
       }
       // Responsável (Área Pessoal) tem sua própria home no painel web —
@@ -171,10 +180,25 @@ export default function EntrarPage(): JSX.Element {
           />
         </FormField>
 
-        {errorMessage && (
-          <Typography variant="bodySmall" color="danger">
-            {errorMessage}
-          </Typography>
+        {requiresAdminPanel ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3">
+            <Typography variant="bodySmall" color="danger">
+              Esta conta é da equipe Rotta e exige o Painel Administrativo (login com verificação em
+              duas etapas).
+            </Typography>
+            <a
+              href={`${getAdminUrl()}/entrar`}
+              className="text-sm font-semibold text-primary underline underline-offset-2"
+            >
+              Entrar no Painel Administrativo →
+            </a>
+          </div>
+        ) : (
+          errorMessage && (
+            <Typography variant="bodySmall" color="danger">
+              {errorMessage}
+            </Typography>
+          )
         )}
 
         <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>
@@ -187,6 +211,19 @@ export default function EntrarPage(): JSX.Element {
         <Link href="/criar-conta" className="font-semibold text-primary">
           Criar conta
         </Link>
+      </Typography>
+
+      {/* Link discreto de saída para quem é da equipe Rotta (Admin
+          Rotta) — não precisa errar a senha primeiro pra descobrir que
+          está no painel errado. Aponta pro app `apps/admin`, deploy e
+          domínio isolados por decisão de segurança (Dossiê 22 §4.3);
+          "integrar na mesma área de entrar" é este link, nunca fundir
+          os dois logins num só domínio/processo. */}
+      <Typography variant="bodySmall" color="muted" className="text-center">
+        É da equipe Rotta?{" "}
+        <a href={`${getAdminUrl()}/entrar`} className="font-semibold text-primary">
+          Entrar no Painel Administrativo
+        </a>
       </Typography>
     </div>
   );

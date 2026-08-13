@@ -34,6 +34,39 @@ export function getSiteUrl(): string {
   return "http://localhost:3000";
 }
 
+/**
+ * URL do Portal Admin Rotta (`apps/admin`), deploy separado por decisão
+ * de segurança — nunca o mesmo processo/domínio do painel de cliente
+ * (Dossiê 22 §4.3: modelo de autorização cross-tenant, superfície de
+ * ataque distinta). "Integrar na mesma área de entrar" (pedido do
+ * usuário) significa **linkar** para esse app a partir do `/entrar` de
+ * `apps/web` — nunca fundir os dois logins num só domínio, o que
+ * anularia a própria razão do isolamento.
+ *
+ * `https://rotta-admin.vercel.app` é o domínio de produção REAL,
+ * confirmado ao vivo (curl retornando `<title>Rotta — Admin</title>` e
+ * `/entrar` respondendo 200) a partir do nome do projeto Vercel
+ * (`rotta-admin`, veja `apps/admin/.vercel/project.json` — a Vercel usa
+ * `<projectName>.vercel.app` como domínio padrão de produção quando
+ * nenhum domínio próprio foi configurado ainda). `NEXT_PUBLIC_ADMIN_URL`
+ * é o escape hatch: dev local (`pnpm dev:admin` sobe em `:3001`) e o dia
+ * em que `admin.rotta.com.br` existir (Dossiê 33 §4 — depende de acesso
+ * ao registrador que este código não tem) só exigem essa env var, nunca
+ * uma mudança de código.
+ */
+export function getAdminUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_ADMIN_URL;
+  if (explicit) {
+    return explicit.replace(/\/+$/, "");
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    return "http://localhost:3001";
+  }
+
+  return "https://rotta-admin.vercel.app";
+}
+
 export const SITE_NAME = "Rotta";
 
 export const SITE_DESCRIPTION =

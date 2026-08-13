@@ -7,6 +7,8 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { getWebUrl } from "@/lib/site-config";
+
 type Step = "credenciais" | "mfa-configurar" | "mfa-codigos-recuperacao" | "mfa-verificar";
 
 /**
@@ -24,6 +26,12 @@ export default function EntrarPage(): JSX.Element {
 
   const [step, setStep] = useState<Step>("credenciais");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Distinto de `errorMessage`: quando a conta autenticou mas não é
+  // Admin Rotta, o problema é "você está no painel errado", não "senha
+  // errada" — guardado à parte pra poder renderizar um link real de
+  // volta pro Painel Web (não dá pra colocar um `<a>` dentro de uma
+  // `string`).
+  const [notAdminAccount, setNotAdminAccount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const [identificador, setIdentificador] = useState("");
@@ -41,12 +49,13 @@ export default function EntrarPage(): JSX.Element {
   async function handleCredenciaisSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setErrorMessage(null);
+    setNotAdminAccount(false);
     setIsSubmitting(true);
     try {
       const result = await login({ identificador, senha });
 
       if ("requiresProfileSelection" in result) {
-        setErrorMessage("Esta conta não é uma conta de Administrador Rotta.");
+        setNotAdminAccount(true);
         return;
       }
 
@@ -66,7 +75,7 @@ export default function EntrarPage(): JSX.Element {
       }
 
       if (result.user.role !== "admin_rotta") {
-        setErrorMessage("Esta conta não tem acesso ao painel interno da Rotta.");
+        setNotAdminAccount(true);
         return;
       }
       router.replace("/");
@@ -289,16 +298,42 @@ export default function EntrarPage(): JSX.Element {
           />
         </FormField>
 
-        {errorMessage && (
-          <Typography variant="bodySmall" color="danger">
-            {errorMessage}
-          </Typography>
+        {notAdminAccount ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3">
+            <Typography variant="bodySmall" color="danger">
+              Esta conta não tem acesso ao painel interno da Rotta.
+            </Typography>
+            <a
+              href={`${getWebUrl()}/entrar`}
+              className="text-sm font-semibold text-primary underline underline-offset-2"
+            >
+              Entrar no Painel Web →
+            </a>
+          </div>
+        ) : (
+          errorMessage && (
+            <Typography variant="bodySmall" color="danger">
+              {errorMessage}
+            </Typography>
+          )
         )}
 
         <Button type="submit" variant="primary" fullWidth isLoading={isSubmitting}>
           Entrar
         </Button>
       </form>
+
+      {/* Link discreto de saída — quem chegou aqui por engano (conta de
+          Empresa/Gestor/Motorista/Responsável, não Admin Rotta) não
+          precisa errar login primeiro pra descobrir que está no painel
+          errado. Aponta pro app `apps/web`, deploy e domínio isolados
+          por decisão de segurança (Dossiê 22 §4.3). */}
+      <Typography variant="bodySmall" color="muted" className="text-center">
+        Não é da equipe Rotta?{" "}
+        <a href={`${getWebUrl()}/entrar`} className="font-semibold text-primary">
+          Entrar no Painel Web
+        </a>
+      </Typography>
     </div>
   );
 }
