@@ -1,9 +1,19 @@
-import { ApiError, type Contract, type RatingTargetType } from "@rotta/api-client";
-import { Star } from "@rotta/icons/native";
+import { ApiError, type Contract, type MapVehicle, type RatingTargetType } from "@rotta/api-client";
+import { Clock, MapPin, Navigation, Star } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { Timeline } from "@rotta/ui/native";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
@@ -24,7 +34,22 @@ import {
   VehicleScreen,
   VehicleTextField,
 } from "@/features/vehicles/components";
+import { tripsApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
+
+function formatarHora(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/** Mesmo endpoint de `driver/hooks/use-driver-trip.ts#useTripProximasEtas` (Frente L/M) — já usado pelo Responsável no Painel Web, faltava só o app nativo. */
+function useProximasEtasResponsavel(tripId: string | undefined) {
+  return useQuery({
+    queryKey: ["responsavel", "trips", tripId, "proximas-etas"],
+    queryFn: () => tripsApi.getProximasEtas(tripId as string),
+    enabled: Boolean(tripId),
+    refetchInterval: tripId ? 30_000 : false,
+  });
+}
 
 type Props = BottomTabScreenProps<ParentTabParamList, "Transporte">;
 
@@ -126,16 +151,7 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   }
 
   if (state === "TRANSPORTE_ATIVO" && contratoAtivo) {
-    return (
-      <VehicleScreen>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Text>
-        <DetalhesContrato contrato={contratoAtivo} />
-
-        <AcompanhamentoSection contrato={contratoAtivo} />
-
-        <AvaliacoesSection contrato={contratoAtivo} />
-      </VehicleScreen>
-    );
+    return <TransporteAtivoScreen contrato={contratoAtivo} />;
   }
 
   // CONTRATO_ENCERRADO
@@ -149,6 +165,179 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
       </Text>
       <VehicleButton label="Buscar transportadores" onPress={() => navigation.navigate("Mapa")} />
     </VehicleScreen>
+  );
+}
+
+/**
+ * Aba "Transporte" com transporte ativo — decide entre o acompanhamento
+ * em tela cheia (quando há viagem em curso agora) e o layout compacto de
+ * sempre (contrato + acompanhamento + avaliações, sem nada de real pra
+ * preencher a tela toda). `AcompanhamentoSection` continua existindo
+ * intacta pra Home adaptativa da aba "Mapa" (Estado 2) reusar — só esta
+ * tela dedicada ganha o tratamento em tela cheia.
+ */
+function TransporteAtivoScreen({ contrato }: { contrato: Contract }): JSX.Element {
+  const { theme } = useTheme();
+  const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
+
+  if (isLoading || !viagem) {
+    return (
+      <VehicleScreen>
+        <Text style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Text>
+        <DetalhesContrato contrato={contrato} />
+        <AcompanhamentoSection contrato={contrato} />
+        <AvaliacoesSection contrato={contrato} />
+      </VehicleScreen>
+    );
+  }
+
+  return <TransporteEmAndamentoScreen contrato={contrato} viagem={viagem} />;
+}
+
+/**
+ * Acompanhamento em tela cheia (pedido do usuário, com a mesma imagem
+ * de referência "Track Rider" já usada nas Frentes K/L/M: "o mapa
+ * deverá ocupar a tela inteira, não um quadrado") — porta exata do
+ * padrão de `RotaOperacional` do Motorista (`inicio-screen.tsx`, Frente
+ * P5), agora do lado de quem acompanha: mapa ocupando a maior parte da
+ * viewport, cartões translúcidos por cima com o status/ETA/veículo, e o
+ * contrato + avaliações continuam abaixo, com scroll.
+ *
+ * Sem chat com o motorista aqui: a Rotta não tem canal de chat ao vivo
+ * no app nativo (só Chamados no Painel Web) — nenhum botão fingindo uma
+ * função que não existe.
+ */
+function TransporteEmAndamentoScreen({
+  contrato,
+  viagem,
+}: {
+  contrato: Contract;
+  viagem: MapVehicle;
+}): JSX.Element {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
+  const { data: proximasEtas } = useProximasEtasResponsavel(viagem.tripId);
+  const proximaParada = proximasEtas?.[0];
+
+  const mapSectionHeight = Math.max(windowHeight * 0.6, 380);
+
+  return (
+    <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
+      <ScrollView contentContainerStyle={styles.opScrollContent}>
+        <View style={[styles.mapSection, { height: mapSectionHeight }]}>
+          <View style={styles.absoluteFill}>
+            {viagem.latitude && viagem.longitude ? (
+              <RottaMap
+                markers={[
+                  {
+                    id: viagem.tripId,
+                    titulo: `${viagem.placa} — ${viagem.motoristaNome}`,
+                    latitude: viagem.latitude,
+                    longitude: viagem.longitude,
+                    emMovimento: true,
+                  },
+                ]}
+                initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
+                initialZoom={14}
+              />
+            ) : (
+              <View style={[styles.mapaVazioFill, { backgroundColor: theme.colors.card }]}>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  Aguardando a primeira posição do motorista…
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View
+            style={[styles.topOverlay, { top: insets.top + theme.spacing[3] }]}
+            pointerEvents="box-none"
+          >
+            <View
+              style={[
+                styles.overlayCard,
+                styles.overlayRow,
+                { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
+                theme.elevation.dropdown.native,
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: "700" }}>
+                  Meu Transporte
+                </Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  {viagem.ultimaPosicaoEm
+                    ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
+                    : "Aguardando a primeira posição do motorista"}
+                </Text>
+              </View>
+              <StatusPill label="Em viagem agora" tone="success" />
+            </View>
+          </View>
+
+          <View
+            style={[
+              styles.bottomPanel,
+              {
+                backgroundColor: theme.colors.surfaceElevated,
+                borderTopLeftRadius: theme.radius.xl,
+                borderTopRightRadius: theme.radius.xl,
+              },
+              theme.elevation.modal.native,
+            ]}
+          >
+            {proximaParada ? (
+              <View style={styles.etaRow}>
+                <Clock size={14} color={theme.colors.primary} />
+                <Text style={{ color: theme.colors.primary, fontWeight: "600", fontSize: 13 }}>
+                  Chegando às {formatarHora(proximaParada.etaPrevista)}
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={[styles.veiculoRow, { borderColor: theme.colors.border, borderWidth: 1 }]}>
+              <View style={[styles.veiculoIcone, { backgroundColor: theme.colors.primaryMuted }]}>
+                <Navigation size={20} color={theme.colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+                  {viagem.placa} — {viagem.routeNome}
+                </Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  Motorista: {viagem.motoristaNome}
+                  {viagem.monitorNome ? ` · Monitor: ${viagem.monitorNome}` : ""}
+                </Text>
+              </View>
+            </View>
+
+            {proximasEtas && proximasEtas.length > 0 ? (
+              <View style={{ gap: 6 }}>
+                {proximasEtas.slice(0, 2).map((eta) => (
+                  <View key={eta.routeStopId} style={styles.paradaRow}>
+                    <MapPin size={14} color={theme.colors.textMuted} />
+                    <Text
+                      style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}
+                      numberOfLines={1}
+                    >
+                      {eta.endereco}
+                    </Text>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                      {formatarHora(eta.etaPrevista)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <View style={styles.abaixoDoMapa}>
+          <DetalhesContrato contrato={contrato} />
+          <AvaliacoesSection contrato={contrato} />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -373,13 +562,51 @@ function RatingForm({
 }
 
 const styles = StyleSheet.create({
+  abaixoDoMapa: { gap: 16, padding: 24 },
+  absoluteFill: { ...StyleSheet.absoluteFillObject },
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },
+  bottomPanel: {
+    bottom: 0,
+    gap: 12,
+    left: 0,
+    padding: 16,
+    position: "absolute",
+    right: 0,
+  },
+  etaRow: { alignItems: "center", flexDirection: "row", gap: 4 },
   header: { flexDirection: "row" },
+  mapSection: { overflow: "hidden", position: "relative", width: "100%" },
   mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
+  mapaVazioFill: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+  },
   mensalidade: { fontWeight: "600" },
   notas: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  opScreen: { flex: 1 },
+  opScrollContent: { flexGrow: 1 },
+  overlayCard: { padding: 16 },
+  overlayRow: { alignItems: "center", flexDirection: "row" },
+  paradaRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   rotuloAvaliacao: { fontWeight: "600" },
   secao: { fontSize: 16, fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
+  topOverlay: { gap: 12, left: 16, position: "absolute", right: 16 },
+  veiculoIcone: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  veiculoRow: {
+    alignItems: "center",
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: 12,
+    padding: 12,
+  },
 });
