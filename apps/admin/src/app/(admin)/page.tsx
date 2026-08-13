@@ -2,99 +2,363 @@
 
 import { useAuth } from "@rotta/auth/web";
 import {
-  BarChart3,
   Building2,
   Car,
+  ChevronLeft,
+  ChevronRight,
   ClipboardCheck,
+  Download,
   GraduationCap,
+  HeartPulse,
   MessageCircle,
-  ShieldCheck,
   Store,
+  TrendingDown,
+  TrendingUp,
 } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
-import {
-  Badge,
-  Card,
-  PanelGreeting,
-  ProgressRing,
-  Spinner,
-  Typography,
-  buttonVariants,
-} from "@rotta/ui/web";
+import { Badge, Card, PanelGreeting, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
-import type { MapVehicle } from "@rotta/api-client";
+import type { ApprovalQueue, MapVehicle } from "@rotta/api-client";
 import type { LucideIcon } from "@rotta/icons";
 import type { Route } from "next";
 
-import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffice";
+import { useNationalKpis } from "@/features/analytics/hooks/use-analytics";
+import {
+  useApprovalQueue,
+  useBackofficeDashboard,
+} from "@/features/backoffice/hooks/use-backoffice";
 import { useGpsMapNationwide } from "@/features/gps/hooks/use-gps";
+import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-health";
+import { analyticsApi } from "@/lib/api-client";
+import { usePrivacy } from "@/providers/privacy-provider";
 
-interface AtalhoTile {
-  href: Route;
+
+function centsToBRL(cents: number): string {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+const PERIODOS = [
+  { dias: 7, label: "Últimos 7 dias" },
+  { dias: 30, label: "Últimos 30 dias" },
+  { dias: 90, label: "Últimos 90 dias" },
+];
+
+/**
+ * Botões de ação rápida logo abaixo da saudação (Frente Mercury — banner
+ * de referência: Send/Transfer/Deposit/Request/Upload bill). Adaptação
+ * honesta: a Rotta não movimenta dinheiro pelo Admin Rotta (quem faz
+ * isso é o Rotta Pay, do lado da empresa/motorista), então em vez de
+ * fingir "Enviar"/"Transferir", os 5 botões levam aos 5 verbos reais do
+ * dia a dia do Admin — todos navegam pra uma tela que existe ou
+ * disparam uma ação real (exportar), nunca decorativos.
+ */
+function AcoesRapidas({
+  onExportar,
+  isExportando,
+}: {
+  onExportar: () => void;
+  isExportando: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <Link href="/empresas/nova" className={buttonVariants({ variant: "primary" })}>
+        Nova empresa
+      </Link>
+      <Link href="/aprovacoes" className={buttonVariants({ variant: "secondary" })}>
+        Aprovações
+      </Link>
+      <Link href="/suporte" className={buttonVariants({ variant: "secondary" })}>
+        Chamados
+      </Link>
+      <Link href="/verificacao-identidade" className={buttonVariants({ variant: "secondary" })}>
+        Verificar identidade
+      </Link>
+      <button
+        type="button"
+        onClick={onExportar}
+        disabled={isExportando}
+        className={buttonVariants({ variant: "secondary", disabled: isExportando })}
+      >
+        {isExportando ? <Spinner size="sm" /> : <Download className="h-4 w-4" />}
+        Exportar relatório
+      </button>
+    </div>
+  );
+}
+
+interface IndicadorItem {
   label: string;
+  value: number;
+  href: Route;
   icon: LucideIcon;
+  highlight?: boolean;
 }
 
 /**
- * Atalhos rápidos do Painel Rotta (Frente L) — mesma ideia dos atalhos
- * do painel de "Minha Empresa" em `apps/web` (harmonia visual entre os
- * dois painéis, pedido do usuário), com os 8 destinos mais usados do
- * cabeçalho (`NAV_LINKS`, `(admin)/layout.tsx`). Deixa de fora Saúde/
- * Documentos Legais/Auditoria Legal do grid (não do menu) só pra manter
- * o mesmo tamanho de grid da referência (8 atalhos) — continuam a um
- * clique no cabeçalho.
+ * Lista "Contas" do painel (Frente Mercury — banner de referência:
+ * Credit Card/Treasury/Ops-Payroll/AP/AR, cada linha com ícone + saldo).
+ * Adaptação honesta: a Rotta não tem sub-contas bancárias no Admin, mas
+ * tem exatamente essa mesma FORMA — uma lista de indicadores
+ * operacionais reais, cada linha clicável levando pra tela de gestão
+ * daquele indicador (`GET /backoffice/dashboard`, já existia).
  */
-const PAINEL_ATALHOS: AtalhoTile[] = [
-  { href: "/empresas", label: "Empresas", icon: Building2 },
-  { href: "/veiculos", label: "Veículos", icon: Car },
-  { href: "/escolas", label: "Escolas", icon: GraduationCap },
-  { href: "/marketplace/solicitacoes", label: "Marketplace", icon: Store },
-  { href: "/aprovacoes", label: "Aprovações", icon: ClipboardCheck },
-  { href: "/verificacao-identidade", label: "Verif. de identidade", icon: ShieldCheck },
-  { href: "/suporte", label: "Suporte", icon: MessageCircle },
-  { href: "/inteligencia", label: "Inteligência", icon: BarChart3 },
-];
-
-function PainelAtalhos(): JSX.Element {
+function IndicadoresList({ itens }: { itens: IndicadorItem[] }): JSX.Element {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-      {PAINEL_ATALHOS.map(({ href, label, icon: Icon }) => (
-        <Link key={href} href={href}>
-          <Card interactive className="h-full">
-            <Card.Body className="flex flex-col items-center gap-2 py-5 text-center">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <Icon size={20} />
-              </span>
-              <Typography variant="bodySmall" className="font-medium">
-                {label}
-              </Typography>
-            </Card.Body>
-          </Card>
+    <div className="flex flex-col divide-y divide-border">
+      {itens.map((item) => (
+        <Link
+          key={item.label}
+          href={item.href}
+          className="flex items-center justify-between gap-3 py-3 transition-colors hover:bg-muted"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <item.icon size={16} />
+            </span>
+            <Typography variant="bodySmall" className="font-medium">
+              {item.label}
+            </Typography>
+          </div>
+          <Typography
+            variant="subtitle"
+            className={item.highlight && item.value > 0 ? "text-warning" : undefined}
+          >
+            {item.value.toLocaleString("pt-BR")}
+          </Typography>
         </Link>
       ))}
     </div>
   );
 }
 
+type ApprovalItemTipo = "Documento de motorista" | "Documento de veículo" | "Contrato";
+
+interface ApprovalItem {
+  id: string;
+  tipo: ApprovalItemTipo;
+  titulo: string;
+  empresa: string;
+  createdAt: string;
+}
+
+function buildApprovalItems(queue: ApprovalQueue | undefined): ApprovalItem[] {
+  if (!queue) return [];
+  return [
+    ...queue.documentosMotorista.map((d) => ({
+      id: d.id,
+      tipo: "Documento de motorista" as const,
+      titulo: `${d.tipo} — ${d.userNome}`,
+      empresa: d.companyNome,
+      createdAt: d.createdAt,
+    })),
+    ...queue.documentosVeiculo.map((d) => ({
+      id: d.id,
+      tipo: "Documento de veículo" as const,
+      titulo: `${d.tipo} — ${d.vehiclePlaca}`,
+      empresa: d.companyNome,
+      createdAt: d.createdAt,
+    })),
+    ...queue.contratos.map((c) => ({
+      id: c.id,
+      tipo: "Contrato" as const,
+      titulo: `Contrato — ${c.studentNome}`,
+      empresa: c.companyNome,
+      createdAt: c.createdAt,
+    })),
+  ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+}
+
 /**
- * Tela inicial do Admin Rotta (`ADM-01`, Dossiê 11 §6.1 — "KPIs de
- * saúde da plataforma... atalhos para Chamados de suporte abertos e
- * Alertas"). Todos os números vêm de `GET /backoffice/dashboard`
- * (Dossiê 29) — nenhum placeholder fixo em zero.
- *
- * Frente L (pedido do usuário, com imagem de referência de um ERP de
- * RH — "pegue de exemplo esse design para o ERP da Rotta, tanto para
- * os admins quanto para os usuários autônomos, MEIs e empresas"):
- * ganhou `PanelGreeting` (saudação + relógio) e a grade de atalhos
- * rápidos, mesmos componentes/padrão usados no painel de "Minha
- * Empresa" de `apps/web` — harmonia visual entre os dois painéis.
+ * Carrossel "Aprovações pendentes" (Frente Mercury — banner de
+ * referência: "Disputes", `< 1/9 >`, item + "Open disputes — View").
+ * Mesmo formato visual, dado 100% real (`GET /backoffice/approvals`,
+ * já existia — só nunca tinha virado um carrossel na Home).
+ */
+function AprovacoesCarousel({
+  itens,
+  total,
+}: {
+  itens: ApprovalItem[];
+  total: number;
+}): JSX.Element {
+  const [indice, setIndice] = useState(0);
+  const atual = itens[indice];
+
+  return (
+    <Card>
+      <Card.Header
+        title="Aprovações"
+        action={
+          itens.length > 0 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                aria-label="Anterior"
+                disabled={indice === 0}
+                onClick={() => setIndice((i) => Math.max(0, i - 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-muted disabled:opacity-30"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <Typography variant="caption" color="muted">
+                {indice + 1}/{itens.length}
+              </Typography>
+              <button
+                type="button"
+                aria-label="Próxima"
+                disabled={indice === itens.length - 1}
+                onClick={() => setIndice((i) => Math.min(itens.length - 1, i + 1))}
+                className="flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-muted disabled:opacity-30"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )
+        }
+      />
+      <Card.Body className="flex flex-col gap-4">
+        {atual ? (
+          <div>
+            <Badge variant="warning">{atual.tipo}</Badge>
+            <Typography variant="subtitle" className="mt-2">
+              {atual.titulo}
+            </Typography>
+            <Typography variant="bodySmall" color="muted">
+              {atual.empresa} · enviado em {new Date(atual.createdAt).toLocaleDateString("pt-BR")}
+            </Typography>
+          </div>
+        ) : (
+          <Typography variant="bodySmall" color="muted">
+            Nenhuma aprovação pendente agora.
+          </Typography>
+        )}
+        <div className="flex items-center justify-between border-t border-border pt-3">
+          <div>
+            <Typography variant="caption" color="muted">
+              Fila de aprovações
+            </Typography>
+            <Typography variant="bodySmall" className="font-semibold">
+              {total} pendente{total === 1 ? "" : "s"}
+            </Typography>
+          </div>
+          <Link href="/aprovacoes" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+            Ver todas
+          </Link>
+        </div>
+      </Card.Body>
+    </Card>
+  );
+}
+
+/**
+ * Card "Saúde das integrações" (Frente Mercury — banner de referência:
+ * "Credit Card", barra de saldo/pendente + "Pay"). Adaptação honesta:
+ * a Rotta não tem cartão de crédito no Admin, mas tem a MESMA forma —
+ * uma barra de progresso + um botão de ação — só que sobre a saúde real
+ * das integrações externas (`GET /health/integrations`, "Rotta Control
+ * Center", Dossiê 44), já em produção.
+ */
+function SaudeIntegracoesCard(): JSX.Element {
+  const { data, isLoading } = useIntegrationsHealth();
+
+  return (
+    <Card>
+      <Card.Header
+        title="Saúde das integrações"
+        action={
+          data && (
+            <Badge
+              variant={
+                data.status === "ok" ? "success" : data.status === "degraded" ? "warning" : "danger"
+              }
+            >
+              {data.status === "ok"
+                ? "Operacional"
+                : data.status === "degraded"
+                  ? "Degradada"
+                  : "Fora do ar"}
+            </Badge>
+          )
+        }
+      />
+      <Card.Body className="flex flex-col gap-4">
+        {isLoading || !data ? (
+          <div className="flex justify-center py-6">
+            <Spinner size="md" />
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <HeartPulse size={20} />
+              </span>
+              <div className="flex-1">
+                <Typography variant="title">{Math.round(data.score.value)}%</Typography>
+                <Typography variant="caption" color="muted">
+                  {data.score.healthyComponents} de {data.score.consideredComponents} integrações
+                  saudáveis
+                </Typography>
+              </div>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full rounded-full ${
+                  data.status === "ok"
+                    ? "bg-success"
+                    : data.status === "degraded"
+                      ? "bg-warning"
+                      : "bg-danger"
+                }`}
+                style={{
+                  width: `${data.score.consideredComponents > 0 ? (data.score.healthyComponents / data.score.consideredComponents) * 100 : 100}%`,
+                }}
+              />
+            </div>
+          </>
+        )}
+        <Link
+          href="/saude"
+          className={buttonVariants({ variant: "secondary", size: "sm", fullWidth: true })}
+        >
+          Ver Rotta Control Center
+        </Link>
+      </Card.Body>
+    </Card>
+  );
+}
+
+/**
+ * Tela inicial do Admin Rotta (`ADM-01`, Dossiê 11 §6.1). Redesenho
+ * "Frente Mercury" (pedido do usuário, banner de referência de um
+ * painel bancário): sidebar + saudação + ações rápidas + cartão de
+ * receita (equivalente ao "Mercury balance") + lista de indicadores
+ * (equivalente a "Accounts") + aprovações em carrossel (equivalente a
+ * "Disputes") + saúde das integrações (equivalente ao cartão de
+ * "Credit Card"). Todo número vem de endpoint real que já existia
+ * (`backoffice/dashboard`, `analytics/national/kpis`,
+ * `backoffice/approvals`, `health/integrations`) — nada fabricado, e
+ * cada botão leva a uma tela real ou dispara uma ação real (pedido
+ * explícito do usuário: "não quero botão fake").
  */
 export default function AdminHomePage(): JSX.Element {
   const { user } = useAuth();
+  const { hidden } = usePrivacy();
   const { data, isLoading, isError } = useBackofficeDashboard();
   const { data: fleet, isLoading: isFleetLoading } = useGpsMapNationwide();
+  const { data: approvalQueue } = useApprovalQueue();
+  const [periodoDias, setPeriodoDias] = useState(30);
+  const [isExportando, setIsExportando] = useState(false);
+
+  const { from, to } = useMemo(() => {
+    const agora = new Date();
+    const inicio = new Date(agora);
+    inicio.setDate(inicio.getDate() - periodoDias);
+    return { from: inicio.toISOString().slice(0, 10), to: agora.toISOString().slice(0, 10) };
+  }, [periodoDias]);
+
+  const { data: kpis, isLoading: isLoadingKpis } = useNationalKpis({ from, to });
 
   const fleetMarkers = useMemo<RottaMapMarker[]>(
     () =>
@@ -111,6 +375,23 @@ export default function AdminHomePage(): JSX.Element {
         })),
     [fleet],
   );
+
+  const approvalItems = useMemo(() => buildApprovalItems(approvalQueue), [approvalQueue]);
+
+  async function handleExportarRelatorio(): Promise<void> {
+    setIsExportando(true);
+    try {
+      const blob = await analyticsApi.exportNational({ from, to, format: "csv" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `relatorio-nacional-${to}.csv`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsExportando(false);
+    }
+  }
 
   if (isLoading) {
     return (
@@ -132,61 +413,204 @@ export default function AdminHomePage(): JSX.Element {
     );
   }
 
-  const empresasAtivas = data.empresasPorStatus.ATIVO ?? 0;
-  const fracaoEmpresasAtivas = data.empresasTotal > 0 ? empresasAtivas / data.empresasTotal : 0;
+  const indicadores: IndicadorItem[] = [
+    {
+      label: "Empresas ativas",
+      value: data.empresasPorStatus.ATIVO ?? 0,
+      href: "/empresas",
+      icon: Building2,
+    },
+    { label: "Veículos cadastrados", value: data.veiculosTotal, href: "/veiculos", icon: Car },
+    { label: "Alunos cadastrados", value: data.alunosTotal, href: "/escolas", icon: GraduationCap },
+    {
+      label: "Solicitações no Marketplace",
+      value: data.contratosAguardandoAssinatura,
+      href: "/marketplace/solicitacoes",
+      icon: Store,
+    },
+    {
+      label: "Chamados abertos",
+      value: data.chamadosAbertos,
+      href: "/suporte",
+      icon: MessageCircle,
+      highlight: true,
+    },
+    {
+      label: "Aprovações pendentes",
+      value: data.aprovacoesPendentesTotal,
+      href: "/aprovacoes",
+      icon: ClipboardCheck,
+      highlight: true,
+    },
+  ];
+
+  const negocio = kpis?.negocio;
+  const periodo = kpis?.periodo;
+  const periodoAnterior = kpis?.periodoAnterior;
+  const maiorViagens = Math.max(
+    periodo?.viagensRealizadas ?? 0,
+    periodoAnterior?.viagensRealizadas ?? 0,
+    1,
+  );
 
   return (
     <div className="flex flex-col gap-6">
       <PanelGreeting nome={user?.nome ?? "Admin"} />
 
-      <PainelAtalhos />
-
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Empresas ativas" value={empresasAtivas} />
-        <KpiCard label="Motoristas ativos" value={data.motoristasAtivos} />
-        <KpiCard label="Monitores ativos" value={data.monitoresAtivos} />
-        <KpiCard label="Veículos cadastrados" value={data.veiculosTotal} />
-        <KpiCard label="Alunos cadastrados" value={data.alunosTotal} />
-        <KpiCard label="Viagens hoje" value={data.viagensHoje} />
-        <KpiCard
-          label="Chamados abertos"
-          value={data.chamadosAbertos}
-          href="/suporte"
-          highlight={data.chamadosAbertos > 0}
-        />
-        <KpiCard
-          label="Aprovações pendentes"
-          value={data.aprovacoesPendentesTotal}
-          href="/aprovacoes"
-          highlight={data.aprovacoesPendentesTotal > 0}
-        />
-      </div>
+      <AcoesRapidas onExportar={() => void handleExportarRelatorio()} isExportando={isExportando} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <Card>
-          <Card.Header title="Empresas ativas na plataforma" />
-          <Card.Body className="flex items-center justify-center gap-4 py-6">
-            <ProgressRing value={fracaoEmpresasAtivas} progressClassName="stroke-success">
-              <Typography variant="subtitle">{Math.round(fracaoEmpresasAtivas * 100)}%</Typography>
-            </ProgressRing>
-            <Typography variant="bodySmall" color="muted" className="max-w-[10rem]">
-              {empresasAtivas} de {data.empresasTotal} empresa{data.empresasTotal === 1 ? "" : "s"}{" "}
-              cadastrada{data.empresasTotal === 1 ? "" : "s"}.
-            </Typography>
+        <Card className="lg:col-span-2">
+          <Card.Header
+            title="Receita recorrente"
+            action={
+              <select
+                value={periodoDias}
+                onChange={(event) => setPeriodoDias(Number(event.target.value))}
+                className="rounded-md border border-border bg-surface px-2 py-1.5 text-sm text-text outline-none"
+              >
+                {PERIODOS.map((opcao) => (
+                  <option key={opcao.dias} value={opcao.dias}>
+                    {opcao.label}
+                  </option>
+                ))}
+              </select>
+            }
+          />
+          <Card.Body className="flex flex-col gap-6">
+            {isLoadingKpis || !negocio ? (
+              <div className="flex justify-center py-8">
+                <Spinner size="lg" />
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end gap-8">
+                  <div>
+                    <Typography variant="caption" color="muted">
+                      MRR
+                    </Typography>
+                    <Typography variant="display">
+                      {hidden ? "R$ ••••••" : centsToBRL(negocio.mrrCentavos)}
+                    </Typography>
+                  </div>
+                  <div>
+                    <Typography variant="caption" color="muted">
+                      ARR
+                    </Typography>
+                    <Typography variant="title">
+                      {hidden ? "R$ ••••••" : centsToBRL(negocio.arrCentavos)}
+                    </Typography>
+                  </div>
+                  <div>
+                    <Typography variant="caption" color="muted">
+                      Empresas pagantes
+                    </Typography>
+                    <Typography variant="title">{negocio.empresasAtivasPagantes}</Typography>
+                  </div>
+                </div>
+
+                {periodo && periodoAnterior && (
+                  <div className="flex flex-col gap-3 border-t border-border pt-4">
+                    <div className="flex flex-wrap items-center gap-6">
+                      <div className="flex items-center gap-1.5 text-success">
+                        <TrendingUp className="h-4 w-4" />
+                        <Typography variant="bodySmall" className="font-semibold text-success">
+                          +{periodo.novasEmpresas} empresas novas
+                        </Typography>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-danger">
+                        <TrendingDown className="h-4 w-4" />
+                        <Typography variant="bodySmall" className="font-semibold text-danger">
+                          -{periodo.empresasCanceladas} canceladas
+                        </Typography>
+                      </div>
+                      <Typography variant="bodySmall" color="muted">
+                        Churn aproximado: {(periodo.churnRateAproximado * 100).toFixed(1)}%
+                      </Typography>
+                    </div>
+
+                    <div className="flex flex-col gap-2">
+                      <Typography variant="caption" color="muted">
+                        Viagens realizadas — período atual vs. anterior
+                      </Typography>
+                      <div className="flex items-end gap-4">
+                        <div className="flex flex-col items-center gap-1">
+                          <div
+                            className="w-10 rounded-t-md bg-primary"
+                            style={{
+                              height: `${Math.max((periodo.viagensRealizadas / maiorViagens) * 96, 4)}px`,
+                            }}
+                          />
+                          <Typography variant="caption" className="font-semibold">
+                            {periodo.viagensRealizadas}
+                          </Typography>
+                          <Typography variant="caption" color="muted">
+                            Atual
+                          </Typography>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                          <div
+                            className="w-10 rounded-t-md bg-secondary/40"
+                            style={{
+                              height: `${Math.max((periodoAnterior.viagensRealizadas / maiorViagens) * 96, 4)}px`,
+                            }}
+                          />
+                          <Typography variant="caption" className="font-semibold">
+                            {periodoAnterior.viagensRealizadas}
+                          </Typography>
+                          <Typography variant="caption" color="muted">
+                            Anterior
+                          </Typography>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </Card.Body>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <Card.Header title="Empresas por status" />
-          <Card.Body className="flex flex-wrap items-center gap-3">
-            {Object.entries(data.empresasPorStatus).map(([status, count]) => (
-              <Badge key={status} variant={status === "ATIVO" ? "success" : "neutral"}>
-                {status} · {count}
-              </Badge>
-            ))}
+        <Card>
+          <Card.Header
+            title="Indicadores"
+            action={
+              <Link
+                href="/inteligencia"
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                Ver todos
+              </Link>
+            }
+          />
+          <Card.Body>
+            <IndicadoresList itens={indicadores} />
           </Card.Body>
         </Card>
       </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AprovacoesCarousel itens={approvalItems} total={data.aprovacoesPendentesTotal} />
+        <SaudeIntegracoesCard />
+      </div>
+
+      <Card>
+        <Card.Header
+          title="Empresas por status"
+          action={
+            <Link href="/empresas" className={buttonVariants({ variant: "secondary", size: "sm" })}>
+              Ver empresas
+            </Link>
+          }
+        />
+        <Card.Body className="flex flex-wrap items-center gap-3">
+          {Object.entries(data.empresasPorStatus).map(([status, count]) => (
+            <Badge key={status} variant={status === "ATIVO" ? "success" : "neutral"}>
+              {status} · {count}
+            </Badge>
+          ))}
+        </Card.Body>
+      </Card>
 
       <Card>
         <Card.Header
@@ -220,36 +644,5 @@ export default function AdminHomePage(): JSX.Element {
         </Card.Body>
       </Card>
     </div>
-  );
-}
-
-function KpiCard({
-  label,
-  value,
-  href,
-  highlight = false,
-}: {
-  label: string;
-  value: number;
-  href?: "/suporte" | "/aprovacoes";
-  highlight?: boolean;
-}): JSX.Element {
-  const content = (
-    <Card.Body className="flex flex-col gap-1">
-      <Typography variant="caption" color="muted">
-        {label}
-      </Typography>
-      <Typography variant="title" className={highlight ? "text-warning" : undefined}>
-        {value}
-      </Typography>
-    </Card.Body>
-  );
-
-  return href ? (
-    <Link href={href}>
-      <Card interactive>{content}</Card>
-    </Link>
-  ) : (
-    <Card>{content}</Card>
   );
 }

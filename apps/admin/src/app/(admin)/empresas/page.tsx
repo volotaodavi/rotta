@@ -2,6 +2,7 @@
 
 import { Badge, Button, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { CompanyStatusBadge } from "@/features/companies/components/company-status-badge";
@@ -11,10 +12,16 @@ import { useCompaniesList } from "@/features/companies/hooks/use-companies";
  * Listagem de empresas (tenants) — visão exclusiva do Admin Rotta
  * (Dossiê 16, Seção 5.1). Diferente de `apps/web`, aqui o Admin enxerga
  * TODAS as empresas cadastradas na plataforma, não apenas a própria.
+ *
+ * `?search=` na URL (lido só na primeira renderização, via
+ * `useState(() => ...)`) — chega aqui pela busca do cabeçalho
+ * (`(admin)/layout.tsx#TopbarSearch`): sem isso, aquela busca navegaria
+ * pra cá mas o campo apareceria vazio, obrigando a digitar de novo.
  */
 export default function EmpresasListPage(): JSX.Element {
+  const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
   const { data, isLoading, isError } = useCompaniesList({
     page,
     pageSize: 20,
