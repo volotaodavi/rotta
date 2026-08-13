@@ -5,7 +5,6 @@ import type { DiditConfig } from "@/config/didit.config";
 
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
-
 /** Chave nos snapshots de `IntegrationHealthService` (Admin Rotta → `GET /health/integrations`). */
 export const DIDIT_INTEGRATION_NAME = "didit";
 
@@ -45,6 +44,18 @@ export interface DiditSessionDecision {
 
 /** Os únicos três valores que `PATCH /v3/session/{id}/update-status/` aceita em `new_status` (docs.didit.me/sessions-api/update-status). */
 export type DiditManualStatus = "Approved" | "Declined" | "Resubmitted";
+
+/** Um destino de webhook já cadastrado (`GET /v3/webhook/destinations/`) — só os campos que `DiditWebhookProvisioningService` de fato usa (achar se um destino já aponta para a nossa URL). */
+export interface DiditWebhookDestination {
+  id: string;
+  url: string;
+}
+
+/** Retorno de `createWebhookDestination` — `secret` é o `secret_shared_key` que a Didit só mostra UMA vez, na criação (nunca de novo em nenhuma consulta posterior). */
+export interface DiditCreatedWebhookDestination {
+  id: string;
+  secret: string;
+}
 
 /** A Didit usa "Approved"/"Declined"/"In Review" — só o primeiro conta como aprovado. */
 const STATUS_APROVADO = "approved";
@@ -200,6 +211,75 @@ export class DiditService {
       new_status: newStatus,
       ...(comment ? { comment } : {}),
     });
+  }
+
+  /**
+   * `GET /v3/webhook/destinations/` — lista os destinos de webhook já
+   * cadastrados na conta (API de gerenciamento, mesma família de
+   * `/v3/webhook/destinations/`, diferente das APIs de verificação
+   * usadas pelos demais métodos desta classe). Usado por
+   * `DiditWebhookProvisioningService` para checar se já existe um
+   * destino apontando para a nossa própria URL antes de criar outro —
+   * nunca duplica. Formato de resposta tolerante de propósito (array
+   * direto OU `{ results: [...] }`/`{ data: [...] }`): a documentação
+   * completa deste endpoint específico não estava acessível no momento
+   * em que este método foi escrito, então aceita as formas mais comuns
+   * de paginação REST em vez de travar numa única suposição.
+   */
+  async listWebhookDestinations(): Promise<DiditWebhookDestination[]> {
+    this.assertConfigured();
+    const body: unknown = await this.getJson("/v3/webhook/destinations/");
+    const rawList: unknown[] | null = Array.isArray(body)
+      ? body
+      : Array.isArray((body as { results?: unknown }).results)
+        ? (body as { results: unknown[] }).results
+        : Array.isArray((body as { data?: unknown }).data)
+          ? (body as { data: unknown[] }).data
+          : null;
+
+    if (!rawList) {
+      throw new Error(
+        "Resposta da Didit em GET /v3/webhook/destinations/ não é uma lista reconhecida.",
+      );
+    }
+
+    return rawList
+      .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+      .map((item) => ({
+        id: typeof item.id === "string" ? item.id : "",
+        url: typeof item.url === "string" ? item.url : "",
+      }));
+  }
+
+  /**
+   * `POST /v3/webhook/destinations/` — cadastra um novo destino de
+   * webhook programaticamente (a alternativa por código do que hoje é
+   * feito manualmente em Business Console → API & Webhooks → Add
+   * destination). `secret_shared_key` só vem nesta resposta — a Didit
+   * nunca o reexibe depois, nem em `listWebhookDestinations` nem no
+   * próprio Business Console; perder essa resposta sem persistir o
+   * segredo em algum lugar (`DiditWebhookProvisioningService` salva no
+   * Redis) significa ter que apagar e recriar o destino.
+   */
+  async createWebhookDestination(
+    url: string,
+    subscribedEvents: string[],
+    label: string,
+  ): Promise<DiditCreatedWebhookDestination> {
+    this.assertConfigured();
+    const body = await this.postJson("/v3/webhook/destinations/", {
+      label,
+      url,
+      webhook_version: "v3",
+      subscribed_events: subscribedEvents,
+    });
+
+    const id = typeof body.id === "string" ? body.id : "";
+    const secret = typeof body.secret_shared_key === "string" ? body.secret_shared_key : "";
+    if (!secret) {
+      throw new Error("Resposta da Didit em POST /v3/webhook/destinations/ sem secret_shared_key.");
+    }
+    return { id, secret };
   }
 
   /** Checagem em memória, sem I/O — roda ANTES de qualquer download de imagem, para nunca vazar um erro de rede confuso no lugar de "Didit não configurada". */

@@ -3,10 +3,12 @@ import { registerAs } from "@nestjs/config";
 export interface DiditConfig {
   apiKey: string | undefined;
   baseUrl: string;
-  /** Segredo do destino de webhook (`secret_shared_key`, Business Console → API & Webhooks → Add destination). Ver `didit-webhook.guard.ts`. */
+  /** Segredo do destino de webhook (`secret_shared_key`, Business Console → API & Webhooks → Add destination). Ver `didit-webhook.guard.ts`. Setado à mão OU descoberto automaticamente por `DiditWebhookProvisioningService` (nesse caso fica no Redis, não aqui — ver nota lá). */
   webhookSecret: string | undefined;
   /** Workflow da sessão hospedada (`POST /v3/session/`) usada por `DiditService.createVerificationSession`. Config, não segredo — Didit docs: "Get a workflow_id from the console (Workflows)... store it in code/config". */
   workflowId: string;
+  /** URL pública desta implantação da API (mesma variável de `qstash.config.ts#apiPublicUrl`) — usada por `DiditWebhookProvisioningService` para montar a URL do destino de webhook (`${apiPublicUrl}/${API_PREFIX}/webhooks/didit`) e registrá-la sozinha na Didit. Sem ela, o auto-registro não roda (nada a montar) — o passo manual (Business Console) continua funcionando normalmente. */
+  apiPublicUrl: string | undefined;
 }
 
 const DEFAULT_BASE_URL = "https://verification.didit.me";
@@ -46,4 +48,5 @@ export default registerAs("didit", (): DiditConfig => ({
   baseUrl: process.env.DIDIT_BASE_URL || DEFAULT_BASE_URL,
   webhookSecret: process.env.DIDIT_WEBHOOK_SECRET || undefined,
   workflowId: process.env.DIDIT_WORKFLOW_ID || DEFAULT_WORKFLOW_ID,
+  apiPublicUrl: process.env.API_PUBLIC_URL || undefined,
 }));

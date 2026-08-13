@@ -293,4 +293,130 @@ describe("DiditService", () => {
       );
     });
   });
+
+  describe("listWebhookDestinations", () => {
+    it("aceita uma resposta em array direto", async () => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(
+        jsonResponse([
+          { id: "dest_1", url: "https://api.rotta.com.br/v1/webhooks/didit" },
+          { id: "dest_2", url: "https://outro.example/webhooks" },
+        ]),
+      );
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+      const resultado = await service.listWebhookDestinations();
+
+      expect(resultado).toEqual([
+        { id: "dest_1", url: "https://api.rotta.com.br/v1/webhooks/didit" },
+        { id: "dest_2", url: "https://outro.example/webhooks" },
+      ]);
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://verification.didit.me/v3/webhook/destinations/");
+      expect(options.method).toBe("GET");
+    });
+
+    it("aceita uma resposta paginada em { results: [...] }", async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ results: [{ id: "dest_1", url: "https://api.rotta.com.br/webhooks" }] }),
+        );
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+      const resultado = await service.listWebhookDestinations();
+
+      expect(resultado).toEqual([{ id: "dest_1", url: "https://api.rotta.com.br/webhooks" }]);
+    });
+
+    it("aceita uma resposta paginada em { data: [...] }", async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(
+          jsonResponse({ data: [{ id: "dest_1", url: "https://api.rotta.com.br/webhooks" }] }),
+        );
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+      const resultado = await service.listWebhookDestinations();
+
+      expect(resultado).toEqual([{ id: "dest_1", url: "https://api.rotta.com.br/webhooks" }]);
+    });
+
+    it("lança um erro claro quando a resposta não é uma lista reconhecida", async () => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({ unexpected: true }));
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+
+      await expect(service.listWebhookDestinations()).rejects.toThrow("lista reconhecida");
+    });
+
+    it("recusa quando DIDIT_API_KEY não está configurada", async () => {
+      const service = new DiditService(
+        buildConfigService({ apiKey: undefined }),
+        buildIntegrationHealthMock(),
+      );
+
+      await expect(service.listWebhookDestinations()).rejects.toThrow(ServiceUnavailableException);
+    });
+  });
+
+  describe("createWebhookDestination", () => {
+    it("envia label/url/webhook_version/subscribed_events e devolve id/secret", async () => {
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce(jsonResponse({ id: "dest_1", secret_shared_key: "segredo-novo" }));
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+      const resultado = await service.createWebhookDestination(
+        "https://api.rotta.com.br/v1/webhooks/didit",
+        ["status.updated"],
+        "Rotta (auto)",
+      );
+
+      expect(resultado).toEqual({ id: "dest_1", secret: "segredo-novo" });
+      const [url, options] = fetchMock.mock.calls[0] as [string, RequestInit];
+      expect(url).toBe("https://verification.didit.me/v3/webhook/destinations/");
+      expect(options.method).toBe("POST");
+      expect(JSON.parse(options.body as string)).toEqual({
+        label: "Rotta (auto)",
+        url: "https://api.rotta.com.br/v1/webhooks/didit",
+        webhook_version: "v3",
+        subscribed_events: ["status.updated"],
+      });
+    });
+
+    it("lança um erro claro quando a resposta não traz secret_shared_key", async () => {
+      const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({ id: "dest_1" }));
+      global.fetch = fetchMock;
+
+      const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
+
+      await expect(
+        service.createWebhookDestination(
+          "https://api.rotta.com.br/webhooks",
+          ["status.updated"],
+          "Rotta",
+        ),
+      ).rejects.toThrow("secret_shared_key");
+    });
+
+    it("recusa quando DIDIT_API_KEY não está configurada", async () => {
+      const service = new DiditService(
+        buildConfigService({ apiKey: undefined }),
+        buildIntegrationHealthMock(),
+      );
+
+      await expect(
+        service.createWebhookDestination(
+          "https://api.rotta.com.br/webhooks",
+          ["status.updated"],
+          "Rotta",
+        ),
+      ).rejects.toThrow(ServiceUnavailableException);
+    });
+  });
 });

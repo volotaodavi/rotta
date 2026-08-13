@@ -3,8 +3,12 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import { WEBHOOK_SECRET_KEY } from "./didit-webhook-provisioning.service";
+
 import type { DiditConfig } from "@/config/didit.config";
 import type { Request } from "express";
+
+import { RedisService } from "@/infra/cache/redis.service";
 
 /** A Didit rejeita qualquer entrega com `X-Timestamp` fora dessa janela (Didit docs — "reject if abs(now - X-Timestamp) > 300"), defesa contra replay. */
 const MAX_TIMESTAMP_SKEW_SECONDS = 300;
@@ -71,14 +75,28 @@ function sortKeys(value: unknown): unknown {
 export class DiditWebhookGuard implements CanActivate {
   private readonly config: DiditConfig;
 
-  constructor(configService: ConfigService) {
+  constructor(
+    configService: ConfigService,
+    private readonly redis: RedisService,
+  ) {
     this.config = configService.get<DiditConfig>("didit")!;
   }
 
-  canActivate(context: ExecutionContext): boolean {
-    if (!this.config.webhookSecret) {
+  /**
+   * `DIDIT_WEBHOOK_SECRET` (env var, setado à mão) tem prioridade — o
+   * Redis (`DiditWebhookProvisioningService`) é só o fallback de quando
+   * ninguém setou a variável explicitamente.
+   */
+  private async resolveWebhookSecret(): Promise<string | undefined> {
+    if (this.config.webhookSecret) return this.config.webhookSecret;
+    return (await this.redis.get<string>(WEBHOOK_SECRET_KEY)) ?? undefined;
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    const webhookSecret = await this.resolveWebhookSecret();
+    if (!webhookSecret) {
       throw new UnauthorizedException(
-        "DIDIT_WEBHOOK_SECRET não configurado — webhook da Didit desativado.",
+        "Nenhum segredo de webhook da Didit configurado (DIDIT_WEBHOOK_SECRET nem auto-registrado) — webhook desativado.",
       );
     }
 
@@ -99,9 +117,7 @@ export class DiditWebhookGuard implements CanActivate {
     }
 
     const canonical = JSON.stringify(sortKeys(shortenFloats(request.body)));
-    const expected = createHmac("sha256", this.config.webhookSecret)
-      .update(canonical, "utf8")
-      .digest("hex");
+    const expected = createHmac("sha256", webhookSecret).update(canonical, "utf8").digest("hex");
 
     const expectedBuffer = Buffer.from(expected, "utf8");
     const providedBuffer = Buffer.from(signature, "utf8");
