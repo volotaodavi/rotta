@@ -1,6 +1,7 @@
 import { buildQueryString } from "../query.util";
 
 import type { ApiClient } from "../http";
+import type { IdentityVerificationStatus } from "./identity-verification";
 
 /**
  * Endpoints tipados do módulo Drivers (Dossiê 28 — CNH/EAR/Cursos
@@ -61,6 +62,23 @@ export interface SchoolTransportEligibility {
   };
 }
 
+/**
+ * Uma linha de `GET /drivers/team` (Frente K) — visão da EMPRESA sobre
+ * a própria equipe (Motoristas/Monitores/Gestores), incluindo o status
+ * de verificação de identidade Didit. Antes desta entrega não existia
+ * NENHUMA tela onde a empresa via isso.
+ */
+export interface TeamMember {
+  userId: string;
+  nome: string;
+  email: string;
+  telefone: string;
+  papel: "motorista" | "monitor" | "gestor";
+  identityVerificationStatus: IdentityVerificationStatus;
+  identityVerificationMotivo: string | null;
+  identityVerifiedAt: string | null;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -107,6 +125,14 @@ export function createDriversEndpoints(apiClient: ApiClient) {
         { method: "DELETE" },
       );
     },
+
+    /** Frente K — Motoristas/Monitores/Gestores ATIVOS da própria empresa, com status de identidade. */
+    listTeam: async (companyId?: string): Promise<TeamMember[]> =>
+      (
+        await apiClient.request<ApiEnvelope<TeamMember[]>>(
+          `/drivers/team${buildQueryString({ companyId })}`,
+        )
+      ).data,
 
     /** Dossiê 45 — motor de elegibilidade para transporte escolar (nunca deriva do lado do cliente). */
     getSchoolTransportEligibility: async (

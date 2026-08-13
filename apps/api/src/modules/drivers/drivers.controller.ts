@@ -14,12 +14,13 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiConsumes, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { DriverDocumentType } from "@prisma/client";
 
 import { DriversService, type RequestMeta } from "./drivers.service";
 import { CreateDriverDocumentDto } from "./dto/create-driver-document.dto";
 import { SchoolTransportEligibilityResponseDto } from "./dto/school-transport-eligibility-response.dto";
+import { TeamMemberResponseDto } from "./dto/team-member-response.dto";
 
 import type { Request } from "express";
 
@@ -49,6 +50,19 @@ function requestMeta(req: Request): RequestMeta {
 @Controller("drivers")
 export class DriversController {
   constructor(private readonly driversService: DriversService) {}
+
+  /**
+   * Equipe da empresa (Frente K) — Motoristas/Monitores/Gestores com
+   * `Membership` ATIVO, incluindo status de verificação de identidade
+   * Didit. Rota separada de `:userId/documents` de propósito: aqui o
+   * "dono" é a EMPRESA (uma listagem), não um motorista específico.
+   */
+  @Get("team")
+  @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR)
+  @ApiResponse({ status: 200, type: [TeamMemberResponseDto] })
+  listTeam(@CurrentUser() actor: AuthenticatedUser, @Query("companyId") companyId?: string) {
+    return this.driversService.listTeam(actor, companyId);
+  }
 
   @Post(":userId/documents")
   @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR)

@@ -8,7 +8,7 @@ import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.se
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import type { UsersService } from "@/modules/users/users.service";
-import type { DriverDocument, Membership } from "@prisma/client";
+import type { DriverDocument, Membership, User } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -92,7 +92,11 @@ describe("DriversService", () => {
       listExpiringSoon: jest.fn(),
       softDelete: jest.fn(),
     };
-    usersService = { findActiveMembership: jest.fn() } as unknown as jest.Mocked<UsersService>;
+    usersService = {
+      findActiveMembership: jest.fn(),
+      listMembershipsByCompany: jest.fn(),
+      findById: jest.fn(),
+    } as unknown as jest.Mocked<UsersService>;
     auditLogService = { record: jest.fn() } as unknown as jest.Mocked<AuditLogService>;
     storageService = {
       upload: jest.fn(),
@@ -400,6 +404,78 @@ describe("DriversService", () => {
       await expect(
         service.removeDocument("driver-1", "document-1", empresaActor, {}),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("listTeam (Frente K)", () => {
+    function buildMembership(overrides: Partial<Membership> = {}): Membership {
+      return {
+        id: "membership-1",
+        userId: "driver-1",
+        companyId: "company-1",
+        role: "motorista",
+        status: "ATIVO",
+        convidadoPorId: null,
+        iniciadoEm: new Date(),
+        encerradoEm: null,
+        ...overrides,
+      };
+    }
+
+    function buildUser(overrides: Partial<User> = {}): User {
+      return {
+        id: "driver-1",
+        nome: "Motorista Um",
+        email: "motorista@empresa.test",
+        telefone: "11999990000",
+        identityVerificationStatus: "APROVADA",
+        identityVerificationMotivo: null,
+        identityVerifiedAt: new Date(),
+        ...overrides,
+      } as User;
+    }
+
+    it("lista Motoristas/Monitores/Gestores ATIVOS da própria empresa, com status de identidade", async () => {
+      usersService.listMembershipsByCompany.mockResolvedValue([
+        buildMembership({ userId: "driver-1", role: "motorista" }),
+        buildMembership({ userId: "monitor-1", role: "monitor" }),
+        // Fora da lista: EMPRESA (não é "equipe") e Membership SUSPENSO.
+        buildMembership({ userId: "empresa-1", role: "empresa" }),
+        buildMembership({ userId: "driver-2", role: "motorista", status: "SUSPENSO" }),
+      ]);
+      usersService.findById.mockImplementation((id) =>
+        Promise.resolve(
+          buildUser({
+            id,
+            identityVerificationStatus: id === "monitor-1" ? "REPROVADA" : "APROVADA",
+            identityVerificationMotivo: id === "monitor-1" ? "Foto ilegível" : null,
+          }),
+        ),
+      );
+
+      const result = await service.listTeam(empresaActor);
+
+      expect(result).toHaveLength(2);
+      expect(result.map((member) => member.userId)).toEqual(["driver-1", "monitor-1"]);
+      expect(result[1]).toMatchObject({
+        papel: "monitor",
+        identityVerificationStatus: "REPROVADA",
+        identityVerificationMotivo: "Foto ilegível",
+      });
+      expect(usersService.listMembershipsByCompany).toHaveBeenCalledWith("company-1");
+    });
+
+    it("Admin Rotta precisa informar companyId", async () => {
+      await expect(service.listTeam(adminActor)).rejects.toThrow(BadRequestException);
+    });
+
+    it("Admin Rotta consegue ver a equipe de qualquer empresa via companyId", async () => {
+      usersService.listMembershipsByCompany.mockResolvedValue([buildMembership()]);
+      usersService.findById.mockResolvedValue(buildUser());
+
+      await service.listTeam(adminActor, "company-9");
+
+      expect(usersService.listMembershipsByCompany).toHaveBeenCalledWith("company-9");
     });
   });
 });

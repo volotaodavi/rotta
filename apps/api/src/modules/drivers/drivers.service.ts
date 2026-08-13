@@ -1,15 +1,17 @@
 import { randomUUID } from "node:crypto";
 
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { DriverDocumentType, type DriverDocumentAiStatus } from "@prisma/client";
+import { DriverDocumentType, MembershipStatus, type DriverDocumentAiStatus } from "@prisma/client";
 
 import { DRIVER_DOCUMENT_REPOSITORY } from "./drivers.constants";
 import { toDriverDocumentResponseDto } from "./mappers/driver-document.mapper";
+import { toTeamMemberResponseDto } from "./mappers/team-member.mapper";
 import { computeSchoolTransportEligibility } from "./school-transport-eligibility.util";
 
 import type { CreateDriverDocumentDto } from "./dto/create-driver-document.dto";
 import type { DriverDocumentResponseDto } from "./dto/driver-document-response.dto";
 import type { SchoolTransportEligibilityResponseDto } from "./dto/school-transport-eligibility-response.dto";
+import type { TeamMemberResponseDto } from "./dto/team-member-response.dto";
 import type { DriverDocumentRepository } from "./repositories/driver-document.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
@@ -128,6 +130,55 @@ export class DriversService {
     const membershipRole = membership?.role as Role | undefined;
     if (!membership || (membershipRole !== Role.MOTORISTA && membershipRole !== Role.MONITOR)) {
       throw new NotFoundException("Motorista não encontrado nesta empresa.");
+    }
+
+    return actor.tenantId;
+  }
+
+  /**
+   * Equipe da empresa — Motoristas/Monitores/Gestores com `Membership`
+   * ATIVO, incluindo `identityVerificationStatus` (Frente K). Antes
+   * desta entrega, EMPRESA/GESTOR não tinham NENHUMA tela pra ver isso
+   * — só o próprio motorista via o resultado da própria verificação, o
+   * que deixava o dono da empresa "esperando indefinidamente" mesmo
+   * quando a Didit já tinha decidido.
+   */
+  async listTeam(
+    actor: AuthenticatedUser,
+    companyIdOverride?: string,
+  ): Promise<TeamMemberResponseDto[]> {
+    const companyId = this.resolveCompanyIdForTeam(actor, companyIdOverride);
+    const memberships = (await this.usersService.listMembershipsByCompany(companyId)).filter(
+      (membership) =>
+        membership.status === MembershipStatus.ATIVO &&
+        ((membership.role as Role) === Role.MOTORISTA ||
+          (membership.role as Role) === Role.MONITOR ||
+          (membership.role as Role) === Role.GESTOR),
+    );
+
+    const users = await Promise.all(
+      memberships.map((membership) => this.usersService.findById(membership.userId)),
+    );
+
+    return memberships
+      .map((membership, index) => {
+        const user = users[index];
+        return user ? toTeamMemberResponseDto(membership, user) : null;
+      })
+      .filter((item): item is TeamMemberResponseDto => item !== null);
+  }
+
+  /** Mesma disciplina de `resolveCompanyContext`, sem o `targetUserId` (aqui é a listagem inteira, não um motorista específico). */
+  private resolveCompanyIdForTeam(actor: AuthenticatedUser, companyIdOverride?: string): string {
+    if (actor.role === Role.ADMIN_ROTTA) {
+      if (!companyIdOverride) {
+        throw new BadRequestException("Admin Rotta precisa informar companyId para ver a equipe.");
+      }
+      return companyIdOverride;
+    }
+
+    if (!actor.tenantId) {
+      throw new BadRequestException("Conta sem empresa vinculada.");
     }
 
     return actor.tenantId;
