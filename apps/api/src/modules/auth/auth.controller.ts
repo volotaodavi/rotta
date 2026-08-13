@@ -90,6 +90,21 @@ export class AuthController {
     return this.authService.setupMfa(dto);
   }
 
+  /**
+   * MFA deixou de ser exigido no login (ver `AuthService.login`) — quem
+   * QUISER ativar o segundo fator por conta própria (sessão já
+   * autenticada, nunca `@Public()`) começa por aqui em vez de esperar
+   * um `mfaSetupToken` que o login não emite mais para quem não tem
+   * TOTP. Devolve o mesmo `mfaSetupToken` de curta duração que
+   * `POST /auth/mfa/enable` já espera.
+   */
+  @Post("mfa/setup/start")
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  startMfaSetup(@CurrentUser() actor: AuthenticatedUser) {
+    return this.authService.startMfaSetup(actor);
+  }
+
   @Public()
   @Post("mfa/enable")
   @HttpCode(HttpStatus.OK)

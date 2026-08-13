@@ -209,14 +209,19 @@ export class AuthService {
    * nenhum `companyId` informado, retorna a lista de perfis para seleção
    * em vez de tokens (ver `LoginDto`).
    *
-   * Admin Rotta (Dossiê 43 — MFA obrigatório, "não usar SUPER_ADMIN como
-   * desculpa para ignorar segurança") NUNCA recebe tokens diretamente
-   * daqui: senha correta só abre caminho para `mfaSetupRequired` (conta
-   * ainda sem TOTP — precisa terminar `POST /auth/mfa/setup` +
-   * `POST /auth/mfa/enable` antes de ganhar qualquer acesso) ou
-   * `mfaRequired` (conta já protegida — precisa de
-   * `POST /auth/mfa/verify-login`). Nenhum dos dois emite `access_token`/
-   * `refresh_token`.
+   * Admin Rotta (Dossiê 43 — MFA disponível, não mais obrigatório: pedido
+   * explícito do usuário em produção, "tire o MFA do admin, pois eu não
+   * usei o google authenticator para fazer" — travava o único admin fora
+   * por exigir um app que ele não tinha instalado). Senha correta só
+   * NÃO recebe tokens diretamente quando a conta já tem TOTP ativado
+   * (`totpHabilitado`, alguém que passou por `POST /auth/mfa/setup` +
+   * `POST /auth/mfa/enable` de propósito) — nesse caso ainda exige
+   * `mfaRequired` (`POST /auth/mfa/verify-login`), porque quem já
+   * configurou o segundo fator não deveria vê-lo silenciosamente
+   * desativado. Toda a infraestrutura de MFA (`setupMfa`/`enableMfa`/
+   * `disableMfa`) continua de pé — quem quiser proteger a própria conta
+   * de Admin Rotta com TOTP ainda pode, só deixou de ser obrigatório
+   * pra logar.
    */
   async login(
     dto: LoginDto,
@@ -271,16 +276,13 @@ export class AuthService {
     await this.usersService.resetLoginFailures(user.id);
 
     if (user.isAdminRotta) {
-      if (!user.totpHabilitado) {
+      if (user.totpHabilitado) {
         return {
-          mfaSetupRequired: true,
-          mfaSetupToken: await this.signMfaToken(user.id, "mfa_setup"),
+          mfaRequired: true,
+          mfaChallengeToken: await this.signMfaToken(user.id, "mfa_challenge"),
         };
       }
-      return {
-        mfaRequired: true,
-        mfaChallengeToken: await this.signMfaToken(user.id, "mfa_challenge"),
-      };
+      return this.issueTokensWithLoginAudit(user, null, Role.ADMIN_ROTTA, user.id, meta);
     }
 
     const memberships = await this.usersService.listActiveMembershipsWithCompany(user.id);
@@ -346,6 +348,27 @@ export class AuthService {
    */
   async setupMfa(dto: MfaSetupDto): Promise<MfaSetupResponseDto> {
     const userId = await this.verifyMfaToken(dto.mfaSetupToken, "mfa_setup");
+    return this.buildMfaSetupResponse(userId);
+  }
+
+  /**
+   * Início de MFA por escolha própria (Dossiê 43 atualizado — MFA
+   * deixou de ser forçado no login, ver comentário em `login()`). Um
+   * Admin Rotta já autenticado que QUISER proteger a conta com TOTP
+   * começa por aqui em vez de receber um `mfaSetupToken` embutido numa
+   * resposta de login que não existe mais para quem não tem MFA. Emite
+   * o mesmo tipo de `mfaSetupToken` de curta duração que `setupMfa`
+   * sempre emitiu, pra reusar `POST /auth/mfa/enable` sem duplicar o
+   * passo 2/2.
+   */
+  async startMfaSetup(
+    actor: AuthenticatedUser,
+  ): Promise<MfaSetupResponseDto & { mfaSetupToken: string }> {
+    const setup = await this.buildMfaSetupResponse(actor.sub);
+    return { ...setup, mfaSetupToken: await this.signMfaToken(actor.sub, "mfa_setup") };
+  }
+
+  private async buildMfaSetupResponse(userId: string): Promise<MfaSetupResponseDto> {
     const user = await this.requireActiveAdminRotta(userId);
 
     if (user.totpHabilitado) {
