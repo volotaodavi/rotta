@@ -1,0 +1,128 @@
+"use client";
+
+import { Calendar, Clock } from "@rotta/icons";
+import { Badge, Card, Spinner, Tabs, Typography } from "@rotta/ui/web";
+import { useMemo, useState } from "react";
+
+import { useMinhasRotas } from "@/features/driver/hooks/use-driver-routes";
+import { useTripHistory, type TripHistoryEntry } from "@/features/driver/hooks/use-trip-history";
+import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
+
+type FiltroAba = "todas" | "concluidas" | "canceladas";
+
+const TABS = [
+  { id: "todas", label: "Todas" },
+  { id: "concluidas", label: "Concluídas" },
+  { id: "canceladas", label: "Canceladas" },
+];
+
+function filtrarPorAba(entradas: TripHistoryEntry[], aba: FiltroAba): TripHistoryEntry[] {
+  if (aba === "concluidas") return entradas.filter((e) => e.trip.status === "FINALIZADA");
+  if (aba === "canceladas") return entradas.filter((e) => e.trip.status === "CANCELADA");
+  return entradas;
+}
+
+function formatarData(data: string): string {
+  // `Trip.data` vem como "AAAA-MM-DD" (dia da viagem, sem horário) —
+  // `new Date("AAAA-MM-DD")` interpretaria como UTC meia-noite e podia
+  // exibir o dia anterior dependendo do fuso do navegador, por isso o
+  // parse manual abaixo em vez de `new Date(data)` direto.
+  const [ano, mes, dia] = data.split("-");
+  if (!ano || !mes || !dia) return data;
+  return `${dia}/${mes}/${ano}`;
+}
+
+function formatarHora(iso: string | null): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * "Atividades" (Frente K) — histórico de viagens do motorista/monitor
+ * autônomo/MEI/funcionário, adaptado da aba "Activities" da imagem de
+ * referência enviada pelo usuário ("Schedule/Recent/Completed/Canceled")
+ * ao que a Rotta realmente tem: nenhuma viagem "agendada para o futuro"
+ * existe no modelo de dados hoje (viagem nasce quando o motorista aperta
+ * "Iniciar viagem" no dia — `TripsService.start`), então a aba
+ * equivalente aqui é só "Todas" (o dia a dia real), sem fabricar um
+ * conceito de agendamento que o backend não tem.
+ *
+ * Reaproveita `tripsApi.listByRoute` (histórico por rota, tarefa #100)
+ * — já existia, nunca tinha ganhado uma tela própria no Painel Web.
+ */
+export default function AtividadesPage(): JSX.Element {
+  const [aba, setAba] = useState<FiltroAba>("todas");
+  const { data: rotasResult, isLoading: isLoadingRotas } = useMinhasRotas();
+  const rotas = useMemo(() => rotasResult?.items ?? [], [rotasResult]);
+  const { data: entradas, isLoading: isLoadingHistorico } = useTripHistory(rotas);
+
+  const isLoading = isLoadingRotas || (rotas.length > 0 && isLoadingHistorico);
+  const filtradas = filtrarPorAba(entradas, aba);
+
+  return (
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <div>
+        <Typography variant="title">Atividades</Typography>
+        <Typography variant="bodySmall" color="muted">
+          Histórico das suas viagens.
+        </Typography>
+      </div>
+
+      <Tabs tabs={TABS} activeId={aba} onChange={(id) => setAba(id as FiltroAba)} />
+
+      {isLoading ? (
+        <div className="flex justify-center py-12">
+          <Spinner size="lg" />
+        </div>
+      ) : filtradas.length === 0 ? (
+        <Typography variant="bodySmall" color="muted" className="py-8 text-center">
+          {rotas.length === 0
+            ? "Você ainda não está vinculado a nenhuma rota."
+            : "Nenhuma viagem encontrada nesta aba."}
+        </Typography>
+      ) : (
+        <div className="flex flex-col gap-3">
+          {filtradas.map((entrada) => (
+            <AtividadeCard key={entrada.trip.id} entrada={entrada} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AtividadeCard({ entrada }: { entrada: TripHistoryEntry }): JSX.Element {
+  const { trip, routeNome } = entrada;
+  const inicio = formatarHora(trip.iniciadaEm);
+  const fim = formatarHora(trip.finalizadaEm ?? trip.canceladaEm);
+  const badge = TRIP_STATUS_BADGE[trip.status];
+
+  return (
+    <Card>
+      <Card.Body className="flex items-center justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-text-muted">
+            <Calendar size={16} />
+          </div>
+          <div>
+            <Typography variant="bodySmall" className="font-semibold">
+              {routeNome}
+            </Typography>
+            <div className="flex items-center gap-1 text-text-muted">
+              <Typography variant="caption" color="muted">
+                {formatarData(trip.data)}
+              </Typography>
+              {inicio ? (
+                <Typography variant="caption" color="muted" className="flex items-center gap-1">
+                  <Clock size={12} /> {inicio}
+                  {fim ? ` – ${fim}` : ""}
+                </Typography>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <Badge variant={badge?.variant ?? "neutral"}>{badge?.label ?? trip.status}</Badge>
+      </Card.Body>
+    </Card>
+  );
+}

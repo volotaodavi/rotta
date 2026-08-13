@@ -8,6 +8,7 @@ import { useEffect, type ReactNode } from "react";
 
 import type { Route } from "next";
 
+import { DriverBottomNav } from "@/components/driver-bottom-nav";
 import { LegalFooter } from "@/components/legal/legal-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAppMode } from "@/features/driver/hooks/use-app-mode";
@@ -40,6 +41,10 @@ const PROFISSIONAL_NAV: NavLink[] = [
 ];
 
 const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
+// "Atividades" (Frente K) — histórico de viagens, mesma página pro
+// dono autônomo/MEI e pro funcionário Motorista/Monitor (mesmo
+// raciocínio de `MINHA_ROTA_LINK`: uma página, dois públicos).
+const ATIVIDADES_LINK: NavLink = { href: "/atividades", label: "Atividades" };
 
 /**
  * Modo Ação (Frente G, pedido do usuário em produção) — só existe para
@@ -52,6 +57,7 @@ const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
  */
 const ACTION_NAV: NavLink[] = [
   MINHA_ROTA_LINK,
+  ATIVIDADES_LINK,
   { href: "/rotta-pay", label: "Rotta Pay" },
   { href: "/notificacoes", label: "Notificações" },
   { href: "/chamados", label: "Chamados" },
@@ -74,6 +80,7 @@ const ACTION_NAV: NavLink[] = [
  */
 const EMPLOYEE_DRIVER_NAV: NavLink[] = [
   MINHA_ROTA_LINK,
+  ATIVIDADES_LINK,
   { href: "/notificacoes", label: "Notificações" },
   { href: "/chamados", label: "Chamados" },
 ];
@@ -160,6 +167,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
           : PROFISSIONAL_NAV;
 
+  // Quem roda a rota no dia a dia pelo celular (Frente K) — mesmo
+  // público de `EMPLOYEE_DRIVER_NAV`/`ACTION_NAV` acima, nunca
+  // Responsável/Empresa em Visão completa (esses continuam só com o
+  // cabeçalho, pensado pra tela grande).
+  const showDriverBottomNav = isEmployeeDriver || (canToggle && mode === "acao");
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -238,8 +251,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       ) : (
         <>
           {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
-          <main className="flex-1 p-6">{children}</main>
+          {/* `pb-20` (Frente K) abre espaço pra `DriverBottomNav` fixa não cobrir o fim do conteúdo em tela pequena — `md:pb-6` volta ao normal onde ela some. */}
+          <main className={`flex-1 p-6 ${showDriverBottomNav ? "pb-20 md:pb-6" : ""}`}>
+            {children}
+          </main>
           <LegalFooter />
+          {showDriverBottomNav && <DriverBottomNav />}
         </>
       )}
     </div>

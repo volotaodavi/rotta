@@ -1,12 +1,18 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { Check, MapPin, Pause, Play, Square, UserX } from "@rotta/icons";
+import { Check, Clock, MapPin, Navigation, Pause, Play, Square, UserX } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
 import { useEffect, useMemo, useState } from "react";
 
-import type { Route, RouteStop, RouteStudent, TripStudentEventType } from "@rotta/api-client";
+import type {
+  NextEta,
+  Route,
+  RouteStop,
+  RouteStudent,
+  TripStudentEventType,
+} from "@rotta/api-client";
 
 import { useBeforeUnloadWarning } from "@/features/driver/hooks/use-before-unload-warning";
 import {
@@ -29,24 +35,15 @@ import {
 } from "@/features/driver/hooks/use-my-location";
 import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-reporting";
 import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
+import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useStudent } from "@/features/students/hooks/use-students";
-import { useTripStudentEvents } from "@/features/trips/hooks/use-trips";
+import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
   TARDE: "Tarde",
   NOITE: "Noite",
   INTEGRAL: "Integral",
-};
-
-const TRIP_STATUS_BADGE: Record<
-  string,
-  { label: string; variant: "success" | "warning" | "neutral" }
-> = {
-  EM_ANDAMENTO: { label: "Em viagem", variant: "success" },
-  PAUSADA: { label: "Pausada", variant: "warning" },
-  FINALIZADA: { label: "Finalizada", variant: "neutral" },
-  CANCELADA: { label: "Cancelada", variant: "neutral" },
 };
 
 /**
@@ -208,6 +205,53 @@ function MeuMapa({
   );
 }
 
+/**
+ * Cartão "próxima parada" (Frente K) — mesma ideia do cartão de ETA da
+ * imagem de referência ("Track Rider": rota + tempo estimado sempre à
+ * vista durante o trajeto), só que aqui é o motorista/monitor vendo o
+ * PRÓPRIO progresso, não um responsável acompanhando de fora. Dado real
+ * (`NextEta`, tarefa #99) — nunca uma estimativa inventada no front.
+ */
+function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
+  const horarioPrevisto = new Date(eta.etaPrevista).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const distancia =
+    eta.distanciaMetros >= 1000
+      ? `${(eta.distanciaMetros / 1000).toFixed(1)} km`
+      : `${Math.round(eta.distanciaMetros)} m`;
+
+  return (
+    <Card>
+      <Card.Body className="flex items-center gap-4">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary-muted text-primary">
+          <Navigation size={20} />
+        </div>
+        <div className="flex-1">
+          <Typography variant="caption" color="muted">
+            Próxima parada
+          </Typography>
+          <Typography variant="bodySmall" className="font-semibold">
+            {eta.endereco}
+          </Typography>
+        </div>
+        <div className="flex flex-col items-end gap-0.5">
+          <div className="flex items-center gap-1 text-primary">
+            <Clock size={14} />
+            <Typography variant="bodySmall" className="font-semibold text-primary">
+              {horarioPrevisto}
+            </Typography>
+          </div>
+          <Typography variant="caption" color="muted">
+            {distancia}
+          </Typography>
+        </div>
+      </Card.Body>
+    </Card>
+  );
+}
+
 function RotaOperacional({
   rota,
   showTrocarRota,
@@ -252,6 +296,16 @@ function RotaOperacional({
   // está — nunca deixa a tela sem mapa nenhum.
   const minhaLocalizacao = useMyLocation(markers.length === 0);
 
+  // Próxima parada com ETA (Frente K — inspirado no cartão de
+  // acompanhamento "Track Rider" da imagem de referência enviada pelo
+  // usuário, adaptado ao que a Rotta já calcula de verdade:
+  // `useTripProximasEtas` recalcula por distância real e por ausência
+  // de aluno (tarefa #99) e já existia, mas só era consumido do lado do
+  // Responsável — o próprio motorista/monitor nunca via essa mesma
+  // conta enquanto dirige.
+  const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
+  const proximaParada = proximasEtas?.[0];
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
@@ -285,6 +339,8 @@ function RotaOperacional({
       ) : (
         <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
       )}
+
+      {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
 
       {isLoadingTrip ? (
         <div className="flex justify-center py-8">
