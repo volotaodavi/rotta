@@ -16,6 +16,7 @@ import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
 
+
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
   href: Route;
@@ -42,6 +43,21 @@ const PROFISSIONAL_NAV: NavLink[] = [
 ];
 
 const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
+
+/**
+ * Únicos destinos permitidos pra quem está com a barra de navegação em
+ * 4 ícones (`showDriverNavBar` — Motorista/Monitor funcionário OU
+ * autônomo/MEI em "Modo Ação"), espelhando os `href` de
+ * `DriverBottomNav`. BUG corrigido aqui: antes desta correção, alternar
+ * pra "Modo Ação" só trocava a NAVEGAÇÃO exibida — nenhuma rota
+ * respeitava esse mesmo alternador, então quem já estava numa página de
+ * gestão (ex.: `/empresa`) ou navegasse direto pela URL continuava
+ * vendo TODAS as funcionalidades (dashboard, atalhos de Equipe/
+ * Veículos/Escolas/Marketplace...) mesmo com o alternador marcado como
+ * "Modo Ação" — o modo nunca era de fato aplicado à página atual, só ao
+ * cabeçalho.
+ */
+const DRIVER_MODE_ALLOWED_PREFIXES = ["/minha-rota", "/atividades", "/veiculo", "/perfil"] as const;
 
 /**
  * Navegação da Área Pessoal (Responsável) — gap fechado nesta entrega:
@@ -87,6 +103,37 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   const isEmployeeDriver = user?.role === "motorista" || user?.role === "monitor";
   const { mode, canToggle, setMode } = useAppMode(user);
 
+  // Quem roda a rota no dia a dia (Frente K/O) — dono autônomo/MEI em
+  // "Modo Ação" e Motorista/Monitor funcionário (esse nunca tem
+  // `canToggle`, então nunca precisa do botão pra trocar de modo —
+  // pedido do usuário: "sem questão botão para trocar o modo"). Pra
+  // este público a barra de navegação vira só os 4 ícones do
+  // `DriverBottomNav` (Início/Atividades/Veículo/Perfil, igual à
+  // imagem de referência) — NENHUM link de texto adicional no
+  // cabeçalho, nem em telas grandes (pedido explícito: "para todas as
+  // plataformas, sem exceção"). Calculado aqui em cima (antes do
+  // `return` de loading abaixo) só porque o guard de rota logo a seguir
+  // é um Hook (`useEffect`) e precisa rodar sempre na mesma ordem.
+  const showDriverNavBar = isEmployeeDriver || (canToggle && mode === "acao");
+
+  // Guard de rota do "Modo Ação"/Motorista funcionário (bug reportado
+  // pelo usuário: alternar pra "Modo Ação" só trocava a navegação
+  // exibida, nunca a página em si — quem já estava em `/empresa` ou
+  // navegasse direto pela URL continuava vendo todas as funcionalidades
+  // de gestão mesmo com o alternador em "Modo Ação"). Redireciona pra
+  // "Minha Rota" sempre que a rota atual não é uma das 4 permitidas —
+  // dispara de novo a cada troca de `pathname`/`showDriverNavBar`
+  // (inclusive logo após o clique no alternador, sem esperar navegação
+  // manual). Não precisa checar o bloqueio por verificação de identidade
+  // aqui: `isBlockedByIdentityVerification` troca a página renderizada
+  // no `return` abaixo independente da rota — redirecionar antes disso
+  // é inofensivo, o bloqueio aparece do mesmo jeito depois.
+  useEffect(() => {
+    if (!showDriverNavBar || !pathname) return;
+    const isAllowed = DRIVER_MODE_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    if (!isAllowed) router.replace("/minha-rota");
+  }, [showDriverNavBar, pathname, router]);
+
   // Responsável não usa este fluxo (`SELF_VERIFICATION_ROLES` no
   // backend não inclui `responsavel`) — a query nem dispara pra ele,
   // pra nunca gerar um 403 à toa nem atrasar a home dele.
@@ -109,22 +156,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
 
   if (status !== "authenticated" || (shouldCheckIdentity && isIdentityLoading)) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-dvh items-center justify-center bg-background">
         <Spinner size="lg" />
       </div>
     );
   }
-
-  // Quem roda a rota no dia a dia (Frente K/O) — dono autônomo/MEI em
-  // "Modo Ação" e Motorista/Monitor funcionário (esse nunca tem
-  // `canToggle`, então nunca precisa do botão pra trocar de modo —
-  // pedido do usuário: "sem questão botão para trocar o modo"). Pra
-  // este público a barra de navegação vira só os 4 ícones do
-  // `DriverBottomNav` (Início/Atividades/Veículo/Perfil, igual à
-  // imagem de referência) — NENHUM link de texto adicional no
-  // cabeçalho, nem em telas grandes (pedido explícito: "para todas as
-  // plataformas, sem exceção").
-  const showDriverNavBar = isEmployeeDriver || (canToggle && mode === "acao");
 
   const navLinks = isResponsavel
     ? RESPONSAVEL_NAV
@@ -135,7 +171,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
         : PROFISSIONAL_NAV;
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-text">
+    // `min-h-dvh` em vez de `min-h-screen` (BUG corrigido — mapa em tela
+    // cheia não ocupava a tela toda no Safari/iOS): `100vh` no Safari
+    // sempre mede o viewport como se a barra de endereço estivesse
+    // recolhida, então o mapa de `minha-rota`/`alunos/[id]/mapa` (que
+    // usa `dvh` também) acaba sobrando espaço/cortado por baixo dessa
+    // casca ainda calculada em `vh`. `dvh` acompanha o tamanho real e
+    // atual do viewport — junto com `viewportFit: "cover"` (`app/
+    // layout.tsx`), fecha o problema de ponta a ponta.
+    <div className="flex min-h-dvh flex-col bg-background text-text">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-8">
           <Typography variant="subtitle">

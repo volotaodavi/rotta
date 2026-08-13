@@ -40,6 +40,7 @@ import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
 
+
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
   TARDE: "Tarde",
@@ -342,7 +343,14 @@ function RotaOperacional({
     // deslizante, estilo Uber) flutuam por cima do mapa em cartões
     // translúcidos, em vez de empurrar o mapa pra uma caixinha.
     <div className="-m-6 flex flex-col">
-      <div className="relative h-[65vh] min-h-[420px] w-full">
+      {/*
+        `dvh` em vez de `vh` (BUG corrigido — no Safari/iOS o mapa não
+        ocupava a tela toda: `100vh` lá sempre mede o viewport como se a
+        barra de endereço estivesse recolhida, sobrando espaço/corte por
+        baixo). `dvh` acompanha o tamanho real do viewport visível —
+        junto com `viewportFit: "cover"` em `app/layout.tsx`.
+      */}
+      <div className="relative h-[65dvh] min-h-[420px] w-full">
         {markers.length > 0 ? (
           <RottaMap
             markers={markers}

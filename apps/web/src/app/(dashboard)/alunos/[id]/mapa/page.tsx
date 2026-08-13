@@ -115,7 +115,14 @@ export default function AlunoMapaPage(): JSX.Element {
     // ocupar a tela inteira enquanto há viagem em curso, nunca um
     // quadrado dentro de um cartão.
     <div className="-m-6 flex flex-col">
-      <div className="relative h-[70vh] min-h-[460px] w-full">
+      {/*
+        `dvh` em vez de `vh` (BUG corrigido — no Safari/iOS o mapa não
+        ocupava a tela toda: `100vh` lá sempre mede o viewport como se a
+        barra de endereço estivesse recolhida, sobrando espaço/corte por
+        baixo). `dvh` acompanha o tamanho real do viewport visível —
+        junto com `viewportFit: "cover"` em `app/layout.tsx`.
+      */}
+      <div className="relative h-[70dvh] min-h-[460px] w-full">
         {markers.length > 0 ? (
           <RottaMap
             markers={markers}

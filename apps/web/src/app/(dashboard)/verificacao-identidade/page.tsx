@@ -2,8 +2,9 @@
 
 import { DiditSdk } from "@didit-protocol/sdk-web";
 import { useAuth } from "@rotta/auth/web";
-import { BadgeCheck, Loader2, ShieldAlert, ShieldCheck } from "@rotta/icons";
+import { BadgeCheck, Loader2, ShieldAlert, ShieldCheck, X } from "@rotta/icons";
 import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import type { IdentityVerificationStatus } from "@rotta/api-client";
@@ -14,6 +15,8 @@ import {
   useMyIdentityVerification,
   useRefreshMyIdentityVerification,
 } from "@/features/identity-verification/hooks/use-identity-verification";
+import { defaultRouteForRole } from "@/lib/default-route";
+
 
 const STATUS_LABEL: Record<IdentityVerificationStatus, string> = {
   NAO_INICIADA: "Não iniciada",
@@ -50,13 +53,25 @@ const RESTARTABLE: IdentityVerificationStatus[] = ["NAO_INICIADA", "REPROVADA", 
  * `identityVerificationStatus` de verdade; o SDK aqui só dá feedback
  * visual imediato ("você concluiu o formulário") enquanto o
  * `refetch` abaixo aguarda o webhook processar.
+ *
+ * "X" pra sair (pedido do usuário) — antes desta tela não tinha NENHUMA
+ * saída própria (só o botão "Voltar" do navegador), o que é
+ * particularmente ruim aqui porque o SDK da Didit abre um modal por
+ * cima da própria página. Volta pra home real de cada papel
+ * (`defaultRouteForRole`, mesma função usada em login/convite), nunca
+ * um "/" genérico.
  */
 export default function VerificacaoIdentidadePage(): JSX.Element {
   const { user } = useAuth();
+  const router = useRouter();
   const { data, isLoading, refetch } = useMyIdentityVerification();
   const createSession = useCreateIdentityVerificationSession();
   const refreshStatus = useRefreshMyIdentityVerification();
   const [aviso, setAviso] = useState<string | null>(null);
+
+  function fechar(): void {
+    router.push(user ? defaultRouteForRole(user.role) : "/entrar");
+  }
 
   async function iniciarVerificacao(): Promise<void> {
     setAviso(null);
@@ -84,8 +99,11 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center">
-        <Spinner size="lg" />
+      <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
+        <FecharButton onClick={fechar} />
+        <div className="flex min-h-[40vh] items-center justify-center">
+          <Spinner size="lg" />
+        </div>
       </div>
     );
   }
@@ -95,12 +113,15 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-8">
-      <div>
-        <Typography variant="title">Verificação de identidade</Typography>
-        <Typography variant="body" className="text-text-muted">
-          Confirme sua identidade com a Didit — documento + biometria facial, tudo num único
-          formulário guiado, sem precisar sair desta página.
-        </Typography>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <Typography variant="title">Verificação de identidade</Typography>
+          <Typography variant="body" className="text-text-muted">
+            Confirme sua identidade com a Didit — documento + biometria facial, tudo num único
+            formulário guiado, sem precisar sair desta página.
+          </Typography>
+        </div>
+        <FecharButton onClick={fechar} />
       </div>
 
       <Card>
@@ -173,5 +194,18 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
         </Card.Body>
       </Card>
     </div>
+  );
+}
+
+function FecharButton({ onClick }: { onClick: () => void }): JSX.Element {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Fechar e voltar para a tela inicial"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-muted hover:text-text"
+    >
+      <X className="h-5 w-5" />
+    </button>
   );
 }

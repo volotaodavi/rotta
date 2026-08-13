@@ -13,6 +13,7 @@ import { AppProviders } from "@/providers/app-providers";
 import { InstallAppPrompt } from "@/providers/install-app-prompt";
 import { ServiceWorkerRegistration } from "@/providers/service-worker-registration";
 
+
 import "./globals.css";
 
 /**
@@ -71,9 +72,26 @@ export const metadata: Metadata = {
   },
 };
 
-/** `theme-color` (cor da barra do navegador) — campo próprio do Next.js 15 (`generateViewport`/`viewport`), separado de `Metadata` desde a v14. Mesma cor de fundo do manifest Android (`manifest.ts#theme_color`), só que também lida pelo Safari normal (não só pelo app instalado). */
+/**
+ * `theme-color` (cor da barra do navegador) — campo próprio do Next.js 15
+ * (`generateViewport`/`viewport`), separado de `Metadata` desde a v14.
+ * Mesma cor de fundo do manifest Android (`manifest.ts#theme_color`), só
+ * que também lida pelo Safari normal (não só pelo app instalado).
+ *
+ * `viewportFit: "cover"` (BUG corrigido — mapa em tela cheia não ocupava
+ * a tela toda no Safari/iOS, mesmo depois da Frente P4/P5): sem isso, o
+ * Safari nunca deixa a página desenhar por baixo da barra de status/
+ * indicador de início, mesmo com `appleWebApp.statusBarStyle:
+ * "black-translucent"` acima já pedindo isso — as duas configurações
+ * têm que vir juntas (é a própria documentação da Apple que exige
+ * `viewport-fit=cover` pra ativar `env(safe-area-inset-*)` e o desenho
+ * edge-to-edge). Sem ela, sobra uma faixa de fundo da página (não do
+ * mapa) na barra de status, dando a impressão de que o mapa "não ocupa
+ * a tela toda" — some tanto no Safari normal quanto no app instalado.
+ */
 export const viewport: Viewport = {
   themeColor: "#0B0F14",
+  viewportFit: "cover",
 };
 
 /**
