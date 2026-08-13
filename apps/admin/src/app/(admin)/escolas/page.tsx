@@ -1,14 +1,21 @@
 "use client";
 
-import { Card, Input, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import { RefreshCw } from "@rotta/icons";
+import { Button, Card, Input, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { ListSchoolsParams, School, SchoolStatus, SchoolType } from "@rotta/api-client";
 
 import { SchoolStatusBadge } from "@/features/schools/components/school-status-badge";
-import { useSchoolDashboard, useSchoolsList } from "@/features/schools/hooks/use-schools";
+import {
+  useSchoolDashboard,
+  useSchoolsList,
+  useSyncInep,
+} from "@/features/schools/hooks/use-schools";
 import { SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
 
+/** Censo Escolar (INEP) publica dados do ano anterior — mesmo default de `InepSyncSchedulerService`. */
+const ANO_PADRAO_CENSO = new Date().getFullYear() - 1;
 
 /**
  * Listagem de escolas — visão CROSS-TENANT do Admin Rotta sobre o
@@ -26,7 +33,10 @@ export default function EscolasAdminPage(): JSX.Element {
   const [tipo, setTipo] = useState<SchoolType | "">("");
   const [companyId, setCompanyId] = useState("");
   const [page, setPage] = useState(1);
+  const [anoSync, setAnoSync] = useState(ANO_PADRAO_CENSO);
   const pageSize = 20;
+
+  const syncInep = useSyncInep();
 
   const params: ListSchoolsParams = {
     search: search || undefined,
@@ -46,6 +56,59 @@ export default function EscolasAdminPage(): JSX.Element {
       <Typography variant="bodySmall" color="muted">
         Catálogo compartilhado de escolas atendidas por todas as empresas da plataforma.
       </Typography>
+
+      {/*
+        Education Sync Agent (Dossiê 14) — sem clicar aqui pelo menos
+        uma vez, este catálogo fica vazio pra SEMPRE (não há cron
+        automático a menos que `INEP_SYNC_CRON` esteja configurado no
+        Render). "Nenhuma escola encontrada" na tabela abaixo, ANTES de
+        rodar isso, não é um bug — é o estado inicial honesto.
+      */}
+      <Card>
+        <Card.Body className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <Typography variant="bodySmall" className="font-semibold">
+              Sincronização INEP (Censo Escolar)
+            </Typography>
+            <Typography variant="caption" color="muted">
+              Importa/atualiza o catálogo nacional de escolas. Roda em segundo plano — o resultado
+              (quantas escolas entraram) não aparece aqui ainda, só nos logs do servidor.
+            </Typography>
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              value={anoSync}
+              onChange={(event) => setAnoSync(Number(event.target.value))}
+              className="w-28"
+              aria-label="Ano do Censo Escolar"
+            />
+            <Button
+              variant="secondary"
+              onClick={() => syncInep.mutate(anoSync)}
+              isLoading={syncInep.isPending}
+            >
+              <RefreshCw size={16} />
+              Sincronizar agora
+            </Button>
+          </div>
+        </Card.Body>
+        {syncInep.isSuccess && (
+          <Card.Body className="pt-0">
+            <Typography variant="bodySmall" color="success">
+              Sincronização de {syncInep.data.ano} publicada na fila (mensagem{" "}
+              {syncInep.data.messageId}). Volte em alguns minutos e atualize esta página.
+            </Typography>
+          </Card.Body>
+        )}
+        {syncInep.isError && (
+          <Card.Body className="pt-0">
+            <Typography variant="bodySmall" color="danger">
+              Não foi possível publicar a sincronização. Tente novamente.
+            </Typography>
+          </Card.Body>
+        )}
+      </Card>
 
       {dashboard && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
