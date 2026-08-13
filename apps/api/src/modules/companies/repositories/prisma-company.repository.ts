@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CompanyRepository,
   CompanyWithPlan,
@@ -40,6 +39,16 @@ export class PrismaCompanyRepository implements CompanyRepository {
 
   findByCpfCnpj(cpfCnpj: string): Promise<Company | null> {
     return this.prisma.withTenant(this.prisma.company.findFirst({ where: { cpfCnpj } }));
+  }
+
+  async nextCodigoInternoSequence(): Promise<number> {
+    const [result] = await this.prisma.$queryRaw<
+      { nextval: bigint }[]
+    >`SELECT nextval('companies_codigo_interno_seq')`;
+    if (!result) {
+      throw new Error("Falha ao gerar código interno da empresa (sequência indisponível).");
+    }
+    return Number(result.nextval);
   }
 
   update(id: string, data: UpdateCompanyData): Promise<CompanyWithPlan> {

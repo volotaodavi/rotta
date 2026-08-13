@@ -119,6 +119,7 @@ describe("MarketplaceService", () => {
     transporterRepository = {
       searchCandidates: jest.fn(),
       findCandidateById: jest.fn(),
+      findCandidateByCodigoInterno: jest.fn(),
       listRecentRatingsForCompany: jest.fn(),
       listActiveSchoolsForCompany: jest.fn().mockResolvedValue([]),
       listPublicTeamForCompany: jest.fn().mockResolvedValue([]),
@@ -332,6 +333,33 @@ describe("MarketplaceService", () => {
       const result = await service.findByIdOrThrow("company-1");
 
       expect(result.tempoMedioRespostaHoras).toBeNull();
+    });
+  });
+
+  describe("findByCodeOrThrow (Frente M)", () => {
+    it("lança NotFoundException quando nenhuma transportadora tem esse código", async () => {
+      transporterRepository.findCandidateByCodigoInterno.mockResolvedValue(null);
+
+      await expect(service.findByCodeOrThrow("TRN-999999")).rejects.toThrow(NotFoundException);
+    });
+
+    it("normaliza espaços e caixa (minúsculo) antes de consultar", async () => {
+      transporterRepository.findCandidateByCodigoInterno.mockResolvedValue(buildCandidate());
+      transporterRepository.listRecentRatingsForCompany.mockResolvedValue([]);
+
+      await service.findByCodeOrThrow("  trn-000001  ");
+
+      expect(transporterRepository.findCandidateByCodigoInterno).toHaveBeenCalledWith("TRN-000001");
+    });
+
+    it("retorna o mesmo perfil público de findByIdOrThrow, sem coordenadas (distância 0)", async () => {
+      transporterRepository.findCandidateByCodigoInterno.mockResolvedValue(buildCandidate());
+      transporterRepository.listRecentRatingsForCompany.mockResolvedValue([]);
+
+      const result = await service.findByCodeOrThrow("TRN-000001");
+
+      expect(result.razaoSocial).toBe("Transporte Escolar LTDA");
+      expect(result.distanciaKm).toBe(0);
     });
   });
 });

@@ -5,6 +5,7 @@ import type { CompanyWithPlan } from "../repositories/company.repository";
 export function toCompanyResponseDto(company: CompanyWithPlan): CompanyResponseDto {
   return {
     id: company.id,
+    codigoInterno: company.codigoInterno,
     razaoSocial: company.razaoSocial,
     nomeFantasia: company.nomeFantasia,
     cpfCnpj: company.cpfCnpj,

@@ -205,6 +205,12 @@ export class CompaniesService implements OnModuleInit {
     return plan;
   }
 
+  /** Frente M — mesmo padrão de `SchoolsService.generateCodigoInterno`, prefixo `TRN` (transportadora). */
+  private async generateCodigoInterno(): Promise<string> {
+    const sequence = await this.companyRepository.nextCodigoInternoSequence();
+    return `TRN-${String(sequence).padStart(6, "0")}`;
+  }
+
   /**
    * Confirma o CNPJ na Receita Federal (BrasilAPI, `ReceitaFederalService`
    * — pedido do usuário: "fazer uma busca na Receita Federal, ver se
@@ -327,6 +333,7 @@ export class CompaniesService implements OnModuleInit {
     );
 
     const plan = await this.resolvePlanOrThrow(dto.planCode ?? DEFAULT_PLAN.code);
+    const codigoInterno = await this.generateCodigoInterno();
 
     // Company + User (administrador) + Membership são uma única unidade
     // de negócio (Dossiê 16: "motorista autônomo automaticamente vira
@@ -340,6 +347,7 @@ export class CompaniesService implements OnModuleInit {
     const { company, adminUser } = await this.prisma.runInTenantTransaction(async (tx) => {
       const createdCompany = await this.companyRepository.create(
         {
+          codigoInterno,
           razaoSocial: dadosCadastrais.razaoSocial,
           // `nomeFantasia` é o ÚNICO campo que o próprio usuário controla
           // quando o CNPJ foi confirmado na Receita Federal (pedido

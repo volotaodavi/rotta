@@ -80,6 +80,8 @@ export interface TransporterRepository {
   /** Todas as Empresas `ATIVO`/`deletedAt: null` com coordenadas, já filtradas pelos critérios não-geográficos. */
   searchCandidates(filter: SearchTransportersFilter): Promise<TransporterCandidate[]>;
   findCandidateById(companyId: string): Promise<TransporterCandidate | null>;
+  /** Frente M — Responsável que já sabe qual transportadora quer, sem precisar buscar por proximidade/escola. */
+  findCandidateByCodigoInterno(codigoInterno: string): Promise<TransporterCandidate | null>;
   listRecentRatingsForCompany(
     companyId: string,
     limit: number,

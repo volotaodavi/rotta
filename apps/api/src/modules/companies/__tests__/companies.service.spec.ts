@@ -29,6 +29,7 @@ const STARTER_PLAN = {
 function buildCompany(overrides: Partial<CompanyWithPlan> = {}): CompanyWithPlan {
   return {
     id: "company-1",
+    codigoInterno: "TRN-000001",
     razaoSocial: "Transportes Rotta LTDA",
     nomeFantasia: "Rotta Transportes",
     cpfCnpj: "11222333000181",
@@ -112,6 +113,7 @@ describe("CompaniesService", () => {
       findByCpfCnpj: jest.fn(),
       update: jest.fn(),
       list: jest.fn(),
+      nextCodigoInternoSequence: jest.fn(),
     };
     settingRepository = { upsertMany: jest.fn(), listByCompany: jest.fn() };
     planRepository = {
@@ -159,6 +161,7 @@ describe("CompaniesService", () => {
 
     planRepository.findByCode.mockResolvedValue(STARTER_PLAN);
     companyRepository.findByCpfCnpj.mockResolvedValue(null);
+    companyRepository.nextCodigoInternoSequence.mockResolvedValue(1);
     usersService.assertNoDuplicateIdentity.mockResolvedValue(undefined);
     // Indisponibilidade "genérica" por padrão (não `NotFoundException`) —
     // cai no caminho de degradação graciosa (`resolveDadosCadastrais`),

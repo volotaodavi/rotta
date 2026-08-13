@@ -7,7 +7,6 @@ import { MarketplaceService } from "./marketplace.service";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * API pública de descoberta do Marketplace (briefing "Marketplace"
  * §"BUSCA"/"TRANSPORTADORES"/"DETALHES"). Leitura apenas — a ação de
@@ -40,5 +39,18 @@ export class MarketplaceController {
       latitude !== undefined ? Number(latitude) : undefined,
       longitude !== undefined ? Number(longitude) : undefined,
     );
+  }
+
+  /**
+   * Frente M — segunda porta de entrada pro mesmo perfil público de
+   * `findById`, resolvendo `Company.codigoInterno` (`TRN-000001`) em
+   * vez de UUID. `by-code/:codigo` tem dois segmentos de path
+   * (`:id` acima só casa com um), então nunca colide com a rota de
+   * cima independente da ordem de declaração.
+   */
+  @Get("by-code/:codigo")
+  @Roles(Role.RESPONSAVEL, Role.ADMIN_ROTTA)
+  findByCode(@Param("codigo") codigo: string) {
+    return this.marketplaceService.findByCodeOrThrow(codigo);
   }
 }

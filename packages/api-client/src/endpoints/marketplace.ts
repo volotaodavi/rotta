@@ -230,6 +230,21 @@ export function createMarketplaceEndpoints(apiClient: ApiClient) {
         )
       ).data,
 
+    /**
+     * Frente M — segunda porta de entrada pro mesmo perfil de
+     * `getTransporterById`: o Responsável que já sabe qual
+     * transportadora quer contratar informa o código dela
+     * (`TRN-000001`) em vez de buscar por proximidade/escola. O
+     * `companyId` retornado é o mesmo que `createTransportRequest`
+     * espera receber a seguir.
+     */
+    getTransporterByCode: async (codigo: string): Promise<TransporterDetail> =>
+      (
+        await apiClient.request<ApiEnvelope<TransporterDetail>>(
+          `/marketplace/transporters/by-code/${encodeURIComponent(codigo)}`,
+        )
+      ).data,
+
     createTransportRequest: async (input: CreateTransportRequestInput): Promise<TransportRequest> =>
       (
         await apiClient.request<ApiEnvelope<TransportRequest>>("/marketplace/transport-requests", {

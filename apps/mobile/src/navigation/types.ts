@@ -97,6 +97,8 @@ export type ParentPerfilStackParamList = {
  */
 export type MarketplaceStackParamList = {
   MapaHome: undefined;
+  /** Frente M — segunda porta de entrada, achar transportador por código em vez de proximidade/escola. */
+  InformarCodigo: undefined;
   TransportadorDetalhes: { transportadorId: string };
   SolicitarTransporte: { transportadorId: string };
 };

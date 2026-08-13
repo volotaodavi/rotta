@@ -11,6 +11,11 @@ export class PlanResponseDto {
 /** Forma de resposta pública de `Company` — nunca expõe `planId` cru, sempre o `plan` resolvido. */
 export class CompanyResponseDto {
   @ApiProperty() id!: string;
+  @ApiProperty({
+    description:
+      "Código único da transportadora (Frente M) — o Responsável informa este código no Marketplace para solicitar transporte diretamente, sem precisar buscar por proximidade/escola.",
+  })
+  codigoInterno!: string;
   @ApiProperty() razaoSocial!: string;
   @ApiProperty() nomeFantasia!: string;
   @ApiProperty() cpfCnpj!: string;

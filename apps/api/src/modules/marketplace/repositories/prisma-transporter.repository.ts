@@ -102,6 +102,16 @@ export class PrismaTransporterRepository implements TransporterRepository {
     return company ? toCandidate(company) : null;
   }
 
+  async findCandidateByCodigoInterno(codigoInterno: string): Promise<TransporterCandidate | null> {
+    const company = await this.prisma.withBypass(
+      this.prisma.company.findFirst({
+        where: { codigoInterno, status: "ATIVO", deletedAt: null },
+        include: candidateInclude,
+      }),
+    );
+    return company ? toCandidate(company) : null;
+  }
+
   listRecentRatingsForCompany(
     companyId: string,
     limit: number,

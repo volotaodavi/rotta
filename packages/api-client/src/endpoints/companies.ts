@@ -57,6 +57,8 @@ export interface CompanyPlan {
 
 export interface Company {
   id: string;
+  /** Frente M — código único da transportadora (ex. `TRN-000001`), informado pelo Responsável no Marketplace para solicitar transporte sem precisar buscar por proximidade/escola. */
+  codigoInterno: string;
   razaoSocial: string;
   nomeFantasia: string;
   cpfCnpj: string;

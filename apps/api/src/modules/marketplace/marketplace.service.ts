@@ -111,10 +111,44 @@ export class MarketplaceService {
     if (!candidate) {
       throw new NotFoundException("Transportador não encontrado.");
     }
+    return this.buildDetail(candidate, latitude, longitude);
+  }
+
+  /**
+   * Frente M (briefing "Marketplace" §"SOLICITAR TRANSPORTE") —
+   * Responsável que já sabe qual transportadora quer contratar informa
+   * o `codigoInterno` dela (`TRN-000001`) em vez de buscar por
+   * proximidade/escola. Mesmo perfil público de `findByIdOrThrow` —
+   * essa tela é só uma segunda porta de entrada pro mesmo lugar, nunca
+   * um fluxo de solicitação/contrato paralelo (`companyId` resolvido
+   * aqui é exatamente o que `POST /marketplace/transport-requests`
+   * espera receber a seguir).
+   */
+  async findByCodeOrThrow(
+    codigoInterno: string,
+    latitude?: number,
+    longitude?: number,
+  ): Promise<TransporterDetailResponseDto> {
+    const candidate = await this.transporterRepository.findCandidateByCodigoInterno(
+      codigoInterno.trim().toUpperCase(),
+    );
+    if (!candidate) {
+      throw new NotFoundException("Nenhuma transportadora encontrada com esse código.");
+    }
+    return this.buildDetail(candidate, latitude, longitude);
+  }
+
+  private async buildDetail(
+    candidate: TransporterCandidate,
+    latitude?: number,
+    longitude?: number,
+  ): Promise<TransporterDetailResponseDto> {
+    const companyId = candidate.company.id;
 
     // Sem coordenadas do Responsável (ex. acesso direto à página de
-    // detalhes, já vindo do cartão que exibiu a distância), `0` é o
-    // valor de convenção — a distância não é o foco desta tela.
+    // detalhes, já vindo do cartão que exibiu a distância, ou vindo do
+    // fluxo por código, que não pede localização), `0` é o valor de
+    // convenção — a distância não é o foco desta tela.
     const distanciaKm =
       latitude !== undefined && longitude !== undefined
         ? distanceToCandidate(candidate, latitude, longitude)

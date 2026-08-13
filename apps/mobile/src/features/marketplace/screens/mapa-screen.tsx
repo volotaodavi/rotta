@@ -211,6 +211,21 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
           ) : null}
         </View>
 
+        {/* Frente M — segunda porta de entrada, achar transportador por
+            código em vez de proximidade/escola. */}
+        <Pressable
+          onPress={() => navigation.navigate("InformarCodigo")}
+          accessibilityRole="button"
+          style={[
+            styles.codigoLink,
+            { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.full },
+          ]}
+        >
+          <Text style={{ color: theme.colors.primary, fontWeight: "600" }}>
+            Já sei quem contratar — tenho o código
+          </Text>
+        </Pressable>
+
         {schoolQuery.trim().length > 0 && !selectedSchool ? (
           <View
             style={[
@@ -387,6 +402,7 @@ function MapaEstadoOperacional({ navigation }: { navigation: Props["navigation"]
 
 const styles = StyleSheet.create({
   center: { alignItems: "center" },
+  codigoLink: { alignItems: "center", marginTop: 8, paddingVertical: 10 },
   container: { flex: 1 },
   filtrosRow: { flexDirection: "row", flexWrap: "wrap" },
   reabrirLabel: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },

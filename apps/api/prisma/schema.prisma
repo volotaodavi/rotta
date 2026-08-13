@@ -402,6 +402,16 @@ model Plan {
 model Company {
   id String @id @default(uuid()) @db.Uuid
 
+  /// Código único da transportadora (Frente M — briefing "Marketplace"
+  /// §"SOLICITAR TRANSPORTE": um Responsável que já sabe qual empresa
+  /// quer contratar informa este código em vez de precisar buscar por
+  /// proximidade/escola). Formatado em `CompaniesService.create()`
+  /// (`TRN-000001`, `TRN-000002`, ...) a partir da sequência Postgres
+  /// `companies_codigo_interno_seq` (mesmo padrão de `School.codigoInterno`)
+  /// — nunca a UUID `id`, inadequada para digitação humana. Nunca
+  /// setável pelo cliente.
+  codigoInterno String @unique
+
   razaoSocial  String
   nomeFantasia String
   /// CPF (motorista autônomo) ou CNPJ (demais tipos) — único globalmente,

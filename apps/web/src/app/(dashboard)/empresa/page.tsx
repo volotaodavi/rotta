@@ -255,6 +255,33 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
     <div className="flex flex-col gap-6">
       <Typography variant="title">Minha empresa</Typography>
 
+      {/*
+        Frente M (briefing "Marketplace" §"SOLICITAR TRANSPORTE") — o
+        código que a transportadora compartilha com um Responsável que
+        já sabe quem quer contratar, pra ele pular a busca por
+        proximidade/escola e ir direto no Marketplace do app com o
+        código em mãos.
+      */}
+      <Card>
+        <Card.Body className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-1">
+            <Typography variant="bodySmall" className="font-semibold">
+              Código da sua transportadora
+            </Typography>
+            <Typography variant="caption" color="muted">
+              Compartilhe com responsáveis que já sabem que querem contratar vocês — eles informam
+              esse código no app da Rotta em vez de buscar por proximidade.
+            </Typography>
+          </div>
+          <Typography
+            variant="title"
+            className="rounded-md bg-primary/10 px-4 py-2 font-mono tracking-wide text-primary"
+          >
+            {company.codigoInterno}
+          </Typography>
+        </Card.Body>
+      </Card>
+
       <TrialBanner
         status={company.status}
         onSubscribe={() => void handleSubscribe()}

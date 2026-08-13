@@ -3,11 +3,11 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { MarketplaceStackParamList } from "./types";
 
 import {
+  InformarCodigoScreen,
   MapaScreen,
   SolicitarTransporteScreen,
   TransportadorDetalhesScreen,
 } from "@/features/marketplace/screens";
-
 
 const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
 
@@ -21,6 +21,11 @@ export function MarketplaceNavigator(): JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
       <Stack.Screen name="MapaHome" component={MapaScreen} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="InformarCodigo"
+        component={InformarCodigoScreen}
+        options={{ title: "Já sei quem contratar" }}
+      />
       <Stack.Screen
         name="TransportadorDetalhes"
         component={TransportadorDetalhesScreen}

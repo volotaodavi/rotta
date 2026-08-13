@@ -3,6 +3,8 @@ import type { Company, CompanyStatus, CompanyType, Plan, Prisma } from "@prisma/
 export type CompanyWithPlan = Company & { plan: Plan };
 
 export interface CreateCompanyData {
+  /** Gerado por `CompaniesService.generateCodigoInterno()` antes de chamar `create` — mesmo padrão de `School.codigoInterno`. */
+  codigoInterno: string;
   razaoSocial: string;
   nomeFantasia: string;
   cpfCnpj: string;
@@ -83,4 +85,6 @@ export interface CompanyRepository {
   findByCpfCnpj(cpfCnpj: string): Promise<Company | null>;
   update(id: string, data: UpdateCompanyData): Promise<CompanyWithPlan>;
   list(filter: ListCompaniesFilter): Promise<ListCompaniesResult>;
+  /** Consumida via `nextval(...)` em `CompaniesService.generateCodigoInterno()` — mesmo padrão de `SchoolRepository.nextCodigoInternoSequence`. */
+  nextCodigoInternoSequence(): Promise<number>;
 }
