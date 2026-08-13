@@ -14,6 +14,22 @@ export type AuthStackParamList = {
   CriarEmpresaWebView: undefined;
   ConviteCodigo: undefined;
   ConvitePreview: { codigo: string };
+  /** Frente N (briefing item 9) — Motorista/Monitor autônomo, sem empresa ainda. */
+  CriarContaAutonomo: undefined;
+};
+
+/**
+ * Stack mostrada pelo `RootNavigator` no lugar de `DriverNavigator`
+ * quando o usuário já está autenticado como Motorista/Monitor mas ainda
+ * não tem `companyId` (Frente N — cadastro autônomo via
+ * `AuthStackParamList.CriarContaAutonomo`, antes de qualquer vínculo
+ * aprovado). `VerificacaoIdentidade` reaproveita a MESMA WebView de
+ * `DriverPerfilStackParamList` — só muda de onde é alcançada.
+ */
+export type VinculoPendenteStackParamList = {
+  Status: undefined;
+  VerificacaoIdentidade: undefined;
+  InformarCodigo: undefined;
 };
 
 export type DriverTabParamList = {

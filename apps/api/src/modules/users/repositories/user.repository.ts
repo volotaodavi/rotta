@@ -15,6 +15,8 @@ export interface CreateUserInput {
   avatarUrl?: string;
   /** Ver nota em `User.isResponsavel`, `schema.prisma` (módulo Marketplace). */
   isResponsavel?: boolean;
+  /** Ver nota em `User.autonomoRole`, `schema.prisma` (Frente N). */
+  autonomoRole?: string;
 }
 
 /** Campos de estado de autenticação atualizáveis (Dossiê 15, `AUTH-*`) — nunca um passthrough genérico de `Prisma.UserUpdateInput`. */
@@ -28,6 +30,8 @@ export interface UpdateUserAuthStateInput {
   totpHabilitado?: boolean;
   totpHabilitadoEm?: Date | null;
   totpCodigosRecuperacaoHashes?: string[];
+  /** Limpo (`null`) assim que o primeiro `Membership` é criado — ver nota em `User.autonomoRole`, `schema.prisma` (Frente N). */
+  autonomoRole?: string | null;
 }
 
 export interface UserRepository {

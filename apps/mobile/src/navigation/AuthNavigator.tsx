@@ -7,6 +7,7 @@ import {
   AreaProfissionalScreen,
   ConviteCodigoScreen,
   ConvitePreviewScreen,
+  CriarContaAutonomoScreen,
   CriarContaPessoalScreen,
   CriarContaScreen,
   CriarEmpresaWebViewScreen,
@@ -37,6 +38,7 @@ export function AuthNavigator(): JSX.Element {
       />
       <Stack.Screen name="ConviteCodigo" component={ConviteCodigoScreen} />
       <Stack.Screen name="ConvitePreview" component={ConvitePreviewScreen} />
+      <Stack.Screen name="CriarContaAutonomo" component={CriarContaAutonomoScreen} />
     </Stack.Navigator>
   );
 }

@@ -5,6 +5,8 @@ import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
 import type { IdentityVerificationStatus } from "@rotta/api-client";
 import type { BadgeVariant } from "@rotta/ui/web";
 
+import { JoinRequestRow } from "@/features/team/components/join-request-row";
+import { usePendingJoinRequests } from "@/features/team/hooks/use-join-requests";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 
 /** Mesmos rótulos/cores de `(dashboard)/verificacao-identidade` — a MESMA verificação, só vista de outro ângulo (o dono da empresa, não o próprio motorista). */
@@ -41,6 +43,7 @@ const PAPEL_LABEL: Record<string, string> = {
  */
 export default function EquipePage(): JSX.Element {
   const { data: equipe, isLoading, isError } = useMyTeam();
+  const { data: pendingRequests, isLoading: isLoadingRequests } = usePendingJoinRequests();
 
   return (
     <div className="flex flex-col gap-6">
@@ -51,6 +54,22 @@ export default function EquipePage(): JSX.Element {
           identidade.
         </Typography>
       </div>
+
+      {!isLoadingRequests && pendingRequests && pendingRequests.length > 0 ? (
+        <Card>
+          <Card.Header title="Pedidos de vínculo pendentes" />
+          <Card.Body className="flex flex-col gap-1">
+            <Typography variant="bodySmall" color="muted" className="pb-2">
+              Motoristas/monitores que informaram o código da sua empresa e aguardam sua decisão.
+            </Typography>
+            <div className="flex flex-col divide-y divide-border">
+              {pendingRequests.map((request) => (
+                <JoinRequestRow key={request.id} request={request} />
+              ))}
+            </div>
+          </Card.Body>
+        </Card>
+      ) : null}
 
       <Card>
         <Card.Body>

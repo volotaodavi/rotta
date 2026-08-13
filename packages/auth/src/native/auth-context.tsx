@@ -29,6 +29,7 @@ import type {
   MeResponse,
   MfaSetupResponse,
   RedeemInviteInput,
+  RegisterAutonomoInput,
   RegisterEmpresaInput,
   RegisterPessoalInput,
 } from "@rotta/api-client";
@@ -41,6 +42,8 @@ interface AuthContextValue {
   login: (input: LoginInput) => Promise<LoginResponse>;
   registerEmpresa: (input: RegisterEmpresaInput) => Promise<MeResponse>;
   registerPessoal: (input: RegisterPessoalInput) => Promise<MeResponse>;
+  /** Frente N (briefing item 9) — Motorista/Monitor autônomo, sem empresa ainda. */
+  registerAutonomo: (input: RegisterAutonomoInput) => Promise<MeResponse>;
   redeemInvite: (input: RedeemInviteInput) => Promise<MeResponse>;
   logout: () => Promise<void>;
   /** MFA obrigatório para Admin Rotta (Dossiê 43) — Admin Rotta não usa o app mobile hoje (`RootNavigator` não tem tela para o papel), mas a interface fica paritária com `../web/auth-context.tsx` para não divergir os dois contratos. */
@@ -199,6 +202,15 @@ export function AuthProvider({
     [authApi, applySession],
   );
 
+  const registerAutonomo = useCallback(
+    async (input: RegisterAutonomoInput): Promise<MeResponse> => {
+      const tokens = await authApi.registerAutonomo(input);
+      await applySession(tokens);
+      return tokens.user;
+    },
+    [authApi, applySession],
+  );
+
   const redeemInvite = useCallback(
     async (input: RedeemInviteInput): Promise<MeResponse> => {
       const tokens = await authApi.redeemInvite(input);
@@ -229,6 +241,7 @@ export function AuthProvider({
         login,
         registerEmpresa,
         registerPessoal,
+        registerAutonomo,
         redeemInvite,
         logout,
         mfaSetup,

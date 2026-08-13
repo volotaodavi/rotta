@@ -5,13 +5,13 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { AuthNavigator } from "./AuthNavigator";
 import { DriverNavigator } from "./DriverNavigator";
 import { ParentNavigator } from "./ParentNavigator";
+import { VinculoPendenteNavigator } from "./VinculoPendenteNavigator";
 
 import { usePinLock } from "@/features/auth/hooks/use-pin-lock";
 import { PainelWebOnlyScreen, PinLockScreen } from "@/features/auth/screens";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
 import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
 import { useTheme } from "@/providers/theme-provider";
-
 
 /**
  * Navigator raiz — decide entre `AuthNavigator` e o navigator do papel
@@ -69,7 +69,13 @@ export function RootNavigator(): JSX.Element {
       {status === "unauthenticated" || !user ? (
         <AuthNavigator />
       ) : user.role === "motorista" || user.role === "monitor" ? (
-        <DriverNavigator />
+        // Frente N — cadastro autônomo (`registerAutonomo`) ainda não tem
+        // `companyId` até um `CompanyJoinRequest` ser aprovado.
+        user.companyId ? (
+          <DriverNavigator />
+        ) : (
+          <VinculoPendenteNavigator />
+        )
       ) : user.role === "responsavel" ? (
         <ParentNavigator />
       ) : (

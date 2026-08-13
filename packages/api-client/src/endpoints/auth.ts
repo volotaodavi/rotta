@@ -119,6 +119,17 @@ export interface RegisterPessoalInput {
   aceiteTermos: true;
 }
 
+/** Frente N (briefing item 9) — Motorista/Monitor autônomo, sem empresa ainda. */
+export interface RegisterAutonomoInput {
+  nome: string;
+  email: string;
+  telefone: string;
+  cpf: string;
+  senha: string;
+  role: "motorista" | "monitor";
+  aceiteTermos: true;
+}
+
 export interface SessionInfo {
   id: string;
   deviceName: string | null;
@@ -201,6 +212,14 @@ export function createAuthEndpoints(apiClient: ApiClient) {
     registerPessoal: async (input: RegisterPessoalInput): Promise<AuthTokensResponse> =>
       (
         await apiClient.request<ApiEnvelope<AuthTokensResponse>>("/auth/register/pessoal", {
+          method: "POST",
+          body: input,
+        })
+      ).data,
+
+    registerAutonomo: async (input: RegisterAutonomoInput): Promise<AuthTokensResponse> =>
+      (
+        await apiClient.request<ApiEnvelope<AuthTokensResponse>>("/auth/register/autonomo", {
           method: "POST",
           body: input,
         })

@@ -38,6 +38,8 @@ export interface CreateUserWithPasswordInput {
   avatarUrl?: string;
   /** Ver nota em `User.isResponsavel`, `schema.prisma` (módulo Marketplace). */
   isResponsavel?: boolean;
+  /** Ver nota em `User.autonomoRole`, `schema.prisma` (Frente N). */
+  autonomoRole?: string;
 }
 
 /**
@@ -123,6 +125,7 @@ export class UsersService {
         passwordHash,
         avatarUrl: input.avatarUrl,
         isResponsavel: input.isResponsavel,
+        autonomoRole: input.autonomoRole,
       },
       tx,
     );
@@ -133,6 +136,20 @@ export class UsersService {
     tx?: Prisma.TransactionClient,
   ): Promise<Membership> {
     return this.membershipRepository.create(input, tx);
+  }
+
+  /**
+   * Frente N — chamado depois que o primeiro `Membership` de um usuário
+   * autônomo (`User.autonomoRole`) é criado: o campo deixa de ser
+   * necessário (o login passa a ler o papel do próprio `Membership`).
+   * Melhor esforço (mesmo espírito de `recordLgpdConsent`) — nunca deveria
+   * derrubar a aprovação do vínculo por si só.
+   */
+  async clearAutonomoRole(userId: string): Promise<void> {
+    await this.userRepository.updateAuthState(userId, { autonomoRole: null }).catch(() => {
+      // Best-effort: um `autonomoRole` esquecido no banco não afeta o
+      // login (só é lido quando `memberships.length === 0`).
+    });
   }
 
   listMembershipsByCompany(companyId: string): Promise<Membership[]> {

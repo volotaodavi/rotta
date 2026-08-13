@@ -25,6 +25,7 @@ import { MfaEnableDto } from "./dto/mfa-enable.dto";
 import { MfaSetupDto } from "./dto/mfa-setup.dto";
 import { MfaVerifyLoginDto } from "./dto/mfa-verify-login.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
+import { RegisterAutonomoDto } from "./dto/register-autonomo.dto";
 import { RegisterEmpresaDto } from "./dto/register-empresa.dto";
 import { RegisterPessoalDto } from "./dto/register-pessoal.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
@@ -64,6 +65,14 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   registerPessoal(@Body() dto: RegisterPessoalDto, @Req() req: Request) {
     return this.authService.registerPessoal(dto, requestMeta(req));
+  }
+
+  /** Frente N (briefing item 9) — Motorista/Monitor autônomo, sem empresa ainda (ver `AuthService.registerAutonomo`). */
+  @Public()
+  @Post("register/autonomo")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  registerAutonomo(@Body() dto: RegisterAutonomoDto, @Req() req: Request) {
+    return this.authService.registerAutonomo(dto, requestMeta(req));
   }
 
   @Public()

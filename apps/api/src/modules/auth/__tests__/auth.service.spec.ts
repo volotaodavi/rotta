@@ -322,6 +322,19 @@ describe("AuthService", () => {
       );
     });
 
+    it("Motorista/Monitor autônomo (Frente N) sem Membership ainda reemite o mesmo papel em vez de recusar", async () => {
+      usersService.findByIdentifier.mockResolvedValue(buildUser({ autonomoRole: Role.MOTORISTA }));
+      passwordHasher.verify.mockResolvedValue(true);
+      usersService.listActiveMembershipsWithCompany.mockResolvedValue([]);
+
+      const result = await service.login({ identificador: "x", senha: "y" }, {});
+
+      expect("accessToken" in result).toBe(true);
+      expect(sessionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: null, role: Role.MOTORISTA }),
+      );
+    });
+
     it("rejeita companyId que não pertence ao usuário", async () => {
       usersService.findByIdentifier.mockResolvedValue(buildUser());
       passwordHasher.verify.mockResolvedValue(true);

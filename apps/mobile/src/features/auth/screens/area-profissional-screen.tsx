@@ -1,6 +1,5 @@
 import { StyleSheet, Text } from "react-native";
 
-
 import { AuthButton, AuthScreen } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
@@ -40,6 +39,11 @@ export function AreaProfissionalScreen({ navigation }: Props): JSX.Element {
         label="Já fui convidado por uma empresa"
         variant="secondary"
         onPress={() => navigation.navigate("ConviteCodigo")}
+      />
+      <AuthButton
+        label="Sou motorista/monitor autônomo"
+        variant="ghost"
+        onPress={() => navigation.navigate("CriarContaAutonomo")}
       />
     </AuthScreen>
   );

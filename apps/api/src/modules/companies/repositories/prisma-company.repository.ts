@@ -51,6 +51,14 @@ export class PrismaCompanyRepository implements CompanyRepository {
     return Number(result.nextval);
   }
 
+  findActiveByCodigoInterno(codigoInterno: string): Promise<Company | null> {
+    return this.prisma.withBypass(
+      this.prisma.company.findFirst({
+        where: { codigoInterno, status: "ATIVO", deletedAt: null },
+      }),
+    );
+  }
+
   update(id: string, data: UpdateCompanyData): Promise<CompanyWithPlan> {
     return this.prisma.withTenant(
       this.prisma.company.update({ where: { id }, data, include: { plan: true } }),

@@ -1,6 +1,7 @@
 import {
   createApiClient,
   createAuthEndpoints,
+  createCompanyJoinRequestsEndpoints,
   createDriversEndpoints,
   createGeoEndpoints,
   createGpsEndpoints,
@@ -31,6 +32,7 @@ const apiClient = createApiClient({
 
 export const authApi = createAuthEndpoints(apiClient);
 export const driversApi = createDriversEndpoints(apiClient);
+export const companyJoinRequestsApi = createCompanyJoinRequestsEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const studentsApi = createStudentsEndpoints(apiClient);

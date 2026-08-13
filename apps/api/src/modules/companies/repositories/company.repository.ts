@@ -87,4 +87,12 @@ export interface CompanyRepository {
   list(filter: ListCompaniesFilter): Promise<ListCompaniesResult>;
   /** Consumida via `nextval(...)` em `CompaniesService.generateCodigoInterno()` — mesmo padrão de `SchoolRepository.nextCodigoInternoSequence`. */
   nextCodigoInternoSequence(): Promise<number>;
+  /**
+   * Frente N — resolve `Company.codigoInterno` (mesmo código público do
+   * Marketplace, Frente M) para `CompanyJoinRequestsService.create`.
+   * Bypass de RLS (mesmo motivo de `TransporterRepository.findCandidateByCodigoInterno`
+   * — quem chama ainda não tem tenant). Só empresas `ATIVO`, não
+   * excluídas — mesmo filtro do Marketplace.
+   */
+  findActiveByCodigoInterno(codigoInterno: string): Promise<Company | null>;
 }

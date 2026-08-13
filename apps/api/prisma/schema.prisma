@@ -466,6 +466,10 @@ model Company {
   settings               CompanySetting[]
   auditLogs              AuditLog[]
   invites                Invite[]
+  /// Frente N (briefing item 9) — pedidos de vínculo de Motorista/Monitor
+  /// que se autocadastraram e informaram `codigoInterno` em vez de um
+  /// `Invite` gerado pela empresa. Ver nota completa em `CompanyJoinRequest`.
+  joinRequests           CompanyJoinRequest[]
   vehicles               Vehicle[]
   escolasVinculadas      SchoolCompanyLink[]
   solicitacoesTransporte TransportRequest[]
@@ -588,6 +592,19 @@ model User {
   /// distintos, mesmo padrão de `requiresProfileSelection`.
   isResponsavel Boolean @default(false)
 
+  /// Frente N (briefing item 9 — "Monitores deverão fazer a mesma coisa:
+  /// criar conta, Didit, informar o número [...] e se integrar como
+  /// monitor") — valor de `Role` (`motorista`/`monitor`, mesma convenção
+  /// de `Membership.role`), gravado quando `AuthService.registerAutonomo`
+  /// cria a conta ANTES de qualquer `Membership` existir. Mesmo mecanismo
+  /// de `isAdminRotta`/`isResponsavel`: o login lê este campo quando não
+  /// encontra nenhum Membership ativo, em vez de recusar a entrada — é o
+  /// que permite o usuário completar a Didit e pedir vínculo
+  /// (`CompanyJoinRequest`) antes de ter qualquer empresa. Nulo assim que
+  /// o primeiro `Membership` é criado (não é mais necessário — o login
+  /// passa a ler o papel de lá).
+  autonomoRole String?
+
   /// Verificação de identidade hospedada via Didit (sessão v3) — cobre
   /// Motorista e dono de Empresa/Gestor (Responsável/Escola/Admin Rotta
   /// não usam este fluxo hoje). Diferente do fluxo standalone existente
@@ -628,6 +645,12 @@ model User {
   passwordResetTokens PasswordResetToken[]
   invitesCriados      Invite[]             @relation("InviteCriadoPor")
   invitesUsados       Invite[]             @relation("InviteUsadoPor")
+
+  /// Frente N — pedidos de vínculo que este usuário fez (`Solicitante`) e,
+  /// quando atua como Empresa/Gestor, os que ele aprovou/recusou
+  /// (`Decisor`). Ver nota completa em `CompanyJoinRequest`.
+  joinRequestsFeitos    CompanyJoinRequest[] @relation("JoinRequestSolicitante")
+  joinRequestsDecididos CompanyJoinRequest[] @relation("JoinRequestDecisor")
 
   /// Relações do módulo Veículos (Dossiê 13, Secao 9) — um `User` pode
   /// ser referenciado por um `Vehicle`/`VehicleDocument`/etc. de várias
@@ -891,6 +914,54 @@ model Invite {
 
   @@index([companyId])
   @@map("invites")
+}
+
+enum CompanyJoinRequestStatus {
+  PENDENTE
+  APROVADO
+  RECUSADO
+}
+
+/// Frente N (briefing item 9 — "Monitores deverão fazer a mesma coisa:
+/// criar conta, Didit, informar o número [código único da transportadora
+/// na Rotta] e se integrar como monitor"). Caminho inverso de `Invite`:
+/// lá a EMPRESA gera um código e o convidado o resgata; aqui o
+/// MOTORISTA/MONITOR (`AuthService.registerAutonomo`, sem `Membership`
+/// ainda) já tem conta e Didit em andamento/concluída, e informa
+/// `Company.codigoInterno` — o mesmo código público usado pelo
+/// Responsável no Marketplace (Frente M) — para pedir vínculo. Como esse
+/// código é público (compartilhado até com responsáveis), o pedido NUNCA
+/// cria o `Membership` sozinho: fica `PENDENTE` até a empresa/gestor
+/// decidir em "Equipe" (`CompanyJoinRequestsService.approve/reject`) —
+/// só então um `Membership` real é criado, mesmo formato de
+/// `InvitesService.redeem`.
+model CompanyJoinRequest {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  userId String @db.Uuid
+  user   User   @relation("JoinRequestSolicitante", fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Valor de `Role` (mesma convenção de `Membership.role`/`Invite.role`)
+  /// — sempre `motorista` ou `monitor` (validado em
+  /// `CompanyJoinRequestsService`, nunca aceito do cliente).
+  role String
+
+  status       CompanyJoinRequestStatus @default(PENDENTE)
+  /// Preenchido só quando `status = RECUSADO` — mostrado de volta ao
+  /// solicitante, mesmo espírito de `DriverDocument.rottaAiObservacoes`.
+  motivoRecusa String?
+
+  decididoPorId String?   @db.Uuid
+  decididoPor   User?     @relation("JoinRequestDecisor", fields: [decididoPorId], references: [id], onDelete: SetNull)
+  decidedAt     DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId, status])
+  @@index([userId, status])
+  @@map("company_join_requests")
 }
 
 // =============================================================================

@@ -40,6 +40,7 @@ import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
 import { BackofficeModule } from "@/modules/backoffice/backoffice.module";
 import { BillingModule } from "@/modules/billing/billing.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
@@ -111,6 +112,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     GeoModule,
     DriversModule,
     MonitorsModule,
+    CompanyJoinRequestsModule,
     ParentsModule,
     StudentsModule,
     WalletModule,

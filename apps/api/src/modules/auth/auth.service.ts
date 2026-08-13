@@ -37,6 +37,7 @@ import type { MfaEnableDto } from "./dto/mfa-enable.dto";
 import type { MfaSetupDto } from "./dto/mfa-setup.dto";
 import type { MfaVerifyLoginDto } from "./dto/mfa-verify-login.dto";
 import type { RefreshTokenDto } from "./dto/refresh-token.dto";
+import type { RegisterAutonomoDto } from "./dto/register-autonomo.dto";
 import type { RegisterEmpresaDto } from "./dto/register-empresa.dto";
 import type { RegisterPessoalDto } from "./dto/register-pessoal.dto";
 import type { ResetPasswordDto } from "./dto/reset-password.dto";
@@ -203,6 +204,38 @@ export class AuthService {
   }
 
   /**
+   * Cadastro self-service de Motorista/Monitor autônomo (Frente N,
+   * briefing item 9) — mesmo mecanismo de `registerPessoal` (`users` sem
+   * RLS, nenhum `Company`/`Membership` ainda), mas grava
+   * `User.autonomoRole` em vez de `isResponsavel`: é o que permite
+   * `login()` reemitir o mesmo papel em acessos futuros ANTES de existir
+   * qualquer vínculo. Depois de completar a Didit
+   * (`identity-verification/me/sessions`, já liberado para este papel —
+   * ver `SELF_VERIFICATION_ROLES`), o usuário pede vínculo com uma
+   * transportadora via `CompanyJoinRequestsService.create`.
+   */
+  async registerAutonomo(
+    dto: RegisterAutonomoDto,
+    meta: AuthRequestMeta,
+  ): Promise<AuthTokensResponseDto> {
+    const email = dto.email.trim().toLowerCase();
+    await this.usersService.assertNoDuplicateIdentity(email, dto.telefone, dto.cpf);
+
+    const user = await this.usersService.createUserWithPassword({
+      nome: dto.nome,
+      email,
+      telefone: dto.telefone,
+      cpf: dto.cpf,
+      senha: dto.senha,
+      autonomoRole: dto.role,
+    });
+
+    await this.usersService.recordLgpdConsent(user.id);
+
+    return this.issueTokens(user, null, dto.role, user.id, meta);
+  }
+
+  /**
    * Login único (Dossiê 15, `AUTH-02`) — mesmo endpoint para toda
    * plataforma. Retorna tokens diretamente quando há exatamente um
    * vínculo ativo (ou a conta é Responsável); com mais de um vínculo e
@@ -296,6 +329,20 @@ export class AuthService {
     // escondido.
     if (user.isResponsavel && memberships.length === 0) {
       return this.issueTokensWithLoginAudit(user, null, Role.RESPONSAVEL, user.id, meta);
+    }
+
+    // Motorista/Monitor autônomo (Frente N, `registerAutonomo`) — mesmo
+    // mecanismo do Responsável acima: sem `Membership` ainda (pode estar
+    // no meio da Didit, ou com um `CompanyJoinRequest` `PENDENTE`/
+    // `RECUSADO`), reemite o mesmo papel em vez de recusar a entrada.
+    // Assim que o primeiro `Membership` é criado (pedido aprovado),
+    // `UsersService.clearAutonomoRole` zera este campo e o próximo login
+    // já cai no ramo de `memberships.length >= 1` abaixo.
+    if (
+      memberships.length === 0 &&
+      (user.autonomoRole === Role.MOTORISTA || user.autonomoRole === Role.MONITOR)
+    ) {
+      return this.issueTokensWithLoginAudit(user, null, user.autonomoRole, user.id, meta);
     }
 
     if (memberships.length === 0) {
