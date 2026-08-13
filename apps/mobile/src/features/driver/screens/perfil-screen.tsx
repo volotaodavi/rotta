@@ -1,6 +1,8 @@
 import { useAuth } from "@rotta/auth/native";
 import { StyleSheet, Text } from "react-native";
 
+import { PanelGreeting } from "../components";
+
 import type { DriverPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -30,6 +32,8 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
+      <PanelGreeting nome={user?.nome ?? ""} />
+
       <VehicleCard>
         <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
         <Text style={{ color: theme.colors.textMuted }}>

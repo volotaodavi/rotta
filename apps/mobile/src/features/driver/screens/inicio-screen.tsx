@@ -1,10 +1,10 @@
 import { useAuth } from "@rotta/auth/native";
-import { Check, MapPin, Pause, Play, Square, UserX } from "@rotta/icons/native";
+import { Check, Clock, MapPin, Navigation, Pause, Play, Square, UserX } from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
+import { PanelGreeting } from "../components";
 import {
   useMinhasRotas,
   useRouteStops,
@@ -18,11 +18,13 @@ import {
   useResumeTrip,
   useStartTrip,
   useTodayTrip,
+  useTripProximasEtas,
   useTripStudentEvents,
 } from "../hooks/use-driver-trip";
+import { useMyLocation, type MyLocation, type MyLocationStatus } from "../hooks/use-my-location";
 import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
-import type { Route, RouteStop, RouteStudent, TripStudentEvent } from "@rotta/api-client";
+import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "@rotta/api-client";
 
 import {
   StatusPill,
@@ -48,6 +50,7 @@ import { useTheme } from "@/providers/theme-provider";
  */
 export function DriverInicioScreen(): JSX.Element {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const { data: rotasResult, isLoading } = useMinhasRotas();
   const rotas = rotasResult?.items ?? [];
   const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null);
@@ -55,6 +58,13 @@ export function DriverInicioScreen(): JSX.Element {
   useEffect(() => {
     if (!selectedRouteId && rotas.length === 1 && rotas[0]) setSelectedRouteId(rotas[0].id);
   }, [rotas, selectedRouteId]);
+
+  // Só liga fora da operação (nenhuma rota escolhida ainda) — dentro
+  // de `RotaOperacional` existe uma segunda chamada própria, ligada só
+  // quando faltam paradas pra mostrar (Frente M, mesma regra da
+  // Frente I no Painel Web).
+  const rotaAtiva = selectedRouteId ? rotas.find((r) => r.id === selectedRouteId) : null;
+  const minhaLocalizacao = useMyLocation(!isLoading && !rotaAtiva);
 
   if (isLoading) {
     return (
@@ -67,19 +77,20 @@ export function DriverInicioScreen(): JSX.Element {
   if (rotas.length === 0) {
     return (
       <VehicleScreen>
+        <PanelGreeting nome={user?.nome ?? ""} />
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Nenhuma rota atribuída</Text>
         <Text style={{ color: theme.colors.textMuted }}>
           Você ainda não está vinculado a nenhuma rota. Fale com sua transportadora.
         </Text>
+        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
       </VehicleScreen>
     );
   }
 
-  const rotaAtiva = selectedRouteId ? rotas.find((r) => r.id === selectedRouteId) : null;
-
   if (!rotaAtiva) {
     return (
       <VehicleScreen>
+        <PanelGreeting nome={user?.nome ?? ""} />
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Suas rotas</Text>
         {rotas.map((rota) => (
           <Pressable key={rota.id} onPress={() => setSelectedRouteId(rota.id)}>
@@ -89,6 +100,7 @@ export function DriverInicioScreen(): JSX.Element {
             </VehicleCard>
           </Pressable>
         ))}
+        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
       </VehicleScreen>
     );
   }
@@ -99,6 +111,100 @@ export function DriverInicioScreen(): JSX.Element {
       showTrocarRota={rotas.length > 1}
       onTrocarRota={() => setSelectedRouteId(null)}
     />
+  );
+}
+
+/**
+ * Mapa "onde eu estou" — respaldo baseado só na posição do telefone
+ * (`useMyLocation`), usado sempre que não há paradas de rota pra
+ * mostrar em vez disso. Porta exata de `MeuMapa` do Painel Web
+ * (Frente I) — nunca esconde a tela atrás de um carregamento
+ * indefinido: pedir/negar permissão e "sem suporte" têm cada um sua
+ * própria mensagem.
+ */
+function MeuMapa({
+  location,
+  status,
+}: {
+  location: MyLocation | null;
+  status: MyLocationStatus;
+}): JSX.Element {
+  const { theme } = useTheme();
+
+  if (!location) {
+    return (
+      <VehicleCard style={styles.mapaVazio}>
+        {status === "requesting" || status === "idle" ? (
+          <>
+            <ActivityIndicator color={theme.colors.primary} />
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              Buscando sua localização…
+            </Text>
+          </>
+        ) : status === "denied" ? (
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: "center" }}>
+            Localização negada — permita o acesso nas configurações do app para ver o mapa.
+          </Text>
+        ) : (
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Mapa indisponível.</Text>
+        )}
+      </VehicleCard>
+    );
+  }
+
+  return (
+    <View style={styles.mapa}>
+      <RottaMap
+        markers={[
+          {
+            id: "minha-localizacao",
+            titulo: "Você está aqui",
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+        ]}
+        initialCenter={location}
+        initialZoom={14}
+      />
+    </View>
+  );
+}
+
+/**
+ * Cartão "próxima parada" (Frente M) — porta de `ProximaParadaEtaCard`
+ * do Painel Web (Frente L): mesma ideia do cartão de ETA de uma imagem
+ * de referência de app de mobilidade ("Track Rider"), com o motorista/
+ * monitor vendo o PRÓPRIO progresso. Dado real (`NextEta`, tarefa #99)
+ * — nunca uma estimativa inventada no app.
+ */
+function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
+  const { theme } = useTheme();
+  const horarioPrevisto = new Date(eta.etaPrevista).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const distancia =
+    eta.distanciaMetros >= 1000
+      ? `${(eta.distanciaMetros / 1000).toFixed(1)} km`
+      : `${Math.round(eta.distanciaMetros)} m`;
+
+  return (
+    <VehicleCard style={styles.etaCard}>
+      <Navigation size={20} color={theme.colors.primary} />
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Próxima parada</Text>
+        <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{eta.endereco}</Text>
+      </View>
+      <View style={{ alignItems: "flex-end", gap: 2 }}>
+        <View style={styles.etaHorario}>
+          <Clock size={12} color={theme.colors.primary} />
+          <Text style={{ color: theme.colors.primary, fontWeight: "600", fontSize: 13 }}>
+            {horarioPrevisto}
+          </Text>
+        </View>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{distancia}</Text>
+      </View>
+    </VehicleCard>
   );
 }
 
@@ -156,8 +262,17 @@ function RotaOperacional({
     longitude: parada.longitude,
   }));
 
+  // Respaldo (Frente M, mesma regra da Frente I no Painel Web): sem
+  // paradas cadastradas ainda pra essa rota, mostra pelo menos onde o
+  // telefone está — nunca deixa a tela sem mapa nenhum.
+  const minhaLocalizacao = useMyLocation(markers.length === 0);
+  const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
+  const proximaParada = proximasEtas?.[0];
+
   return (
     <VehicleScreen>
+      <PanelGreeting nome={user?.nome ?? rota.nome} />
+
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={[styles.titulo, { color: theme.colors.text }]}>{rota.nome}</Text>
@@ -183,7 +298,11 @@ function RotaOperacional({
             initialZoom={12}
           />
         </View>
-      ) : null}
+      ) : (
+        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
+      )}
+
+      {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
 
       {isLoadingTrip ? (
         <ActivityIndicator color={theme.colors.primary} />
@@ -405,8 +524,11 @@ const styles = StyleSheet.create({
   },
   ausenciaForm: { alignItems: "center" },
   controlesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  etaCard: { alignItems: "center", flexDirection: "row", gap: 12 },
+  etaHorario: { alignItems: "center", flexDirection: "row", gap: 4 },
   header: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
+  mapaVazio: { alignItems: "center", gap: 8, height: 180, justifyContent: "center" },
   paradaHeader: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   secao: { fontSize: 16, fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },

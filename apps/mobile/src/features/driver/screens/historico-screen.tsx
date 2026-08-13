@@ -1,10 +1,12 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "@rotta/auth/native";
+import { useState } from "react";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
+import { PanelGreeting } from "../components";
 import { useRouteTripHistory } from "../hooks/use-driver-history";
 import { useMinhasRotas } from "../hooks/use-driver-routes";
 
-import type { Route, Trip } from "@rotta/api-client";
+import type { Route, Trip, TripStatus } from "@rotta/api-client";
 
 import { StatusPill, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
@@ -19,6 +21,66 @@ const TRIP_STATUS_LABEL: Record<
   CANCELADA: { label: "Cancelada", tone: "neutral" },
 };
 
+type FiltroStatus = "todas" | "concluidas" | "canceladas";
+
+const FILTRO_TABS: { id: FiltroStatus; label: string }[] = [
+  { id: "todas", label: "Todas" },
+  { id: "concluidas", label: "Concluídas" },
+  { id: "canceladas", label: "Canceladas" },
+];
+
+function passaNoFiltro(status: TripStatus, filtro: FiltroStatus): boolean {
+  if (filtro === "concluidas") return status === "FINALIZADA";
+  if (filtro === "canceladas") return status === "CANCELADA";
+  return true;
+}
+
+/**
+ * Abas Todas/Concluídas/Canceladas (Frente M) — porta do padrão da
+ * página "Atividades" do Painel Web (Frente K), pra harmonia entre as
+ * duas plataformas. Sem "Tabs" nativo em `@rotta/ui/native` ainda
+ * (mesma decisão de escopo de `vehicle-screen.tsx`) — controle simples
+ * local, mesmo espírito visual (rótulo + sublinhado na aba ativa).
+ */
+function FiltroTabs({
+  filtro,
+  onChange,
+}: {
+  filtro: FiltroStatus;
+  onChange: (filtro: FiltroStatus) => void;
+}): JSX.Element {
+  const { theme } = useTheme();
+
+  return (
+    <View style={styles.filtroRow}>
+      {FILTRO_TABS.map((tab) => {
+        const ativa = tab.id === filtro;
+        return (
+          <Pressable
+            key={tab.id}
+            accessibilityRole="button"
+            onPress={() => onChange(tab.id)}
+            style={[
+              styles.filtroTab,
+              { borderBottomColor: ativa ? theme.colors.primary : "transparent" },
+            ]}
+          >
+            <Text
+              style={{
+                color: ativa ? theme.colors.primary : theme.colors.textMuted,
+                fontWeight: ativa ? "700" : "500",
+                fontSize: 13,
+              }}
+            >
+              {tab.label}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
 /**
  * Histórico de viagens do Motorista/Monitor (Prompt Mestre da Rotta,
  * Seção 7) — reaproveita `GET /trips/routes/:routeId/history`
@@ -28,8 +90,10 @@ const TRIP_STATUS_LABEL: Record<
  */
 export function DriverHistoricoScreen(): JSX.Element {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const { data: rotasResult, isLoading } = useMinhasRotas();
   const rotas = rotasResult?.items ?? [];
+  const [filtro, setFiltro] = useState<FiltroStatus>("todas");
 
   if (isLoading) {
     return (
@@ -42,6 +106,7 @@ export function DriverHistoricoScreen(): JSX.Element {
   if (rotas.length === 0) {
     return (
       <VehicleScreen>
+        <PanelGreeting nome={user?.nome ?? ""} />
         <Text style={{ color: theme.colors.textMuted }}>
           Nenhuma rota atribuída a você ainda — sem histórico para mostrar.
         </Text>
@@ -51,26 +116,29 @@ export function DriverHistoricoScreen(): JSX.Element {
 
   return (
     <VehicleScreen>
+      <PanelGreeting nome={user?.nome ?? ""} />
+      <FiltroTabs filtro={filtro} onChange={setFiltro} />
       {rotas.map((rota) => (
-        <RouteHistorySection key={rota.id} rota={rota} />
+        <RouteHistorySection key={rota.id} rota={rota} filtro={filtro} />
       ))}
     </VehicleScreen>
   );
 }
 
-function RouteHistorySection({ rota }: { rota: Route }): JSX.Element {
+function RouteHistorySection({ rota, filtro }: { rota: Route; filtro: FiltroStatus }): JSX.Element {
   const { theme } = useTheme();
   const { data, isLoading } = useRouteTripHistory(rota.id);
+  const viagens = (data?.items ?? []).filter((trip) => passaNoFiltro(trip.status, filtro));
 
   return (
     <View style={styles.secao}>
       <Text style={[styles.tituloRota, { color: theme.colors.text }]}>{rota.nome}</Text>
       {isLoading ? (
         <ActivityIndicator color={theme.colors.primary} />
-      ) : !data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhuma viagem registrada ainda.</Text>
+      ) : viagens.length === 0 ? (
+        <Text style={{ color: theme.colors.textMuted }}>Nenhuma viagem nesta aba.</Text>
       ) : (
-        data.items.map((trip) => <TripHistoryCard key={trip.id} trip={trip} />)
+        viagens.map((trip) => <TripHistoryCard key={trip.id} trip={trip} />)
       )}
     </View>
   );
@@ -105,6 +173,8 @@ function TripHistoryCard({ trip }: { trip: Trip }): JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  filtroRow: { flexDirection: "row", gap: 16 },
+  filtroTab: { borderBottomWidth: 2, paddingBottom: 6 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   secao: { gap: 8 },
   tituloRota: { fontSize: 15, fontWeight: "700" },

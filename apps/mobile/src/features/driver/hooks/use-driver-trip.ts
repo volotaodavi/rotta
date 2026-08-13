@@ -4,7 +4,6 @@ import type { StartTripInput } from "@rotta/api-client";
 
 import { tripsApi } from "@/lib/api-client";
 
-
 /**
  * Ciclo de vida da viagem do dia, do lado do Motorista/Monitor (Prompt
  * Mestre da Rotta, Seção 8 — "o sistema deve diferenciar ONLINE/
@@ -64,6 +63,23 @@ export function useFinishTrip(routeId: string | undefined) {
   return useMutation({
     mutationFn: (tripId: string) => tripsApi.finish(tripId),
     onSuccess: () => invalidateTodayTrip(queryClient, routeId),
+  });
+}
+
+/**
+ * Próximas paradas com ETA recalculado (tarefa #99 — distância real +
+ * ausência de aluno). Porta de `apps/web/src/features/trips/hooks/
+ * use-trips.ts#useTripProximasEtas` (Frente L) — mesmo endpoint
+ * (`tripsApi.getProximasEtas`) já usado pelo acompanhamento do
+ * Responsável, faltava só o motorista/monitor ver a própria conta
+ * enquanto dirige (Frente M).
+ */
+export function useTripProximasEtas(tripId: string | undefined) {
+  return useQuery({
+    queryKey: ["driver", "trips", tripId, "proximas-etas"],
+    queryFn: () => tripsApi.getProximasEtas(tripId as string),
+    enabled: Boolean(tripId),
+    refetchInterval: tripId ? 30_000 : false,
   });
 }
 
