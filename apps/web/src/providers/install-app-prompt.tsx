@@ -32,16 +32,24 @@ function dismissForSession(): void {
 }
 
 /**
- * Convite "Instalar o app da Rotta" (pop-up inferior, Android/Chrome) —
- * captura o evento nativo `beforeinstallprompt` (o Chrome dispara isso
- * sozinho quando o `manifest.ts`/`sw.js` já atendem aos critérios de
- * instalabilidade — nada aqui força a exibição) e guarda pra disparar
- * sob demanda: o Chrome só permite chamar `prompt()` dentro de um gesto
- * do próprio usuário (aqui, o clique no botão "Instalar"), nunca
- * automaticamente. Aceitar o convite do Chrome instala a Rotta como um
- * app de verdade (ícone na tela inicial, própria entrada no launcher,
- * sem barra de endereço) — sem passar pela Play Store, mesmo mecanismo
- * usado por Twitter/Uber/Starbucks no Android.
+ * Convite "Instalar o app da Rotta" (pop-up inferior, Chrome/Edge) —
+ * captura o evento nativo `beforeinstallprompt` (o navegador dispara
+ * isso sozinho quando o `manifest.ts`/`sw.js` já atendem aos critérios
+ * de instalabilidade — nada aqui força a exibição) e guarda pra
+ * disparar sob demanda: o navegador só permite chamar `prompt()` dentro
+ * de um gesto do próprio usuário (aqui, o clique no botão "Instalar"),
+ * nunca automaticamente. Aceitar o convite instala a Rotta como um app
+ * de verdade — sem passar por loja nenhuma, mesmo mecanismo usado por
+ * Twitter/Uber/Starbucks.
+ *
+ * `beforeinstallprompt` dispara IGUAL no Android E no desktop (Chrome/
+ * Edge) — pedido do usuário em produção ("Isso deve ser tanto para o
+ * Android, quanto para desktop... app baixado direto pelo Google
+ * Chrome"): por isso o texto abaixo nunca cita "celular"/"tela
+ * inicial" — no desktop isso instalaria a Rotta como app do sistema
+ * (janela própria, ícone no menu Iniciar/Dock), não "na tela do
+ * celular", e o texto estaria simplesmente errado pra quem está vendo
+ * o convite no computador.
  *
  * iOS/Safari nunca dispara `beforeinstallprompt` (Apple não implementa
  * esse evento) — o banner simplesmente nunca aparece lá; instalar no
@@ -111,7 +119,7 @@ export function InstallAppPrompt(): JSX.Element | null {
         <div className="flex-1">
           <p className="text-sm font-semibold text-text">Instale o app da Rotta</p>
           <p className="text-xs text-text-muted">
-            Para uma performance melhor, instale o app na tela inicial do seu celular.
+            Para uma performance melhor, instale o app no seu dispositivo — celular ou computador.
           </p>
         </div>
         <Button variant="primary" onClick={() => void handleInstall()}>

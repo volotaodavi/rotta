@@ -3,7 +3,7 @@
 import { useAuth } from "@rotta/auth/web";
 import { Check, Clock, MapPin, Navigation, Pause, Play, Square, UserX } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
-import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, PanelGreeting, Spinner, Typography } from "@rotta/ui/web";
 import { useEffect, useMemo, useState } from "react";
 
 import type {
@@ -71,6 +71,11 @@ const TURNO_LABEL: Record<string, string> = {
  * dentro da operação enquanto as paradas ainda não carregaram — usando
  * a posição do telefone (`useMyLocation`) sempre que não há paradas de
  * rota pra mostrar em vez disso.
+ *
+ * `PanelGreeting` (Frente N) — o app nativo (Início/Histórico/Perfil,
+ * Frente M) já tinha saudação+relógio; faltava aqui, deixando o Painel
+ * Web do motorista/monitor/autônomo/MEI sem a mesma harmonia visual do
+ * resto da plataforma (Empresa/Admin, Frente L; mobile, Frente M).
  */
 export default function MinhaRotaPage(): JSX.Element {
   const { user } = useAuth();
@@ -107,6 +112,7 @@ export default function MinhaRotaPage(): JSX.Element {
   if (rotas.length === 0) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+        <PanelGreeting nome={user?.nome ?? ""} />
         <div>
           <Typography variant="title">Nenhuma rota atribuída</Typography>
           <Typography variant="bodySmall" color="muted">
@@ -124,6 +130,7 @@ export default function MinhaRotaPage(): JSX.Element {
   if (!rotaAtiva) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+        <PanelGreeting nome={user?.nome ?? ""} />
         <Typography variant="title">Suas rotas</Typography>
         {rotas.map((rota) => (
           <Card key={rota.id} interactive onClick={() => setSelectedRouteId(rota.id)}>
@@ -308,6 +315,8 @@ function RotaOperacional({
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+      <PanelGreeting nome={user?.nome ?? ""} />
+
       <div className="flex items-start justify-between gap-3">
         <div>
           <Typography variant="title">{rota.nome}</Typography>

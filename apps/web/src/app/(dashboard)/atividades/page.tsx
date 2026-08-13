@@ -1,7 +1,8 @@
 "use client";
 
+import { useAuth } from "@rotta/auth/web";
 import { Calendar, Clock } from "@rotta/icons";
-import { Badge, Card, Spinner, Tabs, Typography } from "@rotta/ui/web";
+import { Badge, Card, PanelGreeting, Spinner, Tabs, Typography } from "@rotta/ui/web";
 import { useMemo, useState } from "react";
 
 import { useMinhasRotas } from "@/features/driver/hooks/use-driver-routes";
@@ -49,8 +50,13 @@ function formatarHora(iso: string | null): string | null {
  *
  * Reaproveita `tripsApi.listByRoute` (histórico por rota, tarefa #100)
  * — já existia, nunca tinha ganhado uma tela própria no Painel Web.
+ *
+ * `PanelGreeting` (Frente N) — mesma harmonia visual do resto da
+ * plataforma (Empresa/Admin, Frente L; app nativo, Frente M), faltava
+ * aqui.
  */
 export default function AtividadesPage(): JSX.Element {
+  const { user } = useAuth();
   const [aba, setAba] = useState<FiltroAba>("todas");
   const { data: rotasResult, isLoading: isLoadingRotas } = useMinhasRotas();
   const rotas = useMemo(() => rotasResult?.items ?? [], [rotasResult]);
@@ -61,6 +67,8 @@ export default function AtividadesPage(): JSX.Element {
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+      <PanelGreeting nome={user?.nome ?? ""} />
+
       <div>
         <Typography variant="title">Atividades</Typography>
         <Typography variant="bodySmall" color="muted">
