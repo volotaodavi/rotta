@@ -22,6 +22,11 @@ import {
   useStartTrip,
   useTodayTrip,
 } from "@/features/driver/hooks/use-driver-trip";
+import {
+  useMyLocation,
+  type MyLocation,
+  type MyLocationStatus,
+} from "@/features/driver/hooks/use-my-location";
 import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-reporting";
 import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
 import { useStudent } from "@/features/students/hooks/use-students";
@@ -51,14 +56,24 @@ const TRIP_STATUS_BADGE: Record<
  * Painel Web — existe porque Motorista/Monitor autônomo/MEI É o próprio
  * `role: "empresa"` (dono = motorista, ver `CompanyType.AUTONOMO`/`MEI`)
  * e por isso é o único perfil que precisa rodar a viagem de dentro do
- * mesmo painel que já usa pra gestão. Motorista/Monitor funcionário de
- * uma empresa maior nunca chega aqui — o dele é o app mobile (rota
- * própria, sem alternador).
+ * mesmo painel que já usa pra gestão. Motorista/Monitor FUNCIONÁRIO de
+ * uma empresa maior também usa esta mesma página desde a Frente H — o
+ * backend já escopava por `motoristaPadraoId`/`monitorPadraoId`
+ * independente de quem é dono, só faltava apontar a navegação pra ele.
  *
  * Mesma UX do mobile: sem rota atribuída = mensagem honesta; múltiplas
  * rotas = escolher; uma rota = já cai na operação. GPS só liga enquanto
  * a viagem está `EM_ANDAMENTO` (`useTripGpsReporting`), e só o
  * Motorista (nunca o Monitor) inicia/pausa/finaliza.
+ *
+ * O MAPA (Frente I, pedido do usuário em produção — "deve aparecer
+ * mesmo sem estar em uma rota, baseada na localização do próprio
+ * telefone, pelo menos para visualização... vale tanto para autônomo,
+ * MEI, motorista e monitor") aparece em TODO estado desta tela: sem
+ * rota atribuída, escolhendo entre várias rotas, e como respaldo
+ * dentro da operação enquanto as paradas ainda não carregaram — usando
+ * a posição do telefone (`useMyLocation`) sempre que não há paradas de
+ * rota pra mostrar em vez disso.
  */
 export default function MinhaRotaPage(): JSX.Element {
   const { user } = useAuth();
@@ -77,6 +92,13 @@ export default function MinhaRotaPage(): JSX.Element {
     if (!selectedRouteId && rotas.length === 1 && rotas[0]) setSelectedRouteId(rotas[0].id);
   }, [rotas, selectedRouteId]);
 
+  // Só liga fora da operação (nenhuma rota escolhida ainda) — dentro
+  // de `RotaOperacional` existe uma segunda chamada própria, ligada só
+  // quando faltam paradas pra mostrar. As duas nunca ficam ativas ao
+  // mesmo tempo (são componentes diferentes, montados um de cada vez).
+  const rotaAtiva = selectedRouteId ? rotas.find((r) => r.id === selectedRouteId) : null;
+  const minhaLocalizacao = useMyLocation(!isLoading && !rotaAtiva);
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-16">
@@ -87,19 +109,20 @@ export default function MinhaRotaPage(): JSX.Element {
 
   if (rotas.length === 0) {
     return (
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-2">
-        <Typography variant="title">Nenhuma rota atribuída</Typography>
-        <Typography variant="bodySmall" color="muted">
-          Você ainda não está vinculado a nenhuma rota. Fale com sua transportadora
-          {podeCadastrarRota
-            ? ` — ou, se você é o dono, cadastre uma rota em "Rotas" na Visão completa.`
-            : "."}
-        </Typography>
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+        <div>
+          <Typography variant="title">Nenhuma rota atribuída</Typography>
+          <Typography variant="bodySmall" color="muted">
+            Você ainda não está vinculado a nenhuma rota. Fale com sua transportadora
+            {podeCadastrarRota
+              ? ` — ou, se você é o dono, cadastre uma rota em "Rotas" na Visão completa.`
+              : "."}
+          </Typography>
+        </div>
+        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
       </div>
     );
   }
-
-  const rotaAtiva = selectedRouteId ? rotas.find((r) => r.id === selectedRouteId) : null;
 
   if (!rotaAtiva) {
     return (
@@ -115,6 +138,7 @@ export default function MinhaRotaPage(): JSX.Element {
             </Card.Body>
           </Card>
         ))}
+        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
       </div>
     );
   }
@@ -125,6 +149,62 @@ export default function MinhaRotaPage(): JSX.Element {
       showTrocarRota={rotas.length > 1}
       onTrocarRota={() => setSelectedRouteId(null)}
     />
+  );
+}
+
+/**
+ * Mapa "onde eu estou" — respaldo baseado só na posição do telefone
+ * (`useMyLocation`), usado sempre que não há paradas de rota pra
+ * mostrar em vez disso. Nunca esconde a tela por trás de um estado de
+ * carregamento indefinido: pedir/negar permissão e "sem suporte" têm
+ * cada um sua própria mensagem, nunca um mapa em branco silencioso.
+ */
+function MeuMapa({
+  location,
+  status,
+}: {
+  location: MyLocation | null;
+  status: MyLocationStatus;
+}): JSX.Element {
+  if (!location) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-2 rounded-lg border border-border bg-card p-4 text-center">
+        {status === "requesting" || status === "idle" ? (
+          <>
+            <Spinner size="md" />
+            <Typography variant="caption" color="muted">
+              Buscando sua localização…
+            </Typography>
+          </>
+        ) : status === "denied" ? (
+          <Typography variant="caption" color="muted" className="max-w-xs">
+            Localização negada pelo navegador — permita o acesso (ícone de cadeado na barra de
+            endereço) para ver o mapa.
+          </Typography>
+        ) : (
+          <Typography variant="caption" color="muted">
+            Mapa indisponível neste navegador.
+          </Typography>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ height: 280 }} className="overflow-hidden rounded-lg">
+      <RottaMap
+        markers={[
+          {
+            id: "minha-localizacao",
+            titulo: "Você está aqui",
+            latitude: location.latitude,
+            longitude: location.longitude,
+          },
+        ]}
+        initialCenter={location}
+        initialZoom={14}
+      />
+    </div>
   );
 }
 
@@ -167,6 +247,11 @@ function RotaOperacional({
     longitude: parada.longitude,
   }));
 
+  // Respaldo (Frente I): sem paradas cadastradas ainda pra essa rota
+  // (ou enquanto `stops` carrega), mostra pelo menos onde o telefone
+  // está — nunca deixa a tela sem mapa nenhum.
+  const minhaLocalizacao = useMyLocation(markers.length === 0);
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex items-start justify-between gap-3">
@@ -197,7 +282,9 @@ function RotaOperacional({
             initialZoom={12}
           />
         </div>
-      ) : null}
+      ) : (
+        <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
+      )}
 
       {isLoadingTrip ? (
         <div className="flex justify-center py-8">
