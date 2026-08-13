@@ -4,6 +4,8 @@ import { Button } from "@rotta/ui/web";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
+import { isStandalone } from "@/lib/pwa";
+
 /** `beforeinstallprompt` (Chrome/Edge/Android) não está no lib.dom.d.ts padrão do TS — tipagem mínima do que este componente de fato usa. */
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -13,15 +15,6 @@ interface BeforeInstallPromptEvent extends Event {
 /** `localStorage` — quando o usuário recusa/fecha o convite, não pergunta de novo por esse tempo (evita "nagging" a cada visita). */
 const SNOOZE_KEY = "rotta-install-prompt-snoozed-until";
 const SNOOZE_DAYS = 14;
-
-function isStandalone(): boolean {
-  if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    // Safari/iOS não dispara `beforeinstallprompt`, mas expõe esta flag quando já rodando como PWA instalado.
-    (window.navigator as Navigator & { standalone?: boolean }).standalone === true
-  );
-}
 
 function isSnoozed(): boolean {
   const until = localStorage.getItem(SNOOZE_KEY);

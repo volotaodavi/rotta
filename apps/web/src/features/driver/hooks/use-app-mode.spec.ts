@@ -5,6 +5,20 @@ import { useAppMode } from "./use-app-mode";
 
 import type { MeResponse } from "@rotta/api-client";
 
+/** `isStandalone()` (`src/lib/pwa.ts`) lê `matchMedia("(display-mode: standalone)")` — simula os dois casos sobrescrevendo o mock global do `vitest.setup.ts`. */
+function mockStandalone(matches: boolean): void {
+  window.matchMedia = ((query: string) => ({
+    matches: query === "(display-mode: standalone)" && matches,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+}
+
 function buildUser(overrides: Partial<MeResponse> = {}): MeResponse {
   return {
     id: "user-1",
@@ -24,6 +38,7 @@ function buildUser(overrides: Partial<MeResponse> = {}): MeResponse {
 describe("useAppMode", () => {
   beforeEach(() => {
     localStorage.clear();
+    mockStandalone(false);
   });
   afterEach(() => {
     localStorage.clear();
@@ -57,8 +72,24 @@ describe("useAppMode", () => {
     expect(result.current.canToggle).toBe(true);
   });
 
-  it("padrão é sempre 'completo' — nunca esconde nada sem o usuário escolher", () => {
+  it("padrão é 'completo' na primeira vez, rodando no navegador comum (não instalado)", () => {
     const { result } = renderHook(() => useAppMode(buildUser()));
+    expect(result.current.mode).toBe("completo");
+  });
+
+  it("padrão é 'acao' na primeira vez, rodando como app instalado (standalone) — nunca escolheu antes", () => {
+    mockStandalone(true);
+    const { result } = renderHook(() => useAppMode(buildUser()));
+    expect(result.current.mode).toBe("acao");
+  });
+
+  it("respeita a escolha salva mesmo rodando standalone — o palpite inicial nunca sobrescreve uma escolha explícita", () => {
+    const user = buildUser();
+    localStorage.setItem(`rotta-app-mode:${user.id}`, "completo");
+    mockStandalone(true);
+
+    const { result } = renderHook(() => useAppMode(user));
+
     expect(result.current.mode).toBe("completo");
   });
 

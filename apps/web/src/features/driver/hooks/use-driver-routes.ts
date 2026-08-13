@@ -15,10 +15,11 @@ import { routesApi } from "@/lib/api-client";
  * `useStudent` já existente em `features/students/hooks/use-students.ts`
  * — não duplicado aqui.
  */
-export function useMinhasRotas() {
+export function useMinhasRotas(enabled = true) {
   return useQuery({
     queryKey: ["driver", "routes"],
     queryFn: () => routesApi.list({ status: "ATIVA", pageSize: 50 }),
+    enabled,
   });
 }
 

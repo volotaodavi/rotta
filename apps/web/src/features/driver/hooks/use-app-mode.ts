@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 
 import type { MeResponse } from "@rotta/api-client";
 
+import { isStandalone } from "@/lib/pwa";
+
+
 export type AppMode = "completo" | "acao";
 
 const STORAGE_PREFIX = "rotta-app-mode:";
@@ -21,11 +24,15 @@ const DEFAULT_MODE: AppMode = "completo";
  * não empresa) e outra experiência (app mobile), então nunca cai nesta
  * função com `canToggle === true`.
  *
- * "Visão completa" é sempre o padrão (nunca esconde nada por padrão) —
- * o usuário PRECISA escolher "Modo Ação" pra reduzir o menu, e essa
- * escolha é lembrada por usuário (`localStorage`, nunca no backend —
- * é só uma preferência de exibição, não uma permissão, ver
- * `use-driver-routes.ts`/nota do layout).
+ * Palpite inicial (só na PRIMEIRA vez, antes de qualquer escolha
+ * salva): quem abre o app JÁ INSTALADO (`isStandalone`, mesma checagem
+ * de `install-app-prompt.tsx`) tende a estar prestes a dirigir, então
+ * começa em "Modo Ação"; quem abre pelo navegador comum (aba normal,
+ * geralmente desktop) tende a estar cuidando do back-office, começa em
+ * "Visão completa". É só um palpite — a partir do primeiro toque no
+ * alternador, a escolha do usuário sempre vence, salva por usuário em
+ * `localStorage` (nunca no backend — é só uma preferência de exibição,
+ * não uma permissão, ver `use-driver-routes.ts`/nota do layout).
  */
 export function useAppMode(user: MeResponse | null): {
   mode: AppMode;
@@ -43,7 +50,11 @@ export function useAppMode(user: MeResponse | null): {
       return;
     }
     const stored = localStorage.getItem(STORAGE_PREFIX + user.id);
-    setModeState(stored === "acao" ? "acao" : DEFAULT_MODE);
+    if (stored === "acao" || stored === "completo") {
+      setModeState(stored);
+    } else {
+      setModeState(isStandalone() ? "acao" : DEFAULT_MODE);
+    }
   }, [canToggle, user]);
 
   function setMode(next: AppMode): void {

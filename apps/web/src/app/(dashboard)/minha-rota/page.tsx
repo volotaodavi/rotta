@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { Route, RouteStop, RouteStudent, TripStudentEventType } from "@rotta/api-client";
 
+import { useBeforeUnloadWarning } from "@/features/driver/hooks/use-before-unload-warning";
 import {
   useMinhasRotas,
   useRouteStops,
@@ -22,9 +23,9 @@ import {
   useTodayTrip,
 } from "@/features/driver/hooks/use-driver-trip";
 import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-reporting";
+import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripStudentEvents } from "@/features/trips/hooks/use-trips";
-
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -144,6 +145,9 @@ function RotaOperacional({
   const { status: gpsStatus } = useTripGpsReporting(
     isMotorista && isActive && trip ? trip.id : null,
   );
+  // Tela acesa + aviso antes de fechar a aba enquanto a viagem está rolando — só o Motorista, mesmo escopo do GPS acima.
+  useWakeLock(isMotorista && isActive);
+  useBeforeUnloadWarning(isMotorista && isActive);
 
   const paradasOrdenadas = [...(stops ?? [])].sort((a, b) => a.ordem - b.ordem);
   const markers: RottaMapMarker[] = paradasOrdenadas.map((parada) => ({

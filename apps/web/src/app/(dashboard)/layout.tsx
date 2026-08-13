@@ -11,6 +11,7 @@ import type { Route } from "next";
 import { LegalFooter } from "@/components/legal/legal-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAppMode } from "@/features/driver/hooks/use-app-mode";
+import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
 
@@ -104,6 +105,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   const { data: identityVerification, isLoading: isIdentityLoading } = useMyIdentityVerification({
     enabled: shouldCheckIdentity,
   });
+  const isBlockedByIdentityVerification = identityVerification?.status === "REPROVADA";
+
+  // "Em viagem agora" (Frente G, "inove"): só busca quando faz sentido — elegível
+  // ao alternador, navegando em "Visão completa" (em "Modo Ação" já está na
+  // própria "Minha Rota", o aviso seria redundante) e sem nada bloqueando a tela.
+  // Chamado incondicionalmente (Regra dos Hooks) — quem controla o custo de
+  // rede é o `enabled` interno do hook, nunca pular a chamada em si.
+  const activeTrip = useMyActiveTrip(
+    canToggle && mode !== "acao" && !isBlockedByIdentityVerification,
+  );
 
   if (status !== "authenticated" || (shouldCheckIdentity && isIdentityLoading)) {
     return (
@@ -120,7 +131,6 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       : canToggle
         ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
         : PROFISSIONAL_NAV;
-  const isBlockedByIdentityVerification = identityVerification?.status === "REPROVADA";
 
   return (
     <div className="flex min-h-screen flex-col bg-background text-text">
@@ -186,6 +196,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           </Button>
         </div>
       </header>
+      {activeTrip && !isBlockedByIdentityVerification && (
+        <Link
+          href="/minha-rota"
+          className="flex items-center justify-center gap-2 bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+        >
+          {activeTrip.status === "EM_ANDAMENTO" ? "🚐 Em viagem agora" : "⏸️ Viagem pausada"} —{" "}
+          {activeTrip.routeNome} · Ir para Minha Rota
+        </Link>
+      )}
       {isBlockedByIdentityVerification ? (
         <IdentityVerificationBlockScreen motivo={identityVerification?.motivo ?? null} />
       ) : (
