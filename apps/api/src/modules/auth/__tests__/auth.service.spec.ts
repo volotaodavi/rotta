@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, UnauthorizedException } from "@nestjs/common";
-import { UserStatus } from "@prisma/client";
+import { CompanyType, UserStatus } from "@prisma/client";
 import { authenticator } from "otplib";
 
 import { AuthService } from "../auth.service";
@@ -81,6 +81,7 @@ function buildMembership(overrides: Partial<MembershipWithCompany> = {}): Member
     company: {
       id: "company-1",
       nomeFantasia: "Gama Transportes",
+      tipo: CompanyType.LTDA,
     } as MembershipWithCompany["company"],
     ...overrides,
   };
@@ -284,6 +285,27 @@ describe("AuthService", () => {
 
       expect("accessToken" in result).toBe(true);
       expect(usersService.resetLoginFailures).toHaveBeenCalledWith("user-1");
+    });
+
+    it("propaga companyType (AUTONOMO/MEI) para user.companyType — Frente G, alternador Visão completa/Modo Ação do Painel Web depende disto", async () => {
+      usersService.findByIdentifier.mockResolvedValue(buildUser());
+      passwordHasher.verify.mockResolvedValue(true);
+      usersService.listActiveMembershipsWithCompany.mockResolvedValue([
+        buildMembership({
+          company: {
+            id: "company-1",
+            nomeFantasia: "Zé Motorista MEI",
+            tipo: CompanyType.MEI,
+          } as MembershipWithCompany["company"],
+        }),
+      ]);
+
+      const result = await service.login({ identificador: "x", senha: "y" }, {});
+
+      expect("accessToken" in result).toBe(true);
+      if ("accessToken" in result) {
+        expect(result.user.companyType).toBe(CompanyType.MEI);
+      }
     });
 
     it("retorna seletor de perfil quando há múltiplos vínculos e nenhum companyId informado", async () => {

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { ConsentType } from "@prisma/client";
+import { CompanyType, ConsentType } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -14,6 +14,12 @@ export class MeResponseDto {
   @ApiPropertyOptional({ description: "null apenas para Role.ADMIN_ROTTA." })
   companyId?: string | null;
   @ApiPropertyOptional() companyName?: string | null;
+  @ApiPropertyOptional({
+    enum: CompanyType,
+    description:
+      "Forma societária da empresa vinculada (Dossiê 16, `EMP-01`) — null para Role.ADMIN_ROTTA/RESPONSAVEL ou Motorista/Monitor autônomo ainda sem vínculo. Frente G: front-end usa isto pra decidir se mostra o alternador Visão completa/Modo Ação (só role=empresa com AUTONOMO/MEI — dono que também dirige).",
+  })
+  companyType?: CompanyType | null;
   @ApiPropertyOptional({
     description:
       "MFA/TOTP ativado (Dossiê 43) — só relevante para Role.ADMIN_ROTTA, sempre false para os demais papéis.",

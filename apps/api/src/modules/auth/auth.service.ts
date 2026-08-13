@@ -13,7 +13,7 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
-import { NotificationEventType, UserStatus } from "@prisma/client";
+import { CompanyType, NotificationEventType, UserStatus } from "@prisma/client";
 
 import { PASSWORD_RESET_TOKEN_REPOSITORY, SESSION_REPOSITORY } from "./auth.constants";
 import { MfaService } from "./mfa.service";
@@ -164,6 +164,7 @@ export class AuthService {
       membership.id,
       meta,
       company.nomeFantasia,
+      company.tipo,
     );
   }
 
@@ -358,6 +359,7 @@ export class AuthService {
         only!.id,
         meta,
         only!.company.nomeFantasia,
+        only!.company.tipo,
       );
     }
 
@@ -373,6 +375,7 @@ export class AuthService {
         selected.id,
         meta,
         selected.company.nomeFantasia,
+        selected.company.tipo,
       );
     }
 
@@ -602,8 +605,17 @@ export class AuthService {
     vinculoId: string,
     meta: AuthRequestMeta,
     companyNameHint?: string | null,
+    companyTypeHint?: CompanyType | null,
   ): Promise<AuthTokensResponseDto> {
-    const tokens = await this.issueTokens(user, tenantId, role, vinculoId, meta, companyNameHint);
+    const tokens = await this.issueTokens(
+      user,
+      tenantId,
+      role,
+      vinculoId,
+      meta,
+      companyNameHint,
+      companyTypeHint,
+    );
     await this.recordAuditBestEffort({
       companyId: tenantId ?? undefined,
       entidadeTipo: "User",
@@ -768,13 +780,15 @@ export class AuthService {
     }
 
     let companyName: string | null = null;
+    let companyType: CompanyType | null = null;
     if (actor.tenantId) {
       const memberships = await this.usersService.listActiveMembershipsWithCompany(user.id);
-      companyName =
-        memberships.find((m) => m.companyId === actor.tenantId)?.company.nomeFantasia ?? null;
+      const company = memberships.find((m) => m.companyId === actor.tenantId)?.company;
+      companyName = company?.nomeFantasia ?? null;
+      companyType = company?.tipo ?? null;
     }
 
-    return this.toMeResponse(user, actor.tenantId, actor.role, companyName);
+    return this.toMeResponse(user, actor.tenantId, actor.role, companyName, companyType);
   }
 
   /** Reaceite de Termos/Privacidade (Dossiê 45 FRENTE 5) — chamado quando `GET /auth/me` retorna `pendingConsents` não-vazio; grava a versão vigente de cada `tipo` informado e devolve o perfil já atualizado. */
@@ -864,6 +878,7 @@ export class AuthService {
     vinculoId: string,
     meta: AuthRequestMeta,
     companyNameHint?: string | null,
+    companyTypeHint?: CompanyType | null,
   ): Promise<AuthTokensResponseDto> {
     const refreshTokenPlain = randomBytes(48).toString("hex");
     const refreshTtl = this.configService.get<AuthConfig>("auth")!.refreshTokenTtl;
@@ -891,15 +906,18 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync(payload);
 
     let companyName: string | null = companyNameHint ?? null;
+    let companyType: CompanyType | null = companyTypeHint ?? null;
     if (tenantId && companyNameHint === undefined) {
       const memberships = await this.usersService.listActiveMembershipsWithCompany(user.id);
-      companyName = memberships.find((m) => m.companyId === tenantId)?.company.nomeFantasia ?? null;
+      const company = memberships.find((m) => m.companyId === tenantId)?.company;
+      companyName = company?.nomeFantasia ?? null;
+      companyType = company?.tipo ?? null;
     }
 
     return {
       accessToken,
       refreshToken: refreshTokenPlain,
-      user: await this.toMeResponse(user, tenantId, role, companyName),
+      user: await this.toMeResponse(user, tenantId, role, companyName, companyType),
     };
   }
 
@@ -908,6 +926,7 @@ export class AuthService {
     tenantId: string | null,
     role: Role,
     companyName: string | null,
+    companyType: CompanyType | null,
   ): Promise<MeResponseDto> {
     const pendingConsents = await this.usersService.getPendingConsents(user.id);
     return {
@@ -919,6 +938,7 @@ export class AuthService {
       role,
       companyId: tenantId,
       companyName,
+      companyType,
       mfaEnabled: user.totpHabilitado,
       pendingConsents,
     };

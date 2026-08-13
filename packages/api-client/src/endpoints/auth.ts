@@ -1,3 +1,4 @@
+import type { CompanyType } from "./companies";
 import type { ApiClient } from "../http";
 
 /**
@@ -22,6 +23,8 @@ export interface MeResponse {
   role: Role;
   companyId: string | null;
   companyName: string | null;
+  /** Forma societária da empresa vinculada — null para admin_rotta/responsavel ou motorista/monitor autônomo ainda sem vínculo. Frente G: decide se mostra o alternador Visão completa/Modo Ação (só role "empresa" com AUTONOMO/MEI — dono que também dirige). */
+  companyType?: CompanyType | null;
   /** MFA/TOTP ativado (Dossiê 43) — só relevante para role "admin_rotta". */
   mfaEnabled?: boolean;
   /** Tipos cuja versão vigente o usuário ainda não aceitou (Dossiê 45 FRENTE 5) — vazio quando está tudo em dia. Não-vazio deve disparar um reaceite bloqueante (ver `authApi.acceptConsent`). */

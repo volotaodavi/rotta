@@ -10,6 +10,7 @@ import type { Route } from "next";
 
 import { LegalFooter } from "@/components/legal/legal-footer";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useAppMode } from "@/features/driver/hooks/use-app-mode";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
 
@@ -32,6 +33,24 @@ const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/rotta-pay", label: "Rotta Pay" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
+  { href: "/notificacoes", label: "Notificações" },
+  { href: "/chamados", label: "Chamados" },
+];
+
+const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
+
+/**
+ * Modo Ação (Frente G, pedido do usuário em produção) — só existe para
+ * Motorista/Monitor autônomo/MEI (`useAppMode`: `role === "empresa"` +
+ * `companyType` `AUTONOMO`/`MEI`, ou seja o dono que também dirige).
+ * Reduz o menu ao essencial do dia a dia rodando a rota — o resto
+ * (Empresa, Equipe, Veículos, Escolas, Marketplace, Verificação de
+ * identidade) continua a um clique de distância em "Visão completa",
+ * nunca removido de verdade, só fora do caminho enquanto dirige.
+ */
+const ACTION_NAV: NavLink[] = [
+  MINHA_ROTA_LINK,
+  { href: "/rotta-pay", label: "Rotta Pay" },
   { href: "/notificacoes", label: "Notificações" },
   { href: "/chamados", label: "Chamados" },
 ];
@@ -76,6 +95,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   }, [status, router]);
 
   const isResponsavel = user?.role === "responsavel";
+  const { mode, canToggle, setMode } = useAppMode(user);
 
   // Responsável não usa este fluxo (`SELF_VERIFICATION_ROLES` no
   // backend não inclui `responsavel`) — a query nem dispara pra ele,
@@ -93,7 +113,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     );
   }
 
-  const navLinks = isResponsavel ? RESPONSAVEL_NAV : PROFISSIONAL_NAV;
+  const navLinks = isResponsavel
+    ? RESPONSAVEL_NAV
+    : canToggle && mode === "acao"
+      ? ACTION_NAV
+      : canToggle
+        ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
+        : PROFISSIONAL_NAV;
   const isBlockedByIdentityVerification = identityVerification?.status === "REPROVADA";
 
   return (
@@ -118,6 +144,36 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           )}
         </div>
         <div className="flex items-center gap-2">
+          {canToggle && !isBlockedByIdentityVerification && (
+            <div
+              role="tablist"
+              aria-label="Alternar entre visão completa e modo ação"
+              className="flex items-center rounded-full border border-border bg-surface p-0.5 text-xs font-semibold"
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "completo"}
+                onClick={() => setMode("completo")}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  mode === "completo" ? "bg-primary text-white" : "text-text-muted hover:text-text"
+                }`}
+              >
+                Visão completa
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mode === "acao"}
+                onClick={() => setMode("acao")}
+                className={`rounded-full px-3 py-1 transition-colors ${
+                  mode === "acao" ? "bg-primary text-white" : "text-text-muted hover:text-text"
+                }`}
+              >
+                Modo Ação
+              </button>
+            </div>
+          )}
           <ThemeToggle />
           <Button
             variant="ghost"
