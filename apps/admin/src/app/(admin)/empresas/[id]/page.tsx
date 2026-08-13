@@ -1,6 +1,15 @@
 "use client";
 
-import { Badge, Button, Card, Input, Modal, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  Modal,
+  Spinner,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { use, useState } from "react";
 
@@ -96,8 +105,11 @@ export default function EmpresaDetalhesPage({
           >
             Acessar como suporte
           </Button>
-          <Link href={`/empresas/${id}/editar`}>
-            <Button variant="secondary">Editar</Button>
+          <Link
+            href={`/empresas/${id}/editar`}
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            Editar
           </Link>
           {company.status === "SUSPENSO" ? (
             <Button

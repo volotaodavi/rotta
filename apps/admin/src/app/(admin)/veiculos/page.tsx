@@ -1,6 +1,15 @@
 "use client";
 
-import { Button, Card, Input, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import {
+  Card,
+  Input,
+  Pagination,
+  Select,
+  Spinner,
+  Table,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -45,8 +54,8 @@ export default function VeiculosAdminPage(): JSX.Element {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <Typography variant="title">Veículos</Typography>
-        <Link href="/veiculos/mapa">
-          <Button variant="secondary">Ver mapa nacional</Button>
+        <Link href="/veiculos/mapa" className={buttonVariants({ variant: "secondary" })}>
+          Ver mapa nacional
         </Link>
       </div>
       <Typography variant="bodySmall" color="muted">

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Button, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import { NotificationPriorityBadge } from "@/features/notifications/components/notification-priority-badge";
@@ -23,8 +23,8 @@ export default function NotificacoesArquivadasPage(): JSX.Element {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <Typography variant="title">Notificações arquivadas</Typography>
-        <Link href="/notificacoes">
-          <Button variant="ghost">Voltar</Button>
+        <Link href="/notificacoes" className={buttonVariants({ variant: "ghost" })}>
+          Voltar
         </Link>
       </div>
 

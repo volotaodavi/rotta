@@ -1,5 +1,5 @@
 import { Check } from "@rotta/icons";
-import { Button, Card, Typography } from "@rotta/ui/web";
+import { Card, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { Metadata } from "next";
@@ -56,10 +56,11 @@ export default function PlanosPage(): JSX.Element {
           </ul>
         </Card.Body>
         <Card.Footer>
-          <Link href="/criar-conta" className="w-full">
-            <Button variant="primary" fullWidth>
-              Começar agora
-            </Button>
+          <Link
+            href="/criar-conta"
+            className={buttonVariants({ variant: "primary", fullWidth: true })}
+          >
+            Começar agora
           </Link>
         </Card.Footer>
       </Card>

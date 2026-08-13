@@ -2,7 +2,7 @@
 
 import { MapPin, Plus, Radio } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
-import { Badge, Button, Card, Input, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Card, Input, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -35,10 +35,9 @@ export default function AlunosPage(): JSX.Element {
             Acompanhe o transporte de cada um em tempo real.
           </Typography>
         </div>
-        <Link href="/alunos/novo">
-          <Button variant="primary" iconLeft={<Plus className="h-4 w-4" />}>
-            Adicionar aluno
-          </Button>
+        <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
+          <Plus className="h-4 w-4" />
+          Adicionar aluno
         </Link>
       </div>
 
@@ -63,10 +62,9 @@ export default function AlunosPage(): JSX.Element {
               Cadastre seu filho ou dependente para acompanhar o transporte escolar dele em tempo
               real assim que a viagem começar.
             </Typography>
-            <Link href="/alunos/novo">
-              <Button variant="primary" iconLeft={<Plus className="h-4 w-4" />}>
-                Adicionar aluno
-              </Button>
+            <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
+              <Plus className="h-4 w-4" />
+              Adicionar aluno
             </Link>
           </Card.Body>
         </Card>

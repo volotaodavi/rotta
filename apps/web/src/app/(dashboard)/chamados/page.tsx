@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import { SupportTicketStatusBadge } from "@/features/support/components/support-ticket-status-badge";
@@ -18,8 +18,8 @@ export default function SuportePage(): JSX.Element {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <Typography variant="title">Suporte</Typography>
-        <Link href="/chamados/novo">
-          <Button variant="primary">+ Novo chamado</Button>
+        <Link href="/chamados/novo" className={buttonVariants({ variant: "primary" })}>
+          + Novo chamado
         </Link>
       </div>
 

@@ -29,6 +29,7 @@ import {
   Spinner,
   Tabs,
   Typography,
+  buttonVariants,
 } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -538,10 +539,11 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
               <Card.Header
                 title="Frota ao vivo"
                 action={
-                  <Link href="/veiculos/mapa">
-                    <Button variant="secondary" size="sm">
-                      Ver mapa completo
-                    </Button>
+                  <Link
+                    href="/veiculos/mapa"
+                    className={buttonVariants({ variant: "secondary", size: "sm" })}
+                  >
+                    Ver mapa completo
                   </Link>
                 }
               />

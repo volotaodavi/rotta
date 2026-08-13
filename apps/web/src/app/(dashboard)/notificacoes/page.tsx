@@ -1,7 +1,16 @@
 "use client";
 
 import { Star } from "@rotta/icons";
-import { Badge, Button, Card, Input, Spinner, Tabs, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  Spinner,
+  Tabs,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -48,11 +57,14 @@ export default function NotificacoesPage(): JSX.Element {
       <div className="flex items-center justify-between">
         <Typography variant="title">Notificações</Typography>
         <div className="flex gap-3">
-          <Link href="/notificacoes/arquivadas">
-            <Button variant="ghost">Arquivadas</Button>
+          <Link href="/notificacoes/arquivadas" className={buttonVariants({ variant: "ghost" })}>
+            Arquivadas
           </Link>
-          <Link href="/notificacoes/preferencias">
-            <Button variant="secondary">Preferências</Button>
+          <Link
+            href="/notificacoes/preferencias"
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            Preferências
           </Link>
         </div>
       </div>

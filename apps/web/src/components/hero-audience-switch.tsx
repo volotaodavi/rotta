@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@rotta/ui/web";
+import { buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -46,16 +46,15 @@ export function HeroAudienceSwitch(): JSX.Element {
         })}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Link href={audiencia.ctaHref}>
-          <Button variant="primary" size="lg">
-            {audiencia.ctaLabel}
-          </Button>
+        <Link
+          href={audiencia.ctaHref}
+          className={buttonVariants({ variant: "primary", size: "lg" })}
+        >
+          {audiencia.ctaLabel}
         </Link>
         {audiencia.temPlano && (
-          <Link href="/planos">
-            <Button variant="secondary" size="lg">
-              Ver planos
-            </Button>
+          <Link href="/planos" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+            Ver planos
           </Link>
         )}
       </div>

@@ -14,7 +14,7 @@ import {
   UserCheck,
   UserPlus,
 } from "@rotta/icons";
-import { Badge, Button, Card, Typography } from "@rotta/ui/web";
+import { Badge, Card, Typography, buttonVariants } from "@rotta/ui/web";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -24,7 +24,6 @@ import type { ComponentType } from "react";
 import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
-
 
 /**
  * Título/descrição herdam o padrão do root layout (já otimizados pra
@@ -577,10 +576,11 @@ export default function LandingPage(): JSX.Element {
                   </li>
                 ))}
               </ul>
-              <Link href={audiencia.ctaHref} className="pt-2">
-                <Button variant="primary" size="lg">
-                  {audiencia.ctaLabel}
-                </Button>
+              <Link
+                href={audiencia.ctaHref}
+                className={buttonVariants({ variant: "primary", size: "lg", className: "mt-2" })}
+              >
+                {audiencia.ctaLabel}
               </Link>
             </div>
           );
@@ -717,10 +717,9 @@ export default function LandingPage(): JSX.Element {
           <Typography variant="body" color="muted">
             Leva menos de 5 minutos para criar sua conta e começar a acompanhar o transporte.
           </Typography>
-          <Link href="/criar-conta">
-            <Button variant="primary" size="lg" iconRight={<ArrowRight className="h-4 w-4" />}>
-              Criar conta gratuita
-            </Button>
+          <Link href="/criar-conta" className={buttonVariants({ variant: "primary", size: "lg" })}>
+            Criar conta gratuita
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>

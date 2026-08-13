@@ -34,6 +34,44 @@ const SIZE_CLASSES: Record<ButtonSize, string> = {
   lg: "h-12 px-6 text-base gap-2",
 };
 
+/**
+ * Classes visuais do `Button`, isoladas do elemento `<button>` em si —
+ * existe pra quem precisa da MESMA aparência num elemento que não pode
+ * ser um `<button>` (o caso real: `<Link href={x}>{children}</Link>`
+ * de navegação, que já é um `<a>` sozinho). Nunca aninhe `<Button>`
+ * dentro de `<Link>` (`<a><button>…</button></a>`) — HTML inválido
+ * (elemento interativo dentro de outro) que o Safari do iPhone trata
+ * de um jeito que exige DOIS toques pra registrar o clique (o primeiro
+ * "ativa" o `<a>` ancestral, só o segundo chega no `<button>` aninhado
+ * — bug relatado pelo usuário em produção). Use
+ * `<Link href={x} className={buttonVariants({ variant, size })}>` em
+ * vez disso — um único `<a>`, com a cara idêntica de um `Button`.
+ */
+export function buttonVariants({
+  variant = "primary",
+  size = "md",
+  fullWidth = false,
+  disabled = false,
+  className,
+}: {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  fullWidth?: boolean;
+  disabled?: boolean;
+  className?: string;
+}): string {
+  return cn(
+    "inline-flex items-center justify-center rounded-md font-semibold tracking-[0.2px]",
+    "transition-colors duration-150 active:scale-[0.98]",
+    "outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+    "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
+    VARIANT_CLASSES[variant],
+    SIZE_CLASSES[size],
+    fullWidth && "w-full",
+    className,
+  );
+}
+
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   {
     variant = "primary",
@@ -57,16 +95,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       ref={ref}
       disabled={isActuallyDisabled}
       aria-busy={isLoading}
-      className={cn(
-        "inline-flex items-center justify-center rounded-md font-semibold tracking-[0.2px]",
-        "transition-colors duration-150 active:scale-[0.98]",
-        "outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
-        VARIANT_CLASSES[variant],
-        SIZE_CLASSES[size],
-        fullWidth && "w-full",
-        className,
-      )}
+      className={buttonVariants({ variant, size, fullWidth, className })}
       {...rest}
     >
       {isLoading ? (

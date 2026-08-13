@@ -9,7 +9,7 @@ import {
   ShieldCheck,
   Users,
 } from "@rotta/icons";
-import { Badge, Button, Card, Typography } from "@rotta/ui/web";
+import { Badge, Card, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { Metadata } from "next";
@@ -277,10 +277,13 @@ export default function GovernoPage(): JSX.Element {
             O site oficial da Rotta pode ser visitado antes de qualquer conversa comercial — a mesma
             tecnologia de rastreamento em tempo real usada hoje pelas transportadoras privadas.
           </Typography>
-          <Link href="/" target="_blank">
-            <Button variant="secondary" size="lg" iconRight={<ArrowRight className="h-4 w-4" />}>
-              Visitar o site oficial da Rotta
-            </Button>
+          <Link
+            href="/"
+            target="_blank"
+            className={buttonVariants({ variant: "secondary", size: "lg" })}
+          >
+            Visitar o site oficial da Rotta
+            <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
       </section>

@@ -14,12 +14,12 @@ import {
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import {
   Badge,
-  Button,
   Card,
   PanelGreeting,
   ProgressRing,
   Spinner,
   Typography,
+  buttonVariants,
 } from "@rotta/ui/web";
 import Link from "next/link";
 import { useMemo } from "react";
@@ -192,10 +192,11 @@ export default function AdminHomePage(): JSX.Element {
         <Card.Header
           title="Frota em tempo real"
           action={
-            <Link href="/veiculos/mapa">
-              <Button variant="secondary" size="sm">
-                Ver mapa nacional
-              </Button>
+            <Link
+              href="/veiculos/mapa"
+              className={buttonVariants({ variant: "secondary", size: "sm" })}
+            >
+              Ver mapa nacional
             </Link>
           }
         />

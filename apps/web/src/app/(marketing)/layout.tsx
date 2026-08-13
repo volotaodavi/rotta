@@ -1,7 +1,7 @@
 "use client";
 
 import { Menu, X } from "@rotta/icons";
-import { Button } from "@rotta/ui/web";
+import { buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -133,15 +133,14 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
           </nav>
           <div className="hidden items-center gap-3 md:flex">
             <ThemeToggle />
-            <Link href="/entrar">
-              <Button variant="ghost" size="sm">
-                Entrar
-              </Button>
+            <Link href="/entrar" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+              Entrar
             </Link>
-            <Link href="/criar-conta">
-              <Button variant="primary" size="sm">
-                Criar conta
-              </Button>
+            <Link
+              href="/criar-conta"
+              className={buttonVariants({ variant: "primary", size: "sm" })}
+            >
+              Criar conta
             </Link>
           </div>
           <div className="flex items-center gap-1 md:hidden">
@@ -171,15 +170,19 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               </Link>
             ))}
             <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
-              <Link href="/entrar" onClick={() => setMenuAberto(false)}>
-                <Button variant="ghost" size="sm" fullWidth>
-                  Entrar
-                </Button>
+              <Link
+                href="/entrar"
+                onClick={() => setMenuAberto(false)}
+                className={buttonVariants({ variant: "ghost", size: "sm", fullWidth: true })}
+              >
+                Entrar
               </Link>
-              <Link href="/criar-conta" onClick={() => setMenuAberto(false)}>
-                <Button variant="primary" size="sm" fullWidth>
-                  Criar conta
-                </Button>
+              <Link
+                href="/criar-conta"
+                onClick={() => setMenuAberto(false)}
+                className={buttonVariants({ variant: "primary", size: "sm", fullWidth: true })}
+              >
+                Criar conta
               </Link>
             </div>
           </nav>

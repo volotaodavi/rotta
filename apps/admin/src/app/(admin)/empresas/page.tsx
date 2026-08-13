@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -25,8 +25,8 @@ export default function EmpresasListPage(): JSX.Element {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <Typography variant="title">Empresas</Typography>
-        <Link href="/empresas/nova">
-          <Button variant="primary">Nova empresa</Button>
+        <Link href="/empresas/nova" className={buttonVariants({ variant: "primary" })}>
+          Nova empresa
         </Link>
       </div>
 

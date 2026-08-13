@@ -1,6 +1,16 @@
 "use client";
 
-import { Button, Card, Input, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import {
+  Button,
+  Card,
+  Input,
+  Pagination,
+  Select,
+  Spinner,
+  Table,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useRef, useState, type ChangeEvent } from "react";
 
@@ -20,7 +30,6 @@ import {
 } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL, SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
 import { schoolsApi } from "@/lib/api-client";
-
 
 /**
  * Listagem + Dashboard de Escolas (briefing "Gestão de Escolas" —
@@ -89,11 +98,11 @@ export default function EscolasPage(): JSX.Element {
       <div className="flex items-center justify-between">
         <Typography variant="title">Escolas</Typography>
         <div className="flex gap-3">
-          <Link href="/escolas/mapa">
-            <Button variant="secondary">Mapa</Button>
+          <Link href="/escolas/mapa" className={buttonVariants({ variant: "secondary" })}>
+            Mapa
           </Link>
-          <Link href="/escolas/novo">
-            <Button variant="primary">Nova escola</Button>
+          <Link href="/escolas/novo" className={buttonVariants({ variant: "primary" })}>
+            Nova escola
           </Link>
         </div>
       </div>

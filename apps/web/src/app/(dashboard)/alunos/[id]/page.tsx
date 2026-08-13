@@ -2,7 +2,16 @@
 
 import { ApiError } from "@rotta/api-client";
 import { MapPin, Trash2 } from "@rotta/icons";
-import { Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Button,
+  Card,
+  FormField,
+  Input,
+  Select,
+  Spinner,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
@@ -91,10 +100,9 @@ export default function AlunoDetalhePage(): JSX.Element {
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <div className="flex items-center justify-between">
         <Typography variant="title">{student.nome}</Typography>
-        <Link href={`/alunos/${studentId}/mapa`}>
-          <Button variant="primary" iconLeft={<MapPin className="h-4 w-4" />}>
-            Ver localização ao vivo
-          </Button>
+        <Link href={`/alunos/${studentId}/mapa`} className={buttonVariants({ variant: "primary" })}>
+          <MapPin className="h-4 w-4" />
+          Ver localização ao vivo
         </Link>
       </div>
 
