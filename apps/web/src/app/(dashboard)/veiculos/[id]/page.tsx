@@ -24,6 +24,7 @@ import type {
   VehicleStatus,
 } from "@rotta/api-client";
 
+import { VehicleDocumentAiStatusBadge } from "@/features/vehicles/components/vehicle-document-ai-status-badge";
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import {
   useAssignVehicle,
@@ -329,48 +330,65 @@ function DocumentosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
   const [tipo, setTipo] = useState<VehicleDocumentType>("CRLV");
   const [vencimentoEm, setVencimentoEm] = useState("");
 
+  function enviar(file: File | undefined): void {
+    if (!file) return;
+    uploadDocument.mutate({ meta: { tipo, vencimentoEm: vencimentoEm || undefined }, file });
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <Card>
         <Card.Header title="Novo documento" />
-        <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <FormField label="Tipo">
-            <Select
-              value={tipo}
-              onChange={(event) => setTipo(event.target.value as VehicleDocumentType)}
+        <Card.Body className="flex flex-col gap-4">
+          <Typography variant="bodySmall" color="muted">
+            CRLV (ou CRLV-e), Seguro, Licenciamento, Vistoria — anexe uma foto, o PDF do documento
+            ou tire a foto na hora. A IA da Rotta confere se a imagem está legível e se os campos
+            esperados (placa, RENAVAM) aparecem — nunca é uma aprovação de autenticidade.
+          </Typography>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <FormField label="Tipo">
+              <Select
+                value={tipo}
+                onChange={(event) => setTipo(event.target.value as VehicleDocumentType)}
+              >
+                {Object.entries(VEHICLE_DOCUMENT_TYPE_LABEL).map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </Select>
+            </FormField>
+            <FormField
+              label="Vencimento"
+              helperText="Opcional — CRLV, Seguro, Licenciamento, Vistoria"
             >
-              {Object.entries(VEHICLE_DOCUMENT_TYPE_LABEL).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </Select>
-          </FormField>
-          <FormField
-            label="Vencimento"
-            helperText="Opcional — CRLV, Seguro, Licenciamento, Vistoria"
-          >
-            <Input
-              type="date"
-              value={vencimentoEm}
-              onChange={(event) => setVencimentoEm(event.target.value)}
-            />
-          </FormField>
-          <FileField label="Arquivo (PDF ou imagem)">
-            <input
-              type="file"
-              accept="application/pdf,image/*"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) {
-                  uploadDocument.mutate({
-                    meta: { tipo, vencimentoEm: vencimentoEm || undefined },
-                    file,
-                  });
-                }
-              }}
-            />
-          </FileField>
+              <Input
+                type="date"
+                value={vencimentoEm}
+                onChange={(event) => setVencimentoEm(event.target.value)}
+              />
+            </FormField>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {/* `capture="environment"` abre a câmera direto (traseira, em
+                celular) em vez do seletor de galeria/arquivos — a opção
+                "tirado foto" pedida separadamente da anexação genérica. */}
+            <FileField label="Tirar foto agora">
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => enviar(event.target.files?.[0])}
+              />
+            </FileField>
+            <FileField label="Anexar arquivo (foto da galeria ou PDF)">
+              <input
+                type="file"
+                accept="application/pdf,image/*"
+                onChange={(event) => enviar(event.target.files?.[0])}
+              />
+            </FileField>
+          </div>
         </Card.Body>
       </Card>
 
@@ -384,7 +402,20 @@ function DocumentosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
             render: (doc) =>
               doc.vencimentoEm ? new Date(doc.vencimentoEm).toLocaleDateString("pt-BR") : "—",
           },
-          { key: "ia", header: "Análise Rotta AI", render: (doc) => doc.rottaAiStatus },
+          {
+            key: "ia",
+            header: "Análise Rotta AI",
+            render: (doc) => (
+              <div className="flex flex-col gap-1">
+                <VehicleDocumentAiStatusBadge status={doc.rottaAiStatus} />
+                {doc.rottaAiObservacoes && (
+                  <Typography variant="caption" color="muted">
+                    {doc.rottaAiObservacoes}
+                  </Typography>
+                )}
+              </div>
+            ),
+          },
           {
             key: "acoes",
             header: "",
