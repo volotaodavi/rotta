@@ -1,10 +1,10 @@
 "use client";
 
-import { buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
 import { AUDIENCIAS, TONE_BG } from "./audience-data";
+import { pillGhostLg, pillPrimaryLg } from "./pill-button-classes";
 
 /**
  * Seletor rápido de audiência na própria hero — mesmo papel que o
@@ -46,14 +46,11 @@ export function HeroAudienceSwitch(): JSX.Element {
         })}
       </div>
       <div className="flex flex-col gap-3 sm:flex-row">
-        <Link
-          href={audiencia.ctaHref}
-          className={buttonVariants({ variant: "primary", size: "lg" })}
-        >
+        <Link href={audiencia.ctaHref} className={pillPrimaryLg}>
           {audiencia.ctaLabel}
         </Link>
         {audiencia.temPlano && (
-          <Link href="/planos" className={buttonVariants({ variant: "secondary", size: "lg" })}>
+          <Link href="/planos" className={pillGhostLg}>
             Ver planos
           </Link>
         )}

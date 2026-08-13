@@ -14,7 +14,7 @@ import {
   UserCheck,
   UserPlus,
 } from "@rotta/icons";
-import { Badge, Card, Typography, buttonVariants } from "@rotta/ui/web";
+import { Typography } from "@rotta/ui/web";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -24,6 +24,8 @@ import type { ComponentType } from "react";
 import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
+import { pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
+
 
 /**
  * Título/descrição herdam o padrão do root layout (já otimizados pra
@@ -95,7 +97,7 @@ const HERO_DESTAQUES: {
 function HeroTripPhoneMockup({ className }: { className?: string }): JSX.Element {
   return (
     <div className={`w-40 rotate-[4deg] sm:w-48 ${className ?? ""}`}>
-      <div className="rounded-[26px] border-[3px] border-text bg-card p-1.5 shadow-2xl">
+      <div className="rounded-[26px] border-[3px] border-text bg-card p-1.5">
         <div className="overflow-hidden rounded-[18px] bg-background">
           <div className="flex justify-center pt-2">
             <div className="h-1 w-10 rounded-full bg-border" />
@@ -175,7 +177,7 @@ function HeroFloatingBadge({
 }): JSX.Element {
   return (
     <div
-      className={`flex w-56 items-start gap-3 rounded-2xl border border-border bg-card p-3.5 shadow-xl ${className ?? ""}`}
+      className={`flex w-56 items-start gap-3 rounded-[18px] border border-border bg-card p-3.5 ${className ?? ""}`}
     >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
         <Icon className="h-4.5 w-4.5" />
@@ -398,11 +400,7 @@ function AudienceVisual({
       className="relative w-full max-w-sm transition-transform duration-300 group-hover:-translate-y-1.5"
       style={{ aspectRatio: photo?.ratio ?? 1 }}
     >
-      <div
-        className={`absolute -inset-6 rounded-[40px] ${TONE_BG[tone]}/10 blur-2xl transition-all duration-300 group-hover:blur-3xl group-hover:scale-105`}
-        aria-hidden="true"
-      />
-      <div className="relative h-full w-full overflow-hidden rounded-[32px] border border-border shadow-none transition-shadow duration-300 group-hover:border-border-strong group-hover:shadow-2xl">
+      <div className="relative h-full w-full overflow-hidden rounded-[28px] border border-border transition-colors duration-300 group-hover:border-primary">
         {photo && (
           <Image
             src={photo.src}
@@ -416,7 +414,7 @@ function AudienceVisual({
           Chip de hover no canto superior direito — livre nas 4 fotos
           atuais, nenhuma tem botão desenhado dentro da imagem.
         */}
-        <div className="absolute right-4 top-4 flex -translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card/95 px-3 py-1.5 opacity-0 shadow-lg backdrop-blur transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
+        <div className="absolute right-4 top-4 flex -translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
           <Typography variant="caption" className={`font-semibold ${TONE_TEXT[tone]}`}>
             {ctaLabel}
           </Typography>
@@ -459,26 +457,27 @@ function AudienceVisual({
 export default function LandingPage(): JSX.Element {
   return (
     <div className="flex flex-col overflow-x-hidden">
+      {/*
+        Hero sem glow/blur decorativo (pedido do usuário — adaptação do
+        sistema de referência "Perk": zero elevação/atmosfera, as
+        camadas se separam por contraste tonal — branco → cinza claro →
+        azul — nunca por sombra ou desfoque). Tipografia editorial: uma
+        família só (Inter, já era a regra da Rotta — Dossiê 24 §4.4),
+        headline enorme com tracking apertado (-0.03em), corpo de texto
+        com tracking normal.
+      */}
       <section className="relative isolate overflow-hidden">
-        <div
-          className="pointer-events-none absolute -left-40 -top-40 -z-10 h-[520px] w-[520px] rounded-full bg-primary/40 blur-[100px]"
-          aria-hidden="true"
-        />
-        <div
-          className="pointer-events-none absolute -right-32 top-1/3 -z-10 h-[420px] w-[420px] rounded-full bg-success/25 blur-[100px]"
-          aria-hidden="true"
-        />
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-28 pt-16 sm:pt-24 lg:grid-cols-2">
           <div className="flex flex-col items-start gap-6 text-left">
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-primary">
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-primary">
               <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
               Tecnologia que conecta
             </span>
-            <Typography variant="hero" as="h1">
+            <h1 className="text-[44px] font-semibold leading-[0.95] tracking-[-0.03em] text-text sm:text-[64px] lg:text-[80px]">
               Cadê o transporte?
               <br />
               <span className="text-primary">A Rotta mostra.</span>
-            </Typography>
+            </h1>
             <Typography variant="body" color="muted" className="max-w-lg">
               Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
               desembarcou, e encontra uma transportadora de confiança perto de você — sem precisar
@@ -503,11 +502,6 @@ export default function LandingPage(): JSX.Element {
           </div>
           <div className="relative flex justify-center pt-6 lg:justify-end lg:pt-0">
             <div className="relative w-full max-w-md">
-              <div
-                className="pointer-events-none absolute -inset-10 -z-10 bg-primary/15 blur-2xl"
-                style={{ borderRadius: "63% 37% 54% 46% / 55% 48% 52% 45%" }}
-                aria-hidden="true"
-              />
               <HeroMapDemo />
               <HeroFloatingBadge
                 icon={ShieldCheck}
@@ -522,7 +516,7 @@ export default function LandingPage(): JSX.Element {
       </section>
 
       <section className="relative z-10 mx-auto -mt-12 w-full max-w-6xl px-6 sm:-mt-16">
-        <div className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 shadow-xl sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+        <div className="flex flex-col gap-6 rounded-[28px] border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
           <div className="flex items-center gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
               <ShieldCheck className="h-6 w-6" />
@@ -576,10 +570,7 @@ export default function LandingPage(): JSX.Element {
                   </li>
                 ))}
               </ul>
-              <Link
-                href={audiencia.ctaHref}
-                className={buttonVariants({ variant: "primary", size: "lg", className: "mt-2" })}
-              >
+              <Link href={audiencia.ctaHref} className={`${pillPrimaryLg} mt-2`}>
                 {audiencia.ctaLabel}
               </Link>
             </div>
@@ -652,7 +643,9 @@ export default function LandingPage(): JSX.Element {
       <section id="seguranca" className="mx-auto w-full max-w-6xl px-6 py-24">
         <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
           <div className="flex flex-col items-start gap-5">
-            <Badge variant="success">Segurança</Badge>
+            <span className="inline-flex items-center rounded-full bg-success/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.1em] text-success">
+              Segurança
+            </span>
             <Typography variant="headline" as="h2">
               Antes de rodar, o motorista já passou pela Rotta AI.
             </Typography>
@@ -663,20 +656,18 @@ export default function LandingPage(): JSX.Element {
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {SEGURANCA_ITENS.map((item) => (
-              <Card
+              <div
                 key={item.titulo}
-                className="group transition-all duration-200 hover:-translate-y-1 hover:shadow-lg"
+                className="group flex flex-col gap-3 rounded-[28px] border border-border bg-surface p-6 transition-colors duration-200 hover:border-success/40"
               >
-                <Card.Body className="flex flex-col gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-success/10 text-success transition-transform duration-200 group-hover:scale-110">
-                    <item.icon className="h-5 w-5" />
-                  </span>
-                  <Typography variant="subtitle">{item.titulo}</Typography>
-                  <Typography variant="bodySmall" color="muted">
-                    {item.descricao}
-                  </Typography>
-                </Card.Body>
-              </Card>
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success transition-transform duration-200 group-hover:scale-110">
+                  <item.icon className="h-5 w-5" />
+                </span>
+                <Typography variant="subtitle">{item.titulo}</Typography>
+                <Typography variant="bodySmall" color="muted">
+                  {item.descricao}
+                </Typography>
+              </div>
             ))}
           </div>
         </div>
@@ -709,15 +700,21 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="w-full border-y border-border bg-surface px-6 py-20">
+      {/*
+        Faixa de acento em azul cheio (adaptação do "Lime Accent Block"
+        da referência: o azul da Rotta É o fundo, sem borda/sombra —
+        único momento cromático saturado da página inteira, reservado
+        pro CTA final).
+      */}
+      <section className="w-full bg-primary px-6 py-20">
         <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
-          <Typography variant="headline" as="h2">
+          <h2 className="text-[32px] font-semibold leading-[0.95] tracking-[-0.03em] text-white sm:text-[48px]">
             Chega de ligar perguntando &ldquo;cadê o transporte?&rdquo;
-          </Typography>
-          <Typography variant="body" color="muted">
+          </h2>
+          <p className="max-w-lg text-base text-white/80">
             Leva menos de 5 minutos para criar sua conta e começar a acompanhar o transporte.
-          </Typography>
-          <Link href="/criar-conta" className={buttonVariants({ variant: "primary", size: "lg" })}>
+          </p>
+          <Link href="/criar-conta" className={pillOnAccentLg}>
             Criar conta gratuita
             <ArrowRight className="h-4 w-4" />
           </Link>

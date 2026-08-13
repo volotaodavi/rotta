@@ -1,7 +1,6 @@
 "use client";
 
 import { Menu, X } from "@rotta/icons";
-import { buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -9,8 +8,10 @@ import type { Route } from "next";
 import type { ReactNode } from "react";
 
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
+import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteMark } from "@/components/route-mark";
 import { ThemeToggle } from "@/components/theme-toggle";
+
 
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
@@ -133,13 +134,10 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
           </nav>
           <div className="hidden items-center gap-3 md:flex">
             <ThemeToggle />
-            <Link href="/entrar" className={buttonVariants({ variant: "ghost", size: "sm" })}>
+            <Link href="/entrar" className={pillGhostSm}>
               Entrar
             </Link>
-            <Link
-              href="/criar-conta"
-              className={buttonVariants({ variant: "primary", size: "sm" })}
-            >
+            <Link href="/criar-conta" className={pillPrimarySm}>
               Criar conta
             </Link>
           </div>
@@ -173,14 +171,14 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               <Link
                 href="/entrar"
                 onClick={() => setMenuAberto(false)}
-                className={buttonVariants({ variant: "ghost", size: "sm", fullWidth: true })}
+                className={`${pillGhostSm} w-full`}
               >
                 Entrar
               </Link>
               <Link
                 href="/criar-conta"
                 onClick={() => setMenuAberto(false)}
-                className={buttonVariants({ variant: "primary", size: "sm", fullWidth: true })}
+                className={`${pillPrimarySm} w-full`}
               >
                 Criar conta
               </Link>
