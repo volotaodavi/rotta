@@ -10,6 +10,7 @@ import {
   getSiteUrl,
 } from "@/lib/site-config";
 import { AppProviders } from "@/providers/app-providers";
+import { InstallAppPrompt } from "@/providers/install-app-prompt";
 import { ServiceWorkerRegistration } from "@/providers/service-worker-registration";
 
 import "./globals.css";
@@ -135,6 +136,7 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
       <body>
         <ServiceWorkerRegistration />
         <AppProviders>{children}</AppProviders>
+        <InstallAppPrompt />
       </body>
     </html>
   );
