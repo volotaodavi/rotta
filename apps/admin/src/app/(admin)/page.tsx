@@ -1,22 +1,98 @@
 "use client";
 
+import { useAuth } from "@rotta/auth/web";
+import {
+  BarChart3,
+  Building2,
+  Car,
+  ClipboardCheck,
+  GraduationCap,
+  MessageCircle,
+  ShieldCheck,
+  Store,
+} from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
-import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  PanelGreeting,
+  ProgressRing,
+  Spinner,
+  Typography,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useMemo } from "react";
 
 import type { MapVehicle } from "@rotta/api-client";
+import type { LucideIcon } from "@rotta/icons";
+import type { Route } from "next";
 
 import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffice";
 import { useGpsMapNationwide } from "@/features/gps/hooks/use-gps";
+
+interface AtalhoTile {
+  href: Route;
+  label: string;
+  icon: LucideIcon;
+}
+
+/**
+ * Atalhos rápidos do Painel Rotta (Frente L) — mesma ideia dos atalhos
+ * do painel de "Minha Empresa" em `apps/web` (harmonia visual entre os
+ * dois painéis, pedido do usuário), com os 8 destinos mais usados do
+ * cabeçalho (`NAV_LINKS`, `(admin)/layout.tsx`). Deixa de fora Saúde/
+ * Documentos Legais/Auditoria Legal do grid (não do menu) só pra manter
+ * o mesmo tamanho de grid da referência (8 atalhos) — continuam a um
+ * clique no cabeçalho.
+ */
+const PAINEL_ATALHOS: AtalhoTile[] = [
+  { href: "/empresas", label: "Empresas", icon: Building2 },
+  { href: "/veiculos", label: "Veículos", icon: Car },
+  { href: "/escolas", label: "Escolas", icon: GraduationCap },
+  { href: "/marketplace/solicitacoes", label: "Marketplace", icon: Store },
+  { href: "/aprovacoes", label: "Aprovações", icon: ClipboardCheck },
+  { href: "/verificacao-identidade", label: "Verif. de identidade", icon: ShieldCheck },
+  { href: "/suporte", label: "Suporte", icon: MessageCircle },
+  { href: "/inteligencia", label: "Inteligência", icon: BarChart3 },
+];
+
+function PainelAtalhos(): JSX.Element {
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {PAINEL_ATALHOS.map(({ href, label, icon: Icon }) => (
+        <Link key={href} href={href}>
+          <Card interactive className="h-full">
+            <Card.Body className="flex flex-col items-center gap-2 py-5 text-center">
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <Icon size={20} />
+              </span>
+              <Typography variant="bodySmall" className="font-medium">
+                {label}
+              </Typography>
+            </Card.Body>
+          </Card>
+        </Link>
+      ))}
+    </div>
+  );
+}
 
 /**
  * Tela inicial do Admin Rotta (`ADM-01`, Dossiê 11 §6.1 — "KPIs de
  * saúde da plataforma... atalhos para Chamados de suporte abertos e
  * Alertas"). Todos os números vêm de `GET /backoffice/dashboard`
  * (Dossiê 29) — nenhum placeholder fixo em zero.
+ *
+ * Frente L (pedido do usuário, com imagem de referência de um ERP de
+ * RH — "pegue de exemplo esse design para o ERP da Rotta, tanto para
+ * os admins quanto para os usuários autônomos, MEIs e empresas"):
+ * ganhou `PanelGreeting` (saudação + relógio) e a grade de atalhos
+ * rápidos, mesmos componentes/padrão usados no painel de "Minha
+ * Empresa" de `apps/web` — harmonia visual entre os dois painéis.
  */
 export default function AdminHomePage(): JSX.Element {
+  const { user } = useAuth();
   const { data, isLoading, isError } = useBackofficeDashboard();
   const { data: fleet, isLoading: isFleetLoading } = useGpsMapNationwide();
 
@@ -56,12 +132,17 @@ export default function AdminHomePage(): JSX.Element {
     );
   }
 
+  const empresasAtivas = data.empresasPorStatus.ATIVO ?? 0;
+  const fracaoEmpresasAtivas = data.empresasTotal > 0 ? empresasAtivas / data.empresasTotal : 0;
+
   return (
     <div className="flex flex-col gap-6">
-      <Typography variant="title">Painel Rotta</Typography>
+      <PanelGreeting nome={user?.nome ?? "Admin"} />
+
+      <PainelAtalhos />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="Empresas ativas" value={data.empresasPorStatus.ATIVO ?? 0} />
+        <KpiCard label="Empresas ativas" value={empresasAtivas} />
         <KpiCard label="Motoristas ativos" value={data.motoristasAtivos} />
         <KpiCard label="Monitores ativos" value={data.monitoresAtivos} />
         <KpiCard label="Veículos cadastrados" value={data.veiculosTotal} />
@@ -79,6 +160,32 @@ export default function AdminHomePage(): JSX.Element {
           href="/aprovacoes"
           highlight={data.aprovacoesPendentesTotal > 0}
         />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card>
+          <Card.Header title="Empresas ativas na plataforma" />
+          <Card.Body className="flex items-center justify-center gap-4 py-6">
+            <ProgressRing value={fracaoEmpresasAtivas} progressClassName="stroke-success">
+              <Typography variant="subtitle">{Math.round(fracaoEmpresasAtivas * 100)}%</Typography>
+            </ProgressRing>
+            <Typography variant="bodySmall" color="muted" className="max-w-[10rem]">
+              {empresasAtivas} de {data.empresasTotal} empresa{data.empresasTotal === 1 ? "" : "s"}{" "}
+              cadastrada{data.empresasTotal === 1 ? "" : "s"}.
+            </Typography>
+          </Card.Body>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <Card.Header title="Empresas por status" />
+          <Card.Body className="flex flex-wrap items-center gap-3">
+            {Object.entries(data.empresasPorStatus).map(([status, count]) => (
+              <Badge key={status} variant={status === "ATIVO" ? "success" : "neutral"}>
+                {status} · {count}
+              </Badge>
+            ))}
+          </Card.Body>
+        </Card>
       </div>
 
       <Card>
@@ -109,20 +216,6 @@ export default function AdminHomePage(): JSX.Element {
               <RottaMap markers={fleetMarkers} initialZoom={4} />
             </div>
           )}
-        </Card.Body>
-      </Card>
-
-      <Card>
-        <Card.Header title="Empresas por status" />
-        <Card.Body className="flex flex-wrap gap-3">
-          {Object.entries(data.empresasPorStatus).map(([status, count]) => (
-            <Badge key={status} variant={status === "ATIVO" ? "success" : "neutral"}>
-              {status} · {count}
-            </Badge>
-          ))}
-          <Typography variant="caption" color="muted" className="w-full pt-1">
-            {data.empresasTotal} empresas cadastradas no total.
-          </Typography>
         </Card.Body>
       </Card>
     </div>

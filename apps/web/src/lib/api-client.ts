@@ -1,4 +1,5 @@
 import {
+  createAgendaEndpoints,
   createApiClient,
   createAuthEndpoints,
   createBillingEndpoints,
@@ -32,6 +33,7 @@ const apiClient = createApiClient({
   getAccessToken: () => getAccessToken(),
 });
 
+export const agendaApi = createAgendaEndpoints(apiClient);
 export const authApi = createAuthEndpoints(apiClient);
 export const billingApi = createBillingEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);

@@ -7,8 +7,8 @@
  * reutilizados, conforme `packages/ui/README.md` — os demais chegam
  * junto com a tela que precisar deles pela primeira vez):
  *
- *   atoms/      Button, Input, PhoneInput, Select, Badge, Checkbox, Spinner, Typography
- *   molecules/  FormField, Pagination, Tabs
+ *   atoms/      Button, Input, PhoneInput, Select, Badge, Checkbox, Spinner, Typography, ProgressRing
+ *   molecules/  FormField, Pagination, Tabs, PanelGreeting
  *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven),
  *               Modal (Compound: Modal.Header/Body/Footer, com portal/focus-trap)
  */
@@ -18,10 +18,12 @@ export * from "./atoms/Button";
 export * from "./atoms/Checkbox";
 export * from "./atoms/Input";
 export * from "./atoms/PhoneInput";
+export * from "./atoms/ProgressRing";
 export * from "./atoms/Select";
 export * from "./atoms/Spinner";
 export * from "./atoms/Typography";
 export * from "./molecules/FormField";
+export * from "./molecules/PanelGreeting";
 export * from "./molecules/Pagination";
 export * from "./molecules/Tabs";
 export * from "./organisms/Card";
