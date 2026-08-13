@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 import {
@@ -52,6 +52,28 @@ export const metadata: Metadata = {
   verification: {
     google: getGoogleSiteVerification(),
   },
+  // iOS/Safari não lê `manifest.webmanifest` (Android/Chrome) pra decidir
+  // como abrir o app instalado — usa suas próprias meta tags. Sem isso,
+  // "Compartilhar → Adicionar à Tela de Início" (o único caminho de
+  // instalação no iPhone hoje — nenhum botão nosso dispara isso, Apple
+  // não expõe essa API pra páginas web) ainda funcionava, mas abria
+  // dentro do navegador (barra de endereço visível) em vez de tela
+  // cheia, e com um ícone genérico (screenshot da página) em vez do
+  // logo da Rotta. Resultado agora é o mesmo de instalar via Chrome:
+  // ícone certo, sem barra de navegador, nome "Rotta" embaixo do ícone.
+  appleWebApp: {
+    capable: true,
+    title: SITE_NAME,
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    apple: "/brand/rotta-mark-192.png",
+  },
+};
+
+/** `theme-color` (cor da barra do navegador) — campo próprio do Next.js 15 (`generateViewport`/`viewport`), separado de `Metadata` desde a v14. Mesma cor de fundo do manifest Android (`manifest.ts#theme_color`), só que também lida pelo Safari normal (não só pelo app instalado). */
+export const viewport: Viewport = {
+  themeColor: "#0B0F14",
 };
 
 /**
