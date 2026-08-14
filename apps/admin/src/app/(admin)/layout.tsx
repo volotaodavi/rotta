@@ -167,25 +167,34 @@ function AcoesRapidasMenu(): JSX.Element {
           className={aberto ? "rotate-180 transition-transform" : "transition-transform"}
         />
       </button>
-      {aberto && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-30 mt-2 w-56 rounded-md border border-border bg-card py-1 shadow-lg"
-        >
-          {ACOES.map((acao) => (
-            <Link
-              key={acao.href}
-              href={acao.href}
-              role="menuitem"
-              onClick={() => setAberto(false)}
-              className="flex items-center gap-2.5 px-3 py-2 text-sm text-text transition-colors hover:bg-muted"
-            >
-              <acao.icon size={16} className="text-text-muted" />
-              {acao.label}
-            </Link>
-          ))}
-        </div>
-      )}
+      {/*
+        BUG corrigido (usuário: "clicar duas vezes para ir em uma
+        opção", Safari/iOS, pedido pra corrigir em todas as plataformas)
+        — o mesmo padrão do menu mobile de `(marketing)/layout.tsx`:
+        este dropdown só existia no DOM enquanto `aberto` era `true`, e
+        cada `<Link>` de dentro fechava o menu no MESMO clique que
+        deveria navegar. O React desmontava o `<a>` tocado antes do
+        Safari terminar de processar a navegação padrão, cancelando-a —
+        só o segundo toque (já sem o dropdown no caminho) funcionava.
+        Correção: fica sempre montado, só alterna `hidden`.
+      */}
+      <div
+        role="menu"
+        className={`absolute right-0 top-full z-30 mt-2 w-56 rounded-md border border-border bg-card py-1 shadow-lg ${aberto ? "" : "hidden"}`}
+      >
+        {ACOES.map((acao) => (
+          <Link
+            key={acao.href}
+            href={acao.href}
+            role="menuitem"
+            onClick={() => setAberto(false)}
+            className="flex items-center gap-2.5 px-3 py-2 text-sm text-text transition-colors hover:bg-muted"
+          >
+            <acao.icon size={16} className="text-text-muted" />
+            {acao.label}
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }

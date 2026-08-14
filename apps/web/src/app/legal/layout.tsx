@@ -63,11 +63,19 @@ export default function LegalLayout({ children }: { children: ReactNode }): JSX.
             Documentação Rotta
             {menuAberto ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
           </button>
-          {menuAberto && (
-            <div className="rounded-md border border-border p-2">
-              <LegalSidebar onNavigate={() => setMenuAberto(false)} />
-            </div>
-          )}
+          {/*
+            BUG corrigido (usuário: "clicar duas vezes para ir em uma
+            opção", Safari/iOS) — mesma causa do menu mobile de
+            `(marketing)/layout.tsx`: este painel só existia no DOM
+            enquanto `menuAberto` era `true`, e cada link dentro dele
+            fechava o menu (`onNavigate`) no MESMO clique que deveria
+            navegar — o React desmontava o `<a>` tocado antes do Safari
+            terminar de processar a navegação padrão, cancelando-a.
+            Correção: fica sempre montado, só alterna `hidden`.
+          */}
+          <div className={`rounded-md border border-border p-2 ${menuAberto ? "" : "hidden"}`}>
+            <LegalSidebar onNavigate={() => setMenuAberto(false)} />
+          </div>
         </div>
 
         <main className="flex-1">{children}</main>

@@ -155,36 +155,55 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
           </div>
         </div>
 
-        {menuAberto && (
-          <nav className="flex flex-col gap-1 border-t border-border px-6 py-4 md:hidden">
-            {NAV_LINKS.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMenuAberto(false)}
-                className="rounded-md px-2 py-2.5 text-sm text-text-muted transition-colors hover:bg-muted hover:text-text"
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
-              <Link
-                href="/entrar"
-                onClick={() => setMenuAberto(false)}
-                className={`${pillGhostSm} w-full`}
-              >
-                Entrar
-              </Link>
-              <Link
-                href="/criar-conta"
-                onClick={() => setMenuAberto(false)}
-                className={`${pillPrimarySm} w-full`}
-              >
-                Criar conta
-              </Link>
-            </div>
-          </nav>
-        )}
+        {/*
+          BUG corrigido (usuário: "clicar duas vezes para ir em uma
+          opção", Safari/iOS) — a causa real nunca foi só o aninhamento
+          `<Link><Button></Link>` (já eliminado em todo o app): este
+          menu ficava condicionalmente MONTADO só com `{menuAberto &&
+          (...)}`, e cada `<Link>` de dentro tinha `onClick={() =>
+          setMenuAberto(false)}` — ou seja, o próprio clique que deveria
+          navegar também desmontava o `<a>` que acabou de ser tocado
+          (o React remove o nó do DOM ao re-renderizar com
+          `menuAberto = false`, no mesmo ciclo do evento de clique). O
+          Safari no iPhone cancela a navegação-padrão de um `<a>` quando
+          ele é removido da árvore antes do clique terminar de ser
+          processado — o menu fechava, mas a navegação não acontecia;
+          só no SEGUNDO toque (agora sem o menu no caminho) é que
+          funcionava. Correção: o painel fica SEMPRE montado (nunca
+          desmonta os links), só alterna a classe `hidden` — o mesmo nó
+          `<a>` continua na árvore do início ao fim do clique, então o
+          Safari completa a navegação normalmente.
+        */}
+        <nav
+          className={`flex-col gap-1 border-t border-border px-6 py-4 md:hidden ${menuAberto ? "flex" : "hidden"}`}
+        >
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuAberto(false)}
+              className="rounded-md px-2 py-2.5 text-sm text-text-muted transition-colors hover:bg-muted hover:text-text"
+            >
+              {link.label}
+            </Link>
+          ))}
+          <div className="mt-2 flex flex-col gap-2 border-t border-border pt-4">
+            <Link
+              href="/entrar"
+              onClick={() => setMenuAberto(false)}
+              className={`${pillGhostSm} w-full`}
+            >
+              Entrar
+            </Link>
+            <Link
+              href="/criar-conta"
+              onClick={() => setMenuAberto(false)}
+              className={`${pillPrimarySm} w-full`}
+            >
+              Criar conta
+            </Link>
+          </div>
+        </nav>
       </header>
 
       <main className="flex-1">{children}</main>

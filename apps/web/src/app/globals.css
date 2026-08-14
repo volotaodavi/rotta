@@ -83,6 +83,22 @@ body {
 }
 
 /**
+ * `touch-action: manipulation` (usuário: "clicar duas vezes para ir em
+ * uma opção" no Safari/iOS) — sem isso, o Safari espera ~300ms depois
+ * do toque pra decidir se foi um clique único ou o primeiro de um
+ * duplo-toque-pra-zoom (gesto nativo do iOS), o que faz o app parecer
+ * travado/sem resposta a ponto da pessoa tocar de novo — o "segundo
+ * toque" nem sempre é literalmente necessário, mas a demora é
+ * indistinguível disso na prática. `manipulation` remove só o
+ * duplo-toque-pra-zoom (pan e pinça-pra-zoom continuam funcionando,
+ * nenhuma perda de acessibilidade) — mesma correção que o Bootstrap
+ * aplica por padrão há anos, pelo mesmo motivo.
+ */
+html {
+  touch-action: manipulation;
+}
+
+/**
  * Mascote animado do login (`components/login-mascot.tsx`, Dossiê 41)
  * — 3 "blobs" que reagem ao foco dos campos via o atributo `data-mood`
  * (definido pelo componente React a partir do estado real dos inputs,
