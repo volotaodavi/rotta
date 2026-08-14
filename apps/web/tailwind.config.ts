@@ -62,6 +62,13 @@ const config: Config = {
           bg: withOpacity("--color-disabled-bg"),
           text: withOpacity("--color-text-disabled"),
         },
+        /** Paleta editorial só da Landing Page (`.marketing-theme`, ver `globals.css`) — nunca usada fora de `(marketing)`. */
+        marketing: {
+          canvas: withOpacity("--marketing-canvas"),
+          wash: withOpacity("--marketing-wash"),
+          ink: withOpacity("--marketing-ink"),
+          "ink-text": withOpacity("--marketing-ink-text"),
+        },
       },
       borderRadius: {
         sm: "var(--radius-sm)",

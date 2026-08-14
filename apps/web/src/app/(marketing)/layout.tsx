@@ -114,8 +114,17 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
   const [menuAberto, setMenuAberto] = useState(false);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-text">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/85 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+    <div className="flex min-h-screen flex-col bg-marketing-canvas text-text">
+      {/*
+        Barra escura fixa (`.ink-scope`, ver `globals.css`) — pedido do
+        usuário: adaptar o clima "canvas quente + barra escura" de uma
+        referência de design trazida por ele, com os tokens que a Rotta
+        já tem (nunca a cor/fonte/marca literal da referência). Sólida
+        (sem blur) em vez do antigo `bg-background/85 backdrop-blur-md`:
+        também tira do caminho o `backdrop-filter`, que é uma fonte
+        conhecida de instabilidade no Safari/iOS.
+      */}
+      <header className="ink-scope sticky top-0 z-20">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
             <RouteMark className="h-8 w-8" />
@@ -126,7 +135,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm text-text-muted transition-colors hover:text-text"
+                className="text-xs font-medium uppercase tracking-[0.06em] text-text-muted transition-colors hover:text-text"
               >
                 {link.label}
               </Link>
@@ -208,7 +217,8 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
 
       <main className="flex-1">{children}</main>
 
-      <footer className="w-full border-t border-border">
+      {/* `.ink-scope` (ver header acima) — mesmo bloco escuro fixo do rodapé da referência de design, com os tokens da própria Rotta. */}
+      <footer className="ink-scope w-full">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2 flex flex-col gap-2 sm:col-span-3 lg:col-span-1">
             <span className="flex items-center gap-2 text-base font-bold tracking-tight">

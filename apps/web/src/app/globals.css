@@ -42,6 +42,10 @@
   --color-placeholder: 107 116 132;
   --color-disabled-bg: 28 33 43;
   --color-muted: 22 27 36;
+  /* Ver bloco "paleta editorial" abaixo — no escuro, a Landing Page fica
+     idêntica ao resto do produto (sem paleta alternativa). */
+  --marketing-canvas: 11 15 20;
+  --marketing-wash: 18 22 29;
 }
 
 [data-theme="light"] {
@@ -65,6 +69,56 @@
   --color-placeholder: 156 163 175;
   --color-disabled-bg: 241 242 244;
   --color-muted: 241 242 244;
+  /* Ver bloco `.marketing-theme` abaixo. */
+  --marketing-canvas: 250 247 237;
+  --marketing-wash: 230 236 250;
+}
+
+/**
+ * Paleta "editorial" só da Landing Page/Site público (classes Tailwind
+ * `bg-marketing-*`/`text-marketing-*`, usadas só dentro de `(marketing)`
+ * — ver `tailwind.config.ts`) — pedido do usuário: adaptar o clima de um
+ * design de referência (canvas quente em vez de branco clínico, faixas
+ * de seção alternadas, tipografia editorial mais espaçada) SEM copiar a
+ * paleta/fonte/marca da referência (mesma disciplina de toda referência
+ * usada nesta sessão — Uber/inDrive/Mercury/AbacatePay sempre viraram
+ * "inspirado em", nunca cópia 1:1). As cores novas abaixo nascem da
+ * PRÓPRIA identidade da Rotta, não da referência:
+ * `--marketing-canvas` é um branco quente (nunca o `#fffef0` exato de
+ * nenhum produto de terceiro), `--marketing-wash` é um azul bem claro
+ * (o MESMO matiz do `--color-primary` da Rotta, só bem diluído — nunca
+ * o verde-menta de nenhuma referência). `--marketing-ink`/`-ink-text`
+ * são fixos (não mudam com o toggle claro/escuro): usados na barra de
+ * navegação e no rodapé como um bloco escuro sempre presente — na
+ * prática, o PRÓPRIO azul-marinho escuro que já é o `--color-background`
+ * do tema escuro da Rotta, não uma cor nova.
+ */
+:root {
+  --marketing-ink: 11 15 20;
+  --marketing-ink-text: 245 247 250;
+}
+
+/**
+ * Escopo local que força a paleta ESCURA (mesmos tokens `--color-*` do
+ * tema escuro, só reaplicados dentro deste elemento) — usado pela barra
+ * de navegação e pelo rodapé da Landing Page, que ficam sempre no tom
+ * "ink" escuro independente do toggle claro/escuro da página (mesma
+ * ideia do bloco fixo escuro da referência de design trazida pelo
+ * usuário, só que com os tokens que a Rotta já tem — nenhuma cor nova).
+ * Qualquer componente compartilhado que já lê `--color-text`/
+ * `--color-text-muted`/`--color-border`/`--color-muted`/
+ * `--color-background` (`ThemeToggle`, os botões-pílula) funciona sem
+ * nenhuma alteração dentro deste escopo — só os TOKENS mudam, nunca o
+ * componente.
+ */
+.ink-scope {
+  --color-background: var(--marketing-ink);
+  --color-text: var(--marketing-ink-text);
+  --color-text-muted: 154 164 178;
+  --color-border: 35 42 53;
+  --color-muted: 22 27 36;
+  background-color: rgb(var(--color-background));
+  color: rgb(var(--color-text));
 }
 
 :root {

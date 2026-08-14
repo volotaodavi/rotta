@@ -453,6 +453,18 @@ function AudienceVisual({
  * nenhuma foto de estoque (`AudienceVisual` usa ícone, não fotografia de
  * pessoas) nem badge de app store (o app da Rotta não tem ficha pública
  * ainda).
+ *
+ * Camada "editorial" (canvas quente `bg-marketing-canvas`, faixas
+ * `bg-marketing-wash`, barra de navegação/rodapé escuros fixos
+ * `.ink-scope`, ver `globals.css`): pedido do usuário pra adaptar o
+ * clima de uma referência de design de viagens (canvas quente em vez de
+ * branco clínico, faixas alternadas, tipografia editorial). Recusado o
+ * pedido de deixar "idêntico" (cores/fonte/marca exatas de um produto
+ * real de terceiro) — as duas cores novas nascem da própria paleta da
+ * Rotta (azul institucional bem diluído pro wash, nunca o verde da
+ * referência), a fonte continua a mesma da Rotta (Inter, nunca a fonte
+ * paga da referência), e a barra escura reaproveita literalmente o
+ * `--color-background` do tema escuro que a Rotta já tinha.
  */
 export default function LandingPage(): JSX.Element {
   return (
@@ -473,10 +485,11 @@ export default function LandingPage(): JSX.Element {
               <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
               Tecnologia que conecta
             </span>
-            <h1 className="text-[44px] font-semibold leading-[0.95] tracking-[-0.03em] text-text sm:text-[64px] lg:text-[80px]">
+            <h1 className="text-[44px] font-semibold leading-[0.95] tracking-[-0.01em] text-text sm:text-[64px] lg:text-[80px]">
               Cadê o transporte?
               <br />
-              <span className="text-primary">A Rotta mostra.</span>
+              {/* Palavra de destaque num tom PRÓPRIO da Rotta (dourado do token `--color-warning`) — separado do azul do CTA, mesmo princípio de "uma cor pro botão, outra pro destaque do título" de uma referência editorial trazida pelo usuário, sem herdar a cor dela. */}
+              <span className="text-warning">A Rotta mostra.</span>
             </h1>
             <Typography variant="body" color="muted" className="max-w-lg">
               Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
@@ -516,7 +529,7 @@ export default function LandingPage(): JSX.Element {
       </section>
 
       <section className="relative z-10 mx-auto -mt-12 w-full max-w-6xl px-6 sm:-mt-16">
-        <div className="flex flex-col gap-6 rounded-[28px] border border-border bg-surface p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
+        <div className="flex flex-col gap-6 rounded-[28px] border border-border bg-marketing-wash p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
           <div className="flex items-center gap-4">
             <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
               <ShieldCheck className="h-6 w-6" />
@@ -590,7 +603,10 @@ export default function LandingPage(): JSX.Element {
           );
 
           return (
-            <div key={audiencia.titulo} className={index % 2 === 1 ? "bg-surface" : undefined}>
+            <div
+              key={audiencia.titulo}
+              className={index % 2 === 1 ? "bg-marketing-wash" : undefined}
+            >
               <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 py-20 lg:grid-cols-2">
                 {index % 2 === 1 ? (
                   <>
@@ -609,7 +625,7 @@ export default function LandingPage(): JSX.Element {
         })}
       </section>
 
-      <section className="w-full bg-surface px-6 py-24">
+      <section className="w-full px-6 py-24">
         <div className="mx-auto w-full max-w-6xl">
           <Typography variant="headline" as="h2" className="mb-12 text-center">
             Como funciona
