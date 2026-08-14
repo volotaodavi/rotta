@@ -25,6 +25,7 @@ export * from "./endpoints/marketplace";
 export * from "./endpoints/notifications";
 export * from "./endpoints/routes";
 export * from "./endpoints/schools";
+export * from "./endpoints/student-pre-registrations";
 export * from "./endpoints/students";
 export * from "./endpoints/support";
 export * from "./endpoints/trips";

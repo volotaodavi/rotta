@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthProvider } from "@rotta/auth/web";
+import { ToastProvider } from "@rotta/ui/web";
 
 
 import { QueryProvider } from "./query-provider";
@@ -15,13 +16,21 @@ import { authApi } from "@/lib/api-client";
  * Secao 1.1 — `providers/`). `AuthProvider` (Dossiê 15) precisa envolver
  * `QueryProvider` (não o contrário) — os hooks de dados de negócio
  * (`useMyCompany` etc.) dependem do token que ele mantém em memória.
+ *
+ * `ToastProvider` (por fora de tudo, mesma composição de
+ * `apps/admin/src/providers/app-providers.tsx`) — achado desta
+ * entrega: o componente já existia em `@rotta/ui` (Frente "não está
+ * havendo ações nos botões"), mas só tinha sido ligado no Admin;
+ * `apps/web` nunca teve `useToast()` disponível em lugar nenhum.
  */
 export function AppProviders({ children }: { children: ReactNode }): JSX.Element {
   return (
     <ThemeProvider>
-      <AuthProvider authApi={authApi}>
-        <QueryProvider>{children}</QueryProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider authApi={authApi}>
+          <QueryProvider>{children}</QueryProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

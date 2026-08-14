@@ -43,6 +43,8 @@ export interface CreateStudentInput {
   necessidadesEspeciais?: string;
   medicamentos?: string;
   observacoes?: string;
+  /** Fluxo "código do transporte + celular" (pedido do usuário) — ID do `StudentPreRegistration` reivindicado (`studentPreRegistrationsApi.claim`), caminho "Continuar". */
+  preRegistrationId?: string;
 }
 
 export type UpdateStudentInput = Partial<CreateStudentInput>;

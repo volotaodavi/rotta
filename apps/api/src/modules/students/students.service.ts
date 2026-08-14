@@ -24,12 +24,14 @@ import type { StudentAccessScope, StudentRepository } from "./repositories/stude
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { ListAuditLogsResponseDto } from "@/common/dto/audit-log-response.dto";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
+import type { StudentPreRegistrationRepository } from "@/modules/student-pre-registrations/repositories/student-pre-registration.repository";
 
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
+import { STUDENT_PRE_REGISTRATION_REPOSITORY } from "@/modules/student-pre-registrations/student-pre-registrations.constants";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -62,6 +64,8 @@ export class StudentsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     @Inject(SCHOOL_REPOSITORY) private readonly schoolRepository: SchoolRepository,
+    @Inject(STUDENT_PRE_REGISTRATION_REPOSITORY)
+    private readonly preRegistrationRepository: StudentPreRegistrationRepository,
   ) {}
 
   /**
@@ -137,11 +141,45 @@ export class StudentsService {
   ): Promise<StudentResponseDto> {
     await this.assertSchoolExists(dto.schoolId);
 
+    const { preRegistrationId, ...studentInput } = dto;
+    // Validado ANTES de criar o `Student` (nunca depois) — pedido do
+    // usuário: fluxo "código do transporte + celular", caminho
+    // "Continuar". Só o próprio Responsável que reivindicou
+    // (`POST /student-pre-registrations/:id/claim`) pode terminar o
+    // cadastro com este `preRegistrationId`, e só uma vez (status
+    // `RECLAMADO`) — nunca aceito de qualquer id passado pelo cliente.
+    if (preRegistrationId) {
+      const preRegistration =
+        await this.preRegistrationRepository.findByIdWithCompany(preRegistrationId);
+      if (
+        !preRegistration ||
+        preRegistration.status !== "RECLAMADO" ||
+        preRegistration.reclamadoPorId !== actor.sub
+      ) {
+        throw new BadRequestException("Pré-cadastro inválido ou não reivindicado por você.");
+      }
+    }
+
     const student = await this.studentRepository.create({
-      ...dto,
+      ...studentInput,
       responsavelId: actor.sub,
       dataNascimento: new Date(dto.dataNascimento),
     });
+
+    if (preRegistrationId) {
+      try {
+        await this.preRegistrationRepository.markConcluded(preRegistrationId, student.id);
+      } catch (error) {
+        // Best-effort (mesmo espírito de `recordAudit`) — o `Student` já
+        // existe e é o que importa; o pré-cadastro só fica "esquecido"
+        // como `RECLAMADO` em vez de `CONCLUIDO`, nunca bloqueia o
+        // Responsável.
+        this.logger.warn(
+          `Falha ao concluir pré-cadastro ${preRegistrationId} (Student ${student.id})`,
+        );
+        this.logger.warn(error instanceof Error ? error.message : String(error));
+      }
+    }
 
     await this.recordAudit({
       entidadeId: student.id,

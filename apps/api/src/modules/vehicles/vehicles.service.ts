@@ -15,7 +15,8 @@ import {
   Vehicle,
   VehicleType,
 } from "@prisma/client";
-import { normalizePlate } from "@rotta/validators";
+import { isValidPlate, normalizePlate } from "@rotta/validators";
+
 
 import { toVehicleAssignmentResponseDto } from "./mappers/vehicle-assignment.mapper";
 import {
@@ -37,6 +38,7 @@ import {
 } from "./mappers/vehicle-reminder.mapper";
 import { toListVehiclesResponseDto, toVehicleResponseDto } from "./mappers/vehicle.mapper";
 import { vehiclesToCsv, vehiclesToExcelBuffer, vehiclesToPdfBuffer } from "./vehicle-export.util";
+import { VehiclePlateLookupService } from "./vehicle-plate-lookup.service";
 import {
   VEHICLE_ASSIGNMENT_REPOSITORY,
   VEHICLE_CHECKLIST_REPOSITORY,
@@ -83,6 +85,7 @@ import type { VehicleMaintenanceRepository } from "./repositories/vehicle-mainte
 import type { VehicleOccurrenceRepository } from "./repositories/vehicle-occurrence.repository";
 import type { VehicleReminderRepository } from "./repositories/vehicle-reminder.repository";
 import type { VehicleRepository } from "./repositories/vehicle.repository";
+import type { VehiclePlateLookupResult } from "./vehicle-plate-lookup.service";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type {
   AuditLogResponseDto,
@@ -157,7 +160,22 @@ export class VehiclesService {
     private readonly auditLogService: AuditLogService,
     private readonly storageService: SupabaseStorageService,
     private readonly rottaAiService: RottaAiService,
+    private readonly plateLookupService: VehiclePlateLookupService,
   ) {}
+
+  /**
+   * "Buscar pela placa" (pedido do usuário) — valida o formato ANTES de
+   * gastar uma chamada no provedor externo (mesmo cuidado de
+   * `assertValidPlateOrThrow` em `create`/`update`). Ver
+   * `VehiclePlateLookupService` para o que acontece sem provedor
+   * configurado.
+   */
+  async lookupByPlate(placa: string): Promise<VehiclePlateLookupResult> {
+    if (!isValidPlate(placa)) {
+      throw new BadRequestException("Placa inválida.");
+    }
+    return this.plateLookupService.lookup(normalizePlate(placa));
+  }
 
   // ---------------------------------------------------------------------
   // Helpers privados

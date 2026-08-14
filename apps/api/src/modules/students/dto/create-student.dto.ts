@@ -154,4 +154,13 @@ export class CreateStudentDto {
   @IsString()
   @MaxLength(1000)
   observacoes?: string;
+
+  @ApiPropertyOptional({
+    description:
+      "ID do StudentPreRegistration reivindicado (POST /student-pre-registrations/:id/claim) — " +
+      "pedido do usuário: fluxo 'código do transporte + celular'. Opcional: cadastro direto (sem pré-cadastro) continua funcionando igual.",
+  })
+  @IsOptional()
+  @IsUUID()
+  preRegistrationId?: string;
 }

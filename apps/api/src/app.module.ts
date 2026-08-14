@@ -26,6 +26,7 @@ import qstashConfig from "@/config/qstash.config";
 import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
 import storageConfig from "@/config/storage.config";
+import vehiclePlateLookupConfig from "@/config/vehicle-plate-lookup.config";
 import whatsappConfig from "@/config/whatsapp.config";
 import { HealthModule } from "@/health/health.module";
 import { RedisModule } from "@/infra/cache/redis.module";
@@ -58,6 +59,7 @@ import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
 import { SchoolsModule } from "@/modules/schools/schools.module";
 import { SettingsModule } from "@/modules/settings/settings.module";
+import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { SupportModule } from "@/modules/support/support.module";
 import { TripsModule } from "@/modules/trips/trips.module";
@@ -87,6 +89,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         lytexConfig,
         abacatepayConfig,
         observabilityConfig,
+        vehiclePlateLookupConfig,
       ],
     }),
 
@@ -114,6 +117,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     MonitorsModule,
     CompanyJoinRequestsModule,
     ParentsModule,
+    StudentPreRegistrationsModule,
     StudentsModule,
     WalletModule,
     MarketplaceModule,

@@ -1,14 +1,16 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
+import { Search } from "@rotta/icons";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
 import type { CreateVehicleInput } from "@rotta/api-client";
 
-import { useCreateVehicle } from "@/features/vehicles/hooks/use-vehicles";
+import { useCreateVehicle, useLookupVehicleByPlate } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_CATEGORY_LABEL, VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
+
 
 const INITIAL_STATE: CreateVehicleInput = {
   placa: "",
@@ -25,14 +27,48 @@ const INITIAL_STATE: CreateVehicleInput = {
 export default function NovoVeiculoPage(): JSX.Element {
   const router = useRouter();
   const createVehicle = useCreateVehicle();
+  const lookupByPlate = useLookupVehicleByPlate();
   const [form, setForm] = useState<CreateVehicleInput>(INITIAL_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [plateLookupMessage, setPlateLookupMessage] = useState<string | null>(null);
 
   function updateField<K extends keyof CreateVehicleInput>(
     key: K,
     value: CreateVehicleInput[K],
   ): void {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  /**
+   * "Buscar pela placa" (pedido do usuário: "pode buscar em todos os
+   * detrans, para a análise ser rápida") — nunca sobrescreve o que a
+   * empresa já digitou (só preenche campo vazio), e nunca bloqueia o
+   * cadastro quando o provedor não está configurado neste ambiente
+   * (`VehiclePlateLookupService`, backend) — a mensagem deixa isso
+   * explícito em vez de fingir que a busca simplesmente não achou nada.
+   */
+  async function handleLookupByPlate(): Promise<void> {
+    setPlateLookupMessage(null);
+    if (!form.placa.trim()) return;
+    try {
+      const result = await lookupByPlate.mutateAsync(form.placa);
+      setForm((current) => ({
+        ...current,
+        marca: current.marca || result.marca || current.marca,
+        modelo: current.modelo || result.modelo || current.modelo,
+        cor: current.cor || result.cor || current.cor,
+        ano: current.ano ?? result.ano ?? current.ano,
+      }));
+      if (!result.marca && !result.modelo && !result.ano && !result.cor) {
+        setPlateLookupMessage("O provedor não devolveu dados pra essa placa.");
+      }
+    } catch (error) {
+      setPlateLookupMessage(
+        error instanceof ApiError
+          ? error.message
+          : "Não foi possível buscar a placa agora. Preencha os dados manualmente.",
+      );
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -56,13 +92,25 @@ export default function NovoVeiculoPage(): JSX.Element {
         <Card>
           <Card.Header title="Dados do veículo" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField label="Placa" isRequired>
-              <Input
-                required
-                placeholder="ABC1D23"
-                value={form.placa}
-                onChange={(event) => updateField("placa", event.target.value)}
-              />
+            <FormField label="Placa" isRequired helperText={plateLookupMessage ?? undefined}>
+              <div className="flex gap-2">
+                <Input
+                  required
+                  placeholder="ABC1D23"
+                  value={form.placa}
+                  onChange={(event) => updateField("placa", event.target.value.toUpperCase())}
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  iconLeft={<Search className="h-4 w-4" />}
+                  isLoading={lookupByPlate.isPending}
+                  disabled={!form.placa.trim()}
+                  onClick={() => void handleLookupByPlate()}
+                >
+                  Buscar
+                </Button>
+              </div>
             </FormField>
             <FormField label="Modelo" isRequired>
               <Input

@@ -18,6 +18,7 @@ import type {
 
 import { vehiclesApi } from "@/lib/api-client";
 
+
 /**
  * Hooks de dados do módulo Veículos (Painel Web — Empresa/Gestor
  * gerenciando a própria frota), mesmo padrão de `use-companies.ts`.
@@ -66,6 +67,13 @@ export function useCreateVehicle() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
     },
+  });
+}
+
+/** "Buscar pela placa" (pedido do usuário) — mutação (não query), disparada só quando a empresa clica no botão, nunca a cada tecla digitada. */
+export function useLookupVehicleByPlate() {
+  return useMutation({
+    mutationFn: (placa: string) => vehiclesApi.lookupByPlate(placa),
   });
 }
 

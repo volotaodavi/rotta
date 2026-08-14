@@ -10,7 +10,9 @@ import {
   createNotificationsEndpoints,
   createRoutesEndpoints,
   createSchoolsEndpoints,
+  createStudentPreRegistrationsEndpoints,
   createStudentsEndpoints,
+  createSupportEndpoints,
   createTripsEndpoints,
   createVehiclesEndpoints,
   createWalletEndpoints,
@@ -36,6 +38,8 @@ export const companyJoinRequestsApi = createCompanyJoinRequestsEndpoints(apiClie
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const studentsApi = createStudentsEndpoints(apiClient);
+export const studentPreRegistrationsApi = createStudentPreRegistrationsEndpoints(apiClient);
+export const supportApi = createSupportEndpoints(apiClient);
 export const marketplaceApi = createMarketplaceEndpoints(apiClient);
 export const geoApi = createGeoEndpoints(apiClient);
 export const notificationsApi = createNotificationsEndpoints(apiClient);

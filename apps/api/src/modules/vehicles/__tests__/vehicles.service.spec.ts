@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { VehicleAssignmentRole, VehicleCategory, VehicleStatus, VehicleType } from "@prisma/client";
 
+
 import { VehiclesService } from "../vehicles.service";
 
 import type { CreateVehicleDto } from "../dto/create-vehicle.dto";
@@ -11,6 +12,7 @@ import type { VehicleMaintenanceRepository } from "../repositories/vehicle-maint
 import type { VehicleOccurrenceRepository } from "../repositories/vehicle-occurrence.repository";
 import type { VehicleReminderRepository } from "../repositories/vehicle-reminder.repository";
 import type { VehicleRepository } from "../repositories/vehicle.repository";
+import type { VehiclePlateLookupService } from "../vehicle-plate-lookup.service";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -122,6 +124,7 @@ describe("VehiclesService", () => {
   let auditLogService: jest.Mocked<AuditLogService>;
   let storageService: jest.Mocked<SupabaseStorageService>;
   let rottaAiService: jest.Mocked<RottaAiService>;
+  let plateLookupService: jest.Mocked<VehiclePlateLookupService>;
 
   beforeEach(() => {
     vehicleRepository = {
@@ -174,6 +177,10 @@ describe("VehiclesService", () => {
       validateDocument: jest.fn(),
       analyzeVehicleDocument: jest.fn(),
     };
+    plateLookupService = {
+      isConfigured: jest.fn(),
+      lookup: jest.fn(),
+    } as unknown as jest.Mocked<VehiclePlateLookupService>;
 
     service = new VehiclesService(
       vehicleRepository,
@@ -187,6 +194,7 @@ describe("VehiclesService", () => {
       auditLogService,
       storageService,
       rottaAiService,
+      plateLookupService,
     );
 
     vehicleRepository.findByPlaca.mockResolvedValue(null);
@@ -217,6 +225,27 @@ describe("VehiclesService", () => {
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ acao: "CREATED", entidadeTipo: "Vehicle" }),
       );
+    });
+  });
+
+  describe("lookupByPlate", () => {
+    it("rejeita placa em formato inválido antes de chamar o provedor", async () => {
+      await expect(service.lookupByPlate("123-INVALIDA")).rejects.toThrow(BadRequestException);
+      expect(plateLookupService.lookup).not.toHaveBeenCalled();
+    });
+
+    it("normaliza a placa e delega ao provedor configurado", async () => {
+      plateLookupService.lookup.mockResolvedValue({
+        marca: "Mercedes-Benz",
+        modelo: "Sprinter 415",
+        ano: 2022,
+        cor: "Branco",
+      });
+
+      const result = await service.lookupByPlate("abc-1d23");
+
+      expect(plateLookupService.lookup).toHaveBeenCalledWith("ABC1D23");
+      expect(result.marca).toBe("Mercedes-Benz");
     });
   });
 

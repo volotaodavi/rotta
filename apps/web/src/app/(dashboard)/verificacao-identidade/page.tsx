@@ -2,10 +2,10 @@
 
 import { DiditSdk } from "@didit-protocol/sdk-web";
 import { useAuth } from "@rotta/auth/web";
-import { BadgeCheck, Loader2, ShieldAlert, ShieldCheck, X } from "@rotta/icons";
-import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { BadgeCheck, LifeBuoy, Loader2, ShieldAlert, ShieldCheck, X } from "@rotta/icons";
+import { Badge, Button, Card, Modal, Spinner, Typography, useToast } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { IdentityVerificationStatus } from "@rotta/api-client";
 import type { BadgeVariant } from "@rotta/ui/web";
@@ -15,6 +15,7 @@ import {
   useMyIdentityVerification,
   useRefreshMyIdentityVerification,
 } from "@/features/identity-verification/hooks/use-identity-verification";
+import { useCreateSupportTicket } from "@/features/support/hooks/use-support";
 import { defaultRouteForRole } from "@/lib/default-route";
 
 
@@ -61,13 +62,60 @@ const RESTARTABLE: IdentityVerificationStatus[] = ["NAO_INICIADA", "REPROVADA", 
  * (`defaultRouteForRole`, mesma função usada em login/convite), nunca
  * um "/" genérico.
  */
+/** `localStorage` (mesmo padrão de `use-app-mode.ts`, nunca no backend — é só "já vi esse popup", não uma permissão) — garante que o convite pra pedir ajuda do suporte aparece no máximo uma vez por usuário. */
+const SUPPORT_POPUP_STORAGE_PREFIX = "rotta-support-popup-cnh:";
+
 export default function VerificacaoIdentidadePage(): JSX.Element {
   const { user } = useAuth();
   const router = useRouter();
   const { data, isLoading, refetch } = useMyIdentityVerification();
   const createSession = useCreateIdentityVerificationSession();
   const refreshStatus = useRefreshMyIdentityVerification();
+  const createSupportTicket = useCreateSupportTicket();
+  const toast = useToast();
   const [aviso, setAviso] = useState<string | null>(null);
+  const [supportPopupOpen, setSupportPopupOpen] = useState(false);
+  const supportPopupChecked = useRef(false);
+
+  // Motorista/Monitor autônomo e MEI (pedido do usuário: "após a
+  // validação da CNH, aparecerá um pop-up perguntando se gostaria de
+  // pedir ajuda ao suporte para cadastrar os alunos + responsáveis")
+  // — no schema, esse ator É o próprio dono da empresa
+  // (`role === "empresa"`, `companyType` AUTONOMO/MEI, mesmo gate de
+  // `useAppMode`), nunca um Motorista/Monitor FUNCIONÁRIO de uma
+  // transportadora maior (esse nem chega nesta página do Painel Web —
+  // usa o app mobile).
+  const elegivelParaPopupSuporte =
+    user?.role === "empresa" && (user.companyType === "AUTONOMO" || user.companyType === "MEI");
+
+  useEffect(() => {
+    if (supportPopupChecked.current) return;
+    if (!user || !elegivelParaPopupSuporte || data?.status !== "APROVADA") return;
+    supportPopupChecked.current = true;
+    const jaViu = localStorage.getItem(SUPPORT_POPUP_STORAGE_PREFIX + user.id) === "1";
+    if (!jaViu) setSupportPopupOpen(true);
+  }, [user, elegivelParaPopupSuporte, data?.status]);
+
+  function dispensarPopupSuporte(): void {
+    setSupportPopupOpen(false);
+    if (user) localStorage.setItem(SUPPORT_POPUP_STORAGE_PREFIX + user.id, "1");
+  }
+
+  async function pedirAjudaSuporte(): Promise<void> {
+    try {
+      await createSupportTicket.mutateAsync({
+        assunto: "Ajuda para cadastrar alunos e responsáveis",
+        descricao:
+          "Verificação de identidade aprovada. Gostaria de ajuda do suporte da Rotta para cadastrar os alunos e os responsáveis do meu transporte.",
+        categoria: "DUVIDA",
+      });
+      toast.success("Chamado aberto! O suporte da Rotta vai entrar em contato em breve.");
+    } catch {
+      toast.error("Não foi possível abrir o chamado agora. Tente de novo em instantes.");
+    } finally {
+      dispensarPopupSuporte();
+    }
+  }
 
   function fechar(): void {
     router.push(user ? defaultRouteForRole(user.role) : "/entrar");
@@ -193,6 +241,34 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
           )}
         </Card.Body>
       </Card>
+
+      {supportPopupOpen ? (
+        <Modal
+          isOpen
+          onClose={dispensarPopupSuporte}
+          ariaLabel="Ajuda do suporte para cadastrar alunos e responsáveis"
+        >
+          <Modal.Header onClose={dispensarPopupSuporte}>Identidade verificada!</Modal.Header>
+          <Modal.Body className="flex flex-col items-center gap-4 py-2 text-center">
+            <LifeBuoy size={40} className="text-primary" />
+            <Typography variant="body">
+              Agora falta só cadastrar os alunos e os responsáveis do seu transporte. Quer que o
+              suporte da Rotta te ajude com isso?
+            </Typography>
+          </Modal.Body>
+          <Modal.Footer className="flex justify-center gap-3">
+            <Button variant="secondary" onClick={dispensarPopupSuporte}>
+              Agora não
+            </Button>
+            <Button
+              isLoading={createSupportTicket.isPending}
+              onClick={() => void pedirAjudaSuporte()}
+            >
+              Sim, pedir ajuda
+            </Button>
+          </Modal.Footer>
+        </Modal>
+      ) : null}
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { ApiError } from "@rotta/api-client";
 import { Check, MapPin, Sparkles } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
 import type {
@@ -26,6 +26,7 @@ import { useTracedRoute } from "@/features/students/hooks/use-traced-route";
 import { STUDENT_SEX_LABEL } from "@/features/students/labels";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useMyLocation } from "@/hooks/use-my-location";
+
 
 const QUICK_REGISTER_INITIAL_STATE: QuickRegisterSchoolInput = {
   nomeOficial: "",
@@ -98,8 +99,21 @@ function formatRouteSummary(
  */
 export default function NovoAlunoPage(): JSX.Element {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const createStudent = useCreateStudent();
-  const [form, setForm] = useState<CreateStudentInput>(INITIAL_STATE);
+  // Fluxo "código do transporte + celular" (pedido do usuário), caminho
+  // "Continuar" (`/vincular-transporte`) — chega aqui com o pré-cadastro
+  // já reivindicado (`preRegistrationId`) e o nome do aluno sugerido,
+  // mas EDITÁVEL (nunca travado: se a transportadora digitou errado, o
+  // Responsável ainda corrige o nome aqui mesmo, sem precisar voltar).
+  // Ausente (cadastro direto, sem passar por `/vincular-transporte`) =
+  // exatamente o comportamento de antes desta funcionalidade existir.
+  const preRegistrationId = searchParams.get("preRegistrationId") ?? undefined;
+  const nomeSugerido = searchParams.get("nomeAluno") ?? "";
+  const [form, setForm] = useState<CreateStudentInput>({
+    ...INITIAL_STATE,
+    nome: nomeSugerido,
+  });
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mesmoEndereco, setMesmoEndereco] = useState(true);
 
@@ -282,6 +296,7 @@ export default function NovoAlunoPage(): JSX.Element {
             : {}),
         }
       : { ...form, ...embarqueCoords };
+    if (preRegistrationId) input.preRegistrationId = preRegistrationId;
     try {
       const student = await createStudent.mutateAsync(input);
       // Frente Q (pedido do usuário): a tela de mapa em tela cheia
@@ -300,6 +315,12 @@ export default function NovoAlunoPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <Typography variant="title">Adicionar aluno</Typography>
+      {preRegistrationId ? (
+        <Typography variant="bodySmall" color="muted">
+          A transportadora já adiantou o nome do aluno pra você — confira e complete o resto do
+          cadastro.
+        </Typography>
+      ) : null}
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6">
         <Card>

@@ -1,6 +1,6 @@
 "use client";
 
-import { MapPin, Plus, Radio } from "@rotta/icons";
+import { KeyRound, MapPin, Plus, Radio } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Card, Input, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import type { Student } from "@rotta/api-client";
 import { useGpsForStudent, useGpsForStudents } from "@/features/gps/hooks/use-gps";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useStudentsList } from "@/features/students/hooks/use-students";
+
 
 /**
  * "Meus Alunos" (briefing "Marketplace" §"CADASTRO DO ALUNO" — home do
@@ -35,10 +36,16 @@ export default function AlunosPage(): JSX.Element {
             Acompanhe o transporte de cada um em tempo real.
           </Typography>
         </div>
-        <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
-          <Plus className="h-4 w-4" />
-          Adicionar aluno
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/vincular-transporte" className={buttonVariants({ variant: "secondary" })}>
+            <KeyRound className="h-4 w-4" />
+            Tenho um código de transporte
+          </Link>
+          <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
+            <Plus className="h-4 w-4" />
+            Adicionar aluno
+          </Link>
+        </div>
       </div>
 
       {data && data.items.length > 0 ? <MapaAoVivoWidget students={data.items} /> : null}
@@ -62,10 +69,19 @@ export default function AlunosPage(): JSX.Element {
               Cadastre seu filho ou dependente para acompanhar o transporte escolar dele em tempo
               real assim que a viagem começar.
             </Typography>
-            <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
-              <Plus className="h-4 w-4" />
-              Adicionar aluno
-            </Link>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link
+                href="/vincular-transporte"
+                className={buttonVariants({ variant: "secondary" })}
+              >
+                <KeyRound className="h-4 w-4" />
+                Tenho um código de transporte
+              </Link>
+              <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
+                <Plus className="h-4 w-4" />
+                Adicionar aluno
+              </Link>
+            </div>
           </Card.Body>
         </Card>
       ) : (

@@ -8,6 +8,7 @@ import { PrismaVehicleMaintenanceRepository } from "./repositories/prisma-vehicl
 import { PrismaVehicleOccurrenceRepository } from "./repositories/prisma-vehicle-occurrence.repository";
 import { PrismaVehicleReminderRepository } from "./repositories/prisma-vehicle-reminder.repository";
 import { PrismaVehicleRepository } from "./repositories/prisma-vehicle.repository";
+import { VehiclePlateLookupService } from "./vehicle-plate-lookup.service";
 import {
   VEHICLE_ASSIGNMENT_REPOSITORY,
   VEHICLE_CHECKLIST_REPOSITORY,
@@ -44,12 +45,18 @@ import { UsersModule } from "@/modules/users/users.module";
  * `UsersModule` (checar vínculo do Motorista/Monitor antes de vincular),
  * `AuditModule`, `StorageModule` (fotos/documentos) e `RottaAiModule`
  * (análise de documento) são importados — nunca reimplementados aqui.
+ *
+ * `VehiclePlateLookupService` (pedido do usuário: "buscar em todos os
+ * detrans, para a análise ser rápida") — provider próprio, sem imports
+ * extra (só `ConfigService`, já global). Ver a nota completa no
+ * arquivo dele sobre por que não existe uma API oficial gratuita.
  */
 @Module({
   imports: [UsersModule, AuditModule, StorageModule, RottaAiModule],
   controllers: [VehiclesController],
   providers: [
     VehiclesService,
+    VehiclePlateLookupService,
     { provide: VEHICLE_REPOSITORY, useClass: PrismaVehicleRepository },
     { provide: VEHICLE_DOCUMENT_REPOSITORY, useClass: PrismaVehicleDocumentRepository },
     { provide: VEHICLE_MAINTENANCE_REPOSITORY, useClass: PrismaVehicleMaintenanceRepository },

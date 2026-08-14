@@ -25,6 +25,14 @@ export type VehicleReminderStatus = "PENDENTE" | "CONCLUIDO" | "CANCELADO";
 export type VehicleAssignmentRole = "MOTORISTA" | "MONITOR";
 export type VehicleOccurrenceSeverity = "BAIXA" | "MEDIA" | "ALTA";
 
+/** Resultado de "buscar pela placa" — todos os campos são opcionais porque nem todo provedor devolve todos. */
+export interface VehiclePlateLookupResult {
+  marca: string | null;
+  modelo: string | null;
+  ano: number | null;
+  cor: string | null;
+}
+
 export interface CreateVehicleInput {
   placa: string;
   modelo: string;
@@ -292,6 +300,14 @@ export function createVehiclesEndpoints(apiClient: ApiClient) {
       apiClient.request<Blob>(`/vehicles/export${buildQueryString(params)}`, {
         responseType: "blob",
       }),
+
+    /** "Buscar pela placa" (pedido do usuário) — ver `VehiclePlateLookupService` no backend para o que acontece sem provedor configurado (erro claro, nunca dado inventado). */
+    lookupByPlate: async (placa: string): Promise<VehiclePlateLookupResult> =>
+      (
+        await apiClient.request<ApiEnvelope<VehiclePlateLookupResult>>(
+          `/vehicles/plate-lookup/${encodeURIComponent(placa)}`,
+        )
+      ).data,
 
     getById: async (id: string): Promise<Vehicle> =>
       (await apiClient.request<ApiEnvelope<Vehicle>>(`/vehicles/${id}`)).data,

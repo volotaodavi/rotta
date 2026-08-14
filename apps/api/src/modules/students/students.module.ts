@@ -10,6 +10,7 @@ import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { SchoolsModule } from "@/modules/schools/schools.module";
+import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 
 /**
  * Módulo Alunos (briefing "Marketplace" §"CADASTRO DO ALUNO") —
@@ -33,9 +34,20 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
  * (emitir `communication.requested` em `create` — evento `NOVO_ALUNO`) é
  * injetado sem import extra, já que `EventEmitterModule.forRoot()` é
  * global (`AppModule`). Nunca chama `NotificationsService` diretamente.
+ *
+ * `StudentPreRegistrationsModule` importado só por
+ * `STUDENT_PRE_REGISTRATION_REPOSITORY` (fluxo "código do transporte +
+ * celular", pedido do usuário) — sem risco de ciclo, aquele módulo só
+ * depende de `CompaniesModule`.
  */
 @Module({
-  imports: [AuditModule, StorageModule, MessagePersonalizationModule, SchoolsModule],
+  imports: [
+    AuditModule,
+    StorageModule,
+    MessagePersonalizationModule,
+    SchoolsModule,
+    StudentPreRegistrationsModule,
+  ],
   controllers: [StudentsController],
   providers: [
     StudentsService,

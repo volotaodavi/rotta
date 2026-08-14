@@ -470,6 +470,12 @@ model Company {
   /// que se autocadastraram e informaram `codigoInterno` em vez de um
   /// `Invite` gerado pela empresa. Ver nota completa em `CompanyJoinRequest`.
   joinRequests           CompanyJoinRequest[]
+  /// Pedido do usuário: "no painel do admin deverá ter essa opção de
+  /// cadastrar alunos por transporte + responsável" — pré-cadastros que
+  /// a própria transportadora cria (nome do aluno + nome/celular do
+  /// responsável) ANTES de o Responsável ter conta na Rotta. Ver nota
+  /// completa em `StudentPreRegistration`.
+  preRegistrosAlunos     StudentPreRegistration[]
   vehicles               Vehicle[]
   escolasVinculadas      SchoolCompanyLink[]
   solicitacoesTransporte TransportRequest[]
@@ -651,6 +657,12 @@ model User {
   /// (`Decisor`). Ver nota completa em `CompanyJoinRequest`.
   joinRequestsFeitos    CompanyJoinRequest[] @relation("JoinRequestSolicitante")
   joinRequestsDecididos CompanyJoinRequest[] @relation("JoinRequestDecisor")
+
+  /// Pré-cadastros de aluno que este usuário criou (Empresa/Gestor) e,
+  /// quando atua como Responsável, os que ele reivindicou pelo código da
+  /// transportadora + celular. Ver nota completa em `StudentPreRegistration`.
+  preRegistrosAlunosCriados    StudentPreRegistration[] @relation("StudentPreRegistrationCriadoPor")
+  preRegistrosAlunosReclamados StudentPreRegistration[] @relation("StudentPreRegistrationReclamadoPor")
 
   /// Relações do módulo Veículos (Dossiê 13, Secao 9) — um `User` pode
   /// ser referenciado por um `Vehicle`/`VehicleDocument`/etc. de várias
@@ -962,6 +974,65 @@ model CompanyJoinRequest {
   @@index([companyId, status])
   @@index([userId, status])
   @@map("company_join_requests")
+}
+
+/// Pré-cadastro de aluno + responsável feito pela TRANSPORTADORA (pedido
+/// do usuário: "no painel do admin deverá ter essa opção de cadastrar
+/// alunos por transporte + responsável (nome do aluno, nome do
+/// responsável + número do celular responsável)"). Resolve o problema de
+/// ordem: hoje só o próprio Responsável pode criar um `Student`
+/// (`StudentsController` — `OWNER_ROLES = [RESPONSAVEL]`), mas ele pode
+/// nem ter conta na Rotta ainda quando a empresa já sabe quem vai
+/// transportar. O Responsável entra depois com o código público da
+/// empresa (`Company.codigoInterno`) + o próprio celular
+/// (`GET .../lookup`, sem tenant — mesmo mecanismo de
+/// `CompanyRepository.findActiveByCodigoInterno`), decide "Continuar"
+/// (reivindica este registro e reaproveita `nomeAluno`) ou "Corrigir"
+/// (ignora e cadastra do zero) — ver `StudentPreRegistrationsService` e
+/// `apps/web/(dashboard)/alunos/vincular`. `studentId` é uma FK crua
+/// (sem `@relation` do Prisma de propósito — ver migration) preenchida só
+/// quando o Responsável termina o cadastro completo do aluno
+/// (`StudentsService.create` com `preRegistrationId`), pra manter este
+/// módulo desacoplado do módulo Alunos (mesma cautela de
+/// `StudentsModule` nunca importar `MarketplaceModule` de volta).
+model StudentPreRegistration {
+  id String @id @default(uuid()) @db.Uuid
+
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  criadoPorId String @db.Uuid
+  criadoPor   User   @relation("StudentPreRegistrationCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+
+  nomeAluno       String
+  nomeResponsavel String
+  /// Só dígitos (DDD+número, sem formatação) — normalizado na entrada
+  /// (`StudentPreRegistrationsService.normalizeCelular`) pra bater com o
+  /// número que o Responsável digitar depois, mesmo com pontuação
+  /// diferente (com/sem +55, com/sem parênteses e traço).
+  celularResponsavel String
+
+  status StudentPreRegistrationStatus @default(PENDENTE)
+
+  reclamadoPorId String?   @db.Uuid
+  reclamadoPor   User?     @relation("StudentPreRegistrationReclamadoPor", fields: [reclamadoPorId], references: [id], onDelete: SetNull)
+  reclamadoEm    DateTime?
+
+  studentId String? @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, status])
+  @@index([celularResponsavel])
+  @@map("student_pre_registrations")
+}
+
+enum StudentPreRegistrationStatus {
+  PENDENTE
+  RECLAMADO
+  CONCLUIDO
+  CANCELADO
 }
 
 // =============================================================================

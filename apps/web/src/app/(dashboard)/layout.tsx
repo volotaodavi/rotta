@@ -16,7 +16,6 @@ import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
 
-
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
   href: Route;
@@ -33,6 +32,7 @@ interface NavLink {
 const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/empresa", label: "Minha Empresa" },
   { href: "/equipe", label: "Equipe" },
+  { href: "/alunos-pre-cadastro", label: "Alunos" },
   { href: "/veiculos", label: "Veículos" },
   { href: "/escolas", label: "Escolas" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },

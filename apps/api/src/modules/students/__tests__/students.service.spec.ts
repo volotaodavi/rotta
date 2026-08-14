@@ -9,6 +9,7 @@ import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.se
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
+import type { StudentPreRegistrationRepository } from "@/modules/student-pre-registrations/repositories/student-pre-registration.repository";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { School, Student, StudentAuthorizedPerson } from "@prisma/client";
 
@@ -148,6 +149,7 @@ describe("StudentsService", () => {
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<Pick<MessagePersonalizationService, "novoAluno">>;
   let schoolRepository: jest.Mocked<SchoolRepository>;
+  let preRegistrationRepository: jest.Mocked<StudentPreRegistrationRepository>;
 
   beforeEach(() => {
     studentRepository = {
@@ -192,6 +194,16 @@ describe("StudentsService", () => {
       searchCandidates: jest.fn(),
       nextCodigoInternoSequence: jest.fn(),
     };
+    preRegistrationRepository = {
+      create: jest.fn(),
+      listByCompany: jest.fn(),
+      findById: jest.fn(),
+      cancel: jest.fn(),
+      findPendingByCompanyAndCelular: jest.fn(),
+      findByIdWithCompany: jest.fn(),
+      claim: jest.fn(),
+      markConcluded: jest.fn(),
+    };
 
     service = new StudentsService(
       studentRepository,
@@ -201,6 +213,7 @@ describe("StudentsService", () => {
       eventEmitter,
       messagePersonalizationService as unknown as MessagePersonalizationService,
       schoolRepository,
+      preRegistrationRepository,
     );
   });
 
@@ -267,6 +280,89 @@ describe("StudentsService", () => {
         ),
       ).rejects.toThrow(BadRequestException);
       expect(studentRepository.create).not.toHaveBeenCalled();
+    });
+
+    const baseDto = {
+      nome: "Lucas Silva",
+      dataNascimento: "2015-03-20",
+      sexo: "MASCULINO" as const,
+      schoolId: "school-1",
+      turno: "MANHA" as const,
+      embarqueCep: "01310100",
+      embarqueLogradouro: "Avenida Paulista",
+      embarqueNumero: "1000",
+      embarqueBairro: "Bela Vista",
+      embarqueCidade: "São Paulo",
+      embarqueEstado: "SP",
+      desembarqueCep: "01310100",
+      desembarqueLogradouro: "Avenida Paulista",
+      desembarqueNumero: "1000",
+      desembarqueBairro: "Bela Vista",
+      desembarqueCidade: "São Paulo",
+      desembarqueEstado: "SP",
+    };
+
+    // Fluxo "código do transporte + celular" (pedido do usuário) —
+    // caminho "Continuar": `preRegistrationId` reivindicado pelo próprio
+    // Responsável autenticado.
+    it("com preRegistrationId RECLAMADO pelo próprio actor, cria o aluno e conclui o pré-cadastro", async () => {
+      const student = buildStudent();
+      studentRepository.create.mockResolvedValue(student);
+      preRegistrationRepository.findByIdWithCompany.mockResolvedValue({
+        id: "pre-1",
+        companyId: "company-1",
+        criadoPorId: "user-empresa",
+        nomeAluno: "Lucas Silva",
+        nomeResponsavel: "Ana Silva",
+        celularResponsavel: "11988887777",
+        status: "RECLAMADO",
+        reclamadoPorId: "responsavel-1",
+        reclamadoEm: new Date(),
+        studentId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        company: { id: "company-1", nomeFantasia: "Transportadora Exemplo" },
+      });
+
+      await service.create({ ...baseDto, preRegistrationId: "pre-1" }, responsavelActor, {});
+
+      expect(preRegistrationRepository.markConcluded).toHaveBeenCalledWith("pre-1", student.id);
+      // `preRegistrationId` nunca vaza pro `StudentRepository.create` (não é coluna de `Student`).
+      expect(studentRepository.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ preRegistrationId: expect.anything() }),
+      );
+    });
+
+    it("rejeita preRegistrationId reivindicado por OUTRA pessoa (nunca cria o Student)", async () => {
+      preRegistrationRepository.findByIdWithCompany.mockResolvedValue({
+        id: "pre-1",
+        companyId: "company-1",
+        criadoPorId: "user-empresa",
+        nomeAluno: "Lucas Silva",
+        nomeResponsavel: "Ana Silva",
+        celularResponsavel: "11988887777",
+        status: "RECLAMADO",
+        reclamadoPorId: "outro-responsavel",
+        reclamadoEm: new Date(),
+        studentId: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        company: { id: "company-1", nomeFantasia: "Transportadora Exemplo" },
+      });
+
+      await expect(
+        service.create({ ...baseDto, preRegistrationId: "pre-1" }, responsavelActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(studentRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("cadastro direto (sem preRegistrationId) nunca chama o módulo de pré-cadastro", async () => {
+      studentRepository.create.mockResolvedValue(buildStudent());
+
+      await service.create(baseDto, responsavelActor, {});
+
+      expect(preRegistrationRepository.findByIdWithCompany).not.toHaveBeenCalled();
+      expect(preRegistrationRepository.markConcluded).not.toHaveBeenCalled();
     });
   });
 

@@ -115,6 +115,20 @@ export class VehiclesController {
       .send(buffer);
   }
 
+  /**
+   * "Buscar pela placa" (pedido do usuário: "as empresas... deverão
+   * colocar a placa do veículo (pode buscar em todos os detrans, para
+   * a análise ser rápida)") — rota literal (nunca colide com `:id`,
+   * que é sempre um UUID). Ver `VehiclePlateLookupService` para a
+   * explicação completa de por que isso depende de um provedor pago
+   * configurado, não de scraping de Detran.
+   */
+  @Get("plate-lookup/:placa")
+  @Roles(...MANAGE_ROLES)
+  lookupByPlate(@Param("placa") placa: string) {
+    return this.vehiclesService.lookupByPlate(placa);
+  }
+
   @Get(":id")
   @Roles(...READ_ROLES)
   findById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
