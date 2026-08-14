@@ -16,7 +16,7 @@ import type {
   StudentSex,
 } from "@rotta/api-client";
 
-import { useQuickRegisterSchool, useSchoolsList } from "@/features/schools/hooks/use-schools";
+import { useQuickRegisterSchool, useSuggestSchools } from "@/features/schools/hooks/use-schools";
 import {
   SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL,
   SCHOOL_SHIFT_LABEL,
@@ -25,6 +25,7 @@ import { useCreateStudent } from "@/features/students/hooks/use-students";
 import { useTracedRoute } from "@/features/students/hooks/use-traced-route";
 import { STUDENT_SEX_LABEL } from "@/features/students/labels";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
+import { useMyLocation } from "@/hooks/use-my-location";
 
 const QUICK_REGISTER_INITIAL_STATE: QuickRegisterSchoolInput = {
   nomeOficial: "",
@@ -57,6 +58,11 @@ const INITIAL_STATE: CreateStudentInput = {
   desembarqueEstado: "",
 };
 
+/** Distância legível (m/km) até uma sugestão de escola — `distanciaKm` já vem calculado pelo backend, nunca recalculado aqui. */
+function formatarDistanciaKm(distanciaKm: number): string {
+  return distanciaKm >= 1 ? `${distanciaKm.toFixed(1)} km` : `${Math.round(distanciaKm * 1000)} m`;
+}
+
 /** Legenda curta da rota traçada (distância + tempo estimado, ambos calculados pelo OSRM — nunca inventados no front). */
 function formatRouteSummary(
   distanciaMetros: number | null,
@@ -76,10 +82,19 @@ function formatRouteSummary(
  * gap descoberto nesta entrega: até agora nenhuma UI (web/mobile/admin)
  * chamava `studentsApi.create`, então esta era, na prática, a única
  * peça que faltava para o Responsável conseguir usar a Rotta do zero.
- * Escola escolhida por busca (catálogo compartilhado, `useSchoolsList`
- * — mesmo endpoint da tela `/escolas`, aqui só leitura). Endereço de
- * desembarque pode ser copiado do de embarque com um clique (caso mais
- * comum: volta pro mesmo endereço que saiu).
+ * Endereço de desembarque pode ser copiado do de embarque com um clique
+ * (caso mais comum: volta pro mesmo endereço que saiu).
+ *
+ * Escola escolhida por autocomplete tolerante a erro de digitação
+ * (`useSuggestSchools`, pedido do usuário: "mesmo escrevendo errado...
+ * vai dar uma sugestão de escola baseada no nome e localização") — troca
+ * de `useSchoolsList` (substring exato) pra `GET /schools/sugestoes`
+ * (distância de edição + proximidade). A "localização do transporte" é
+ * a posição aproximada do próprio navegador (`useMyLocation`,
+ * `enableHighAccuracy: false`) — pedido do usuário: "podendo ser
+ * aproximada ou exata, deixa o agente de IA fazer esse trabalho". Sem
+ * permissão de geolocalização, a busca continua funcionando, só sem
+ * ordenar por proximidade (nunca bloqueia o cadastro).
  */
 export default function NovoAlunoPage(): JSX.Element {
   const router = useRouter();
@@ -90,9 +105,12 @@ export default function NovoAlunoPage(): JSX.Element {
 
   const [schoolSearch, setSchoolSearch] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
-  const { data: schoolResults, isLoading: isSearchingSchools } = useSchoolsList({
-    search: schoolSearch || undefined,
-    pageSize: 5,
+  const minhaLocalizacao = useMyLocation(schoolSearch.trim().length >= 2);
+  const { data: schoolResults, isLoading: isSearchingSchools } = useSuggestSchools({
+    q: schoolSearch,
+    latitude: minhaLocalizacao.location?.latitude,
+    longitude: minhaLocalizacao.location?.longitude,
+    limit: 5,
   });
 
   // Autocadastro rápido de escola (pedido do usuário: "não aparece
@@ -433,6 +451,20 @@ export default function NovoAlunoPage(): JSX.Element {
                           >
                             <span>
                               {school.nomeOficial}, {school.cidade}/{school.estado}
+                              {/*
+                                Distância até a localização aproximada do
+                                navegador — só aparece quando o Responsável
+                                permitiu geolocalização E a escola já tem
+                                coordenada confirmada; nunca uma estimativa
+                                inventada (`distanciaKm` vem calculado pelo
+                                backend, `SchoolsService.sugerirEscolas`).
+                              */}
+                              {school.distanciaKm !== null && school.distanciaKm !== undefined && (
+                                <span className="text-text-muted">
+                                  {" "}
+                                  · {formatarDistanciaKm(school.distanciaKm)}
+                                </span>
+                              )}
                             </span>
                             <Check className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100" />
                           </button>

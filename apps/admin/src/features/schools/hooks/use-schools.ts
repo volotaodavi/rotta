@@ -66,13 +66,28 @@ export function useUpdateSchoolStatus(id: string) {
  * vez em produção, o catálogo `School` (compartilhado, sem
  * `companyId`) fica vazio pra toda a plataforma: nenhuma empresa
  * consegue vincular aluno a escola nem ver nada no mapa de Escolas.
- * `onSuccess` NÃO invalida a lista — o job só foi publicado na fila
- * (202 Accepted), o resultado real (quantas escolas entraram) aparece
- * minutos depois, só nos logs do "worker" hoje (ver comentário de
- * `GeoController.sincronizarInep`).
+ * `onSuccess` NÃO invalida nada diretamente — o job só foi publicado na
+ * fila (202 Accepted); `useInepSyncStatus` abaixo, com `refetchInterval`
+ * próprio, é quem detecta quando o worker termina.
  */
 export function useSyncInep() {
   return useMutation({
     mutationFn: (ano: number) => geoApi.syncInep(ano),
+  });
+}
+
+/**
+ * Última execução da sincronização INEP (sucesso ou falha) — fecha o
+ * gap "o resultado não aparece aqui ainda, só nos logs do servidor"
+ * (comentário antigo de `(admin)/escolas/page.tsx`). `refetchInterval`
+ * curto só enquanto a tela estiver aberta (React Query já pausa fora de
+ * foco) — nunca faz sentido um polling agressivo pra algo que muda no
+ * máximo uma vez por clique/mês.
+ */
+export function useInepSyncStatus() {
+  return useQuery({
+    queryKey: ["schools", "inep-sync-status"],
+    queryFn: () => geoApi.getInepSyncStatus(),
+    refetchInterval: 15000,
   });
 }

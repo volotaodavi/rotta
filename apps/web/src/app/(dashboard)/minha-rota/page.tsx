@@ -31,16 +31,12 @@ import {
   useStartTrip,
   useTodayTrip,
 } from "@/features/driver/hooks/use-driver-trip";
-import {
-  useMyLocation,
-  type MyLocation,
-  type MyLocationStatus,
-} from "@/features/driver/hooks/use-my-location";
 import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-reporting";
 import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
 import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
+import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",

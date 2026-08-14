@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 
 import { SchoolsService } from "../schools.service";
 
@@ -118,6 +119,7 @@ describe("SchoolsService", () => {
       update: jest.fn(),
       list: jest.fn(),
       listAllActive: jest.fn(),
+      searchCandidates: jest.fn(),
       nextCodigoInternoSequence: jest.fn(),
     };
     accessPointRepository = {
@@ -400,6 +402,78 @@ describe("SchoolsService", () => {
       schoolRepository.listAllActive.mockResolvedValue([buildSchool()]);
       await service.getDashboard(empresaActor, "outra-empresa");
       expect(schoolRepository.listAllActive).toHaveBeenCalledWith("company-1");
+    });
+  });
+
+  describe("sugerirEscolas", () => {
+    it('tolera erro de digitação no nome ("esola" ainda acha "Escola")', async () => {
+      schoolRepository.searchCandidates.mockResolvedValue([
+        buildSchool({ nomeOficial: "EMEF Professora Ana Souza" }),
+      ]);
+
+      const result = await service.sugerirEscolas({ q: "esola prof ana souza", limit: 6 });
+
+      expect(schoolRepository.searchCandidates).toHaveBeenCalledWith(
+        expect.arrayContaining(["esola", "prof", "ana", "souza"]),
+        expect.any(Number),
+      );
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.distanciaKm).toBeNull();
+    });
+
+    it("prioriza a escola mais perto quando os nomes são parecidos", async () => {
+      const perto = buildSchool({
+        id: "school-perto",
+        nomeOficial: "EMEF Dom Pedro",
+        latitude: new Prisma.Decimal(-23.5),
+        longitude: new Prisma.Decimal(-46.6),
+      });
+      const longe = buildSchool({
+        id: "school-longe",
+        nomeOficial: "EMEF Dom Pedro",
+        latitude: new Prisma.Decimal(-3.7),
+        longitude: new Prisma.Decimal(-38.5),
+      });
+      schoolRepository.searchCandidates.mockResolvedValue([longe, perto]);
+
+      const result = await service.sugerirEscolas({
+        q: "dom pedro",
+        latitude: -23.5,
+        longitude: -46.6,
+        limit: 6,
+      });
+
+      expect(result.items[0]?.id).toBe("school-perto");
+      expect(result.items[0]?.distanciaKm).toBeCloseTo(0, 1);
+      expect(result.items[1]?.distanciaKm).toBeGreaterThan(1000);
+    });
+
+    it("nunca esconde uma escola sem coordenada — distanciaKm fica null em vez de excluir", async () => {
+      schoolRepository.searchCandidates.mockResolvedValue([
+        buildSchool({ latitude: null, longitude: null }),
+      ]);
+
+      const result = await service.sugerirEscolas({
+        q: "ana souza",
+        latitude: -23.5,
+        longitude: -46.6,
+        limit: 6,
+      });
+
+      expect(result.items).toHaveLength(1);
+      expect(result.items[0]?.distanciaKm).toBeNull();
+    });
+
+    it("respeita o limite pedido", async () => {
+      schoolRepository.searchCandidates.mockResolvedValue([
+        buildSchool({ id: "school-1", nomeOficial: "Escola A" }),
+        buildSchool({ id: "school-2", nomeOficial: "Escola B" }),
+        buildSchool({ id: "school-3", nomeOficial: "Escola C" }),
+      ]);
+
+      const result = await service.sugerirEscolas({ q: "escola", limit: 2 });
+
+      expect(result.items).toHaveLength(2);
     });
   });
 

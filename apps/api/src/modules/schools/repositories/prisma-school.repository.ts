@@ -103,6 +103,29 @@ export class PrismaSchoolRepository implements SchoolRepository {
     return { items, total };
   }
 
+  /**
+   * `tokens` já vêm normalizados/tokenizados pelo chamador
+   * (`school-fuzzy-search.util.ts`) — cada um vira um `contains`
+   * `insensitive` OR'd contra `nomeOficial`/`nomeFantasia`. Deliberadamente
+   * mais permissivo que `list({ search })`: um único token batendo já
+   * inclui a escola no conjunto de candidatas (a REORDENAÇÃO por
+   * similaridade, feita depois em memória, é quem decide o que sobe pro
+   * topo — este método só evita escanear a tabela inteira).
+   */
+  searchCandidates(tokens: string[], limit: number): Promise<School[]> {
+    if (tokens.length === 0) return Promise.resolve([]);
+    return this.prisma.school.findMany({
+      where: {
+        deletedAt: null,
+        OR: tokens.flatMap((token) => [
+          { nomeOficial: { contains: token, mode: "insensitive" as const } },
+          { nomeFantasia: { contains: token, mode: "insensitive" as const } },
+        ]),
+      },
+      take: limit,
+    });
+  }
+
   listAllActive(companyId?: string): Promise<School[]> {
     const where: Prisma.SchoolWhereInput = {
       deletedAt: null,

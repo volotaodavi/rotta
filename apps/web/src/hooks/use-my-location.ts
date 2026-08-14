@@ -10,21 +10,26 @@ export interface MyLocation {
 export type MyLocationStatus = "idle" | "requesting" | "available" | "denied" | "error";
 
 /**
- * Posição atual do próprio telefone — puramente pra ORIENTAÇÃO visual
- * no mapa (nunca enviada ao servidor; isso é `useTripGpsReporting`,
- * hook separado, só ligado com viagem `EM_ANDAMENTO`). Existe porque
- * "Minha Rota" deve mostrar um mapa mesmo sem nenhuma rota atribuída
- * ainda, ou antes das paradas carregarem — pedido do usuário em
- * produção: "deve aparecer mesmo sem estar em uma rota, baseada na
- * localização do próprio telefone, pelo menos para visualização",
- * válido pra autônomo, MEI, motorista e monitor (todos passam por esta
- * mesma página, Frente G/H).
+ * Posição atual do próprio telefone/navegador — puramente pra
+ * ORIENTAÇÃO visual (nunca enviada ao servidor; isso é
+ * `useTripGpsReporting`, hook separado, só ligado com viagem
+ * `EM_ANDAMENTO`). Compartilhado entre duas frentes (por isso mora em
+ * `@/hooks`, não em `features/driver`, onde nasceu):
  *
- * `enableHighAccuracy: false` — de propósito, diferente do GPS de
- * viagem: aqui é só "onde eu estou, mais ou menos", não rastreamento
- * preciso pros responsáveis. `watchPosition` (não uma leitura única)
- * pra o mapa acompanhar se a pessoa se mover antes de iniciar a
- * viagem, sem exigir recarregar a página.
+ *  - "Minha Rota" (motorista/monitor/autônomo/MEI) — mostra um mapa
+ *    mesmo sem nenhuma rota atribuída ainda, ou antes das paradas
+ *    carregarem (Frente G/H, pedido do usuário em produção: "deve
+ *    aparecer mesmo sem estar em uma rota, baseada na localização do
+ *    próprio telefone").
+ *  - Cadastro de aluno (`alunos/novo/page.tsx`, Frente U) — sinal de
+ *    "localização aproximada do transporte" pra ordenar as sugestões de
+ *    escola por proximidade (pedido do usuário: "podendo ser aproximada
+ *    ou exata, deixa o agente de IA fazer esse trabalho").
+ *
+ * `enableHighAccuracy: false` de propósito nos dois casos — nunca
+ * rastreamento preciso, só "onde eu estou, mais ou menos".
+ * `watchPosition` (não uma leitura única) pra acompanhar se a pessoa se
+ * mover, sem exigir recarregar a página.
  */
 export function useMyLocation(enabled: boolean): {
   location: MyLocation | null;

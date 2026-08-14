@@ -73,6 +73,27 @@ export interface QuickRegisterSchoolInput {
   estado: string;
 }
 
+/** Resumo de uma rodada da sincronização INEP — mesmo formato de `InepSyncResumo` (backend). */
+export interface InepSyncResumo {
+  ano: number;
+  totalLinhas: number;
+  novas: number;
+  atualizadas: number;
+  inalteradas: number;
+  ignoradas: number;
+  enfileiradasParaGeocodificacao: number;
+  erros: { codigoInep?: string; mensagem: string }[];
+}
+
+/** `GET /geo/inep-sync/status` — última execução (sucesso ou falha) registrada neste ambiente. */
+export interface InepSyncStatus {
+  ano: number;
+  executadoEm: string;
+  sucesso: boolean;
+  resumo?: InepSyncResumo;
+  erro?: string;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -112,6 +133,10 @@ export function createGeoEndpoints(apiClient: ApiClient) {
           { method: "POST" },
         )
       ).data,
+
+    /** Última execução da sincronização INEP (sucesso ou falha) — `null` se nunca rodou neste ambiente. */
+    getInepSyncStatus: async (): Promise<InepSyncStatus | null> =>
+      (await apiClient.request<ApiEnvelope<InepSyncStatus | null>>("/geo/inep-sync/status")).data,
 
     /**
      * Endereço em texto livre → coordenada (Nominatim). Usado pelo

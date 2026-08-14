@@ -8,6 +8,7 @@ import type {
   ListSchoolsParams,
   QuickRegisterSchoolInput,
   SchoolStatus,
+  SuggestSchoolsParams,
   UpdateSchoolAccessPointInput,
   UpdateSchoolInput,
 } from "@rotta/api-client";
@@ -24,6 +25,23 @@ export function useSchoolsList(params: ListSchoolsParams) {
   return useQuery({
     queryKey: ["schools", params],
     queryFn: () => schoolsApi.list(params),
+  });
+}
+
+/**
+ * Autocomplete de escola tolerante a erro de digitação, com sugestão por
+ * proximidade (pedido do usuário: "mesmo escrevendo errado... vai dar
+ * uma sugestão de escola baseada no nome e localização") — usado pelo
+ * cadastro de Aluno (`alunos/novo/page.tsx`) em vez de `useSchoolsList`
+ * na caixa de busca. `enabled` só liga com 2+ caracteres (mesmo limite
+ * do backend, `SuggestSchoolsQueryDto.q`), evitando uma sugestão vazia
+ * ("qualquer coisa parece com tudo") logo na primeira letra.
+ */
+export function useSuggestSchools(params: SuggestSchoolsParams) {
+  return useQuery({
+    queryKey: ["schools", "sugestoes", params],
+    queryFn: () => schoolsApi.sugerir(params),
+    enabled: params.q.trim().length >= 2,
   });
 }
 

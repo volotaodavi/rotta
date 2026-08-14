@@ -50,3 +50,16 @@ export class ListSchoolsResponseDto {
   @ApiProperty() page!: number;
   @ApiProperty() pageSize!: number;
 }
+
+/** Uma sugestão do autocomplete tolerante a erro de digitação (`GET /schools/sugestoes`). */
+export class SchoolSuggestionResponseDto extends SchoolResponseDto {
+  @ApiPropertyOptional({
+    description:
+      "Distância em km até a latitude/longitude informada na busca — null quando a busca não informou localização ou a escola ainda não tem coordenada confirmada.",
+  })
+  distanciaKm?: number | null;
+}
+
+export class SuggestSchoolsResponseDto {
+  @ApiProperty({ type: [SchoolSuggestionResponseDto] }) items!: SchoolSuggestionResponseDto[];
+}

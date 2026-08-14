@@ -24,6 +24,7 @@ import { CreateSchoolDto } from "./dto/create-school.dto";
 import { ExportSchoolsQueryDto } from "./dto/export-schools-query.dto";
 import { ImportSchoolsDto } from "./dto/import-schools.dto";
 import { ListSchoolsQueryDto } from "./dto/list-schools-query.dto";
+import { SuggestSchoolsQueryDto } from "./dto/suggest-schools-query.dto";
 import { UpdateSchoolAccessPointDto } from "./dto/update-school-access-point.dto";
 import { UpdateSchoolStatusDto } from "./dto/update-school-status.dto";
 import { UpdateSchoolDto } from "./dto/update-school.dto";
@@ -67,6 +68,19 @@ export class SchoolsController {
   @Roles(...READ_ROLES)
   list(@Query() query: ListSchoolsQueryDto, @CurrentUser() actor: AuthenticatedUser) {
     return this.schoolsService.list(query, actor);
+  }
+
+  /**
+   * Autocomplete de escola pro Responsável (pedido do usuário: "mesmo
+   * escrevendo errado... vai dar uma sugestão de escola baseada no nome
+   * e localização") — mesmas `READ_ROLES` de `list()` (o Responsável já
+   * podia ler o catálogo, só a busca por nome não era tolerante a erro
+   * de digitação nem sabia usar a localização).
+   */
+  @Get("sugestoes")
+  @Roles(...READ_ROLES)
+  sugerirEscolas(@Query() query: SuggestSchoolsQueryDto) {
+    return this.schoolsService.sugerirEscolas(query);
   }
 
   @Get("check-duplicates")

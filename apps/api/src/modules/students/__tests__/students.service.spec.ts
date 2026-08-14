@@ -189,6 +189,7 @@ describe("StudentsService", () => {
       update: jest.fn(),
       list: jest.fn(),
       listAllActive: jest.fn(),
+      searchCandidates: jest.fn(),
       nextCodigoInternoSequence: jest.fn(),
     };
 

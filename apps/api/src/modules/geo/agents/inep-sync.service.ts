@@ -7,6 +7,7 @@ import { mapInepRowToSchoolData } from "../inep/inep-row.mapper";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School } from "@prisma/client";
 
+import { RedisService } from "@/infra/cache/redis.service";
 import { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import { parseCsvRows } from "@/modules/schools/school-import.util";
 import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
@@ -24,6 +25,24 @@ export interface InepSyncResumo {
   enfileiradasParaGeocodificacao: number;
   erros: { codigoInep?: string; mensagem: string }[];
 }
+
+/**
+ * Última execução (sucesso ou falha) — persistida no Redis, sem TTL
+ * (mesmo padrão de `WEBHOOK_SECRET_KEY` da Didit: estado durável, só
+ * some se alguém apagar). Fecha o gap admitido no comentário antigo do
+ * `GeoController.sincronizarInep` ("o resultado... fica só nos logs do
+ * worker — não há hoje uma tela de acompanhamento") — `GET
+ * /geo/inep-sync/status` lê exatamente isto.
+ */
+export interface InepSyncStatus {
+  ano: number;
+  executadoEm: string;
+  sucesso: boolean;
+  resumo?: InepSyncResumo;
+  erro?: string;
+}
+
+const STATUS_KEY = "geo:inep-sync:status";
 
 /**
  * Education Sync Agent (briefing "ROTTA GEO PLATFORM" §"AGENTES DE IA"
@@ -66,6 +85,7 @@ export class InepSyncService {
     @Inject(SCHOOL_REPOSITORY)
     private readonly schoolRepository: SchoolRepository,
     private readonly qstashPublisher: QstashPublisherService,
+    private readonly redis: RedisService,
   ) {}
 
   private async downloadCensoZip(ano: number): Promise<Buffer> {
@@ -107,11 +127,51 @@ export class InepSyncService {
     return entry.getData().toString("latin1");
   }
 
-  /** Sincronização real, a partir do download oficial do INEP para o ano informado. */
+  /**
+   * Sincronização real, a partir do download oficial do INEP para o ano
+   * informado. Registra o resultado (sucesso ou falha) em
+   * `getStatus()` antes de retornar/relançar — nunca engole o erro
+   * (ainda propaga pro QStash tentar de novo), só grava um retrato do
+   * que aconteceu pra alguém sem acesso aos logs do servidor conseguir
+   * ver.
+   */
   async sincronizar(ano: number): Promise<InepSyncResumo> {
-    const zipBuffer = await this.downloadCensoZip(ano);
-    const csv = this.extractSchoolsCsv(zipBuffer);
-    return this.sincronizarDeCsv(ano, csv);
+    try {
+      const zipBuffer = await this.downloadCensoZip(ano);
+      const csv = this.extractSchoolsCsv(zipBuffer);
+      const resumo = await this.sincronizarDeCsv(ano, csv);
+      await this.registrarStatus({
+        ano,
+        executadoEm: new Date().toISOString(),
+        sucesso: true,
+        resumo,
+      });
+      return resumo;
+    } catch (error) {
+      await this.registrarStatus({
+        ano,
+        executadoEm: new Date().toISOString(),
+        sucesso: false,
+        erro: error instanceof Error ? error.message : "Erro desconhecido.",
+      });
+      throw error;
+    }
+  }
+
+  /** Nunca lança — uma falha ao registrar o status (Redis indisponível) não pode mascarar o resultado real da sincronização. */
+  private async registrarStatus(status: InepSyncStatus): Promise<void> {
+    try {
+      await this.redis.set(STATUS_KEY, status);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao registrar status da sincronização INEP no Redis: ${error instanceof Error ? error.message : "erro desconhecido"}`,
+      );
+    }
+  }
+
+  /** Última execução registrada (sucesso ou falha) — `null` se a sincronização nunca rodou neste ambiente. */
+  async getStatus(): Promise<InepSyncStatus | null> {
+    return this.redis.get<InepSyncStatus>(STATUS_KEY);
   }
 
   /**

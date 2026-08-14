@@ -6,8 +6,8 @@ import {
   PointAnnotation,
   ShapeSource,
 } from "@maplibre/maplibre-react-native";
-import { useRef } from "react";
-import { StyleSheet, View } from "react-native";
+import { useEffect, useRef } from "react";
+import { Animated, Easing, StyleSheet, View } from "react-native";
 
 import type { RottaMapProps } from "../types";
 import type { MapViewRef } from "@maplibre/maplibre-react-native";
@@ -42,6 +42,49 @@ const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
 const DEFAULT_ROUTE_COLOR = "#3b6ef6";
+
+/**
+ * Anel de pulso do marcador de veículo (`marker.emMovimento`) — pedido
+ * do usuário: "o veículo deve ter a funcionalidade de ficar em
+ * movimento" (o círculo + símbolo de veículo em si já existia; isto
+ * deixa visualmente óbvio que a posição está viva/atualizando, mesmo
+ * padrão "ponto pulsante" de apps de rastreamento). `Animated.loop` com
+ * `useNativeDriver: true` (só `scale`/`opacity`, animação roda na
+ * thread nativa, nunca trava a UI). Mesma linguagem visual do anel CSS
+ * da web (`vehicle-icon.ts`), só que com `Animated.View` puro — este
+ * pacote deliberadamente não depende de `react-native-svg`.
+ */
+function VehiclePulseRing(): JSX.Element {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(progress, {
+        toValue: 1,
+        duration: 2000,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [progress]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        styles.vehiclePulseRing,
+        {
+          opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0] }),
+          transform: [
+            { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 1.8] }) },
+          ],
+        },
+      ]}
+    />
+  );
+}
 
 /**
  * `<RottaMap />` (mobile/native) — único componente do app que importa
@@ -121,10 +164,13 @@ export function RottaMap({
             onSelected={() => onMarkerPress?.(marker)}
           >
             {marker.emMovimento ? (
-              <View style={styles.vehicleMarker}>
-                <View style={styles.vehicleMarkerBody}>
-                  <View style={styles.vehicleMarkerWindow} />
-                  <View style={styles.vehicleMarkerWindow} />
+              <View style={styles.vehicleMarkerWrap}>
+                <VehiclePulseRing />
+                <View style={styles.vehicleMarker}>
+                  <View style={styles.vehicleMarkerBody}>
+                    <View style={styles.vehicleMarkerWindow} />
+                    <View style={styles.vehicleMarkerWindow} />
+                  </View>
                 </View>
               </View>
             ) : (
@@ -161,6 +207,18 @@ const styles = StyleSheet.create({
     borderColor: "#ffffff",
     alignItems: "center",
     justifyContent: "center",
+  },
+  // Container maior que o círculo do veículo (52 = 28 * 1.8, o `scale`
+  // máximo de `VehiclePulseRing`) — o `PointAnnotation` centraliza a
+  // coordenada no meio desta `View`, então o anel cresce simetricamente
+  // sem deslocar a posição real do veículo no mapa.
+  vehicleMarkerWrap: { alignItems: "center", height: 52, justifyContent: "center", width: 52 },
+  vehiclePulseRing: {
+    backgroundColor: "#2563eb",
+    borderRadius: 14,
+    height: 28,
+    position: "absolute",
+    width: 28,
   },
   vehicleMarkerBody: {
     width: 14,

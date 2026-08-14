@@ -8,11 +8,21 @@ import type { ListSchoolsParams, School, SchoolStatus, SchoolType } from "@rotta
 
 import { SchoolStatusBadge } from "@/features/schools/components/school-status-badge";
 import {
+  useInepSyncStatus,
   useSchoolDashboard,
   useSchoolsList,
   useSyncInep,
 } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
+
+/** Legenda curta de quando a última sincronização rodou — "há poucos segundos" é mais legível que um timestamp cru enquanto o worker ainda está rodando. */
+function formatarQuandoRodou(iso: string): string {
+  const segundos = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
+  if (segundos < 60) return "há poucos segundos";
+  const minutos = Math.round(segundos / 60);
+  if (minutos < 60) return `há ${minutos} min`;
+  return new Date(iso).toLocaleString("pt-BR");
+}
 
 /** Censo Escolar (INEP) publica dados do ano anterior — mesmo default de `InepSyncSchedulerService`. */
 const ANO_PADRAO_CENSO = new Date().getFullYear() - 1;
@@ -37,6 +47,7 @@ export default function EscolasAdminPage(): JSX.Element {
   const pageSize = 20;
 
   const syncInep = useSyncInep();
+  const { data: inepStatus } = useInepSyncStatus();
 
   const params: ListSchoolsParams = {
     search: search || undefined,
@@ -72,7 +83,8 @@ export default function EscolasAdminPage(): JSX.Element {
             </Typography>
             <Typography variant="caption" color="muted">
               Importa/atualiza o catálogo nacional de escolas. Roda em segundo plano — o resultado
-              (quantas escolas entraram) não aparece aqui ainda, só nos logs do servidor.
+              aparece abaixo automaticamente assim que o worker terminar (atualiza sozinho a cada
+              15s).
             </Typography>
           </div>
           <div className="flex items-center gap-2">
@@ -97,7 +109,7 @@ export default function EscolasAdminPage(): JSX.Element {
           <Card.Body className="pt-0">
             <Typography variant="bodySmall" color="success">
               Sincronização de {syncInep.data.ano} publicada na fila (mensagem{" "}
-              {syncInep.data.messageId}). Volte em alguns minutos e atualize esta página.
+              {syncInep.data.messageId}).
             </Typography>
           </Card.Body>
         )}
@@ -108,6 +120,34 @@ export default function EscolasAdminPage(): JSX.Element {
             </Typography>
           </Card.Body>
         )}
+        {/*
+          Status da ÚLTIMA execução (`GET /geo/inep-sync/status`) — nunca
+          confundir com o `syncInep.isSuccess` acima: aquele confirma só
+          que o job foi PUBLICADO na fila; isto mostra o resultado real
+          depois que o worker rodou (pode ser de um clique anterior, ou
+          do cron automático — `useInepSyncStatus` faz polling sozinho).
+        */}
+        {inepStatus === null ? (
+          <Card.Body className="pt-0">
+            <Typography variant="caption" color="muted">
+              Nenhuma sincronização registrada neste ambiente ainda.
+            </Typography>
+          </Card.Body>
+        ) : inepStatus ? (
+          <Card.Body className="flex flex-col gap-1 pt-0">
+            <Typography variant="bodySmall" color={inepStatus.sucesso ? "success" : "danger"}>
+              Última sincronização (Censo {inepStatus.ano},{" "}
+              {formatarQuandoRodou(inepStatus.executadoEm)}):{" "}
+              {inepStatus.sucesso
+                ? `${inepStatus.resumo?.novas ?? 0} novas, ${inepStatus.resumo?.atualizadas ?? 0} atualizadas, ${inepStatus.resumo?.inalteradas ?? 0} inalteradas${
+                    inepStatus.resumo && inepStatus.resumo.erros.length > 0
+                      ? `, ${inepStatus.resumo.erros.length} erros de linha`
+                      : ""
+                  }.`
+                : `falhou — ${inepStatus.erro}`}
+            </Typography>
+          </Card.Body>
+        ) : null}
       </Card>
 
       {dashboard && (

@@ -15,6 +15,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
+import { InepSyncService } from "./agents/inep-sync.service";
 import { MapIntelligenceService } from "./agents/map-intelligence.service";
 import { GeocodeAddressDto } from "./dto/geocode-address.dto";
 import { ListMapMarkersQueryDto } from "./dto/list-map-markers-query.dto";
@@ -65,6 +66,7 @@ export class GeoController {
     @Inject(SCHOOL_COORDINATE_REPOSITORY)
     private readonly coordinateRepository: SchoolCoordinateRepository,
     private readonly qstashPublisher: QstashPublisherService,
+    private readonly inepSync: InepSyncService,
   ) {}
 
   @Post("schools/:schoolId/geocode")
@@ -96,8 +98,8 @@ export class GeoController {
    * (INEP/MEC) do ano informado via QStash (`GeoQueueController.inepSyncJob`)
    * e responde `202 Accepted` imediatamente: o download+parse+diff de
    * ~200 mil linhas nunca cabe dentro do tempo de uma requisição HTTP
-   * síncrona. O resultado (`InepSyncResumo`) fica só nos logs do
-   * "worker" — não há hoje uma tela de acompanhamento.
+   * síncrona. O resultado (`InepSyncResumo`) fica registrado — ver
+   * `GET inep-sync/status` logo abaixo — nunca só nos logs do "worker".
    */
   @Post("inep-sync")
   @Roles(...SYNC_ROLES)
@@ -109,6 +111,20 @@ export class GeoController {
       { retries: 3, flowControlKey: INEP_SYNC_QUEUE, flowControlParallelism: 1 },
     );
     return { messageId, ano };
+  }
+
+  /**
+   * Última execução da sincronização INEP (sucesso ou falha) — fecha o
+   * gap descrito acima: antes de existir, o resultado do `POST
+   * inep-sync` só aparecia nos logs do servidor, então ninguém sem
+   * acesso ao Render sabia se a sincronização tinha funcionado. `null`
+   * quando a sincronização nunca rodou neste ambiente (nem manual, nem
+   * pelo cron automático).
+   */
+  @Get("inep-sync/status")
+  @Roles(...SYNC_ROLES)
+  getInepSyncStatus() {
+    return this.inepSync.getStatus();
   }
 
   /** Map Intelligence Agent — marcadores de Escola dentro da janela visível do mapa. */

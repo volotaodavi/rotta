@@ -1,8 +1,10 @@
 import { BadGatewayException } from "@nestjs/common";
+import AdmZip from "adm-zip";
 
 import { InepSyncService } from "../agents/inep-sync.service";
 import { INEP_COLUMNS } from "../inep/inep-row.mapper";
 
+import type { RedisService } from "@/infra/cache/redis.service";
 import type { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School } from "@prisma/client";
@@ -95,8 +97,15 @@ describe("InepSyncService", () => {
       publishBatchJSON: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<QstashPublisherService>;
 
-    const service = new InepSyncService(schoolRepository, qstashPublisher);
-    return { service, schoolRepository, qstashPublisher };
+    const redis = {
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue(undefined),
+      invalidate: jest.fn(),
+      getOrSet: jest.fn(),
+    } as unknown as jest.Mocked<RedisService>;
+
+    const service = new InepSyncService(schoolRepository, qstashPublisher, redis);
+    return { service, schoolRepository, qstashPublisher, redis };
   }
 
   describe("sincronizarDeCsv", () => {
@@ -226,6 +235,51 @@ describe("InepSyncService", () => {
       global.fetch = jest.fn().mockRejectedValue(new Error("network unreachable"));
 
       await expect(service.sincronizar(2024)).rejects.toThrow(BadGatewayException);
+    });
+
+    it("registra sucesso no Redis (getStatus) quando a sincronização termina bem", async () => {
+      const { service, redis } = buildService();
+      const zip = new AdmZip();
+      zip.addFile("escolas.csv", Buffer.from(buildCsv([buildInepRow()]), "latin1"));
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        arrayBuffer: () => Promise.resolve(zip.toBuffer()),
+      });
+
+      const resumo = await service.sincronizar(2024);
+
+      expect(resumo.novas).toBe(1);
+      expect(redis.set).toHaveBeenCalledWith(
+        "geo:inep-sync:status",
+        expect.objectContaining({ ano: 2024, sucesso: true, resumo }),
+      );
+    });
+
+    it("registra a falha no Redis (getStatus) sem deixar de relançar o erro", async () => {
+      const { service, redis } = buildService();
+      global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503 });
+
+      await expect(service.sincronizar(2024)).rejects.toThrow(BadGatewayException);
+      expect(redis.set).toHaveBeenCalledWith(
+        "geo:inep-sync:status",
+        expect.objectContaining({ ano: 2024, sucesso: false }),
+      );
+    });
+  });
+
+  describe("getStatus", () => {
+    it("devolve o último status salvo no Redis", async () => {
+      const { service, redis } = buildService();
+      const status = { ano: 2024, executadoEm: "2024-01-01T00:00:00.000Z", sucesso: true };
+      (redis.get as jest.Mock).mockResolvedValue(status);
+
+      await expect(service.getStatus()).resolves.toEqual(status);
+    });
+
+    it("devolve null quando a sincronização nunca rodou neste ambiente", async () => {
+      const { service } = buildService();
+
+      await expect(service.getStatus()).resolves.toBeNull();
     });
   });
 });

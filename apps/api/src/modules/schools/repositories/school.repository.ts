@@ -80,5 +80,15 @@ export interface SchoolRepository {
   list(filter: ListSchoolsFilter): Promise<ListSchoolsResult>;
   /** Todas as escolas ativas (para dashboard/mapa) — opcionalmente escopadas a uma Empresa via vínculo vigente. */
   listAllActive(companyId?: string): Promise<School[]>;
+  /**
+   * Candidatas a sugestão de autocomplete (`SchoolsService.sugerirEscolas`)
+   * — filtro AMPLO no banco (qualquer `token` batendo como substring do
+   * nome, nunca a string inteira), pra depois `school-fuzzy-search.util.ts`
+   * reordenar por similaridade de verdade em memória. Nunca a mesma coisa
+   * que `list({ search })`: aquele é usado por telas de gestão que
+   * digitam o nome certo; este é usado pelo autocomplete do Responsável,
+   * que pode digitar errado.
+   */
+  searchCandidates(tokens: string[], limit: number): Promise<School[]>;
   nextCodigoInternoSequence(): Promise<number>;
 }

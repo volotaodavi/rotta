@@ -14,8 +14,18 @@ import {
   toListSchoolCompanyLinksResponseDto,
   toSchoolCompanyLinkResponseDto,
 } from "./mappers/school-company-link.mapper";
-import { toListSchoolsResponseDto, toSchoolResponseDto } from "./mappers/school.mapper";
+import {
+  toListSchoolsResponseDto,
+  toSchoolResponseDto,
+  toSchoolSuggestionResponseDto,
+} from "./mappers/school.mapper";
 import { DUPLICATE_NAME_SIMILARITY_THRESHOLD, nameSimilarity } from "./school-duplicate.util";
+import {
+  combinedScore,
+  fuzzyNameSimilarity,
+  proximityScore,
+  tokenize,
+} from "./school-fuzzy-search.util";
 import {
   mapRowToCreateSchoolData,
   parseCsvRows,
@@ -39,7 +49,12 @@ import type {
   SchoolCompanyLinkResponseDto,
 } from "./dto/school-company-link-response.dto";
 import type { SchoolDashboardResponseDto } from "./dto/school-dashboard-response.dto";
-import type { ListSchoolsResponseDto, SchoolResponseDto } from "./dto/school-response.dto";
+import type {
+  ListSchoolsResponseDto,
+  SchoolResponseDto,
+  SuggestSchoolsResponseDto,
+} from "./dto/school-response.dto";
+import type { SuggestSchoolsQueryDto } from "./dto/suggest-schools-query.dto";
 import type { UpdateSchoolAccessPointDto } from "./dto/update-school-access-point.dto";
 import type { UpdateSchoolStatusDto } from "./dto/update-school-status.dto";
 import type { UpdateSchoolDto } from "./dto/update-school.dto";
@@ -63,11 +78,15 @@ import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { Role } from "@/shared/enums";
+import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 export interface RequestMeta {
   ip?: string;
   userAgent?: string;
 }
+
+/** Quantas candidatas o banco devolve pra `sugerirEscolas` reordenar em memória — pequeno o bastante pra nunca pesar, grande o bastante pra não perder a escola certa antes da reordenação por similaridade. */
+const SUGGESTION_CANDIDATE_LIMIT = 40;
 
 const ENTIDADE_TIPO = "School";
 
@@ -357,6 +376,53 @@ export class SchoolsService {
     });
 
     return toListSchoolsResponseDto(result, query.page, query.pageSize);
+  }
+
+  /**
+   * Autocomplete de escola do Responsável (pedido do usuário: "mesmo
+   * escrevendo errado... vai dar uma sugestão de escola baseada no nome e
+   * localização") — busca em duas fases (ver `school-fuzzy-search.util.ts`
+   * para o racional completo): um conjunto amplo de candidatas vem do
+   * banco por token, depois é reordenado aqui por similaridade de nome
+   * (tolerante a erro de digitação) e, quando `latitude`/`longitude` são
+   * informadas, por proximidade. Nunca filtra por distância — só
+   * desempata; uma escola longe com nome muito mais parecido ainda
+   * aparece antes de uma perto com nome bem diferente.
+   */
+  async sugerirEscolas(query: SuggestSchoolsQueryDto): Promise<SuggestSchoolsResponseDto> {
+    const tokens = tokenize(query.q);
+    const candidatas = await this.schoolRepository.searchCandidates(
+      tokens,
+      SUGGESTION_CANDIDATE_LIMIT,
+    );
+
+    const temLocalizacao = query.latitude !== undefined && query.longitude !== undefined;
+
+    const pontuadas = candidatas.map((school) => {
+      const nomeScore = fuzzyNameSimilarity(query.q, school.nomeOficial);
+      const distanciaKm =
+        temLocalizacao && school.latitude && school.longitude
+          ? haversineDistanceKm(
+              query.latitude!,
+              query.longitude!,
+              Number(school.latitude),
+              Number(school.longitude),
+            )
+          : null;
+      const proximidade = distanciaKm === null ? null : proximityScore(distanciaKm);
+      return {
+        school,
+        distanciaKm,
+        score: combinedScore(nomeScore, proximidade),
+      };
+    });
+
+    const ordenadas = pontuadas
+      .sort((a, b) => b.score - a.score)
+      .slice(0, query.limit)
+      .map(({ school, distanciaKm }) => toSchoolSuggestionResponseDto(school, distanciaKm));
+
+    return { items: ordenadas };
   }
 
   /** Detecção de duplicidade (briefing "ROTTA AI") — implementação real, não depende de provedor externo (ver `school-duplicate.util.ts`). */

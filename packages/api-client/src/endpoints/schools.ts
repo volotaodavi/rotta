@@ -106,6 +106,24 @@ export interface ListSchoolsResult {
   pageSize: number;
 }
 
+/** Uma sugestão do autocomplete tolerante a erro de digitação (`GET /schools/sugestoes`). */
+export interface SchoolSuggestion extends School {
+  /** km até a `latitude`/`longitude` informada na busca — `null` sem localização informada ou sem coordenada confirmada da escola. */
+  distanciaKm: number | null;
+}
+
+export interface SuggestSchoolsParams {
+  q: string;
+  /** Localização aproximada do Responsável/embarque — opcional, só reordena por proximidade, nunca filtra. */
+  latitude?: number;
+  longitude?: number;
+  limit?: number;
+}
+
+export interface SuggestSchoolsResult {
+  items: SchoolSuggestion[];
+}
+
 export interface SchoolDashboard {
   totalEscolas: number;
   escolasPublicas: number;
@@ -200,6 +218,14 @@ export function createSchoolsEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<ListSchoolsResult>>(
           `/schools${buildQueryString(params)}`,
+        )
+      ).data,
+
+    /** Autocomplete tolerante a erro de digitação, com sugestão por proximidade quando `latitude`/`longitude` são informadas. */
+    sugerir: async (params: SuggestSchoolsParams): Promise<SuggestSchoolsResult> =>
+      (
+        await apiClient.request<ApiEnvelope<SuggestSchoolsResult>>(
+          `/schools/sugestoes${buildQueryString(params)}`,
         )
       ).data,
 

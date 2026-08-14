@@ -1,4 +1,8 @@
-import type { ListSchoolsResponseDto, SchoolResponseDto } from "../dto/school-response.dto";
+import type {
+  ListSchoolsResponseDto,
+  SchoolResponseDto,
+  SchoolSuggestionResponseDto,
+} from "../dto/school-response.dto";
 import type { ListSchoolsResult } from "../repositories/school.repository";
 import type { School } from "@prisma/client";
 
@@ -35,6 +39,14 @@ export function toSchoolResponseDto(school: School): SchoolResponseDto {
     createdAt: school.createdAt,
     updatedAt: school.updatedAt,
   };
+}
+
+/** `distanciaKm` já vem calculado por `SchoolsService.sugerirEscolas` (nunca recalculado aqui). */
+export function toSchoolSuggestionResponseDto(
+  school: School,
+  distanciaKm: number | null,
+): SchoolSuggestionResponseDto {
+  return { ...toSchoolResponseDto(school), distanciaKm };
 }
 
 export function toListSchoolsResponseDto(
