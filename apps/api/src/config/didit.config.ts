@@ -1,5 +1,7 @@
 import { registerAs } from "@nestjs/config";
 
+import { normalizeApiPublicUrl } from "./api-public-url.util";
+
 export interface DiditConfig {
   apiKey: string | undefined;
   baseUrl: string;
@@ -7,7 +9,7 @@ export interface DiditConfig {
   webhookSecret: string | undefined;
   /** Workflow da sessão hospedada (`POST /v3/session/`) usada por `DiditService.createVerificationSession`. Config, não segredo — Didit docs: "Get a workflow_id from the console (Workflows)... store it in code/config". */
   workflowId: string;
-  /** URL pública desta implantação da API (mesma variável de `qstash.config.ts#apiPublicUrl`) — usada por `DiditWebhookProvisioningService` para montar a URL do destino de webhook (`${apiPublicUrl}/${API_PREFIX}/webhooks/didit`) e registrá-la sozinha na Didit. Sem ela, o auto-registro não roda (nada a montar) — o passo manual (Business Console) continua funcionando normalmente. */
+  /** URL pública desta implantação da API (mesma variável de `qstash.config.ts#apiPublicUrl`) — usada por `DiditWebhookProvisioningService` para montar a URL do destino de webhook (`${apiPublicUrl}/${API_PREFIX}/webhooks/didit`) e registrá-la sozinha na Didit. Sem ela, o auto-registro não roda (nada a montar) — o passo manual (Business Console) continua funcionando normalmente. Passa por `normalizeApiPublicUrl` antes de chegar aqui — bug real de produção encontrado via `didit_webhook_list`: um `/v1` colado a mais na env var virou `/v1/v1/webhooks/didit`, 100% de falha de entrega (ver comentário do util). */
   apiPublicUrl: string | undefined;
 }
 
@@ -48,5 +50,6 @@ export default registerAs("didit", (): DiditConfig => ({
   baseUrl: process.env.DIDIT_BASE_URL || DEFAULT_BASE_URL,
   webhookSecret: process.env.DIDIT_WEBHOOK_SECRET || undefined,
   workflowId: process.env.DIDIT_WORKFLOW_ID || DEFAULT_WORKFLOW_ID,
-  apiPublicUrl: process.env.API_PUBLIC_URL || undefined,
+  apiPublicUrl:
+    normalizeApiPublicUrl(process.env.API_PUBLIC_URL, process.env.API_PREFIX || "v1") || undefined,
 }));

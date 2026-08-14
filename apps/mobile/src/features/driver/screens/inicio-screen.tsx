@@ -1,9 +1,12 @@
 import { useAuth } from "@rotta/auth/native";
 import { Check, Clock, MapPin, Navigation, Pause, Square, UserX } from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
+import { buildNavigationUrl } from "@rotta/maps/navigation";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,7 +15,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 
 import { PanelGreeting } from "../components";
 import {
@@ -200,8 +202,16 @@ function MeuMapa({
  * de referência de app de mobilidade ("Track Rider"), com o motorista/
  * monitor vendo o PRÓPRIO progresso. Dado real (`NextEta`, tarefa #99)
  * — nunca uma estimativa inventada no app.
+ *
+ * "Navegar" (Frente S2, mesma decisão do Painel Web — pedido do
+ * usuário: "acha melhor integrar o Google Maps para navegação e GPS,
+ * enquanto o openstreet fica para os responsáveis") — `Linking.openURL`
+ * pro deep-link universal do Apple Maps (iOS) ou Google Maps (Android),
+ * com a coordenada real da próxima parada (`parada`, a mesma que já
+ * vira marcador no `RottaMap`). Sem custo, sem SDK de navegação
+ * embutido. Só aparece quando `parada` existe.
  */
-function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
+function ProximaParadaEtaCard({ eta, parada }: { eta: NextEta; parada?: RouteStop }): JSX.Element {
   const { theme } = useTheme();
   const horarioPrevisto = new Date(eta.etaPrevista).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
@@ -211,6 +221,17 @@ function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
     eta.distanciaMetros >= 1000
       ? `${(eta.distanciaMetros / 1000).toFixed(1)} km`
       : `${Math.round(eta.distanciaMetros)} m`;
+
+  function handleNavegar(): void {
+    if (!parada) return;
+    const app = Platform.OS === "ios" ? "apple" : "google";
+    const url = buildNavigationUrl({ latitude: parada.latitude, longitude: parada.longitude }, app);
+    Linking.openURL(url).catch(() => {
+      // Nenhum app de mapas instalado/URL recusada pelo SO — sem
+      // fallback silencioso: o toque simplesmente não faz nada visível,
+      // mesmo padrão "stub honesto" do resto da base (nunca finge êxito).
+    });
+  }
 
   return (
     <VehicleCard style={styles.etaCard}>
@@ -228,6 +249,16 @@ function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
         </View>
         <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{distancia}</Text>
       </View>
+      {parada ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Navegar até a próxima parada"
+          onPress={handleNavegar}
+          style={[styles.navegarButton, { backgroundColor: theme.colors.primaryMuted }]}
+        >
+          <Navigation size={16} color={theme.colors.primary} />
+        </Pressable>
+      ) : null}
     </VehicleCard>
   );
 }
@@ -293,6 +324,11 @@ function RotaOperacional({
   const minhaLocalizacao = useMyLocation(markers.length === 0);
   const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
   const proximaParada = proximasEtas?.[0];
+  // Coordenada real da próxima parada (mesma lista que já vira marcador
+  // no mapa acima) — alimenta o botão "Navegar" do cartão de ETA.
+  const proximaParadaStop = proximaParada
+    ? paradasOrdenadas.find((parada) => parada.id === proximaParada.routeStopId)
+    : undefined;
 
   // Botão "centralizar no meu GPS" (Frente Q, imagem de referência) —
   // `RottaMap` só lê `initialCenter`/faz fit de bounds na montagem,
@@ -419,7 +455,9 @@ function RotaOperacional({
               theme.elevation.modal.native,
             ]}
           >
-            {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
+            {proximaParada ? (
+              <ProximaParadaEtaCard eta={proximaParada} parada={proximaParadaStop} />
+            ) : null}
 
             {isLoadingTrip ? (
               <ActivityIndicator color={theme.colors.primary} />
@@ -665,6 +703,13 @@ const styles = StyleSheet.create({
     gap: 8,
     justifyContent: "center",
     padding: 16,
+  },
+  navegarButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
   },
   opScreen: { flex: 1 },
   opScrollContent: { flexGrow: 1 },

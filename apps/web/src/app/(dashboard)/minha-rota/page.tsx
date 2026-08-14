@@ -2,6 +2,7 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Check, Clock, MapPin, Navigation, Pause, Square, UserX } from "@rotta/icons";
+import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, PanelGreeting, Spinner, Typography } from "@rotta/ui/web";
 import { useEffect, useMemo, useState } from "react";
@@ -40,7 +41,6 @@ import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
 import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
-
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -237,8 +237,17 @@ function MeuMapa({
  * vista durante o trajeto), só que aqui é o motorista/monitor vendo o
  * PRÓPRIO progresso, não um responsável acompanhando de fora. Dado real
  * (`NextEta`, tarefa #99) — nunca uma estimativa inventada no front.
+ *
+ * "Navegar" (Frente S2, pedido do usuário: "acha melhor integrar o
+ * Google Maps para navegação e GPS, enquanto o openstreet fica para os
+ * responsáveis") — abre o app de navegação NATIVO do aparelho
+ * (Apple/Google Maps, `@rotta/maps/navigation`) com a coordenada real da
+ * próxima parada (`parada`, a mesma que já alimenta o marcador no
+ * `RottaMap` acima). Sem custo, sem chave de API: só um deep-link. Só
+ * aparece quando `parada` existe (`RouteStop` com lat/lng carregado) —
+ * sem coordenada, sem botão, nunca um link quebrado.
  */
-function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
+function ProximaParadaEtaCard({ eta, parada }: { eta: NextEta; parada?: RouteStop }): JSX.Element {
   const horarioPrevisto = new Date(eta.etaPrevista).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
@@ -247,6 +256,13 @@ function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
     eta.distanciaMetros >= 1000
       ? `${(eta.distanciaMetros / 1000).toFixed(1)} km`
       : `${Math.round(eta.distanciaMetros)} m`;
+
+  function handleNavegar(): void {
+    if (!parada) return;
+    const app = detectNavigationApp(navigator.userAgent);
+    const url = buildNavigationUrl({ latitude: parada.latitude, longitude: parada.longitude }, app);
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 
   return (
     <Card>
@@ -262,7 +278,7 @@ function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
             {eta.endereco}
           </Typography>
         </div>
-        <div className="flex flex-col items-end gap-0.5">
+        <div className="flex flex-col items-end gap-1.5">
           <div className="flex items-center gap-1 text-primary">
             <Clock size={14} />
             <Typography variant="bodySmall" className="font-semibold text-primary">
@@ -273,6 +289,16 @@ function ProximaParadaEtaCard({ eta }: { eta: NextEta }): JSX.Element {
             {distancia}
           </Typography>
         </div>
+        {parada ? (
+          <Button
+            variant="secondary"
+            size="sm"
+            iconLeft={<Navigation size={16} />}
+            onClick={handleNavegar}
+          >
+            Navegar
+          </Button>
+        ) : null}
       </Card.Body>
     </Card>
   );
@@ -330,6 +356,11 @@ function RotaOperacional({
   // conta enquanto dirige.
   const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
   const proximaParada = proximasEtas?.[0];
+  // Coordenada real da próxima parada (mesma lista que já vira marcador
+  // no mapa acima) — alimenta o botão "Navegar" do cartão de ETA.
+  const proximaParadaStop = proximaParada
+    ? paradasOrdenadas.find((parada) => parada.id === proximaParada.routeStopId)
+    : undefined;
 
   // Botão "centralizar no meu GPS" (Frente Q, imagem de referência) —
   // `RottaMap` só lê `initialCenter`/faz `fitBounds` na montagem, então
@@ -453,7 +484,9 @@ function RotaOperacional({
         </div>
 
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-elevated p-4 shadow-lg">
-          {proximaParada ? <ProximaParadaEtaCard eta={proximaParada} /> : null}
+          {proximaParada ? (
+            <ProximaParadaEtaCard eta={proximaParada} parada={proximaParadaStop} />
+          ) : null}
 
           {isLoadingTrip ? (
             <div className="flex justify-center py-2">

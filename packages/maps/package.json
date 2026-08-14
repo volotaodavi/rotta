@@ -6,7 +6,8 @@
   "license": "UNLICENSED",
   "exports": {
     "./web": "./src/web/index.tsx",
-    "./native": "./src/native/index.tsx"
+    "./native": "./src/native/index.tsx",
+    "./navigation": "./src/navigation-link.ts"
   },
   "scripts": {
     "lint": "eslint . --ext .ts,.tsx",
