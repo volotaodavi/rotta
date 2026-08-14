@@ -10,17 +10,47 @@ import type { Route } from "next";
  * "Casca" visual compartilhada das telas de mapa em tela cheia (Frente
  * Q — pedido do usuário, imagem de referência de um app de navegação:
  * cartão "Your location"/"Select destinations" + chips de distância/
- * tempo + botão de centralizar no GPS). Usada nas 4 frentes citadas
- * pelo usuário — cadastro de aluno pelo Responsável
- * (`/alunos/[id]/mapa`), fim de cadastro de Monitor/Motorista e "Modo
- * Ação" de Autônomo/MEI (todas as 3 últimas caem em `/minha-rota`,
- * `defaultRouteForRole`/guard do Modo Ação já mandam pra lá).
+ * tempo + botão de centralizar no GPS; repaginada na Frente R com uma
+ * 2ª referência — app de rastreamento com cartões em gradiente azul e
+ * um padrão de onda decorativo). Usada nas 4 frentes citadas pelo
+ * usuário — cadastro de aluno pelo Responsável (`/alunos/[id]/mapa`),
+ * fim de cadastro de Monitor/Motorista e "Modo Ação" de Autônomo/MEI
+ * (todas as 3 últimas caem em `/minha-rota`, `defaultRouteForRole`/
+ * guard do Modo Ação já mandam pra lá).
  *
- * Adaptação honesta do banner: o seletor "carro/ônibus/bike/a pé" do
- * banner não existe aqui — a Rotta só tem UM modo de transporte real
- * (o veículo escolar), então os chips mostram dado real de rota
- * (distância/tempo/paradas) em vez de opções fictícias de modal.
+ * Adaptação honesta dos dois banners: o seletor "carro/ônibus/bike/a
+ * pé" do 1º banner não existe aqui — a Rotta só tem UM modo de
+ * transporte real (o veículo escolar) — e os círculos coloridos
+ * "Confirmed/Monitoring/Medical Services" do 2º banner também não:
+ * são categorias de caso de COVID, sem equivalente real numa rota
+ * escolar, então nunca foram desenhados aqui (fabricar zonas fictícias
+ * no mapa seria inventar dado que não existe). O que os dois bannaes
+ * têm em comum e SE aplica de verdade — cartão em gradiente com
+ * destaque numérico, textura de onda decorativa, chips em vidro fosco
+ * — virou o cartão De/Para abaixo, com dado real de rota (distância/
+ * tempo/paradas), nunca uma métrica inventada.
  */
+
+/**
+ * Textura de onda decorativa (SVG desenhado à mão, mesma disciplina de
+ * `HeroTripPhoneMockup`/`RouteMark` — nunca um asset baixado) — o
+ * elemento mais reconhecível do banner de referência (o rasgo curvo
+ * translúcido no topo de cada cartão azul). Puramente ornamental
+ * (`aria-hidden`), branco a 12% de opacidade sobre o gradiente.
+ */
+function CardWaveDecoration(): JSX.Element {
+  return (
+    <svg
+      viewBox="0 0 400 140"
+      preserveAspectRatio="none"
+      className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.12]"
+      aria-hidden="true"
+    >
+      <path d="M0 55 C 70 15, 140 90, 210 50 S 340 5, 400 45 L400 0 L0 0 Z" fill="white" />
+      <path d="M0 90 C 90 60, 160 130, 260 85 S 360 55, 400 90 L400 140 L0 140 Z" fill="white" />
+    </svg>
+  );
+}
 
 function RouteChip({ label, value }: { label: string; value: string }): JSX.Element {
   return (
@@ -37,10 +67,12 @@ function RouteChip({ label, value }: { label: string; value: string }): JSX.Elem
 
 /**
  * Cartão "De/Para" flutuante no topo do mapa — ponto de origem (bolinha
- * azul) e destino (pino), ligados por uma linha vertical pontilhada,
- * mesma leitura visual do banner de referência ("Your location" →
- * "Select destinations"). `onVoltar` aceita tanto um link real quanto
- * um callback (páginas diferentes voltam de jeitos diferentes).
+ * branca) e destino (pino), ligados por uma linha vertical pontilhada,
+ * mesma leitura visual do 1º banner de referência ("Your location" →
+ * "Select destinations"). Fundo em gradiente azul + textura de onda
+ * (2º banner) — único cartão cromático saturado da tela, o resto do
+ * mapa continua neutro. `onVoltar` aceita tanto um link real quanto um
+ * callback (páginas diferentes voltam de jeitos diferentes).
  */
 export function RouteFromToCard({
   voltarHref,
@@ -57,12 +89,13 @@ export function RouteFromToCard({
 }): JSX.Element {
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-3 p-4">
-      <div className="pointer-events-auto flex items-start gap-3 rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur">
+      <div className="pointer-events-auto relative flex items-start gap-3 overflow-hidden rounded-[28px] bg-gradient-to-br from-primary to-primary-hover p-4 text-white shadow-xl">
+        <CardWaveDecoration />
         {voltarHref ? (
           <Link
             href={voltarHref}
             aria-label="Voltar"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-muted hover:text-text"
+            className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -71,24 +104,24 @@ export function RouteFromToCard({
             type="button"
             onClick={onVoltar}
             aria-label="Voltar"
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-muted transition-colors hover:bg-muted hover:text-text"
+            className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white/80 transition-colors hover:bg-white/15 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </button>
         ) : null}
-        <div className="flex flex-1 flex-col gap-2.5">
+        <div className="relative flex flex-1 flex-col gap-2.5">
           <div className="flex items-center gap-3">
             <span className="flex h-2.5 w-2.5 shrink-0 items-center justify-center">
-              <span className="h-2 w-2 rounded-full border-2 border-primary bg-surface-elevated" />
+              <span className="h-2 w-2 rounded-full border-2 border-white bg-transparent" />
             </span>
-            <Typography variant="bodySmall" className="truncate font-medium">
+            <Typography variant="bodySmall" className="truncate font-medium text-white">
               {origemLabel}
             </Typography>
           </div>
-          <div className="ml-[4.5px] h-3 w-px border-l border-dashed border-border" />
+          <div className="ml-[4.5px] h-3 w-px border-l border-dashed border-white/40" />
           <div className="flex items-center gap-3">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
-            <Typography variant="bodySmall" className="truncate font-medium">
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-white" />
+            <Typography variant="bodySmall" className="truncate font-medium text-white">
               {destinoLabel}
             </Typography>
           </div>
