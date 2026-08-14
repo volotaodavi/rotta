@@ -1,6 +1,7 @@
 "use client";
 
 import { AuthProvider } from "@rotta/auth/web";
+import { ToastProvider } from "@rotta/ui/web";
 
 
 import { QueryProvider } from "./query-provider";
@@ -15,13 +16,24 @@ import { authApi } from "@/lib/api-client";
  * Secao 1.1 — `providers/`). `AuthProvider` (Dossiê 15) precisa envolver
  * `QueryProvider` (não o contrário) — os hooks de dados de negócio
  * (`useCompaniesList` etc.) dependem do token que ele mantém em memória.
+ *
+ * `ToastProvider` (por fora de tudo) — pedido do usuário: "não está
+ * havendo ações nos botões". Nenhuma mutação do Admin tinha feedback
+ * visível de erro (`QueryProvider.mutations.retry: false`, e nenhuma
+ * tela renderizava `isError`) — o botão simplesmente parava de carregar
+ * e nada mudava na tela, indistinguível de "não fez nada". Ainda não é
+ * automático (cada mutação continua precisando chamar `toast.error(...)`
+ * no seu próprio `onError` — ver `verificacao-identidade/[userId]/
+ * page.tsx`), mas agora existe ONDE mostrar isso.
  */
 export function AppProviders({ children }: { children: ReactNode }): JSX.Element {
   return (
     <ThemeProvider>
-      <AuthProvider authApi={authApi}>
-        <QueryProvider>{children}</QueryProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider authApi={authApi}>
+          <QueryProvider>{children}</QueryProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

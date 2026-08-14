@@ -1,5 +1,6 @@
 "use client";
 
+import { useToast } from "@rotta/ui/web";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
@@ -9,6 +10,11 @@ import type {
 
 import { identityVerificationApi } from "@/lib/api-client";
 
+
+/** Mensagem de erro legível a partir do que `ApiClient.request` lança — mesmo padrão adotado nos novos `onError`, pra não vazar `"[object Object]"`/stack trace pra tela. */
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 /** Hooks de dados da Verificação de Identidade (Admin Rotta) — mesmo padrão TanStack Query de `use-companies.ts`. */
 export function useIdentityVerificationsList(params: ListAdminIdentityVerificationsParams) {
@@ -29,11 +35,22 @@ export function useIdentityVerification(userId: string) {
 /** Sincronização pull (`GET /v3/session/{id}/decision/`) — o botão "Sincronizar com a Didit" da tela de detalhe. */
 export function useRefreshIdentityVerification(userId: string) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: () => identityVerificationApi.refreshAdmin(userId),
-    onSuccess: () => {
+    onSuccess: (data) => {
       void queryClient.invalidateQueries({ queryKey: ["identity-verifications", userId] });
       void queryClient.invalidateQueries({ queryKey: ["identity-verifications"], exact: false });
+      toast.success(`Status atual na Didit: ${data.status}.`, "Sincronizado");
+    },
+    // Pedido do usuário: "não está havendo ações nos botões" — sem isso,
+    // uma falha aqui (ex.: sessão sem decisão ainda na Didit, credencial
+    // ausente) só parava o spinner do botão, sem nenhum sinal na tela.
+    onError: (error) => {
+      toast.error(
+        errorMessage(error, "Não foi possível sincronizar com a Didit."),
+        "Falha ao sincronizar",
+      );
     },
   });
 }
@@ -41,12 +58,19 @@ export function useRefreshIdentityVerification(userId: string) {
 /** Decisão manual (aprovar/recusar) direto do painel, sem abrir o Business Console da Didit. */
 export function useDecideIdentityVerification(userId: string) {
   const queryClient = useQueryClient();
+  const toast = useToast();
   return useMutation({
     mutationFn: (input: DecideIdentityVerificationInput) =>
       identityVerificationApi.decideAdmin(userId, input),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void queryClient.invalidateQueries({ queryKey: ["identity-verifications", userId] });
       void queryClient.invalidateQueries({ queryKey: ["identity-verifications"], exact: false });
+      toast.success(
+        variables.newStatus === "Approved" ? "Verificação aprovada." : "Verificação recusada.",
+      );
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "Não foi possível registrar a decisão."), "Falha ao decidir");
     },
   });
 }

@@ -10,7 +10,8 @@
  *   atoms/      Button, Input, PhoneInput, Select, Badge, Checkbox, Spinner, Typography, ProgressRing
  *   molecules/  FormField, Pagination, Tabs, PanelGreeting
  *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven),
- *               Modal (Compound: Modal.Header/Body/Footer, com portal/focus-trap)
+ *               Modal (Compound: Modal.Header/Body/Footer, com portal/focus-trap),
+ *               Toast (ToastProvider + useToast — feedback de sucesso/erro de mutações)
  */
 
 export * from "./atoms/Badge";
@@ -29,3 +30,4 @@ export * from "./molecules/Tabs";
 export * from "./organisms/Card";
 export * from "./organisms/Modal";
 export * from "./organisms/Table";
+export * from "./organisms/Toast";
