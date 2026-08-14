@@ -4,7 +4,9 @@ import { Button, Card, Modal, Spinner, Typography } from "@rotta/ui/web";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { DiditEvidenceCard } from "@/features/identity-verification/components/didit-evidence-card";
 import { IdentityVerificationStatusBadge } from "@/features/identity-verification/components/identity-verification-status-badge";
+import { parseDiditDecision } from "@/features/identity-verification/didit-decision.types";
 import {
   useDecideIdentityVerification,
   useIdentityVerification,
@@ -158,6 +160,11 @@ export default function VerificacaoIdentidadeDetailPage(): JSX.Element {
           )}
         </Card.Body>
       </Card>
+
+      {(() => {
+        const decisao = parseDiditDecision(data.decisao);
+        return decisao ? <DiditEvidenceCard decisao={decisao} /> : null;
+      })()}
 
       <Card>
         <Card.Header title="Payload bruto da última decisão (Didit)" />
