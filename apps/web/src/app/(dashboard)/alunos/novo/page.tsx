@@ -16,6 +16,7 @@ import { useTracedRoute } from "@/features/students/hooks/use-traced-route";
 import { STUDENT_SEX_LABEL } from "@/features/students/labels";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 
+
 const INITIAL_STATE: CreateStudentInput = {
   nome: "",
   dataNascimento: "",
@@ -182,7 +183,12 @@ export default function NovoAlunoPage(): JSX.Element {
       : { ...form, ...embarqueCoords };
     try {
       const student = await createStudent.mutateAsync(input);
-      router.replace(`/alunos/${student.id}`);
+      // Frente Q (pedido do usuário): a tela de mapa em tela cheia
+      // (`De: embarque -> Para: escola`, imagem de referência) fica
+      // obrigatória assim que o cadastro termina — antes ia pra ficha
+      // do aluno (`/alunos/${id}`), que continua a um clique de
+      // distância (botão "Voltar" do próprio mapa).
+      router.replace(`/alunos/${student.id}/mapa`);
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Erro inesperado ao cadastrar o aluno.",

@@ -14,6 +14,7 @@ import type {
   TripStudentEventType,
 } from "@rotta/api-client";
 
+import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
 import { useBeforeUnloadWarning } from "@/features/driver/hooks/use-before-unload-warning";
 import {
@@ -169,11 +170,14 @@ function MeuMapa({
   location,
   status,
   fill = false,
+  mapKey = 0,
 }: {
   location: MyLocation | null;
   status: MyLocationStatus;
   /** `true` dentro do container em tela cheia de `RotaOperacional` — sem cantos arredondados/altura fixa, ocupa 100% do pai. */
   fill?: boolean;
+  /** Troca pra remontar o mapa (Frente Q — botão "centralizar no meu GPS", `RottaMap` só lê `initialCenter` na montagem). */
+  mapKey?: number;
 }): JSX.Element {
   if (!location) {
     return (
@@ -211,6 +215,7 @@ function MeuMapa({
       className={fill ? "h-full w-full" : "overflow-hidden rounded-lg"}
     >
       <RottaMap
+        key={mapKey}
         markers={[
           {
             id: "minha-localizacao",
@@ -326,6 +331,17 @@ function RotaOperacional({
   const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
   const proximaParada = proximasEtas?.[0];
 
+  // Botão "centralizar no meu GPS" (Frente Q, imagem de referência) —
+  // `RottaMap` só lê `initialCenter`/faz `fitBounds` na montagem, então
+  // recentralizar de verdade remonta o mapa com uma nova `key`.
+  const [mapKey, setMapKey] = useState(0);
+  const distanciaProximaParada =
+    proximaParada && proximaParada.distanciaMetros >= 1000
+      ? `${(proximaParada.distanciaMetros / 1000).toFixed(1)} km`
+      : proximaParada
+        ? `${Math.round(proximaParada.distanciaMetros)} m`
+        : null;
+
   const gpsAvisoTexto =
     gpsStatus === "reporting"
       ? "Compartilhando sua localização com os responsáveis."
@@ -353,12 +369,18 @@ function RotaOperacional({
       <div className="relative h-[65dvh] min-h-[420px] w-full">
         {markers.length > 0 ? (
           <RottaMap
+            key={mapKey}
             markers={markers}
             route={paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }))}
             initialZoom={12}
           />
         ) : (
-          <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} fill />
+          <MeuMapa
+            location={minhaLocalizacao.location}
+            status={minhaLocalizacao.status}
+            fill
+            mapKey={mapKey}
+          />
         )}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-3 p-4">
@@ -366,26 +388,68 @@ function RotaOperacional({
             nome={user?.nome ?? ""}
             className="pointer-events-auto rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur"
           />
-          <div className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur">
-            <div>
-              <Typography variant="subtitle">{rota.nome}</Typography>
-              <Typography variant="caption" color="muted">
-                {TURNO_LABEL[rota.turno] ?? rota.turno}
-              </Typography>
+          {/*
+            Cartão "De/Para" (Frente Q — imagem de referência de app de
+            navegação: "Your location" -> "Select destinations"). De:
+            sempre "Você" (quem está com o telefone/rodando a rota); Para:
+            a próxima parada com ETA (`useTripProximasEtas`, já real) — só
+            cai no nome da rota quando a viagem ainda nem começou.
+          */}
+          <div className="pointer-events-auto flex flex-col gap-2.5 rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex flex-1 flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="h-2 w-2 shrink-0 rounded-full border-2 border-primary bg-surface-elevated" />
+                  <Typography variant="bodySmall" className="truncate font-medium">
+                    Você
+                  </Typography>
+                </div>
+                <div className="ml-[3px] h-3 w-px border-l border-dashed border-border" />
+                <div className="flex items-center gap-3">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-danger" />
+                  <Typography variant="bodySmall" className="truncate font-medium">
+                    {proximaParada ? proximaParada.endereco : rota.nome}
+                  </Typography>
+                </div>
+              </div>
+              <div className="flex shrink-0 flex-col items-end gap-2">
+                {trip ? (
+                  <Badge variant={TRIP_STATUS_BADGE[trip.status]?.variant ?? "neutral"}>
+                    {TRIP_STATUS_BADGE[trip.status]?.label ?? trip.status}
+                  </Badge>
+                ) : null}
+                {showTrocarRota ? (
+                  <Button variant="secondary" size="sm" onClick={onTrocarRota}>
+                    Trocar
+                  </Button>
+                ) : null}
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              {trip ? (
-                <Badge variant={TRIP_STATUS_BADGE[trip.status]?.variant ?? "neutral"}>
-                  {TRIP_STATUS_BADGE[trip.status]?.label ?? trip.status}
-                </Badge>
-              ) : null}
-              {showTrocarRota ? (
-                <Button variant="secondary" size="sm" onClick={onTrocarRota}>
-                  Trocar
-                </Button>
-              ) : null}
-            </div>
+            {proximaParada && distanciaProximaParada && (
+              <div className="flex gap-2 border-t border-border pt-2.5">
+                <div className="flex flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-1.5">
+                  <Typography variant="caption" color="muted">
+                    Distância
+                  </Typography>
+                  <Typography variant="bodySmall" className="font-semibold leading-none">
+                    {distanciaProximaParada}
+                  </Typography>
+                </div>
+                <div className="flex flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-1.5">
+                  <Typography variant="caption" color="muted">
+                    Turno
+                  </Typography>
+                  <Typography variant="bodySmall" className="font-semibold leading-none">
+                    {TURNO_LABEL[rota.turno] ?? rota.turno}
+                  </Typography>
+                </div>
+              </div>
+            )}
           </div>
+        </div>
+
+        <div className="pointer-events-none absolute inset-x-0 bottom-[13.5rem] flex justify-end p-4">
+          <RecenterButton onClick={() => setMapKey((k) => k + 1)} />
         </div>
 
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-elevated p-4 shadow-lg">

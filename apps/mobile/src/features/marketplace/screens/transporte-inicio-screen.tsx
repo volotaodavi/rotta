@@ -25,6 +25,7 @@ import { buildContratoSteps, buildSolicitacaoSteps } from "../timeline-steps";
 import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
+import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
 import { useGpsForStudent } from "@/features/gps/hooks/use-gps";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import {
@@ -219,8 +220,24 @@ function TransporteEmAndamentoScreen({
   const { height: windowHeight } = useWindowDimensions();
   const { data: proximasEtas } = useProximasEtasResponsavel(viagem.tripId);
   const proximaParada = proximasEtas?.[0];
+  // Botão "centralizar no meu GPS" (Frente Q) — o mapa nativo, igual o
+  // web, só lê `initialCenter` na montagem; remontar com uma nova `key`
+  // é como recentraliza de verdade.
+  const [mapKey, setMapKey] = useState(0);
 
   const mapSectionHeight = Math.max(windowHeight * 0.6, 380);
+  const chips = proximaParada
+    ? [
+        {
+          label: "Distância",
+          value:
+            proximaParada.distanciaMetros >= 1000
+              ? `${(proximaParada.distanciaMetros / 1000).toFixed(1)} km`
+              : `${Math.round(proximaParada.distanciaMetros)} m`,
+        },
+        { label: "Chegando às", value: formatarHora(proximaParada.etaPrevista) },
+      ]
+    : undefined;
 
   return (
     <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
@@ -229,6 +246,7 @@ function TransporteEmAndamentoScreen({
           <View style={styles.absoluteFill}>
             {viagem.latitude && viagem.longitude ? (
               <RottaMap
+                key={mapKey}
                 markers={[
                   {
                     id: viagem.tripId,
@@ -250,31 +268,30 @@ function TransporteEmAndamentoScreen({
             )}
           </View>
 
+          {/*
+            Cartão "De/Para" (Frente Q, imagem de referência de app de
+            navegação) — De: o veículo (placa + motorista); Para: a
+            próxima parada com ETA real (`useProximasEtasResponsavel`,
+            já existia). "Última posição" desce pro rodapé do cartão via
+            `rightSlot` junto do `StatusPill`, sem perder nenhuma
+            informação que já existia.
+          */}
           <View
             style={[styles.topOverlay, { top: insets.top + theme.spacing[3] }]}
             pointerEvents="box-none"
           >
-            <View
-              style={[
-                styles.overlayCard,
-                styles.overlayRow,
-                { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
-                theme.elevation.dropdown.native,
-              ]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: "700" }}>
-                  Meu Transporte
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  {viagem.ultimaPosicaoEm
-                    ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
-                    : "Aguardando a primeira posição do motorista"}
-                </Text>
-              </View>
-              <StatusPill label="Em viagem agora" tone="success" />
-            </View>
+            <RouteFromToCard
+              origemLabel={`${viagem.placa} — ${viagem.motoristaNome}`}
+              destinoLabel={proximaParada ? proximaParada.endereco : "Próxima parada"}
+              chips={chips}
+              rightSlot={<StatusPill label="Em viagem agora" tone="success" />}
+            />
           </View>
+
+          <RecenterButton
+            onPress={() => setMapKey((k) => k + 1)}
+            style={{ position: "absolute", right: 16, top: insets.top + theme.spacing[3] + 96 }}
+          />
 
           <View
             style={[
@@ -588,8 +605,6 @@ const styles = StyleSheet.create({
   notas: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   opScreen: { flex: 1 },
   opScrollContent: { flexGrow: 1 },
-  overlayCard: { padding: 16 },
-  overlayRow: { alignItems: "center", flexDirection: "row" },
   paradaRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   rotuloAvaliacao: { fontWeight: "600" },
   secao: { fontSize: 16, fontWeight: "700" },

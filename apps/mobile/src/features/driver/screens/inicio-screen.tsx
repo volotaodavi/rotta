@@ -36,6 +36,7 @@ import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
 import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "@rotta/api-client";
 
+import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
 import {
   StatusPill,
@@ -137,11 +138,14 @@ function MeuMapa({
   location,
   status,
   fill = false,
+  mapKey = 0,
 }: {
   location: MyLocation | null;
   status: MyLocationStatus;
   /** `true` dentro do mapa em tela cheia de `RotaOperacional` — ocupa 100% do pai (`StyleSheet.absoluteFillObject`), sem cantos arredondados/altura fixa. */
   fill?: boolean;
+  /** Troca pra remontar o mapa (Frente Q — botão "centralizar no meu GPS"). */
+  mapKey?: number;
 }): JSX.Element {
   const { theme } = useTheme();
 
@@ -174,6 +178,7 @@ function MeuMapa({
   return (
     <View style={fill ? styles.absoluteFill : styles.mapa}>
       <RottaMap
+        key={mapKey}
         markers={[
           {
             id: "minha-localizacao",
@@ -289,6 +294,16 @@ function RotaOperacional({
   const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
   const proximaParada = proximasEtas?.[0];
 
+  // Botão "centralizar no meu GPS" (Frente Q, imagem de referência) —
+  // `RottaMap` só lê `initialCenter`/faz fit de bounds na montagem,
+  // então recentralizar de verdade remonta o mapa com uma nova `key`.
+  const [mapKey, setMapKey] = useState(0);
+  const distanciaProximaParada = proximaParada
+    ? proximaParada.distanciaMetros >= 1000
+      ? `${(proximaParada.distanciaMetros / 1000).toFixed(1)} km`
+      : `${Math.round(proximaParada.distanciaMetros)} m`
+    : null;
+
   const gpsAvisoTexto =
     gpsStatus === "reporting"
       ? "Compartilhando sua localização com os responsáveis."
@@ -313,6 +328,7 @@ function RotaOperacional({
           <View style={styles.absoluteFill}>
             {markers.length > 0 ? (
               <RottaMap
+                key={mapKey}
                 markers={markers}
                 route={paradasOrdenadas.map((p) => ({
                   latitude: p.latitude,
@@ -321,7 +337,12 @@ function RotaOperacional({
                 initialZoom={12}
               />
             ) : (
-              <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} fill />
+              <MeuMapa
+                location={minhaLocalizacao.location}
+                status={minhaLocalizacao.status}
+                fill
+                mapKey={mapKey}
+              />
             )}
           </View>
 
@@ -338,39 +359,54 @@ function RotaOperacional({
             >
               <PanelGreeting nome={user?.nome ?? ""} />
             </View>
-            <View
-              style={[
-                styles.overlayCard,
-                styles.overlayRow,
-                { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
-                theme.elevation.dropdown.native,
-              ]}
-            >
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.text, fontSize: 15, fontWeight: "700" }}>
-                  {rota.nome}
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  {TURNO_LABEL[rota.turno]}
-                </Text>
-              </View>
-              <View style={styles.overlayActions}>
-                {trip ? (
-                  <StatusPill
-                    label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
-                    tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
-                  />
-                ) : null}
-                {showTrocarRota ? (
-                  <Pressable onPress={onTrocarRota} accessibilityRole="button">
-                    <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: "600" }}>
-                      Trocar
-                    </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            </View>
+            {/*
+              Cartão "De/Para" (Frente Q, imagem de referência de app de
+              navegação: "Your location" -> "Select destinations"). De:
+              sempre "Você"; Para: a próxima parada com ETA
+              (`useTripProximasEtas`, já real) — só cai no nome da rota
+              quando a viagem ainda nem começou.
+            */}
+            <RouteFromToCard
+              origemLabel="Você"
+              destinoLabel={proximaParada ? proximaParada.endereco : rota.nome}
+              chips={
+                proximaParada && distanciaProximaParada
+                  ? [
+                      { label: "Distância", value: distanciaProximaParada },
+                      { label: "Turno", value: TURNO_LABEL[rota.turno] ?? rota.turno },
+                    ]
+                  : undefined
+              }
+              rightSlot={
+                <View style={styles.overlayActions}>
+                  {trip ? (
+                    <StatusPill
+                      label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
+                      tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
+                    />
+                  ) : null}
+                  {showTrocarRota ? (
+                    <Pressable onPress={onTrocarRota} accessibilityRole="button">
+                      <Text
+                        style={{ color: theme.colors.primary, fontSize: 13, fontWeight: "600" }}
+                      >
+                        Trocar
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              }
+            />
           </View>
+
+          <RecenterButton
+            onPress={() => setMapKey((k) => k + 1)}
+            style={{
+              position: "absolute",
+              right: 16,
+              top: insets.top + theme.spacing[3] + 140,
+            }}
+          />
 
           <View
             style={[
@@ -634,7 +670,6 @@ const styles = StyleSheet.create({
   opScrollContent: { flexGrow: 1 },
   overlayActions: { alignItems: "center", flexDirection: "row", gap: 12 },
   overlayCard: { padding: 16 },
-  overlayRow: { alignItems: "center", flexDirection: "row" },
   painelTexto: { paddingVertical: 8, textAlign: "center" },
   paradaHeader: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   paradasSection: { gap: 16, padding: 24 },
