@@ -11,7 +11,7 @@ export interface GeoConfig {
   nominatimUserAgent: string;
   /** Instancia OSRM usada para rotas — publica (demo, sem SLA) por padrao. */
   osrmBaseUrl: string;
-  /** Cron BullMQ (Redis-coordenado) do Education Sync Agent — ausente = sincronização só manual. */
+  /** Cron do Education Sync Agent (QStash Schedules) — sobrescreve o padrão mensal usado automaticamente quando o QStash está configurado (ver `InepSyncSchedulerService`). */
   inepSyncCron: string | undefined;
   /** Ano do Censo Escolar sincronizado automaticamente; sem `INEP_SYNC_ANO`, usa o ano corrente - 1 (o INEP publica com defasagem). */
   inepSyncAno: number | undefined;
