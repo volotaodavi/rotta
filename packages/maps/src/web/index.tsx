@@ -183,7 +183,8 @@ export function RottaMap({
 }: RottaMapProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<Marker[]>([]);
+  const markersRef = useRef<Map<string, { marker: Marker; emMovimento: boolean }>>(new Map());
+  const previousMarkerIdsRef = useRef<Set<string>>(new Set());
   // Refs para os callbacks: evita recriar o mapa a cada render quando o
   // app chamador passa uma arrow function inline (padrão comum em
   // `onPress`/`onChange` de tela React) — só a criação do mapa (estilo/
@@ -229,6 +230,14 @@ export function RottaMap({
     return () => {
       map.remove();
       mapRef.current = null;
+      // O mapa antigo levou seus marcadores junto (`map.remove()`) —
+      // sem isso, um `styleUrl` novo recriaria o mapa mas o efeito de
+      // marcadores abaixo continuaria achando (pelos ids em
+      // `markersRef`) que eles já existem no mapa NOVO, e nunca os
+      // recriaria de verdade.
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- `markersRef` guarda um `Map` comum (não um nó do DOM React), sempre seguro de ler em `.current` no cleanup.
+      markersRef.current.clear();
+      previousMarkerIdsRef.current = new Set();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setup roda só quando o estilo muda; ver refs acima para os callbacks.
   }, [styleUrl]);
@@ -237,9 +246,44 @@ export function RottaMap({
     const map = mapRef.current;
     if (!map) return;
 
-    markersRef.current.forEach((marker) => marker.remove());
-    markersRef.current = markers.map((marker) => {
-      const mapMarker = marker.emMovimento
+    // BUG corrigido (usuário: "ainda precisa tocar 2x pra navegar" /
+    // "trava" no Safari, Landing Page): este efeito remontava TODOS os
+    // marcadores (remove + `new Marker()` + novo `Popup` + novo
+    // listener) a cada mudança de `markers` — inofensivo pra uma
+    // atualização de GPS a cada poucos segundos, mas o carrossel
+    // animado da hero (`HeroMapDemo`) muda a posição do veículo a
+    // cada frame (`requestAnimationFrame`, ~60x/s), e cada frame também
+    // chamava `map.fitBounds(...)` de novo — no Safari/iOS (engine JS/
+    // WebGL mais fraca que o Chromium) isso sozinho já satura a thread
+    // principal a ponto do toque parecer "sem resposta"/precisar de um
+    // segundo toque. Agora: marcador com o mesmo `id` só tem a posição
+    // atualizada (`setLngLat`, barato) em vez de recriado; `fitBounds`
+    // só roda quando o CONJUNTO de ids muda (marcador novo/removido),
+    // nunca numa atualização pura de posição.
+    const nextIds = new Set(markers.map((marker) => marker.id));
+    for (const [id, entry] of markersRef.current) {
+      if (!nextIds.has(id)) {
+        entry.marker.remove();
+        markersRef.current.delete(id);
+      }
+    }
+
+    for (const marker of markers) {
+      const existing = markersRef.current.get(marker.id);
+      const emMovimento = marker.emMovimento ?? false;
+
+      if (existing && existing.emMovimento === emMovimento) {
+        existing.marker.setLngLat([marker.longitude, marker.latitude]);
+        existing.marker.getPopup()?.setText(marker.titulo);
+        continue;
+      }
+
+      // Marcador novo, ou existente que trocou de tipo (estático <->
+      // em movimento) — o elemento DOM do `Marker` não dá pra mudar de
+      // "pino padrão" pra "ícone de veículo" depois de criado, então
+      // esse caso raro ainda recria.
+      existing?.marker.remove();
+      const mapMarker = emMovimento
         ? new Marker({ element: buildVehicleMarkerElement() })
         : new Marker({ color: MARKER_COLOR });
       mapMarker
@@ -247,10 +291,15 @@ export function RottaMap({
         .setPopup(new Popup({ offset: 24 }).setText(marker.titulo))
         .addTo(map);
       mapMarker.getElement().addEventListener("click", () => onMarkerPressRef.current?.(marker));
-      return mapMarker;
-    });
+      markersRef.current.set(marker.id, { marker: mapMarker, emMovimento });
+    }
 
-    if (!initialCenter && markers.length > 0) {
+    const idsChanged =
+      nextIds.size !== previousMarkerIdsRef.current.size ||
+      [...nextIds].some((id) => !previousMarkerIdsRef.current.has(id));
+    previousMarkerIdsRef.current = nextIds;
+
+    if (!initialCenter && markers.length > 0 && idsChanged) {
       const bounds = markers.reduce(
         (acc, marker) => acc.extend([marker.longitude, marker.latitude]),
         new LngLatBounds(
