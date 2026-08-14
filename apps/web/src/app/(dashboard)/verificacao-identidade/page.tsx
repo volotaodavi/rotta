@@ -3,7 +3,7 @@
 import { DiditSdk } from "@didit-protocol/sdk-web";
 import { useAuth } from "@rotta/auth/web";
 import { BadgeCheck, LifeBuoy, Loader2, ShieldAlert, ShieldCheck, X } from "@rotta/icons";
-import { Badge, Button, Card, Modal, Spinner, Typography, useToast } from "@rotta/ui/web";
+import { Badge, Button, Card, Modal, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
@@ -15,9 +15,8 @@ import {
   useMyIdentityVerification,
   useRefreshMyIdentityVerification,
 } from "@/features/identity-verification/hooks/use-identity-verification";
-import { useCreateSupportTicket } from "@/features/support/hooks/use-support";
 import { defaultRouteForRole } from "@/lib/default-route";
-
+import { buildWhatsAppUrl } from "@/lib/site-config";
 
 const STATUS_LABEL: Record<IdentityVerificationStatus, string> = {
   NAO_INICIADA: "Não iniciada",
@@ -65,14 +64,16 @@ const RESTARTABLE: IdentityVerificationStatus[] = ["NAO_INICIADA", "REPROVADA", 
 /** `localStorage` (mesmo padrão de `use-app-mode.ts`, nunca no backend — é só "já vi esse popup", não uma permissão) — garante que o convite pra pedir ajuda do suporte aparece no máximo uma vez por usuário. */
 const SUPPORT_POPUP_STORAGE_PREFIX = "rotta-support-popup-cnh:";
 
+/** Mensagem exata pedida pelo usuário — abre o WhatsApp da Rotta do Brasil já com o texto pronto pra enviar. */
+const SUPPORT_WHATSAPP_MESSAGE =
+  "Olá! Gostaria de ajuda do suporte para credenciar os alunos e responsáveis.";
+
 export default function VerificacaoIdentidadePage(): JSX.Element {
   const { user } = useAuth();
   const router = useRouter();
   const { data, isLoading, refetch } = useMyIdentityVerification();
   const createSession = useCreateIdentityVerificationSession();
   const refreshStatus = useRefreshMyIdentityVerification();
-  const createSupportTicket = useCreateSupportTicket();
-  const toast = useToast();
   const [aviso, setAviso] = useState<string | null>(null);
   const [supportPopupOpen, setSupportPopupOpen] = useState(false);
   const supportPopupChecked = useRef(false);
@@ -101,20 +102,17 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
     if (user) localStorage.setItem(SUPPORT_POPUP_STORAGE_PREFIX + user.id, "1");
   }
 
-  async function pedirAjudaSuporte(): Promise<void> {
-    try {
-      await createSupportTicket.mutateAsync({
-        assunto: "Ajuda para cadastrar alunos e responsáveis",
-        descricao:
-          "Verificação de identidade aprovada. Gostaria de ajuda do suporte da Rotta para cadastrar os alunos e os responsáveis do meu transporte.",
-        categoria: "DUVIDA",
-      });
-      toast.success("Chamado aberto! O suporte da Rotta vai entrar em contato em breve.");
-    } catch {
-      toast.error("Não foi possível abrir o chamado agora. Tente de novo em instantes.");
-    } finally {
-      dispensarPopupSuporte();
-    }
+  /**
+   * "Ao clicar, deverá ter uma mensagem pronta para enviar no WhatsApp"
+   * (pedido do usuário) — abre o WhatsApp real da Rotta do Brasil
+   * ((21) 99709-9557, `buildWhatsAppUrl`) numa aba nova, já com o texto
+   * preenchido. `window.open` (não `<a href>`) porque o clique acontece
+   * dentro de um `<Modal>` — assim o popup fecha no mesmo gesto,
+   * consistente com `dispensarPopupSuporte` marcando "já visto".
+   */
+  function pedirAjudaSuporte(): void {
+    window.open(buildWhatsAppUrl(SUPPORT_WHATSAPP_MESSAGE), "_blank", "noopener,noreferrer");
+    dispensarPopupSuporte();
   }
 
   function fechar(): void {
@@ -255,17 +253,15 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
               Agora falta só cadastrar os alunos e os responsáveis do seu transporte. Quer que o
               suporte da Rotta te ajude com isso?
             </Typography>
+            <Typography variant="caption" color="muted">
+              Vamos abrir o WhatsApp da Rotta do Brasil com uma mensagem já pronta.
+            </Typography>
           </Modal.Body>
           <Modal.Footer className="flex justify-center gap-3">
             <Button variant="secondary" onClick={dispensarPopupSuporte}>
               Agora não
             </Button>
-            <Button
-              isLoading={createSupportTicket.isPending}
-              onClick={() => void pedirAjudaSuporte()}
-            >
-              Sim, pedir ajuda
-            </Button>
+            <Button onClick={pedirAjudaSuporte}>Sim, pedir ajuda</Button>
           </Modal.Footer>
         </Modal>
       ) : null}

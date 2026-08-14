@@ -26,7 +26,6 @@ import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemo } from "@/components/hero-map-demo";
 import { pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
 
-
 /**
  * Título/descrição herdam o padrão do root layout (já otimizados pra
  * home) — aqui só fixamos o `canonical` (Dossiê 12 §7.4: evita que o
@@ -210,49 +209,47 @@ const FAIXA_CONFIANCA: {
   { titulo: "Motorista faltou? A escala se ajusta sozinha", icon: Repeat },
 ];
 
-type ToneCor = "primary" | "info" | "success" | "warning";
-
-const TOM_ICONE: Record<ToneCor, string> = {
-  primary: "bg-primary text-white",
-  info: "bg-info text-white",
-  success: "bg-success text-white",
-  warning: "bg-warning text-white",
-};
+/**
+ * Um único ícone "preenchido" pra sequência inteira (pedido do
+ * usuário: "deixe com as cores da Rotta, não invente" — antes cada um
+ * dos 4 passos cycava por uma cor semântica diferente — primary/info/
+ * success/warning — só pra decorar, sem nenhum estado real por trás,
+ * violando a própria filosofia documentada da marca, Dossiê 10, Seção
+ * 7: "azul, preto, branco e cinza... cor semântica nunca decoração").
+ * O número (`numero`, "01"–"04") já comunica a sequência sozinho — o
+ * ícone não precisa de uma cor por passo pra isso.
+ */
+const TOM_ICONE = "bg-primary text-white";
 
 const COMO_FUNCIONA: {
   numero: string;
   titulo: string;
   descricao: string;
   icon: ComponentType<{ className?: string }>;
-  tom: ToneCor;
 }[] = [
   {
     numero: "01",
     titulo: "Cadastre-se",
     descricao: "Crie sua conta em minutos — sem burocracia, sem contrato de fidelidade.",
     icon: UserPlus,
-    tom: "primary",
   },
   {
     numero: "02",
     titulo: "Vincule sua rota",
     descricao: "Conecte motoristas, veículos, escolas e alunos em poucos cliques.",
     icon: Link2,
-    tom: "info",
   },
   {
     numero: "03",
     titulo: "Acompanhe em tempo real",
     descricao: "Veja o transporte se mover no mapa, do embarque até a entrega.",
     icon: MapPin,
-    tom: "success",
   },
   {
     numero: "04",
     titulo: "Fique tranquilo",
     descricao: "Notificações automáticas a cada etapa — chega de grupo de WhatsApp.",
     icon: ShieldCheck,
-    tom: "warning",
   },
 ];
 
@@ -488,8 +485,8 @@ export default function LandingPage(): JSX.Element {
             <h1 className="text-[44px] font-semibold leading-[0.95] tracking-[-0.01em] text-text sm:text-[64px] lg:text-[80px]">
               Cadê o transporte?
               <br />
-              {/* Palavra de destaque num tom PRÓPRIO da Rotta (dourado do token `--color-warning`) — separado do azul do CTA, mesmo princípio de "uma cor pro botão, outra pro destaque do título" de uma referência editorial trazida pelo usuário, sem herdar a cor dela. */}
-              <span className="text-warning">A Rotta mostra.</span>
+              {/* Destaque no MESMO azul do CTA/marca (pedido do usuário: "deixe com as cores da Rotta, não invente") — antes usava `text-warning` (dourado) só como decoração, sem nenhum estado de aviso real por trás; `--color-warning` é reservado pra estado semântico de verdade (Dossiê 10 §7). */}
+              <span className="text-primary">A Rotta mostra.</span>
             </h1>
             <Typography variant="body" color="muted" className="max-w-lg">
               Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
@@ -638,7 +635,7 @@ export default function LandingPage(): JSX.Element {
               >
                 <div className="flex items-center gap-3">
                   <span
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-transform duration-200 group-hover:scale-110 ${TOM_ICONE[passo.tom]}`}
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-transform duration-200 group-hover:scale-110 ${TOM_ICONE}`}
                   >
                     <passo.icon className="h-5 w-5" />
                   </span>

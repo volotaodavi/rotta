@@ -23,6 +23,7 @@
     "@rotta/theme": "workspace:*",
     "@rotta/types": "workspace:*",
     "@rotta/ui": "workspace:*",
+    "@rotta/validators": "workspace:*",
     "@didit-protocol/sdk-web": "^0.2.1",
     "@tanstack/react-query": "^5.62.11",
     "maplibre-gl": "^6.1.0",

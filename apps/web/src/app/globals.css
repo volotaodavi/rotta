@@ -43,9 +43,10 @@
   --color-disabled-bg: 28 33 43;
   --color-muted: 22 27 36;
   /* Ver bloco "paleta editorial" abaixo — no escuro, a Landing Page fica
-     idêntica ao resto do produto (sem paleta alternativa). */
+     idêntica ao resto do produto (mesmos tokens `--color-background`/
+     `--color-primary-muted`, sem paleta alternativa). */
   --marketing-canvas: 11 15 20;
-  --marketing-wash: 18 22 29;
+  --marketing-wash: 27 43 77;
 }
 
 [data-theme="light"] {
@@ -69,40 +70,38 @@
   --color-placeholder: 156 163 175;
   --color-disabled-bg: 241 242 244;
   --color-muted: 241 242 244;
-  /* Ver bloco `.marketing-theme` abaixo. */
-  --marketing-canvas: 250 247 237;
-  --marketing-wash: 240 231 209;
+  /* Ver bloco "paleta editorial" abaixo. */
+  --marketing-canvas: 255 255 255;
+  --marketing-wash: 232 238 255;
 }
 
 /**
  * Paleta "editorial" só da Landing Page/Site público (classes Tailwind
  * `bg-marketing-*`/`text-marketing-*`, usadas só dentro de `(marketing)`
- * — ver `tailwind.config.ts`) — pedido do usuário: adaptar o clima de um
- * design de referência (canvas quente em vez de branco clínico, faixas
- * de seção alternadas, tipografia editorial mais espaçada) SEM copiar a
- * paleta/fonte/marca da referência (mesma disciplina de toda referência
- * usada nesta sessão — Uber/inDrive/Mercury/AbacatePay sempre viraram
- * "inspirado em", nunca cópia 1:1). As cores novas abaixo nascem da
- * PRÓPRIA identidade da Rotta, não da referência:
- * `--marketing-canvas` é um branco quente (nunca o `#fffef0` exato de
- * nenhum produto de terceiro).
+ * — ver `tailwind.config.ts`) — cria as faixas de seção alternadas do
+ * layout editorial (canvas ↔ wash) sem precisar de uma cor nova: os
+ * dois tons são literalmente `--color-background` e
+ * `--color-primary-muted`, os mesmos tokens já definidos em
+ * `packages/theme/src/tokens/colors.ts` e usados no resto do produto
+ * (ex.: fundo de `Badge`/chips com `bg-primary/10`).
  *
- * BUG corrigido (usuário: "as cores não estão harmônicas, deixe
- * harmônico, com naturalidade") — a primeira versão de `--marketing-
- * wash` era um azul bem claro (o matiz do `--color-primary`), que ficava
- * em tensão visual ao lado do creme quente do canvas: azul e laranja/
- * amarelo (a base do creme) são praticamente complementares no círculo
- * cromático, então a faixa "saltava" em vez de se integrar. Agora
- * `--marketing-wash` é um tom mais PROFUNDO do MESMO branco quente do
- * canvas (mesma família de matiz, só um degrau mais escuro) — harmonia
- * por VALOR, não por matiz diferente, princípio clássico de paleta
- * monocromática. `--marketing-ink`/`-ink-text` são fixos (não mudam com
- * o toggle claro/escuro): usados na barra de navegação e no rodapé como
- * um bloco escuro sempre presente — na prática, o PRÓPRIO azul-marinho
+ * BUG corrigido (usuário: "as cores não estão harmônicas... deixe com
+ * as cores da Rotta, não invente") — a versão anterior usava um creme/
+ * bege quente (`--marketing-canvas`) que não existe em
+ * `packages/theme` nenhum — uma paleta "inventada" por fora da
+ * identidade oficial da marca (Dossiê 10, Seção 7: "a marca se
+ * restringe a azul, preto, branco e cinza"). Agora `--marketing-canvas`
+ * é o branco/fundo real do tema (`--color-background`) e
+ * `--marketing-wash` é o azul-primário-em-tinta-mínima
+ * (`--color-primary-muted`) — a MESMA cor que já aparece em CTAs,
+ * links e estados de foco em todo o resto do produto, só que como
+ * fundo de seção em vez de destaque pontual: harmonia por reaproveitar
+ * um único matiz de marca (o azul), nunca por introduzir um segundo.
+ * `--marketing-ink`/`-ink-text` são fixos (não mudam com o toggle
+ * claro/escuro): usados na barra de navegação e no rodapé como um
+ * bloco escuro sempre presente — na prática, o PRÓPRIO azul-marinho
  * escuro que já é o `--color-background` do tema escuro da Rotta, não
- * uma cor nova. O azul da marca (`--color-primary`) continua reservado
- * só pra elementos interativos (links, CTA, foco) — nunca uma cor de
- * fundo de seção, o que também ajuda a manter a paleta contida.
+ * uma cor nova.
  */
 :root {
   --marketing-ink: 11 15 20;

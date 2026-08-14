@@ -77,6 +77,14 @@ export const SITE_LOGO_PATH = "/brand/rotta-mark-512.png";
 
 export const SITE_INSTAGRAM_URL = "https://www.instagram.com/rotta_app/";
 
+/** Número real de WhatsApp da Rotta do Brasil (fornecido pelo usuário), em E.164 sem "+" — formato exigido pelo `wa.me`. */
+export const SITE_WHATSAPP_NUMBER = "5521997099557";
+
+/** Link `wa.me` pronto pra abrir uma conversa com uma mensagem pré-preenchida (nunca dispara nenhuma chamada de API — é só um link `https://wa.me/...`, o próprio WhatsApp do usuário que abre). */
+export function buildWhatsAppUrl(message: string): string {
+  return `https://wa.me/${SITE_WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+}
+
 /**
  * Token de verificação de propriedade do Google Search Console (método
  * "tag HTML" — https://search.google.com/search-console, "Adicionar

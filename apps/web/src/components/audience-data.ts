@@ -9,7 +9,19 @@ export interface AudienceCard {
   bullets: string[];
   ctaLabel: string;
   ctaHref: Route;
-  tone: "primary" | "neutral" | "success" | "info";
+  /**
+   * Só 2 valores de propósito (pedido do usuário: "deixe com as cores
+   * da Rotta, não invente" — Dossiê 10, Seção 7: a marca é azul/preto/
+   * branco/cinza, cor semântica só quando há estado real por trás).
+   * Antes cada audiência tinha um matiz próprio (success/info/warning)
+   * SÓ pra decorar o card, sem nenhum estado real por trás — violava a
+   * própria regra documentada em `pill-button-classes.ts` ("um único
+   * botão preenchido do sistema... nunca uma segunda cor"). Agora só
+   * "Sou responsável" (a audiência-alvo do CTA principal da hero) usa o
+   * azul da marca; as outras 3 usam o mesmo cinza neutro — nunca uma
+   * cor "inventada" por card.
+   */
+  tone: "primary" | "neutral";
   icon: ComponentType<{ className?: string }>;
   /**
    * Só `Company` tem `Plan`/mensalidade (Dossiê 26) — Responsável é
@@ -82,7 +94,7 @@ export const AUDIENCIAS: AudienceCard[] = [
     ],
     ctaLabel: "Quero dirigir com a Rotta",
     ctaHref: "/criar-conta/motorista",
-    tone: "success",
+    tone: "neutral",
     icon: RouteIcon,
     temPlano: false,
   },
@@ -97,7 +109,7 @@ export const AUDIENCIAS: AudienceCard[] = [
     ],
     ctaLabel: "Quero ser monitor na Rotta",
     ctaHref: "/convite",
-    tone: "info",
+    tone: "neutral",
     icon: UserCheck,
     temPlano: false,
   },
@@ -106,13 +118,25 @@ export const AUDIENCIAS: AudienceCard[] = [
 export const TONE_BG: Record<AudienceCard["tone"], string> = {
   primary: "bg-primary",
   neutral: "bg-secondary",
-  success: "bg-success",
-  info: "bg-info",
 };
 
 export const TONE_TEXT: Record<AudienceCard["tone"], string> = {
   primary: "text-primary",
   neutral: "text-secondary",
-  success: "text-success",
-  info: "text-info",
+};
+
+/**
+ * Cor de TEXTO sobre um fundo `TONE_BG` preenchido (pill ativa do
+ * `HeroAudienceSwitch`) — nunca `text-white` fixo: `--color-secondary`
+ * inverte de claro (tema escuro) pra escuro (tema claro), então um
+ * texto branco fixo por cima teria contraste ruim no tema escuro
+ * (fundo `bg-secondary` claro + texto branco). `text-background` usa o
+ * mesmo token de fundo da página — que é sempre o oposto do `secondary`
+ * em qualquer tema — garantindo contraste nos dois. `primary` continua
+ * `text-white` porque o azul da marca é escuro o bastante nos dois
+ * temas.
+ */
+export const TONE_ON_BG_TEXT: Record<AudienceCard["tone"], string> = {
+  primary: "text-white",
+  neutral: "text-background",
 };

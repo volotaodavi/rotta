@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { AUDIENCIAS, TONE_BG } from "./audience-data";
+import { AUDIENCIAS, TONE_BG, TONE_ON_BG_TEXT } from "./audience-data";
 import { pillGhostLg, pillPrimaryLg } from "./pill-button-classes";
 
 /**
@@ -36,7 +36,7 @@ export function HeroAudienceSwitch(): JSX.Element {
               onClick={() => setSelecionado(index)}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
                 ativo
-                  ? `${TONE_BG[item.tone]} text-white`
+                  ? `${TONE_BG[item.tone]} ${TONE_ON_BG_TEXT[item.tone]}`
                   : "bg-surface text-text-muted hover:text-text"
               }`}
             >
