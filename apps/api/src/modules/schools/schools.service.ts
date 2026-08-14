@@ -162,6 +162,18 @@ export class SchoolsService {
     dto: CreateSchoolDto,
     actor: AuthenticatedUser,
     meta: RequestMeta,
+    /**
+     * Só usado pelo autocadastro rápido do Responsável (`GeoPipelineService.
+     * quickRegisterSchool`, `POST /geo/schools/quick-register`) — sem
+     * `status`/`origemCadastro`, mantém exatamente o comportamento de
+     * sempre (`ATIVA`/`MANUAL`, cadastro por Empresa/Gestor/Admin Rotta
+     * já confia na fonte). Uma escola que um Responsável digitou às
+     * pressas no meio do cadastro do filho nasce `EM_ANALISE` — mesma
+     * cautela do que a Education Sync Agent já aplica pra toda escola
+     * nova vinda do Censo Escolar — nunca `ATIVA` sem alguém da gestão
+     * revisar.
+     */
+    overrides?: { status?: School["status"]; origemCadastro?: string },
   ): Promise<SchoolResponseDto> {
     if (dto.codigoInep) {
       const existing = await this.schoolRepository.findByCodigoInep(dto.codigoInep);
@@ -174,8 +186,8 @@ export class SchoolsService {
     const data: CreateSchoolData = {
       ...dto,
       codigoInterno,
-      status: "ATIVA",
-      origemCadastro: "MANUAL",
+      status: overrides?.status ?? "ATIVA",
+      origemCadastro: overrides?.origemCadastro ?? "MANUAL",
       criadoPorId: actor.sub,
     };
 

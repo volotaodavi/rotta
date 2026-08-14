@@ -1,21 +1,41 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Check, MapPin } from "@rotta/icons";
+import { Check, MapPin, Sparkles } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 
-import type { CreateStudentInput, School, SchoolShift, StudentSex } from "@rotta/api-client";
+import type {
+  CreateStudentInput,
+  QuickRegisterSchoolInput,
+  School,
+  SchoolAdministrativeDependency,
+  SchoolShift,
+  StudentSex,
+} from "@rotta/api-client";
 
-import { useSchoolsList } from "@/features/schools/hooks/use-schools";
-import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
+import { useQuickRegisterSchool, useSchoolsList } from "@/features/schools/hooks/use-schools";
+import {
+  SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL,
+  SCHOOL_SHIFT_LABEL,
+} from "@/features/schools/labels";
 import { useCreateStudent } from "@/features/students/hooks/use-students";
 import { useTracedRoute } from "@/features/students/hooks/use-traced-route";
 import { STUDENT_SEX_LABEL } from "@/features/students/labels";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 
+const QUICK_REGISTER_INITIAL_STATE: QuickRegisterSchoolInput = {
+  nomeOficial: "",
+  dependenciaAdministrativa: "MUNICIPAL",
+  cep: "",
+  logradouro: "",
+  numero: "",
+  bairro: "",
+  cidade: "",
+  estado: "",
+};
 
 const INITIAL_STATE: CreateStudentInput = {
   nome: "",
@@ -70,10 +90,27 @@ export default function NovoAlunoPage(): JSX.Element {
 
   const [schoolSearch, setSchoolSearch] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
-  const { data: schoolResults } = useSchoolsList({
+  const { data: schoolResults, isLoading: isSearchingSchools } = useSchoolsList({
     search: schoolSearch || undefined,
     pageSize: 5,
   });
+
+  // Autocadastro rápido de escola (pedido do usuário: "não aparece
+  // escolas para clicar, nem busca rápida para ver se a escola existe.
+  // Se existe agentes de IA, pq eles não estão trabalhando?") — o
+  // catálogo compartilhado só se popula em massa pela sincronização
+  // nacional do Censo Escolar, que só Admin Rotta dispara sob demanda
+  // (`(admin)/escolas`); enquanto isso, ninguém cadastrando o próprio
+  // filho agora deveria ficar esperando. A Geocoding AI Agent
+  // geocodifica o endereço na hora (`useQuickRegisterSchool`) — a
+  // escola nasce `EM_ANALISE` mas já pode ser selecionada aqui mesmo.
+  const [quickRegisterAberto, setQuickRegisterAberto] = useState(false);
+  const [quickForm, setQuickForm] = useState<QuickRegisterSchoolInput>(
+    QUICK_REGISTER_INITIAL_STATE,
+  );
+  const [quickErrorMessage, setQuickErrorMessage] = useState<string | null>(null);
+  const quickCep = useCepLookup();
+  const quickRegisterSchool = useQuickRegisterSchool();
 
   const embarqueCep = useCepLookup();
   const desembarqueCep = useCepLookup();
@@ -141,6 +178,52 @@ export default function NovoAlunoPage(): JSX.Element {
       desembarqueCidade: address.cidade || current.desembarqueCidade,
       desembarqueEstado: address.estado || current.desembarqueEstado,
     }));
+  }
+
+  function updateQuickField<K extends keyof QuickRegisterSchoolInput>(
+    key: K,
+    value: QuickRegisterSchoolInput[K],
+  ): void {
+    setQuickForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function openQuickRegister(): void {
+    setQuickForm({ ...QUICK_REGISTER_INITIAL_STATE, nomeOficial: schoolSearch });
+    setQuickErrorMessage(null);
+    setQuickRegisterAberto(true);
+  }
+
+  async function handleQuickCepBlur(): Promise<void> {
+    const address = await quickCep.lookup(quickForm.cep);
+    if (!address) return;
+    setQuickForm((current) => ({
+      ...current,
+      logradouro: address.endereco || current.logradouro,
+      bairro: address.bairro || current.bairro,
+      cidade: address.cidade || current.cidade,
+      estado: address.estado || current.estado,
+    }));
+  }
+
+  // Sem `FormEvent`/`<form>` própria de propósito — este botão vive
+  // dentro do `<form>` grande do cadastro do aluno; um `<form>` aninhado
+  // seria HTML inválido, então o clique é tratado como uma ação
+  // isolada (`type="button"`, nunca `submit`), sem disparar o envio do
+  // formulário do aluno por engano.
+  async function handleQuickRegisterSubmit(): Promise<void> {
+    setQuickErrorMessage(null);
+    try {
+      const school = await quickRegisterSchool.mutateAsync(quickForm);
+      setSelectedSchool(school);
+      updateField("schoolId", school.id);
+      setQuickRegisterAberto(false);
+      setSchoolSearch("");
+      setQuickForm(QUICK_REGISTER_INITIAL_STATE);
+    } catch (error) {
+      setQuickErrorMessage(
+        error instanceof ApiError ? error.message : "Erro inesperado ao cadastrar a escola.",
+      );
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -354,6 +437,141 @@ export default function NovoAlunoPage(): JSX.Element {
                             <Check className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100" />
                           </button>
                         ))}
+                      </div>
+                    )}
+                    {schoolSearch &&
+                    !isSearchingSchools &&
+                    schoolResults &&
+                    schoolResults.items.length === 0 ? (
+                      <Typography variant="caption" color="muted">
+                        Nenhuma escola encontrada com esse nome no catálogo ainda.
+                      </Typography>
+                    ) : null}
+                    {!quickRegisterAberto ? (
+                      <button
+                        type="button"
+                        onClick={openQuickRegister}
+                        className="flex items-center gap-2 self-start rounded-md px-1 py-1 text-sm font-medium text-primary hover:underline"
+                      >
+                        <Sparkles className="h-4 w-4" />
+                        Não encontrou a escola? Cadastre agora
+                      </button>
+                    ) : (
+                      <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          <Typography variant="bodySmall" className="font-semibold">
+                            Cadastro rápido de escola
+                          </Typography>
+                        </div>
+                        <Typography variant="caption" color="muted">
+                          A escola entra no catálogo da Rotta agora mesmo (com o endereço já
+                          localizado no mapa) e fica disponível pra você selecionar na hora. Uma
+                          transportadora completa os dados depois.
+                        </Typography>
+                        <FormField label="Nome da escola" isRequired>
+                          <Input
+                            required
+                            value={quickForm.nomeOficial}
+                            onChange={(event) =>
+                              updateQuickField("nomeOficial", event.target.value)
+                            }
+                          />
+                        </FormField>
+                        <FormField label="Dependência administrativa" isRequired>
+                          <Select
+                            required
+                            value={quickForm.dependenciaAdministrativa}
+                            onChange={(event) =>
+                              updateQuickField(
+                                "dependenciaAdministrativa",
+                                event.target.value as SchoolAdministrativeDependency,
+                              )
+                            }
+                          >
+                            {Object.entries(SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL).map(
+                              ([value, label]) => (
+                                <option key={value} value={value}>
+                                  {label}
+                                </option>
+                              ),
+                            )}
+                          </Select>
+                        </FormField>
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <FormField label="CEP" isRequired>
+                            <Input
+                              required
+                              value={quickForm.cep}
+                              onChange={(event) => updateQuickField("cep", event.target.value)}
+                              onBlur={() => void handleQuickCepBlur()}
+                            />
+                          </FormField>
+                          <FormField label="Logradouro" isRequired>
+                            <Input
+                              required
+                              value={quickForm.logradouro}
+                              onChange={(event) =>
+                                updateQuickField("logradouro", event.target.value)
+                              }
+                            />
+                          </FormField>
+                          <FormField label="Número" isRequired>
+                            <Input
+                              required
+                              value={quickForm.numero}
+                              onChange={(event) => updateQuickField("numero", event.target.value)}
+                            />
+                          </FormField>
+                          <FormField label="Bairro" isRequired>
+                            <Input
+                              required
+                              value={quickForm.bairro}
+                              onChange={(event) => updateQuickField("bairro", event.target.value)}
+                            />
+                          </FormField>
+                          <FormField label="Cidade" isRequired>
+                            <Input
+                              required
+                              value={quickForm.cidade}
+                              onChange={(event) => updateQuickField("cidade", event.target.value)}
+                            />
+                          </FormField>
+                          <FormField label="Estado (UF)" isRequired>
+                            <Input
+                              required
+                              maxLength={2}
+                              value={quickForm.estado}
+                              onChange={(event) =>
+                                updateQuickField("estado", event.target.value.toUpperCase())
+                              }
+                            />
+                          </FormField>
+                        </div>
+                        {quickErrorMessage && (
+                          <Typography variant="bodySmall" color="danger">
+                            {quickErrorMessage}
+                          </Typography>
+                        )}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            type="button"
+                            variant="primary"
+                            size="sm"
+                            isLoading={quickRegisterSchool.isPending}
+                            onClick={() => void handleQuickRegisterSubmit()}
+                          >
+                            Cadastrar e selecionar
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setQuickRegisterAberto(false)}
+                          >
+                            Cancelar
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>

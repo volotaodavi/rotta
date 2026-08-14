@@ -6,13 +6,13 @@ import type {
   CreateSchoolAccessPointInput,
   CreateSchoolInput,
   ListSchoolsParams,
+  QuickRegisterSchoolInput,
   SchoolStatus,
   UpdateSchoolAccessPointInput,
   UpdateSchoolInput,
 } from "@rotta/api-client";
 
-import { schoolsApi } from "@/lib/api-client";
-
+import { geoApi, schoolsApi } from "@/lib/api-client";
 
 /**
  * Hooks de dados do módulo Escolas (Painel Web — Empresa/Gestor
@@ -54,6 +54,24 @@ export function useCreateSchool() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateSchoolInput) => schoolsApi.create(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["schools"] });
+    },
+  });
+}
+
+/**
+ * Autocadastro rápido de escola (Geocoding AI Agent, `POST /geo/
+ * schools/quick-register`) — pedido do usuário: "não aparece escolas
+ * para clicar, nem busca rápida para ver se a escola existe". Usado
+ * pelo cadastro de Aluno quando a busca no catálogo (`useSchoolsList`)
+ * não encontra nada — a escola nasce `EM_ANALISE`, mas já pode ser
+ * selecionada nesta mesma hora.
+ */
+export function useQuickRegisterSchool() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: QuickRegisterSchoolInput) => geoApi.quickRegisterSchool(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["schools"] });
     },

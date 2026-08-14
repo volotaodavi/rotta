@@ -1,7 +1,7 @@
 import { buildQueryString } from "../query.util";
 
 import type { ApiClient } from "../http";
-import type { SchoolStatus } from "./schools";
+import type { School, SchoolAdministrativeDependency, SchoolStatus } from "./schools";
 
 /**
  * Endpoints tipados do Rotta Geo Platform (briefing "ROTTA GEO
@@ -59,6 +59,18 @@ export interface RoutePreviewResult {
   duracaoSegundos: number;
   geometria: { type: "LineString"; coordinates: [number, number][] };
   pernas: { distanciaMetros: number; duracaoSegundos: number }[];
+}
+
+/** `POST /geo/schools/quick-register` — só os campos que o Responsável realmente sabe de cabeça no meio do cadastro do filho. */
+export interface QuickRegisterSchoolInput {
+  nomeOficial: string;
+  dependenciaAdministrativa: SchoolAdministrativeDependency;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
 }
 
 interface ApiEnvelope<T> {
@@ -122,6 +134,22 @@ export function createGeoEndpoints(apiClient: ApiClient) {
     }): Promise<RoutePreviewResult> =>
       (
         await apiClient.request<ApiEnvelope<RoutePreviewResult>>("/geo/rota-previa", {
+          method: "POST",
+          body: input,
+        })
+      ).data,
+
+    /**
+     * Autocadastro rápido de escola pela Geocoding AI Agent — usado
+     * pelo cadastro de Aluno quando a busca no catálogo não encontra a
+     * escola (nunca espera pela sincronização nacional do Censo Escolar,
+     * `syncInep`, pra existir pelo menos essa escola). Devolve a escola
+     * já criada (`status: "EM_ANALISE"`) e, quando o endereço foi
+     * localizado, já com `latitude`/`longitude` reais.
+     */
+    quickRegisterSchool: async (input: QuickRegisterSchoolInput): Promise<School> =>
+      (
+        await apiClient.request<ApiEnvelope<School>>("/geo/schools/quick-register", {
           method: "POST",
           body: input,
         })

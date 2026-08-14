@@ -11,6 +11,7 @@ import {
   Patch,
   Post,
   Query,
+  Req,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
@@ -18,6 +19,7 @@ import { MapIntelligenceService } from "./agents/map-intelligence.service";
 import { GeocodeAddressDto } from "./dto/geocode-address.dto";
 import { ListMapMarkersQueryDto } from "./dto/list-map-markers-query.dto";
 import { ListNearbySchoolsQueryDto } from "./dto/list-nearby-schools-query.dto";
+import { QuickRegisterSchoolDto } from "./dto/quick-register-school.dto";
 import { RevisarCoordinateDto } from "./dto/revisar-coordinate.dto";
 import { RoutePreviewDto } from "./dto/route-preview.dto";
 import { GeoEngineService } from "./geo-engine.service";
@@ -25,7 +27,9 @@ import { GeoPipelineService } from "./geo-pipeline.service";
 import { INEP_SYNC_QUEUE, SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
 
 import type { SchoolCoordinateRepository } from "./repositories/school-coordinate.repository";
+import type { Request } from "express";
 
+import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import { Role } from "@/shared/enums";
@@ -35,6 +39,10 @@ const MANAGE_ROLES = [Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR] as const;
 const SYNC_ROLES = [Role.ADMIN_ROTTA] as const;
 /** Ver marcadores no mapa é tão aberto quanto ver o catálogo de Escolas (`SchoolsController.READ_ROLES`). */
 const VIEW_ROLES = [...MANAGE_ROLES, Role.MOTORISTA, Role.MONITOR, Role.RESPONSAVEL] as const;
+
+function requestMeta(req: Request): { ip?: string; userAgent?: string } {
+  return { ip: req.ip, userAgent: req.headers["user-agent"] };
+}
 
 /**
  * API REST do Rotta Geo Engine/Geo Platform (briefing "ROTTA GEO
@@ -143,5 +151,25 @@ export class GeoController {
   @Roles(...VIEW_ROLES)
   rotaPrevia(@Body() dto: RoutePreviewDto) {
     return this.geoEngine.getRoute(dto.origem, dto.destino, dto.paradas ?? []);
+  }
+
+  /**
+   * Autocadastro rápido de escola (Geocoding AI Agent) — pedido do
+   * usuário: "não aparece escolas para clicar, nem busca rápida para
+   * ver se a escola existe. Se existe agentes de IA, pq eles não estão
+   * trabalhando?". Mesmas roles de quem já enxerga o catálogo de
+   * Escolas (`VIEW_ROLES`, inclui Responsável) — a fila nacional do
+   * Censo Escolar (`POST /geo/inep-sync`) continua existindo pra
+   * completar o catálogo em massa, mas ninguém no meio do cadastro do
+   * próprio filho deveria ficar esperando por ela.
+   */
+  @Post("schools/quick-register")
+  @Roles(...VIEW_ROLES)
+  quickRegisterSchool(
+    @Body() dto: QuickRegisterSchoolDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.geoPipeline.quickRegisterSchool(dto, actor, requestMeta(req));
   }
 }

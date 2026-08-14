@@ -4,8 +4,10 @@ import { GeoPipelineService } from "../geo-pipeline.service";
 
 import type { GeocodingAiAgentService } from "../agents/geocoding-ai-agent.service";
 import type { ValidationAiAgentService } from "../agents/validation-ai-agent.service";
+import type { QuickRegisterSchoolDto } from "../dto/quick-register-school.dto";
 import type { SchoolCoordinateRepository } from "../repositories/school-coordinate.repository";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
+import type { SchoolsService } from "@/modules/schools/schools.service";
 import type { School, SchoolCoordinate } from "@prisma/client";
 
 function buildSchool(overrides: Partial<School> = {}): School {
@@ -73,6 +75,7 @@ describe("GeoPipelineService", () => {
       {} as ValidationAiAgentService,
       schoolRepository,
       {} as SchoolCoordinateRepository,
+      {} as SchoolsService,
     );
 
     await expect(service.geocodeSchool("school-inexistente")).rejects.toThrow(NotFoundException);
@@ -97,6 +100,7 @@ describe("GeoPipelineService", () => {
       validationAgent,
       schoolRepository,
       {} as SchoolCoordinateRepository,
+      {} as SchoolsService,
     );
     const resultado = await service.geocodeSchool("school-1");
 
@@ -127,6 +131,7 @@ describe("GeoPipelineService", () => {
       validationAgent,
       schoolRepository,
       {} as SchoolCoordinateRepository,
+      {} as SchoolsService,
     );
     await service.geocodeSchool("school-1");
 
@@ -143,6 +148,7 @@ describe("GeoPipelineService", () => {
         {} as ValidationAiAgentService,
         {} as SchoolRepository,
         coordinateRepository,
+        {} as SchoolsService,
       );
 
       await expect(
@@ -169,6 +175,7 @@ describe("GeoPipelineService", () => {
         {} as ValidationAiAgentService,
         schoolRepository,
         coordinateRepository,
+        {} as SchoolsService,
       );
       const resultado = await service.resolveManualReview("coordinate-1", {
         latitude: -23.5,
@@ -191,6 +198,93 @@ describe("GeoPipelineService", () => {
         latitude: -23.5,
         longitude: -46.6,
       });
+    });
+  });
+
+  describe("quickRegisterSchool", () => {
+    const dto: QuickRegisterSchoolDto = {
+      nomeOficial: "EMEF Professora Ana Souza",
+      dependenciaAdministrativa: "MUNICIPAL",
+      cep: "01310100",
+      logradouro: "Avenida Paulista",
+      numero: "1000",
+      bairro: "Bela Vista",
+      cidade: "São Paulo",
+      estado: "SP",
+    };
+    const actor = { sub: "responsavel-1", role: "responsavel" } as never;
+    const meta = {};
+
+    it("cria a escola EM_ANALISE com origemCadastro AUTOCADASTRO_RESPONSAVEL, geocodifica e devolve o registro final", async () => {
+      const criada = buildSchool({ id: "school-2", status: "EM_ANALISE" });
+      const geocodificada = buildSchool({
+        id: "school-2",
+        status: "EM_ANALISE",
+        latitude: -23.5 as never,
+        longitude: -46.6 as never,
+      });
+      const schoolsService = {
+        create: jest.fn().mockResolvedValue(criada),
+        findByIdOrThrow: jest.fn().mockResolvedValue(geocodificada),
+      } as unknown as SchoolsService;
+      const geocodingAgent = {
+        geocodeSchool: jest.fn().mockResolvedValue(buildCoordinate()),
+      } as unknown as GeocodingAiAgentService;
+      const validationAgent = {
+        validate: jest
+          .fn()
+          .mockResolvedValue({ status: "VALIDADO", coordinate: buildCoordinate() }),
+      } as unknown as ValidationAiAgentService;
+      const schoolRepository = {
+        findById: jest.fn().mockResolvedValue(criada),
+      } as unknown as SchoolRepository;
+
+      const service = new GeoPipelineService(
+        geocodingAgent,
+        validationAgent,
+        schoolRepository,
+        {} as SchoolCoordinateRepository,
+        schoolsService,
+      );
+
+      const resultado = await service.quickRegisterSchool(dto, actor, meta);
+
+      expect(schoolsService.create).toHaveBeenCalledWith(
+        expect.objectContaining({ ...dto, tipos: ["OUTRO"], turnosAtendidos: ["PERSONALIZADO"] }),
+        actor,
+        meta,
+        { status: "EM_ANALISE", origemCadastro: "AUTOCADASTRO_RESPONSAVEL" },
+      );
+      expect(geocodingAgent.geocodeSchool).toHaveBeenCalledWith("school-2", expect.any(String), 1);
+      expect(schoolsService.findByIdOrThrow).toHaveBeenCalledWith("school-2", actor);
+      expect(resultado).toBe(geocodificada);
+    });
+
+    it("devolve a escola criada mesmo quando a geocodificação falha (endereço sem correspondência no Nominatim)", async () => {
+      const criada = buildSchool({ id: "school-3", status: "EM_ANALISE" });
+      const schoolsService = {
+        create: jest.fn().mockResolvedValue(criada),
+        findByIdOrThrow: jest.fn().mockResolvedValue(criada),
+      } as unknown as SchoolsService;
+      const schoolRepository = {
+        findById: jest.fn().mockResolvedValue(criada),
+      } as unknown as SchoolRepository;
+      const geocodingAgent = {
+        geocodeSchool: jest.fn().mockRejectedValue(new Error("endereço não encontrado")),
+      } as unknown as GeocodingAiAgentService;
+
+      const service = new GeoPipelineService(
+        geocodingAgent,
+        {} as ValidationAiAgentService,
+        schoolRepository,
+        {} as SchoolCoordinateRepository,
+        schoolsService,
+      );
+
+      const resultado = await service.quickRegisterSchool(dto, actor, meta);
+
+      expect(resultado).toBe(criada);
+      expect(schoolsService.findByIdOrThrow).toHaveBeenCalledWith("school-3", actor);
     });
   });
 });
