@@ -4,16 +4,7 @@ import { RottaMap } from "@rotta/maps/native";
 import { Timeline } from "@rotta/ui/native";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-
+import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
@@ -25,7 +16,7 @@ import { buildContratoSteps, buildSolicitacaoSteps } from "../timeline-steps";
 import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
-import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
+import { RecenterButton } from "@/components/route-screen-chrome";
 import { useGpsForStudent } from "@/features/gps/hooks/use-gps";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import {
@@ -196,13 +187,13 @@ function TransporteAtivoScreen({ contrato }: { contrato: Contract }): JSX.Elemen
 }
 
 /**
- * Acompanhamento em tela cheia (pedido do usuário, com a mesma imagem
- * de referência "Track Rider" já usada nas Frentes K/L/M: "o mapa
- * deverá ocupar a tela inteira, não um quadrado") — porta exata do
- * padrão de `RotaOperacional` do Motorista (`inicio-screen.tsx`, Frente
- * P5), agora do lado de quem acompanha: mapa ocupando a maior parte da
- * viewport, cartões translúcidos por cima com o status/ETA/veículo, e o
- * contrato + avaliações continuam abaixo, com scroll.
+ * Acompanhamento com viagem em curso (3 imagens de referência
+ * anexadas pelo usuário, tela do Responsável — "Viagem em andamento":
+ * mapa em CARTÃO compacto no topo de uma tela que rola, nunca em tela
+ * cheia) — Frente 301, reverte o padrão anterior (Frente P5/Q) que
+ * usava mapa em tela cheia com cartões flutuando por cima. Cor de
+ * papel verde (`success`, já existente na paleta — Responsável) nos
+ * acentos desta tela.
  *
  * Sem chat com o motorista aqui: a Rotta não tem canal de chat ao vivo
  * no app nativo (só Chamados no Painel Web) — nenhum botão fingindo uma
@@ -216,8 +207,6 @@ function TransporteEmAndamentoScreen({
   viagem: MapVehicle;
 }): JSX.Element {
   const { theme } = useTheme();
-  const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
   const { data: proximasEtas } = useProximasEtasResponsavel(viagem.tripId);
   const proximaParada = proximasEtas?.[0];
   // Botão "centralizar no meu GPS" (Frente Q) — o mapa nativo, igual o
@@ -225,25 +214,20 @@ function TransporteEmAndamentoScreen({
   // é como recentraliza de verdade.
   const [mapKey, setMapKey] = useState(0);
 
-  const mapSectionHeight = Math.max(windowHeight * 0.6, 380);
-  const chips = proximaParada
-    ? [
-        {
-          label: "Distância",
-          value:
-            proximaParada.distanciaMetros >= 1000
-              ? `${(proximaParada.distanciaMetros / 1000).toFixed(1)} km`
-              : `${Math.round(proximaParada.distanciaMetros)} m`,
-        },
-        { label: "Chegando às", value: formatarHora(proximaParada.etaPrevista) },
-      ]
-    : undefined;
-
   return (
     <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.opScrollContent}>
-        <View style={[styles.mapSection, { height: mapSectionHeight }]}>
-          <View style={styles.absoluteFill}>
+        <Text style={[styles.titulo, { color: theme.colors.text, margin: 16 }]}>
+          Meu Transporte
+        </Text>
+
+        <View
+          style={[
+            styles.mapCard,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
+          <View style={styles.mapCardMap}>
             {viagem.latitude && viagem.longitude ? (
               <RottaMap
                 key={mapKey}
@@ -266,52 +250,24 @@ function TransporteEmAndamentoScreen({
                 </Text>
               </View>
             )}
-          </View>
-
-          {/*
-            Cartão "De/Para" (Frente Q, imagem de referência de app de
-            navegação) — De: o veículo (placa + motorista); Para: a
-            próxima parada com ETA real (`useProximasEtasResponsavel`,
-            já existia). "Última posição" desce pro rodapé do cartão via
-            `rightSlot` junto do `StatusPill`, sem perder nenhuma
-            informação que já existia.
-          */}
-          <View
-            style={[styles.topOverlay, { top: insets.top + theme.spacing[3] }]}
-            pointerEvents="box-none"
-          >
-            <RouteFromToCard
-              origemLabel={`${viagem.placa} — ${viagem.motoristaNome}`}
-              destinoLabel={proximaParada ? proximaParada.endereco : "Próxima parada"}
-              chips={chips}
-              rightSlot={<StatusPill label="Em viagem agora" tone="success" />}
+            <RecenterButton
+              onPress={() => setMapKey((k) => k + 1)}
+              style={{ position: "absolute", right: 8, bottom: 8 }}
             />
           </View>
 
-          <RecenterButton
-            onPress={() => setMapKey((k) => k + 1)}
-            style={{ position: "absolute", right: 16, top: insets.top + theme.spacing[3] + 96 }}
-          />
-
-          <View
-            style={[
-              styles.bottomPanel,
-              {
-                backgroundColor: theme.colors.surfaceElevated,
-                borderTopLeftRadius: theme.radius.xl,
-                borderTopRightRadius: theme.radius.xl,
-              },
-              theme.elevation.modal.native,
-            ]}
-          >
-            {proximaParada ? (
-              <View style={styles.etaRow}>
-                <Clock size={14} color={theme.colors.primary} />
-                <Text style={{ color: theme.colors.primary, fontWeight: "600", fontSize: 13 }}>
-                  Chegando às {formatarHora(proximaParada.etaPrevista)}
-                </Text>
-              </View>
-            ) : null}
+          <View style={styles.mapCardBody}>
+            <View style={styles.mapCardBodyRow}>
+              <StatusPill label="Em viagem agora" tone="success" />
+              {proximaParada ? (
+                <View style={styles.etaRow}>
+                  <Clock size={14} color={theme.colors.success} />
+                  <Text style={{ color: theme.colors.success, fontWeight: "600", fontSize: 13 }}>
+                    Chegando às {formatarHora(proximaParada.etaPrevista)}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
 
             <View style={[styles.veiculoRow, { borderColor: theme.colors.border, borderWidth: 1 }]}>
               <View style={[styles.veiculoIcone, { backgroundColor: theme.colors.primaryMuted }]}>
@@ -580,20 +536,19 @@ function RatingForm({
 
 const styles = StyleSheet.create({
   abaixoDoMapa: { gap: 16, padding: 24 },
-  absoluteFill: { ...StyleSheet.absoluteFillObject },
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },
-  bottomPanel: {
-    bottom: 0,
-    gap: 12,
-    left: 0,
-    padding: 16,
-    position: "absolute",
-    right: 0,
-  },
   etaRow: { alignItems: "center", flexDirection: "row", gap: 4 },
   header: { flexDirection: "row" },
-  mapSection: { overflow: "hidden", position: "relative", width: "100%" },
+  mapCard: { borderRadius: 16, borderWidth: 1, marginHorizontal: 16, overflow: "hidden" },
+  mapCardBody: { gap: 12, padding: 12 },
+  mapCardBodyRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  mapCardMap: { height: 208, position: "relative", width: "100%" },
   mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
   mapaVazioFill: {
     ...StyleSheet.absoluteFillObject,
@@ -604,12 +559,11 @@ const styles = StyleSheet.create({
   mensalidade: { fontWeight: "600" },
   notas: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   opScreen: { flex: 1 },
-  opScrollContent: { flexGrow: 1 },
+  opScrollContent: { flexGrow: 1, paddingBottom: 24 },
   paradaRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   rotuloAvaliacao: { fontWeight: "600" },
   secao: { fontSize: 16, fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
-  topOverlay: { gap: 12, left: 16, position: "absolute", right: 16 },
   veiculoIcone: {
     alignItems: "center",
     borderRadius: 999,
