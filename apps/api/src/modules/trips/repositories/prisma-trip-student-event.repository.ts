@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CreateTripStudentEventData,
   TripStudentEventRepository,
@@ -34,6 +33,15 @@ export class PrismaTripStudentEventRepository implements TripStudentEventReposit
       this.prisma.tripStudentEvent.findMany({
         where: { tripId },
         orderBy: { processadoEm: "asc" },
+      }),
+    );
+  }
+
+  listByStudentAcrossTenants(studentId: string, since: Date): Promise<TripStudentEvent[]> {
+    return this.prisma.withBypass(
+      this.prisma.tripStudentEvent.findMany({
+        where: { studentId, processadoEm: { gte: since } },
+        orderBy: { processadoEm: "desc" },
       }),
     );
   }

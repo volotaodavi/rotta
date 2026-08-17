@@ -2,7 +2,7 @@
 
 import { useQueries, useQuery } from "@tanstack/react-query";
 
-import type { MapVehicle } from "@rotta/api-client";
+import type { MapVehicle, StudentEventsHistoryRange } from "@rotta/api-client";
 
 import { gpsApi } from "@/lib/api-client";
 
@@ -45,6 +45,26 @@ export function useGpsForStudent(studentId: string | undefined) {
     queryFn: () => gpsApi.getForStudent(studentId as string),
     enabled: Boolean(studentId),
     refetchInterval: 10_000,
+  });
+}
+
+/**
+ * Histórico de embarque/desembarque do próprio filho (modelo de
+ * referência enviado pelo usuário — abas "Hoje"/"Semana"/"Mês" na tela
+ * de acompanhamento do Responsável, `GET /gps/students/:id/events-
+ * history`). Sem polling — histórico não muda a cada 10s como a
+ * posição ao vivo, só quando um novo evento é registrado (o
+ * `TripStudentEvent` mais recente já aparece na aba "Hoje" assim que a
+ * página é revisitada).
+ */
+export function useStudentEventsHistory(
+  studentId: string | undefined,
+  range: StudentEventsHistoryRange,
+) {
+  return useQuery({
+    queryKey: ["gps", "student", studentId, "events-history", range],
+    queryFn: () => gpsApi.getStudentEventsHistory(studentId as string, range),
+    enabled: Boolean(studentId),
   });
 }
 

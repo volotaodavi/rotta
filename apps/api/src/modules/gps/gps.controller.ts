@@ -46,4 +46,26 @@ export class GpsController {
   ) {
     return this.tripsService.listPositions(tripId, actor);
   }
+
+  /**
+   * Histórico de embarque/desembarque do próprio filho (modelo de
+   * referência enviado pelo usuário — abas "Hoje"/"Semana"/"Mês" na
+   * tela de acompanhamento do Responsável). `range` decide a janela
+   * aqui no controller (nunca uma data arbitrária vinda do cliente);
+   * "hoje" cobre desde a meia-noite local.
+   */
+  @Get("students/:studentId/events-history")
+  @Roles(Role.RESPONSAVEL, Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR)
+  getStudentEventsHistory(
+    @Param("studentId", ParseUUIDPipe) studentId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query("range") range: "hoje" | "semana" | "mes" = "hoje",
+  ) {
+    const since = new Date();
+    if (range === "semana") since.setDate(since.getDate() - 7);
+    else if (range === "mes") since.setDate(since.getDate() - 30);
+    else since.setHours(0, 0, 0, 0);
+
+    return this.tripsService.listStudentEventsHistory(studentId, actor, since);
+  }
 }

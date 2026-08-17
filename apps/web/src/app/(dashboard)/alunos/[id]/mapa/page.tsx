@@ -1,21 +1,29 @@
 "use client";
 
-import { Clock, MapPin, MessageCircle, Navigation } from "@rotta/icons";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Clock,
+  MapPin,
+  MessageCircle,
+  Navigation,
+  UserX,
+} from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import type { TripStudentEventType } from "@rotta/api-client";
+import type { StudentEventsHistoryRange, TripStudentEventType } from "@rotta/api-client";
 import type { Route } from "next";
 
 import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
-import { useGpsForStudent } from "@/features/gps/hooks/use-gps";
+import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import { useRoutePreview } from "@/features/students/hooks/use-route-preview";
 import { useStudent } from "@/features/students/hooks/use-students";
-import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
+import { useTripProximasEtas } from "@/features/trips/hooks/use-trips";
 
 
 const EVENT_LABEL: Record<TripStudentEventType, string> = {
@@ -23,6 +31,96 @@ const EVENT_LABEL: Record<TripStudentEventType, string> = {
   AUSENTE: "Marcado como ausente",
   DESEMBARCOU: "Desembarcou",
 };
+
+/**
+ * Ícone colorido por tipo de evento (modelo de referência enviado pelo
+ * usuário — tela do Responsável com ícones de notificação coloridos em
+ * vez de texto plano): verde pra embarque, azul pra desembarque,
+ * vermelho pra ausência — a mesma paleta semântica já usada em
+ * `AlunoParadaRow` (`minha-rota/page.tsx`, sucesso/perigo).
+ */
+const EVENT_ICON: Record<TripStudentEventType, JSX.Element> = {
+  EMBARCOU: <ArrowUpCircle size={18} className="text-success" />,
+  DESEMBARCOU: <ArrowDownCircle size={18} className="text-primary" />,
+  AUSENTE: <UserX size={18} className="text-danger" />,
+};
+
+const HISTORY_RANGE_LABEL: Record<StudentEventsHistoryRange, string> = {
+  hoje: "Hoje",
+  semana: "Semana",
+  mes: "Mês",
+};
+
+/**
+ * Histórico de embarque/desembarque do próprio filho, com abas
+ * Hoje/Semana/Mês (modelo de referência enviado pelo usuário). Dado
+ * real (`GET /gps/students/:id/events-history`, tarefa desta Frente) —
+ * cobre viagens de QUALQUER dia dentro da janela escolhida, não só a
+ * viagem em curso agora (por isso aparece nos 3 estados da página:
+ * com/sem viagem ativa, com/sem prévia de rota).
+ */
+function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element {
+  const [range, setRange] = useState<StudentEventsHistoryRange>("hoje");
+  const { data: eventos, isLoading } = useStudentEventsHistory(studentId, range);
+
+  return (
+    <Card>
+      <Card.Header
+        title="Histórico"
+        action={
+          <div role="tablist" aria-label="Período" className="flex items-center gap-1">
+            {(Object.keys(HISTORY_RANGE_LABEL) as StudentEventsHistoryRange[]).map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={range === key}
+                onClick={() => setRange(key)}
+                className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                  range === key
+                    ? "bg-primary text-white"
+                    : "bg-muted text-text-muted hover:text-text"
+                }`}
+              >
+                {HISTORY_RANGE_LABEL[key]}
+              </button>
+            ))}
+          </div>
+        }
+      />
+      <Card.Body className="flex flex-col gap-3">
+        {isLoading ? (
+          <div className="flex justify-center py-6">
+            <Spinner size="md" />
+          </div>
+        ) : !eventos || eventos.length === 0 ? (
+          <Typography variant="bodySmall" color="muted" className="py-2 text-center">
+            Nenhum embarque ou desembarque registrado neste período.
+          </Typography>
+        ) : (
+          eventos.map((event) => (
+            <div key={event.id} className="flex items-center gap-3">
+              {EVENT_ICON[event.tipo]}
+              <Typography variant="bodySmall" className="flex-1">
+                {EVENT_LABEL[event.tipo]}
+              </Typography>
+              <Typography variant="caption" color="muted">
+                {range === "hoje"
+                  ? formatarHora(event.processadoEm)
+                  : new Date(event.processadoEm).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+              </Typography>
+            </div>
+          ))
+        )}
+      </Card.Body>
+    </Card>
+  );
+}
 
 function formatarHora(iso: string): string {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
@@ -150,13 +248,7 @@ export default function AlunoMapaPage(): JSX.Element {
   const { data: school } = useSchool(student?.schoolId ?? "");
   const { data: viagem, isLoading } = useGpsForStudent(studentId);
   const { data: proximasEtas } = useTripProximasEtas(viagem?.tripId);
-  const { data: eventos } = useTripStudentEvents(viagem?.tripId);
   const [mapKey, setMapKey] = useState(0);
-
-  const meusEventos = useMemo(
-    () => (eventos ?? []).filter((event) => event.studentId === studentId),
-    [eventos, studentId],
-  );
 
   const markers = useMemo<RottaMapMarker[]>(() => {
     if (!viagem?.latitude || !viagem.longitude) return [];
@@ -217,6 +309,7 @@ export default function AlunoMapaPage(): JSX.Element {
             </Typography>
           </Card.Body>
         </Card>
+        <HistoricoEventosCard studentId={studentId} />
       </div>
     );
   }
@@ -318,23 +411,9 @@ export default function AlunoMapaPage(): JSX.Element {
         </div>
       </div>
 
-      {meusEventos.length > 0 && (
-        <div className="flex flex-col gap-4 p-6">
-          <Card>
-            <Card.Header title="Hoje" />
-            <Card.Body className="flex flex-col gap-3">
-              {meusEventos.map((event) => (
-                <div key={event.id} className="flex items-center justify-between gap-3">
-                  <Typography variant="bodySmall">{EVENT_LABEL[event.tipo]}</Typography>
-                  <Typography variant="caption" color="muted">
-                    {new Date(event.processadoEm).toLocaleTimeString("pt-BR")}
-                  </Typography>
-                </div>
-              ))}
-            </Card.Body>
-          </Card>
-        </div>
-      )}
+      <div className="flex flex-col gap-4 p-6">
+        <HistoricoEventosCard studentId={studentId} />
+      </div>
     </div>
   );
 }

@@ -1147,4 +1147,24 @@ export class TripsService {
     }
     return null;
   }
+
+  /**
+   * Histórico de embarque/desembarque do próprio filho (modelo de
+   * referência enviado pelo usuário — abas "Hoje"/"Semana"/"Mês" na
+   * tela de acompanhamento do Responsável). Mesma checagem de posse de
+   * `findActiveTripForStudent` acima, e mesmo motivo pra cruzar tenants:
+   * o histórico de um aluno não fica preso a uma única transportadora
+   * ao longo do tempo. `since` já vem calculado pelo controller a
+   * partir do enum de período (nunca uma janela arbitrária vinda do
+   * cliente).
+   */
+  async listStudentEventsHistory(
+    studentId: string,
+    actor: AuthenticatedUser,
+    since: Date,
+  ): Promise<TripStudentEventResponseDto[]> {
+    await this.studentsService.findByIdOrThrow(studentId, actor);
+    const events = await this.studentEventRepository.listByStudentAcrossTenants(studentId, since);
+    return events.map(toTripStudentEventResponseDto);
+  }
 }

@@ -24,4 +24,14 @@ export interface TripStudentEventRepository {
     tipo: TripStudentEventType,
   ): Promise<TripStudentEvent | null>;
   listByTrip(tripId: string): Promise<TripStudentEvent[]>;
+  /**
+   * Histórico de um aluno específico, através de QUALQUER viagem/tenant
+   * (Responsável do interior de SP pode ter o filho mais velho numa
+   * transportadora e o mais novo em outra — mesmo motivo de
+   * `RouteStudentRepository.listActiveByStudentAcrossTenants`). Só é
+   * seguro porque quem chama (`TripsService.listStudentEventsHistory`)
+   * já validou a posse do aluno via `StudentsService.findByIdOrThrow`
+   * antes — nunca exposto direto sem essa checagem.
+   */
+  listByStudentAcrossTenants(studentId: string, since: Date): Promise<TripStudentEvent[]>;
 }

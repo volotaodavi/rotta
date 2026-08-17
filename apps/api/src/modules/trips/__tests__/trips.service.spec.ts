@@ -98,6 +98,7 @@ describe("TripsService", () => {
       create: jest.fn(),
       findByTripStudentAndTipo: jest.fn(),
       listByTrip: jest.fn(),
+      listByStudentAcrossTenants: jest.fn(),
     };
     routesService = {
       findByIdOrThrow: jest.fn(),
@@ -947,6 +948,44 @@ describe("TripsService", () => {
         companyNome: "Transportadora Azul",
         placa: "ABC1D23",
       });
+    });
+  });
+
+  describe("listStudentEventsHistory (Responsável — Hoje/Semana/Mês)", () => {
+    it("valida a posse do aluno antes de ler o histórico (nunca cross-Responsável)", async () => {
+      studentsService.findByIdOrThrow.mockRejectedValue(new Error("não encontrado"));
+
+      await expect(
+        service.listStudentEventsHistory("student-1", empresaActor, new Date()),
+      ).rejects.toThrow("não encontrado");
+
+      expect(studentEventRepository.listByStudentAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    it("devolve os eventos do aluno cruzando tenants, a partir do `since` recebido", async () => {
+      studentsService.findByIdOrThrow.mockResolvedValue({ id: "student-1" } as never);
+      const since = new Date("2026-08-10T00:00:00Z");
+      studentEventRepository.listByStudentAcrossTenants.mockResolvedValue([
+        {
+          id: "event-1",
+          tripId: "trip-1",
+          studentId: "student-1",
+          routeStopId: "stop-1",
+          tipo: "EMBARCOU",
+          motivoAusencia: null,
+          processadoPorId: "user-1",
+          processadoEm: new Date("2026-08-10T12:00:00Z"),
+        } as never,
+      ]);
+
+      const result = await service.listStudentEventsHistory("student-1", empresaActor, since);
+
+      expect(studentEventRepository.listByStudentAcrossTenants).toHaveBeenCalledWith(
+        "student-1",
+        since,
+      );
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ id: "event-1", tipo: "EMBARCOU" });
     });
   });
 });

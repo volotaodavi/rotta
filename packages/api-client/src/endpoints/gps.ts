@@ -1,7 +1,10 @@
 import { buildQueryString } from "../query.util";
 
-import type { TripPosition } from "./trips";
+import type { TripPosition, TripStudentEvent } from "./trips";
 import type { ApiClient } from "../http";
+
+/** Janela de tempo do histórico de embarque/desembarque do Responsável. */
+export type StudentEventsHistoryRange = "hoje" | "semana" | "mes";
 
 /**
  * Endpoints tipados do "localizador"/mapa (GPS-01/03/06) — espelham
@@ -48,6 +51,17 @@ export function createGpsEndpoints(apiClient: ApiClient) {
     /** Trilha histórica de uma viagem específica (linha completa percorrida). */
     getTrack: async (tripId: string): Promise<TripPosition[]> =>
       (await apiClient.request<ApiEnvelope<TripPosition[]>>(`/gps/trips/${tripId}/track`)).data,
+
+    /** Histórico de embarque/desembarque do próprio filho (abas Hoje/Semana/Mês). */
+    getStudentEventsHistory: async (
+      studentId: string,
+      range: StudentEventsHistoryRange = "hoje",
+    ): Promise<TripStudentEvent[]> =>
+      (
+        await apiClient.request<ApiEnvelope<TripStudentEvent[]>>(
+          `/gps/students/${studentId}/events-history${buildQueryString({ range })}`,
+        )
+      ).data,
   };
 }
 
