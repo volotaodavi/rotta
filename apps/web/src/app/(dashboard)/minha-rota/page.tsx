@@ -1,10 +1,26 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { Check, Clock, MapPin, Navigation, Pause, Square, UserX } from "@rotta/icons";
+import {
+  AlertTriangle,
+  Check,
+  Clock,
+  LifeBuoy,
+  List,
+  Map as MapIcon,
+  MapPin,
+  MessageCircle,
+  Navigation,
+  Pause,
+  Square,
+  Timer,
+  Users,
+  UserX,
+} from "@rotta/icons";
 import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, PanelGreeting, Spinner, Typography } from "@rotta/ui/web";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import type {
@@ -14,6 +30,7 @@ import type {
   RouteStudent,
   TripStudentEventType,
 } from "@rotta/api-client";
+import type { Route as NextRoute } from "next";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
@@ -34,9 +51,12 @@ import {
 import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-reporting";
 import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
 import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
+import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
+import { useVehicle, useVehicleOccurrences } from "@/features/vehicles/hooks/use-vehicles";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
+import { buildWhatsAppUrl } from "@/lib/site-config";
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -300,6 +320,153 @@ function ProximaParadaEtaCard({ eta, parada }: { eta: NextEta; parada?: RouteSto
   );
 }
 
+/** Mensagem exata já usada no popup de suporte pós-CNH — mesmo canal real, aqui só o contexto muda (motorista pedindo ajuda durante a operação, não logo após a verificação). */
+const DRIVER_SUPPORT_WHATSAPP_MESSAGE = "Olá! Preciso de ajuda do suporte durante uma viagem.";
+
+/**
+ * Cronômetro da viagem ativa (pedido do usuário — modelo de referência
+ * "Viagem ativa": grande, contando desde o início) — conta a partir de
+ * `trip.iniciadaEm`, o mesmo timestamp real já gravado pelo backend
+ * (nunca um relógio "de mentira" começando em zero visualmente).
+ * Atualiza a cada segundo enquanto a viagem está `EM_ANDAMENTO`; parado
+ * (não incrementa) quando `PAUSADA`, mostrando o tempo decorrido até a
+ * pausa.
+ */
+function TripElapsedTimer({
+  iniciadaEm,
+  isRunning,
+}: {
+  iniciadaEm: string;
+  isRunning: boolean;
+}): JSX.Element {
+  const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => setAgora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isRunning]);
+
+  const decorridoMs = Math.max(0, agora - new Date(iniciadaEm).getTime());
+  const totalSegundos = Math.floor(decorridoMs / 1000);
+  const horas = Math.floor(totalSegundos / 3600);
+  const minutos = Math.floor((totalSegundos % 3600) / 60);
+  const segundos = totalSegundos % 60;
+  const texto =
+    horas > 0
+      ? `${horas}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`
+      : `${minutos}:${String(segundos).padStart(2, "0")}`;
+
+  return (
+    <div className="flex items-center gap-2 text-text">
+      <Timer size={20} className={isRunning ? "text-primary" : "text-text-muted"} />
+      <Typography variant="display" className="font-mono leading-none tabular-nums">
+        {texto}
+      </Typography>
+      {!isRunning ? (
+        <Typography variant="caption" color="muted">
+          pausada
+        </Typography>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * "Resumo da viagem" — 4 números reais durante a operação (modelo de
+ * referência "Viagem ativa": Alunos Embarcados/Ocorrências/Paradas
+ * restantes/Mensagens). Nenhum é inventado:
+ * - Alunos embarcados: contagem real de `TripStudentEvent` tipo
+ *   `EMBARCOU` desta viagem.
+ * - Paradas restantes: paradas cujos alunos ainda não têm os eventos
+ *   esperados nelas (embarque OU desembarque, conforme o papel da
+ *   parada pra cada aluno).
+ * - Ocorrências hoje: `VehicleOccurrence` do veículo desta viagem,
+ *   registradas hoje (o modelo não amarra ocorrência a uma `Trip`
+ *   específica — "hoje" é a aproximação honesta mais próxima).
+ * - Mensagens: notificações não lidas do próprio motorista/monitor
+ *   (`useUnreadNotificationsCount`, a mesma Central de Notificações,
+ *   não existe uma feature de chat separada na Rotta hoje).
+ */
+function TripStatsGrid({
+  totalAlunos,
+  alunosEmbarcados,
+  paradasRestantes,
+  veiculoId,
+}: {
+  totalAlunos: number;
+  alunosEmbarcados: number;
+  paradasRestantes: number;
+  veiculoId: string;
+}): JSX.Element {
+  const { data: occurrences } = useVehicleOccurrences(veiculoId, 1, 50);
+  const { data: unreadCount } = useUnreadNotificationsCount();
+
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const ocorrenciasHoje =
+    occurrences?.items.filter((item) => item.createdAt.slice(0, 10) === hojeISO).length ?? 0;
+
+  const tiles: { label: string; valor: string; icon: JSX.Element; href: NextRoute }[] = [
+    {
+      label: "Alunos embarcados",
+      valor: `${alunosEmbarcados}/${totalAlunos}`,
+      icon: <Users size={18} className="text-primary" />,
+      href: "/minha-rota",
+    },
+    {
+      label: "Paradas restantes",
+      valor: String(paradasRestantes),
+      icon: <MapPin size={18} className="text-primary" />,
+      href: "/minha-rota",
+    },
+    {
+      label: "Ocorrências hoje",
+      valor: String(ocorrenciasHoje),
+      icon: <AlertTriangle size={18} className="text-warning" />,
+      href: "/veiculo",
+    },
+    {
+      label: "Mensagens",
+      valor: String(unreadCount ?? 0),
+      icon: <MessageCircle size={18} className="text-primary" />,
+      href: "/notificacoes",
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5">
+      {tiles.map((tile) => (
+        <Link
+          key={tile.label}
+          href={tile.href}
+          className="flex flex-col gap-1 rounded-2xl border border-border bg-surface p-3 transition-colors hover:border-primary/40"
+        >
+          <div className="flex items-center gap-1.5">
+            {tile.icon}
+            <Typography variant="caption" color="muted">
+              {tile.label}
+            </Typography>
+          </div>
+          <Typography variant="subtitle" className="leading-none">
+            {tile.valor}
+          </Typography>
+        </Link>
+      ))}
+      <a
+        href={buildWhatsAppUrl(DRIVER_SUPPORT_WHATSAPP_MESSAGE)}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="col-span-2 flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface p-3 text-primary transition-colors hover:border-primary/40"
+      >
+        <LifeBuoy size={18} />
+        <Typography variant="bodySmall" className="font-semibold text-primary">
+          Suporte — falar com a central
+        </Typography>
+      </a>
+    </div>
+  );
+}
+
 function RotaOperacional({
   rota,
   showTrocarRota,
@@ -316,6 +483,20 @@ function RotaOperacional({
   const { data: stops } = useRouteStops(rota.id);
   const { data: routeStudents } = useRouteStudents(rota.id);
   const { data: studentEvents } = useTripStudentEvents(trip?.id);
+  const { data: veiculoPadrao } = useVehicle(rota.veiculoPadraoId ?? "");
+
+  // Lista/Mapa (pedido do usuário, modelos de referência "Rota 12 -
+  // Manhã"/"Viagem ativa": lista de alunos é a visão principal
+  // enquanto dirige, mapa vira uma opção) — nunca some de vez (Frente
+  // I: "deve aparecer mesmo sem estar em uma rota"), só encolhe pra
+  // uma faixa quando a Lista está selecionada. Muda pra "lista"
+  // sozinho assim que uma viagem existe hoje (o motorista acabou de
+  // iniciar) — ele pode voltar pro mapa a qualquer momento pelo botão.
+  const [viewMode, setViewMode] = useState<"mapa" | "lista">("mapa");
+  const tripId = trip?.id;
+  useEffect(() => {
+    if (tripId) setViewMode("lista");
+  }, [tripId]);
 
   const startTrip = useStartTrip(rota.id);
   const pauseTrip = usePauseTrip(rota.id);
@@ -378,6 +559,28 @@ function RotaOperacional({
           ? "Localização negada pelo navegador. Permita o acesso (ícone de cadeado na barra de endereço) pros responsáveis verem o veículo no mapa."
           : null;
 
+  // Números reais do "Resumo da viagem" (modelo de referência) — nunca
+  // recalculados de forma aproximada: alunos embarcados vem direto dos
+  // eventos já gravados nesta viagem; paradas restantes é toda parada
+  // em que ainda falta o evento esperado (embarque OU desembarque,
+  // conforme o papel do aluno ali) de pelo menos um aluno — a mesma
+  // regra que já decide o ícone de cada `AlunoParadaRow` abaixo.
+  const alunosEmbarcados = (studentEvents ?? []).filter((e) => e.tipo === "EMBARCOU").length;
+  const paradasRestantesCount = paradasOrdenadas.filter((parada) => {
+    const alunosDaParada = (routeStudents ?? []).filter(
+      (aluno) => aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
+    );
+    if (alunosDaParada.length === 0) return false;
+    return alunosDaParada.some((aluno) => {
+      const isEmbarque = aluno.paradaEmbarqueId === parada.id;
+      const tipoEsperado: TripStudentEventType = isEmbarque ? "EMBARCOU" : "DESEMBARCOU";
+      const jaResolvido = (studentEvents ?? []).some(
+        (e) => e.studentId === aluno.studentId && (e.tipo === tipoEsperado || e.tipo === "AUSENTE"),
+      );
+      return !jaResolvido;
+    });
+  }).length;
+
   return (
     // `-m-6` cancela o padding do <main> de `(dashboard)/layout.tsx` só
     // nesta tela — pedido do usuário em produção: "o mapa não deve ser
@@ -393,7 +596,13 @@ function RotaOperacional({
         baixo). `dvh` acompanha o tamanho real do viewport visível —
         junto com `viewportFit: "cover"` em `app/layout.tsx`.
       */}
-      <div className="relative h-[65dvh] min-h-[420px] w-full">
+      <div
+        className={
+          viewMode === "mapa"
+            ? "relative h-[65dvh] min-h-[420px] w-full"
+            : "relative h-40 w-full shrink-0"
+        }
+      >
         {markers.length > 0 ? (
           <RottaMap
             key={mapKey}
@@ -411,10 +620,48 @@ function RotaOperacional({
         )}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex flex-col gap-3 p-4">
-          <PanelGreeting
-            nome={user?.nome ?? ""}
-            className="pointer-events-auto rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur"
-          />
+          <div className="flex items-start gap-2">
+            <PanelGreeting
+              nome={user?.nome ?? ""}
+              className="pointer-events-auto flex-1 rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur"
+            />
+            {trip ? (
+              <div
+                role="tablist"
+                aria-label="Lista ou mapa"
+                className="pointer-events-auto flex shrink-0 items-center gap-1 rounded-full bg-surface-elevated/95 p-1 shadow-lg backdrop-blur"
+              >
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === "lista"}
+                  aria-label="Lista"
+                  onClick={() => setViewMode("lista")}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                    viewMode === "lista"
+                      ? "bg-primary text-white"
+                      : "text-text-muted hover:text-text"
+                  }`}
+                >
+                  <List size={16} />
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === "mapa"}
+                  aria-label="Mapa"
+                  onClick={() => setViewMode("mapa")}
+                  className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors ${
+                    viewMode === "mapa"
+                      ? "bg-primary text-white"
+                      : "text-text-muted hover:text-text"
+                  }`}
+                >
+                  <MapIcon size={16} />
+                </button>
+              </div>
+            ) : null}
+          </div>
           {/*
             Cartão "De/Para" (Frente Q — imagem de referência de app de
             navegação: "Your location" -> "Select destinations"). De:
@@ -472,6 +719,37 @@ function RotaOperacional({
                 </div>
               </div>
             )}
+            {/*
+              "Próxima viagem" (modelo de referência — cartão pré-viagem
+              mostra veículo + quantos alunos confirmados ANTES do
+              motorista deslizar pra iniciar). Só aparece antes da
+              viagem existir; dado real (`useVehicle`/`routeStudents`),
+              nunca um placeholder.
+            */}
+            {!trip && (veiculoPadrao ?? routeStudents) ? (
+              <div className="flex gap-2 border-t border-border pt-2.5">
+                {veiculoPadrao ? (
+                  <div className="flex flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-1.5">
+                    <Typography variant="caption" color="muted">
+                      Veículo
+                    </Typography>
+                    <Typography variant="bodySmall" className="font-semibold leading-none">
+                      {veiculoPadrao.modelo} · {veiculoPadrao.placa}
+                    </Typography>
+                  </div>
+                ) : null}
+                {routeStudents ? (
+                  <div className="flex flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-1.5">
+                    <Typography variant="caption" color="muted">
+                      Alunos
+                    </Typography>
+                    <Typography variant="bodySmall" className="font-semibold leading-none">
+                      {routeStudents.length} confirmados
+                    </Typography>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -480,6 +758,24 @@ function RotaOperacional({
         </div>
 
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-elevated p-4 shadow-lg">
+          {/*
+            "Viagem ativa" (modelo de referência) — cronômetro grande +
+            resumo de 4 números só aparece com a viagem já rodando ou
+            pausada (nunca antes de existir, nunca depois de encerrada:
+            aí quem manda é a mensagem "viagem finalizada" abaixo).
+          */}
+          {trip && (trip.status === "EM_ANDAMENTO" || trip.status === "PAUSADA") ? (
+            <>
+              <TripElapsedTimer iniciadaEm={trip.iniciadaEm} isRunning={isActive} />
+              <TripStatsGrid
+                totalAlunos={(routeStudents ?? []).length}
+                alunosEmbarcados={alunosEmbarcados}
+                paradasRestantes={paradasRestantesCount}
+                veiculoId={trip.veiculoId}
+              />
+            </>
+          ) : null}
+
           {proximaParada ? (
             <ProximaParadaEtaCard eta={proximaParada} parada={proximaParadaStop} />
           ) : null}
