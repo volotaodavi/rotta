@@ -1,7 +1,12 @@
 import { BadRequestException } from "@nestjs/common";
 
 
-import { IdentityVerificationService } from "../identity-verification.service";
+import {
+  IdentityVerificationService,
+  requerCnh,
+  resolveDiditWorkflowId,
+  resolveDocumentoEsperado,
+} from "../identity-verification.service";
 
 import type { DiditConfig } from "@/config/didit.config";
 import type { PrismaService } from "@/infra/database/prisma.service";
@@ -19,7 +24,7 @@ const DIDIT_CONFIG: DiditConfig = {
   apiPublicUrl: undefined,
 };
 
-function buildPrismaMock(): jest.Mocked<Pick<PrismaService, "user">> {
+function buildPrismaMock(): jest.Mocked<Pick<PrismaService, "user" | "membership">> {
   return {
     user: {
       update: jest.fn(),
@@ -27,7 +32,10 @@ function buildPrismaMock(): jest.Mocked<Pick<PrismaService, "user">> {
       findMany: jest.fn(),
       count: jest.fn(),
     },
-  } as unknown as jest.Mocked<Pick<PrismaService, "user">>;
+    membership: {
+      findFirst: jest.fn(),
+    },
+  } as unknown as jest.Mocked<Pick<PrismaService, "user" | "membership">>;
 }
 
 function buildDiditMock(): jest.Mocked<
@@ -55,6 +63,38 @@ function buildService(
     configService,
   );
 }
+
+describe("requerCnh/resolveDiditWorkflowId/resolveDocumentoEsperado", () => {
+  it("Motorista sempre exige CNH, companyType não muda nada", () => {
+    expect(requerCnh(Role.MOTORISTA, null)).toBe(true);
+    expect(requerCnh(Role.MOTORISTA, "LTDA")).toBe(true);
+  });
+
+  it("Monitor/Gestor nunca exigem CNH, mesmo com companyType Autônomo/MEI (não é o caso — só Empresa é o dono)", () => {
+    expect(requerCnh(Role.MONITOR, "AUTONOMO")).toBe(false);
+    expect(requerCnh(Role.GESTOR, "MEI")).toBe(false);
+  });
+
+  it("Empresa comum (LTDA/SLU/EIRELI/OUTRO ou sem companyType) não exige CNH — não é quem dirige", () => {
+    expect(requerCnh(Role.EMPRESA, "LTDA")).toBe(false);
+    expect(requerCnh(Role.EMPRESA, null)).toBe(false);
+    expect(requerCnh(Role.EMPRESA, undefined)).toBe(false);
+  });
+
+  it("Empresa Autônomo/MEI exige CNH — o próprio dono é quem dirige (schema.prisma, CompanyType.AUTONOMO)", () => {
+    expect(requerCnh(Role.EMPRESA, "AUTONOMO")).toBe(true);
+    expect(requerCnh(Role.EMPRESA, "MEI")).toBe(true);
+  });
+
+  it("resolveDiditWorkflowId/resolveDocumentoEsperado seguem a mesma regra de requerCnh", () => {
+    expect(resolveDiditWorkflowId(Role.EMPRESA, "AUTONOMO", DIDIT_CONFIG)).toBe(
+      "workflow-motorista",
+    );
+    expect(resolveDiditWorkflowId(Role.EMPRESA, "LTDA", DIDIT_CONFIG)).toBe("workflow-monitor");
+    expect(resolveDocumentoEsperado(Role.EMPRESA, "MEI")).toContain("CNH");
+    expect(resolveDocumentoEsperado(Role.EMPRESA, "LTDA")).toContain("Qualquer documento");
+  });
+});
 
 describe("IdentityVerificationService", () => {
   it("createSession (Motorista) cria a sessão no workflow de CNH, grava sessionId, marca EM_ANDAMENTO e limpa o motivo anterior", async () => {
@@ -108,6 +148,82 @@ describe("IdentityVerificationService", () => {
 
     expect(didit.createVerificationSession).toHaveBeenCalledWith(
       "user-2",
+      "workflow-monitor",
+      undefined,
+    );
+    // Role !== EMPRESA: nunca precisa consultar companyType.
+    expect(prisma.membership.findFirst).not.toHaveBeenCalled();
+  });
+
+  // Gap real: `CompanyType.AUTONOMO`/`MEI` faz o dono da empresa (role
+  // "empresa") ser também quem dirige (schema.prisma + `useAppMode`,
+  // apps/web) — sem este caso, um Autônomo/MEI verificaria a identidade
+  // com RG/passaporte e nunca precisaria provar CNH.
+  it("createSession (Empresa Autônomo) usa o workflow de CNH — o dono é quem dirige", async () => {
+    const prisma = buildPrismaMock();
+    (prisma.membership.findFirst as jest.Mock).mockResolvedValue({
+      company: { tipo: "AUTONOMO" },
+    });
+    const didit = buildDiditMock();
+    didit.createVerificationSession.mockResolvedValue({
+      sessionId: "sess_3",
+      url: "https://verify.didit.me/session/sess_3",
+      status: "not started",
+    });
+
+    const service = buildService(prisma, didit);
+
+    await service.createSession("user-3", Role.EMPRESA);
+
+    expect(prisma.membership.findFirst).toHaveBeenCalledWith({
+      where: { userId: "user-3", status: "ATIVO" },
+      orderBy: { iniciadoEm: "desc" },
+      select: { company: { select: { tipo: true } } },
+    });
+    expect(didit.createVerificationSession).toHaveBeenCalledWith(
+      "user-3",
+      "workflow-motorista",
+      undefined,
+    );
+  });
+
+  it("createSession (Empresa MEI) também usa o workflow de CNH, mesma regra do Autônomo", async () => {
+    const prisma = buildPrismaMock();
+    (prisma.membership.findFirst as jest.Mock).mockResolvedValue({ company: { tipo: "MEI" } });
+    const didit = buildDiditMock();
+    didit.createVerificationSession.mockResolvedValue({
+      sessionId: "sess_4",
+      url: "https://verify.didit.me/session/sess_4",
+      status: "not started",
+    });
+
+    const service = buildService(prisma, didit);
+
+    await service.createSession("user-4", Role.EMPRESA);
+
+    expect(didit.createVerificationSession).toHaveBeenCalledWith(
+      "user-4",
+      "workflow-motorista",
+      undefined,
+    );
+  });
+
+  it("createSession (Empresa LTDA) usa o workflow de qualquer documento — o dono não é quem dirige", async () => {
+    const prisma = buildPrismaMock();
+    (prisma.membership.findFirst as jest.Mock).mockResolvedValue({ company: { tipo: "LTDA" } });
+    const didit = buildDiditMock();
+    didit.createVerificationSession.mockResolvedValue({
+      sessionId: "sess_5",
+      url: "https://verify.didit.me/session/sess_5",
+      status: "not started",
+    });
+
+    const service = buildService(prisma, didit);
+
+    await service.createSession("user-5", Role.EMPRESA);
+
+    expect(didit.createVerificationSession).toHaveBeenCalledWith(
+      "user-5",
       "workflow-monitor",
       undefined,
     );
@@ -303,5 +419,34 @@ describe("IdentityVerificationService", () => {
       data: { identityVerificationMotivo: "Documento suspeito de fraude." },
     });
     expect(resultado.motivo).toBe("Documento suspeito de fraude.");
+  });
+
+  it("listForAdmin mostra 'CNH' como documento esperado pra Empresa Autônomo — nunca esconde que o dono também dirige", async () => {
+    const prisma = buildPrismaMock();
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: "user-6",
+        nome: "Bruno",
+        email: "bruno@example.com",
+        identityVerificationStatus: "EM_ANALISE",
+        identityVerificationSessionId: "sess_6",
+        identityVerificationMotivo: null,
+        identityVerifiedAt: null,
+        updatedAt: new Date("2026-08-17T00:00:00Z"),
+        memberships: [
+          { role: "empresa", company: { nomeFantasia: "Bruno Transportes", tipo: "AUTONOMO" } },
+        ],
+      },
+    ]);
+    (prisma.user.count as jest.Mock).mockResolvedValue(1);
+    const didit = buildDiditMock();
+    const service = buildService(prisma, didit);
+
+    const resultado = await service.listForAdmin({ page: 1, pageSize: 20 });
+
+    expect(resultado.items[0]).toMatchObject({
+      role: "empresa",
+      documentoEsperado: "CNH (Carteira Nacional de Habilitação)",
+    });
   });
 });

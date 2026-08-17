@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { type IdentityVerificationStatus, Prisma } from "@prisma/client";
+import { type CompanyType, type IdentityVerificationStatus, Prisma } from "@prisma/client";
 
 import type { DecideIdentityVerificationDto } from "./dto/decide-identity-verification.dto";
 import type { ListIdentityVerificationsQueryDto } from "./dto/list-identity-verifications-query.dto";
@@ -27,24 +27,39 @@ export const DOCUMENTO_ESPERADO_LABEL = {
 } as const;
 
 /**
- * Qual dos dois workflows publicados no Business Console
- * (`DiditConfig.workflowIdMotorista`/`workflowIdMonitor`) usar — pedido
- * explícito do usuário: "Motorista (APENAS CNH)" / "Monitor (qualquer
- * documento de identificação)... cada um baseado no cargo, nada de
- * misturar". Só Motorista tem tratamento especial: dirigir exige CNH
- * por lei, então é o único cargo com um documento obrigatório
- * específico. Monitor/Empresa/Gestor (que não dirigem por definição do
- * cargo) caem no fluxo mais permissivo — o pedido do usuário só
- * distinguiu essas duas categorias, então um terceiro workflow pra
- * Empresa/Gestor seria inventado, não pedido.
+ * Decide se a CNH é obrigatória — pedido explícito do usuário:
+ * "Motorista (APENAS CNH)" / "Monitor (qualquer documento de
+ * identificação)... cada um baseado no cargo, nada de misturar".
+ *
+ * Motorista é o caso óbvio. Mas `companyType` (Autônomo/MEI) é um
+ * segundo caso que fica fora se olhar só pro `role`: o schema
+ * documenta (`CompanyType.AUTONOMO`, `schema.prisma`) que "o motorista
+ * automaticamente é o Administrador da empresa" — o dono assina o CPF
+ * em `cpfCnpj` e vira o único `Membership`, com papel `empresa`, mas é
+ * ELE quem dirige (`useAppMode`, apps/web — Autônomo/MEI vê "Modo
+ * Ação" pra dirigir a própria rota). Sem este caso, um Autônomo/MEI
+ * passaria a verificação com RG/passaporte e nunca precisaria provar
+ * CNH — a mesma exigência legal que um Motorista funcionário tem que
+ * cumprir. Gestor/Empresa de empresas maiores (LTDA/SLU/EIRELI) não
+ * dirigem por definição do cargo, então continuam no fluxo permissivo.
  */
-export function resolveDiditWorkflowId(role: Role, config: DiditConfig): string {
-  return role === Role.MOTORISTA ? config.workflowIdMotorista : config.workflowIdMonitor;
+export function requerCnh(role: Role | string, companyType?: string | null): boolean {
+  if (role === (Role.MOTORISTA as string)) return true;
+  return role === (Role.EMPRESA as string) && (companyType === "AUTONOMO" || companyType === "MEI");
+}
+
+/** Qual dos dois workflows publicados no Business Console (`DiditConfig.workflowIdMotorista`/`workflowIdMonitor`) usar — ver `requerCnh` pra regra completa. */
+export function resolveDiditWorkflowId(
+  role: Role,
+  companyType: string | null,
+  config: DiditConfig,
+): string {
+  return requerCnh(role, companyType) ? config.workflowIdMotorista : config.workflowIdMonitor;
 }
 
 /** Mesma regra de `resolveDiditWorkflowId`, só que devolvendo o rótulo do documento esperado (Admin Rotta) em vez do `workflow_id` da Didit. */
-export function resolveDocumentoEsperado(role: Role | string): string {
-  return role === (Role.MOTORISTA as string)
+export function resolveDocumentoEsperado(role: Role | string, companyType?: string | null): string {
+  return requerCnh(role, companyType)
     ? DOCUMENTO_ESPERADO_LABEL.motorista
     : DOCUMENTO_ESPERADO_LABEL.padrao;
 }
@@ -103,21 +118,24 @@ const ADMIN_SELECT = {
   memberships: {
     take: 1,
     orderBy: { iniciadoEm: "desc" as const },
-    select: { role: true, company: { select: { nomeFantasia: true } } },
+    // `tipo` (CompanyType) só existe pra alimentar `requerCnh` — ver
+    // comentário lá: Autônomo/MEI com papel `empresa` ainda exige CNH.
+    select: { role: true, company: { select: { nomeFantasia: true, tipo: true } } },
   },
 } satisfies Prisma.UserSelect;
 
 type AdminUserRow = Prisma.UserGetPayload<{ select: typeof ADMIN_SELECT }>;
 
 function toListItem(user: AdminUserRow): AdminIdentityVerificationListItem {
-  const role = user.memberships[0]?.role ?? null;
+  const membership = user.memberships[0];
+  const role = membership?.role ?? null;
   return {
     userId: user.id,
     nome: user.nome,
     email: user.email,
-    companyName: user.memberships[0]?.company.nomeFantasia ?? null,
+    companyName: membership?.company.nomeFantasia ?? null,
     role,
-    documentoEsperado: resolveDocumentoEsperado(role ?? ""),
+    documentoEsperado: resolveDocumentoEsperado(role ?? "", membership?.company.tipo ?? null),
     status: user.identityVerificationStatus,
     sessionId: user.identityVerificationSessionId,
     motivo: user.identityVerificationMotivo,
@@ -158,9 +176,12 @@ export class IdentityVerificationService {
    * tentativa anterior — uma nova tentativa começa sem o "fantasma" da
    * recusa passada.
    *
-   * `role` decide QUAL dos dois workflows abrir (`resolveDiditWorkflowId`)
-   * — pedido explícito do usuário: Motorista vê o fluxo de CNH, todo o
-   * resto vê o fluxo de qualquer documento, nunca misturado.
+   * `role` decide QUAL dos dois workflows abrir (`resolveDiditWorkflowId`/
+   * `requerCnh`) — pedido explícito do usuário: Motorista vê o fluxo de
+   * CNH, todo o resto vê o fluxo de qualquer documento, nunca
+   * misturado — exceto o Autônomo/MEI (`role === "empresa"` que também
+   * dirige, ver `requerCnh`), que precisa saber o `companyType` além
+   * do `role` pra decidir certo.
    */
   async createSession(
     userId: string,
@@ -168,7 +189,8 @@ export class IdentityVerificationService {
     callbackUrl?: string,
   ): Promise<IdentityVerificationSessionResult> {
     const diditConfig = this.configService.get<DiditConfig>("didit")!;
-    const workflowId = resolveDiditWorkflowId(role, diditConfig);
+    const companyType = await this.resolveCompanyTypeForCnhCheck(userId, role);
+    const workflowId = resolveDiditWorkflowId(role, companyType, diditConfig);
     const session = await this.didit.createVerificationSession(userId, workflowId, callbackUrl);
 
     await this.prisma.user.update({
@@ -318,6 +340,26 @@ export class IdentityVerificationService {
     }
 
     return this.getForAdmin(userId);
+  }
+
+  /**
+   * `companyType` só importa pra `requerCnh` quando `role === EMPRESA`
+   * (Autônomo/MEI dirige, ver `requerCnh`) — Motorista já é CNH direto
+   * e Monitor/Gestor nunca dirigem por definição do cargo, então a
+   * consulta extra ao banco (uma por sessão criada, não por request)
+   * só roda quando pode de fato mudar o resultado.
+   */
+  private async resolveCompanyTypeForCnhCheck(
+    userId: string,
+    role: Role,
+  ): Promise<CompanyType | null> {
+    if (role !== Role.EMPRESA) return null;
+    const membership = await this.prisma.membership.findFirst({
+      where: { userId, status: "ATIVO" },
+      orderBy: { iniciadoEm: "desc" },
+      select: { company: { select: { tipo: true } } },
+    });
+    return membership?.company.tipo ?? null;
   }
 
   private async requireSessionId(userId: string): Promise<string> {
