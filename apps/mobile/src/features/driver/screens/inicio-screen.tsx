@@ -26,7 +26,6 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useWindowDimensions,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -53,8 +52,7 @@ import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
 import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "@rotta/api-client";
 
-import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
-import { SlideToAction } from "@/components/slide-to-action";
+import { RecenterButton } from "@/components/route-screen-chrome";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import {
@@ -68,6 +66,8 @@ import {
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
+
+
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -232,7 +232,15 @@ function MeuMapa({
  * vira marcador no `RottaMap`). Sem custo, sem SDK de navegação
  * embutido. Só aparece quando `parada` existe.
  */
-function ProximaParadaEtaCard({ eta, parada }: { eta: NextEta; parada?: RouteStop }): JSX.Element {
+function ProximaParadaEtaCard({
+  eta,
+  parada,
+  accentColor,
+}: {
+  eta: NextEta;
+  parada?: RouteStop;
+  accentColor: string;
+}): JSX.Element {
   const { theme } = useTheme();
   const horarioPrevisto = new Date(eta.etaPrevista).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
@@ -256,15 +264,15 @@ function ProximaParadaEtaCard({ eta, parada }: { eta: NextEta; parada?: RouteSto
 
   return (
     <VehicleCard style={styles.etaCard}>
-      <Navigation size={20} color={theme.colors.primary} />
+      <Navigation size={20} color={accentColor} />
       <View style={{ flex: 1 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Próxima parada</Text>
         <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{eta.endereco}</Text>
       </View>
       <View style={{ alignItems: "flex-end", gap: 2 }}>
         <View style={styles.etaHorario}>
-          <Clock size={12} color={theme.colors.primary} />
-          <Text style={{ color: theme.colors.primary, fontWeight: "600", fontSize: 13 }}>
+          <Clock size={12} color={accentColor} />
+          <Text style={{ color: accentColor, fontWeight: "600", fontSize: 13 }}>
             {horarioPrevisto}
           </Text>
         </View>
@@ -294,9 +302,11 @@ function ProximaParadaEtaCard({ eta, parada }: { eta: NextEta; parada?: RouteSto
 function TripElapsedTimer({
   iniciadaEm,
   isRunning,
+  accentColor,
 }: {
   iniciadaEm: string;
   isRunning: boolean;
+  accentColor: string;
 }): JSX.Element {
   const { theme } = useTheme();
   const [agora, setAgora] = useState(() => Date.now());
@@ -319,7 +329,7 @@ function TripElapsedTimer({
 
   return (
     <View style={styles.timerRow}>
-      <Timer size={20} color={isRunning ? theme.colors.primary : theme.colors.textMuted} />
+      <Timer size={20} color={isRunning ? accentColor : theme.colors.textMuted} />
       <Text style={[styles.timerTexto, { color: theme.colors.text }]}>{texto}</Text>
       {!isRunning ? (
         <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>pausada</Text>
@@ -343,11 +353,13 @@ function TripStatsGrid({
   alunosEmbarcados,
   paradasRestantes,
   veiculoId,
+  accentColor,
 }: {
   totalAlunos: number;
   alunosEmbarcados: number;
   paradasRestantes: number;
   veiculoId: string;
+  accentColor: string;
 }): JSX.Element {
   const { theme } = useTheme();
   const { data: occurrences } = useVehicleOccurrences(veiculoId);
@@ -375,7 +387,7 @@ function TripStatsGrid({
           ]}
         >
           <View style={styles.statsTileHeader}>
-            <tile.icon size={16} color={theme.colors.primary} />
+            <tile.icon size={16} color={accentColor} />
             <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{tile.label}</Text>
           </View>
           <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
@@ -396,9 +408,11 @@ function TripStatsGrid({
 function AlunosABordoCard({
   routeStudents,
   eventos,
+  accentColor,
 }: {
   routeStudents: RouteStudent[];
   eventos: TripStudentEvent[];
+  accentColor: string;
 }): JSX.Element | null {
   const { theme } = useTheme();
   const aBordo = routeStudents.filter((aluno) => {
@@ -413,7 +427,7 @@ function AlunosABordoCard({
   return (
     <VehicleCard>
       <View style={styles.paradaHeader}>
-        <Users size={16} color={theme.colors.primary} />
+        <Users size={16} color={accentColor} />
         <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
           Alunos a bordo ({aBordo.length})
         </Text>
@@ -437,15 +451,29 @@ function AlunoABordoRow({ studentId }: { studentId: string }): JSX.Element {
 }
 
 /**
- * "Registrar ocorrência" (paridade com o Painel Web) — mesmo endpoint
- * já usado em "Meu Veículo" (`POST /vehicles/:id/occurrences`, já
- * libera MOTORISTA/MONITOR no backend), agora exposto durante a
- * própria viagem em vez de só na aba Veículo. `Modal` nativo do RN
- * (sem dependência extra) — não existia nenhum componente de modal
- * compartilhado no app ainda.
+ * "Registrar ocorrência" (3 imagens de referência anexadas pelo
+ * usuário, tela do Monitor — pedido explícito "quero o mesmo design,
+ * idêntico") — mesmo endpoint já usado em "Meu Veículo" (`POST
+ * /vehicles/:id/occurrences`, já libera MOTORISTA/MONITOR no backend).
+ *
+ * Redesenho (Frente 304, paridade com o Painel Web — que trocou o
+ * `Modal` por uma rota `/ocorrencia` própria): o `DriverNavigator` é um
+ * Bottom Tab Navigator sem Stack aninhada em "Início", então criar uma
+ * rota nova exigiria reestruturar a navegação inteira — em vez disso,
+ * o MESMO `Modal` nativo do RN agora renderiza EM TELA CHEIA
+ * (`transparent={false}`, cabeçalho fixo com botão de voltar), visual e
+ * funcionalmente indistinguível de uma página própria pra quem usa o
+ * app, sem o risco de mexer no navigator pra chegar lá.
  */
-function RegistrarOcorrenciaButton({ veiculoId }: { veiculoId: string }): JSX.Element {
+function RegistrarOcorrenciaButton({
+  veiculoId,
+  accentColor,
+}: {
+  veiculoId: string;
+  accentColor: string;
+}): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const [isOpen, setIsOpen] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -462,26 +490,27 @@ function RegistrarOcorrenciaButton({ veiculoId }: { veiculoId: string }): JSX.El
       <VehicleButton
         label="Registrar ocorrência"
         variant="secondary"
-        icon={<AlertTriangle size={16} color={theme.colors.text} />}
+        icon={<AlertTriangle size={16} color={accentColor} />}
         onPress={() => setIsOpen(true)}
       />
 
-      <Modal visible={isOpen} animationType="slide" transparent onRequestClose={fechar}>
-        <View style={styles.modalScrim}>
-          <View style={[styles.modalPanel, { backgroundColor: theme.colors.surfaceElevated }]}>
-            <View style={styles.modalHeader}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
-                Registrar ocorrência
-              </Text>
-              <Pressable accessibilityRole="button" onPress={fechar}>
-                <X size={20} color={theme.colors.textMuted} />
-              </Pressable>
-            </View>
+      <Modal visible={isOpen} animationType="slide" onRequestClose={fechar}>
+        <View style={[styles.ocorrenciaScreen, { backgroundColor: theme.colors.background }]}>
+          <View style={[styles.ocorrenciaHeader, { paddingTop: insets.top + theme.spacing[3] }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={fechar}>
+              <X size={22} color={theme.colors.text} />
+            </Pressable>
+            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 18 }}>
+              Ocorrência
+            </Text>
+          </View>
 
+          <ScrollView contentContainerStyle={styles.ocorrenciaBody}>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Título</Text>
             <TextInput
               value={titulo}
               onChangeText={setTitulo}
+              placeholder="Ex.: Pneu furado, aluno passou mal…"
               style={[
                 styles.modalInput,
                 { color: theme.colors.text, borderColor: theme.colors.border },
@@ -494,6 +523,7 @@ function RegistrarOcorrenciaButton({ veiculoId }: { veiculoId: string }): JSX.El
               value={descricao}
               onChangeText={setDescricao}
               multiline
+              placeholder="Descreva o que aconteceu"
               style={[
                 styles.modalInput,
                 styles.modalTextArea,
@@ -503,7 +533,7 @@ function RegistrarOcorrenciaButton({ veiculoId }: { veiculoId: string }): JSX.El
             />
 
             <VehicleButton
-              label="Reportar"
+              label="Reportar ocorrência"
               variant="primary"
               isLoading={createOccurrence.isPending}
               onPress={() => {
@@ -511,7 +541,8 @@ function RegistrarOcorrenciaButton({ veiculoId }: { veiculoId: string }): JSX.El
                 createOccurrence.mutate({ titulo, descricao }, { onSuccess: fechar });
               }}
             />
-          </View>
+            <VehicleButton label="Cancelar" variant="secondary" onPress={fechar} />
+          </ScrollView>
         </View>
       </Modal>
     </>
@@ -546,9 +577,12 @@ function RotaOperacional({
 }): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const insets = useSafeAreaInsets();
-  const { height: windowHeight } = useWindowDimensions();
   const isMotorista = user?.role === "motorista";
+  // Cor de papel (Frente 304 — 3 imagens de referência anexadas pelo
+  // usuário, pedido explícito "quero o mesmo design, idêntico"):
+  // Motorista reaproveita `primary` (já azul); Monitor usa o novo
+  // `monitorAccent` (roxo, ver `packages/theme/src/tokens/colors.ts`).
+  const accentColor = isMotorista ? theme.colors.primary : theme.colors.monitorAccent;
 
   const { data: trip, isLoading: isLoadingTrip } = useTodayTrip(rota.id);
   const { data: stops } = useRouteStops(rota.id);
@@ -613,11 +647,6 @@ function RotaOperacional({
   // `RottaMap` só lê `initialCenter`/faz fit de bounds na montagem,
   // então recentralizar de verdade remonta o mapa com uma nova `key`.
   const [mapKey, setMapKey] = useState(0);
-  const distanciaProximaParada = proximaParada
-    ? proximaParada.distanciaMetros >= 1000
-      ? `${(proximaParada.distanciaMetros / 1000).toFixed(1)} km`
-      : `${Math.round(proximaParada.distanciaMetros)} m`
-    : null;
 
   const gpsAvisoTexto =
     gpsStatus === "reporting"
@@ -646,19 +675,27 @@ function RotaOperacional({
     });
   }).length;
 
-  // Mesma altura mínima do Painel Web (Frente P4/P5, pedido do usuário
-  // em produção: "o mapa não deve ser um painel quadrado, ele deverá
-  // ser a interface toda do 'início'") — saudação, status da rota, ETA
-  // e os controles da viagem (botão deslizante, estilo Uber) flutuam
-  // por cima do mapa em cartões, em vez de empurrar o mapa pra uma
-  // caixinha fixa de 180pt como antes.
-  const mapSectionHeight = Math.max(windowHeight * 0.65, 420);
+  const viagemEncerrada = trip && (trip.status === "FINALIZADA" || trip.status === "CANCELADA");
+  const totalAlunos = (routeStudents ?? []).length;
+  const progressoEmbarquePct = totalAlunos > 0 ? (alunosEmbarcados / totalAlunos) * 100 : 0;
 
   return (
     <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.opScrollContent}>
-        <View style={[styles.mapSection, { height: mapSectionHeight }]}>
-          <View style={styles.absoluteFill}>
+        <PanelGreeting nome={user?.nome ?? ""} />
+
+        {/*
+          Mapa em CARTÃO, não em tela cheia (3 imagens de referência
+          anexadas pelo usuário — nenhuma delas mostra o mapa como fundo
+          da tela inteira; Frente P4/P5 revertidas aqui).
+        */}
+        <View
+          style={[
+            styles.mapCard,
+            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
+          ]}
+        >
+          <View style={styles.mapCardMap}>
             {markers.length > 0 ? (
               <RottaMap
                 key={mapKey}
@@ -677,130 +714,119 @@ function RotaOperacional({
                 mapKey={mapKey}
               />
             )}
-          </View>
-
-          <View
-            style={[styles.topOverlay, { top: insets.top + theme.spacing[3] }]}
-            pointerEvents="box-none"
-          >
-            <View
-              style={[
-                styles.overlayCard,
-                { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.lg },
-                theme.elevation.dropdown.native,
-              ]}
-            >
-              <PanelGreeting nome={user?.nome ?? ""} />
-            </View>
-            {/*
-              Cartão "De/Para" (Frente Q, imagem de referência de app de
-              navegação: "Your location" -> "Select destinations"). De:
-              sempre "Você"; Para: a próxima parada com ETA
-              (`useTripProximasEtas`, já real) — só cai no nome da rota
-              quando a viagem ainda nem começou.
-            */}
-            <RouteFromToCard
-              origemLabel="Você"
-              destinoLabel={proximaParada ? proximaParada.endereco : rota.nome}
-              chips={
-                proximaParada && distanciaProximaParada
-                  ? [
-                      { label: "Distância", value: distanciaProximaParada },
-                      { label: "Turno", value: TURNO_LABEL[rota.turno] ?? rota.turno },
-                    ]
-                  : undefined
-              }
-              rightSlot={
-                <View style={styles.overlayActions}>
-                  {trip ? (
-                    <StatusPill
-                      label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
-                      tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
-                    />
-                  ) : null}
-                  {showTrocarRota ? (
-                    <Pressable onPress={onTrocarRota} accessibilityRole="button">
-                      <Text
-                        style={{ color: theme.colors.primary, fontSize: 13, fontWeight: "600" }}
-                      >
-                        Trocar
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              }
+            <RecenterButton
+              onPress={() => setMapKey((k) => k + 1)}
+              style={{ position: "absolute", right: 8, bottom: 8 }}
             />
           </View>
-
-          <RecenterButton
-            onPress={() => setMapKey((k) => k + 1)}
-            style={{
-              position: "absolute",
-              right: 16,
-              top: insets.top + theme.spacing[3] + 140,
-            }}
-          />
-
-          <View
-            style={[
-              styles.bottomPanel,
-              {
-                backgroundColor: theme.colors.surfaceElevated,
-                borderTopLeftRadius: theme.radius.xl,
-                borderTopRightRadius: theme.radius.xl,
-              },
-              theme.elevation.modal.native,
-            ]}
-          >
-            {/*
-              "Viagem ativa" (modelo de referência) — cronômetro grande
-              + resumo de 4 números só com a viagem já rodando ou
-              pausada (paridade com o Painel Web).
-            */}
-            {trip && (trip.status === "EM_ANDAMENTO" || trip.status === "PAUSADA") ? (
-              <>
-                <TripElapsedTimer iniciadaEm={trip.iniciadaEm} isRunning={isActive} />
-                <TripStatsGrid
-                  totalAlunos={(routeStudents ?? []).length}
-                  alunosEmbarcados={alunosEmbarcados}
-                  paradasRestantes={paradasRestantesCount}
-                  veiculoId={trip.veiculoId}
-                />
-              </>
-            ) : null}
-
-            {proximaParada ? (
-              <ProximaParadaEtaCard eta={proximaParada} parada={proximaParadaStop} />
-            ) : null}
-
-            {isLoadingTrip ? (
-              <ActivityIndicator color={theme.colors.primary} />
-            ) : !trip ? (
-              isMotorista ? (
-                <SlideToAction
-                  label="Deslize para iniciar viagem"
-                  theme={theme}
-                  onComplete={() => startTrip.mutate({ routeId: rota.id })}
-                  isLoading={startTrip.isPending}
+          <View style={styles.mapCardBody}>
+            <View style={styles.mapCardBodyRow}>
+              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 15 }}>
+                {rota.nome}
+              </Text>
+              {trip ? (
+                <StatusPill
+                  label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
+                  tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
                 />
               ) : (
-                <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
-                  Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  {TURNO_LABEL[rota.turno] ?? rota.turno}
                 </Text>
-              )
-            ) : trip.status === "FINALIZADA" || trip.status === "CANCELADA" ? (
-              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
-                A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
+              )}
+            </View>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              {proximaParada
+                ? `Próxima parada: ${proximaParada.endereco}`
+                : `${paradasOrdenadas.length} paradas nesta rota`}
+            </Text>
+            {showTrocarRota ? (
+              <Pressable onPress={onTrocarRota} accessibilityRole="button">
+                <Text style={{ color: accentColor, fontSize: 13, fontWeight: "600" }}>
+                  Trocar rota
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+
+        {/*
+          "Próxima viagem" (modelo de referência) — veículo + alunos
+          confirmados ANTES de apertar "Iniciar viagem".
+        */}
+        {!trip ? (
+          <VehicleCard style={styles.proximaViagemCard}>
+            <Text style={{ color: theme.colors.text, fontWeight: "700" }}>Próxima viagem</Text>
+            <View style={styles.mapCardBodyRow}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                {totalAlunos} alunos confirmados
               </Text>
-            ) : isMotorista ? (
-              <>
-                {gpsAvisoTexto ? (
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                    {gpsAvisoTexto}
-                  </Text>
-                ) : null}
-                {isActive ? (
-                  <>
+            </View>
+          </VehicleCard>
+        ) : null}
+
+        {/*
+          "Viagem ativa" (modelo de referência) — cronômetro grande +
+          resumo de 4 números só com a viagem já rodando ou pausada.
+        */}
+        {trip && (trip.status === "EM_ANDAMENTO" || trip.status === "PAUSADA") ? (
+          <VehicleCard style={styles.statsCard}>
+            <TripElapsedTimer
+              iniciadaEm={trip.iniciadaEm}
+              isRunning={isActive}
+              accentColor={accentColor}
+            />
+            <TripStatsGrid
+              totalAlunos={totalAlunos}
+              alunosEmbarcados={alunosEmbarcados}
+              paradasRestantes={paradasRestantesCount}
+              veiculoId={trip.veiculoId}
+              accentColor={accentColor}
+            />
+          </VehicleCard>
+        ) : null}
+
+        {proximaParada ? (
+          <ProximaParadaEtaCard
+            eta={proximaParada}
+            parada={proximaParadaStop}
+            accentColor={accentColor}
+          />
+        ) : null}
+
+        {/*
+          Controles da viagem — botão comum (3 imagens de referência do
+          usuário mostram sempre um botão sólido, nunca o deslizante
+          estilo Uber que esta tela usava antes, Frente P3/P5).
+        */}
+        <View style={styles.controlsSection}>
+          {isLoadingTrip ? (
+            <ActivityIndicator color={accentColor} />
+          ) : !trip ? (
+            isMotorista ? (
+              <VehicleButton
+                label="Iniciar viagem"
+                variant="primary"
+                onPress={() => startTrip.mutate({ routeId: rota.id })}
+                isLoading={startTrip.isPending}
+              />
+            ) : (
+              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
+              </Text>
+            )
+          ) : viagemEncerrada ? (
+            <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+              A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
+            </Text>
+          ) : isMotorista ? (
+            <>
+              {gpsAvisoTexto ? (
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{gpsAvisoTexto}</Text>
+              ) : null}
+              {isActive ? (
+                <View style={styles.controlsRow}>
+                  <View style={{ flex: 1 }}>
                     <VehicleButton
                       label="Pausar"
                       variant="secondary"
@@ -808,46 +834,70 @@ function RotaOperacional({
                       onPress={() => pauseTrip.mutate(trip.id)}
                       isLoading={pauseTrip.isPending}
                     />
-                    <SlideToAction
-                      label="Deslize para finalizar viagem"
-                      theme={theme}
-                      thumbColor={theme.colors.danger}
-                      onComplete={() => finishTrip.mutate(trip.id)}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <VehicleButton
+                      label="Encerrar viagem"
+                      variant="danger"
+                      icon={<Square size={16} color="#FFFFFF" />}
+                      onPress={() => finishTrip.mutate(trip.id)}
                       isLoading={finishTrip.isPending}
                     />
-                  </>
-                ) : (
-                  <>
-                    <SlideToAction
-                      label="Deslize para retomar viagem"
-                      theme={theme}
-                      onComplete={() => resumeTrip.mutate(trip.id)}
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.controlsRow}>
+                  <View style={{ flex: 1 }}>
+                    <VehicleButton
+                      label="Retomar viagem"
+                      variant="primary"
+                      onPress={() => resumeTrip.mutate(trip.id)}
                       isLoading={resumeTrip.isPending}
                     />
+                  </View>
+                  <View style={{ flex: 1 }}>
                     <VehicleButton
-                      label="Finalizar viagem"
+                      label="Finalizar"
                       variant="secondary"
                       icon={<Square size={16} color={theme.colors.text} />}
                       onPress={() => finishTrip.mutate(trip.id)}
                       isLoading={finishTrip.isPending}
                     />
-                  </>
-                )}
-              </>
-            ) : (
-              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
-                Viagem em andamento. Só o motorista inicia, pausa ou finaliza.
-              </Text>
-            )}
-          </View>
+                  </View>
+                </View>
+              )}
+            </>
+          ) : (
+            <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+              Viagem em andamento. Só o motorista inicia, pausa ou finaliza.
+            </Text>
+          )}
         </View>
 
-        {trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? (
+        {trip && !viagemEncerrada ? (
           <View style={styles.paradasSection}>
-            <AlunosABordoCard routeStudents={routeStudents ?? []} eventos={studentEvents ?? []} />
-            <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} />
+            <AlunosABordoCard
+              routeStudents={routeStudents ?? []}
+              eventos={studentEvents ?? []}
+              accentColor={accentColor}
+            />
+            <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} accentColor={accentColor} />
 
-            <Text style={[styles.secao, { color: theme.colors.text }]}>Paradas</Text>
+            <View style={styles.mapCardBodyRow}>
+              <Text style={[styles.secao, { color: theme.colors.text }]}>Paradas</Text>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                {alunosEmbarcados}/{totalAlunos} embarcados
+              </Text>
+            </View>
+            <View style={[styles.progressoTrilha, { backgroundColor: theme.colors.muted }]}>
+              <View
+                style={[
+                  styles.progressoBarra,
+                  { backgroundColor: accentColor, width: `${progressoEmbarquePct}%` },
+                ]}
+              />
+            </View>
+
             {paradasOrdenadas.map((parada) => (
               <ParadaCard
                 key={parada.id}
@@ -1003,17 +1053,19 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   ausenciaForm: { alignItems: "center" },
-  bottomPanel: {
-    bottom: 0,
-    gap: 12,
-    left: 0,
-    padding: 16,
-    position: "absolute",
-    right: 0,
-  },
+  controlsRow: { flexDirection: "row", gap: 8 },
+  controlsSection: { gap: 8, paddingHorizontal: 16 },
   etaCard: { alignItems: "center", flexDirection: "row", gap: 12 },
   etaHorario: { alignItems: "center", flexDirection: "row", gap: 4 },
-  mapSection: { overflow: "hidden", position: "relative", width: "100%" },
+  mapCard: { borderRadius: 16, borderWidth: 1, margin: 16, overflow: "hidden" },
+  mapCardBody: { gap: 4, padding: 12 },
+  mapCardBodyRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  mapCardMap: { height: 208, position: "relative", width: "100%" },
   mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
   mapaVazio: { alignItems: "center", gap: 8, height: 180, justifyContent: "center" },
   mapaVazioFill: {
@@ -1023,28 +1075,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
   },
-  modalHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
-  },
   modalInput: {
     borderRadius: 8,
     borderWidth: 1,
     marginBottom: 8,
     padding: 10,
-  },
-  modalPanel: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    gap: 4,
-    padding: 20,
-  },
-  modalScrim: {
-    backgroundColor: "rgba(0,0,0,0.5)",
-    flex: 1,
-    justifyContent: "flex-end",
   },
   modalTextArea: { minHeight: 80, textAlignVertical: "top" },
   navegarButton: {
@@ -1054,14 +1089,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 36,
   },
+  ocorrenciaBody: { gap: 4, padding: 16 },
+  ocorrenciaHeader: {
+    flexDirection: "row",
+    gap: 12,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+  },
+  ocorrenciaScreen: { flex: 1 },
   opScreen: { flex: 1 },
-  opScrollContent: { flexGrow: 1 },
-  overlayActions: { alignItems: "center", flexDirection: "row", gap: 12 },
-  overlayCard: { padding: 16 },
+  opScrollContent: { flexGrow: 1, paddingBottom: 24 },
   painelTexto: { paddingVertical: 8, textAlign: "center" },
   paradaHeader: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
-  paradasSection: { gap: 16, padding: 24 },
+  paradasSection: { gap: 16, paddingHorizontal: 16 },
+  progressoBarra: { borderRadius: 999, height: "100%" },
+  progressoTrilha: { borderRadius: 999, height: 6, overflow: "hidden", width: "100%" },
+  proximaViagemCard: { marginHorizontal: 16 },
   secao: { fontSize: 16, fontWeight: "700" },
+  statsCard: { marginHorizontal: 16 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   statsTile: {
     borderRadius: 16,
@@ -1075,5 +1120,4 @@ const styles = StyleSheet.create({
   timerRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   timerTexto: { fontSize: 28, fontVariant: ["tabular-nums"], fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
-  topOverlay: { gap: 12, left: 16, position: "absolute", right: 16 },
 });

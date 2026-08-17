@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
-type VehicleButtonVariant = "primary" | "secondary" | "ghost";
+type VehicleButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 
 interface VehicleButtonProps {
   label: string;
@@ -32,10 +31,12 @@ export function VehicleButton({
   const backgroundColor =
     variant === "primary"
       ? theme.colors.primary
-      : variant === "secondary"
-        ? theme.colors.surfaceElevated
-        : "transparent";
-  const textColor = variant === "primary" ? "#FFFFFF" : theme.colors.text;
+      : variant === "danger"
+        ? theme.colors.danger
+        : variant === "secondary"
+          ? theme.colors.surfaceElevated
+          : "transparent";
+  const textColor = variant === "primary" || variant === "danger" ? "#FFFFFF" : theme.colors.text;
   const borderColor = variant === "ghost" ? "transparent" : theme.colors.border;
 
   return (
