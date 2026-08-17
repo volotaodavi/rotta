@@ -99,6 +99,20 @@ export function getGoogleSiteVerification(): string | undefined {
 }
 
 /**
+ * ID de medição do Google Analytics 4 (formato "G-XXXXXXXXXX" —
+ * Analytics → Administrador → Fluxos de dados → Web → o ID aparece no
+ * topo do fluxo). `NEXT_PUBLIC_` porque o script roda no navegador
+ * (Dossiê 23, Seção 8 — só variáveis com esse prefixo chegam ao
+ * bundle do cliente). Opcional de propósito, mesma filosofia de
+ * `getGoogleSiteVerification`: sem essa env var, `GoogleAnalytics`
+ * (`components/google-analytics.tsx`) simplesmente não renderiza nada
+ * — nenhum cookie de terceiro é criado até alguém colar um ID real.
+ */
+export function getGoogleAnalyticsId(): string | undefined {
+  return process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || undefined;
+}
+
+/**
  * Dados reais da empresa (Dossiê 45 — Rotta Legal, Trust & Community
  * Center) — fonte única, consumida por Termos/Privacidade/rodapé/
  * demais documentos legais. NUNCA inventar um dado que não exista

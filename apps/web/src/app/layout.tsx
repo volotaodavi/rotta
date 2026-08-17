@@ -1,18 +1,20 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import {
   SITE_DESCRIPTION,
   SITE_INSTAGRAM_URL,
   SITE_LOGO_PATH,
   SITE_NAME,
+  getGoogleAnalyticsId,
   getGoogleSiteVerification,
   getSiteUrl,
 } from "@/lib/site-config";
 import { AppProviders } from "@/providers/app-providers";
 import { InstallAppPrompt } from "@/providers/install-app-prompt";
 import { ServiceWorkerRegistration } from "@/providers/service-worker-registration";
-
 
 import "./globals.css";
 
@@ -32,19 +34,21 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   applicationName: SITE_NAME,
+  // `images` não é mais declarado aqui — `app/opengraph-image.tsx` (convenção
+  // nativa do Next.js 15) gera uma imagem 1200×630 dedicada e o framework
+  // já injeta a tag `og:image`/`twitter:image` sozinho a partir dela;
+  // declarar `images` aqui também duplicaria a imagem no HTML gerado.
   openGraph: {
     type: "website",
     locale: "pt_BR",
     siteName: SITE_NAME,
     title: `${SITE_NAME} — Transporte escolar rastreado em tempo real`,
     description: SITE_DESCRIPTION,
-    images: [{ url: SITE_LOGO_PATH }],
   },
   twitter: {
-    card: "summary",
+    card: "summary_large_image",
     title: `${SITE_NAME} — Transporte escolar rastreado em tempo real`,
     description: SITE_DESCRIPTION,
-    images: [SITE_LOGO_PATH],
   },
   robots: {
     index: true,
@@ -167,6 +171,8 @@ const THEME_INIT_SCRIPT = `
  * `(auth)`, `(dashboard)`) tem seu proprio layout mais especifico.
  */
 export default function RootLayout({ children }: { children: ReactNode }): JSX.Element {
+  const gaMeasurementId = getGoogleAnalyticsId();
+
   return (
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
@@ -177,6 +183,8 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
         <ServiceWorkerRegistration />
         <AppProviders>{children}</AppProviders>
         <InstallAppPrompt />
+        <GoogleAnalytics measurementId={gaMeasurementId} />
+        <CookieConsentBanner hasGoogleAnalytics={Boolean(gaMeasurementId)} />
       </body>
     </html>
   );
