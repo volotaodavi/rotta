@@ -149,12 +149,15 @@ export const envSchema = z.object({
   // Opcional: sem ela, `DiditWebhookGuard` recusa toda entrega com um
   // erro claro em vez de aceitar sem verificar assinatura.
   DIDIT_WEBHOOK_SECRET: z.string().optional(),
-  // Workflow da sessão hospedada (`POST /v3/session/`), usada por
-  // `IdentityVerificationModule` (Motorista/Empresa-Gestor verificando
-  // a própria identidade). Config, não segredo — Didit docs: "store it
-  // in code/config". Opcional: sem ela, `DiditService` usa o workflow
-  // "Free KYC" já publicado (`DEFAULT_WORKFLOW_ID` em `didit.config.ts`).
-  DIDIT_WORKFLOW_ID: z.string().optional(),
+  // Os DOIS workflows da sessão hospedada (`POST /v3/session/`), usados
+  // por `IdentityVerificationModule` — Motorista (CNH apenas) e Monitor/
+  // Empresa/Gestor (qualquer documento de identificação), nunca
+  // misturados (`resolveDiditWorkflowId`, identity-verification.service.ts).
+  // Config, não segredo — Didit docs: "store it in code/config".
+  // Opcionais: sem eles, `DiditService` usa os workflows "Motoristas"/
+  // "Monitores" já publicados (`didit.config.ts`).
+  DIDIT_WORKFLOW_ID_MOTORISTA: z.string().optional(),
+  DIDIT_WORKFLOW_ID_MONITOR: z.string().optional(),
 
   // Lytex (lytex.com.br) — provedora de pagamento parceira da Rotta Pay
   // (Dossiê 26). Opcional: sem LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET,

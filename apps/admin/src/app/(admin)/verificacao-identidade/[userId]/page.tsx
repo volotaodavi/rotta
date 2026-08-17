@@ -13,6 +13,15 @@ import {
   useRefreshIdentityVerification,
 } from "@/features/identity-verification/hooks/use-identity-verification-admin";
 
+/** Cargo (`Membership.role`) → rótulo curto — mesmo mapa da listagem, espelha `resolveDocumentoEsperado` (backend). */
+const ROLE_LABEL: Record<string, string> = {
+  admin_rotta: "Admin Rotta",
+  empresa: "Empresa/Autônomo",
+  gestor: "Gestor",
+  motorista: "Motorista",
+  monitor: "Monitor",
+};
+
 function formatDate(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("pt-BR");
@@ -81,10 +90,20 @@ export default function VerificacaoIdentidadeDetailPage(): JSX.Element {
           <Button variant="ghost" size="sm" onClick={() => router.push("/verificacao-identidade")}>
             ← Voltar
           </Button>
-          <Typography variant="title">{data.nome}</Typography>
+          <div className="flex items-center gap-2">
+            <Typography variant="title">{data.nome}</Typography>
+            {data.role && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-text-muted">
+                {ROLE_LABEL[data.role] ?? data.role}
+              </span>
+            )}
+          </div>
           <Typography variant="bodySmall" color="muted">
             {data.email}
             {data.companyName ? ` · ${data.companyName}` : ""}
+          </Typography>
+          <Typography variant="bodySmall" color="muted">
+            Documento esperado: {data.documentoEsperado}
           </Typography>
         </div>
         <div className="flex items-center gap-2">

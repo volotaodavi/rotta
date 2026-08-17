@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { type IdentityVerificationStatus, Prisma } from "@prisma/client";
 
 import type { DecideIdentityVerificationDto } from "./dto/decide-identity-verification.dto";
 import type { ListIdentityVerificationsQueryDto } from "./dto/list-identity-verifications-query.dto";
+import type { DiditConfig } from "@/config/didit.config";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import {
@@ -11,6 +13,41 @@ import {
   mapDiditStatus,
 } from "@/infra/didit/didit-decision.util";
 import { DiditService } from "@/infra/didit/didit.service";
+import { Role } from "@/shared/enums";
+
+
+/**
+ * Documento exigido em cada workflow — mostrado no Admin Rotta pra
+ * nunca decidir uma verificação sem saber qual documento era esperado
+ * (`AdminIdentityVerificationListItem.documentoEsperado`).
+ */
+export const DOCUMENTO_ESPERADO_LABEL = {
+  motorista: "CNH (Carteira Nacional de Habilitação)",
+  padrao: "Qualquer documento de identificação (CNH, RG, Passaporte ou RNE)",
+} as const;
+
+/**
+ * Qual dos dois workflows publicados no Business Console
+ * (`DiditConfig.workflowIdMotorista`/`workflowIdMonitor`) usar — pedido
+ * explícito do usuário: "Motorista (APENAS CNH)" / "Monitor (qualquer
+ * documento de identificação)... cada um baseado no cargo, nada de
+ * misturar". Só Motorista tem tratamento especial: dirigir exige CNH
+ * por lei, então é o único cargo com um documento obrigatório
+ * específico. Monitor/Empresa/Gestor (que não dirigem por definição do
+ * cargo) caem no fluxo mais permissivo — o pedido do usuário só
+ * distinguiu essas duas categorias, então um terceiro workflow pra
+ * Empresa/Gestor seria inventado, não pedido.
+ */
+export function resolveDiditWorkflowId(role: Role, config: DiditConfig): string {
+  return role === Role.MOTORISTA ? config.workflowIdMotorista : config.workflowIdMonitor;
+}
+
+/** Mesma regra de `resolveDiditWorkflowId`, só que devolvendo o rótulo do documento esperado (Admin Rotta) em vez do `workflow_id` da Didit. */
+export function resolveDocumentoEsperado(role: Role | string): string {
+  return role === (Role.MOTORISTA as string)
+    ? DOCUMENTO_ESPERADO_LABEL.motorista
+    : DOCUMENTO_ESPERADO_LABEL.padrao;
+}
 
 export interface IdentityVerificationSessionResult {
   url: string;
@@ -30,6 +67,10 @@ export interface AdminIdentityVerificationListItem {
   nome: string;
   email: string;
   companyName: string | null;
+  /** Cargo (`Membership.role`) mais recente do usuário — `null` quando não há nenhum vínculo ainda (Admin Rotta puro, por exemplo). */
+  role: string | null;
+  /** Documento que o workflow Didit dessa pessoa exige — `resolveDocumentoEsperado(role)`, nunca hardcoded na tela: o admin precisa saber ISSO antes de aprovar/recusar. */
+  documentoEsperado: string;
   status: IdentityVerificationStatus;
   sessionId: string | null;
   motivo: string | null;
@@ -62,18 +103,21 @@ const ADMIN_SELECT = {
   memberships: {
     take: 1,
     orderBy: { iniciadoEm: "desc" as const },
-    select: { company: { select: { nomeFantasia: true } } },
+    select: { role: true, company: { select: { nomeFantasia: true } } },
   },
 } satisfies Prisma.UserSelect;
 
 type AdminUserRow = Prisma.UserGetPayload<{ select: typeof ADMIN_SELECT }>;
 
 function toListItem(user: AdminUserRow): AdminIdentityVerificationListItem {
+  const role = user.memberships[0]?.role ?? null;
   return {
     userId: user.id,
     nome: user.nome,
     email: user.email,
     companyName: user.memberships[0]?.company.nomeFantasia ?? null,
+    role,
+    documentoEsperado: resolveDocumentoEsperado(role ?? ""),
     status: user.identityVerificationStatus,
     sessionId: user.identityVerificationSessionId,
     motivo: user.identityVerificationMotivo,
@@ -103,14 +147,29 @@ export class IdentityVerificationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly didit: DiditService,
+    private readonly configService: ConfigService,
   ) {}
 
-  /** Cria a sessão na Didit e já marca `EM_ANDAMENTO` — `identityVerificationSessionId` é o que o webhook usa depois pra saber se um evento pertence a ESTA sessão (nunca sobrescreve com uma sessão velha/abandonada). Também limpa o motivo/decisão da tentativa anterior — uma nova tentativa começa sem o "fantasma" da recusa passada. */
+  /**
+   * Cria a sessão na Didit e já marca `EM_ANDAMENTO` —
+   * `identityVerificationSessionId` é o que o webhook usa depois pra
+   * saber se um evento pertence a ESTA sessão (nunca sobrescreve com
+   * uma sessão velha/abandonada). Também limpa o motivo/decisão da
+   * tentativa anterior — uma nova tentativa começa sem o "fantasma" da
+   * recusa passada.
+   *
+   * `role` decide QUAL dos dois workflows abrir (`resolveDiditWorkflowId`)
+   * — pedido explícito do usuário: Motorista vê o fluxo de CNH, todo o
+   * resto vê o fluxo de qualquer documento, nunca misturado.
+   */
   async createSession(
     userId: string,
+    role: Role,
     callbackUrl?: string,
   ): Promise<IdentityVerificationSessionResult> {
-    const session = await this.didit.createVerificationSession(userId, callbackUrl);
+    const diditConfig = this.configService.get<DiditConfig>("didit")!;
+    const workflowId = resolveDiditWorkflowId(role, diditConfig);
+    const session = await this.didit.createVerificationSession(userId, workflowId, callbackUrl);
 
     await this.prisma.user.update({
       where: { id: userId },

@@ -55,7 +55,8 @@ describe("DiditWebhookGuard", () => {
     apiKey: "didit_test_key",
     baseUrl: "https://verification.didit.me",
     webhookSecret: "meu-segredo-didit",
-    workflowId: "workflow-1",
+    workflowIdMotorista: "workflow-motorista",
+    workflowIdMonitor: "workflow-monitor",
     apiPublicUrl: "https://api.rotta.com.br",
   };
 

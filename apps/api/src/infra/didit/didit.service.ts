@@ -5,6 +5,7 @@ import type { DiditConfig } from "@/config/didit.config";
 
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
+
 /** Chave nos snapshots de `IntegrationHealthService` (Admin Rotta → `GET /health/integrations`). */
 export const DIDIT_INTEGRATION_NAME = "didit";
 
@@ -148,6 +149,14 @@ export class DiditService {
    * depois via webhook, não na resposta desta chamada (`status` aqui é
    * sempre "Not Started"/"In Progress" logo após a criação).
    *
+   * `workflowId` é OBRIGATÓRIO e vem de fora (`resolveDiditWorkflowId`,
+   * `identity-verification.service.ts`) — pedido explícito do usuário:
+   * "Motorista (APENAS CNH)" / "Monitor (qualquer documento)... cada um
+   * baseado no cargo, nada de misturar". Este método é infraestrutura
+   * pura, não decide qual workflow usar — só executa o que o chamador
+   * já decidiu, pra nunca ter essa regra de negócio duplicada em dois
+   * lugares.
+   *
    * `vendorData` é o identificador estável da Rotta para a pessoa (aqui,
    * `User.id`) — é o que o webhook devolve em `vendor_data` pra
    * correlacionar o evento de volta a ela. `callbackUrl` é opcional
@@ -157,11 +166,12 @@ export class DiditService {
    */
   async createVerificationSession(
     vendorData: string,
+    workflowId: string,
     callbackUrl?: string,
   ): Promise<DiditVerificationSession> {
     this.assertConfigured();
     const body = await this.postJson("/v3/session/", {
-      workflow_id: this.config.workflowId,
+      workflow_id: workflowId,
       vendor_data: vendorData,
       ...(callbackUrl ? { callback: callbackUrl } : {}),
     });

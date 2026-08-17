@@ -13,7 +13,8 @@ const DIDIT_CONFIG: DiditConfig = {
   apiKey: "test-key",
   baseUrl: "https://verification.didit.me",
   webhookSecret: undefined,
-  workflowId: "workflow-teste",
+  workflowIdMotorista: "workflow-motorista",
+  workflowIdMonitor: "workflow-monitor",
   apiPublicUrl: "https://api.rotta.com.br",
 };
 

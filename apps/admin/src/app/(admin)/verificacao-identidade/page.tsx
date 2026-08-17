@@ -9,6 +9,14 @@ import type { IdentityVerificationStatus } from "@rotta/api-client";
 import { IdentityVerificationStatusBadge } from "@/features/identity-verification/components/identity-verification-status-badge";
 import { useIdentityVerificationsList } from "@/features/identity-verification/hooks/use-identity-verification-admin";
 
+/** Cargo (`Membership.role`) → rótulo curto — mesmo mapa que decide o documento exigido (`resolveDocumentoEsperado`, backend). */
+const ROLE_LABEL: Record<string, string> = {
+  admin_rotta: "Admin Rotta",
+  empresa: "Empresa/Autônomo",
+  gestor: "Gestor",
+  motorista: "Motorista",
+  monitor: "Monitor",
+};
 
 const STATUS_OPTIONS: Array<{ value: IdentityVerificationStatus | ""; label: string }> = [
   { value: "", label: "Todos os status" },
@@ -106,12 +114,22 @@ export default function VerificacaoIdentidadeListPage(): JSX.Element {
                 className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-muted"
               >
                 <div className="flex flex-col gap-0.5">
-                  <Typography variant="body" className="font-semibold">
-                    {item.nome}
-                  </Typography>
+                  <div className="flex items-center gap-2">
+                    <Typography variant="body" className="font-semibold">
+                      {item.nome}
+                    </Typography>
+                    {item.role && (
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-text-muted">
+                        {ROLE_LABEL[item.role] ?? item.role}
+                      </span>
+                    )}
+                  </div>
                   <Typography variant="caption" color="muted">
                     {item.email}
                     {item.companyName ? ` · ${item.companyName}` : ""}
+                  </Typography>
+                  <Typography variant="caption" color="muted">
+                    Documento esperado: {item.documentoEsperado}
                   </Typography>
                   {item.status === "REPROVADA" && item.motivo && (
                     <Typography

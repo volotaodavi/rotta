@@ -10,7 +10,9 @@ const DEFAULT_CONFIG: DiditConfig = {
   apiKey: "test-key",
   baseUrl: "https://verification.didit.me",
   webhookSecret: undefined,
-  workflowId: "workflow-teste",
+  workflowIdMotorista: "workflow-motorista",
+  workflowIdMonitor: "workflow-monitor",
+  apiPublicUrl: undefined,
 };
 
 function buildConfigService(didit: Partial<DiditConfig>): ConfigService {
@@ -150,7 +152,7 @@ describe("DiditService", () => {
       const integrationHealth = buildIntegrationHealthMock();
       const service = new DiditService(buildConfigService({}), integrationHealth);
 
-      const resultado = await service.createVerificationSession("user-1");
+      const resultado = await service.createVerificationSession("user-1", "workflow-motorista");
 
       expect(resultado).toEqual({
         sessionId: "sess_123",
@@ -163,7 +165,7 @@ describe("DiditService", () => {
       expect((options.headers as Record<string, string>)["x-api-key"]).toBe("test-key");
       expect((options.headers as Record<string, string>)["Content-Type"]).toBe("application/json");
       expect(JSON.parse(options.body as string)).toEqual({
-        workflow_id: "workflow-teste",
+        workflow_id: "workflow-motorista",
         vendor_data: "user-1",
       });
       expect(integrationHealth.recordSuccess).toHaveBeenCalledWith("didit", expect.any(Number));
@@ -179,11 +181,15 @@ describe("DiditService", () => {
 
       const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
 
-      await service.createVerificationSession("user-1", "https://app.rotta.com.br/voltar");
+      await service.createVerificationSession(
+        "user-1",
+        "workflow-motorista",
+        "https://app.rotta.com.br/voltar",
+      );
 
       const [, options] = fetchMock.mock.calls[0] as [string, RequestInit];
       expect(JSON.parse(options.body as string)).toEqual({
-        workflow_id: "workflow-teste",
+        workflow_id: "workflow-motorista",
         vendor_data: "user-1",
         callback: "https://app.rotta.com.br/voltar",
       });
@@ -195,9 +201,9 @@ describe("DiditService", () => {
 
       const service = new DiditService(buildConfigService({}), buildIntegrationHealthMock());
 
-      await expect(service.createVerificationSession("user-1")).rejects.toThrow(
-        "sem session_id/url",
-      );
+      await expect(
+        service.createVerificationSession("user-1", "workflow-motorista"),
+      ).rejects.toThrow("sem session_id/url");
     });
 
     it("recusa quando DIDIT_API_KEY não está configurada", async () => {
@@ -206,9 +212,9 @@ describe("DiditService", () => {
         buildIntegrationHealthMock(),
       );
 
-      await expect(service.createVerificationSession("user-1")).rejects.toThrow(
-        ServiceUnavailableException,
-      );
+      await expect(
+        service.createVerificationSession("user-1", "workflow-motorista"),
+      ).rejects.toThrow(ServiceUnavailableException);
     });
   });
 

@@ -1,9 +1,23 @@
 import { BadRequestException } from "@nestjs/common";
 
+
 import { IdentityVerificationService } from "../identity-verification.service";
 
+import type { DiditConfig } from "@/config/didit.config";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { DiditService } from "@/infra/didit/didit.service";
+import type { ConfigService } from "@nestjs/config";
+
+import { Role } from "@/shared/enums";
+
+const DIDIT_CONFIG: DiditConfig = {
+  apiKey: "test-key",
+  baseUrl: "https://verification.didit.me",
+  webhookSecret: undefined,
+  workflowIdMotorista: "workflow-motorista",
+  workflowIdMonitor: "workflow-monitor",
+  apiPublicUrl: undefined,
+};
 
 function buildPrismaMock(): jest.Mocked<Pick<PrismaService, "user">> {
   return {
@@ -26,18 +40,24 @@ function buildDiditMock(): jest.Mocked<
   };
 }
 
+function buildConfigServiceMock(): ConfigService {
+  return { get: jest.fn().mockReturnValue(DIDIT_CONFIG) } as unknown as ConfigService;
+}
+
 function buildService(
   prisma: ReturnType<typeof buildPrismaMock>,
   didit: ReturnType<typeof buildDiditMock>,
+  configService: ConfigService = buildConfigServiceMock(),
 ) {
   return new IdentityVerificationService(
     prisma as unknown as PrismaService,
     didit as unknown as DiditService,
+    configService,
   );
 }
 
 describe("IdentityVerificationService", () => {
-  it("createSession cria a sessão na Didit, grava sessionId, marca EM_ANDAMENTO e limpa o motivo anterior", async () => {
+  it("createSession (Motorista) cria a sessão no workflow de CNH, grava sessionId, marca EM_ANDAMENTO e limpa o motivo anterior", async () => {
     const prisma = buildPrismaMock();
     const didit = buildDiditMock();
     didit.createVerificationSession.mockResolvedValue({
@@ -48,7 +68,11 @@ describe("IdentityVerificationService", () => {
 
     const service = buildService(prisma, didit);
 
-    const resultado = await service.createSession("user-1", "https://app.rotta.com.br/voltar");
+    const resultado = await service.createSession(
+      "user-1",
+      Role.MOTORISTA,
+      "https://app.rotta.com.br/voltar",
+    );
 
     expect(resultado).toEqual({
       url: "https://verify.didit.me/session/sess_1",
@@ -56,6 +80,7 @@ describe("IdentityVerificationService", () => {
     });
     expect(didit.createVerificationSession).toHaveBeenCalledWith(
       "user-1",
+      "workflow-motorista",
       "https://app.rotta.com.br/voltar",
     );
     expect(prisma.user.update).toHaveBeenCalledWith({
@@ -66,6 +91,26 @@ describe("IdentityVerificationService", () => {
         identityVerificationMotivo: null,
       },
     });
+  });
+
+  it("createSession (Monitor) usa o workflow de qualquer documento — nunca o de CNH exclusivo do Motorista", async () => {
+    const prisma = buildPrismaMock();
+    const didit = buildDiditMock();
+    didit.createVerificationSession.mockResolvedValue({
+      sessionId: "sess_2",
+      url: "https://verify.didit.me/session/sess_2",
+      status: "not started",
+    });
+
+    const service = buildService(prisma, didit);
+
+    await service.createSession("user-2", Role.MONITOR);
+
+    expect(didit.createVerificationSession).toHaveBeenCalledWith(
+      "user-2",
+      "workflow-monitor",
+      undefined,
+    );
   });
 
   it("getStatus lê status/verifiedAt/motivo já persistidos, sem chamar a Didit", async () => {

@@ -38,6 +38,10 @@ export interface AdminIdentityVerificationListItem {
   nome: string;
   email: string;
   companyName: string | null;
+  /** Cargo (`Membership.role`) mais recente do usuário — `null` quando não há vínculo ainda. */
+  role: string | null;
+  /** Documento que o workflow Didit dessa pessoa exige (CNH pra Motorista, qualquer documento pros demais) — nunca decidir aprovar/recusar sem isso. */
+  documentoEsperado: string;
   status: IdentityVerificationStatus;
   sessionId: string | null;
   motivo: string | null;
