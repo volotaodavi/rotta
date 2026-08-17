@@ -9,6 +9,8 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType } from "@prisma/client";
 
+
+import { SCHOOL_CREATED_EVENT } from "./events/school-created.event";
 import { toSchoolAccessPointResponseDto } from "./mappers/school-access-point.mapper";
 import {
   toListSchoolCompanyLinksResponseDto,
@@ -211,6 +213,16 @@ export class SchoolsService {
     };
 
     const school = await this.schoolRepository.create(data);
+
+    // "Quem deve colocar a latitude e longitude e endereço é a IA, não
+    // o usuário manualmente" (pedido do usuário) — todo cadastro que
+    // passa por aqui SEM já ter geocodificado sozinho (autocadastro do
+    // Responsável e Education Sync Agent chamam `geocodeSchool`
+    // diretamente, de dentro do próprio `GeoModule`, e nunca passam por
+    // este `create()`) dispara o evento; o listener do `GeoModule`
+    // resolve a coordenada real via Nominatim/OSM (`GeoEngineService`)
+    // em segundo plano, sem bloquear esta resposta.
+    this.eventEmitter.emit(SCHOOL_CREATED_EVENT, { schoolId: school.id });
 
     await this.recordAudit({
       companyId: actor.tenantId ?? undefined,
@@ -589,6 +601,9 @@ export class SchoolsService {
           ip: meta.ip,
           userAgent: meta.userAgent,
         });
+        // Mesmo motivo do `create()` acima — a planilha importada não
+        // traz latitude/longitude, só o endereço textual.
+        this.eventEmitter.emit(SCHOOL_CREATED_EVENT, { schoolId: school.id });
         importadas += 1;
       } catch (error) {
         erros.push({

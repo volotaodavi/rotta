@@ -1,18 +1,22 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
+import { MapPin, Search, Sparkles } from "@rotta/icons";
+import { Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
+import { useMutation } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import type { CreateSchoolInput, SchoolShift, SchoolType } from "@rotta/api-client";
 
-import { useCheckSchoolDuplicates, useCreateSchool } from "@/features/schools/hooks/use-schools";
+import { useCreateSchool, useSuggestSchools } from "@/features/schools/hooks/use-schools";
 import {
   SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL,
   SCHOOL_SHIFT_LABEL,
   SCHOOL_TYPE_LABEL,
 } from "@/features/schools/labels";
+import { useCepLookup } from "@/hooks/use-cep-lookup";
+import { schoolsApi } from "@/lib/api-client";
 
 
 const INITIAL_STATE: CreateSchoolInput = {
@@ -34,19 +38,42 @@ const INITIAL_STATE: CreateSchoolInput = {
  * recém-cadastrado entra num catálogo COMPARTILHADO — a empresa que
  * cadastra é automaticamente vinculada a ele no backend
  * (`SchoolsService.create`), nunca é "dona" exclusiva da escola.
+ *
+ * "Cadê a análise da IA após colocar o nome das escolas?" (pedido do
+ * usuário) — o "Nome oficial" agora consulta o catálogo nacional já
+ * sincronizado do Censo Escolar/INEP em tempo real
+ * (`useSuggestSchools`, tolerante a erro de digitação, mesma Geocoding/
+ * Education Sync Agent que já existia mas só era usada no cadastro de
+ * Aluno). Se a escola já existir, "Vincular esta escola" evita um
+ * cadastro duplicado; "Nenhuma dessas" segue pro cadastro do zero
+ * normalmente.
+ *
+ * "Quem deve colocar a latitude e longitude é a IA, não o usuário
+ * manualmente" (pedido do usuário) — este formulário NUNCA pediu
+ * coordenadas (só o endereço textual); o que faltava era acionar a
+ * geocodificação de verdade depois de salvar, o que agora acontece
+ * sozinho no backend (`SCHOOL_CREATED_EVENT` → `GeoPipelineService.
+ * geocodeSchool`, Nominatim/OSM) — o aviso abaixo do card "Endereço"
+ * deixa isso explícito em vez de simplesmente não dizer nada sobre
+ * mapa/localização.
  */
 export default function NovaEscolaPage(): JSX.Element {
   const router = useRouter();
   const createSchool = useCreateSchool();
+  const cepLookup = useCepLookup();
   const [form, setForm] = useState<CreateSchoolInput>(INITIAL_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [checkDuplicates, setCheckDuplicates] = useState(false);
+  const [suggestionsDismissed, setSuggestionsDismissed] = useState(false);
 
-  const duplicates = useCheckSchoolDuplicates(
-    checkDuplicates ? form.nomeOficial : "",
-    checkDuplicates ? form.cidade : "",
-    checkDuplicates ? form.estado : "",
-  );
+  const suggestions = useSuggestSchools({ q: form.nomeOficial, limit: 5 });
+  const mostrarSugestoes =
+    !suggestionsDismissed &&
+    form.nomeOficial.trim().length >= 2 &&
+    (suggestions.data?.items.length ?? 0) > 0;
+
+  const linkExistingSchool = useMutation({
+    mutationFn: (schoolId: string) => schoolsApi.linkCompany(schoolId),
+  });
 
   function updateField<K extends keyof CreateSchoolInput>(
     key: K,
@@ -55,12 +82,41 @@ export default function NovaEscolaPage(): JSX.Element {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateNome(value: string): void {
+    updateField("nomeOficial", value);
+    setSuggestionsDismissed(false);
+  }
+
   function toggleArrayValue<T extends string>(key: "tipos" | "turnosAtendidos", value: T): void {
     setForm((current) => {
       const list = current[key] as T[];
       const next = list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
       return { ...current, [key]: next };
     });
+  }
+
+  async function handleCepBlur(): Promise<void> {
+    const address = await cepLookup.lookup(form.cep);
+    if (!address) return;
+    setForm((current) => ({
+      ...current,
+      logradouro: address.endereco || current.logradouro,
+      bairro: address.bairro || current.bairro,
+      cidade: address.cidade || current.cidade,
+      estado: address.estado || current.estado,
+    }));
+  }
+
+  async function handleVincularExistente(schoolId: string): Promise<void> {
+    setErrorMessage(null);
+    try {
+      await linkExistingSchool.mutateAsync(schoolId);
+      router.replace(`/escolas/${schoolId}`);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError ? error.message : "Não foi possível vincular esta escola agora.",
+      );
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -92,18 +148,66 @@ export default function NovaEscolaPage(): JSX.Element {
         <Card>
           <Card.Header title="Cadastro" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
+            <div className="sm:col-span-2 flex flex-col gap-2">
               <FormField label="Nome oficial" isRequired>
                 <Input
                   required
                   value={form.nomeOficial}
-                  onChange={(event) => {
-                    updateField("nomeOficial", event.target.value);
-                    setCheckDuplicates(false);
-                  }}
-                  onBlur={() => setCheckDuplicates(true)}
+                  onChange={(event) => updateNome(event.target.value)}
                 />
               </FormField>
+              {mostrarSugestoes ? (
+                <div className="flex flex-col gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-3">
+                  <div className="flex items-center gap-1.5 text-primary">
+                    <Sparkles className="h-4 w-4" />
+                    <Typography variant="caption" className="font-semibold">
+                      Rotta AI encontrou {suggestions.data?.items.length} escola(s) parecida(s) no
+                      catálogo nacional
+                    </Typography>
+                  </div>
+                  <div className="flex flex-col divide-y divide-border">
+                    {suggestions.data?.items.map((item) => (
+                      <div
+                        key={item.id}
+                        className="flex flex-col gap-1 py-2 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <div className="flex flex-col">
+                          <Typography variant="bodySmall" className="font-medium">
+                            {item.nomeOficial}
+                          </Typography>
+                          <Typography variant="caption" color="muted">
+                            {item.cidade} - {item.estado} ·{" "}
+                            {SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL[item.dependenciaAdministrativa]}
+                          </Typography>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          isLoading={
+                            linkExistingSchool.isPending && linkExistingSchool.variables === item.id
+                          }
+                          onClick={() => void handleVincularExistente(item.id)}
+                        >
+                          Vincular esta escola
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="self-start text-xs font-medium text-text-muted underline hover:text-text"
+                    onClick={() => setSuggestionsDismissed(true)}
+                  >
+                    Nenhuma dessas, cadastrar do zero
+                  </button>
+                </div>
+              ) : suggestions.isLoading && form.nomeOficial.trim().length >= 2 ? (
+                <div className="flex items-center gap-2 text-text-muted">
+                  <Spinner size="sm" />
+                  <Typography variant="caption">Consultando o catálogo nacional...</Typography>
+                </div>
+              ) : null}
             </div>
             <FormField label="Nome fantasia">
               <Input
@@ -176,26 +280,32 @@ export default function NovaEscolaPage(): JSX.Element {
               />
             </FormField>
           </Card.Body>
-          {checkDuplicates && duplicates.data && duplicates.data.length > 0 && (
-            <Card.Body className="border-t border-border">
-              <Typography variant="bodySmall" color="danger">
-                Possível escola duplicada — Rotta AI encontrou {duplicates.data.length} escola(s)
-                com nome parecido na mesma cidade/estado:{" "}
-                {duplicates.data.map((s) => s.nomeOficial).join(", ")}.
-              </Typography>
-            </Card.Body>
-          )}
         </Card>
 
         <Card>
           <Card.Header title="Endereço" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2 flex items-start gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-3">
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+              <Typography variant="caption" color="muted">
+                Você não precisa localizar a escola no mapa — a Rotta Geo AI calcula a latitude e a
+                longitude sozinha, a partir do endereço abaixo, assim que a escola for salva.
+              </Typography>
+            </div>
             <FormField label="CEP" isRequired>
-              <Input
-                required
-                value={form.cep}
-                onChange={(event) => updateField("cep", event.target.value)}
-              />
+              <div className="flex items-center gap-2">
+                <Input
+                  required
+                  value={form.cep}
+                  onChange={(event) => updateField("cep", event.target.value)}
+                  onBlur={() => void handleCepBlur()}
+                />
+                {cepLookup.isLoading ? (
+                  <Spinner size="sm" />
+                ) : (
+                  <Search className="h-4 w-4 text-text-muted" />
+                )}
+              </div>
             </FormField>
             <FormField label="Logradouro" isRequired>
               <Input
@@ -228,11 +338,7 @@ export default function NovaEscolaPage(): JSX.Element {
               <Input
                 required
                 value={form.cidade}
-                onChange={(event) => {
-                  updateField("cidade", event.target.value);
-                  setCheckDuplicates(false);
-                }}
-                onBlur={() => setCheckDuplicates(true)}
+                onChange={(event) => updateField("cidade", event.target.value)}
               />
             </FormField>
             <FormField label="Estado (UF)" isRequired>
@@ -240,11 +346,7 @@ export default function NovaEscolaPage(): JSX.Element {
                 required
                 maxLength={2}
                 value={form.estado}
-                onChange={(event) => {
-                  updateField("estado", event.target.value.toUpperCase());
-                  setCheckDuplicates(false);
-                }}
-                onBlur={() => setCheckDuplicates(true)}
+                onChange={(event) => updateField("estado", event.target.value.toUpperCase())}
               />
             </FormField>
             <div className="sm:col-span-2">

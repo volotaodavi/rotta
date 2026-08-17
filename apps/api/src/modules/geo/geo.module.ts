@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { InepSyncSchedulerService } from "./agents/inep-sync-scheduler.service";
 import { InepSyncService } from "./agents/inep-sync.service";
@@ -10,6 +11,7 @@ import { GeoPipelineService } from "./geo-pipeline.service";
 import { GeoQueueController } from "./geo-queue.controller";
 import { SCHOOL_COORDINATE_REPOSITORY, SCHOOL_MARKER_REPOSITORY } from "./geo.constants";
 import { GeoController } from "./geo.controller";
+import { SchoolCreatedListener } from "./listeners/school-created.listener";
 import { PrismaSchoolCoordinateRepository } from "./repositories/prisma-school-coordinate.repository";
 import { PrismaSchoolMarkerRepository } from "./repositories/prisma-school-marker.repository";
 
@@ -34,6 +36,13 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
  * `GeoQueueController` é o "worker" dos jobs assíncronos deste módulo
  * (`school-geocode`/`inep-sync`, ver `geo-queue.types.ts`) — substitui
  * `SchoolGeocodeProcessor`/`InepSyncProcessor` (BullMQ).
+ *
+ * `SchoolCreatedListener` fecha o gap "quem deve colocar a latitude e
+ * longitude é a IA, não o usuário" (pedido do usuário): reage ao
+ * `SCHOOL_CREATED_EVENT` emitido por `SchoolsService` (cadastro manual/
+ * importação) chamando `GeoPipelineService.geocodeSchool` — o mesmo elo
+ * que faltava entre "Nova escola" e a Geo Platform que já existia pra
+ * autocadastro/Censo Escolar.
  */
 @Module({
   imports: [SchoolsModule],
@@ -46,6 +55,7 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
     InepSyncService,
     InepSyncSchedulerService,
     MapIntelligenceService,
+    SchoolCreatedListener,
     { provide: SCHOOL_COORDINATE_REPOSITORY, useClass: PrismaSchoolCoordinateRepository },
     { provide: SCHOOL_MARKER_REPOSITORY, useClass: PrismaSchoolMarkerRepository },
   ],
