@@ -98,4 +98,29 @@ describe("DashboardLayout — guard de rota do Modo Ação", () => {
       unmount();
     }
   });
+
+  /**
+   * BUG 2 corrigido (reportado pelo usuário: "quando o motorista está em
+   * 'modo de ação', ele não consegue clicar em nenhuma opção na página de
+   * 'perfil'"): os atalhos de `ATALHOS_PERFIL` (Rotta Pay/Notificações/
+   * Chamados/Verificar identidade/Documentação) linkavam pra rotas fora
+   * do allowlist do guard acima — o clique navegava e era imediatamente
+   * revertido pra `/minha-rota` no próximo efeito, parecendo que o botão
+   * não fazia nada.
+   */
+  it("não redireciona quando já está num atalho de Perfil (Rotta Pay/Notificações/Chamados/Verificação/Legal)", async () => {
+    for (const rota of [
+      "/rotta-pay",
+      "/notificacoes",
+      "/chamados",
+      "/verificacao-identidade",
+      "/legal",
+    ]) {
+      mockPathname = rota;
+      const { unmount } = render(<DashboardLayout>conteúdo</DashboardLayout>);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(replaceMock).not.toHaveBeenCalled();
+      unmount();
+    }
+  });
 });

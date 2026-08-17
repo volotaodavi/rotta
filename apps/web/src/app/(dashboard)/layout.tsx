@@ -58,8 +58,28 @@ const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
  * Veículos/Escolas/Marketplace...) mesmo com o alternador marcado como
  * "Modo Ação" — o modo nunca era de fato aplicado à página atual, só ao
  * cabeçalho.
+ *
+ * BUG 2 corrigido aqui (reportado pelo usuário: "quando o motorista
+ * está em 'modo de ação', ele não consegue clicar em nenhuma opção na
+ * página de 'perfil'"): a lista só cobria os 4 destinos da barra
+ * inferior, mas `ATALHOS_PERFIL` (`app/(dashboard)/perfil/page.tsx`)
+ * linka pra 5 páginas fora dela — `/rotta-pay`, `/notificacoes`,
+ * `/chamados`, `/verificacao-identidade`, `/legal`. Sem elas aqui, o
+ * clique em qualquer atalho do Perfil navegava e era imediatamente
+ * revertido pra `/minha-rota` por este mesmo guard, no próximo
+ * `useEffect` — parecia que o botão não fazia nada.
  */
-const DRIVER_MODE_ALLOWED_PREFIXES = ["/minha-rota", "/atividades", "/veiculo", "/perfil"] as const;
+const DRIVER_MODE_ALLOWED_PREFIXES = [
+  "/minha-rota",
+  "/atividades",
+  "/veiculo",
+  "/perfil",
+  "/rotta-pay",
+  "/notificacoes",
+  "/chamados",
+  "/verificacao-identidade",
+  "/legal",
+] as const;
 
 /**
  * Navegação da Área Pessoal (Responsável) — gap fechado nesta entrega:
