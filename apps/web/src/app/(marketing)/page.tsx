@@ -23,7 +23,7 @@ import type { ComponentType } from "react";
 
 import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
 import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
-import { HeroMapDemo } from "@/components/hero-map-demo";
+import { HeroMapDemoLazy } from "@/components/hero-map-demo-lazy";
 import { pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
 
 /**
@@ -540,7 +540,7 @@ export default function LandingPage(): JSX.Element {
           </div>
           <div className="relative flex justify-center pt-6 lg:justify-end lg:pt-0">
             <div className="relative w-full max-w-md">
-              <HeroMapDemo />
+              <HeroMapDemoLazy />
               <HeroFloatingBadge
                 icon={ShieldCheck}
                 titulo="Segurança"
