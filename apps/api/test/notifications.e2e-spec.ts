@@ -10,7 +10,6 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
-
 /**
  * E2E do Rotta Communication Engine (briefing "MÓDULO — ROTTA
  * COMMUNICATION ENGINE") — aplicação Nest completa contra o Postgres de
@@ -56,6 +55,7 @@ describe("Notifications / Communication Engine (e2e)", () => {
     }
     return prisma.company.create({
       data: {
+        codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
         razaoSocial: "Transportes Teste LTDA",
         nomeFantasia: "Teste Transportes",
         cpfCnpj: String(Math.floor(10_000_000_000_000 + Math.random() * 89_999_999_999_999)),

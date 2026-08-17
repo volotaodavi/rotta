@@ -39,6 +39,7 @@ describe("PrismaService.withTenant — isolamento multi-tenant sob concorrência
       const companyA = await prisma.withTenant(
         prisma.company.create({
           data: {
+            codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
             razaoSocial: "A",
             nomeFantasia: "A",
             cpfCnpj: randomUUID().replace(/\D/g, "").slice(0, 14),
@@ -60,6 +61,7 @@ describe("PrismaService.withTenant — isolamento multi-tenant sob concorrência
       const companyB = await prisma.withTenant(
         prisma.company.create({
           data: {
+            codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
             razaoSocial: "B",
             nomeFantasia: "B",
             cpfCnpj: randomUUID().replace(/\D/g, "").slice(0, 14),
@@ -136,6 +138,7 @@ describe("PrismaService.withTenant — isolamento multi-tenant sob concorrência
         prisma.withTenant(
           prisma.company.create({
             data: {
+              codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
               razaoSocial: "C",
               nomeFantasia: "C",
               cpfCnpj: randomUUID().replace(/\D/g, "").slice(0, 14),

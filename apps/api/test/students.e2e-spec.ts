@@ -10,7 +10,6 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
-
 /**
  * E2E do módulo Alunos (briefing "Marketplace" §"CADASTRO DO ALUNO") —
  * aplicação Nest completa contra o Postgres de teste real. Diferencial
@@ -76,6 +75,7 @@ describe("Students (e2e)", () => {
 
     const company = await prisma.company.create({
       data: {
+        codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
         razaoSocial: "Transportes Teste LTDA",
         nomeFantasia: "Teste Transportes",
         cpfCnpj: String(Math.floor(10_000_000_000_000 + Math.random() * 89_999_999_999_999)),

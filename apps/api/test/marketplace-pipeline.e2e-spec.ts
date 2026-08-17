@@ -10,7 +10,6 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
-
 const SAO_PAULO = { latitude: -23.561684, longitude: -46.655981 };
 const THIRTY_ONE_DAYS_AGO = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
 const REQUIRED_DOC_TYPES = ["CRLV", "LICENCIAMENTO", "SEGURO", "VISTORIA"] as const;
@@ -126,6 +125,7 @@ describe("Marketplace — pipeline de ponta a ponta (e2e)", () => {
 
     const company = await prisma.company.create({
       data: {
+        codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
         razaoSocial: "Transporte Escolar Ponta a Ponta LTDA",
         nomeFantasia: "PontaAPonta Transportes",
         cpfCnpj: String(Math.floor(10_000_000_000_000 + Math.random() * 89_999_999_999_999)),

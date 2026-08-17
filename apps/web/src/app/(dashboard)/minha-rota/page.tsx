@@ -63,6 +63,7 @@ import {
 import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-reporting";
 import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
 import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
+import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
@@ -73,7 +74,6 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
 import { buildWhatsAppUrl } from "@/lib/site-config";
-
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -678,6 +678,32 @@ function RotaOperacional({
     longitude: parada.longitude,
   }));
 
+  // Marcador do próprio veículo em movimento (Frente 2, pedido do
+  // usuário — "todos deverão ter mapa, cada um na sua função") — só as
+  // paradas estáticas apareciam aqui até agora. `GET
+  // /gps/trips/:tripId/track` é o único endpoint de GPS que
+  // Motorista/Monitor podem chamar sobre a própria viagem (`getMap`/
+  // `getForStudent` são restritos a Empresa/Gestor/Admin/Responsável);
+  // pega a posição mais recente da trilha retornada. Só busca enquanto a
+  // viagem de hoje ainda não terminou — sem trilha nenhuma pra viagem já
+  // finalizada/cancelada.
+  const gpsTrackTripId =
+    trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? trip.id : undefined;
+  const { data: gpsTrack } = useGpsTrack(gpsTrackTripId);
+  const veiculoMarker: RottaMapMarker | null = useMemo(() => {
+    const ultimaPosicao =
+      gpsTrack && gpsTrack.length > 0 ? gpsTrack[gpsTrack.length - 1] : undefined;
+    if (!ultimaPosicao) return null;
+    return {
+      id: "veiculo-em-movimento",
+      titulo: veiculoPadrao ? `${veiculoPadrao.modelo} · ${veiculoPadrao.placa}` : "Seu veículo",
+      latitude: ultimaPosicao.latitude,
+      longitude: ultimaPosicao.longitude,
+      emMovimento: true,
+    };
+  }, [gpsTrack, veiculoPadrao]);
+  const mapMarkers: RottaMapMarker[] = veiculoMarker ? [...markers, veiculoMarker] : markers;
+
   // Respaldo (Frente I): sem paradas cadastradas ainda pra essa rota
   // (ou enquanto `stops` carrega), mostra pelo menos onde o telefone
   // está — nunca deixa a tela sem mapa nenhum.
@@ -765,7 +791,7 @@ function RotaOperacional({
         {markers.length > 0 ? (
           <RottaMap
             key={mapKey}
-            markers={markers}
+            markers={mapMarkers}
             route={paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }))}
             initialZoom={12}
           />

@@ -45,6 +45,7 @@ describe("Schools (e2e)", () => {
 
     const company = await prisma.company.create({
       data: {
+        codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
         razaoSocial: "Transportes Teste LTDA",
         nomeFantasia: "Teste Transportes",
         cpfCnpj: String(Math.floor(10_000_000_000_000 + Math.random() * 89_999_999_999_999)),

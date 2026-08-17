@@ -2,10 +2,12 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Calendar, Clock } from "@rotta/icons";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Card, PanelGreeting, Spinner, Tabs, Typography } from "@rotta/ui/web";
 import { useMemo, useState } from "react";
 
 import { useMinhasRotas } from "@/features/driver/hooks/use-driver-routes";
+import { useTripPositions } from "@/features/driver/hooks/use-driver-trip";
 import { useTripHistory, type TripHistoryEntry } from "@/features/driver/hooks/use-trip-history";
 import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 
@@ -105,32 +107,73 @@ function AtividadeCard({ entrada }: { entrada: TripHistoryEntry }): JSX.Element 
   const fim = formatarHora(trip.finalizadaEm ?? trip.canceladaEm);
   const badge = TRIP_STATUS_BADGE[trip.status];
 
+  // Preview da rota percorrida (Frente 3, pedido do usuário — "todos
+  // deverão ter mapa") — só busca a trilha de posições pra viagens já
+  // `FINALIZADA` (uma viagem cancelada pode nunca ter saído do lugar; em
+  // andamento já tem o mapa ao vivo em "Minha Rota"). `GET
+  // /trips/:id/positions` já libera Motorista/Monitor (`OPERATE_ROLES`).
+  const { data: positions } = useTripPositions(trip.status === "FINALIZADA" ? trip.id : undefined);
+  const rotaPercorrida = positions && positions.length >= 2 ? positions : null;
+
   return (
     <Card>
-      <Card.Body className="flex items-center justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-text-muted">
-            <Calendar size={16} />
-          </div>
-          <div>
-            <Typography variant="bodySmall" className="font-semibold">
-              {routeNome}
-            </Typography>
-            <div className="flex items-center gap-1 text-text-muted">
-              <Typography variant="caption" color="muted">
-                {formatarData(trip.data)}
+      <Card.Body className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary/20 text-text-muted">
+              <Calendar size={16} />
+            </div>
+            <div>
+              <Typography variant="bodySmall" className="font-semibold">
+                {routeNome}
               </Typography>
-              {inicio ? (
-                <Typography variant="caption" color="muted" className="flex items-center gap-1">
-                  <Clock size={12} /> {inicio}
-                  {fim ? ` – ${fim}` : ""}
+              <div className="flex items-center gap-1 text-text-muted">
+                <Typography variant="caption" color="muted">
+                  {formatarData(trip.data)}
                 </Typography>
-              ) : null}
+                {inicio ? (
+                  <Typography variant="caption" color="muted" className="flex items-center gap-1">
+                    <Clock size={12} /> {inicio}
+                    {fim ? ` – ${fim}` : ""}
+                  </Typography>
+                ) : null}
+              </div>
             </div>
           </div>
+          <Badge variant={badge?.variant ?? "neutral"}>{badge?.label ?? trip.status}</Badge>
         </div>
-        <Badge variant={badge?.variant ?? "neutral"}>{badge?.label ?? trip.status}</Badge>
+
+        {rotaPercorrida ? <RotaPercorridaPreview positions={rotaPercorrida} /> : null}
       </Card.Body>
     </Card>
+  );
+}
+
+/**
+ * Miniatura estática da rota percorrida — nunca um mapa vazio/quebrado:
+ * só renderiza quando `positions` já tem 2+ pontos (chamado de
+ * `AtividadeCard`). Decorativo dentro da lista (sem `onBoundsChange`/
+ * `onMarkerPress`, `pointer-events-none` — não compete com o scroll da
+ * página); mesmo padrão ad-hoc de "embrulha `RottaMap` num container de
+ * altura fixa" já usado em `MeuMapa`/`AcompanhamentoSection`, sem criar
+ * componente novo em `packages/maps`/`packages/ui`.
+ */
+function RotaPercorridaPreview({
+  positions,
+}: {
+  positions: NonNullable<ReturnType<typeof useTripPositions>["data"]>;
+}): JSX.Element {
+  const primeira = positions[0]!;
+  const ultima = positions[positions.length - 1]!;
+  const markers: RottaMapMarker[] = [
+    { id: "inicio", titulo: "Início", latitude: primeira.latitude, longitude: primeira.longitude },
+    { id: "fim", titulo: "Fim", latitude: ultima.latitude, longitude: ultima.longitude },
+  ];
+  const route = positions.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
+
+  return (
+    <div className="pointer-events-none h-[100px] overflow-hidden rounded-lg">
+      <RottaMap markers={markers} route={route} />
+    </div>
   );
 }

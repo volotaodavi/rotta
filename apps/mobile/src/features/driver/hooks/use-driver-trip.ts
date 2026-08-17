@@ -93,6 +93,21 @@ export function useTripStudentEvents(tripId: string | undefined) {
   });
 }
 
+/**
+ * Trilha completa de posições de uma viagem já encerrada (Frente 3 —
+ * preview de rota em "Histórico", paridade com o Painel Web). Mesmo
+ * endpoint (`GET /trips/:id/positions`, libera Motorista/Monitor) que
+ * alimenta o mapa ao vivo — só chamado quando a viagem já está
+ * `FINALIZADA`, sem polling.
+ */
+export function useTripPositions(tripId: string | undefined) {
+  return useQuery({
+    queryKey: ["driver", "trips", tripId, "positions"],
+    queryFn: () => tripsApi.listPositions(tripId as string),
+    enabled: Boolean(tripId),
+  });
+}
+
 export function useAddStudentEvent(tripId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({

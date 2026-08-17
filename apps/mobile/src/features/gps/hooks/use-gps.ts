@@ -17,3 +17,20 @@ export function useGpsForStudent(studentId: string | undefined) {
     refetchInterval: 10_000,
   });
 }
+
+/**
+ * Trilha de posições de uma viagem (`GET /gps/trips/:tripId/track`) — o
+ * único endpoint de GPS que Motorista/Monitor podem chamar sobre a
+ * própria viagem (`getForStudent` é restrito ao Responsável). Mesmo
+ * hook e mesmo `refetchInterval` já existentes na versão web
+ * (`apps/web/src/features/gps/hooks/use-gps.ts`) — usado pra mostrar o
+ * próprio veículo em movimento em `inicio-screen.tsx`.
+ */
+export function useGpsTrack(tripId: string | undefined) {
+  return useQuery({
+    queryKey: ["gps", "track", tripId],
+    queryFn: () => gpsApi.getTrack(tripId as string),
+    enabled: Boolean(tripId),
+    refetchInterval: 10_000,
+  });
+}

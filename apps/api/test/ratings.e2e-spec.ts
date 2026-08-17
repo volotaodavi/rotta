@@ -10,7 +10,6 @@ import { signTestToken } from "./jwt-test.helper";
 import { AppModule } from "@/app.module";
 import { Role } from "@/shared/enums";
 
-
 const THIRTY_ONE_DAYS_AGO = new Date(Date.now() - 31 * 24 * 60 * 60 * 1000);
 
 /**
@@ -75,6 +74,7 @@ describe("Marketplace — avaliações (e2e)", () => {
   async function createCompanyWithEmpresaToken() {
     const company = await prisma.company.create({
       data: {
+        codigoInterno: `EMP-TEST-${randomUUID().slice(0, 8)}`,
         razaoSocial: "Transporte Escolar Teste LTDA",
         nomeFantasia: "TransEscolar Teste",
         cpfCnpj: String(Math.floor(10_000_000_000_000 + Math.random() * 89_999_999_999_999)),

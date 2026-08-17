@@ -1,10 +1,12 @@
 import { useAuth } from "@rotta/auth/native";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { PanelGreeting } from "../components";
 import { useRouteTripHistory } from "../hooks/use-driver-history";
 import { useMinhasRotas } from "../hooks/use-driver-routes";
+import { useTripPositions } from "../hooks/use-driver-trip";
 
 import type { Route, Trip, TripStatus } from "@rotta/api-client";
 
@@ -153,6 +155,12 @@ function TripHistoryCard({ trip }: { trip: Trip }): JSX.Element {
         )
       : null;
 
+  // Preview da rota percorrida (Frente 3, paridade com o Painel Web) —
+  // só busca a trilha pra viagens já `FINALIZADA`. Mesmo endpoint que já
+  // libera Motorista/Monitor no mapa ao vivo.
+  const { data: positions } = useTripPositions(trip.status === "FINALIZADA" ? trip.id : undefined);
+  const rotaPercorrida = positions && positions.length >= 2 ? positions : null;
+
   return (
     <VehicleCard>
       <View style={styles.header}>
@@ -168,7 +176,35 @@ function TripHistoryCard({ trip }: { trip: Trip }): JSX.Element {
         Início: {new Date(trip.iniciadaEm).toLocaleTimeString("pt-BR")}
         {duracaoMin !== null ? ` — duração: ${duracaoMin} min` : ""}
       </Text>
+      {rotaPercorrida ? <RotaPercorridaPreview positions={rotaPercorrida} /> : null}
     </VehicleCard>
+  );
+}
+
+/**
+ * Miniatura estática da rota percorrida — nunca um mapa vazio/quebrado:
+ * só renderiza quando `positions` já tem 2+ pontos. Decorativo dentro
+ * da lista (`pointerEvents="none"` — não compete com o scroll da tela),
+ * mesmo padrão ad-hoc já usado pra "onde eu estou" (`MeuMapa`), sem
+ * criar componente novo em `packages/maps`/`packages/ui`.
+ */
+function RotaPercorridaPreview({
+  positions,
+}: {
+  positions: NonNullable<ReturnType<typeof useTripPositions>["data"]>;
+}): JSX.Element {
+  const primeira = positions[0]!;
+  const ultima = positions[positions.length - 1]!;
+  const markers: RottaMapMarker[] = [
+    { id: "inicio", titulo: "Início", latitude: primeira.latitude, longitude: primeira.longitude },
+    { id: "fim", titulo: "Fim", latitude: ultima.latitude, longitude: ultima.longitude },
+  ];
+  const route = positions.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
+
+  return (
+    <View style={styles.rotaPreview} pointerEvents="none">
+      <RottaMap markers={markers} route={route} />
+    </View>
   );
 }
 
@@ -176,6 +212,7 @@ const styles = StyleSheet.create({
   filtroRow: { flexDirection: "row", gap: 16 },
   filtroTab: { borderBottomWidth: 2, paddingBottom: 6 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  rotaPreview: { borderRadius: 12, height: 100, marginTop: 4, overflow: "hidden" },
   secao: { gap: 8 },
   tituloRota: { fontSize: 15, fontWeight: "700" },
 });

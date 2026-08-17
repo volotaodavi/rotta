@@ -6,7 +6,6 @@ import type { MapVehicle, StudentEventsHistoryRange } from "@rotta/api-client";
 
 import { gpsApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do "localizador"/mapa (GPS-01/03/06, painel web —
  * Empresa/Gestor). `refetchInterval` faz o polling que substitui um
@@ -22,11 +21,20 @@ export function useGpsMap(companyId?: string) {
   });
 }
 
+/**
+ * Trilha de posições de uma viagem (`GET /gps/trips/:tripId/track`) — o
+ * único endpoint de GPS que Motorista/Monitor podem chamar sobre a
+ * própria viagem (`getMap`/`getForStudent` são restritos a
+ * Empresa/Gestor/Admin/Responsável). `refetchInterval` igual aos demais
+ * hooks de mapa ao vivo (`useGpsMap`/`useGpsForStudent`) — usado pra
+ * mostrar o próprio veículo em movimento em `minha-rota/page.tsx`.
+ */
 export function useGpsTrack(tripId: string | undefined) {
   return useQuery({
     queryKey: ["gps", "track", tripId],
     queryFn: () => gpsApi.getTrack(tripId!),
     enabled: Boolean(tripId),
+    refetchInterval: 10_000,
   });
 }
 

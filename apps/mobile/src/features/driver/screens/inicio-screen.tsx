@@ -15,7 +15,7 @@ import {
 } from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { buildNavigationUrl } from "@rotta/maps/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -55,6 +55,7 @@ import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "
 
 import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
+import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import {
   StatusPill,
@@ -572,6 +573,30 @@ function RotaOperacional({
     longitude: parada.longitude,
   }));
 
+  // Marcador do próprio veículo em movimento (Frente 2, paridade com o
+  // Painel Web — pedido do usuário: "todos deverão ter mapa, cada um na
+  // sua função") — só as paradas estáticas apareciam aqui até agora.
+  // `GET /gps/trips/:tripId/track` é o único endpoint de GPS que
+  // Motorista/Monitor podem chamar sobre a própria viagem; pega a
+  // posição mais recente da trilha. Só busca enquanto a viagem de hoje
+  // ainda não terminou.
+  const gpsTrackTripId =
+    trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? trip.id : undefined;
+  const { data: gpsTrack } = useGpsTrack(gpsTrackTripId);
+  const veiculoMarker: RottaMapMarker | null = useMemo(() => {
+    const ultimaPosicao =
+      gpsTrack && gpsTrack.length > 0 ? gpsTrack[gpsTrack.length - 1] : undefined;
+    if (!ultimaPosicao) return null;
+    return {
+      id: "veiculo-em-movimento",
+      titulo: "Seu veículo",
+      latitude: ultimaPosicao.latitude,
+      longitude: ultimaPosicao.longitude,
+      emMovimento: true,
+    };
+  }, [gpsTrack]);
+  const mapMarkers: RottaMapMarker[] = veiculoMarker ? [...markers, veiculoMarker] : markers;
+
   // Respaldo (Frente M, mesma regra da Frente I no Painel Web): sem
   // paradas cadastradas ainda pra essa rota, mostra pelo menos onde o
   // telefone está — nunca deixa a tela sem mapa nenhum.
@@ -637,7 +662,7 @@ function RotaOperacional({
             {markers.length > 0 ? (
               <RottaMap
                 key={mapKey}
-                markers={markers}
+                markers={mapMarkers}
                 route={paradasOrdenadas.map((p) => ({
                   latitude: p.latitude,
                   longitude: p.longitude,

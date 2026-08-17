@@ -80,3 +80,19 @@ export function useAddStudentEvent(tripId: string | undefined) {
     },
   });
 }
+
+/**
+ * Trilha completa de posições de uma viagem já encerrada (Frente 3 —
+ * preview de rota em "Atividades"). Mesmo endpoint (`GET
+ * /trips/:id/positions`, libera Motorista/Monitor via `OPERATE_ROLES`)
+ * que alimenta o mapa ao vivo — aqui só é chamado quando a viagem já
+ * está `FINALIZADA` (o card decide isso passando `tripId` só nesse
+ * caso), sem polling: a rota de uma viagem encerrada não muda mais.
+ */
+export function useTripPositions(tripId: string | undefined) {
+  return useQuery({
+    queryKey: ["trips", tripId, "positions"],
+    queryFn: () => tripsApi.listPositions(tripId as string),
+    enabled: Boolean(tripId),
+  });
+}
