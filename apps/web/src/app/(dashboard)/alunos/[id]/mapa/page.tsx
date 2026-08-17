@@ -16,15 +16,13 @@ import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import type { StudentEventsHistoryRange, TripStudentEventType } from "@rotta/api-client";
-import type { Route } from "next";
 
-import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
+import { RecenterButton } from "@/components/route-screen-chrome";
 import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import { useRoutePreview } from "@/features/students/hooks/use-route-preview";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas } from "@/features/trips/hooks/use-trips";
-
 
 const EVENT_LABEL: Record<TripStudentEventType, string> = {
   EMBARCOU: "Embarcou",
@@ -57,7 +55,10 @@ const HISTORY_RANGE_LABEL: Record<StudentEventsHistoryRange, string> = {
  * real (`GET /gps/students/:id/events-history`, tarefa desta Frente) —
  * cobre viagens de QUALQUER dia dentro da janela escolhida, não só a
  * viagem em curso agora (por isso aparece nos 3 estados da página:
- * com/sem viagem ativa, com/sem prévia de rota).
+ * com/sem viagem ativa, com/sem prévia de rota). A aba ativa usa
+ * `bg-success` (verde, cor de papel do Responsável nas 3 imagens de
+ * referência) em vez do azul genérico — mesmo padrão do
+ * `TRIP_STATUS_BADGE`/`Badge variant="success"` já usado nesta tela.
  */
 function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element {
   const [range, setRange] = useState<StudentEventsHistoryRange>("hoje");
@@ -66,7 +67,7 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
   return (
     <Card>
       <Card.Header
-        title="Histórico"
+        title="Viagens"
         action={
           <div role="tablist" aria-label="Período" className="flex items-center gap-1">
             {(Object.keys(HISTORY_RANGE_LABEL) as StudentEventsHistoryRange[]).map((key) => (
@@ -78,7 +79,7 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
                 onClick={() => setRange(key)}
                 className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
                   range === key
-                    ? "bg-primary text-white"
+                    ? "bg-success text-white"
                     : "bg-muted text-text-muted hover:text-text"
                 }`}
               >
@@ -137,7 +138,7 @@ function formatarDuracao(segundos: number): string {
 
 function VoltarLink({ studentId, nome }: { studentId: string; nome?: string }): JSX.Element {
   return (
-    <Link href={`/alunos/${studentId}`} className="text-sm text-primary hover:underline">
+    <Link href={`/alunos/${studentId}`} className="text-sm text-success hover:underline">
       ← {nome ?? "Aluno"}
     </Link>
   );
@@ -152,6 +153,12 @@ function VoltarLink({ studentId, nome }: { studentId: string; nome?: string }): 
  * geocodificado no cadastro + escola já validada pelo Geocoding AI
  * Agent) — sem as duas, cai no aviso simples de sempre, nunca um mapa
  * vazio ou uma rota inventada.
+ *
+ * Redesenho (Frente 301 — 3 imagens de referência anexadas pelo
+ * usuário, pedido explícito "quero o mesmo design, idêntico"): o mapa
+ * virou um CARTÃO compacto no topo de uma página que rola, igual à
+ * referência do Responsável ("Viagem em andamento") — nenhuma delas usa
+ * o mapa como fundo em tela cheia (Frente Q/P4 revertidas aqui).
  */
 function PreviaRotaAteEscola({
   studentId,
@@ -179,40 +186,51 @@ function PreviaRotaAteEscola({
     { id: "escola", titulo: escolaNome, latitude: destino.latitude, longitude: destino.longitude },
   ];
 
-  const chips =
-    distanciaMetros !== null && duracaoSegundos !== null
-      ? [
-          { label: "Distância", value: formatarDistancia(distanciaMetros) },
-          { label: "Tempo estimado", value: formatarDuracao(duracaoSegundos) },
-        ]
-      : undefined;
-
   return (
-    <div className="-m-6 flex flex-col">
-      <div className="relative h-[70dvh] min-h-[460px] w-full">
-        <RottaMap key={mapKey} markers={markers} route={route ?? undefined} initialZoom={13} />
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+      <VoltarLink studentId={studentId} nome={nome} />
 
-        <RouteFromToCard
-          voltarHref={`/alunos/${studentId}` as Route}
-          origemLabel={`Embarque de ${nome ?? "aluno"}`}
-          destinoLabel={escolaNome}
-          chips={chips}
-        />
-
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4">
-          <div className="pointer-events-auto flex-1 rounded-2xl bg-surface-elevated/95 p-4 shadow-lg backdrop-blur">
-            <Typography variant="subtitle" className="leading-tight">
-              Rota até a escola
-            </Typography>
-            <Typography variant="bodySmall" color="muted">
-              {isLoading
-                ? "Traçando o trajeto…"
-                : "Aparece aqui automaticamente assim que a viagem do dia começar. Esta página atualiza sozinha a cada 10 segundos."}
-            </Typography>
+      <Card className="overflow-hidden">
+        <div className="relative h-52 w-full">
+          <RottaMap key={mapKey} markers={markers} route={route ?? undefined} initialZoom={13} />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end p-2">
+            <RecenterButton onClick={() => setMapKey((k) => k + 1)} />
           </div>
-          <RecenterButton onClick={() => setMapKey((k) => k + 1)} />
         </div>
-      </div>
+        <Card.Body className="flex flex-col gap-1.5">
+          <Typography variant="subtitle">Rota até a escola</Typography>
+          <Typography variant="bodySmall" color="muted">
+            {isLoading
+              ? "Traçando o trajeto…"
+              : "Aparece aqui automaticamente assim que a viagem do dia começar. Esta página atualiza sozinha a cada 10 segundos."}
+          </Typography>
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Body className="flex gap-2">
+          <div className="flex flex-1 flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-2">
+            <Typography variant="caption" color="muted">
+              Embarque de {nome ?? "aluno"}
+            </Typography>
+            {distanciaMetros !== null ? (
+              <Typography variant="bodySmall" className="font-semibold leading-tight">
+                {formatarDistancia(distanciaMetros)}
+              </Typography>
+            ) : null}
+          </div>
+          <div className="flex flex-1 flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-2">
+            <Typography variant="caption" color="muted">
+              {escolaNome}
+            </Typography>
+            {duracaoSegundos !== null ? (
+              <Typography variant="bodySmall" className="font-semibold leading-tight">
+                {formatarDuracao(duracaoSegundos)}
+              </Typography>
+            ) : null}
+          </div>
+        </Card.Body>
+      </Card>
     </div>
   );
 }
@@ -224,18 +242,14 @@ function PreviaRotaAteEscola({
  * (`useGpsForStudent`) — só nenhuma tela consumia. Atualiza sozinho a
  * cada 10s, mesmo padrão do localizador de Empresa (`/veiculos/mapa`).
  *
- * Redesenho (pedido do usuário, com a mesma imagem de referência "Track
- * Rider" já usada nas Frentes K/L/M): enquanto há uma viagem em curso, o
- * mapa passa a ocupar a tela inteira — mesmo padrão em tela cheia com
- * cartões translúcidos flutuando por cima já usado do lado do motorista
- * em `minha-rota/page.tsx` (Frente P4), agora do lado de quem acompanha.
- *
- * Frente Q (nova imagem de referência — cartão "De/Para" + chips de
- * distância/tempo + botão de centralizar): antes de qualquer viagem
- * existir, esta tela já mostra a prévia da rota até a escola
- * (`PreviaRotaAteEscola`) em vez de só um aviso vazio — obrigatória
- * assim que o cadastro do aluno termina (`alunos/novo/page.tsx` agora
- * manda pra cá em vez de pra ficha do aluno).
+ * Redesenho (Frente 301 — 3 imagens de referência anexadas pelo
+ * usuário, Responsável/Motorista/Monitor, pedido explícito "quero o
+ * mesmo design, idêntico... com usabilidades, funcionando"): o mapa
+ * passou de tela cheia com cartões flutuando por cima (Frente P4) para
+ * um CARTÃO compacto no topo de uma página que rola normalmente — igual
+ * à referência do Responsável ("Viagem em andamento"), que nunca mostra
+ * o mapa ocupando a tela toda. `Badge variant="success"` (verde) já era
+ * a cor certa pra este papel — só a estrutura da tela mudou.
  *
  * O botão "Falar com a transportadora" aponta para os Chamados (canal
  * real de contato que já existe) — a Rotta não tem chat ao vivo com o
@@ -317,53 +331,43 @@ export default function AlunoMapaPage(): JSX.Element {
   const proximaParada = proximasEtas?.[0];
 
   return (
-    // `-m-6` cancela o padding do <main> de `(dashboard)/layout.tsx` só
-    // nesta tela, mesma decisão de `minha-rota/page.tsx` — o mapa deve
-    // ocupar a tela inteira enquanto há viagem em curso, nunca um
-    // quadrado dentro de um cartão.
-    <div className="-m-6 flex flex-col">
+    <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+      <VoltarLink studentId={studentId} nome={student?.nome} />
+
       {/*
-        `dvh` em vez de `vh` (BUG corrigido — no Safari/iOS o mapa não
-        ocupava a tela toda: `100vh` lá sempre mede o viewport como se a
-        barra de endereço estivesse recolhida, sobrando espaço/corte por
-        baixo). `dvh` acompanha o tamanho real do viewport visível —
-        junto com `viewportFit: "cover"` em `app/layout.tsx`.
+        Mapa em CARTÃO, não em tela cheia (pedido do usuário: as 3
+        imagens de referência anexadas nunca mostram o mapa como fundo
+        da tela inteira — Frente Q/P4 revertidas nesta tela).
       */}
-      <div className="relative h-[70dvh] min-h-[460px] w-full">
-        {markers.length > 0 ? (
-          <RottaMap
-            key={mapKey}
-            markers={markers}
-            initialCenter={{ latitude: viagem.latitude!, longitude: viagem.longitude! }}
-            initialZoom={14}
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center bg-card">
-            <Typography variant="bodySmall" color="muted">
-              Aguardando a primeira posição do motorista…
-            </Typography>
-          </div>
-        )}
-
-        <RouteFromToCard
-          voltarHref={`/alunos/${studentId}` as Route}
-          origemLabel={`${viagem.placa} — ${viagem.motoristaNome}`}
-          destinoLabel={proximaParada ? proximaParada.endereco : "Próxima parada"}
-        />
-
-        {markers.length > 0 && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-[13.5rem] flex justify-end p-4">
-            <RecenterButton onClick={() => setMapKey((k) => k + 1)} />
-          </div>
-        )}
-
-        <div className="pointer-events-auto absolute inset-x-0 bottom-0 flex flex-col gap-3 rounded-t-3xl bg-surface-elevated p-4 shadow-lg">
+      <Card className="overflow-hidden">
+        <div className="relative h-52 w-full">
+          {markers.length > 0 ? (
+            <RottaMap
+              key={mapKey}
+              markers={markers}
+              initialCenter={{ latitude: viagem.latitude!, longitude: viagem.longitude! }}
+              initialZoom={14}
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center bg-card">
+              <Typography variant="bodySmall" color="muted">
+                Aguardando a primeira posição do motorista…
+              </Typography>
+            </div>
+          )}
+          {markers.length > 0 && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end p-2">
+              <RecenterButton onClick={() => setMapKey((k) => k + 1)} />
+            </div>
+          )}
+        </div>
+        <Card.Body className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-3">
             <Badge variant="success">Em viagem agora</Badge>
             {proximaParada ? (
-              <div className="flex items-center gap-1 text-primary">
+              <div className="flex items-center gap-1 text-success">
                 <Clock size={14} />
-                <Typography variant="bodySmall" className="font-semibold text-primary">
+                <Typography variant="bodySmall" className="font-semibold text-success">
                   Chegando às {formatarHora(proximaParada.etaPrevista)}
                 </Typography>
               </div>
@@ -408,12 +412,10 @@ export default function AlunoMapaPage(): JSX.Element {
             <MessageCircle className="h-4 w-4" />
             Falar com a transportadora
           </Link>
-        </div>
-      </div>
+        </Card.Body>
+      </Card>
 
-      <div className="flex flex-col gap-4 p-6">
-        <HistoricoEventosCard studentId={studentId} />
-      </div>
+      <HistoricoEventosCard studentId={studentId} />
     </div>
   );
 }
