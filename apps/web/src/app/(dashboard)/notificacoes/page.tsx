@@ -23,6 +23,7 @@ import {
   useNotificationsList,
 } from "@/features/notifications/hooks/use-notifications";
 import { NOTIFICATION_TYPE_LABEL } from "@/features/notifications/labels";
+import { NotificationTypeIcon } from "@/features/notifications/notification-icon";
 
 type FiltroRapido = "todas" | "nao_lidas" | "favoritas";
 
@@ -111,29 +112,32 @@ export default function NotificacoesPage(): JSX.Element {
                   onClick={() => {
                     if (!notification.lida) markRead.mutate(notification.id);
                   }}
-                  className="flex flex-col gap-1 rounded-md border border-border p-4 transition-colors hover:border-primary"
+                  className="flex items-start gap-3 rounded-md border border-border p-4 transition-colors hover:border-primary"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <Typography variant="subtitle" as="span">
-                      {notification.titulo}
-                    </Typography>
-                    <div className="flex items-center gap-2">
-                      {!notification.lida && <Badge variant="info">Não lida</Badge>}
-                      {notification.favoritada && (
-                        <Badge variant="neutral">
-                          <Star size={12} fill="currentColor" aria-label="Favoritada" />
-                        </Badge>
-                      )}
-                      <NotificationPriorityBadge prioridade={notification.prioridade} />
+                  <NotificationTypeIcon tipo={notification.tipo} />
+                  <div className="flex flex-1 flex-col gap-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <Typography variant="subtitle" as="span">
+                        {notification.titulo}
+                      </Typography>
+                      <div className="flex items-center gap-2">
+                        {!notification.lida && <Badge variant="info">Não lida</Badge>}
+                        {notification.favoritada && (
+                          <Badge variant="neutral">
+                            <Star size={12} fill="currentColor" aria-label="Favoritada" />
+                          </Badge>
+                        )}
+                        <NotificationPriorityBadge prioridade={notification.prioridade} />
+                      </div>
                     </div>
+                    <Typography variant="caption" color="muted">
+                      {NOTIFICATION_TYPE_LABEL[notification.tipo]} ·{" "}
+                      {new Date(notification.createdAt).toLocaleString("pt-BR")}
+                    </Typography>
+                    <Typography variant="body" color="muted" className="line-clamp-2">
+                      {notification.corpo}
+                    </Typography>
                   </div>
-                  <Typography variant="caption" color="muted">
-                    {NOTIFICATION_TYPE_LABEL[notification.tipo]} ·{" "}
-                    {new Date(notification.createdAt).toLocaleString("pt-BR")}
-                  </Typography>
-                  <Typography variant="body" color="muted" className="line-clamp-2">
-                    {notification.corpo}
-                  </Typography>
                 </Link>
               ))}
             </div>
