@@ -8,11 +8,17 @@ import {
   useMarkNotificationRead,
   useNotificationsList,
 } from "../hooks/use-notifications";
-import { NOTIFICATION_PRIORITY_TONE, NOTIFICATION_TYPE_ICON } from "../labels";
+import {
+  NOTIFICATION_PRIORITY_TONE,
+  NOTIFICATION_TYPE_ICON,
+  NOTIFICATION_TYPE_TONE,
+  type NotificationColorTone,
+} from "../labels";
 
 import type { NotificationsStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ListNotificationsParams } from "@rotta/api-client";
+import type { Theme } from "@rotta/theme";
 
 import {
   StatusPill,
@@ -21,6 +27,25 @@ import {
   VehicleScreen,
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
+
+/** Resolve o "tom" (`NotificationColorTone`) pra uma cor real de `theme.colors` — nunca uma cor solta. */
+function resolveToneColor(theme: Theme, tone: NotificationColorTone): string {
+  switch (tone) {
+    case "success":
+      return theme.colors.success;
+    case "primary":
+      return theme.colors.primary;
+    case "warning":
+      return theme.colors.warning;
+    case "danger":
+      return theme.colors.danger;
+    case "info":
+      return theme.colors.info;
+    case "muted":
+    default:
+      return theme.colors.textMuted;
+  }
+}
 
 type Props = NativeStackScreenProps<NotificationsStackParamList, "Central">;
 
@@ -123,6 +148,7 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
 
       {data?.items.map((notification) => {
         const TipoIcone = NOTIFICATION_TYPE_ICON[notification.tipo];
+        const corTipo = resolveToneColor(theme, NOTIFICATION_TYPE_TONE[notification.tipo]);
         return (
           <Pressable
             key={notification.id}
@@ -130,7 +156,9 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
           >
             <VehicleCard>
               <View style={styles.linhaTitulo}>
-                <TipoIcone size={18} color={theme.colors.textMuted} />
+                <View style={[styles.iconeCirculo, { backgroundColor: `${corTipo}26` }]}>
+                  <TipoIcone size={18} color={corTipo} />
+                </View>
                 <Text
                   style={[
                     styles.titulo,
@@ -178,6 +206,13 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   filtrosRow: { flexDirection: "row", flexWrap: "wrap" },
+  iconeCirculo: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
   linhaRodape: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   linhaTempo: { alignItems: "center", flexDirection: "row", gap: 4 },
   linhaTitulo: { alignItems: "center", flexDirection: "row", gap: 8 },

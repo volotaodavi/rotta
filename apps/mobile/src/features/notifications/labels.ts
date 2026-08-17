@@ -85,6 +85,42 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {
   NOVO_RESPONSAVEL: "Novo responsável",
 };
 
+/**
+ * Cor por tipo de notificação (3 imagens de referência anexadas pelo
+ * usuário — tela do Responsável com um ícone COLORIDO por item, não só
+ * cinza; paridade com `NotificationTypeIcon` do Painel Web,
+ * `apps/web/src/features/notifications/notification-icon.tsx`). Cada
+ * "tom" aqui é resolvido pra uma cor real de `theme.colors` no
+ * componente (`CentralScreen`) — nunca uma cor solta, sempre um dos
+ * tokens semânticos já existentes (success/warning/danger/info/primary).
+ */
+export type NotificationColorTone = "success" | "primary" | "warning" | "danger" | "info" | "muted";
+
+export const NOTIFICATION_TYPE_TONE: Record<NotificationEventType, NotificationColorTone> = {
+  VIAGEM_INICIADA: "primary",
+  VIAGEM_ENCERRADA: "muted",
+  ALUNO_EMBARCOU: "success",
+  ALUNO_DESEMBARCOU: "primary",
+  ALUNO_AUSENTE: "danger",
+  VEICULO_PROXIMO: "primary",
+  MOTORISTA_ALTERADO: "info",
+  MONITOR_ALTERADO: "info",
+  VEICULO_ALTERADO: "info",
+  ROTA_ALTERADA: "info",
+  OCORRENCIA: "warning",
+  EMERGENCIA: "danger",
+  NOVO_CONTRATO: "info",
+  CONTRATO_ASSINADO: "success",
+  CNH_VENCENDO: "warning",
+  DOCUMENTO_VENCENDO: "warning",
+  PAGAMENTO_APROVADO: "success",
+  PAGAMENTO_RECUSADO: "danger",
+  PAGAMENTO_PENDENTE: "warning",
+  NOVA_ESCOLA: "info",
+  NOVO_ALUNO: "info",
+  NOVO_RESPONSAVEL: "info",
+};
+
 export const NOTIFICATION_PRIORITY_LABEL: Record<NotificationPriorityLevel, string> = {
   INFORMATIVA: "Informativa",
   IMPORTANTE: "Importante",
