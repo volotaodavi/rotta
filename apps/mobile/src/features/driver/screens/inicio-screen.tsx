@@ -1,16 +1,31 @@
 import { useAuth } from "@rotta/auth/native";
-import { Check, Clock, MapPin, Navigation, Pause, Square, UserX } from "@rotta/icons/native";
+import {
+  AlertTriangle,
+  Check,
+  Clock,
+  MapPin,
+  MessageCircle,
+  Navigation,
+  Pause,
+  Square,
+  Timer,
+  Users,
+  UserX,
+  X,
+} from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { buildNavigationUrl } from "@rotta/maps/navigation";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   useWindowDimensions,
   View,
 } from "react-native";
@@ -40,12 +55,17 @@ import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "
 
 import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
+import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import {
   StatusPill,
   VehicleButton,
   VehicleCard,
   VehicleScreen,
 } from "@/features/vehicles/components";
+import {
+  useCreateVehicleOccurrence,
+  useVehicleOccurrences,
+} from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -263,6 +283,240 @@ function ProximaParadaEtaCard({ eta, parada }: { eta: NextEta; parada?: RouteSto
   );
 }
 
+/**
+ * Cronômetro da viagem ativa (paridade com o Painel Web, Frente do
+ * redesenho pedido pelo usuário — modelo de referência "Viagem ativa")
+ * — porta exata de `TripElapsedTimer`: conta a partir de
+ * `trip.iniciadaEm` (dado real do backend), pausa visualmente quando
+ * a viagem está `PAUSADA`.
+ */
+function TripElapsedTimer({
+  iniciadaEm,
+  isRunning,
+}: {
+  iniciadaEm: string;
+  isRunning: boolean;
+}): JSX.Element {
+  const { theme } = useTheme();
+  const [agora, setAgora] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!isRunning) return;
+    const id = setInterval(() => setAgora(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isRunning]);
+
+  const decorridoMs = Math.max(0, agora - new Date(iniciadaEm).getTime());
+  const totalSegundos = Math.floor(decorridoMs / 1000);
+  const horas = Math.floor(totalSegundos / 3600);
+  const minutos = Math.floor((totalSegundos % 3600) / 60);
+  const segundos = totalSegundos % 60;
+  const texto =
+    horas > 0
+      ? `${horas}:${String(minutos).padStart(2, "0")}:${String(segundos).padStart(2, "0")}`
+      : `${minutos}:${String(segundos).padStart(2, "0")}`;
+
+  return (
+    <View style={styles.timerRow}>
+      <Timer size={20} color={isRunning ? theme.colors.primary : theme.colors.textMuted} />
+      <Text style={[styles.timerTexto, { color: theme.colors.text }]}>{texto}</Text>
+      {!isRunning ? (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>pausada</Text>
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * "Resumo da viagem" (paridade com o Painel Web) — 4 números reais:
+ * Alunos embarcados (`TripStudentEvent` real), Paradas restantes
+ * (calculado a partir dos eventos já registrados), Ocorrências hoje
+ * (`VehicleOccurrence` do veículo, filtrado pro dia — mesma
+ * aproximação honesta do web: não existe modelo de ocorrência por
+ * viagem) e Mensagens (notificações não lidas reais). Sem navegação
+ * cruzada de aba ainda (nenhum padrão estabelecido no app pra isso) —
+ * tiles informativos, não tocáveis.
+ */
+function TripStatsGrid({
+  totalAlunos,
+  alunosEmbarcados,
+  paradasRestantes,
+  veiculoId,
+}: {
+  totalAlunos: number;
+  alunosEmbarcados: number;
+  paradasRestantes: number;
+  veiculoId: string;
+}): JSX.Element {
+  const { theme } = useTheme();
+  const { data: occurrences } = useVehicleOccurrences(veiculoId);
+  const { data: unreadCount } = useUnreadNotificationsCount();
+
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  const ocorrenciasHoje =
+    occurrences?.items.filter((item) => item.createdAt.slice(0, 10) === hojeISO).length ?? 0;
+
+  const tiles = [
+    { label: "Alunos embarcados", valor: `${alunosEmbarcados}/${totalAlunos}`, icon: Users },
+    { label: "Paradas restantes", valor: String(paradasRestantes), icon: MapPin },
+    { label: "Ocorrências hoje", valor: String(ocorrenciasHoje), icon: AlertTriangle },
+    { label: "Mensagens", valor: String(unreadCount ?? 0), icon: MessageCircle },
+  ];
+
+  return (
+    <View style={styles.statsGrid}>
+      {tiles.map((tile) => (
+        <View
+          key={tile.label}
+          style={[
+            styles.statsTile,
+            { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+          ]}
+        >
+          <View style={styles.statsTileHeader}>
+            <tile.icon size={16} color={theme.colors.primary} />
+            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{tile.label}</Text>
+          </View>
+          <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+            {tile.valor}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+/**
+ * "Alunos a bordo" (paridade com o Painel Web — tela do Monitor) —
+ * consolida quem já embarcou e ainda não desembarcou nesta viagem, sem
+ * precisar abrir cada parada uma por uma. Dado real
+ * (`TripStudentEvent`), nunca inferido.
+ */
+function AlunosABordoCard({
+  routeStudents,
+  eventos,
+}: {
+  routeStudents: RouteStudent[];
+  eventos: TripStudentEvent[];
+}): JSX.Element | null {
+  const { theme } = useTheme();
+  const aBordo = routeStudents.filter((aluno) => {
+    const doAluno = eventos.filter((e) => e.studentId === aluno.studentId);
+    const embarcou = doAluno.some((e) => e.tipo === "EMBARCOU");
+    const desembarcou = doAluno.some((e) => e.tipo === "DESEMBARCOU");
+    return embarcou && !desembarcou;
+  });
+
+  if (aBordo.length === 0) return null;
+
+  return (
+    <VehicleCard>
+      <View style={styles.paradaHeader}>
+        <Users size={16} color={theme.colors.primary} />
+        <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+          Alunos a bordo ({aBordo.length})
+        </Text>
+      </View>
+      {aBordo.map((aluno) => (
+        <AlunoABordoRow key={aluno.id} studentId={aluno.studentId} />
+      ))}
+    </VehicleCard>
+  );
+}
+
+function AlunoABordoRow({ studentId }: { studentId: string }): JSX.Element {
+  const { theme } = useTheme();
+  const { data: student } = useStudent(studentId);
+  return (
+    <View style={styles.alunoABordoRow}>
+      <View style={[styles.alunoABordoDot, { backgroundColor: theme.colors.success }]} />
+      <Text style={{ color: theme.colors.text }}>{student?.nome ?? "Carregando…"}</Text>
+    </View>
+  );
+}
+
+/**
+ * "Registrar ocorrência" (paridade com o Painel Web) — mesmo endpoint
+ * já usado em "Meu Veículo" (`POST /vehicles/:id/occurrences`, já
+ * libera MOTORISTA/MONITOR no backend), agora exposto durante a
+ * própria viagem em vez de só na aba Veículo. `Modal` nativo do RN
+ * (sem dependência extra) — não existia nenhum componente de modal
+ * compartilhado no app ainda.
+ */
+function RegistrarOcorrenciaButton({ veiculoId }: { veiculoId: string }): JSX.Element {
+  const { theme } = useTheme();
+  const [isOpen, setIsOpen] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const createOccurrence = useCreateVehicleOccurrence(veiculoId);
+
+  function fechar(): void {
+    setIsOpen(false);
+    setTitulo("");
+    setDescricao("");
+  }
+
+  return (
+    <>
+      <VehicleButton
+        label="Registrar ocorrência"
+        variant="secondary"
+        icon={<AlertTriangle size={16} color={theme.colors.text} />}
+        onPress={() => setIsOpen(true)}
+      />
+
+      <Modal visible={isOpen} animationType="slide" transparent onRequestClose={fechar}>
+        <View style={styles.modalScrim}>
+          <View style={[styles.modalPanel, { backgroundColor: theme.colors.surfaceElevated }]}>
+            <View style={styles.modalHeader}>
+              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+                Registrar ocorrência
+              </Text>
+              <Pressable accessibilityRole="button" onPress={fechar}>
+                <X size={20} color={theme.colors.textMuted} />
+              </Pressable>
+            </View>
+
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Título</Text>
+            <TextInput
+              value={titulo}
+              onChangeText={setTitulo}
+              style={[
+                styles.modalInput,
+                { color: theme.colors.text, borderColor: theme.colors.border },
+              ]}
+              placeholderTextColor={theme.colors.textMuted}
+            />
+
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Descrição</Text>
+            <TextInput
+              value={descricao}
+              onChangeText={setDescricao}
+              multiline
+              style={[
+                styles.modalInput,
+                styles.modalTextArea,
+                { color: theme.colors.text, borderColor: theme.colors.border },
+              ]}
+              placeholderTextColor={theme.colors.textMuted}
+            />
+
+            <VehicleButton
+              label="Reportar"
+              variant="primary"
+              isLoading={createOccurrence.isPending}
+              onPress={() => {
+                if (!titulo || !descricao) return;
+                createOccurrence.mutate({ titulo, descricao }, { onSuccess: fechar });
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
+    </>
+  );
+}
+
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
   TARDE: "Tarde",
@@ -348,6 +602,24 @@ function RotaOperacional({
         : gpsStatus === "denied"
           ? "Localização negada. Os responsáveis não verão o veículo no mapa até você permitir."
           : null;
+
+  // Números reais do "Resumo da viagem" (paridade com o Painel Web) —
+  // mesma regra que já decide o ícone de cada `AlunoParadaRow` abaixo.
+  const alunosEmbarcados = (studentEvents ?? []).filter((e) => e.tipo === "EMBARCOU").length;
+  const paradasRestantesCount = paradasOrdenadas.filter((parada) => {
+    const alunosDaParada = (routeStudents ?? []).filter(
+      (aluno) => aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
+    );
+    if (alunosDaParada.length === 0) return false;
+    return alunosDaParada.some((aluno) => {
+      const isEmbarque = aluno.paradaEmbarqueId === parada.id;
+      const tipoEsperado = isEmbarque ? "EMBARCOU" : "DESEMBARCOU";
+      const jaResolvido = (studentEvents ?? []).some(
+        (e) => e.studentId === aluno.studentId && (e.tipo === tipoEsperado || e.tipo === "AUSENTE"),
+      );
+      return !jaResolvido;
+    });
+  }).length;
 
   // Mesma altura mínima do Painel Web (Frente P4/P5, pedido do usuário
   // em produção: "o mapa não deve ser um painel quadrado, ele deverá
@@ -455,6 +727,23 @@ function RotaOperacional({
               theme.elevation.modal.native,
             ]}
           >
+            {/*
+              "Viagem ativa" (modelo de referência) — cronômetro grande
+              + resumo de 4 números só com a viagem já rodando ou
+              pausada (paridade com o Painel Web).
+            */}
+            {trip && (trip.status === "EM_ANDAMENTO" || trip.status === "PAUSADA") ? (
+              <>
+                <TripElapsedTimer iniciadaEm={trip.iniciadaEm} isRunning={isActive} />
+                <TripStatsGrid
+                  totalAlunos={(routeStudents ?? []).length}
+                  alunosEmbarcados={alunosEmbarcados}
+                  paradasRestantes={paradasRestantesCount}
+                  veiculoId={trip.veiculoId}
+                />
+              </>
+            ) : null}
+
             {proximaParada ? (
               <ProximaParadaEtaCard eta={proximaParada} parada={proximaParadaStop} />
             ) : null}
@@ -530,6 +819,9 @@ function RotaOperacional({
 
         {trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? (
           <View style={styles.paradasSection}>
+            <AlunosABordoCard routeStudents={routeStudents ?? []} eventos={studentEvents ?? []} />
+            <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} />
+
             <Text style={[styles.secao, { color: theme.colors.text }]}>Paradas</Text>
             {paradasOrdenadas.map((parada) => (
               <ParadaCard
@@ -676,6 +968,8 @@ function AlunoParadaRow({
 
 const styles = StyleSheet.create({
   absoluteFill: { ...StyleSheet.absoluteFillObject },
+  alunoABordoDot: { borderRadius: 999, height: 8, width: 8 },
+  alunoABordoRow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 4 },
   alunoActions: { flexDirection: "row", gap: 16 },
   alunoRow: {
     alignItems: "center",
@@ -704,6 +998,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 16,
   },
+  modalHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 4,
+  },
+  modalInput: {
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 8,
+    padding: 10,
+  },
+  modalPanel: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    gap: 4,
+    padding: 20,
+  },
+  modalScrim: {
+    backgroundColor: "rgba(0,0,0,0.5)",
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  modalTextArea: { minHeight: 80, textAlignVertical: "top" },
   navegarButton: {
     alignItems: "center",
     borderRadius: 999,
@@ -719,6 +1037,18 @@ const styles = StyleSheet.create({
   paradaHeader: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   paradasSection: { gap: 16, padding: 24 },
   secao: { fontSize: 16, fontWeight: "700" },
+  statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  statsTile: {
+    borderRadius: 16,
+    borderWidth: 1,
+    flexBasis: "47%",
+    flexGrow: 1,
+    gap: 4,
+    padding: 12,
+  },
+  statsTileHeader: { alignItems: "center", flexDirection: "row", gap: 6 },
+  timerRow: { alignItems: "center", flexDirection: "row", gap: 8 },
+  timerTexto: { fontSize: 28, fontVariant: ["tabular-nums"], fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
   topOverlay: { gap: 12, left: 16, position: "absolute", right: 16 },
 });
