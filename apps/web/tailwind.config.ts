@@ -46,6 +46,11 @@ const config: Config = {
         warning: withOpacity("--color-warning"),
         danger: withOpacity("--color-danger"),
         info: withOpacity("--color-info"),
+        /** Acento de papel do Monitor (Modo Ação) — ver `monitorAccent` em `packages/theme/src/tokens/colors.ts`. */
+        monitorAccent: {
+          DEFAULT: withOpacity("--color-monitor-accent"),
+          muted: withOpacity("--color-monitor-accent-muted"),
+        },
         card: withOpacity("--color-card"),
         muted: withOpacity("--color-muted"),
         placeholder: withOpacity("--color-placeholder"),

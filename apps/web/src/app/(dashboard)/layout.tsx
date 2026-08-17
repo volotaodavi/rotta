@@ -16,7 +16,6 @@ import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
 
-
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
   href: Route;
@@ -79,6 +78,12 @@ const DRIVER_MODE_ALLOWED_PREFIXES = [
   "/chamados",
   "/verificacao-identidade",
   "/legal",
+  // "Registrar ocorrência" (modelo de referência do Monitor) virou uma
+  // página cheia própria em vez de modal — precisa estar na lista ou o
+  // guard acima manda de volta pra "Minha Rota" assim que o link é
+  // clicado (mesmo bug já corrigido uma vez pro Perfil, ver comentário
+  // "BUG 2" acima).
+  "/ocorrencia",
 ] as const;
 
 /**

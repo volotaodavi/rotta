@@ -45,6 +45,20 @@ export interface ColorTokens {
   text: string;
   textMuted: string;
   muted: string;
+  /**
+   * Acento de papel do Monitor (Modo Ação) — usuário anexou 3 imagens de
+   * referência (Responsável/Motorista/Monitor) e pediu design "idêntico,
+   * sem imitações": cada papel com sua própria cor (verde/azul/roxo).
+   * Responsável reaproveita `success` (já verde) e Motorista reaproveita
+   * `primary` (já azul) — nenhum dos dois precisa de token novo. Só o
+   * roxo do Monitor não existe na paleta da marca (Dossiê 10 §7: "azul,
+   * preto, branco e cinza... nunca decoração, sempre significado") —
+   * token isolado, usado só nas 3 telas do Monitor, nunca nos tokens
+   * semânticos existentes (success/warning/danger/info continuam intactos
+   * em todo o resto do produto).
+   */
+  monitorAccent: string;
+  monitorAccentMuted: string;
 }
 
 /** Tema escuro — padrao da plataforma (Dossie 24, Secao 5). */
@@ -78,6 +92,8 @@ export const darkColors: ColorTokens = {
   text: "#F5F7FA",
   textMuted: "#9AA4B2",
   muted: "#161B24",
+  monitorAccent: "#8B5CF6",
+  monitorAccentMuted: "#241B47",
 };
 
 /** Tema claro — oferecido como preferencia explicita do usuario (Dossie 24, Secao 5). */
@@ -111,4 +127,6 @@ export const lightColors: ColorTokens = {
   text: "#0B0F14",
   textMuted: "#6B7280",
   muted: "#F1F2F4",
+  monitorAccent: "#7C3AED",
+  monitorAccentMuted: "#EFE9FE",
 };

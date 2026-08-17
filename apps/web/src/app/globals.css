@@ -42,6 +42,12 @@
   --color-placeholder: 107 116 132;
   --color-disabled-bg: 28 33 43;
   --color-muted: 22 27 36;
+  /* Acento de papel do Monitor (Modo Ação) — ver `monitorAccent` em
+     `packages/theme/src/tokens/colors.ts`. Único papel que precisa de
+     cor nova; Responsável usa `--color-success` (já verde) e Motorista
+     usa `--color-primary` (já azul). */
+  --color-monitor-accent: 139 92 246;
+  --color-monitor-accent-muted: 36 27 71;
   /* Ver bloco "paleta editorial" abaixo — no escuro, a Landing Page fica
      idêntica ao resto do produto (mesmos tokens `--color-background`/
      `--color-primary-muted`, sem paleta alternativa). */
@@ -70,6 +76,8 @@
   --color-placeholder: 156 163 175;
   --color-disabled-bg: 241 242 244;
   --color-muted: 241 242 244;
+  --color-monitor-accent: 124 58 237;
+  --color-monitor-accent-muted: 239 233 254;
   /* Ver bloco "paleta editorial" abaixo. */
   --marketing-canvas: 255 255 255;
   --marketing-wash: 232 238 255;
