@@ -9,6 +9,8 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Student } from "@prisma/client";
 
+
+import { STUDENT_CREDENTIALED_EVENT } from "./events/student-credentialed.event";
 import { toStudentAuthorizedPersonResponseDto } from "./mappers/student-authorized-person.mapper";
 import { toStudentResponseDto } from "./mappers/student.mapper";
 import { STUDENT_AUTHORIZED_PERSON_REPOSITORY, STUDENT_REPOSITORY } from "./students.constants";
@@ -178,6 +180,25 @@ export class StudentsService {
           `Falha ao concluir pré-cadastro ${preRegistrationId} (Student ${student.id})`,
         );
         this.logger.warn(error instanceof Error ? error.message : String(error));
+      }
+
+      // "De fato credenciar aquele motorista" (pedido do usuário) — sem
+      // isto, o fluxo "código do transporte + celular" criava o Student
+      // e parava aí, nunca gerando a `TransportRequest`/`Contract` que o
+      // resto da plataforma (Rotas, Trips, GPS ao vivo) exige pra
+      // existir. `companyId` vem do próprio pré-cadastro (a
+      // transportadora que o criou), não de `dto` — nunca aceito de
+      // qualquer valor que o cliente mande.
+      const preRegistration =
+        await this.preRegistrationRepository.findByIdWithCompany(preRegistrationId);
+      if (preRegistration) {
+        this.eventEmitter.emit(STUDENT_CREDENTIALED_EVENT, {
+          studentId: student.id,
+          responsavelId: actor.sub,
+          companyId: preRegistration.companyId,
+          schoolId: student.schoolId,
+          turno: student.turno,
+        });
       }
     }
 

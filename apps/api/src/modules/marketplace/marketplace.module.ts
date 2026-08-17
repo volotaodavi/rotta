@@ -3,6 +3,7 @@ import { Module } from "@nestjs/common";
 
 import { ContractsController } from "./contracts.controller";
 import { ContractsService } from "./contracts.service";
+import { StudentCredentialedListener } from "./listeners/student-credentialed.listener";
 import {
   CONTRACT_REPOSITORY,
   RATING_REPOSITORY,
@@ -58,6 +59,12 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
  * chama `WalletService.registrarMensalidadePendente` best-effort na
  * ativação, para a mensalidade do contrato aparecer como crédito
  * pendente na carteira Rotta Pay da empresa.
+ *
+ * `StudentCredentialedListener` reage a `STUDENT_CREDENTIALED_EVENT`
+ * (emitido por `StudentsService.create()` no fluxo "código do
+ * transporte + celular") criando a `TransportRequest` já `APROVADA` —
+ * fecha o elo que faltava entre esse pré-cadastro e o resto do
+ * Marketplace (gerar Contrato, escolher motorista/veículo/mensalidade).
  */
 @Module({
   imports: [
@@ -80,6 +87,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     TransportRequestsService,
     ContractsService,
     RatingsService,
+    StudentCredentialedListener,
     { provide: TRANSPORTER_REPOSITORY, useClass: PrismaTransporterRepository },
     { provide: TRANSPORT_REQUEST_REPOSITORY, useClass: PrismaTransportRequestRepository },
     { provide: CONTRACT_REPOSITORY, useClass: PrismaContractRepository },
