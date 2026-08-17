@@ -462,6 +462,20 @@ function AudienceVisual({
  * referência), a fonte continua a mesma da Rotta (Inter, nunca a fonte
  * paga da referência), e a barra escura reaproveita literalmente o
  * `--color-background` do tema escuro que a Rotta já tinha.
+ *
+ * Revisão (usuário: "deverá ser igual a essa aqui" citando
+ * indrive.com/pt-br de novo, com o aviso explícito "NÃO TIRE O MAPA DA
+ * OPENSTREET") — `indrive.com` está bloqueado pelo proxy de rede deste
+ * sandbox (`WebFetch` retorna `EGRESS_BLOCKED`), então esta passada usa
+ * só o que já estava documentado acima (pesquisa real de uma sessão
+ * anterior, com acesso de verdade ao domínio) mais a identidade pública
+ * conhecida da marca — decisão confirmada com o usuário antes de mexer
+ * em qualquer coisa. `HeroMapDemo` (mapa real OpenStreetMap/CARTO na
+ * hero) confirmado intacto, não tocado nesta passada — só a escala/peso
+ * da tipografia de maior impacto (H1 da hero e H2 da faixa de CTA
+ * final) foi puxada mais pesada (`font-bold`, tracking mais apertado),
+ * na direção da tipografia enorme e confiante que é a marca registrada
+ * de referências do gênero como a inDrive — nunca a cor de marca delas.
  */
 export default function LandingPage(): JSX.Element {
   return (
@@ -482,7 +496,21 @@ export default function LandingPage(): JSX.Element {
               <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
               Tecnologia que conecta
             </span>
-            <h1 className="text-[44px] font-semibold leading-[0.95] tracking-[-0.01em] text-text sm:text-[64px] lg:text-[80px]">
+            {/*
+              Peso e escala mais pesados (pedido do usuário: "igual a
+              essa aqui" citando indrive.com/pt-br — não consigo abrir o
+              domínio neste sandbox, o proxy de rede bloqueia; ajuste
+              feito a partir do que já estava documentado nesta página
+              (Dossiê 26) + identidade pública conhecida da inDrive:
+              tipografia enorme, bem pesada, tracking bem apertado —
+              nunca a cor de marca deles, só a ousadia da escala,
+              aplicada ao azul real da Rotta). `font-bold` (700) em vez
+              de `font-semibold` (600); `-0.03em` em vez de `-0.01em`
+              (mesmo tracking já usado no H2 da faixa de CTA final,
+              linha ~724 — unifica o peso "editorial" nos dois pontos de
+              maior impacto da página em vez de só um).
+            */}
+            <h1 className="text-[48px] font-bold leading-[0.92] tracking-[-0.03em] text-text sm:text-[72px] lg:text-[88px]">
               Cadê o transporte?
               <br />
               {/* Destaque no MESMO azul do CTA/marca (pedido do usuário: "deixe com as cores da Rotta, não invente") — antes usava `text-warning` (dourado) só como decoração, sem nenhum estado de aviso real por trás; `--color-warning` é reservado pra estado semântico de verdade (Dossiê 10 §7). */}
@@ -721,7 +749,7 @@ export default function LandingPage(): JSX.Element {
       */}
       <section className="w-full bg-primary px-6 py-20">
         <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
-          <h2 className="text-[32px] font-semibold leading-[0.95] tracking-[-0.03em] text-white sm:text-[48px]">
+          <h2 className="text-[36px] font-bold leading-[0.92] tracking-[-0.03em] text-white sm:text-[56px]">
             Chega de ligar perguntando &ldquo;cadê o transporte?&rdquo;
           </h2>
           <p className="max-w-lg text-base text-white/80">
