@@ -19,7 +19,18 @@ import {
 } from "@rotta/icons";
 import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
-import { Badge, Button, Card, PanelGreeting, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  FormField,
+  Input,
+  Modal,
+  PanelGreeting,
+  Select,
+  Spinner,
+  Typography,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
@@ -29,6 +40,7 @@ import type {
   RouteStop,
   RouteStudent,
   TripStudentEventType,
+  VehicleOccurrenceSeverity,
 } from "@rotta/api-client";
 import type { Route as NextRoute } from "next";
 
@@ -54,9 +66,14 @@ import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
-import { useVehicle, useVehicleOccurrences } from "@/features/vehicles/hooks/use-vehicles";
+import {
+  useCreateVehicleOccurrence,
+  useVehicle,
+  useVehicleOccurrences,
+} from "@/features/vehicles/hooks/use-vehicles";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
 import { buildWhatsAppUrl } from "@/lib/site-config";
+
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -467,6 +484,148 @@ function TripStatsGrid({
   );
 }
 
+/**
+ * "Alunos a bordo" (modelo de referência — tela do Monitor, roxa) — o
+ * papel do Monitor durante a viagem é conferir quem já embarcou e
+ * ainda não desembarcou, sem precisar abrir cada parada uma por uma
+ * (a lista por parada em `ParadaCard` continua existindo abaixo, essa
+ * é só a visão consolidada). Um aluno está "a bordo" quando tem um
+ * evento `EMBARCOU` registrado nesta viagem e ainda não tem o
+ * `DESEMBARCOU` correspondente — dado real (`TripStudentEvent`),
+ * nunca inferido.
+ */
+function AlunosABordoCard({
+  routeStudents,
+  eventos,
+}: {
+  routeStudents: RouteStudent[];
+  eventos: { studentId: string; tipo: TripStudentEventType }[];
+}): JSX.Element | null {
+  const aBordo = routeStudents.filter((aluno) => {
+    const doAluno = eventos.filter((e) => e.studentId === aluno.studentId);
+    const embarcou = doAluno.some((e) => e.tipo === "EMBARCOU");
+    const desembarcou = doAluno.some((e) => e.tipo === "DESEMBARCOU");
+    return embarcou && !desembarcou;
+  });
+
+  if (aBordo.length === 0) return null;
+
+  return (
+    <Card>
+      <Card.Body className="flex flex-col gap-3">
+        <div className="flex items-center gap-2">
+          <Users size={16} className="text-primary" />
+          <Typography variant="bodySmall" className="font-semibold">
+            Alunos a bordo ({aBordo.length})
+          </Typography>
+        </div>
+        <div className="flex flex-col gap-2">
+          {aBordo.map((aluno) => (
+            <AlunoABordoRow key={aluno.id} studentId={aluno.studentId} />
+          ))}
+        </div>
+      </Card.Body>
+    </Card>
+  );
+}
+
+function AlunoABordoRow({ studentId }: { studentId: string }): JSX.Element {
+  const { data: student } = useStudent(studentId);
+  return (
+    <div className="flex items-center gap-2 border-t border-border pt-2 first:border-t-0 first:pt-0">
+      <span className="h-2 w-2 shrink-0 rounded-full bg-success" />
+      <Typography variant="bodySmall">{student?.nome ?? "Carregando…"}</Typography>
+    </div>
+  );
+}
+
+const OCORRENCIA_SEVERIDADE_LABEL: Record<VehicleOccurrenceSeverity, string> = {
+  BAIXA: "Baixa",
+  MEDIA: "Média",
+  ALTA: "Alta",
+};
+
+/**
+ * "Registrar ocorrência" (modelo de referência — tela do Monitor) —
+ * mesmo endpoint já usado pela transportadora em `/veiculos/[id]`
+ * (`POST /vehicles/:id/occurrences`, já libera MOTORISTA/MONITOR no
+ * backend, só nunca tinha sido exposto durante a própria viagem).
+ * Modal em vez de navegar pra outra tela: o motorista/monitor está
+ * dirigindo/operando, não deveria perder o contexto da viagem ativa
+ * pra reportar algo.
+ */
+function RegistrarOcorrenciaButton({ veiculoId }: { veiculoId: string }): JSX.Element {
+  const [isOpen, setIsOpen] = useState(false);
+  const [titulo, setTitulo] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [severidade, setSeveridade] = useState<VehicleOccurrenceSeverity>("BAIXA");
+  const createOccurrence = useCreateVehicleOccurrence(veiculoId);
+
+  function fechar(): void {
+    setIsOpen(false);
+    setTitulo("");
+    setDescricao("");
+    setSeveridade("BAIXA");
+  }
+
+  return (
+    <>
+      <Button
+        variant="secondary"
+        size="sm"
+        iconLeft={<AlertTriangle size={16} />}
+        onClick={() => setIsOpen(true)}
+        className="self-start"
+      >
+        Registrar ocorrência
+      </Button>
+
+      <Modal isOpen={isOpen} onClose={fechar} ariaLabel="Registrar ocorrência">
+        <Modal.Header onClose={fechar}>Registrar ocorrência</Modal.Header>
+        <Modal.Body className="flex flex-col gap-4">
+          <FormField label="Título" isRequired>
+            <Input required value={titulo} onChange={(event) => setTitulo(event.target.value)} />
+          </FormField>
+          <FormField label="Descrição" isRequired>
+            <Input
+              required
+              value={descricao}
+              onChange={(event) => setDescricao(event.target.value)}
+            />
+          </FormField>
+          <FormField label="Severidade">
+            <Select
+              value={severidade}
+              onChange={(event) => setSeveridade(event.target.value as VehicleOccurrenceSeverity)}
+            >
+              {Object.entries(OCORRENCIA_SEVERIDADE_LABEL).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+          </FormField>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={fechar}>
+            Cancelar
+          </Button>
+          <Button
+            variant="primary"
+            isLoading={createOccurrence.isPending}
+            onClick={() => {
+              if (!titulo || !descricao) return;
+              createOccurrence.mutate({ titulo, descricao, severidade }, { onSuccess: fechar });
+            }}
+          >
+            Reportar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+    </>
+  );
+}
+
 function RotaOperacional({
   rota,
   showTrocarRota,
@@ -856,6 +1015,9 @@ function RotaOperacional({
 
       {trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? (
         <div className="flex flex-col gap-4 p-6">
+          <AlunosABordoCard routeStudents={routeStudents ?? []} eventos={studentEvents ?? []} />
+          <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} />
+
           <Typography variant="subtitle">Paradas</Typography>
           {paradasOrdenadas.map((parada) => (
             <ParadaCard
