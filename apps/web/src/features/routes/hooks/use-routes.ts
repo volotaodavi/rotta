@@ -9,7 +9,7 @@ import type {
   ListRoutesParams,
 } from "@rotta/api-client";
 
-import { routesApi } from "@/lib/api-client";
+import { rottaAiApi, routesApi } from "@/lib/api-client";
 
 
 /**
@@ -104,5 +104,19 @@ export function useRemoveRouteStudent(routeId: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["routes", routeId, "students"] });
     },
+  });
+}
+
+/**
+ * "Rotta Route AI" — pedido do usuário: "as IAs de localização irão
+ * traçar as rotas (por ordem de proximidade) no OPENSTREET". Só sugere
+ * (ROT-08: "a sugestão nunca altera a rota automaticamente") — por isso
+ * é uma mutation disparada por um botão explícito ("Otimizar rota"), sem
+ * `onSuccess` que invalide/altere nada; quem decide aplicar a nova ordem
+ * é o Gestor, olhando a comparação, não este hook.
+ */
+export function useSuggestRouteOptimization(routeId: string) {
+  return useMutation({
+    mutationFn: () => rottaAiApi.suggestRouteOptimization({ routeId }),
   });
 }

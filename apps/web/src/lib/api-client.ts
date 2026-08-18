@@ -11,6 +11,7 @@ import {
   createIdentityVerificationEndpoints,
   createMarketplaceEndpoints,
   createNotificationsEndpoints,
+  createRottaAiEndpoints,
   createRoutesEndpoints,
   createSchoolsEndpoints,
   createStudentPreRegistrationsEndpoints,
@@ -48,6 +49,7 @@ export const marketplaceApi = createMarketplaceEndpoints(apiClient);
 export const geoApi = createGeoEndpoints(apiClient);
 export const notificationsApi = createNotificationsEndpoints(apiClient);
 export const routesApi = createRoutesEndpoints(apiClient);
+export const rottaAiApi = createRottaAiEndpoints(apiClient);
 export const tripsApi = createTripsEndpoints(apiClient);
 export const gpsApi = createGpsEndpoints(apiClient);
 export const walletApi = createWalletEndpoints(apiClient);

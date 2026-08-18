@@ -1,12 +1,19 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Check, MapPin, Trash2, Users } from "@rotta/icons";
+import { Check, GraduationCap, MapPin, Route as RouteIcon, Trash2, Users } from "@rotta/icons";
 import { Badge, Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
-import type { Contract, GeocodeResult, RouteStop, RouteStudent } from "@rotta/api-client";
+import type {
+  Contract,
+  GeocodeResult,
+  RouteOptimizationResult,
+  RouteStop,
+  RouteStudent,
+  School,
+} from "@rotta/api-client";
 
 import { useContractsList } from "@/features/marketplace/hooks/use-marketplace";
 import {
@@ -17,17 +24,24 @@ import {
   useRoute,
   useRouteStops,
   useRouteStudents,
+  useSuggestRouteOptimization,
 } from "@/features/routes/hooks/use-routes";
 import {
   ROUTE_STATUS_LABEL,
   ROUTE_STATUS_VARIANT,
   ROUTE_WEEKDAY_LABEL,
 } from "@/features/routes/labels";
+import { useSuggestSchools } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useMyTeam } from "@/features/team/hooks/use-team";
+import { useMyLocation } from "@/hooks/use-my-location";
 import { geoApi } from "@/lib/api-client";
 
+
+function formatarDistanciaKm(distanciaKm: number): string {
+  return distanciaKm < 1 ? `${Math.round(distanciaKm * 1000)} m` : `${distanciaKm.toFixed(1)} km`;
+}
 
 /**
  * Detalhe de Rota — paradas + alunos. Fecha o loop que faltava: sem uma
@@ -87,6 +101,7 @@ export default function RotaDetalhePage(): JSX.Element {
       ) : null}
 
       <StopsSection routeId={routeId} stops={stops} isLoading={isLoadingStops} />
+      <RouteOptimizationSection routeId={routeId} stops={stops ?? []} />
       <StudentsSection
         routeId={routeId}
         stops={stops ?? []}
@@ -97,6 +112,15 @@ export default function RotaDetalhePage(): JSX.Element {
   );
 }
 
+/**
+ * Duas formas de adicionar uma parada (pedido do usuário: "quando for
+ * criar uma rota, deverá ser mediante a escola que foi importada, não
+ * deverá colocar o endereço de fato") — "Escola" é o modo padrão (busca
+ * tolerante a erro de digitação + sugestão por proximidade, mesmo
+ * `useSuggestSchools` do cadastro de aluno); "Outro endereço" continua
+ * disponível pra paradas que não são numa escola (ex. um ponto de
+ * encontro do grupo).
+ */
 function StopsSection({
   routeId,
   stops,
@@ -108,11 +132,21 @@ function StopsSection({
 }): JSX.Element {
   const addStop = useAddRouteStop(routeId);
   const removeStop = useRemoveRouteStop(routeId);
-  const [endereco, setEndereco] = useState("");
+  const [modo, setModo] = useState<"escola" | "endereco">("escola");
   const [horario, setHorario] = useState("07:00");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const [schoolSearch, setSchoolSearch] = useState("");
+  const minhaLocalizacao = useMyLocation(schoolSearch.trim().length >= 2);
+  const { data: schoolResults } = useSuggestSchools({
+    q: schoolSearch,
+    latitude: minhaLocalizacao.location?.latitude,
+    longitude: minhaLocalizacao.location?.longitude,
+  });
+
+  const [endereco, setEndereco] = useState("");
   const [geocoded, setGeocoded] = useState<GeocodeResult | null>(null);
   const [isGeocoding, setIsGeocoding] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   async function handleBuscarEndereco(): Promise<void> {
     setGeocoded(null);
@@ -133,7 +167,23 @@ function StopsSection({
     }
   }
 
-  async function handleAdicionar(): Promise<void> {
+  async function handleAdicionarEscola(school: School): Promise<void> {
+    setErrorMessage(null);
+    try {
+      await addStop.mutateAsync({
+        ordem: stops?.length ?? 0,
+        schoolId: school.id,
+        horarioPrevisto: horario,
+      });
+      setSchoolSearch("");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof ApiError ? error.message : "Não foi possível adicionar a parada agora.",
+      );
+    }
+  }
+
+  async function handleAdicionarEndereco(): Promise<void> {
     if (!geocoded) return;
     setErrorMessage(null);
     try {
@@ -168,7 +218,11 @@ function StopsSection({
             {stops.map((stop) => (
               <div key={stop.id} className="flex items-center justify-between gap-3 py-2">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                  {stop.schoolId ? (
+                    <GraduationCap className="h-4 w-4 shrink-0 text-primary" />
+                  ) : (
+                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                  )}
                   <div>
                     <Typography variant="bodySmall">{stop.endereco}</Typography>
                     <Typography variant="caption" color="muted">
@@ -191,31 +245,98 @@ function StopsSection({
         )}
 
         <div className="flex flex-col gap-3 rounded-2xl border border-border p-3">
-          <FormField
-            label="Endereço da parada"
-            helperText="A Rotta Geo AI localiza a latitude/longitude sozinha — nunca digitada manualmente."
-          >
-            <Input
-              placeholder="ex: Rua das Flores, 123 — Bela Vista, São Paulo, SP"
-              value={endereco}
-              onChange={(event) => {
-                setEndereco(event.target.value);
-                setGeocoded(null);
-              }}
-              onBlur={() => void handleBuscarEndereco()}
-            />
-          </FormField>
-          {isGeocoding ? (
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={modo === "escola" ? "secondary" : "ghost"}
+              onClick={() => setModo("escola")}
+            >
+              Escola
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={modo === "endereco" ? "secondary" : "ghost"}
+              onClick={() => setModo("endereco")}
+            >
+              Outro endereço
+            </Button>
+          </div>
+
+          {modo === "escola" ? (
+            <FormField
+              label="Escola"
+              helperText="Busca pelo nome, no catálogo já importado — a Rotta Geo AI já sabe a localização."
+            >
+              <div className="flex flex-col gap-2">
+                <Input
+                  placeholder="Nome da escola"
+                  value={schoolSearch}
+                  onChange={(event) => setSchoolSearch(event.target.value)}
+                />
+                {schoolSearch && schoolResults && schoolResults.items.length > 0 && (
+                  <div className="flex flex-col gap-1 rounded-md border border-border bg-card p-1">
+                    {schoolResults.items.map((school) => (
+                      <button
+                        key={school.id}
+                        type="button"
+                        className="group flex items-center justify-between rounded px-3 py-2 text-left text-sm hover:bg-surface"
+                        onClick={() => void handleAdicionarEscola(school)}
+                      >
+                        <span>
+                          {school.nomeOficial}, {school.cidade}/{school.estado}
+                          {school.distanciaKm !== null && school.distanciaKm !== undefined && (
+                            <span className="text-text-muted">
+                              {" "}
+                              · {formatarDistanciaKm(school.distanciaKm)}
+                            </span>
+                          )}
+                        </span>
+                        <Check className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {schoolSearch &&
+                schoolSearch.trim().length >= 2 &&
+                schoolResults &&
+                schoolResults.items.length === 0 ? (
+                  <Typography variant="caption" color="muted">
+                    Nenhuma escola encontrada com esse nome no catálogo ainda.
+                  </Typography>
+                ) : null}
+              </div>
+            </FormField>
+          ) : (
+            <FormField
+              label="Endereço da parada"
+              helperText="A Rotta Geo AI localiza a latitude/longitude sozinha — nunca digitada manualmente."
+            >
+              <Input
+                placeholder="ex: Rua das Flores, 123 — Bela Vista, São Paulo, SP"
+                value={endereco}
+                onChange={(event) => {
+                  setEndereco(event.target.value);
+                  setGeocoded(null);
+                }}
+                onBlur={() => void handleBuscarEndereco()}
+              />
+            </FormField>
+          )}
+
+          {modo === "endereco" && isGeocoding ? (
             <div className="flex items-center gap-2 text-text-muted">
               <Spinner size="sm" />
               <Typography variant="caption">Localizando endereço...</Typography>
             </div>
-          ) : geocoded ? (
+          ) : modo === "endereco" && geocoded ? (
             <div className="flex items-center gap-2 text-success">
               <Check className="h-4 w-4" />
               <Typography variant="caption">{geocoded.enderecoFormatado}</Typography>
             </div>
           ) : null}
+
           <FormField label="Horário previsto">
             <Input
               type="time"
@@ -228,16 +349,120 @@ function StopsSection({
               {errorMessage}
             </Typography>
           ) : null}
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={!geocoded}
-            isLoading={addStop.isPending}
-            onClick={() => void handleAdicionar()}
-          >
-            Adicionar parada
-          </Button>
+          {modo === "endereco" ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!geocoded}
+              isLoading={addStop.isPending}
+              onClick={() => void handleAdicionarEndereco()}
+            >
+              Adicionar parada
+            </Button>
+          ) : null}
         </div>
+      </Card.Body>
+    </Card>
+  );
+}
+
+function formatarDuracao(segundos: number): string {
+  const minutos = Math.round(segundos / 60);
+  if (minutos < 60) return `${minutos} min`;
+  const horas = Math.floor(minutos / 60);
+  const resto = minutos % 60;
+  return resto === 0 ? `${horas}h` : `${horas}h${resto}min`;
+}
+
+/**
+ * "Rotta Route AI" — pedido do usuário: "as IAs de localização irão
+ * traçar as rotas (por ordem de proximidade) no OPENSTREET, principalmente
+ * na OPENSTREET do responsável". Motor real (OSRM via Rotta Geo Engine,
+ * Frente D) já existia desde antes desta tela — só faltava um botão. Só
+ * mostra a comparação lado a lado; quem decide se aplica a nova ordem é o
+ * Gestor (ROT-08: "a sugestão nunca altera a rota automaticamente") — hoje
+ * a aplicação em si ainda não está exposta, então o resultado é só
+ * informativo.
+ */
+function RouteOptimizationSection({
+  routeId,
+  stops,
+}: {
+  routeId: string;
+  stops: RouteStop[];
+}): JSX.Element | null {
+  const suggestOptimization = useSuggestRouteOptimization(routeId);
+  const [resultado, setResultado] = useState<RouteOptimizationResult | null>(null);
+
+  if (stops.length < 3) return null;
+
+  const enderecoPorId = new Map(stops.map((stop) => [stop.id, stop.endereco]));
+
+  async function handleOtimizar(): Promise<void> {
+    setResultado(null);
+    try {
+      const result = await suggestOptimization.mutateAsync();
+      setResultado(result);
+    } catch {
+      // erro já refletido em suggestOptimization.isError / .error abaixo
+    }
+  }
+
+  return (
+    <Card>
+      <Card.Header title="Rotta Route AI" />
+      <Card.Body className="flex flex-col gap-4">
+        <Typography variant="bodySmall" color="muted">
+          Sugestão de ordem por proximidade, calculada via OpenStreetMap.
+        </Typography>
+        <Button
+          type="button"
+          variant="secondary"
+          iconLeft={<RouteIcon className="h-4 w-4" />}
+          isLoading={suggestOptimization.isPending}
+          onClick={() => void handleOtimizar()}
+        >
+          Otimizar rota
+        </Button>
+
+        {suggestOptimization.isError ? (
+          <Typography variant="bodySmall" color="danger">
+            {suggestOptimization.error instanceof ApiError
+              ? suggestOptimization.error.message
+              : "Não foi possível calcular a otimização agora. Tente novamente em instantes."}
+          </Typography>
+        ) : null}
+
+        {resultado && resultado.jaOtimizada ? (
+          <Typography variant="bodySmall" color="success">
+            Esta rota já está na ordem mais eficiente encontrada.
+          </Typography>
+        ) : resultado ? (
+          <div className="flex flex-col gap-3">
+            <Typography variant="bodySmall">
+              Economia estimada de{" "}
+              <span className="font-semibold text-success">
+                {formatarDuracao(resultado.economiaSegundos)}
+              </span>{" "}
+              seguindo a ordem sugerida ({formatarDuracao(resultado.duracaoAtualSegundos)} →{" "}
+              {formatarDuracao(resultado.duracaoSugeridaSegundos)}).
+            </Typography>
+            <div className="flex flex-col gap-1 rounded-xl border border-border p-3">
+              <Typography variant="caption" color="muted" className="font-semibold">
+                Ordem sugerida
+              </Typography>
+              {resultado.ordemSugeridaIds.map((stopId, index) => (
+                <Typography key={stopId} variant="bodySmall">
+                  {index + 1}. {enderecoPorId.get(stopId) ?? "Parada"}
+                </Typography>
+              ))}
+            </div>
+            <Typography variant="caption" color="muted">
+              Esta sugestão não altera a rota sozinha — se quiser aplicá-la, reordene as paradas
+              acima manualmente.
+            </Typography>
+          </div>
+        ) : null}
       </Card.Body>
     </Card>
   );
