@@ -526,7 +526,11 @@ function PortoesTab({ schoolId }: { schoolId: string }): JSX.Element {
             header: "Coordenadas",
             render: (p) => `${p.latitude.toFixed(6)}, ${p.longitude.toFixed(6)}`,
           },
-          { key: "observacoes", header: "Observações", render: (p) => p.observacoes ?? "—" },
+          {
+            key: "observacoes",
+            header: "Observações",
+            render: (p) => p.observacoes ?? "Não informado",
+          },
           {
             key: "acoes",
             header: "",
@@ -604,9 +608,7 @@ function VinculosTab({ schoolId }: { schoolId: string }): JSX.Element {
             key: "acoes",
             header: "",
             render: (link) =>
-              link.desvinculadoEm ? (
-                "—"
-              ) : (
+              link.desvinculadoEm ? null : (
                 <Button variant="ghost" size="sm" onClick={() => unlinkCompany.mutate(link.id)}>
                   Desvincular
                 </Button>

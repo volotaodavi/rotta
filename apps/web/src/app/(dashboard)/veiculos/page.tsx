@@ -21,6 +21,7 @@ import { useVehicleDashboard, useVehiclesList } from "@/features/vehicles/hooks/
 import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 import { vehiclesApi } from "@/lib/api-client";
 
+
 /**
  * Listagem + Dashboard de Veículos (briefing "Gestão de Veículos" —
  * seções "DASHBOARD" e "PESQUISA") — mesma decisão de escopo de
@@ -185,7 +186,11 @@ export default function VeiculosPage(): JSX.Element {
                     render: (vehicle) => <span className="font-mono">{vehicle.placa}</span>,
                   },
                   { key: "modelo", header: "Modelo", render: (vehicle) => vehicle.modelo },
-                  { key: "marca", header: "Marca", render: (vehicle) => vehicle.marca ?? "—" },
+                  {
+                    key: "marca",
+                    header: "Marca",
+                    render: (vehicle) => vehicle.marca ?? "Não informado",
+                  },
                   {
                     key: "tipo",
                     header: "Tipo",

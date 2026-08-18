@@ -55,6 +55,7 @@ import {
   VEHICLE_TYPE_LABEL,
 } from "@/features/vehicles/labels";
 
+
 const TABS = [
   { id: "dados", label: "Dados" },
   { id: "documentos", label: "Documentos" },
@@ -400,7 +401,9 @@ function DocumentosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
             key: "vencimento",
             header: "Vencimento",
             render: (doc) =>
-              doc.vencimentoEm ? new Date(doc.vencimentoEm).toLocaleDateString("pt-BR") : "—",
+              doc.vencimentoEm
+                ? new Date(doc.vencimentoEm).toLocaleDateString("pt-BR")
+                : "Sem vencimento",
           },
           {
             key: "ia",
@@ -504,8 +507,12 @@ function ManutencoesTab({ vehicleId }: { vehicleId: string }): JSX.Element {
             header: "Data",
             render: (m) => new Date(m.data).toLocaleDateString("pt-BR"),
           },
-          { key: "km", header: "Km", render: (m) => m.quilometragem ?? "—" },
-          { key: "fornecedor", header: "Fornecedor", render: (m) => m.fornecedor ?? "—" },
+          { key: "km", header: "Km", render: (m) => m.quilometragem ?? "Não informado" },
+          {
+            key: "fornecedor",
+            header: "Fornecedor",
+            render: (m) => m.fornecedor ?? "Não informado",
+          },
         ]}
         rows={data?.items ?? []}
         keyExtractor={(m) => m.id}
@@ -586,9 +593,7 @@ function LembretesTab({ vehicleId }: { vehicleId: string }): JSX.Element {
                 >
                   Concluir
                 </Button>
-              ) : (
-                "—"
-              ),
+              ) : null,
           },
         ]}
         rows={reminders ?? []}
@@ -702,7 +707,11 @@ function ChecklistTab({ vehicleId }: { vehicleId: string }): JSX.Element {
           header: "Equipamentos",
           render: (c) => (c.equipamentosObrigatoriosOk ? "OK" : "Problema"),
         },
-        { key: "observacoes", header: "Observações", render: (c) => c.observacoes ?? "—" },
+        {
+          key: "observacoes",
+          header: "Observações",
+          render: (c) => c.observacoes ?? "Não informado",
+        },
       ]}
       rows={data?.items ?? []}
       keyExtractor={(c) => c.id}

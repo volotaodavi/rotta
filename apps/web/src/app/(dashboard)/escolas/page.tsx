@@ -31,6 +31,7 @@ import {
 import { SCHOOL_SHIFT_LABEL, SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
 import { schoolsApi } from "@/lib/api-client";
 
+
 /**
  * Listagem + Dashboard de Escolas (briefing "Gestão de Escolas" —
  * seções "DASHBOARD" e "PESQUISA"/"FILTROS") — mesma decisão de escopo
@@ -242,7 +243,7 @@ export default function EscolasPage(): JSX.Element {
                   {
                     key: "codigoInep",
                     header: "Código INEP",
-                    render: (school) => school.codigoInep ?? "—",
+                    render: (school) => school.codigoInep ?? "Não informado",
                   },
                   {
                     key: "cidade",
