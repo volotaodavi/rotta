@@ -9,7 +9,6 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType } from "@prisma/client";
 
-
 import { SCHOOL_CREATED_EVENT } from "./events/school-created.event";
 import { toSchoolAccessPointResponseDto } from "./mappers/school-access-point.mapper";
 import {
@@ -601,9 +600,20 @@ export class SchoolsService {
           ip: meta.ip,
           userAgent: meta.userAgent,
         });
-        // Mesmo motivo do `create()` acima — a planilha importada não
-        // traz latitude/longitude, só o endereço textual.
-        this.eventEmitter.emit(SCHOOL_CREATED_EVENT, { schoolId: school.id });
+        // Planilha comum não traz latitude/longitude (só endereço
+        // textual) — aí sim precisa do Geocoding AI Agent. Quando a
+        // linha já trouxe uma coordenada válida (`parseLatLong` em
+        // `school-import.util.ts` — importação em massa a partir de
+        // fonte já oficialmente geocodificada, ex. Catálogo de Escolas
+        // do INEP), pula o evento: sem isso, uma importação de milhares
+        // de linhas dispararia milhares de chamadas ao Nominatim quase
+        // simultâneas (nada aqui enfileira/limita, ao contrário do
+        // Education Sync Agent), violando a política de uso dele — e a
+        // coordenada já é a oficial, geocodificar de novo só arrisca
+        // piorar o que já veio certo.
+        if (result.data.latitude == null || result.data.longitude == null) {
+          this.eventEmitter.emit(SCHOOL_CREATED_EVENT, { schoolId: school.id });
+        }
         importadas += 1;
       } catch (error) {
         erros.push({

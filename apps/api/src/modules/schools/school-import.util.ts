@@ -56,6 +56,35 @@ function splitList(value: string): string[] {
     .filter(Boolean);
 }
 
+/**
+ * `latitude`/`longitude` no arquivo importado — caso raro (a
+ * importação manual normal nunca preenche isso; "quem deve colocar a
+ * latitude e longitude é a IA, não o usuário manualmente" continua
+ * valendo para o cadastro digitado à mão). Existe para importações em
+ * massa a partir de uma fonte já oficialmente geocodificada (ex.
+ * Catálogo de Escolas do INEP, que já publica coordenada por escola) —
+ * aí faz sentido usar a coordenada de origem em vez de gastar uma
+ * chamada ao Nominatim por escola (`SchoolsService.importFromFile`
+ * também pula o evento de geocodificação automática quando esta função
+ * já devolve `latitude`/`longitude`). Bounding box aproximado do Brasil
+ * como sanidade mínima — fora dele, ignora e deixa pro pipeline normal.
+ */
+function parseLatLong(row: ImportRow): { latitude?: number; longitude?: number } {
+  const latRaw = row.latitude?.trim();
+  const lonRaw = row.longitude?.trim();
+  if (!latRaw || !lonRaw) return {};
+  const latitude = Number(latRaw);
+  const longitude = Number(lonRaw);
+  const dentroDoBrasil =
+    Number.isFinite(latitude) &&
+    Number.isFinite(longitude) &&
+    latitude >= -34 &&
+    latitude <= 6 &&
+    longitude >= -74 &&
+    longitude <= -32;
+  return dentroDoBrasil ? { latitude, longitude } : {};
+}
+
 export type ImportRow = Record<string, string>;
 
 export interface MapRowResult {
@@ -114,6 +143,7 @@ export function mapRowToCreateSchoolData(row: ImportRow): MapRowResult {
       bairro: required("bairro"),
       cidade: required("cidade"),
       estado: required("estado").toUpperCase(),
+      ...parseLatLong(row),
       tipos,
       turnosAtendidos,
     },

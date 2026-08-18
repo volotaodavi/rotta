@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 
+import { SCHOOL_CREATED_EVENT } from "../events/school-created.event";
 import { SchoolsService } from "../schools.service";
 
 import type { SchoolAccessPointRepository } from "../repositories/school-access-point.repository";
@@ -546,6 +547,36 @@ describe("SchoolsService", () => {
       expect(result.erros).toHaveLength(1);
       expect(schoolRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({ status: "EM_ANALISE", origemCadastro: "IMPORT_CSV" }),
+      );
+    });
+
+    it("dispara school.created (Geocoding AI Agent) quando a linha não trouxe coordenada", async () => {
+      const csv =
+        "nomeOficial,dependenciaAdministrativa,cep,logradouro,numero,bairro,cidade,estado,tipos,turnosAtendidos\n" +
+        "Escola Sem Coordenada,MUNICIPAL,01310100,Rua A,10,Centro,São Paulo,SP,FUNDAMENTAL,MANHA\n";
+      const file = { buffer: Buffer.from(csv, "utf-8") } as Express.Multer.File;
+      schoolRepository.create.mockResolvedValue(buildSchool({ id: "escola-sem-coord" }));
+
+      await service.importFromFile(file, "csv", empresaActor, {});
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        SCHOOL_CREATED_EVENT,
+        expect.objectContaining({ schoolId: "escola-sem-coord" }),
+      );
+    });
+
+    it("NÃO dispara school.created quando a linha já trouxe latitude/longitude válidas (ex. Catálogo de Escolas do INEP) — evita estouro do Nominatim numa importação em massa", async () => {
+      const csv =
+        "nomeOficial,dependenciaAdministrativa,cep,logradouro,numero,bairro,cidade,estado,tipos,turnosAtendidos,latitude,longitude\n" +
+        "Escola Com Coordenada,MUNICIPAL,76800000,Avenida Amazonas,6492,Tiradentes,Porto Velho,RO,FUNDAMENTAL,MANHA,-8.7607343,-63.9019859\n";
+      const file = { buffer: Buffer.from(csv, "utf-8") } as Express.Multer.File;
+      schoolRepository.create.mockResolvedValue(buildSchool({ id: "escola-com-coord" }));
+
+      await service.importFromFile(file, "csv", empresaActor, {});
+
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(SCHOOL_CREATED_EVENT, expect.anything());
+      expect(schoolRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ latitude: -8.7607343, longitude: -63.9019859 }),
       );
     });
   });
