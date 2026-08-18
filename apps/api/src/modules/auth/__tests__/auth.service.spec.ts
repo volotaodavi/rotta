@@ -619,6 +619,9 @@ describe("AuthService", () => {
     });
 
     it("enableMfa ativa o MFA com um código válido, gera 10 códigos de recuperação e emite tokens", async () => {
+      // Timeout maior: gera e faz bcrypt de verdade de 10 códigos de
+      // recuperação — observado próximo de 1s sob contenção de CPU quando a
+      // suíte inteira roda em paralelo, não é falha de lógica.
       const secretPlain = mfaService.generateSecret();
       const admin = buildUser({
         isAdminRotta: true,
@@ -637,7 +640,7 @@ describe("AuthService", () => {
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ acao: "MFA_ENABLED" }),
       );
-    });
+    }, 15000);
 
     it("enableMfa rejeita código inválido e não ativa nada", async () => {
       const secretPlain = mfaService.generateSecret();
@@ -693,6 +696,9 @@ describe("AuthService", () => {
     });
 
     it("verifyMfaLogin aceita um código de recuperação válido e o consome (uso único)", async () => {
+      // Timeout maior: hashRecoveryCodes faz bcrypt de verdade (10 hashes),
+      // observado passando de 1s sob contenção de CPU quando a suíte inteira
+      // roda em paralelo — não é falha de lógica, é custo real do bcrypt.
       const secretPlain = mfaService.generateSecret();
       const recoveryCodes = mfaService.generateRecoveryCodes();
       const hashes = await mfaService.hashRecoveryCodes(recoveryCodes);
@@ -717,9 +723,12 @@ describe("AuthService", () => {
       );
       const remainingHashes = usersService.replaceMfaRecoveryCodeHashes.mock.calls[0]![1];
       expect(remainingHashes).toHaveLength(9);
-    });
+    }, 15000);
 
     it("verifyMfaLogin rejeita um código de recuperação inválido", async () => {
+      // Timeout maior: hashRecoveryCodes faz bcrypt de verdade (10 hashes),
+      // observado passando de 1s sob contenção de CPU quando a suíte inteira
+      // roda em paralelo — não é falha de lógica, é custo real do bcrypt.
       const secretPlain = mfaService.generateSecret();
       const hashes = await mfaService.hashRecoveryCodes(mfaService.generateRecoveryCodes());
       const admin = buildUser({
@@ -735,7 +744,7 @@ describe("AuthService", () => {
         service.verifyMfaLogin({ mfaChallengeToken: "token", recoveryCode: "ZZZZ-9999" }, {}),
       ).rejects.toThrow(UnauthorizedException);
       expect(usersService.replaceMfaRecoveryCodeHashes).not.toHaveBeenCalled();
-    });
+    }, 15000);
 
     it("disableMfa exige o código TOTP atual e desativa", async () => {
       const secretPlain = mfaService.generateSecret();
