@@ -1525,6 +1525,7 @@ model School {
   solicitacoesTransporte TransportRequest[]
   contratos              Contract[]
   coordenadas            SchoolCoordinate[]
+  paradasRota            RouteStop[]
 
   @@index([status])
   @@index([cidade, estado])
@@ -1866,6 +1867,17 @@ model RouteStop {
   /// Formato "HH:mm" (mesmo padrão de `MessagePersonalizationService.veiculoProximo`) — horário previsto de passagem, nunca um `DateTime` completo (a parada se repete todo dia operado).
   horarioPrevisto String
 
+  /// Escola do catálogo compartilhado (pedido do usuário: "quando for
+  /// criar uma rota, deverá ser mediante a escola que foi importada, não
+  /// deverá colocar o endereço de fato") — opcional (`onDelete: SetNull`,
+  /// nunca arrasta a parada junto se a escola for removida) porque uma
+  /// parada de embarque/desembarque de aluno em casa continua sendo
+  /// endereço livre; só a parada "na escola" referencia uma. Quando
+  /// presente, `endereco`/`latitude`/`longitude` são preenchidos a partir
+  /// da própria `School` (`RoutesService`), nunca digitados à mão.
+  schoolId String? @db.Uuid
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1875,6 +1887,7 @@ model RouteStop {
 
   @@unique([routeId, ordem])
   @@index([companyId])
+  @@index([schoolId])
   @@map("route_stops")
 }
 

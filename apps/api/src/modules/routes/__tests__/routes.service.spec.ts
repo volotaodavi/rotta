@@ -10,6 +10,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { ContractsService } from "@/modules/marketplace/contracts.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import type { SchoolsService } from "@/modules/schools/schools.service";
 import type { StudentsService } from "@/modules/students/students.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
@@ -46,6 +47,7 @@ function buildStop(overrides: Partial<RouteStop> = {}): RouteStop {
     latitude: -23.5 as unknown as RouteStop["latitude"],
     longitude: -46.6 as unknown as RouteStop["longitude"],
     horarioPrevisto: "07:00",
+    schoolId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -106,6 +108,7 @@ describe("RoutesService", () => {
   let vehiclesService: jest.Mocked<Pick<VehiclesService, "findByIdOrThrow">>;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
+  let schoolsService: jest.Mocked<Pick<SchoolsService, "findByIdOrThrow">>;
 
   beforeEach(() => {
     routeRepository = {
@@ -156,6 +159,9 @@ describe("RoutesService", () => {
       rotaAlterada: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    schoolsService = {
+      findByIdOrThrow: jest.fn(),
+    };
 
     service = new RoutesService(
       routeRepository,
@@ -168,6 +174,7 @@ describe("RoutesService", () => {
       vehiclesService as unknown as VehiclesService,
       eventEmitter,
       messagePersonalizationService,
+      schoolsService as unknown as SchoolsService,
     );
   });
 
@@ -377,6 +384,118 @@ describe("RoutesService", () => {
           {},
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe("addStop — pedido do usuário: parada por Escola do catálogo, não endereço digitado", () => {
+    function buildSchoolResponse(
+      overrides: Partial<{
+        id: string;
+        nomeOficial: string;
+        logradouro: string;
+        numero: string;
+        bairro: string;
+        cidade: string;
+        estado: string;
+        latitude: number | null;
+        longitude: number | null;
+      }> = {},
+    ) {
+      return {
+        id: "school-1",
+        codigoInterno: "ESC-000001",
+        nomeOficial: "EMEF Professora Ana Souza",
+        dependenciaAdministrativa: "MUNICIPAL",
+        cep: "01310100",
+        logradouro: "Avenida Paulista",
+        numero: "1000",
+        bairro: "Bela Vista",
+        cidade: "São Paulo",
+        estado: "SP",
+        pais: "Brasil",
+        latitude: -23.561684,
+        longitude: -46.655981,
+        tipos: [],
+        turnosAtendidos: [],
+        status: "ATIVA",
+        origemCadastro: "MANUAL",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        ...overrides,
+      } as never;
+    }
+
+    it("com schoolId: ignora endereco/latitude/longitude do cliente e usa os da Escola", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      schoolsService.findByIdOrThrow.mockResolvedValue(buildSchoolResponse());
+      routeStopRepository.create.mockResolvedValue(buildStop({ schoolId: "school-1" }));
+
+      await service.addStop(
+        "route-1",
+        {
+          ordem: 0,
+          schoolId: "school-1",
+          horarioPrevisto: "07:15",
+        },
+        empresaActor,
+      );
+
+      expect(schoolsService.findByIdOrThrow).toHaveBeenCalledWith("school-1", empresaActor);
+      expect(routeStopRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          schoolId: "school-1",
+          latitude: -23.561684,
+          longitude: -46.655981,
+          endereco: expect.stringContaining("Avenida Paulista"),
+        }),
+      );
+    });
+
+    it("rejeita quando a Escola escolhida ainda não tem coordenada geocodificada", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      schoolsService.findByIdOrThrow.mockResolvedValue(
+        buildSchoolResponse({ latitude: null, longitude: null }),
+      );
+
+      await expect(
+        service.addStop(
+          "route-1",
+          { ordem: 0, schoolId: "school-1", horarioPrevisto: "07:15" },
+          empresaActor,
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(routeStopRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("sem schoolId: continua aceitando endereco+latitude+longitude (parada fora de uma escola)", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      routeStopRepository.create.mockResolvedValue(buildStop());
+
+      await service.addStop(
+        "route-1",
+        {
+          ordem: 0,
+          endereco: "Rua das Flores, 123",
+          latitude: -23.5,
+          longitude: -46.6,
+          horarioPrevisto: "07:15",
+        },
+        empresaActor,
+      );
+
+      expect(schoolsService.findByIdOrThrow).not.toHaveBeenCalled();
+      expect(routeStopRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ schoolId: null, endereco: "Rua das Flores, 123" }),
+      );
+    });
+
+    it("rejeita quando não informa nem schoolId nem endereco+latitude+longitude", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+
+      await expect(
+        service.addStop("route-1", { ordem: 0, horarioPrevisto: "07:15" }, empresaActor),
+      ).rejects.toThrow(BadRequestException);
+      expect(routeStopRepository.create).not.toHaveBeenCalled();
     });
   });
 });

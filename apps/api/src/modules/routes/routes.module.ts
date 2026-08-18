@@ -14,6 +14,7 @@ import { RoutesService } from "./routes.service";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
+import { SchoolsModule } from "@/modules/schools/schools.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
@@ -33,10 +34,14 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
  * Motorista/Monitor antes de definí-lo como padrão da rota, mesmo
  * princípio de `VehiclesService.assign`), `VehiclesModule`
  * (`VehiclesService.findByIdOrThrow` para validar existência/capacidade
- * do veículo padrão, `ROT-06`/`RN-CAP-01`, tarefa #102), `AuditModule` e
+ * do veículo padrão, `ROT-06`/`RN-CAP-01`, tarefa #102), `AuditModule`,
  * `MessagePersonalizationModule` (nunca `NotificationsModule` inteiro —
- * mesma justificativa de `marketplace.module.ts`). `EventEmitter2` é
- * injetado sem import extra (global em `AppModule`).
+ * mesma justificativa de `marketplace.module.ts`) e `SchoolsModule`
+ * (`SchoolsService.findByIdOrThrow` — parada de rota pode nascer
+ * vinculada a uma Escola do catálogo compartilhado em vez de endereço
+ * livre, pedido do usuário: "quando for criar uma rota, deverá ser
+ * mediante a escola que foi importada"). `EventEmitter2` é injetado sem
+ * import extra (global em `AppModule`).
  */
 @Module({
   imports: [
@@ -46,6 +51,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     UsersModule,
     VehiclesModule,
     MessagePersonalizationModule,
+    SchoolsModule,
   ],
   controllers: [RoutesController],
   providers: [

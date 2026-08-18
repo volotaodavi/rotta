@@ -8,6 +8,8 @@ export interface CreateRouteStopData {
   latitude: number;
   longitude: number;
   horarioPrevisto: string;
+  /** Escola do catálogo compartilhado quando a parada é NA escola — ver `CreateRouteStopDto`. */
+  schoolId?: string | null;
 }
 
 export interface UpdateRouteStopData {
@@ -16,6 +18,7 @@ export interface UpdateRouteStopData {
   latitude?: number;
   longitude?: number;
   horarioPrevisto?: string;
+  schoolId?: string | null;
 }
 
 /**

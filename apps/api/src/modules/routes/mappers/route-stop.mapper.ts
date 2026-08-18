@@ -10,6 +10,7 @@ export function toRouteStopResponseDto(stop: RouteStop): RouteStopResponseDto {
     latitude: Number(stop.latitude),
     longitude: Number(stop.longitude),
     horarioPrevisto: stop.horarioPrevisto,
+    schoolId: stop.schoolId,
     createdAt: stop.createdAt,
     updatedAt: stop.updatedAt,
   };

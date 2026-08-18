@@ -37,6 +37,7 @@ import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { ContractsService } from "@/modules/marketplace/contracts.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { SchoolsService } from "@/modules/schools/schools.service";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
@@ -83,6 +84,7 @@ export class RoutesService {
     private readonly vehiclesService: VehiclesService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly schoolsService: SchoolsService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -430,16 +432,67 @@ export class RoutesService {
     actor: AuthenticatedUser,
   ): Promise<RouteStopResponseDto> {
     const route = await this.fetchOrThrow(routeId, actor);
+    const local = await this.resolveStopLocation(dto, actor);
     const stop = await this.routeStopRepository.create({
       routeId,
       companyId: route.companyId,
       ordem: dto.ordem,
-      endereco: dto.endereco,
-      latitude: dto.latitude,
-      longitude: dto.longitude,
+      ...local,
       horarioPrevisto: dto.horarioPrevisto,
     });
     return toRouteStopResponseDto(stop);
+  }
+
+  /**
+   * Resolve a localização de uma parada a partir das duas formas
+   * aceitas por `CreateRouteStopDto` (pedido do usuário: "quando for
+   * criar uma rota, deverá ser mediante a escola que foi importada, não
+   * deverá colocar o endereço de fato"):
+   *  - `schoolId` presente: busca a `School` do catálogo compartilhado
+   *    (`SchoolsService.findByIdOrThrow` — mesmo RBAC de leitura de
+   *    qualquer outro lugar do sistema, escola é catálogo global, não
+   *    por tenant) e deriva `endereco`/`latitude`/`longitude` DELA,
+   *    nunca do que o cliente mandou nesses 3 campos (mesmo que tenha
+   *    mandado, é ignorado — a fonte de verdade passa a ser a escola).
+   *    Exige que a escola já tenha coordenada (senão a IA de
+   *    geocodificação ainda não processou/está na Fila de Revisão
+   *    Manual) — pedir pra tentar de novo depois é melhor que criar uma
+   *    parada sem localização de verdade.
+   *  - `schoolId` ausente: exige `endereco`+`latitude`+`longitude`
+   *    (parada fora de uma escola, ex. residência de aluno) — mesmo
+   *    comportamento de antes desta mudança.
+   */
+  private async resolveStopLocation(
+    dto: Pick<CreateRouteStopDto, "schoolId" | "endereco" | "latitude" | "longitude">,
+    actor: AuthenticatedUser,
+  ): Promise<{ endereco: string; latitude: number; longitude: number; schoolId: string | null }> {
+    if (dto.schoolId) {
+      const school = await this.schoolsService.findByIdOrThrow(dto.schoolId, actor);
+      if (school.latitude == null || school.longitude == null) {
+        throw new BadRequestException(
+          `A escola "${school.nomeOficial}" ainda não tem coordenada geocodificada — tente novamente em alguns instantes ou escolha outra escola.`,
+        );
+      }
+      const endereco = `${school.logradouro}, ${school.numero} - ${school.bairro}, ${school.cidade}/${school.estado}`;
+      return {
+        endereco,
+        latitude: school.latitude,
+        longitude: school.longitude,
+        schoolId: school.id,
+      };
+    }
+
+    if (dto.endereco == null || dto.latitude == null || dto.longitude == null) {
+      throw new BadRequestException(
+        "Informe schoolId (parada na escola) ou endereco+latitude+longitude (qualquer outro ponto).",
+      );
+    }
+    return {
+      endereco: dto.endereco,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      schoolId: null,
+    };
   }
 
   async listStops(routeId: string, actor: AuthenticatedUser): Promise<RouteStopResponseDto[]> {
@@ -456,7 +509,25 @@ export class RoutesService {
   ): Promise<RouteStopResponseDto> {
     await this.fetchOrThrow(routeId, actor);
     const stop = await this.fetchStopOrThrow(routeId, stopId);
-    const updated = await this.routeStopRepository.update(stop.id, dto);
+
+    // Só recalcula endereco/latitude/longitude a partir da School quando
+    // `schoolId` é explicitamente informado (trocar a parada de escola) —
+    // uma edição parcial comum (ex. só `horarioPrevisto`) nunca deveria
+    // exigir os 3 campos de endereço só porque `resolveStopLocation`
+    // pede um dos dois "pacotes" completos.
+    const local = dto.schoolId
+      ? await this.resolveStopLocation(
+          {
+            schoolId: dto.schoolId,
+            endereco: undefined,
+            latitude: undefined,
+            longitude: undefined,
+          },
+          actor,
+        )
+      : {};
+
+    const updated = await this.routeStopRepository.update(stop.id, { ...dto, ...local });
     return toRouteStopResponseDto(updated);
   }
 
