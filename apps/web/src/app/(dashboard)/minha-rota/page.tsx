@@ -10,7 +10,7 @@ import {
   MessageCircle,
   Navigation,
   Pause,
-  Square,
+  Play,
   Timer,
   Users,
   UserX,
@@ -39,6 +39,7 @@ import type {
 import type { Route as NextRoute } from "next";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
+import { SlideToAction } from "@/components/slide-to-action";
 import { useBeforeUnloadWarning } from "@/features/driver/hooks/use-before-unload-warning";
 import {
   useMinhasRotas,
@@ -63,6 +64,7 @@ import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hook
 import { useVehicle, useVehicleOccurrences } from "@/features/vehicles/hooks/use-vehicles";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
 import { buildWhatsAppUrl } from "@/lib/site-config";
+
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -133,11 +135,13 @@ const MONITOR_ACCENT: RoleAccent = {
  * passou de tela cheia com cartões flutuando por cima (Frente P4) para
  * um CARTÃO compacto no topo de uma página que rola normalmente — igual
  * às 3 referências, nenhuma delas mostra o mapa ocupando a tela toda.
- * O botão deslizante estilo Uber (`SlideToAction`, Frente P3) também
- * saiu desta tela — as referências mostram sempre um botão comum
- * ("Iniciar viagem"/"Encerrar viagem"), nunca um slider; o componente
- * continua existindo em `components/slide-to-action.tsx` pra quem
- * ainda quiser esse padrão em outro lugar, só não é mais usado aqui.
+ * O botão deslizante estilo Uber (`SlideToAction`, Frente P3) tinha
+ * saído desta tela quando as 3 referências chegaram (mostravam sempre
+ * um botão comum) — voltou depois que o usuário reafirmou o pedido
+ * explicitamente ("com o botão deslizante para iniciar a viagem e
+ * finalizar também"): hoje só cobre iniciar/encerrar a viagem
+ * (ações irreversíveis em produção); pausar/retomar continuam botão
+ * comum, por serem reversíveis.
  * "Registrar ocorrência" (tela do Monitor) virou uma página cheia
  * própria (`/ocorrencia`) em vez de abrir um `Modal` por cima — mesma
  * ideia da referência, que mostra "Ocorrência" como tela dedicada.
@@ -870,9 +874,12 @@ function RotaOperacional({
       ) : null}
 
       {/*
-        Controles da viagem — botão comum (pedido do usuário: as 3
-        imagens de referência mostram sempre um botão sólido, nunca o
-        deslizante estilo Uber que esta tela usava antes, Frente P3).
+        Controles da viagem — o botão deslizante voltou (pedido do
+        usuário, reafirmado depois da Frente 302/303: "com o botão
+        deslizante para iniciar a viagem e finalizar também"). Só
+        iniciar/encerrar usam `SlideToAction` — evita o disparo acidental
+        que esses dois causariam sozinhos (fim de uma viagem em produção
+        de verdade); pausar/retomar continuam botão comum, ação reversível.
       */}
       <div className="flex flex-col gap-2">
         {isLoadingTrip ? (
@@ -881,15 +888,11 @@ function RotaOperacional({
           </div>
         ) : !trip ? (
           isMotorista ? (
-            <Button
-              variant="primary"
-              size="lg"
-              fullWidth
-              onClick={() => startTrip.mutate({ routeId: rota.id })}
+            <SlideToAction
+              label="Deslize para iniciar a viagem"
+              onComplete={() => startTrip.mutate({ routeId: rota.id })}
               isLoading={startTrip.isPending}
-            >
-              Iniciar viagem
-            </Button>
+            />
           ) : (
             <Typography variant="bodySmall" color="muted" className="py-2 text-center">
               Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
@@ -907,49 +910,42 @@ function RotaOperacional({
               </Typography>
             ) : null}
             {isActive ? (
-              <div className="flex gap-2">
+              <div className="flex items-center gap-2">
                 <Button
                   variant="secondary"
                   size="lg"
                   iconLeft={<Pause size={16} />}
                   onClick={() => pauseTrip.mutate(trip.id)}
                   isLoading={pauseTrip.isPending}
-                  className="flex-1"
-                >
-                  Pausar
-                </Button>
-                <Button
-                  variant="danger"
-                  size="lg"
-                  iconLeft={<Square size={16} />}
-                  onClick={() => finishTrip.mutate(trip.id)}
-                  isLoading={finishTrip.isPending}
-                  className="flex-1"
-                >
-                  Encerrar viagem
-                </Button>
+                  aria-label="Pausar viagem"
+                />
+                <div className="flex-1">
+                  <SlideToAction
+                    label="Deslize para encerrar"
+                    onComplete={() => finishTrip.mutate(trip.id)}
+                    isLoading={finishTrip.isPending}
+                    thumbColorClassName="bg-danger"
+                  />
+                </div>
               </div>
             ) : (
-              <div className="flex gap-2">
-                <Button
-                  variant="primary"
-                  size="lg"
-                  onClick={() => resumeTrip.mutate(trip.id)}
-                  isLoading={resumeTrip.isPending}
-                  className="flex-1"
-                >
-                  Retomar viagem
-                </Button>
+              <div className="flex items-center gap-2">
                 <Button
                   variant="secondary"
                   size="lg"
-                  iconLeft={<Square size={16} />}
-                  onClick={() => finishTrip.mutate(trip.id)}
-                  isLoading={finishTrip.isPending}
-                  className="flex-1"
-                >
-                  Finalizar
-                </Button>
+                  iconLeft={<Play size={16} />}
+                  onClick={() => resumeTrip.mutate(trip.id)}
+                  isLoading={resumeTrip.isPending}
+                  aria-label="Retomar viagem"
+                />
+                <div className="flex-1">
+                  <SlideToAction
+                    label="Deslize para finalizar"
+                    onComplete={() => finishTrip.mutate(trip.id)}
+                    isLoading={finishTrip.isPending}
+                    thumbColorClassName="bg-danger"
+                  />
+                </div>
               </div>
             )}
           </>
