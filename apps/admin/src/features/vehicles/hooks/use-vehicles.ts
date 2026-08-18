@@ -1,11 +1,21 @@
 "use client";
 
+import { useToast } from "@rotta/ui/web";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ListVehiclesParams, VehicleStatus } from "@rotta/api-client";
+import type {
+  ListVehicleCategoryReviewParams,
+  ListVehiclesParams,
+  ResolveVehicleCategoryReviewInput,
+  VehicleStatus,
+} from "@rotta/api-client";
 
 import { vehiclesApi } from "@/lib/api-client";
 
+/** Mensagem de erro legível — mesmo padrão de `use-identity-verification-admin.ts`. */
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof Error && error.message ? error.message : fallback;
+}
 
 /**
  * Hooks de dados do módulo Veículos (visão cross-tenant do Admin Rotta) —
@@ -42,6 +52,32 @@ export function useUpdateVehicleStatus(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["vehicles", id] });
       void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+  });
+}
+
+/** Fila `/veiculos/revisao-categoria` (Frente AL) — só veículos com `categoriaRevisaoStatus = PENDENTE`. */
+export function useVehicleCategoryReviewList(params: ListVehicleCategoryReviewParams) {
+  return useQuery({
+    queryKey: ["vehicles", "revisao-categoria", params],
+    queryFn: () => vehiclesApi.listCategoryReview(params),
+  });
+}
+
+/** Confirma (sem `categoria`) ou corrige (com `categoria` diferente) a sugestão da IA. */
+export function useResolveVehicleCategoryReview(id: string) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (input: ResolveVehicleCategoryReviewInput) =>
+      vehiclesApi.resolveCategoryReview(id, input),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["vehicles", "revisao-categoria"] });
+      void queryClient.invalidateQueries({ queryKey: ["vehicles", id] });
+      toast.success(variables.categoria ? "Categoria corrigida." : "Sugestão da IA confirmada.");
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "Não foi possível registrar a revisão."), "Falha ao revisar");
     },
   });
 }

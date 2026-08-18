@@ -19,7 +19,6 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { VehicleDocumentType } from "@prisma/client";
 
-
 import { CreateVehicleAssignmentDto } from "./dto/create-vehicle-assignment.dto";
 import { CreateVehicleChecklistDto } from "./dto/create-vehicle-checklist.dto";
 import { CreateVehicleDocumentDto } from "./dto/create-vehicle-document.dto";
@@ -28,7 +27,9 @@ import { CreateVehicleOccurrenceDto } from "./dto/create-vehicle-occurrence.dto"
 import { CreateVehicleReminderDto } from "./dto/create-vehicle-reminder.dto";
 import { CreateVehicleDto } from "./dto/create-vehicle.dto";
 import { ExportVehiclesQueryDto } from "./dto/export-vehicles-query.dto";
+import { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
+import { ResolveVehicleCategoryReviewDto } from "./dto/resolve-vehicle-category-review.dto";
 import { UpdateVehicleLocationDto } from "./dto/update-vehicle-location.dto";
 import { UpdateVehicleReminderDto } from "./dto/update-vehicle-reminder.dto";
 import { UpdateVehicleStatusDto } from "./dto/update-vehicle-status.dto";
@@ -129,6 +130,18 @@ export class VehiclesController {
     return this.vehiclesService.lookupByPlate(placa);
   }
 
+  /**
+   * Fila de revisão de categoria sugerida pela IA (Frente AL — pedido do
+   * usuário: "os admins da Rotta irão analisar manualmente a
+   * situação"). Rota literal, antes de `:id` pelo mesmo motivo das
+   * demais acima.
+   */
+  @Get("revisao-categoria")
+  @Roles(Role.ADMIN_ROTTA)
+  listCategoryReview(@Query() query: ListVehicleCategoryReviewQueryDto) {
+    return this.vehiclesService.listCategoryReview(query);
+  }
+
   @Get(":id")
   @Roles(...READ_ROLES)
   findById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
@@ -166,6 +179,17 @@ export class VehiclesController {
     @Req() req: Request,
   ) {
     return this.vehiclesService.updateStatus(id, dto, actor, requestMeta(req));
+  }
+
+  @Patch(":id/revisao-categoria")
+  @Roles(Role.ADMIN_ROTTA)
+  resolveCategoryReview(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: ResolveVehicleCategoryReviewDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.vehiclesService.resolveCategoryReview(id, dto, actor, requestMeta(req));
   }
 
   @Patch(":id/location")

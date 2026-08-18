@@ -20,7 +20,7 @@ export const VEHICLE_TYPE_LABEL: Record<VehicleType, string> = {
 export const VEHICLE_CATEGORY_LABEL: Record<VehicleCategory, string> = {
   ESCOLAR: "Escolar",
   FRETAMENTO: "Fretamento",
-  PARTICULAR: "Particular",
+  EXECUTIVO: "Executivo",
   OUTRO: "Outro",
 };
 

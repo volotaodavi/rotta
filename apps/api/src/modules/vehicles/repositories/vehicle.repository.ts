@@ -1,4 +1,12 @@
-import type { Vehicle, VehicleCategory, VehicleStatus, VehicleType, Prisma } from "@prisma/client";
+import type {
+  Vehicle,
+  VehicleCategory,
+  VehicleCategoryOrigin,
+  VehicleCategoryReviewStatus,
+  VehicleStatus,
+  VehicleType,
+  Prisma,
+} from "@prisma/client";
 
 export interface CreateVehicleData {
   companyId: string;
@@ -12,6 +20,11 @@ export interface CreateVehicleData {
   capacidadePassageiros: number;
   tipo: VehicleType;
   categoria?: VehicleCategory;
+  /** Ver `VehiclesService.resolveCategoryFields` (Frente AL) — sempre preenchido junto com `categoria`. */
+  categoriaOrigem?: VehicleCategoryOrigin;
+  categoriaRevisaoStatus?: VehicleCategoryReviewStatus;
+  categoriaConfiancaIa?: number;
+  categoriaMotivoIa?: string;
   observacoes?: string;
 }
 
@@ -25,6 +38,13 @@ export interface UpdateVehicleData {
   capacidadePassageiros?: number;
   tipo?: VehicleType;
   categoria?: VehicleCategory;
+  /** Ver `VehiclesService.resolveCategoryFields`/`resolveCategoryReview` (Frente AL). */
+  categoriaOrigem?: VehicleCategoryOrigin;
+  categoriaRevisaoStatus?: VehicleCategoryReviewStatus;
+  categoriaConfiancaIa?: number | null;
+  categoriaMotivoIa?: string | null;
+  categoriaRevisadaPorId?: string | null;
+  categoriaRevisadaEm?: Date | null;
   observacoes?: string | null;
   fotoUrl?: string;
   status?: VehicleStatus;
@@ -73,4 +93,15 @@ export interface VehicleRepository {
   list(filter: ListVehiclesFilter): Promise<ListVehiclesResult>;
   /** Todos os veículos ativos do tenant, sem paginação — usado pelo Dashboard/Mapa/Exportação. */
   listAllActive(companyId: string): Promise<Vehicle[]>;
+  /**
+   * Fila `GET /vehicles/revisao-categoria` (Frente AL, Admin Rotta) —
+   * cross-tenant por natureza (o admin revisa a sugestão da IA de
+   * QUALQUER empresa), então a implementação faz bypass de RLS — mesmo
+   * motivo de `findByPlaca`.
+   */
+  listPendingCategoryReview(filter: {
+    companyId?: string;
+    page: number;
+    pageSize: number;
+  }): Promise<ListVehiclesResult>;
 }

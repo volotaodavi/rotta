@@ -39,14 +39,14 @@ export const VEHICLE_TYPE_LABEL: Record<VehicleType, string> = {
 export const VEHICLE_CATEGORY_LABEL: Record<VehicleCategory, string> = {
   ESCOLAR: "Transporte escolar",
   FRETAMENTO: "Fretamento",
-  PARTICULAR: "Particular",
+  EXECUTIVO: "Executivo",
   OUTRO: "Outro",
 };
 
 export const VEHICLE_CATEGORY_TONE: Record<VehicleCategory, StatusPillTone> = {
   ESCOLAR: "success",
   FRETAMENTO: "info",
-  PARTICULAR: "neutral",
+  EXECUTIVO: "neutral",
   OUTRO: "neutral",
 };
 

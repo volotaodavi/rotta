@@ -8,7 +8,7 @@ import { getLegalDocumentMeta } from "@/features/legal/documents";
 export const metadata: Metadata = {
   title: "Diretrizes para Motoristas e Modalidades de Transporte",
   description:
-    "Categoria da CNH, EAR, cursos e a diferença entre transporte escolar, fretamento e transporte particular na Rotta.",
+    "Categoria da CNH, EAR, cursos e a diferença entre transporte escolar, fretamento e transporte executivo na Rotta.",
   alternates: { canonical: "/legal/motoristas" },
 };
 
@@ -32,10 +32,13 @@ const TOC = [
  * Atualizado (achados C1/C2 da auditoria de consistência Legal↔Produto,
  * mesmo Dossiê 45): quando este documento foi escrito, o motor de
  * elegibilidade descrito na seção 5 ainda não existia e o texto usava
- * "executivo"/"executivo infantil" como nomes de modalidade — nenhum
- * dos dois nunca existiu no schema (`Vehicle.categoria` sempre foi
- * `ESCOLAR | FRETAMENTO | PARTICULAR | OUTRO`). As duas lacunas foram
- * fechadas: `computeSchoolTransportEligibility` (motor de elegibilidade
+ * "executivo infantil" como nome de modalidade — nunca existiu no
+ * schema. ("Executivo" em si passou a existir de fato depois (Frente
+ * AL): `Vehicle.categoria` era `ESCOLAR | FRETAMENTO | PARTICULAR |
+ * OUTRO`, e "particular" não fazia sentido numa plataforma B2B de
+ * transportadoras — foi renomeado para `EXECUTIVO`, mantendo os dados
+ * existentes; o texto abaixo já usa o nome atual.) As duas lacunas
+ * originais foram fechadas: `computeSchoolTransportEligibility` (motor de elegibilidade
  * real) agora roda de fato antes do Marketplace exibir qualquer selo de
  * transporte escolar como "verificado" (`escolarVerificado`, distinto
  * de `categoriasVeiculo` — a frota que a empresa apenas declarou), e o
@@ -59,7 +62,7 @@ export default function MotoristasPage(): JSX.Element {
         A Rotta trata como <strong>duas informações separadas</strong>, nunca uma sinônimo da outra:
         a <strong>categoria da CNH</strong> do motorista (B, D, E — o que a lei de trânsito atribui)
         e a <strong>modalidade de transporte</strong> anunciada na plataforma (transporte escolar,
-        fretamento, transporte particular). A categoria da CNH, isoladamente, <strong>nunca</strong>{" "}
+        fretamento, transporte executivo). A categoria da CNH, isoladamente, <strong>nunca</strong>{" "}
         determina sozinha a modalidade exibida.
       </LegalSection>
 
@@ -70,7 +73,7 @@ export default function MotoristasPage(): JSX.Element {
         </strong>
         . Na plataforma, um veículo cujo motorista vinculado tem CNH categoria B só pode estar
         declarado nas modalidades <strong>fretamento</strong> ou{" "}
-        <strong>transporte particular</strong> — nunca na modalidade transporte escolar. A presença
+        <strong>transporte executivo</strong> — nunca na modalidade transporte escolar. A presença
         de um motorista categoria B na Rotta não significa que o serviço contratado com ele seja
         transporte escolar — mesmo que esse motorista possua EAR (Exercício de Atividade Remunerada)
         ou um curso relacionado a transporte escolar (seção 4).
@@ -118,7 +121,7 @@ export default function MotoristasPage(): JSX.Element {
         pode aparecer com a frota declarada como escolar e, ainda assim, sem o selo verificado — a
         Rotta nunca rotula &ldquo;Transporte Escolar (verificado)&rdquo; com base só na categoria do
         veículo ou na categoria B da CNH. Os filtros de busca do Marketplace são organizados por
-        modalidade (transporte escolar, fretamento, transporte particular), não apenas por categoria
+        modalidade (transporte escolar, fretamento, transporte executivo), não apenas por categoria
         de habilitação. Antes de confirmar uma contratação com um motorista categoria B, a Rotta
         deixa explícito que a modalidade contratada não é apresentada como transporte escolar — ver{" "}
         <Link href="/legal/marketplace">Política de Contratação e Marketplace</Link>.

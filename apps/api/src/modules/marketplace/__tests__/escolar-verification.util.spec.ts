@@ -64,6 +64,12 @@ function buildVehicle(
     capacidadePassageiros: 20,
     tipo: "VAN",
     categoria: "ESCOLAR",
+    categoriaOrigem: "MANUAL",
+    categoriaRevisaoStatus: "NAO_REQUER",
+    categoriaConfiancaIa: null,
+    categoriaMotivoIa: null,
+    categoriaRevisadaPorId: null,
+    categoriaRevisadaEm: null,
     observacoes: null,
     fotoUrl: null,
     status: "DISPONIVEL",
@@ -88,7 +94,7 @@ describe("computeEscolarVerificado (Dossiê 45 — achado C1 da auditoria Legal�
   });
 
   it("retorna false quando a frota não tem nenhum veículo ESCOLAR (só declarado, não é o caso)", () => {
-    expect(computeEscolarVerificado([buildVehicle({ categoria: "PARTICULAR" })])).toBe(false);
+    expect(computeEscolarVerificado([buildVehicle({ categoria: "EXECUTIVO" })])).toBe(false);
   });
 
   it("retorna false quando o veículo é ESCOLAR mas não tem motorista vinculado (`ultimoMotoristaId` null)", () => {

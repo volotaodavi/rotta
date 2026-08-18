@@ -94,7 +94,7 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     href: "/legal/motoristas",
     titulo: "Diretrizes para Motoristas e Modalidades de Transporte",
     resumo:
-      "Categoria da CNH, EAR, cursos e a diferença entre transporte escolar, fretamento e transporte particular.",
+      "Categoria da CNH, EAR, cursos e a diferença entre transporte escolar, fretamento e transporte executivo.",
     versao: "1.1",
     publicadoEm: "11/08/2026",
     atualizadoEm: "11/08/2026",
@@ -105,7 +105,7 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
       "ear",
       "transporte escolar",
       "fretamento",
-      "transporte particular",
+      "transporte executivo",
       "curso",
       "categoria d",
       "categoria e",

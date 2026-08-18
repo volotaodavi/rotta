@@ -41,7 +41,7 @@ export const AUDIT_CHECKLIST: AuditItem[] = [
     documentoTitulo: "Diretrizes para Motoristas e Modalidades",
     documentoCaminho: "/legal/motoristas#categoria-b",
     alegacaoLegal:
-      "Categoria B não é apresentada pela Rotta como categoria oficial para transporte escolar — só fretamento ou particular.",
+      "Categoria B não é apresentada pela Rotta como categoria oficial para transporte escolar — só fretamento ou executivo.",
     comportamentoReal:
       "computeSchoolTransportEligibility só considera ELEGÍVEL motorista com CNH D/E + EAR + curso + antecedentes; categoria B nunca passa nesse motor.",
     status: "CONSISTENTE",

@@ -24,6 +24,7 @@ import type {
   VehicleStatus,
 } from "@rotta/api-client";
 
+import { VehicleCategoryReviewBadges } from "@/features/vehicles/components/vehicle-category-review-badges";
 import { VehicleDocumentAiStatusBadge } from "@/features/vehicles/components/vehicle-document-ai-status-badge";
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import {
@@ -54,7 +55,6 @@ import {
   VEHICLE_REMINDER_TYPE_LABEL,
   VEHICLE_TYPE_LABEL,
 } from "@/features/vehicles/labels";
-
 
 const TABS = [
   { id: "dados", label: "Dados" },
@@ -227,18 +227,21 @@ function DadosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
               </Select>
             </FormField>
             <FormField label="Categoria">
-              <Select
-                value={form.categoria}
-                onChange={(event) =>
-                  updateField("categoria", event.target.value as UpdateVehicleInput["categoria"])
-                }
-              >
-                {Object.entries(VEHICLE_CATEGORY_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
+              <div className="flex flex-col gap-2">
+                <Select
+                  value={form.categoria}
+                  onChange={(event) =>
+                    updateField("categoria", event.target.value as UpdateVehicleInput["categoria"])
+                  }
+                >
+                  {Object.entries(VEHICLE_CATEGORY_LABEL).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+                <VehicleCategoryReviewBadges vehicle={vehicle} />
+              </div>
             </FormField>
             <FormField label="Capacidade de passageiros" isRequired>
               <Input

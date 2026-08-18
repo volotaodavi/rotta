@@ -107,7 +107,7 @@ export default function TermosPage(): JSX.Element {
         presta, quem paga, e as responsabilidades de cada parte) é detalhada na{" "}
         <Link href="/legal/marketplace">Política de Contratação e Marketplace</Link>. Quando a
         contratação envolver um motorista/veículo, as categorias de habilitação e as modalidades de
-        transporte disponíveis (escolar, fretamento, particular) seguem as{" "}
+        transporte disponíveis (escolar, fretamento, executivo) seguem as{" "}
         <Link href="/legal/motoristas">Diretrizes para Motoristas e Modalidades de Transporte</Link>{" "}
         — em especial, a categoria B da CNH não é apresentada pela Rotta como transporte escolar
         oficial.

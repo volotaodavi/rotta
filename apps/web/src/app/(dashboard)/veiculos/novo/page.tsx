@@ -9,8 +9,18 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { CreateVehicleInput } from "@rotta/api-client";
 
 import { useCreateVehicle, useLookupVehicleByPlate } from "@/features/vehicles/hooks/use-vehicles";
-import { VEHICLE_CATEGORY_LABEL, VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
+import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 
+/**
+ * `categoria` fica de fora de propósito (Frente AL — pedido do usuário:
+ * "é muito chato ter que colocar se o carro é fretamento, particular ou
+ * escolar... a IA faça a análise e coloque a categoria automaticamente").
+ * Sem o campo no formulário, o backend roda `VehicleCategoryClassifierService`
+ * sozinho a partir de `tipo`/`capacidadePassageiros` assim que o veículo é
+ * criado — a categoria sugerida (e um eventual "requer verificação")
+ * aparece na tela de detalhe, onde continua editável manualmente a
+ * qualquer momento.
+ */
 const INITIAL_STATE: CreateVehicleInput = {
   placa: "",
   modelo: "",
@@ -18,7 +28,6 @@ const INITIAL_STATE: CreateVehicleInput = {
   cor: "",
   capacidadePassageiros: 16,
   tipo: "VAN",
-  categoria: "ESCOLAR",
   observacoes: "",
 };
 
@@ -178,20 +187,13 @@ export default function NovoVeiculoPage(): JSX.Element {
                 ))}
               </Select>
             </FormField>
-            <FormField label="Categoria">
-              <Select
-                value={form.categoria}
-                onChange={(event) =>
-                  updateField("categoria", event.target.value as CreateVehicleInput["categoria"])
-                }
-              >
-                {Object.entries(VEHICLE_CATEGORY_LABEL).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+            <div className="sm:col-span-2">
+              <Typography variant="bodySmall" color="muted">
+                A categoria (Escolar, Fretamento ou Executivo) é sugerida automaticamente depois do
+                cadastro, a partir do tipo e da capacidade do veículo — dá pra conferir e trocar a
+                qualquer momento na página do veículo.
+              </Typography>
+            </div>
             <FormField
               label="Capacidade de passageiros"
               isRequired

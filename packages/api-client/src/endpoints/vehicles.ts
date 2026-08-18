@@ -11,7 +11,12 @@ import type { ApiClient } from "../http";
 
 export type VehicleType =
   "AUTOMOVEL" | "SEDAN" | "SUV" | "MINIVAN" | "VAN" | "MICRO_ONIBUS" | "ONIBUS" | "OUTRO";
-export type VehicleCategory = "ESCOLAR" | "FRETAMENTO" | "PARTICULAR" | "OUTRO";
+/** "Particular" virou "Executivo" (Frente AL — plataforma B2B de transportadoras, "particular" não fazia sentido). */
+export type VehicleCategory = "ESCOLAR" | "FRETAMENTO" | "EXECUTIVO" | "OUTRO";
+/** Frente AL — se a categoria veio de escolha manual da empresa ou de sugestão automática da IA. */
+export type VehicleCategoryOrigin = "MANUAL" | "IA";
+/** Frente AL — `PENDENTE` quando a confiança da IA foi baixa e aguarda revisão de um Admin Rotta. */
+export type VehicleCategoryReviewStatus = "NAO_REQUER" | "PENDENTE" | "CONFIRMADA" | "CORRIGIDA";
 export type VehicleStatus =
   "DISPONIVEL" | "EM_VIAGEM" | "MANUTENCAO" | "RESERVA" | "INATIVO" | "BLOQUEADO";
 export type VehicleDocumentType =
@@ -62,6 +67,15 @@ export interface Vehicle {
   capacidadePassageiros: number;
   tipo: VehicleType;
   categoria: VehicleCategory;
+  /** Frente AL — "sugerida pela IA" vs. escolhida à mão. */
+  categoriaOrigem: VehicleCategoryOrigin;
+  /** Frente AL — `PENDENTE` mostra o chip "Requer verificação" na tela de detalhe. */
+  categoriaRevisaoStatus: VehicleCategoryReviewStatus;
+  /** 0-100 — só preenchido quando `categoriaOrigem === "IA"`. */
+  categoriaConfiancaIa: number | null;
+  categoriaMotivoIa: string | null;
+  categoriaRevisadaPorId: string | null;
+  categoriaRevisadaEm: string | null;
   observacoes: string | null;
   fotoUrl: string | null;
   status: VehicleStatus;
@@ -263,6 +277,18 @@ export interface ListVehicleAuditLogsResult {
   pageSize: number;
 }
 
+/** `GET /vehicles/revisao-categoria` (Frente AL, Admin Rotta). */
+export interface ListVehicleCategoryReviewParams {
+  companyId?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+/** `PATCH /vehicles/:id/revisao-categoria` — sem `categoria`, confirma a sugestão da IA; com uma diferente, corrige. */
+export interface ResolveVehicleCategoryReviewInput {
+  categoria?: VehicleCategory;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -307,6 +333,33 @@ export function createVehiclesEndpoints(apiClient: ApiClient) {
         await apiClient.request<ApiEnvelope<VehiclePlateLookupResult>>(
           `/vehicles/plate-lookup/${encodeURIComponent(placa)}`,
         )
+      ).data,
+
+    /**
+     * Fila de revisão de categoria sugerida pela IA (Frente AL, Admin
+     * Rotta) — rota literal, chame ANTES de `getById` na navegação (ver
+     * nota de `vehicles.controller.ts` no backend sobre por que a rota
+     * é declarada antes de `:id`).
+     */
+    listCategoryReview: async (
+      params: ListVehicleCategoryReviewParams = {},
+    ): Promise<ListVehiclesResult> =>
+      (
+        await apiClient.request<ApiEnvelope<ListVehiclesResult>>(
+          `/vehicles/revisao-categoria${buildQueryString(params)}`,
+        )
+      ).data,
+
+    /** Sem `categoria` confirma a sugestão da IA; com uma diferente, corrige. */
+    resolveCategoryReview: async (
+      id: string,
+      input: ResolveVehicleCategoryReviewInput = {},
+    ): Promise<Vehicle> =>
+      (
+        await apiClient.request<ApiEnvelope<Vehicle>>(`/vehicles/${id}/revisao-categoria`, {
+          method: "PATCH",
+          body: input,
+        })
       ).data,
 
     getById: async (id: string): Promise<Vehicle> =>

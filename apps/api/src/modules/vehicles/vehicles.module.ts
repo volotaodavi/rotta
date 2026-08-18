@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { PrismaVehicleAssignmentRepository } from "./repositories/prisma-vehicle-assignment.repository";
 import { PrismaVehicleChecklistRepository } from "./repositories/prisma-vehicle-checklist.repository";
 import { PrismaVehicleDocumentRepository } from "./repositories/prisma-vehicle-document.repository";
@@ -8,6 +7,7 @@ import { PrismaVehicleMaintenanceRepository } from "./repositories/prisma-vehicl
 import { PrismaVehicleOccurrenceRepository } from "./repositories/prisma-vehicle-occurrence.repository";
 import { PrismaVehicleReminderRepository } from "./repositories/prisma-vehicle-reminder.repository";
 import { PrismaVehicleRepository } from "./repositories/prisma-vehicle.repository";
+import { VehicleCategoryClassifierService } from "./vehicle-category-classifier.service";
 import { VehiclePlateLookupService } from "./vehicle-plate-lookup.service";
 import {
   VEHICLE_ASSIGNMENT_REPOSITORY,
@@ -50,6 +50,11 @@ import { UsersModule } from "@/modules/users/users.module";
  * detrans, para a análise ser rápida") — provider próprio, sem imports
  * extra (só `ConfigService`, já global). Ver a nota completa no
  * arquivo dele sobre por que não existe uma API oficial gratuita.
+ *
+ * `VehicleCategoryClassifierService` (Frente AL — "a IA faça a análise
+ * e coloque a categoria do veículo automaticamente") — também sem
+ * imports extra: determinístico, sem config, sem chamada externa. Ver
+ * a nota completa no arquivo dele.
  */
 @Module({
   imports: [UsersModule, AuditModule, StorageModule, RottaAiModule],
@@ -57,6 +62,7 @@ import { UsersModule } from "@/modules/users/users.module";
   providers: [
     VehiclesService,
     VehiclePlateLookupService,
+    VehicleCategoryClassifierService,
     { provide: VEHICLE_REPOSITORY, useClass: PrismaVehicleRepository },
     { provide: VEHICLE_DOCUMENT_REPOSITORY, useClass: PrismaVehicleDocumentRepository },
     { provide: VEHICLE_MAINTENANCE_REPOSITORY, useClass: PrismaVehicleMaintenanceRepository },

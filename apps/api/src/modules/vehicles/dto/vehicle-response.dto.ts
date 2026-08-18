@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { VehicleCategory, VehicleStatus, VehicleType } from "@prisma/client";
+import {
+  VehicleCategory,
+  VehicleCategoryOrigin,
+  VehicleCategoryReviewStatus,
+  VehicleStatus,
+  VehicleType,
+} from "@prisma/client";
 
 /** Forma de resposta pública de `Vehicle` (briefing "CADASTUR"/"STATUS"/"LOCALIZAÇÃO"). */
 export class VehicleResponseDto {
@@ -15,6 +21,23 @@ export class VehicleResponseDto {
   @ApiProperty() capacidadePassageiros!: number;
   @ApiProperty({ enum: VehicleType }) tipo!: VehicleType;
   @ApiProperty({ enum: VehicleCategory }) categoria!: VehicleCategory;
+  @ApiProperty({
+    enum: VehicleCategoryOrigin,
+    description:
+      "Se a categoria veio de escolha manual da empresa ou de sugestão da IA (Frente AL)",
+  })
+  categoriaOrigem!: VehicleCategoryOrigin;
+  @ApiProperty({
+    enum: VehicleCategoryReviewStatus,
+    description: "PENDENTE quando a confiança da IA foi baixa e aguarda revisão de um Admin Rotta",
+  })
+  categoriaRevisaoStatus!: VehicleCategoryReviewStatus;
+  @ApiPropertyOptional({ description: "0-100 — só preenchido quando categoriaOrigem = IA" })
+  categoriaConfiancaIa?: number | null;
+  @ApiPropertyOptional({ description: "Motivo legível da sugestão da IA" })
+  categoriaMotivoIa?: string | null;
+  @ApiPropertyOptional() categoriaRevisadaPorId?: string | null;
+  @ApiPropertyOptional() categoriaRevisadaEm?: Date | null;
   @ApiPropertyOptional() observacoes?: string | null;
   @ApiPropertyOptional() fotoUrl?: string | null;
   @ApiProperty({ enum: VehicleStatus }) status!: VehicleStatus;

@@ -1,7 +1,14 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
-import { VehicleAssignmentRole, VehicleCategory, VehicleStatus, VehicleType } from "@prisma/client";
+import {
+  VehicleAssignmentRole,
+  VehicleCategory,
+  VehicleCategoryOrigin,
+  VehicleCategoryReviewStatus,
+  VehicleStatus,
+  VehicleType,
+} from "@prisma/client";
 
-
+import { VehicleCategoryClassifierService } from "../vehicle-category-classifier.service";
 import { VehiclesService } from "../vehicles.service";
 
 import type { CreateVehicleDto } from "../dto/create-vehicle.dto";
@@ -36,6 +43,12 @@ function buildVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     capacidadePassageiros: 16,
     tipo: VehicleType.VAN,
     categoria: VehicleCategory.ESCOLAR,
+    categoriaOrigem: VehicleCategoryOrigin.MANUAL,
+    categoriaRevisaoStatus: VehicleCategoryReviewStatus.NAO_REQUER,
+    categoriaConfiancaIa: null,
+    categoriaMotivoIa: null,
+    categoriaRevisadaPorId: null,
+    categoriaRevisadaEm: null,
     observacoes: null,
     fotoUrl: null,
     status: VehicleStatus.DISPONIVEL,
@@ -134,6 +147,7 @@ describe("VehiclesService", () => {
       update: jest.fn(),
       list: jest.fn(),
       listAllActive: jest.fn(),
+      listPendingCategoryReview: jest.fn(),
     };
     documentRepository = {
       create: jest.fn(),
@@ -195,6 +209,7 @@ describe("VehiclesService", () => {
       storageService,
       rottaAiService,
       plateLookupService,
+      new VehicleCategoryClassifierService(),
     );
 
     vehicleRepository.findByPlaca.mockResolvedValue(null);
@@ -224,6 +239,64 @@ describe("VehiclesService", () => {
       );
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ acao: "CREATED", entidadeTipo: "Vehicle" }),
+      );
+    });
+
+    it("Frente AL: sem `categoria` no DTO, deixa a IA decidir (origem IA)", async () => {
+      vehicleRepository.create.mockResolvedValue(buildVehicle());
+
+      await service.create(
+        buildCreateDto({ tipo: VehicleType.SEDAN, capacidadePassageiros: 5 }),
+        empresaActor,
+        {},
+      );
+
+      expect(vehicleRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoria: VehicleCategory.EXECUTIVO,
+          categoriaOrigem: VehicleCategoryOrigin.IA,
+          categoriaRevisaoStatus: VehicleCategoryReviewStatus.NAO_REQUER,
+          categoriaConfiancaIa: expect.any(Number),
+          categoriaMotivoIa: expect.any(String),
+        }),
+      );
+    });
+
+    it("Frente AL: confiança baixa da IA marca revisão pendente, sem bloquear a criação", async () => {
+      vehicleRepository.create.mockResolvedValue(buildVehicle());
+
+      await service.create(
+        buildCreateDto({ tipo: VehicleType.VAN, capacidadePassageiros: 16 }),
+        empresaActor,
+        {},
+      );
+
+      expect(vehicleRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoria: VehicleCategory.ESCOLAR,
+          categoriaOrigem: VehicleCategoryOrigin.IA,
+          categoriaRevisaoStatus: VehicleCategoryReviewStatus.PENDENTE,
+        }),
+      );
+    });
+
+    it("Frente AL: categoria escolhida manualmente vira origem MANUAL, sem revisão", async () => {
+      vehicleRepository.create.mockResolvedValue(buildVehicle());
+
+      await service.create(
+        buildCreateDto({ tipo: VehicleType.VAN, categoria: VehicleCategory.FRETAMENTO }),
+        empresaActor,
+        {},
+      );
+
+      expect(vehicleRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          categoria: VehicleCategory.FRETAMENTO,
+          categoriaOrigem: VehicleCategoryOrigin.MANUAL,
+          categoriaRevisaoStatus: VehicleCategoryReviewStatus.NAO_REQUER,
+          categoriaConfiancaIa: undefined,
+          categoriaMotivoIa: undefined,
+        }),
       );
     });
   });
@@ -299,6 +372,110 @@ describe("VehiclesService", () => {
       vehicleRepository.findById.mockResolvedValue(existing);
       await service.update("vehicle-1", {}, empresaActor, {});
       expect(vehicleRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("Frente AL: escolher categoria manualmente encerra a revisão pendente da IA", async () => {
+      const existing = buildVehicle({
+        categoriaOrigem: VehicleCategoryOrigin.IA,
+        categoriaRevisaoStatus: VehicleCategoryReviewStatus.PENDENTE,
+        categoriaConfiancaIa: 65,
+        categoriaMotivoIa: "sugestão antiga da IA",
+      });
+      vehicleRepository.findById.mockResolvedValue(existing);
+      vehicleRepository.update.mockResolvedValue(existing);
+
+      await service.update("vehicle-1", { categoria: VehicleCategory.EXECUTIVO }, empresaActor, {});
+
+      expect(vehicleRepository.update).toHaveBeenCalledWith(
+        "vehicle-1",
+        expect.objectContaining({
+          categoria: VehicleCategory.EXECUTIVO,
+          categoriaOrigem: VehicleCategoryOrigin.MANUAL,
+          categoriaRevisaoStatus: VehicleCategoryReviewStatus.NAO_REQUER,
+          categoriaConfiancaIa: null,
+          categoriaMotivoIa: null,
+        }),
+      );
+    });
+  });
+
+  describe("revisão de categoria (Frente AL, Admin Rotta)", () => {
+    it("listCategoryReview delega ao repositório com a paginação informada", async () => {
+      vehicleRepository.listPendingCategoryReview.mockResolvedValue({
+        items: [buildVehicle({ categoriaRevisaoStatus: VehicleCategoryReviewStatus.PENDENTE })],
+        total: 1,
+      });
+
+      const result = await service.listCategoryReview({ page: 2, pageSize: 10 });
+
+      expect(vehicleRepository.listPendingCategoryReview).toHaveBeenCalledWith({
+        companyId: undefined,
+        page: 2,
+        pageSize: 10,
+      });
+      expect(result.total).toBe(1);
+    });
+
+    it("rejeita revisar um veículo que não está PENDENTE", async () => {
+      vehicleRepository.findById.mockResolvedValue(
+        buildVehicle({ categoriaRevisaoStatus: VehicleCategoryReviewStatus.NAO_REQUER }),
+      );
+
+      await expect(service.resolveCategoryReview("vehicle-1", {}, adminActor, {})).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(vehicleRepository.update).not.toHaveBeenCalled();
+    });
+
+    it("sem `categoria` no corpo, confirma a sugestão da IA", async () => {
+      const existing = buildVehicle({
+        categoria: VehicleCategory.ESCOLAR,
+        categoriaRevisaoStatus: VehicleCategoryReviewStatus.PENDENTE,
+      });
+      vehicleRepository.findById.mockResolvedValue(existing);
+      vehicleRepository.update.mockResolvedValue(existing);
+
+      await service.resolveCategoryReview("vehicle-1", {}, adminActor, {});
+
+      expect(vehicleRepository.update).toHaveBeenCalledWith(
+        "vehicle-1",
+        expect.objectContaining({
+          categoriaRevisaoStatus: VehicleCategoryReviewStatus.CONFIRMADA,
+          categoriaRevisadaPorId: "admin-1",
+        }),
+      );
+      expect(vehicleRepository.update).toHaveBeenCalledWith(
+        "vehicle-1",
+        expect.not.objectContaining({ categoria: expect.anything() }),
+      );
+    });
+
+    it("com uma `categoria` diferente, corrige a sugestão da IA", async () => {
+      const existing = buildVehicle({
+        categoria: VehicleCategory.ESCOLAR,
+        categoriaRevisaoStatus: VehicleCategoryReviewStatus.PENDENTE,
+      });
+      vehicleRepository.findById.mockResolvedValue(existing);
+      vehicleRepository.update.mockResolvedValue({
+        ...existing,
+        categoria: VehicleCategory.EXECUTIVO,
+      });
+
+      await service.resolveCategoryReview(
+        "vehicle-1",
+        { categoria: VehicleCategory.EXECUTIVO },
+        adminActor,
+        {},
+      );
+
+      expect(vehicleRepository.update).toHaveBeenCalledWith(
+        "vehicle-1",
+        expect.objectContaining({
+          categoria: VehicleCategory.EXECUTIVO,
+          categoriaRevisaoStatus: VehicleCategoryReviewStatus.CORRIGIDA,
+          categoriaRevisadaPorId: "admin-1",
+        }),
+      );
     });
   });
 

@@ -10,13 +10,15 @@ import {
 } from "@nestjs/common";
 import {
   VehicleAssignmentRole,
+  VehicleCategoryOrigin,
+  VehicleCategoryReviewStatus,
   VehicleReminderType,
+  type VehicleCategory,
   type VehicleDocumentType,
   Vehicle,
   VehicleType,
 } from "@prisma/client";
 import { isValidPlate, normalizePlate } from "@rotta/validators";
-
 
 import { toVehicleAssignmentResponseDto } from "./mappers/vehicle-assignment.mapper";
 import {
@@ -37,6 +39,10 @@ import {
   toVehicleReminderResponseDto,
 } from "./mappers/vehicle-reminder.mapper";
 import { toListVehiclesResponseDto, toVehicleResponseDto } from "./mappers/vehicle.mapper";
+import {
+  VEHICLE_CATEGORY_CONFIDENCE_THRESHOLD,
+  VehicleCategoryClassifierService,
+} from "./vehicle-category-classifier.service";
 import { vehiclesToCsv, vehiclesToExcelBuffer, vehiclesToPdfBuffer } from "./vehicle-export.util";
 import { VehiclePlateLookupService } from "./vehicle-plate-lookup.service";
 import {
@@ -56,7 +62,9 @@ import type { CreateVehicleMaintenanceDto } from "./dto/create-vehicle-maintenan
 import type { CreateVehicleOccurrenceDto } from "./dto/create-vehicle-occurrence.dto";
 import type { CreateVehicleReminderDto } from "./dto/create-vehicle-reminder.dto";
 import type { CreateVehicleDto } from "./dto/create-vehicle.dto";
+import type { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import type { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
+import type { ResolveVehicleCategoryReviewDto } from "./dto/resolve-vehicle-category-review.dto";
 import type { UpdateVehicleLocationDto } from "./dto/update-vehicle-location.dto";
 import type { UpdateVehicleReminderDto } from "./dto/update-vehicle-reminder.dto";
 import type { UpdateVehicleStatusDto } from "./dto/update-vehicle-status.dto";
@@ -161,6 +169,7 @@ export class VehiclesService {
     private readonly storageService: SupabaseStorageService,
     private readonly rottaAiService: RottaAiService,
     private readonly plateLookupService: VehiclePlateLookupService,
+    private readonly categoryClassifier: VehicleCategoryClassifierService,
   ) {}
 
   /**
@@ -205,6 +214,53 @@ export class VehiclesService {
         `Capacidade de passageiros para o tipo ${tipo} deve estar entre ${min} e ${max}.`,
       );
     }
+  }
+
+  /**
+   * Frente AL — "é muito chato ter que colocar se o carro é fretamento,
+   * particular ou escolar". Quando a empresa NÃO escolhe `categoria` no
+   * cadastro (ou na edição), o agente `VehicleCategoryClassifierService`
+   * decide sozinho a partir de `tipo`/`capacidadePassageiros`
+   * (`categoriaOrigem: IA`); confiança abaixo do limiar marca
+   * `categoriaRevisaoStatus: PENDENTE`, mas o veículo já fica pronto
+   * pra uso com a categoria sugerida — "o usuário da Rotta pode
+   * continuar usando a plataforma do jeito que foi cadastrado e
+   * autorgado pela IA", sem travar em nenhum momento. Quando a empresa
+   * ESCOLHE a categoria manualmente (continua possível — "pode deixar
+   * como opção"), a origem é `MANUAL` e não há nada pra revisar.
+   */
+  private resolveCategoryFields(
+    tipo: VehicleType,
+    capacidadePassageiros: number,
+    categoriaEscolhida: VehicleCategory | undefined,
+  ): {
+    categoria: VehicleCategory;
+    categoriaOrigem: VehicleCategoryOrigin;
+    categoriaRevisaoStatus: VehicleCategoryReviewStatus;
+    categoriaConfiancaIa: number | null;
+    categoriaMotivoIa: string | null;
+  } {
+    if (categoriaEscolhida !== undefined) {
+      return {
+        categoria: categoriaEscolhida,
+        categoriaOrigem: VehicleCategoryOrigin.MANUAL,
+        categoriaRevisaoStatus: VehicleCategoryReviewStatus.NAO_REQUER,
+        categoriaConfiancaIa: null,
+        categoriaMotivoIa: null,
+      };
+    }
+
+    const classification = this.categoryClassifier.classify(tipo, capacidadePassageiros);
+    return {
+      categoria: classification.categoria,
+      categoriaOrigem: VehicleCategoryOrigin.IA,
+      categoriaRevisaoStatus:
+        classification.confianca < VEHICLE_CATEGORY_CONFIDENCE_THRESHOLD
+          ? VehicleCategoryReviewStatus.PENDENTE
+          : VehicleCategoryReviewStatus.NAO_REQUER,
+      categoriaConfiancaIa: classification.confianca,
+      categoriaMotivoIa: classification.motivo,
+    };
   }
 
   /** Auditoria é sempre best-effort — mesma justificativa de `CompaniesService.recordAudit`. */
@@ -266,6 +322,12 @@ export class VehiclesService {
       throw new ConflictException("Já existe um veículo cadastrado com esta placa.");
     }
 
+    const categoryFields = this.resolveCategoryFields(
+      dto.tipo,
+      dto.capacidadePassageiros,
+      dto.categoria,
+    );
+
     // `actor.tenantId` nunca é nulo aqui — `@Roles(EMPRESA, GESTOR)` no
     // controller já exclui `ADMIN_ROTTA` (que não tem tenant próprio).
     const vehicle = await this.vehicleRepository.create({
@@ -279,7 +341,11 @@ export class VehiclesService {
       chassi: dto.chassi,
       capacidadePassageiros: dto.capacidadePassageiros,
       tipo: dto.tipo,
-      categoria: dto.categoria,
+      categoria: categoryFields.categoria,
+      categoriaOrigem: categoryFields.categoriaOrigem,
+      categoriaRevisaoStatus: categoryFields.categoriaRevisaoStatus,
+      categoriaConfiancaIa: categoryFields.categoriaConfiancaIa ?? undefined,
+      categoriaMotivoIa: categoryFields.categoriaMotivoIa ?? undefined,
       observacoes: dto.observacoes,
     });
 
@@ -349,7 +415,23 @@ export class VehiclesService {
       this.assertValidCapacity(effectiveTipo, effectiveCapacidade);
     }
 
-    const updated = await this.vehicleRepository.update(id, dto);
+    // Escolher `categoria` manualmente na edição encerra qualquer
+    // revisão pendente da IA (mesma regra do cadastro — ver
+    // `resolveCategoryFields`): nunca deixa uma sugestão/confiança
+    // antiga pendurada numa categoria que a empresa já corrigiu à mão.
+    const categoryOverride =
+      dto.categoria !== undefined
+        ? {
+            categoriaOrigem: VehicleCategoryOrigin.MANUAL,
+            categoriaRevisaoStatus: VehicleCategoryReviewStatus.NAO_REQUER,
+            categoriaConfiancaIa: null,
+            categoriaMotivoIa: null,
+            categoriaRevisadaPorId: null,
+            categoriaRevisadaEm: null,
+          }
+        : {};
+
+    const updated = await this.vehicleRepository.update(id, { ...dto, ...categoryOverride });
 
     await this.recordAudit({
       companyId: existing.companyId,
@@ -1100,5 +1182,65 @@ export class VehiclesService {
       contentType: "application/pdf",
       filename: "veiculos.pdf",
     };
+  }
+
+  // ---------------------------------------------------------------------
+  // Revisão de categoria sugerida pela IA (Frente AL — "os admins da
+  // Rotta irão analisar manualmente a situação")
+  // ---------------------------------------------------------------------
+
+  /** `GET /vehicles/revisao-categoria` — só Admin Rotta, cross-tenant por natureza (ver `VehicleRepository.listPendingCategoryReview`). */
+  async listCategoryReview(
+    query: ListVehicleCategoryReviewQueryDto,
+  ): Promise<ListVehiclesResponseDto> {
+    const result = await this.vehicleRepository.listPendingCategoryReview({
+      companyId: query.companyId,
+      page: query.page,
+      pageSize: query.pageSize,
+    });
+    return toListVehiclesResponseDto(result, query.page, query.pageSize);
+  }
+
+  /**
+   * `PATCH /vehicles/:id/revisao-categoria` — sem `categoria` no corpo
+   * confirma a sugestão da IA; com uma `categoria` diferente, corrige.
+   * Nunca aplicável a um veículo que não está `PENDENTE` (evita um
+   * admin "confirmar" duas vezes ou revisar algo que a própria empresa
+   * já corrigiu manualmente entretanto).
+   */
+  async resolveCategoryReview(
+    id: string,
+    dto: ResolveVehicleCategoryReviewDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<VehicleResponseDto> {
+    const existing = await this.fetchOrThrow(id, actor);
+    if (existing.categoriaRevisaoStatus !== VehicleCategoryReviewStatus.PENDENTE) {
+      throw new BadRequestException("Este veículo não está aguardando revisão de categoria.");
+    }
+
+    const corrigiu = dto.categoria !== undefined && dto.categoria !== existing.categoria;
+    const updated = await this.vehicleRepository.update(id, {
+      ...(corrigiu ? { categoria: dto.categoria } : {}),
+      categoriaRevisaoStatus: corrigiu
+        ? VehicleCategoryReviewStatus.CORRIGIDA
+        : VehicleCategoryReviewStatus.CONFIRMADA,
+      categoriaRevisadaPorId: actor.sub,
+      categoriaRevisadaEm: new Date(),
+    });
+
+    await this.recordAudit({
+      companyId: existing.companyId,
+      entidadeTipo: "Vehicle",
+      entidadeId: id,
+      acao: corrigiu ? "CATEGORY_REVIEW_CORRECTED" : "CATEGORY_REVIEW_CONFIRMED",
+      atorUserId: actor.sub,
+      dadosAntes: { categoria: existing.categoria },
+      dadosDepois: { categoria: updated.categoria },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toVehicleResponseDto(updated);
   }
 }

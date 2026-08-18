@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CreateVehicleData,
   ListVehiclesFilter,
@@ -88,5 +87,33 @@ export class PrismaVehicleRepository implements VehicleRepository {
     return this.prisma.withTenant(
       this.prisma.vehicle.findMany({ where: { companyId, deletedAt: null } }),
     );
+  }
+
+  async listPendingCategoryReview(filter: {
+    companyId?: string;
+    page: number;
+    pageSize: number;
+  }): Promise<ListVehiclesResult> {
+    const where: Prisma.VehicleWhereInput = {
+      deletedAt: null,
+      categoriaRevisaoStatus: "PENDENTE",
+      ...(filter.companyId ? { companyId: filter.companyId } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.withBypass(
+        this.prisma.vehicle.findMany({
+          where,
+          // Mais antigo primeiro — o veículo esperando revisão há mais
+          // tempo aparece no topo da fila do Admin Rotta.
+          orderBy: { createdAt: "asc" },
+          skip: (filter.page - 1) * filter.pageSize,
+          take: filter.pageSize,
+        }),
+      ),
+      this.prisma.withBypass(this.prisma.vehicle.count({ where })),
+    ]);
+
+    return { items, total };
   }
 }

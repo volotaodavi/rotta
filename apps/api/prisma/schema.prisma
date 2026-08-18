@@ -113,12 +113,40 @@ enum VehicleType {
 
 /// Finalidade de uso do veículo — separado de `VehicleType` (que é a
 /// carroceria) porque um mesmo tipo (ex. Van) pode operar tanto
-/// transporte escolar quanto fretamento avulso.
+/// transporte escolar quanto fretamento avulso. `PARTICULAR` foi
+/// renomeado para `EXECUTIVO` (pedido do usuário — "particular" não faz
+/// sentido numa plataforma B2B de transportadoras; nenhuma regra de
+/// negócio discriminava esse valor especificamente, só
+/// `categoria === "ESCOLAR"` em todo o backend, então o rename é seguro
+/// — ver migration `rename_vehicle_category_particular_to_executivo`).
 enum VehicleCategory {
   ESCOLAR
   FRETAMENTO
-  PARTICULAR
+  EXECUTIVO
   OUTRO
+}
+
+/// Quem definiu a `Vehicle.categoria` atual — Frente AL (agente de
+/// categorização automática): `MANUAL` quando a transportadora escolheu
+/// explicitamente, `IA` quando o `VehicleCategoryClassifierService`
+/// (determinístico, sem provedor externo) inferiu a partir de
+/// tipo+capacidade.
+enum VehicleCategoryOrigin {
+  MANUAL
+  IA
+}
+
+/// Status de revisão humana da categoria sugerida pela IA — mesmo
+/// espírito de `SchoolCoordinateStatus`/`IdentityVerificationStatus`
+/// (a plataforma segue usando normalmente enquanto pendente, nunca
+/// bloqueia). `NAO_REQUER`: categoria manual OU IA com confiança alta.
+/// `PENDENTE`: IA com confiança baixa, aguardando Admin Rotta.
+/// `CONFIRMADA`/`CORRIGIDA`: Admin Rotta já decidiu.
+enum VehicleCategoryReviewStatus {
+  NAO_REQUER
+  PENDENTE
+  CONFIRMADA
+  CORRIGIDA
 }
 
 /// Ciclo de vida operacional do veículo (`VEI-06`). Transições são
@@ -671,6 +699,7 @@ model User {
   /// relacionamentos nomeados, mesmo padrão de `InviteCriadoPor`/`InviteUsadoPor`.
   veiculosUltimoMotorista       Vehicle[]            @relation("VehicleUltimoMotorista")
   veiculosUltimoMonitor         Vehicle[]            @relation("VehicleUltimoMonitor")
+  veiculosCategoriaRevisada     Vehicle[]            @relation("VehicleCategoriaRevisadaPor")
   documentosVeiculoEnviados     VehicleDocument[]    @relation("VehicleDocumentUploadedBy")
   manutencoesVeiculoRegistradas VehicleMaintenance[] @relation("VehicleMaintenanceRegistradoPor")
   vinculosVeiculo               VehicleAssignment[]  @relation("VehicleAssignmentUser")
@@ -753,7 +782,7 @@ model User {
   /// aprovou (RASCUNHO→REVISAO→APROVACAO precisa de um segundo par de
   /// olhos: `LegalDocumentsService` recusa a transição para APROVACAO
   /// quando `aprovadoPorId === autorId`).
-  documentosLegaisAutor    LegalDocumentVersion[] @relation("LegalDocumentVersionAutor")
+  documentosLegaisAutor     LegalDocumentVersion[] @relation("LegalDocumentVersionAutor")
   documentosLegaisAprovados LegalDocumentVersion[] @relation("LegalDocumentVersionAprovador")
 
   @@map("users")
@@ -1004,8 +1033,8 @@ model StudentPreRegistration {
   criadoPorId String @db.Uuid
   criadoPor   User   @relation("StudentPreRegistrationCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
 
-  nomeAluno       String
-  nomeResponsavel String
+  nomeAluno          String
+  nomeResponsavel    String
   /// Só dígitos (DDD+número, sem formatação) — normalizado na entrada
   /// (`StudentPreRegistrationsService.normalizeCelular`) pra bater com o
   /// número que o Responsável digitar depois, mesmo com pontuação
@@ -1077,6 +1106,21 @@ model Vehicle {
   observacoes           String?
   fotoUrl               String?
 
+  /// Categorização automática (Frente AL) — `VehicleCategoryClassifierService`
+  /// grava estes 4 campos toda vez que `categoria` é definida pela IA
+  /// (chamador não mandou `categoria` no create/update); ficam nulos
+  /// quando a transportadora escolheu manualmente. A plataforma nunca
+  /// bloqueia o uso do veículo enquanto `categoriaRevisaoStatus` está
+  /// `PENDENTE` — mesmo princípio de `SchoolCoordinateStatus.REVISAO_MANUAL`
+  /// e `User.identityVerificationStatus`.
+  categoriaOrigem        VehicleCategoryOrigin       @default(MANUAL)
+  categoriaRevisaoStatus VehicleCategoryReviewStatus @default(NAO_REQUER)
+  categoriaConfiancaIa   Int?
+  categoriaMotivoIa      String?
+  categoriaRevisadaPorId String?                     @db.Uuid
+  categoriaRevisadaPor   User?                       @relation("VehicleCategoriaRevisadaPor", fields: [categoriaRevisadaPorId], references: [id], onDelete: SetNull)
+  categoriaRevisadaEm    DateTime?
+
   status VehicleStatus @default(DISPONIVEL)
 
   quilometragemAtual Int @default(0)
@@ -1116,6 +1160,7 @@ model Vehicle {
   @@index([companyId, status])
   @@index([companyId, tipo])
   @@index([companyId, deletedAt])
+  @@index([companyId, categoriaRevisaoStatus])
   @@map("vehicles")
 }
 
@@ -2716,13 +2761,13 @@ model LegalDocumentVersion {
   /// se uma versão for descartada ainda em RASCUNHO, mesmo espírito de
   /// nunca sobrescrever histórico de `AuditLog`/`ConsentRecord`.
   versao           Int
-  conteudoMarkdown String                      @db.Text
+  conteudoMarkdown String                     @db.Text
   /// Nota curta de "o que mudou nesta versão" — preenchida por quem move de RASCUNHO para REVISAO.
   changelog        String?
-  status           LegalDocumentVersionStatus  @default(RASCUNHO)
+  status           LegalDocumentVersionStatus @default(RASCUNHO)
 
-  autorId       String @db.Uuid
-  autor         User   @relation("LegalDocumentVersionAutor", fields: [autorId], references: [id])
+  autorId       String  @db.Uuid
+  autor         User    @relation("LegalDocumentVersionAutor", fields: [autorId], references: [id])
   aprovadoPorId String? @db.Uuid
   aprovadoPor   User?   @relation("LegalDocumentVersionAprovador", fields: [aprovadoPorId], references: [id])
 
