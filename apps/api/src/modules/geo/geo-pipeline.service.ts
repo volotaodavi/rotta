@@ -53,7 +53,34 @@ export class GeoPipelineService {
 
     const endereco = `${school.logradouro}, ${school.numero}, ${school.bairro}, ${school.cidade} - ${school.estado}, ${school.cep}`;
 
-    let coordinate = await this.geocodingAgent.geocodeSchool(school.id, endereco, 1);
+    let coordinate: SchoolCoordinate;
+    try {
+      coordinate = await this.geocodingAgent.geocodeSchool(school.id, endereco, 1);
+    } catch (error) {
+      // Endereço exato sem NENHUM resultado no Nominatim (comum em zona
+      // rural/distrito, onde o logradouro não está mapeado no OSM) —
+      // antes disso simplesmente propagava e a escola ficava sem
+      // coordenada E sem entrada na Fila de Revisão Manual, ao contrário
+      // do que o listener que dispara este método promete ("endereço sem
+      // correspondência cai na Fila de Revisão Manual"). Fallback: tenta
+      // aproximar por cidade/estado (praticamente sempre resolve, é uma
+      // entidade administrativa grande) e já entra direto em
+      // REVISAO_MANUAL — pino aproximado no mapa em vez de nenhum,
+      // nunca fingindo a precisão de um endereço exato, sempre visível
+      // pra um humano refinar depois.
+      const aproximada = await this.geocodingAgent.geocodeSchool(
+        school.id,
+        `${school.cidade} - ${school.estado}, Brasil`,
+        1,
+      );
+      return this.coordinateRepository.updateStatus(aproximada.id, "REVISAO_MANUAL", {
+        validadoPorIa: false,
+        motivoRevisao:
+          error instanceof Error
+            ? `Endereço exato sem correspondência no Nominatim/OpenStreetMap (${error.message}) — coordenada aproximada pelo município.`
+            : "Endereço exato sem correspondência no Nominatim/OpenStreetMap — coordenada aproximada pelo município.",
+      });
+    }
 
     for (let iteracao = 0; iteracao < MAX_TENTATIVAS; iteracao += 1) {
       const outcome = await this.validationAgent.validate(coordinate, school);

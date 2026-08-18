@@ -138,6 +138,79 @@ describe("GeoPipelineService", () => {
     expect(validationAgent.validate).toHaveBeenCalledTimes(3);
   });
 
+  it("cai em REVISAO_MANUAL com coordenada aproximada por cidade/estado quando o endereço exato não tem NENHUM resultado no Nominatim", async () => {
+    const school = buildSchool();
+    const aproximada = buildCoordinate({ id: "coordinate-aproximada" });
+    const emRevisao = { ...aproximada, status: "REVISAO_MANUAL" as const };
+    const schoolRepository = {
+      findById: jest.fn().mockResolvedValue(school),
+    } as unknown as SchoolRepository;
+    const geocodingAgent = {
+      geocodeSchool: jest
+        .fn()
+        .mockRejectedValueOnce(new Error("nenhuma coordenada encontrada"))
+        .mockResolvedValueOnce(aproximada),
+    } as unknown as GeocodingAiAgentService;
+    const coordinateRepository = {
+      updateStatus: jest.fn().mockResolvedValue(emRevisao),
+    } as unknown as SchoolCoordinateRepository;
+    const validationAgent = {
+      validate: jest.fn(),
+    } as unknown as ValidationAiAgentService;
+
+    const service = new GeoPipelineService(
+      geocodingAgent,
+      validationAgent,
+      schoolRepository,
+      coordinateRepository,
+      {} as SchoolsService,
+    );
+    const resultado = await service.geocodeSchool("school-1");
+
+    expect(geocodingAgent.geocodeSchool).toHaveBeenNthCalledWith(
+      1,
+      "school-1",
+      expect.stringContaining("Avenida Paulista"),
+      1,
+    );
+    expect(geocodingAgent.geocodeSchool).toHaveBeenNthCalledWith(
+      2,
+      "school-1",
+      "São Paulo - SP, Brasil",
+      1,
+    );
+    expect(coordinateRepository.updateStatus).toHaveBeenCalledWith(
+      "coordinate-aproximada",
+      "REVISAO_MANUAL",
+      expect.objectContaining({ validadoPorIa: false, motivoRevisao: expect.any(String) }),
+    );
+    expect(validationAgent.validate).not.toHaveBeenCalled();
+    expect(resultado).toBe(emRevisao);
+  });
+
+  it("propaga o erro quando nem o endereço exato nem a aproximação por cidade/estado encontram nada", async () => {
+    const school = buildSchool();
+    const schoolRepository = {
+      findById: jest.fn().mockResolvedValue(school),
+    } as unknown as SchoolRepository;
+    const geocodingAgent = {
+      geocodeSchool: jest.fn().mockRejectedValue(new Error("nenhuma coordenada encontrada")),
+    } as unknown as GeocodingAiAgentService;
+
+    const service = new GeoPipelineService(
+      geocodingAgent,
+      {} as ValidationAiAgentService,
+      schoolRepository,
+      {} as SchoolCoordinateRepository,
+      {} as SchoolsService,
+    );
+
+    await expect(service.geocodeSchool("school-1")).rejects.toThrow(
+      "nenhuma coordenada encontrada",
+    );
+    expect(geocodingAgent.geocodeSchool).toHaveBeenCalledTimes(2);
+  });
+
   describe("resolveManualReview", () => {
     it("lança NotFoundException quando a coordenada não existe ou não está em REVISAO_MANUAL", async () => {
       const coordinateRepository = {
