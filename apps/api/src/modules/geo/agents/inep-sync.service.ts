@@ -15,6 +15,22 @@ import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 const CENSO_ZIP_URL = (ano: number): string =>
   `https://download.inep.gov.br/dados_abertos/microdados_censo_escolar_${ano}.zip`;
 
+/**
+ * O CDN do INEP (gov.br) já foi observado rejeitando requisições sem
+ * `User-Agent`/`Accept` "de navegador" com um reset de conexão — que o
+ * `fetch` nativo do Node relata como falha de rede genérica, sem status
+ * HTTP algum, mascarando a causa real. Mesma disciplina de identificação
+ * já usada para o Nominatim (`geo.config.ts`, `nominatimUserAgent`).
+ */
+const INEP_DOWNLOAD_HEADERS: Record<string, string> = {
+  "User-Agent":
+    "Mozilla/5.0 (compatible; RottaGeoPlatform/1.0; +https://rotta.com.br) EducationSyncAgent",
+  Accept: "application/zip, application/octet-stream, */*",
+};
+
+/** ~200 mil escolas em ZIP costuma passar de 300MB — download real, sem timeout padrão do runtime cortando cedo demais nem ficando pendurado pra sempre. */
+const CENSO_DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+
 export interface InepSyncResumo {
   ano: number;
   totalLinhas: number;
@@ -92,10 +108,21 @@ export class InepSyncService {
     const url = CENSO_ZIP_URL(ano);
     let response: Response;
     try {
-      response = await fetch(url);
+      response = await fetch(url, {
+        headers: INEP_DOWNLOAD_HEADERS,
+        signal: AbortSignal.timeout(CENSO_DOWNLOAD_TIMEOUT_MS),
+      });
     } catch (error) {
+      // Nunca "falha de rede" genérico e mudo: o nome/mensagem real do
+      // erro (ECONNRESET, DNS, timeout, TLS...) vai pro log e pro
+      // `InepSyncStatus.erro` — é a única forma de alguém sem acesso ao
+      // servidor diagnosticar qual dessas causas foi, da próxima vez.
+      const causa = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+      this.logger.error(
+        `Education Sync Agent: download do Censo Escolar ${ano} falhou (${url}). Causa: ${causa}`,
+      );
       throw new BadGatewayException(
-        `Education Sync Agent: falha de rede ao baixar o Censo Escolar ${ano} (${url}).`,
+        `Education Sync Agent: falha de rede ao baixar o Censo Escolar ${ano} (${url}). Causa: ${causa}`,
         { cause: error instanceof Error ? error : undefined },
       );
     }
