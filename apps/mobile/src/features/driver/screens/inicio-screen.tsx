@@ -7,7 +7,7 @@ import {
   MessageCircle,
   Navigation,
   Pause,
-  Square,
+  Play,
   Timer,
   Users,
   UserX,
@@ -53,6 +53,7 @@ import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "@rotta/api-client";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
+import { SlideToAction } from "@/components/slide-to-action";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import {
@@ -66,8 +67,6 @@ import {
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
-
-
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -795,19 +794,23 @@ function RotaOperacional({
         ) : null}
 
         {/*
-          Controles da viagem — botão comum (3 imagens de referência do
-          usuário mostram sempre um botão sólido, nunca o deslizante
-          estilo Uber que esta tela usava antes, Frente P3/P5).
+          Controles da viagem — o botão deslizante voltou (pedido do
+          usuário, reafirmado depois da Frente P5/302-304: "com o botão
+          deslizante para iniciar a viagem e finalizar também", "para
+          todas as plataformas, TODAS, sem exceção"). Só iniciar/encerrar
+          usam `SlideToAction` — evita o disparo acidental que esses dois
+          causariam sozinhos; pausar/retomar continuam botão comum, ação
+          reversível.
         */}
         <View style={styles.controlsSection}>
           {isLoadingTrip ? (
             <ActivityIndicator color={accentColor} />
           ) : !trip ? (
             isMotorista ? (
-              <VehicleButton
-                label="Iniciar viagem"
-                variant="primary"
-                onPress={() => startTrip.mutate({ routeId: rota.id })}
+              <SlideToAction
+                label="Deslize para iniciar a viagem"
+                theme={theme}
+                onComplete={() => startTrip.mutate({ routeId: rota.id })}
                 isLoading={startTrip.isPending}
               />
             ) : (
@@ -826,42 +829,39 @@ function RotaOperacional({
               ) : null}
               {isActive ? (
                 <View style={styles.controlsRow}>
+                  <VehicleButton
+                    label="Pausar"
+                    variant="secondary"
+                    icon={<Pause size={16} color={theme.colors.text} />}
+                    onPress={() => pauseTrip.mutate(trip.id)}
+                    isLoading={pauseTrip.isPending}
+                  />
                   <View style={{ flex: 1 }}>
-                    <VehicleButton
-                      label="Pausar"
-                      variant="secondary"
-                      icon={<Pause size={16} color={theme.colors.text} />}
-                      onPress={() => pauseTrip.mutate(trip.id)}
-                      isLoading={pauseTrip.isPending}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <VehicleButton
-                      label="Encerrar viagem"
-                      variant="danger"
-                      icon={<Square size={16} color="#FFFFFF" />}
-                      onPress={() => finishTrip.mutate(trip.id)}
+                    <SlideToAction
+                      label="Deslize para encerrar"
+                      theme={theme}
+                      onComplete={() => finishTrip.mutate(trip.id)}
                       isLoading={finishTrip.isPending}
+                      thumbColor={theme.colors.danger}
                     />
                   </View>
                 </View>
               ) : (
                 <View style={styles.controlsRow}>
+                  <VehicleButton
+                    label="Retomar"
+                    variant="secondary"
+                    icon={<Play size={16} color={theme.colors.text} />}
+                    onPress={() => resumeTrip.mutate(trip.id)}
+                    isLoading={resumeTrip.isPending}
+                  />
                   <View style={{ flex: 1 }}>
-                    <VehicleButton
-                      label="Retomar viagem"
-                      variant="primary"
-                      onPress={() => resumeTrip.mutate(trip.id)}
-                      isLoading={resumeTrip.isPending}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <VehicleButton
-                      label="Finalizar"
-                      variant="secondary"
-                      icon={<Square size={16} color={theme.colors.text} />}
-                      onPress={() => finishTrip.mutate(trip.id)}
+                    <SlideToAction
+                      label="Deslize para finalizar"
+                      theme={theme}
+                      onComplete={() => finishTrip.mutate(trip.id)}
                       isLoading={finishTrip.isPending}
+                      thumbColor={theme.colors.danger}
                     />
                   </View>
                 </View>
