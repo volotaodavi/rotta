@@ -1,6 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
+import type { StudentEventsHistoryRange } from "@rotta/api-client";
+
 import { gpsApi } from "@/lib/api-client";
+
 
 /**
  * Localizador do Responsável (briefing "Marketplace" §"ACOMPANHAMENTO"
@@ -32,5 +35,25 @@ export function useGpsTrack(tripId: string | undefined) {
     queryFn: () => gpsApi.getTrack(tripId as string),
     enabled: Boolean(tripId),
     refetchInterval: 10_000,
+  });
+}
+
+/**
+ * Histórico de embarque/desembarque do próprio filho (modelo de
+ * referência enviado pelo usuário — abas "Hoje"/"Semana"/"Mês" na tela
+ * "Viagens" do Responsável, `GET /gps/students/:id/events-history`).
+ * Mesmo hook e mesma ausência de polling já existentes na versão web
+ * (`apps/web/src/features/gps/hooks/use-gps.ts`) — histórico não muda a
+ * cada 10s como a posição ao vivo, só quando um novo evento é
+ * registrado.
+ */
+export function useStudentEventsHistory(
+  studentId: string | undefined,
+  range: StudentEventsHistoryRange,
+) {
+  return useQuery({
+    queryKey: ["gps", "student", studentId, "events-history", range],
+    queryFn: () => gpsApi.getStudentEventsHistory(studentId as string, range),
+    enabled: Boolean(studentId),
   });
 }

@@ -1,10 +1,33 @@
-import { ApiError, type Contract, type MapVehicle, type RatingTargetType } from "@rotta/api-client";
-import { Clock, MapPin, Navigation, Star } from "@rotta/icons/native";
+import {
+  ApiError,
+  type Contract,
+  type MapVehicle,
+  type RatingTargetType,
+  type StudentEventsHistoryRange,
+  type TripStudentEventType,
+} from "@rotta/api-client";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  Clock,
+  MapPin,
+  Navigation,
+  Star,
+  UserX,
+} from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { Timeline } from "@rotta/ui/native";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
@@ -17,7 +40,7 @@ import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
-import { useGpsForStudent } from "@/features/gps/hooks/use-gps";
+import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import {
   StatusPill,
@@ -31,6 +54,99 @@ import { useTheme } from "@/providers/theme-provider";
 
 function formatarHora(iso: string): string {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+const EVENT_LABEL: Record<TripStudentEventType, string> = {
+  EMBARCOU: "Embarcou",
+  AUSENTE: "Marcado como ausente",
+  DESEMBARCOU: "Desembarcou",
+};
+
+const HISTORY_RANGE_LABEL: Record<StudentEventsHistoryRange, string> = {
+  hoje: "Hoje",
+  semana: "Semana",
+  mes: "Mês",
+};
+
+/**
+ * "Viagens" — histórico de embarque/desembarque do próprio filho, com
+ * abas Hoje/Semana/Mês (modelo de referência enviado pelo usuário —
+ * paridade com `HistoricoEventosCard` do Painel Web,
+ * `apps/web/src/app/(dashboard)/alunos/[id]/mapa/page.tsx`). Ícone
+ * colorido por tipo de evento (verde embarque, azul desembarque,
+ * vermelho ausência) em vez de texto plano — mesma paleta semântica da
+ * versão web. Aba ativa usa `theme.colors.success` (verde, cor de papel
+ * do Responsável nas 3 imagens de referência).
+ */
+function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element {
+  const { theme } = useTheme();
+  const [range, setRange] = useState<StudentEventsHistoryRange>("hoje");
+  const { data: eventos, isLoading } = useStudentEventsHistory(studentId, range);
+
+  const eventIcon: Record<TripStudentEventType, JSX.Element> = {
+    EMBARCOU: <ArrowUpCircle size={18} color={theme.colors.success} />,
+    DESEMBARCOU: <ArrowDownCircle size={18} color={theme.colors.primary} />,
+    AUSENTE: <UserX size={18} color={theme.colors.danger} />,
+  };
+
+  return (
+    <VehicleCard>
+      <View style={styles.viagensHeader}>
+        <Text style={[styles.secao, { color: theme.colors.text }]}>Viagens</Text>
+        <View style={styles.viagensAbas}>
+          {(Object.keys(HISTORY_RANGE_LABEL) as StudentEventsHistoryRange[]).map((key) => (
+            <TouchableOpacity
+              key={key}
+              onPress={() => setRange(key)}
+              style={[
+                styles.viagensAba,
+                {
+                  backgroundColor: range === key ? theme.colors.success : theme.colors.muted,
+                },
+              ]}
+            >
+              <Text
+                style={{
+                  color: range === key ? "#fff" : theme.colors.textMuted,
+                  fontSize: 12,
+                  fontWeight: "600",
+                }}
+              >
+                {HISTORY_RANGE_LABEL[key]}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {isLoading ? (
+        <ActivityIndicator color={theme.colors.primary} />
+      ) : !eventos || eventos.length === 0 ? (
+        <Text style={{ color: theme.colors.textMuted, textAlign: "center", paddingVertical: 8 }}>
+          Nenhum embarque ou desembarque registrado neste período.
+        </Text>
+      ) : (
+        <View style={{ gap: 10 }}>
+          {eventos.map((event) => (
+            <View key={event.id} style={styles.eventoRow}>
+              {eventIcon[event.tipo]}
+              <Text style={{ color: theme.colors.text, flex: 1 }}>{EVENT_LABEL[event.tipo]}</Text>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                {range === "hoje"
+                  ? formatarHora(event.processadoEm)
+                  : new Date(event.processadoEm).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </VehicleCard>
+  );
 }
 
 /** Mesmo endpoint de `driver/hooks/use-driver-trip.ts#useTripProximasEtas` (Frente L/M) — já usado pelo Responsável no Painel Web, faltava só o app nativo. */
@@ -178,6 +294,7 @@ function TransporteAtivoScreen({ contrato }: { contrato: Contract }): JSX.Elemen
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Text>
         <DetalhesContrato contrato={contrato} />
         <AcompanhamentoSection contrato={contrato} />
+        <HistoricoEventosCard studentId={contrato.studentId} />
         <AvaliacoesSection contrato={contrato} />
       </VehicleScreen>
     );
@@ -307,6 +424,7 @@ function TransporteEmAndamentoScreen({
 
         <View style={styles.abaixoDoMapa}>
           <DetalhesContrato contrato={contrato} />
+          <HistoricoEventosCard studentId={contrato.studentId} />
           <AvaliacoesSection contrato={contrato} />
         </View>
       </ScrollView>
@@ -539,6 +657,7 @@ const styles = StyleSheet.create({
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },
   etaRow: { alignItems: "center", flexDirection: "row", gap: 4 },
+  eventoRow: { alignItems: "center", flexDirection: "row", gap: 10 },
   header: { flexDirection: "row" },
   mapCard: { borderRadius: 16, borderWidth: 1, marginHorizontal: 16, overflow: "hidden" },
   mapCardBody: { gap: 12, padding: 12 },
@@ -577,5 +696,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
     padding: 12,
+  },
+  viagensAba: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
+  viagensAbas: { flexDirection: "row", gap: 4 },
+  viagensHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
 });
