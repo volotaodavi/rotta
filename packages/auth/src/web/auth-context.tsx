@@ -16,11 +16,16 @@ import {
 } from "react";
 
 import {
+  broadcastAuthEvent,
   clearSession,
   decodeJwtExpiryMs,
   getPersistedRefreshToken,
   persistSession,
+  releaseRefreshLock,
   setAccessToken,
+  subscribeToAuthBroadcast,
+  tryAcquireRefreshLock,
+  waitForBroadcastSession,
 } from "./token-store";
 
 import type {
@@ -103,22 +108,91 @@ export function AuthProvider({
   }, []);
 
   const applySession = useCallback(
-    (tokens: AuthTokensResponse) => {
+    (tokens: AuthTokensResponse, options: { broadcast?: boolean } = {}) => {
       setAccessToken(tokens.accessToken);
       persistSession(tokens.refreshToken, tokens.user);
       setUser(tokens.user);
       setStatus("authenticated");
       scheduleProactiveRefresh(tokens.accessToken);
+      // Avisa outras abas (mesmo navegador) que já existe uma sessão
+      // renovada, pra elas nunca precisarem chamar `/auth/refresh` com
+      // um refresh_token que esta aba já consumiu (ver comentário grande
+      // em `token-store.ts`) — `broadcast: false` só quando QUEM está
+      // aplicando a sessão é o handler que RECEBEU esse mesmo broadcast
+      // (evita eco infinito entre abas).
+      if (options.broadcast !== false) {
+        broadcastAuthEvent({
+          type: "session-refreshed",
+          accessToken: tokens.accessToken,
+          user: tokens.user,
+        });
+      }
     },
     [scheduleProactiveRefresh],
   );
 
-  const refreshSession = useCallback(async (): Promise<boolean> => {
+  /**
+   * Dedupe DENTRO da mesma aba — necessário além do lock entre abas
+   * (abaixo): `BroadcastChannel` nunca entrega uma mensagem pra quem a
+   * postou (só pra OUTRAS abas), então se o timer proativo e um retry
+   * reativo por 401 chamassem `refreshSession()` ao mesmo tempo NESTA
+   * aba, o segundo nunca veria a mensagem do primeiro e chamaria
+   * `/auth/refresh` de novo com o token que o primeiro já consumiu —
+   * exatamente o mesmo bug, só que numa corrida intra-aba em vez de
+   * entre abas. Toda chamada concorrente enquanto uma já está em
+   * andamento recebe a MESMA promise, nunca dispara uma segunda.
+   */
+  const refreshInFlight = useRef<Promise<boolean> | null>(null);
+
+  /**
+   * BUG real de produção corrigido aqui (usuário: "qualquer ação dá erro
+   * inesperado" em Rotas/Veículos) — ver o comentário completo em
+   * `token-store.ts`: refresh_token é de uso único, então duas abas
+   * competindo pelo MESMO refresh_token faziam o backend revogar TODAS
+   * as sessões. Antes de chamar `/auth/refresh` com o token persistido,
+   * tenta o lock entre abas; se outra aba já está no meio de um refresh
+   * agora, espera a mensagem de sessão dela em vez de arriscar reusar um
+   * token que ela pode estar consumindo neste exato instante.
+   */
+  const performRefresh = useCallback(async (): Promise<boolean> => {
     const persistedRefreshToken = getPersistedRefreshToken();
     if (!persistedRefreshToken) {
       setStatus("unauthenticated");
       return false;
     }
+
+    if (!tryAcquireRefreshLock()) {
+      const message = await waitForBroadcastSession();
+      const refreshTokenAfterBroadcast = getPersistedRefreshToken();
+      if (
+        message?.type === "session-refreshed" &&
+        message.accessToken &&
+        message.user &&
+        refreshTokenAfterBroadcast
+      ) {
+        applySession(
+          {
+            accessToken: message.accessToken,
+            refreshToken: refreshTokenAfterBroadcast,
+            user: message.user,
+          },
+          { broadcast: false },
+        );
+        return true;
+      }
+      if (message?.type === "logged-out") {
+        clearSession();
+        setUser(null);
+        setStatus("unauthenticated");
+        return false;
+      }
+      // A aba líder não respondeu a tempo (ex.: caiu no meio do refresh)
+      // — o lock já expirou pelo TTL. Reafirma o lock com o NOSSO
+      // timestamp antes de seguir como líder (senão uma terceira aba
+      // checando agora ainda veria o timestamp velho da aba anterior).
+      tryAcquireRefreshLock();
+    }
+
     try {
       const tokens = await authApi.refresh(persistedRefreshToken);
       applySession(tokens);
@@ -127,13 +201,43 @@ export function AuthProvider({
       clearSession();
       setUser(null);
       setStatus("unauthenticated");
+      broadcastAuthEvent({ type: "logged-out" });
       return false;
+    } finally {
+      releaseRefreshLock();
     }
   }, [authApi, applySession]);
 
+  const refreshSession = useCallback((): Promise<boolean> => {
+    if (refreshInFlight.current) {
+      return refreshInFlight.current;
+    }
+    const promise = performRefresh().finally(() => {
+      refreshInFlight.current = null;
+    });
+    refreshInFlight.current = promise;
+    return promise;
+  }, [performRefresh]);
+
   useEffect(() => {
     void refreshSession();
+    const unsubscribe = subscribeToAuthBroadcast((message) => {
+      if (message.type === "session-refreshed" && message.accessToken && message.user) {
+        const refreshToken = getPersistedRefreshToken();
+        if (refreshToken) {
+          applySession(
+            { accessToken: message.accessToken, refreshToken, user: message.user },
+            { broadcast: false },
+          );
+        }
+      } else if (message.type === "logged-out") {
+        clearSession();
+        setUser(null);
+        setStatus("unauthenticated");
+      }
+    });
     return () => {
+      unsubscribe();
       if (refreshTimer.current) {
         clearTimeout(refreshTimer.current);
       }

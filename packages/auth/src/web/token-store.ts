@@ -77,3 +77,109 @@ export function decodeJwtExpiryMs(token: string): number | null {
     return null;
   }
 }
+
+/**
+ * Coordenação entre abas pro refresh de sessão — BUG REAL encontrado em
+ * produção (usuário: "qualquer ação dá erro inesperado" em Rotas e
+ * Veículos): o refresh_token é rotativo e de uso único (backend,
+ * `AuthService.refresh` — Dossiê 12 §4.4); reapresentar um já usado é
+ * tratado como possível roubo e **revoga TODAS as sessões do usuário**.
+ * Com duas abas do painel abertas, cada uma tinha seu próprio timer de
+ * refresh proativo lendo o MESMO refresh_token do `localStorage`: a aba
+ * que chegasse um instante depois usava o token que a primeira já tinha
+ * consumido, disparando a revogação total — dali em diante, toda ação
+ * (criar rota, cadastrar veículo, o que fosse) voltava 401 pra sempre,
+ * até um novo login manual.
+ *
+ * `BroadcastChannel` (suportado em todo navegador atual — Chrome/Edge/
+ * Firefox sempre, Safari 15.4+) deixa a aba que efetivamente chamou
+ * `/auth/refresh` avisar as outras do novo `access_token` em memória
+ * (nunca grava em disco — mesma regra de sempre) para elas adotarem a
+ * sessão em vez de tentar renovar de novo com um refresh_token que
+ * acabou de ser consumido. O lock em `localStorage` (com TTL — se a aba
+ * líder cair no meio do refresh, o lock expira sozinho) é o fallback pra
+ * quando `BroadcastChannel` não existe: só permite que uma aba por vez
+ * chame `/auth/refresh`.
+ */
+const AUTH_BROADCAST_CHANNEL_NAME = "rotta-auth-session";
+const REFRESH_LOCK_KEY = "rotta_refresh_lock";
+const REFRESH_LOCK_TTL_MS = 8_000;
+
+export interface AuthBroadcastMessage {
+  type: "session-refreshed" | "logged-out";
+  accessToken?: string;
+  user?: MeResponse;
+}
+
+let broadcastChannel: BroadcastChannel | null | undefined;
+
+function getBroadcastChannel(): BroadcastChannel | null {
+  if (typeof window === "undefined" || typeof BroadcastChannel === "undefined") {
+    return null;
+  }
+  if (broadcastChannel === undefined) {
+    broadcastChannel = new BroadcastChannel(AUTH_BROADCAST_CHANNEL_NAME);
+  }
+  return broadcastChannel;
+}
+
+/** Avisa as outras abas que esta aba acabou de renovar a sessão (ou de fazer logout) — nunca inclui o refresh_token (só o access_token, em memória, e o usuário). */
+export function broadcastAuthEvent(message: AuthBroadcastMessage): void {
+  getBroadcastChannel()?.postMessage(message);
+}
+
+/** Assina eventos de sessão de OUTRAS abas — retorna a função de limpeza (remove o listener). */
+export function subscribeToAuthBroadcast(
+  handler: (message: AuthBroadcastMessage) => void,
+): () => void {
+  const channel = getBroadcastChannel();
+  if (!channel) {
+    return () => undefined;
+  }
+  const listener = (event: MessageEvent<AuthBroadcastMessage>): void => handler(event.data);
+  channel.addEventListener("message", listener);
+  return () => channel.removeEventListener("message", listener);
+}
+
+/** Tenta se tornar a única aba chamando `/auth/refresh` agora — `false` significa que outra aba já está no meio de um refresh (lock ainda dentro do TTL). */
+export function tryAcquireRefreshLock(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+  const now = Date.now();
+  const held = Number(window.localStorage.getItem(REFRESH_LOCK_KEY) ?? "");
+  if (!Number.isNaN(held) && now - held < REFRESH_LOCK_TTL_MS) {
+    return false;
+  }
+  window.localStorage.setItem(REFRESH_LOCK_KEY, String(now));
+  return true;
+}
+
+export function releaseRefreshLock(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.localStorage.removeItem(REFRESH_LOCK_KEY);
+}
+
+/** Espera, por até `REFRESH_LOCK_TTL_MS`, uma mensagem de sessão de outra aba (a que está com o lock agora) — usado só quando `tryAcquireRefreshLock()` já devolveu `false`. */
+export function waitForBroadcastSession(): Promise<AuthBroadcastMessage | null> {
+  return new Promise((resolve) => {
+    const maybeChannel = getBroadcastChannel();
+    if (!maybeChannel) {
+      resolve(null);
+      return;
+    }
+    const channel: BroadcastChannel = maybeChannel;
+    const timer = setTimeout(() => {
+      channel.removeEventListener("message", onMessage);
+      resolve(null);
+    }, REFRESH_LOCK_TTL_MS);
+    function onMessage(event: MessageEvent<AuthBroadcastMessage>): void {
+      clearTimeout(timer);
+      channel.removeEventListener("message", onMessage);
+      resolve(event.data);
+    }
+    channel.addEventListener("message", onMessage);
+  });
+}
