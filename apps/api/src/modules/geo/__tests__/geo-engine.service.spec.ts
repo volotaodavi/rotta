@@ -1,6 +1,6 @@
 import { BadGatewayException } from "@nestjs/common";
 
-import { GeoEngineService } from "../geo-engine.service";
+import { GeoEngineService, NominatimRateLimitedException } from "../geo-engine.service";
 
 import type { GeoConfig } from "@/config/geo.config";
 import type { IntegrationHealthService } from "@/infra/observability/integration-health.service";
@@ -121,11 +121,60 @@ describe("GeoEngineService", () => {
       await expect(service.geocode("endereço inexistente")).rejects.toThrow(BadGatewayException);
     });
 
-    it("lança BadGatewayException quando o Nominatim responde com erro HTTP", async () => {
-      mockFetchOnce(429, {});
+    it("lança BadGatewayException quando o Nominatim responde com erro HTTP (não 429)", async () => {
+      mockFetchOnce(503, {});
       const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
 
       await expect(service.geocode("Avenida Paulista, 1000")).rejects.toThrow(BadGatewayException);
+    });
+
+    describe("rate limit (429)", () => {
+      beforeEach(() => {
+        jest.useFakeTimers();
+      });
+
+      afterEach(() => {
+        jest.useRealTimers();
+      });
+
+      it("faz UMA retentativa após 429 e resolve normalmente se a segunda tentativa tiver sucesso", async () => {
+        const fetchMock = jest
+          .fn()
+          .mockResolvedValueOnce({ ok: false, status: 429, json: () => Promise.resolve({}) })
+          .mockResolvedValueOnce({
+            ok: true,
+            status: 200,
+            json: () =>
+              Promise.resolve([
+                {
+                  lat: "-23.5",
+                  lon: "-46.6",
+                  display_name: "Endereço",
+                  importance: 0.5,
+                  address: {},
+                },
+              ]),
+          });
+        global.fetch = fetchMock;
+        const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+
+        const promise = service.geocode("Avenida Paulista, 1000");
+        await jest.advanceTimersByTimeAsync(2000);
+        const resultado = await promise;
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(resultado.latitude).toBe(-23.5);
+      });
+
+      it("lança NominatimRateLimitedException (não BadGatewayException genérico) quando o 429 persiste após a retentativa", async () => {
+        mockFetchOnce(429, {});
+        const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+
+        const promise = service.geocode("Avenida Paulista, 1000");
+        const expectation = expect(promise).rejects.toThrow(NominatimRateLimitedException);
+        await jest.advanceTimersByTimeAsync(2000);
+        await expectation;
+      });
     });
   });
 

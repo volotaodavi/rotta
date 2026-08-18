@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { ValidationAiAgentService } from "./agents/validation-ai-agent.service";
+import { NominatimRateLimitedException } from "./geo-engine.service";
 import { SCHOOL_COORDINATE_REPOSITORY } from "./geo.constants";
 
 import type { QuickRegisterSchoolDto } from "./dto/quick-register-school.dto";
@@ -57,6 +58,14 @@ export class GeoPipelineService {
     try {
       coordinate = await this.geocodingAgent.geocodeSchool(school.id, endereco, 1);
     } catch (error) {
+      if (error instanceof NominatimRateLimitedException) {
+        // Throttling temporário, não falta de dados — nunca aproximar por
+        // cidade/estado nem gravar REVISAO_MANUAL por isso (a aproximação
+        // também seria 429). Propaga pra quem chama decidir/reprocessar
+        // mais tarde (o listener automático só loga; uma chamada manual
+        // via GeoController recebe o 429 de volta pra tentar de novo).
+        throw error;
+      }
       // Endereço exato sem NENHUM resultado no Nominatim (comum em zona
       // rural/distrito, onde o logradouro não está mapeado no OSM) —
       // antes disso simplesmente propagava e a escola ficava sem

@@ -21,6 +21,21 @@ import { IntegrationHealthService } from "@/infra/observability/integration-heal
 export const NOMINATIM_INTEGRATION_NAME = "nominatim";
 export const OSRM_INTEGRATION_NAME = "osrm";
 
+/**
+ * Nominatim rate-limitou (HTTP 429) mesmo após a retentativa automática de
+ * `GeoEngineService` — distinto de "endereço sem correspondência"
+ * (nenhum resultado) para quem chama (`GeoPipelineService`) não tratar
+ * throttling temporário como se fosse falta de dados e não gravar uma
+ * coordenada aproximada errada na Fila de Revisão Manual por isso.
+ */
+export class NominatimRateLimitedException extends BadGatewayException {
+  constructor() {
+    super(
+      "Rotta Geo Engine: Nominatim rate-limitado (HTTP 429) — tente novamente em alguns segundos.",
+    );
+  }
+}
+
 /** Nome completo (como o Nominatim devolve em `address.state`) → UF, para bater com `School.estado` (sempre a sigla, ex. `"SP"`). */
 const UF_POR_ESTADO: Record<string, string> = {
   acre: "AC",
@@ -167,17 +182,42 @@ export class GeoEngineService {
     return { "User-Agent": this.config.nominatimUserAgent };
   }
 
+  /**
+   * `fetch` para o Nominatim com UMA retentativa automática em 429 (rate
+   * limit — política pública é ~1 req/seg, e outro consumidor no mesmo
+   * processo, ex. uma importação em massa, pode colidir com uma chamada
+   * pontual do produto). Uma espera curta + nova tentativa resolve a
+   * colisão pontual na maioria dos casos sem precisar propagar erro.
+   */
+  private async fetchNominatim(url: string): Promise<Response> {
+    const primeira = await fetch(url, { headers: this.nominatimHeaders() });
+    if (primeira.status !== 429) {
+      return primeira;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return fetch(url, { headers: this.nominatimHeaders() });
+  }
+
   /** Endereço → coordenadas (Nominatim `/search`). Lança se o endereço não retornar nenhum resultado. */
   async geocode(endereco: string): Promise<GeocodeResult> {
     const url = `${this.config.nominatimBaseUrl}/search?q=${encodeURIComponent(endereco)}&format=jsonv2&addressdetails=1&countrycodes=br&limit=1`;
 
     const startedAt = Date.now();
-    const response = await fetch(url, { headers: this.nominatimHeaders() });
+    const response = await this.fetchNominatim(url);
     if (!response.ok) {
       void this.integrationHealth.recordFailure(
         NOMINATIM_INTEGRATION_NAME,
         `HTTP ${response.status} em /search (geocode).`,
       );
+      if (response.status === 429) {
+        // Ainda rate-limitado após a retentativa — diferente de "endereço
+        // sem correspondência": não faz sentido tentar aproximar por
+        // cidade/estado agora (também seria 429), então sinaliza pra quem
+        // chama (GeoPipelineService) não cair na Fila de Revisão Manual
+        // por um motivo que não é falta de dados, e sim throttling
+        // temporário — vale reprocessar mais tarde.
+        throw new NominatimRateLimitedException();
+      }
       throw new BadGatewayException(
         `Rotta Geo Engine: falha ao geocodificar endereço (Nominatim retornou ${response.status}).`,
       );
@@ -209,12 +249,15 @@ export class GeoEngineService {
     const url = `${this.config.nominatimBaseUrl}/reverse?lat=${ponto.latitude}&lon=${ponto.longitude}&format=jsonv2&addressdetails=1`;
 
     const startedAt = Date.now();
-    const response = await fetch(url, { headers: this.nominatimHeaders() });
+    const response = await this.fetchNominatim(url);
     if (!response.ok) {
       void this.integrationHealth.recordFailure(
         NOMINATIM_INTEGRATION_NAME,
         `HTTP ${response.status} em /reverse (reverseGeocode).`,
       );
+      if (response.status === 429) {
+        throw new NominatimRateLimitedException();
+      }
       throw new BadGatewayException(
         `Rotta Geo Engine: falha ao geocodificar coordenada reversa (Nominatim retornou ${response.status}).`,
       );

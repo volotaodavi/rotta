@@ -1,5 +1,6 @@
 import { NotFoundException } from "@nestjs/common";
 
+import { NominatimRateLimitedException } from "../geo-engine.service";
 import { GeoPipelineService } from "../geo-pipeline.service";
 
 import type { GeocodingAiAgentService } from "../agents/geocoding-ai-agent.service";
@@ -186,6 +187,31 @@ describe("GeoPipelineService", () => {
     );
     expect(validationAgent.validate).not.toHaveBeenCalled();
     expect(resultado).toBe(emRevisao);
+  });
+
+  it("propaga NominatimRateLimitedException direto, sem tentar aproximar por cidade/estado nem gravar REVISAO_MANUAL (429 não é falta de dados)", async () => {
+    const school = buildSchool();
+    const schoolRepository = {
+      findById: jest.fn().mockResolvedValue(school),
+    } as unknown as SchoolRepository;
+    const geocodingAgent = {
+      geocodeSchool: jest.fn().mockRejectedValue(new NominatimRateLimitedException()),
+    } as unknown as GeocodingAiAgentService;
+    const coordinateRepository = {
+      updateStatus: jest.fn(),
+    } as unknown as SchoolCoordinateRepository;
+
+    const service = new GeoPipelineService(
+      geocodingAgent,
+      {} as ValidationAiAgentService,
+      schoolRepository,
+      coordinateRepository,
+      {} as SchoolsService,
+    );
+
+    await expect(service.geocodeSchool("school-1")).rejects.toThrow(NominatimRateLimitedException);
+    expect(geocodingAgent.geocodeSchool).toHaveBeenCalledTimes(1);
+    expect(coordinateRepository.updateStatus).not.toHaveBeenCalled();
   });
 
   it("propaga o erro quando nem o endereço exato nem a aproximação por cidade/estado encontram nada", async () => {
