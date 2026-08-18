@@ -59,11 +59,24 @@ export interface ListRoutesResult {
   pageSize: number;
 }
 
+/**
+ * Duas formas de informar a localização de uma parada (pedido do
+ * usuário: "quando for criar uma rota, deverá ser mediante a escola que
+ * foi importada, não deverá colocar o endereço de fato") — a API exige
+ * uma das duas:
+ *  - `schoolId`: parada NA escola, escolhida do catálogo compartilhado
+ *    já importado/geocodificado — `endereco`/`latitude`/`longitude` são
+ *    preenchidos pelo backend a partir da própria School, nunca
+ *    digitados.
+ *  - `endereco`+`latitude`+`longitude`: qualquer outro ponto (ex.
+ *    residência de um aluno).
+ */
 export interface CreateRouteStopInput {
   ordem: number;
-  endereco: string;
-  latitude: number;
-  longitude: number;
+  schoolId?: string;
+  endereco?: string;
+  latitude?: number;
+  longitude?: number;
   horarioPrevisto: string;
 }
 
@@ -77,6 +90,7 @@ export interface RouteStop {
   latitude: number;
   longitude: number;
   horarioPrevisto: string;
+  schoolId: string | null;
   createdAt: string;
   updatedAt: string;
 }
