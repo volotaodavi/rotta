@@ -144,7 +144,11 @@ export default function VeiculosAdminPage(): JSX.Element {
                       render: (vehicle) => <span className="font-mono">{vehicle.placa}</span>,
                     },
                     { key: "modelo", header: "Modelo", render: (vehicle) => vehicle.modelo },
-                    { key: "marca", header: "Marca", render: (vehicle) => vehicle.marca ?? "—" },
+                    {
+                      key: "marca",
+                      header: "Marca",
+                      render: (vehicle) => vehicle.marca ?? "Não informado",
+                    },
                     {
                       key: "tipo",
                       header: "Tipo",

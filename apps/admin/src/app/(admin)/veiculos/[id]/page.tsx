@@ -13,7 +13,6 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_CATEGORY_LABEL, VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 
-
 const STATUS_OPTIONS: VehicleStatus[] = [
   "DISPONIVEL",
   "EM_VIAGEM",
@@ -96,10 +95,10 @@ export default function VeiculoAdminDetalhesPage({
         />
         <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <InfoItem label="Tipo" value={VEHICLE_TYPE_LABEL[vehicle.tipo]} />
-          <InfoItem label="Ano" value={vehicle.ano?.toString() ?? "—"} />
-          <InfoItem label="Cor" value={vehicle.cor ?? "—"} />
-          <InfoItem label="RENAVAM" value={vehicle.renavam ?? "—"} />
-          <InfoItem label="Chassi" value={vehicle.chassi ?? "—"} />
+          <InfoItem label="Ano" value={vehicle.ano?.toString() ?? "Não informado"} />
+          <InfoItem label="Cor" value={vehicle.cor ?? "Não informado"} />
+          <InfoItem label="RENAVAM" value={vehicle.renavam ?? "Não informado"} />
+          <InfoItem label="Chassi" value={vehicle.chassi ?? "Não informado"} />
           <InfoItem
             label="Capacidade de passageiros"
             value={vehicle.capacidadePassageiros.toString()}
@@ -108,14 +107,20 @@ export default function VeiculoAdminDetalhesPage({
             label="Quilometragem atual"
             value={`${vehicle.quilometragemAtual.toLocaleString("pt-BR")} km`}
           />
-          <InfoItem label="Último motorista (ID)" value={vehicle.ultimoMotoristaId ?? "—"} />
-          <InfoItem label="Último monitor (ID)" value={vehicle.ultimoMonitorId ?? "—"} />
+          <InfoItem
+            label="Último motorista (ID)"
+            value={vehicle.ultimoMotoristaId ?? "Não informado"}
+          />
+          <InfoItem
+            label="Último monitor (ID)"
+            value={vehicle.ultimoMonitorId ?? "Não informado"}
+          />
           <InfoItem
             label="Última posição"
             value={
               vehicle.ultimaLatitude && vehicle.ultimaLongitude
                 ? `${vehicle.ultimaLatitude}, ${vehicle.ultimaLongitude}`
-                : "—"
+                : "Não informado"
             }
           />
           <InfoItem
@@ -123,10 +128,10 @@ export default function VeiculoAdminDetalhesPage({
             value={
               vehicle.ultimaPosicaoEm
                 ? new Date(vehicle.ultimaPosicaoEm).toLocaleString("pt-BR")
-                : "—"
+                : "Nunca atualizada"
             }
           />
-          <InfoItem label="Observações" value={vehicle.observacoes ?? "—"} />
+          <InfoItem label="Observações" value={vehicle.observacoes ?? "Não informado"} />
         </Card.Body>
       </Card>
 
@@ -143,7 +148,9 @@ export default function VeiculoAdminDetalhesPage({
               {
                 key: "ator",
                 header: "Autor (ID)",
-                render: (log) => <span className="font-mono text-xs">{log.atorUserId ?? "—"}</span>,
+                render: (log) => (
+                  <span className="font-mono text-xs">{log.atorUserId ?? "Não informado"}</span>
+                ),
               },
               {
                 key: "data",

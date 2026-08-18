@@ -170,7 +170,7 @@ function IntegrationCard({ snapshot }: { snapshot: IntegrationHealthSnapshot }):
         <span>Última falha: {formatDateTime(snapshot.lastFailureAt)}</span>
         <span>
           Latência da última chamada:{" "}
-          {snapshot.lastLatencyMs !== null ? `${snapshot.lastLatencyMs}ms` : "—"}
+          {snapshot.lastLatencyMs !== null ? `${snapshot.lastLatencyMs}ms` : "não registrada"}
         </span>
         <span>Falhas consecutivas: {snapshot.consecutiveFailures}</span>
       </div>

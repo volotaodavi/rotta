@@ -244,7 +244,7 @@ export default function EscolasAdminPage(): JSX.Element {
                     {
                       key: "codigoInep",
                       header: "Código INEP",
-                      render: (school) => school.codigoInep ?? "—",
+                      render: (school) => school.codigoInep ?? "Não informado",
                     },
                     {
                       key: "cidade",

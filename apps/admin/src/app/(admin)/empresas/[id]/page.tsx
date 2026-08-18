@@ -224,7 +224,7 @@ export default function EmpresaDetalhesPage({
         <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <InfoItem label="Email" value={company.email} />
           <InfoItem label="Telefone" value={company.telefone} />
-          <InfoItem label="WhatsApp" value={company.whatsapp ?? "—"} />
+          <InfoItem label="WhatsApp" value={company.whatsapp ?? "Não informado"} />
           <InfoItem label="Tipo" value={company.tipo} />
           <InfoItem
             label="Endereço"

@@ -17,7 +17,6 @@ import {
   SCHOOL_TYPE_LABEL,
 } from "@/features/schools/labels";
 
-
 const STATUS_OPTIONS: SchoolStatus[] = ["ATIVA", "INATIVA", "EM_ANALISE", "ARQUIVADA"];
 
 /**
@@ -93,15 +92,15 @@ export default function EscolaAdminDetalhesPage({
           }
         />
         <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <InfoItem label="Nome fantasia" value={school.nomeFantasia ?? "—"} />
-          <InfoItem label="Rede de ensino" value={school.redeEnsino ?? "—"} />
+          <InfoItem label="Nome fantasia" value={school.nomeFantasia ?? "Não informado"} />
+          <InfoItem label="Rede de ensino" value={school.redeEnsino ?? "Não informado"} />
           <InfoItem
             label="Tipos"
             value={school.tipos.map((t) => SCHOOL_TYPE_LABEL[t]).join(", ")}
           />
-          <InfoItem label="CNPJ" value={school.cnpj ?? "—"} />
-          <InfoItem label="Telefone" value={school.telefone ?? "—"} />
-          <InfoItem label="E-mail" value={school.email ?? "—"} />
+          <InfoItem label="CNPJ" value={school.cnpj ?? "Não informado"} />
+          <InfoItem label="Telefone" value={school.telefone ?? "Não informado"} />
+          <InfoItem label="E-mail" value={school.email ?? "Não informado"} />
           <InfoItem
             label="Endereço"
             value={`${school.logradouro}, ${school.numero} — ${school.bairro}, ${school.cidade}/${school.estado}`}
@@ -159,7 +158,9 @@ export default function EscolaAdminDetalhesPage({
               {
                 key: "ator",
                 header: "Autor (ID)",
-                render: (log) => <span className="font-mono text-xs">{log.atorUserId ?? "—"}</span>,
+                render: (log) => (
+                  <span className="font-mono text-xs">{log.atorUserId ?? "Não informado"}</span>
+                ),
               },
               {
                 key: "data",

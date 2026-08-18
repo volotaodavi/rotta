@@ -23,7 +23,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "nunca";
   return new Date(iso).toLocaleString("pt-BR");
 }
 
@@ -164,7 +164,7 @@ export default function VerificacaoIdentidadeDetailPage(): JSX.Element {
               Sessão Didit
             </Typography>
             <Typography variant="body" className="break-all font-mono text-xs">
-              {data.sessionId ?? "—"}
+              {data.sessionId ?? "Não informado"}
             </Typography>
           </div>
           {data.motivo && (

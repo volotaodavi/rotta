@@ -28,7 +28,7 @@ const STATUS_OPTIONS: Array<{ value: IdentityVerificationStatus | ""; label: str
 ];
 
 function formatDate(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "nunca";
   return new Date(iso).toLocaleString("pt-BR");
 }
 

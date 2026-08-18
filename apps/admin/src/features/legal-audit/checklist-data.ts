@@ -168,7 +168,7 @@ export const AUDIT_CHECKLIST: AuditItem[] = [
   {
     id: "app-nao-publicado-lojas",
     area: "Cobertura de plataforma",
-    documentoTitulo: "—",
+    documentoTitulo: "Nenhum documento aplicável",
     documentoCaminho: "/governo",
     alegacaoLegal:
       'Nenhum documento legal ou página pública afirma que o app está disponível nas lojas — mas a ausência de aviso pode gerar expectativa não atendida ao tentar buscar "Rotta" na Play Store/App Store.',
