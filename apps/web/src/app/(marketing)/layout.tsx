@@ -219,7 +219,19 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
       <footer className="ink-scope w-full">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2 flex flex-col gap-2 sm:col-span-3 lg:col-span-1">
-            <RouteWordmark className="h-6 w-auto" />
+            {/*
+              BUG corrigido (usuário: "logo distorcida no rodapé") — o
+              container acima é `flex-col`, cujo eixo cruzado (largura)
+              tem `align-items: stretch` por padrão; como o wordmark tem
+              `width: auto` (a classe `w-auto`), o flexbox esticava a
+              imagem pra largura inteira da coluna, distorcendo a
+              proporção real do logotipo. `self-start` tira o item do
+              stretch — a imagem volta a respeitar `h-6` e sua proporção
+              original (a mesma correção não é necessária no header:
+              `flex items-center` ali é `flex-row`, eixo cruzado
+              vertical, nunca estica a largura).
+            */}
+            <RouteWordmark className="h-6 w-auto self-start" />
             <p className="text-sm text-text-muted">
               Transporte escolar sob controle, do embarque à entrega.
             </p>
