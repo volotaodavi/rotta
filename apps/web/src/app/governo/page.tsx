@@ -17,7 +17,7 @@ import type { ComponentType } from "react";
 
 import { GovernoContactButton } from "@/components/governo-contact-button";
 import { HeroMapDemo } from "@/components/hero-map-demo";
-import { RouteMark } from "@/components/route-mark";
+import { RouteWordmark } from "@/components/route-wordmark";
 import { ScrollToDemoButton } from "@/components/scroll-to-demo-button";
 import {
   COMPANY_CNPJ,
@@ -133,9 +133,8 @@ export default function GovernoPage(): JSX.Element {
       {/* Cabeçalho minimalista — sem nav de consumidor (Planos/Entrar/Criar conta) */}
       <header className="border-b border-white/10 bg-slate-950">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2.5">
-            <RouteMark className="h-8 w-8" />
-            <span className="text-sm font-bold tracking-wide text-white">Rotta</span>
+          <Link href="/" className="flex items-center">
+            <RouteWordmark className="h-7 w-auto" />
           </Link>
           <div className="flex items-center gap-4">
             <Link

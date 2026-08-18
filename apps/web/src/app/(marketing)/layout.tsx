@@ -9,9 +9,8 @@ import type { ReactNode } from "react";
 
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
-import { RouteMark } from "@/components/route-mark";
+import { RouteWordmark } from "@/components/route-wordmark";
 import { ThemeToggle } from "@/components/theme-toggle";
-
 
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
@@ -101,7 +100,7 @@ const FOOTER_COLUNAS: FooterColumn[] = [
 /**
  * Layout do route group `(marketing)` — Landing Page + Site público
  * (Dossie 11, Secao 1; briefing "ROTTA DIGITAL EXPERIENCE"). Header
- * fixo (sticky + blur) com marca (ver `RouteMark`) e rodapé denso em
+ * fixo (sticky + blur) com marca (ver `RouteWordmark`) e rodapé denso em
  * colunas (Produto/Para você/Conta/Ajuda + barra inferior com idioma) —
  * estrutura inspirada no rodapé multi-coluna da Uber, sem reaproveitar
  * cor ou copy das referências, e sem nenhum link fabricado (só rotas
@@ -126,9 +125,8 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
       */}
       <header className="ink-scope sticky top-0 z-20">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2 text-lg font-bold tracking-tight">
-            <RouteMark className="h-8 w-8" />
-            Rotta
+          <Link href="/" className="flex items-center">
+            <RouteWordmark className="h-7 w-auto" />
           </Link>
           <nav className="hidden items-center gap-8 md:flex">
             {NAV_LINKS.map((link) => (
@@ -221,10 +219,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
       <footer className="ink-scope w-full">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2 flex flex-col gap-2 sm:col-span-3 lg:col-span-1">
-            <span className="flex items-center gap-2 text-base font-bold tracking-tight">
-              <RouteMark className="h-6 w-6" />
-              Rotta
-            </span>
+            <RouteWordmark className="h-6 w-auto" />
             <p className="text-sm text-text-muted">
               Transporte escolar sob controle, do embarque à entrega.
             </p>

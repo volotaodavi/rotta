@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { ImageResponse } from "next/og";
 
 import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site-config";
@@ -11,10 +14,22 @@ import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site-config";
  * Next.js 15 (`opengraph-image.tsx` na raiz de `app/`) gera uma imagem
  * 1200×630 dedicada em cada build/request via `ImageResponse` — mesma
  * lógica de "desenhar com código, nunca gerar num editor externo/IA de
- * imagem" já usada em `HeroTripPhoneMockup`/`RouteMark`/o mascote do
+ * imagem" já usada em `HeroTripPhoneMockup`/`RouteWordmark`/o mascote do
  * login. Aplica-se a toda página que não tiver seu próprio
  * `opengraph-image.tsx` (nenhuma tem hoje, então cobre o site inteiro).
+ *
+ * Wordmark real (`RouteWordmark`, branco + ponto azul) em vez do ícone
+ * "R" + texto desenhados à mão em CSS — o fundo aqui é sempre escuro
+ * (`#0B0F14`, nunca muda com tema, é uma imagem estática por request),
+ * o mesmo requisito de contraste do `.ink-scope`. Satori (motor do
+ * `ImageResponse`) não aceita um caminho relativo de `/public` como
+ * `src` — precisa dos bytes já embutidos, por isso `readFileSync` +
+ * data URI em vez de `<Image src="/brand/...">`.
  */
+const WORDMARK_BASE64 = readFileSync(
+  join(process.cwd(), "public/brand/rotta-wordmark-light.png"),
+).toString("base64");
+
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 export const alt = `${SITE_NAME} — ${SITE_DESCRIPTION}`;
@@ -35,31 +50,13 @@ export default function OpengraphImage(): ImageResponse {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 24, maxWidth: 700 }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              width: 72,
-              height: 72,
-              borderRadius: 20,
-              background: "linear-gradient(135deg, #5A8CFF 0%, #3B6EF6 100%)",
-              fontSize: 40,
-              fontWeight: 800,
-              color: "#FFFFFF",
-            }}
-          >
-            R
-          </div>
-          <div style={{ fontSize: 40, fontWeight: 800, color: "#F5F7FA" }}>{SITE_NAME}</div>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element -- Satori exige <img>, não <Image>. */}
+        <img
+          src={`data:image/png;base64,${WORDMARK_BASE64}`}
+          width={220}
+          height={67}
+          alt={SITE_NAME}
+        />
         <div style={{ fontSize: 52, fontWeight: 800, color: "#F5F7FA", lineHeight: 1.15 }}>
           Transporte escolar rastreado em tempo real
         </div>
