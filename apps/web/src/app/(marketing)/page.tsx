@@ -371,54 +371,61 @@ const AUDIENCE_PHOTO: Record<string, { src: string; alt: string; ratio: number }
 };
 
 /**
- * Painel visual das seções "escolha como você utiliza a plataforma" —
- * mesma linguagem de cartão "solto"/com glow do `HeroMapDemo` acima,
- * agora com a foto real de cada audiência (ver `AUDIENCE_PHOTO`) em vez
- * de ilustração/ícone.
- *
- * Clicável (pedido do usuário: "deixe essas imagens clicáveis") — quem
- * renderiza envolve isto num `<Link>` com a classe `group`; os efeitos
- * de hover abaixo (elevação, sombra, chip "Ver mais") reagem a esse
- * `group` do pai, então só aparecem quando o cartão inteiro é
- * hovarado/focado, não só um ponto interno da foto.
+ * Cartão de audiência (referência real trazida pelo usuário desta vez:
+ * screenshots de indrive.com/pt-br, seção "Um app, muitos serviços" —
+ * fileira de cartões com foto no topo, título, descrição curta e uma
+ * lista curta de "para quem", em vez do bloco alternado foto/texto que
+ * esta seção usava antes). Foto real de cada audiência (`AUDIENCE_PHOTO`,
+ * sem trocar nenhuma imagem), só os 2 primeiros `bullets` (não os 3 —
+ * versão condensada, pra não repetir o mesmo texto que a própria página
+ * já criticava por "cara de IA": parágrafos diferentes reafirmando a
+ * mesma frase). Cor 100% da paleta real da Rotta (`TONE_BG`/`TONE_TEXT`,
+ * já existentes) — nenhuma cor nova, nenhum creme/lime da referência.
  */
-function AudienceVisual({
-  tone,
-  titulo,
-  ctaLabel,
-}: {
-  tone: AudienceCard["tone"];
-  titulo: string;
-  ctaLabel: string;
-}): JSX.Element {
-  const photo = AUDIENCE_PHOTO[titulo];
+function AudienceServiceCard({ audiencia }: { audiencia: AudienceCard }): JSX.Element {
+  const photo = AUDIENCE_PHOTO[audiencia.titulo];
   return (
-    <div
-      className="relative w-full max-w-sm transition-transform duration-300 group-hover:-translate-y-1.5"
-      style={{ aspectRatio: photo?.ratio ?? 1 }}
+    <Link
+      href={audiencia.ctaHref}
+      className="group flex flex-col overflow-hidden rounded-[28px] border border-border bg-card transition-colors duration-200 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     >
-      <div className="relative h-full w-full overflow-hidden rounded-[28px] border border-border transition-colors duration-300 group-hover:border-primary">
+      <div className="relative w-full overflow-hidden" style={{ aspectRatio: photo?.ratio ?? 1 }}>
         {photo && (
           <Image
             src={photo.src}
             alt={photo.alt}
             fill
-            sizes="(min-width: 1024px) 384px, 90vw"
-            className="object-cover"
+            sizes="(min-width: 1024px) 320px, 90vw"
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         )}
-        {/*
-          Chip de hover no canto superior direito — livre nas 4 fotos
-          atuais, nenhuma tem botão desenhado dentro da imagem.
-        */}
-        <div className="absolute right-4 top-4 flex -translate-y-2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-          <Typography variant="caption" className={`font-semibold ${TONE_TEXT[tone]}`}>
-            {ctaLabel}
-          </Typography>
-          <ArrowRight className={`h-3.5 w-3.5 ${TONE_TEXT[tone]}`} />
-        </div>
       </div>
-    </div>
+      <div className="flex flex-1 flex-col gap-3 p-6">
+        <span
+          className={`flex h-10 w-10 items-center justify-center rounded-xl ${TONE_BG[audiencia.tone]}/15`}
+        >
+          <audiencia.icon className={`h-4.5 w-4.5 ${TONE_TEXT[audiencia.tone]}`} />
+        </span>
+        <Typography variant="subtitle">{audiencia.titulo}</Typography>
+        <Typography variant="bodySmall" color="muted">
+          {audiencia.descricao}
+        </Typography>
+        <ul className="flex flex-col gap-1.5">
+          {audiencia.bullets.slice(0, 2).map((bullet) => (
+            <li key={bullet} className="flex items-start gap-2">
+              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+              <Typography variant="caption" color="muted">
+                {bullet}
+              </Typography>
+            </li>
+          ))}
+        </ul>
+        <span className="mt-auto flex items-center gap-1.5 pt-2 text-[13px] font-semibold text-primary">
+          {audiencia.ctaLabel}
+          <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -476,6 +483,33 @@ function AudienceVisual({
  * final) foi puxada mais pesada (`font-bold`, tracking mais apertado),
  * na direção da tipografia enorme e confiante que é a marca registrada
  * de referências do gênero como a inDrive — nunca a cor de marca delas.
+ *
+ * Revisão (usuário anexou 4 screenshots reais de indrive.com/pt-br
+ * diretamente na mensagem — primeira vez com acesso visual de verdade à
+ * referência, sem o bloqueio de proxy das rodadas anteriores; aviso
+ * repetido "NÃO TIRE O MAPA DA OPENSTREET"): 3 mudanças cirúrgicas, o
+ * resto da página (faixa de confiança, "Como funciona", benefícios, CTA
+ * final) já estava alinhado e ficou como estava.
+ * 1. H1 da hero: 1ª linha ganhou destaque tipo "marcador" (`bg-primary/
+ *    15` + `-rotate-1`, nunca o lime da referência) — mesma ideia visual
+ *    do highlighter da inDrive, cor 100% da marca da Rotta.
+ * 2. "Escolha como você utiliza a plataforma": os blocos alternados
+ *    foto/texto viraram uma fileira de cartões (`AudienceServiceCard`,
+ *    substituindo `AudienceVisual`) — mesmo padrão da seção "Um app,
+ *    muitos serviços" da referência, com fundo `bg-marketing-wash` full-
+ *    bleed (nunca o creme da inDrive, já rejeitado antes — ver
+ *    `globals.css` linha 96).
+ * 3. Seção "Segurança": deixou de ser um card modesto dentro do
+ *    container padrão e passou a um bloco full-bleed grande e dedicado
+ *    (headline na escala da hero, os 4 itens como chips compactos em vez
+ *    de cards com descrição própria, CTA real pra `/criar-conta`) — como
+ *    o bloco de Segurança da referência, só que em `bg-marketing-wash`
+ *    (nunca o mesmo azul saturado do bloco de CTA final, pra não
+ *    duplicar visualmente a mesma solução duas vezes na rolagem).
+ * Fora de escopo, decisão consciente: paleta cream/lime (já rejeitada),
+ * foto de banco na hero (Rotta não tem — Dossiê 24), seção de "Impacto
+ * social" (a Rotta não tem programa social real equivalente pra citar).
+ * `HeroMapDemoLazy` (mapa OpenStreetMap real) inteiramente intocado.
  */
 export default function LandingPage(): JSX.Element {
   return (
@@ -509,9 +543,20 @@ export default function LandingPage(): JSX.Element {
               (mesmo tracking já usado no H2 da faixa de CTA final,
               linha ~724 — unifica o peso "editorial" nos dois pontos de
               maior impacto da página em vez de só um).
+
+              Destaque "marcador" na 1ª linha (rodada com screenshots
+              reais de indrive.com/pt-br finalmente disponíveis — a
+              referência usa um retângulo sólido levemente rotacionado
+              atrás da frase, tipo highlighter): `bg-primary/15` +
+              `-rotate-1`, nunca o lime da referência — é a MESMA cor
+              azul que já aparece em toda a marca, só usada como fundo em
+              vez de texto. A 2ª linha continua só com `text-primary`
+              (contraste entre "pergunta marcada" e "resposta cheia").
             */}
             <h1 className="text-[48px] font-bold leading-[0.92] tracking-[-0.03em] text-text sm:text-[72px] lg:text-[88px]">
-              Cadê o transporte?
+              <span className="inline-block -rotate-1 rounded-md bg-primary/15 px-2">
+                Cadê o transporte?
+              </span>
               <br />
               {/* Destaque no MESMO azul do CTA/marca (pedido do usuário: "deixe com as cores da Rotta, não invente") — antes usava `text-warning` (dourado) só como decoração, sem nenhum estado de aviso real por trás; `--color-warning` é reservado pra estado semântico de verdade (Dossiê 10 §7). */}
               <span className="text-primary">A Rotta mostra.</span>
@@ -579,75 +624,29 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section className="w-full pt-24">
-        <Typography variant="headline" as="h2" className="px-6 text-center">
-          Escolha como você utiliza a plataforma
-        </Typography>
-
-        {AUDIENCIAS.map((audiencia, index) => {
-          const textoBloco = (
-            <div className="flex flex-col items-start gap-5">
-              <span
-                className={`flex h-14 w-14 items-center justify-center rounded-2xl ${TONE_BG[audiencia.tone]}/15`}
-              >
-                <audiencia.icon className={`h-6 w-6 ${TONE_TEXT[audiencia.tone]}`} />
-              </span>
-              <Typography variant="display" as="h3">
-                {audiencia.titulo}
-              </Typography>
-              <Typography variant="body" color="muted" className="max-w-md">
-                {audiencia.descricao}
-              </Typography>
-              <ul className="flex flex-col gap-3">
-                {audiencia.bullets.map((bullet) => (
-                  <li key={bullet} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <Typography variant="body" color="muted">
-                      {bullet}
-                    </Typography>
-                  </li>
-                ))}
-              </ul>
-              <Link href={audiencia.ctaHref} className={`${pillPrimaryLg} mt-2`}>
-                {audiencia.ctaLabel}
-              </Link>
-            </div>
-          );
-          const visualBloco = (
-            <Link
-              href={audiencia.ctaHref}
-              aria-label={audiencia.ctaLabel}
-              className="group flex justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background"
-            >
-              <AudienceVisual
-                tone={audiencia.tone}
-                titulo={audiencia.titulo}
-                ctaLabel={audiencia.ctaLabel}
-              />
-            </Link>
-          );
-
-          return (
-            <div
-              key={audiencia.titulo}
-              className={index % 2 === 1 ? "bg-marketing-wash" : undefined}
-            >
-              <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 py-20 lg:grid-cols-2">
-                {index % 2 === 1 ? (
-                  <>
-                    {visualBloco}
-                    {textoBloco}
-                  </>
-                ) : (
-                  <>
-                    {textoBloco}
-                    {visualBloco}
-                  </>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      {/*
+        Rodada com screenshots reais de indrive.com/pt-br (seção "Um app,
+        muitos serviços"): fileira de cartões (foto + título + descrição
+        curta + link), em vez dos blocos alternados grandes que esta
+        seção usava antes. Fundo `bg-marketing-wash` full-bleed (o mesmo
+        azul-em-tinta-mínima de sempre, nunca o creme da referência) —
+        cartões em `bg-card` por cima, mesmo contraste "superfície sobre
+        faixa" da referência, com a paleta real da Rotta.
+      */}
+      <section className="w-full bg-marketing-wash py-24">
+        <div className="mx-auto w-full max-w-6xl px-6">
+          <Typography variant="headline" as="h2" className="text-center">
+            Escolha como você utiliza a plataforma
+          </Typography>
+          <Typography variant="body" color="muted" className="mx-auto mt-3 max-w-lg text-center">
+            Um app só, um papel por vez — encontre o seu.
+          </Typography>
+          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {AUDIENCIAS.map((audiencia) => (
+              <AudienceServiceCard key={audiencia.titulo} audiencia={audiencia} />
+            ))}
+          </div>
+        </div>
       </section>
 
       <section className="w-full px-6 py-24">
@@ -681,36 +680,46 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      <section id="seguranca" className="mx-auto w-full max-w-6xl px-6 py-24">
-        <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2">
-          <div className="flex flex-col items-start gap-5">
-            <span className="inline-flex items-center rounded-full bg-success/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.1em] text-success">
-              Segurança
-            </span>
-            <Typography variant="headline" as="h2">
-              Antes de rodar, o motorista já passou pela Rotta AI.
-            </Typography>
-            <Typography variant="body" color="muted" className="max-w-lg">
-              Nenhum motorista sai com o veículo sem verificação de identidade — a mesma tecnologia
-              usada pelo mercado financeiro, aplicada ao transporte escolar.
-            </Typography>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      {/*
+        Bloco dedicado e grande (referência real: screenshots de
+        indrive.com/pt-br, seção de Segurança — um bloco full-bleed só
+        pra isso, headline enorme + CTA, não um card pequeno perdido num
+        grid). Fundo `bg-marketing-wash` (nunca o mesmo azul saturado do
+        bloco de CTA final mais abaixo — dois blocos cheios idênticos na
+        mesma rolagem duplicariam a solução visual). Os 4 itens somem do
+        formato "card com descrição própria" e passam a chips compactos
+        (só o título) — a descrição de cada um não repete 4x dentro de
+        um card, fica só o parágrafo corrido acima, uma vez.
+      */}
+      <section id="seguranca" className="w-full bg-marketing-wash px-6 py-24">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 text-center">
+          <span className="inline-flex items-center rounded-full bg-success/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.1em] text-success">
+            Segurança
+          </span>
+          <h2 className="text-[36px] font-bold leading-[0.92] tracking-[-0.03em] text-text sm:text-[56px]">
+            Antes de rodar, o motorista já passou pela Rotta AI.
+          </h2>
+          <Typography variant="body" color="muted" className="max-w-xl">
+            Nenhum motorista sai com o veículo sem verificação de identidade — a mesma tecnologia
+            usada pelo mercado financeiro, aplicada ao transporte escolar.
+          </Typography>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
             {SEGURANCA_ITENS.map((item) => (
               <div
                 key={item.titulo}
-                className="group flex flex-col gap-3 rounded-[28px] border border-border bg-surface p-6 transition-colors duration-200 hover:border-success/40"
+                className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"
               >
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-success/10 text-success transition-transform duration-200 group-hover:scale-110">
-                  <item.icon className="h-5 w-5" />
-                </span>
-                <Typography variant="subtitle">{item.titulo}</Typography>
-                <Typography variant="bodySmall" color="muted">
-                  {item.descricao}
+                <item.icon className="h-4 w-4 shrink-0 text-success" />
+                <Typography variant="bodySmall" className="font-medium">
+                  {item.titulo}
                 </Typography>
               </div>
             ))}
           </div>
+          <Link href="/criar-conta" className={`${pillPrimaryLg} mt-4`}>
+            Criar conta gratuita
+            <ArrowRight className="h-4 w-4" />
+          </Link>
         </div>
       </section>
 
