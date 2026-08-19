@@ -40,17 +40,22 @@ export function LegalDocumentShell({
           </span>
           <span>Publicado em {meta.publicadoEm}</span>
           <span>Atualizado em {meta.atualizadoEm}</span>
+          {meta.status === "REVISADO" && meta.revisadoEm && (
+            <span>Revisado juridicamente em {meta.revisadoEm}</span>
+          )}
         </div>
       </header>
 
-      <div className="rounded-md border border-warning/40 bg-warning/10 p-4">
-        <Typography variant="bodySmall">
-          <strong>Documento pendente de revisão jurídica.</strong> O conteúdo abaixo foi redigido
-          com base no funcionamento real da plataforma (auditado, não copiado de um modelo
-          genérico), mas ainda precisa ser revisado por um advogado antes de ser tratado como o
-          texto final e vinculante deste documento.
-        </Typography>
-      </div>
+      {meta.status === "PENDENTE_REVISAO_JURIDICA" && (
+        <div className="rounded-md border border-warning/40 bg-warning/10 p-4">
+          <Typography variant="bodySmall">
+            <strong>Documento pendente de revisão jurídica.</strong> O conteúdo abaixo foi redigido
+            com base no funcionamento real da plataforma (auditado, não copiado de um modelo
+            genérico), mas ainda precisa ser revisado por um advogado antes de ser tratado como o
+            texto final e vinculante deste documento.
+          </Typography>
+        </div>
+      )}
 
       {toc.length > 0 && (
         <nav aria-label={`Índice — ${meta.titulo}`} className="rounded-md border border-border p-4">

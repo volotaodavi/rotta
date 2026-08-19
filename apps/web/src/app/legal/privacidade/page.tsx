@@ -6,7 +6,6 @@ import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-docum
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 import { CONTACT_EMAIL } from "@/lib/site-config";
 
-
 export const metadata: Metadata = {
   title: "Política de Privacidade",
   description: "Como a Rotta trata dados pessoais — LGPD.",
@@ -53,7 +52,10 @@ export default function PrivacidadePage(): JSX.Element {
     >
       <LegalSection id="quem-trata" title="1. Quem trata seus dados">
         A Rotta do Brasil Tecnologia e Soluções de Transportes é a controladora dos dados pessoais
-        tratados nesta plataforma (site, painel web, aplicativo — mesma conta em todos).
+        tratados nesta plataforma (site, painel web, aplicativo — mesma conta em todos). Nosso
+        Encarregado pelo Tratamento de Dados Pessoais (DPO), nos termos do art. 41 da LGPD, pode ser
+        contatado pelo canal indicado na seção 14 desta página para qualquer assunto relacionado ao
+        tratamento dos seus dados.
       </LegalSection>
 
       <LegalSection id="dados-coletados" title="2. Quais dados coletamos">
@@ -157,8 +159,8 @@ export default function PrivacidadePage(): JSX.Element {
       </LegalSection>
 
       <LegalSection id="contato" title="14. Contato">
-        Dúvidas sobre privacidade e dados pessoais:{" "}
-        <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+        Dúvidas sobre privacidade e dados pessoais, incluindo o contato com o Encarregado pelo
+        Tratamento de Dados Pessoais (DPO): <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
       </LegalSection>
     </LegalDocumentShell>
   );

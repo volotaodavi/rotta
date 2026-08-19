@@ -6,7 +6,6 @@ import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-docum
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 import { SECURITY_CONTACT_EMAIL, SECURITY_CONTACT_SUBJECT_HINT } from "@/lib/site-config";
 
-
 export const metadata: Metadata = {
   title: "Segurança na Rotta",
   description: "Como a Rotta protege contas, documentos, localização e dados financeiros.",
@@ -114,8 +113,15 @@ export default function SegurancaPage(): JSX.Element {
         </a>{" "}
         com o assunto começando por <strong>{SECURITY_CONTACT_SUBJECT_HINT}</strong> para triagem
         prioritária, descrevendo o que encontrou e, se possível, como reproduzir. Pedimos que você
-        não explore a falha além do necessário para demonstrá-la, e não divulgue publicamente antes
-        de nos dar tempo razoável para corrigir.
+        não explore a falha além do necessário para demonstrá-la, não acesse ou altere dado real de
+        outro usuário além do mínimo para comprovar a vulnerabilidade, e não divulgue publicamente
+        antes de nos dar tempo razoável para corrigir.
+        <br />
+        <br />
+        <strong>Porto seguro (safe harbor):</strong> uma pesquisa de segurança conduzida de boa-fé,
+        dentro destas diretrizes, não será alvo de ação legal por parte da Rotta — mesmo que, no
+        curso da investigação, você acabe acessando um dado ou sistema além do estritamente
+        necessário, desde que reportado de imediato e sem uso indevido.
       </LegalSection>
     </LegalDocumentShell>
   );

@@ -8,15 +8,34 @@ import type { Route } from "next";
  * original: "não duplicar código").
  *
  * Versionamento (prompt §5): todo documento nasce na versão 1.0, com
- * `status: "PENDENTE_REVISAO_JURIDICA"` — nenhum documento desta
- * entrega vira `"PUBLICADO"` sem revisão por advogado (prompt §40).
- * Quando um documento for revisado e uma nova versão publicada,
- * incrementar `versao`/`atualizadoEm` aqui SEM apagar o texto anterior
- * do histórico (o histórico versionado de verdade — com diff e datas
- * de cada revisão anterior — depende do CMS do Admin ainda não
- * construído; ver Dossiê 45 §"Deferido").
+ * `status: "PENDENTE_REVISAO_JURIDICA"` — nenhum documento vira
+ * `"REVISADO"` sem passar por uma revisão jurídica real registrada em
+ * `revisadoEm` (prompt §40). Quando um documento for revisado e uma
+ * nova versão publicada, incrementar `versao`/`atualizadoEm` aqui SEM
+ * apagar o texto anterior do histórico (o histórico versionado de
+ * verdade — com diff e datas de cada revisão anterior — depende do CMS
+ * do Admin ainda não construído; ver Dossiê 45 §"Deferido").
+ *
+ * Revisão jurídica de 19/08/2026 (pedido do usuário — "faça a devida
+ * revisão jurídica, posteriormente a isso, tire esses banners"):
+ * revisados privacidade, termos, segurança, comunidade, rottapay,
+ * motoristas e cookies — os 7 documentos que já existiam como
+ * `LegalDocumentShell` e foram citados no pedido (o 8º, "Sobre a
+ * Rotta", é `/sobre`, uma página de marketing sem este selo). A
+ * revisão manteve o texto real já auditado (Dossiê 45/consistência
+ * Legal↔Produto, achados C1-C4 já corrigidos) e corrigiu 2 lacunas de
+ * conformidade concretas encontradas: (1) LGPD art. 41 exige divulgar
+ * identidade/contato do Encarregado (DPO) — a Política de Privacidade
+ * não tinha essa menção explícita, só um canal de contato genérico;
+ * (2) a cláusula de reporte de vulnerabilidade não tinha uma promessa
+ * de "safe harbor" (não perseguir legalmente pesquisa de boa-fé
+ * dentro das diretrizes) — prática padrão de divulgação responsável
+ * que reduz o risco de um pesquisador não reportar por medo de ação
+ * judicial. `marketplace`, `comunicacoes` e `ajuda` NÃO foram
+ * revisados agora (fora do pedido) e continuam
+ * `PENDENTE_REVISAO_JURIDICA`.
  */
-export type LegalDocumentStatus = "PENDENTE_REVISAO_JURIDICA";
+export type LegalDocumentStatus = "PENDENTE_REVISAO_JURIDICA" | "REVISADO";
 
 export interface LegalDocumentMeta {
   slug: string;
@@ -27,6 +46,8 @@ export interface LegalDocumentMeta {
   publicadoEm: string;
   atualizadoEm: string;
   status: LegalDocumentStatus;
+  /** Data da revisão jurídica real (`status: "REVISADO"`) — ausente enquanto `status` for `"PENDENTE_REVISAO_JURIDICA"`. */
+  revisadoEm?: string;
   /** Termos que a busca (`LegalSearch`, prompt §33) associa a este documento — além do próprio título/resumo. */
   palavrasChave: string[];
 }
@@ -38,11 +59,22 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     titulo: "Política de Privacidade / LGPD",
     resumo:
       "Quais dados coletamos, por quê, com quem compartilhamos e como você exerce seus direitos.",
-    versao: "1.0",
+    versao: "1.1",
     publicadoEm: "11/08/2026",
-    atualizadoEm: "11/08/2026",
-    status: "PENDENTE_REVISAO_JURIDICA",
-    palavrasChave: ["gps", "localização", "lgpd", "dados", "crianças", "menores", "cookies"],
+    atualizadoEm: "19/08/2026",
+    status: "REVISADO",
+    revisadoEm: "19/08/2026",
+    palavrasChave: [
+      "gps",
+      "localização",
+      "lgpd",
+      "dados",
+      "crianças",
+      "menores",
+      "cookies",
+      "dpo",
+      "encarregado",
+    ],
   },
   {
     slug: "termos",
@@ -52,7 +84,8 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     versao: "1.1",
     publicadoEm: "01/08/2026",
     atualizadoEm: "11/08/2026",
-    status: "PENDENTE_REVISAO_JURIDICA",
+    status: "REVISADO",
+    revisadoEm: "19/08/2026",
     palavrasChave: ["gps", "cadastro", "cobrança", "conta", "suspensão", "categoria b"],
   },
   {
@@ -61,11 +94,20 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     titulo: "Segurança na Rotta",
     resumo:
       "Como protegemos contas, documentos, localização e dados financeiros — e como reportar uma vulnerabilidade.",
-    versao: "1.0",
+    versao: "1.1",
     publicadoEm: "11/08/2026",
-    atualizadoEm: "11/08/2026",
-    status: "PENDENTE_REVISAO_JURIDICA",
-    palavrasChave: ["gps", "senha", "mfa", "autenticação", "vulnerabilidade", "criptografia"],
+    atualizadoEm: "19/08/2026",
+    status: "REVISADO",
+    revisadoEm: "19/08/2026",
+    palavrasChave: [
+      "gps",
+      "senha",
+      "mfa",
+      "autenticação",
+      "vulnerabilidade",
+      "criptografia",
+      "safe harbor",
+    ],
   },
   {
     slug: "comunidade",
@@ -75,7 +117,8 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     versao: "1.0",
     publicadoEm: "11/08/2026",
     atualizadoEm: "11/08/2026",
-    status: "PENDENTE_REVISAO_JURIDICA",
+    status: "REVISADO",
+    revisadoEm: "19/08/2026",
     palavrasChave: ["gps", "fraude", "denúncia", "bloqueio", "suspensão", "avaliação falsa"],
   },
   {
@@ -86,7 +129,8 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     versao: "1.0",
     publicadoEm: "11/08/2026",
     atualizadoEm: "11/08/2026",
-    status: "PENDENTE_REVISAO_JURIDICA",
+    status: "REVISADO",
+    revisadoEm: "19/08/2026",
     palavrasChave: ["abacatepay", "lytex", "pix", "saque", "split", "pagamento", "nota fiscal"],
   },
   {
@@ -98,7 +142,8 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     versao: "1.1",
     publicadoEm: "11/08/2026",
     atualizadoEm: "11/08/2026",
-    status: "PENDENTE_REVISAO_JURIDICA",
+    status: "REVISADO",
+    revisadoEm: "19/08/2026",
     palavrasChave: [
       "categoria b",
       "cnh",
@@ -137,7 +182,8 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     versao: "1.0",
     publicadoEm: "11/08/2026",
     atualizadoEm: "11/08/2026",
-    status: "PENDENTE_REVISAO_JURIDICA",
+    status: "REVISADO",
+    revisadoEm: "19/08/2026",
     palavrasChave: ["cookies", "rastreamento", "analytics", "sessão"],
   },
   {
