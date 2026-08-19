@@ -14,7 +14,6 @@ import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
 
-
 const WEEKDAYS: RouteWeekday[] = [
   "SEGUNDA",
   "TERCA",
@@ -119,7 +118,7 @@ export default function NovaRotaPage(): JSX.Element {
               <FormField label="Nome" isRequired>
                 <Input
                   required
-                  placeholder="ex: Rota Manhã — Zona Norte"
+                  placeholder="ex: Rota Manhã, Zona Norte"
                   value={form.nome}
                   onChange={(event) => updateField("nome", event.target.value)}
                 />
@@ -173,7 +172,7 @@ export default function NovaRotaPage(): JSX.Element {
                 label="Motorista"
                 helperText={
                   motoristas.length === 0
-                    ? "Nenhum motorista vinculado à empresa ainda — convide um em Equipe."
+                    ? "Nenhum motorista vinculado à empresa ainda: convide um em Equipe."
                     : "Quem se credencia para dirigir esta rota."
                 }
               >
@@ -217,7 +216,7 @@ export default function NovaRotaPage(): JSX.Element {
                 <option value="">Nenhum por enquanto</option>
                 {vehicles?.items.map((vehicle) => (
                   <option key={vehicle.id} value={vehicle.id}>
-                    {vehicle.placa} — {vehicle.modelo}
+                    {vehicle.placa} ({vehicle.modelo})
                   </option>
                 ))}
               </Select>

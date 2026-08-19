@@ -58,7 +58,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
     setErrorMessage(null);
 
     if (!isCompleteBrazilianCellphone(form.telefone)) {
-      setErrorMessage("Telefone incompleto — digite o DDD e os 9 dígitos do celular.");
+      setErrorMessage("Telefone incompleto: digite o DDD e os 9 dígitos do celular.");
       return;
     }
 
@@ -92,7 +92,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
         </Typography>
         <Typography variant="body" color="muted">
           Sua conta de Responsável já está pronta. Cadastre seu filho ou dependente para começar a
-          acompanhar o transporte escolar em tempo real — no painel web ou no app Rotta, com o mesmo
+          acompanhar o transporte escolar em tempo real, no painel web ou no app Rotta, com o mesmo
           login.
         </Typography>
         <Button variant="primary" fullWidth onClick={() => router.replace("/alunos/novo")}>

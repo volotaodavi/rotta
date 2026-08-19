@@ -44,12 +44,12 @@ export default function SegurancaPage(): JSX.Element {
       ]}
     >
       <LegalSection id="contas" title="1. Proteção de contas e autenticação">
-        Senhas nunca são armazenadas em texto legível — usamos um algoritmo de hash moderno e
+        Senhas nunca são armazenadas em texto legível: usamos um algoritmo de hash moderno e
         resistente a força bruta (Argon2id). Contas com muitas tentativas de senha incorreta
         seguidas são temporariamente bloqueadas. Sessões usam tokens de curta duração, renovados
-        automaticamente enquanto você está ativo — sem exigir login constante, mas sem manter uma
-        sessão válida indefinidamente. Administradores da Rotta (equipe interna, acesso entre
-        empresas) são obrigados a usar autenticação em duas etapas (MFA/TOTP) — não há exceção para
+        automaticamente enquanto você está ativo, sem exigir login constante, mas também sem manter
+        uma sessão válida indefinidamente. Administradores da Rotta (equipe interna, acesso entre
+        empresas) são obrigados a usar autenticação em duas etapas (MFA/TOTP), sem exceção para
         nenhum papel administrativo.
       </LegalSection>
 
@@ -57,7 +57,7 @@ export default function SegurancaPage(): JSX.Element {
         Cada conta só enxerga o que sua função e seus vínculos permitem: uma transportadora não
         acessa dado de outra; um responsável só vê os alunos vinculados a ele; um motorista só vê as
         rotas/viagens atribuídas a ele. Essa separação é aplicada no backend, não só escondida na
-        tela — nenhuma tela &ldquo;some&rdquo; um botão como única barreira de segurança.
+        tela: nenhuma tela &ldquo;some&rdquo; um botão como única barreira de segurança.
       </LegalSection>
 
       <LegalSection id="criptografia" title="3. Criptografia">
@@ -69,7 +69,7 @@ export default function SegurancaPage(): JSX.Element {
 
       <LegalSection id="monitoramento" title="4. Monitoramento e auditoria">
         Ações administrativas relevantes (ex. um funcionário da Rotta acessando dados de uma empresa
-        para dar suporte) ficam registradas em um log de auditoria — quem fez, o quê, quando. Falhas
+        para dar suporte) ficam registradas em um log de auditoria: quem fez, o quê e quando. Falhas
         reais de integrações externas (pagamento, geolocalização) são monitoradas com um histórico
         de saúde real, não decorativo, para que a equipe da Rotta saiba quando algo parou de
         funcionar na prática.
@@ -77,7 +77,7 @@ export default function SegurancaPage(): JSX.Element {
 
       <LegalSection id="documentos" title="5. Proteção de documentos">
         Documentos enviados à plataforma (CNH, comprovantes, foto de aluno) ficam em um
-        armazenamento privado — nunca em uma URL pública e permanente. O acesso a um documento
+        armazenamento privado, nunca em uma URL pública e permanente. O acesso a um documento
         específico usa um link temporário e assinado, válido só por um curto período e só para quem
         tem permissão de visualizá-lo.
       </LegalSection>
@@ -85,13 +85,13 @@ export default function SegurancaPage(): JSX.Element {
       <LegalSection id="localizacao" title="6. Proteção de localização">
         A localização do veículo durante uma viagem ativa é disponibilizada somente aos usuários
         autorizados e relacionados àquela operação (ver{" "}
-        <Link href="/legal/privacidade#localizacao">Política de Privacidade, geolocalização</Link>)
-        — nunca fica publicamente disponível.
+        <Link href="/legal/privacidade#localizacao">Política de Privacidade, geolocalização</Link>),
+        nunca ficando publicamente disponível.
       </LegalSection>
 
       <LegalSection id="financeiro" title="7. Proteção financeira">
         Dados de pagamento sensíveis (ex. número completo de cartão) não passam pelos nossos
-        próprios servidores — são processados diretamente pelos parceiros de pagamento (ver{" "}
+        próprios servidores: são processados diretamente pelos parceiros de pagamento (ver{" "}
         <Link href="/legal/rottapay">Política Financeira RottaPay</Link>). A Rotta não recebe, retém
         ou movimenta indevidamente valores pertencentes às partes de uma contratação.
       </LegalSection>
@@ -119,7 +119,7 @@ export default function SegurancaPage(): JSX.Element {
         <br />
         <br />
         <strong>Porto seguro (safe harbor):</strong> uma pesquisa de segurança conduzida de boa-fé,
-        dentro destas diretrizes, não será alvo de ação legal por parte da Rotta — mesmo que, no
+        dentro destas diretrizes, não será alvo de ação legal por parte da Rotta, mesmo que, no
         curso da investigação, você acabe acessando um dado ou sistema além do estritamente
         necessário, desde que reportado de imediato e sem uso indevido.
       </LegalSection>

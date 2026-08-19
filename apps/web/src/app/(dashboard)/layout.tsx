@@ -268,7 +268,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           href="/minha-rota"
           className="flex items-center justify-center gap-2 bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
-          {activeTrip.status === "EM_ANDAMENTO" ? "🚐 Em viagem agora" : "⏸️ Viagem pausada"} —{" "}
+          {activeTrip.status === "EM_ANDAMENTO" ? "🚐 Em viagem agora" : "⏸️ Viagem pausada"}:{" "}
           {activeTrip.routeNome} · Ir para Minha Rota
         </Link>
       )}

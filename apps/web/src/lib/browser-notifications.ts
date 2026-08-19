@@ -22,7 +22,7 @@ export async function notifyRouteStarted(routeName: string): Promise<void> {
 
   const title = "Rota iniciada";
   const options: NotificationOptions = {
-    body: `${routeName} começou agora — acompanhe o trajeto e os embarques em tempo real.`,
+    body: `${routeName} começou agora: acompanhe o trajeto e os embarques em tempo real.`,
     icon: "/brand/rotta-mark-192.png",
     tag: "rotta-rota-iniciada",
   };

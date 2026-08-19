@@ -103,7 +103,7 @@ export default function EscolaAdminDetalhesPage({
           <InfoItem label="E-mail" value={school.email ?? "Não informado"} />
           <InfoItem
             label="Endereço"
-            value={`${school.logradouro}, ${school.numero} — ${school.bairro}, ${school.cidade}/${school.estado}`}
+            value={`${school.logradouro}, ${school.numero}, ${school.bairro}, ${school.cidade}/${school.estado}`}
           />
           <InfoItem label="CEP" value={school.cep} />
           <InfoItem
@@ -121,7 +121,7 @@ export default function EscolaAdminDetalhesPage({
         <Card.Header title="Empresas vinculadas (catálogo compartilhado)" />
         <Card.Body>
           <Typography variant="bodySmall" color="muted" className="mb-3">
-            Todas as empresas que já atenderam ou atendem esta escola — visível apenas ao Admin
+            Todas as empresas que já atenderam ou atendem esta escola. Visível apenas ao Admin
             Rotta, já que cada Empresa só enxerga seu próprio vínculo.
           </Typography>
           <Table

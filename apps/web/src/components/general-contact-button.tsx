@@ -7,7 +7,6 @@ import { LeadContactModal } from "./lead-contact-modal";
 
 import { CONTACT_EMAIL } from "@/lib/site-config";
 
-
 /** Versão enxuta (variante `"geral"`) do modal de contato pra `/contato` — mesmo padrão do `GovernoContactButton`, sem os campos exclusivos de governo. */
 export function GeneralContactButton({
   children,
@@ -27,7 +26,7 @@ export function GeneralContactButton({
         variant="geral"
         defaultSubject="Contato pelo site da Rotta"
         title="Fale com a Rotta"
-        description="Preencha o essencial — a gente monta o e-mail pra você, já pronto pra enviar do seu cliente de e-mail."
+        description="Preencha o essencial: a gente monta o e-mail pra você, já pronto pra enviar do seu cliente de e-mail."
       />
     </>
   );

@@ -230,7 +230,7 @@ const COMO_FUNCIONA: {
   {
     numero: "01",
     titulo: "Cadastre-se",
-    descricao: "Crie sua conta em minutos — sem burocracia, sem contrato de fidelidade.",
+    descricao: "Crie sua conta em minutos, sem burocracia e sem contrato de fidelidade.",
     icon: UserPlus,
   },
   {
@@ -248,7 +248,7 @@ const COMO_FUNCIONA: {
   {
     numero: "04",
     titulo: "Fique tranquilo",
-    descricao: "Notificações automáticas a cada etapa — chega de grupo de WhatsApp.",
+    descricao: "Notificações automáticas a cada etapa: chega de grupo de WhatsApp.",
     icon: ShieldCheck,
   },
 ];
@@ -306,13 +306,13 @@ const BENEFICIOS: {
   {
     titulo: "Um painel, ponto final",
     descricao:
-      "Motorista, veículo, rota e aluno vivem no mesmo lugar — sem planilha paralela que só uma pessoa da equipe sabe atualizar.",
+      "Motorista, veículo, rota e aluno vivem no mesmo lugar, sem planilha paralela que só uma pessoa da equipe sabe atualizar.",
     icon: LayoutGrid,
   },
   {
     titulo: "Motorista faltou? Já tem substituto",
     descricao:
-      "Motorista ou veículo ficou indisponível de última hora — a Rotta já mostra quem pode assumir a rota, sem telefonema desesperado.",
+      "Motorista ou veículo ficou indisponível de última hora: a Rotta já mostra quem pode assumir a rota, sem telefonema desesperado.",
     icon: Repeat,
   },
   {
@@ -323,7 +323,7 @@ const BENEFICIOS: {
   },
   {
     titulo: "Suporte que responde de verdade",
-    descricao: "Quando algo trava, tem gente do outro lado — não um bot lendo um script de FAQ.",
+    descricao: "Quando algo trava, tem gente do outro lado, não um bot lendo um script de FAQ.",
     icon: Headset,
   },
 ];
@@ -563,7 +563,7 @@ export default function LandingPage(): JSX.Element {
             </h1>
             <Typography variant="body" color="muted" className="max-w-lg">
               Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
-              desembarcou, e encontra uma transportadora de confiança perto de você — sem precisar
+              desembarcou, e encontra uma transportadora de confiança perto de você, sem precisar
               perguntar pra ninguém.
             </Typography>
             <HeroAudienceSwitch />
@@ -639,7 +639,7 @@ export default function LandingPage(): JSX.Element {
             Escolha como você utiliza a plataforma
           </Typography>
           <Typography variant="body" color="muted" className="mx-auto mt-3 max-w-lg text-center">
-            Um app só, um papel por vez — encontre o seu.
+            Um app só, um papel por vez: encontre o seu.
           </Typography>
           <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {AUDIENCIAS.map((audiencia) => (
@@ -700,7 +700,7 @@ export default function LandingPage(): JSX.Element {
             Antes de rodar, o motorista já passou pela Rotta AI.
           </h2>
           <Typography variant="body" color="muted" className="max-w-xl">
-            Nenhum motorista sai com o veículo sem verificação de identidade — a mesma tecnologia
+            Nenhum motorista sai com o veículo sem verificação de identidade: a mesma tecnologia
             usada pelo mercado financeiro, aplicada ao transporte escolar.
           </Typography>
           <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
@@ -728,7 +728,7 @@ export default function LandingPage(): JSX.Element {
           Problemas do dia a dia que a Rotta já resolve
         </Typography>
         <Typography variant="body" color="muted" className="mb-12 text-center">
-          Nada aspiracional aqui — cada item abaixo já roda em produção.
+          Nada aspiracional aqui: cada item abaixo já roda em produção.
         </Typography>
         <div className="flex flex-col divide-y divide-border">
           {BENEFICIOS.map((beneficio, index) => (

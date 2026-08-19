@@ -8,7 +8,6 @@ import { LeadContactModal, type AudienceOption } from "./lead-contact-modal";
 
 import { GOVERNO_CONTACT_EMAIL } from "@/lib/site-config";
 
-
 /**
  * Soluções da Rotta mais relevantes por tipo de órgão (pedido do
  * usuário: "veja quais soluções estamos oferecendo para cada opção").
@@ -42,7 +41,7 @@ const AUDIENCE_OPTIONS_GOVERNO: AudienceOption[] = [
     solutions: [
       "Gestão de frotas de vários municípios consorciados num painel único",
       "Rotas e alunos vinculados por município, sem misturar dados",
-      "Trilha de auditoria por ação — útil na hora de prestar contas ao consórcio",
+      "Trilha de auditoria por ação, útil na hora de prestar contas ao consórcio",
     ],
   },
   {
@@ -103,7 +102,7 @@ export function GovernoContactButton({
         audienceOptions={AUDIENCE_OPTIONS_GOVERNO}
         defaultSubject={ASSUNTO_PADRAO}
         title="Marcar uma reunião com a Rotta"
-        description="Preencha o essencial — a gente monta o e-mail pra você, já pronto pra enviar do seu cliente de e-mail."
+        description="Preencha o essencial: a gente monta o e-mail pra você, já pronto pra enviar do seu cliente de e-mail."
       />
     </>
   );

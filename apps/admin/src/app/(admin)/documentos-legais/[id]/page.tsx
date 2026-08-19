@@ -151,7 +151,7 @@ export default function DocumentoLegalDetalhePage(): JSX.Element {
             </FormField>
             <FormField
               label="Changelog"
-              helperText="O que mudou nesta versão — obrigatório para enviar para revisão."
+              helperText="O que mudou nesta versão (obrigatório para enviar para revisão)."
             >
               <textarea
                 value={changelog}

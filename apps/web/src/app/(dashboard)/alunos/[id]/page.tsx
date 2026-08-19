@@ -172,11 +172,11 @@ export default function AlunoDetalhePage(): JSX.Element {
           <Card.Header title="Endereços" />
           <Card.Body className="flex flex-col gap-2">
             <Typography variant="bodySmall" color="muted">
-              Embarque: {student.embarqueLogradouro}, {student.embarqueNumero} —{" "}
+              Embarque: {student.embarqueLogradouro}, {student.embarqueNumero},{" "}
               {student.embarqueBairro}, {student.embarqueCidade}/{student.embarqueEstado}
             </Typography>
             <Typography variant="bodySmall" color="muted">
-              Desembarque: {student.desembarqueLogradouro}, {student.desembarqueNumero} —{" "}
+              Desembarque: {student.desembarqueLogradouro}, {student.desembarqueNumero},{" "}
               {student.desembarqueBairro}, {student.desembarqueCidade}/{student.desembarqueEstado}
             </Typography>
             <Typography variant="caption" color="muted">

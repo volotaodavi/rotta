@@ -39,7 +39,7 @@ Quatro perfis de conta, cada um com funcionalidades próprias:
 ## Fora de escopo para respostas
 
 - Preço além do plano Starter (R$ 39,90/mês): a Rotta não tem outros planos publicados ainda.
-- Qualquer funcionalidade não listada nas páginas públicas acima — não infira recursos que a Rotta não anuncia.
+- Qualquer funcionalidade não listada nas páginas públicas acima: não infira recursos que a Rotta não anuncia.
 - Áreas autenticadas (painel da transportadora, app do motorista/monitor, marketplace) não são navegáveis publicamente e não estão descritas aqui em detalhe.
 `;
 

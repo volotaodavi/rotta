@@ -139,7 +139,7 @@ export default function EntrarPage(): JSX.Element {
         <div className="flex flex-col gap-1 text-center">
           <Typography variant="subtitle">Configure a verificação em duas etapas</Typography>
           <Typography variant="bodySmall" color="muted">
-            Obrigatória para contas de Administrador Rotta — escaneie o código com Google
+            Obrigatória para contas de Administrador Rotta: escaneie o código com Google
             Authenticator, Authy ou outro app compatível.
           </Typography>
         </div>
@@ -201,7 +201,7 @@ export default function EntrarPage(): JSX.Element {
           <Typography variant="subtitle">Guarde seus códigos de recuperação</Typography>
           <Typography variant="bodySmall" color="muted">
             Cada código funciona uma única vez, caso você perca acesso ao app autenticador. Eles só
-            aparecem agora — anote em um lugar seguro.
+            aparecem agora, anote em um lugar seguro.
           </Typography>
         </div>
 
@@ -214,7 +214,7 @@ export default function EntrarPage(): JSX.Element {
         </Card>
 
         <Button variant="primary" fullWidth onClick={() => router.replace("/")}>
-          Já salvei meus códigos — continuar
+          Já salvei meus códigos, continuar
         </Button>
       </div>
     );

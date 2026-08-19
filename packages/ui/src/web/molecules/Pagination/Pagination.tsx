@@ -15,7 +15,7 @@ export function Pagination({ page, pageSize, total, onPageChange }: PaginationPr
   return (
     <div className="flex items-center justify-between gap-4">
       <Typography variant="caption" color="muted">
-        Página {page} de {totalPages} — {total} registro{total === 1 ? "" : "s"}
+        Página {page} de {totalPages} ({total} registro{total === 1 ? "" : "s"})
       </Typography>
       <div className="flex items-center gap-2">
         <Button

@@ -278,7 +278,7 @@ function DadosTab({ schoolId }: { schoolId: string }): JSX.Element {
         <Card.Header title="Excluir escola" />
         <Card.Body>
           <Typography variant="bodySmall" color="muted">
-            A escola é removida das listagens, mas o histórico é sempre preservado — inclusive os
+            A escola é removida das listagens, mas o histórico é sempre preservado, inclusive os
             vínculos com outras empresas que ainda a atendem.
           </Typography>
         </Card.Body>
@@ -574,7 +574,7 @@ function VinculosTab({ schoolId }: { schoolId: string }): JSX.Element {
         <Card.Header title="Empresas que atendem esta escola" />
         <Card.Body>
           <Typography variant="bodySmall" color="muted">
-            Escolas são um catálogo compartilhado — mais de uma empresa de transporte pode atender a
+            Escolas são um catálogo compartilhado: mais de uma empresa de transporte pode atender a
             mesma escola simultaneamente.
           </Typography>
         </Card.Body>

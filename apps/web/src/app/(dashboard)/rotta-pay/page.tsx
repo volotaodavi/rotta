@@ -25,7 +25,7 @@ export default function RottaPayPage(): JSX.Element {
   const router = useRouter();
 
   return (
-    <Modal isOpen onClose={() => router.back()} ariaLabel="Rotta Pay — Em breve">
+    <Modal isOpen onClose={() => router.back()} ariaLabel="Rotta Pay: Em breve">
       <Modal.Header onClose={() => router.back()}>Rotta Pay</Modal.Header>
       <Modal.Body className="flex flex-col items-center gap-4 py-4 text-center">
         <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
@@ -33,7 +33,7 @@ export default function RottaPayPage(): JSX.Element {
         </div>
         <Typography variant="title">Em breve</Typography>
         <Typography variant="bodySmall" color="muted">
-          O Rotta Pay — recebimento de mensalidades, extrato e saque direto pelo painel — está em
+          O Rotta Pay (recebimento de mensalidades, extrato e saque direto pelo painel) está em
           construção. Assim que estiver disponível, avisamos por aqui.
         </Typography>
       </Modal.Body>

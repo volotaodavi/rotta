@@ -34,7 +34,7 @@ export default function VeiculosMapaPage(): JSX.Element {
         )
         .map((v) => ({
           id: v.tripId,
-          titulo: `${v.placa} — ${v.routeNome} (${v.motoristaNome})`,
+          titulo: `${v.placa}: ${v.routeNome} (${v.motoristaNome})`,
           latitude: v.latitude,
           longitude: v.longitude,
           // Todo marcador aqui é uma viagem EM_ANDAMENTO agora — sempre
@@ -46,7 +46,7 @@ export default function VeiculosMapaPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <Typography variant="title">Localizador — mapa em tempo real</Typography>
+      <Typography variant="title">Localizador: mapa em tempo real</Typography>
 
       <Card>
         <Card.Body className="flex flex-col gap-4">
@@ -78,7 +78,7 @@ export default function VeiculosMapaPage(): JSX.Element {
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border p-4">
               <Badge variant="info">{selected.placa}</Badge>
               <Typography variant="bodySmall">
-                {selected.routeNome} ({selected.turno}) — motorista {selected.motoristaNome}
+                {selected.routeNome} ({selected.turno}), motorista {selected.motoristaNome}
                 {selected.monitorNome ? `, monitor ${selected.monitorNome}` : ""}
               </Typography>
               <Typography variant="bodySmall" color="muted">

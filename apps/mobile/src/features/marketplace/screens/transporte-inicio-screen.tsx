@@ -28,7 +28,6 @@ import {
   View,
 } from "react-native";
 
-
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
@@ -351,7 +350,7 @@ function TransporteEmAndamentoScreen({
                 markers={[
                   {
                     id: viagem.tripId,
-                    titulo: `${viagem.placa} — ${viagem.motoristaNome}`,
+                    titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
                     latitude: viagem.latitude,
                     longitude: viagem.longitude,
                     emMovimento: true,
@@ -392,7 +391,7 @@ function TransporteEmAndamentoScreen({
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
-                  {viagem.placa} — {viagem.routeNome}
+                  {viagem.placa}: {viagem.routeNome}
                 </Text>
                 <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   Motorista: {viagem.motoristaNome}
@@ -496,7 +495,7 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                 markers={[
                   {
                     id: viagem.tripId,
-                    titulo: `${viagem.placa} — ${viagem.motoristaNome}`,
+                    titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
                     latitude: viagem.latitude,
                     longitude: viagem.longitude,
                     // Viagem em andamento agora — sempre um veículo em movimento.
@@ -509,7 +508,7 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
             </View>
           ) : null}
           <Text style={{ color: theme.colors.text }}>
-            {viagem.routeNome} — motorista {viagem.motoristaNome}
+            {viagem.routeNome}, motorista {viagem.motoristaNome}
             {viagem.monitorNome ? `, monitor ${viagem.monitorNome}` : ""}
           </Text>
           <Text style={{ color: theme.colors.textMuted }}>

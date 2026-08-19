@@ -13,7 +13,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
 import { TransporterCard } from "../components/transporter-card";
 import { useLocation } from "../hooks/use-location";
 import { useSchoolsSearch } from "../hooks/use-school-picker";
@@ -223,7 +222,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
           ]}
         >
           <Text style={{ color: theme.colors.primary, fontWeight: "600" }}>
-            Já sei quem contratar — tenho o código
+            Já sei quem contratar, tenho o código
           </Text>
         </Pressable>
 

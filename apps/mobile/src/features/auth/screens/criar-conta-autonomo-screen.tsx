@@ -73,7 +73,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         Crie sua conta, complete a verificação de identidade e informe o código da transportadora
-        pra pedir vínculo — sem precisar de um convite dela.
+        pra pedir vínculo, sem precisar de um convite dela.
       </Text>
 
       <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Você é</Text>

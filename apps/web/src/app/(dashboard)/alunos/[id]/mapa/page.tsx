@@ -269,7 +269,7 @@ export default function AlunoMapaPage(): JSX.Element {
     return [
       {
         id: viagem.tripId,
-        titulo: `${viagem.placa} — ${viagem.motoristaNome}`,
+        titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
         latitude: viagem.latitude,
         longitude: viagem.longitude,
         emMovimento: true,
@@ -380,7 +380,7 @@ export default function AlunoMapaPage(): JSX.Element {
             </div>
             <div className="flex-1">
               <Typography variant="bodySmall" className="font-semibold">
-                {viagem.placa} — {viagem.routeNome}
+                {viagem.placa}: {viagem.routeNome}
               </Typography>
               <Typography variant="caption" color="muted">
                 Motorista: {viagem.motoristaNome}

@@ -53,7 +53,7 @@ export default function OcorrenciaPage(): JSX.Element {
           <ArrowLeft size={16} /> Voltar
         </button>
         <Typography variant="bodySmall" color="muted">
-          Nenhum veículo associado à viagem atual — volte para &ldquo;Minha Rota&rdquo; e tente
+          Nenhum veículo associado à viagem atual. Volte para &ldquo;Minha Rota&rdquo; e tente
           novamente.
         </Typography>
       </div>

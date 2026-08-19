@@ -175,7 +175,7 @@ export function LeadContactModal({
               type="email"
               value={emailContato}
               onChange={(event) => setEmailContato(event.target.value)}
-              placeholder="opcional — útil se enviar de um dispositivo com outro e-mail"
+              placeholder="opcional, útil se enviar de um dispositivo com outro e-mail"
             />
           </FormField>
 

@@ -104,7 +104,7 @@ export default function EmpresasListPage(): JSX.Element {
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between">
           <Typography variant="caption" color="muted">
-            Página {data.page} de {Math.ceil(data.total / data.pageSize)} — {data.total} empresas
+            Página {data.page} de {Math.ceil(data.total / data.pageSize)}, {data.total} empresas
           </Typography>
           <div className="flex gap-2">
             <Button

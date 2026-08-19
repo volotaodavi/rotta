@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
@@ -19,7 +18,7 @@ import { RouteMark } from "@/components/route-mark";
 export const metadata: Metadata = {
   title: "Entrar ou criar conta",
   description:
-    "Acesse sua conta Rotta ou crie uma nova — responsável, transportadora, motorista ou monitor. Mesmo login no site, no painel Web e no aplicativo.",
+    "Acesse sua conta Rotta ou crie uma nova: responsável, transportadora, motorista ou monitor. Mesmo login no site, no painel Web e no aplicativo.",
 };
 
 /**

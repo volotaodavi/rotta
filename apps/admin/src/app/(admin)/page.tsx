@@ -42,7 +42,6 @@ import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-
 import { analyticsApi } from "@/lib/api-client";
 import { usePrivacy } from "@/providers/privacy-provider";
 
-
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -157,21 +156,21 @@ function buildApprovalItems(queue: ApprovalQueue | undefined): ApprovalItem[] {
     ...queue.documentosMotorista.map((d) => ({
       id: d.id,
       tipo: "Documento de motorista" as const,
-      titulo: `${d.tipo} — ${d.userNome}`,
+      titulo: `${d.tipo}: ${d.userNome}`,
       empresa: d.companyNome,
       createdAt: d.createdAt,
     })),
     ...queue.documentosVeiculo.map((d) => ({
       id: d.id,
       tipo: "Documento de veículo" as const,
-      titulo: `${d.tipo} — ${d.vehiclePlaca}`,
+      titulo: `${d.tipo}: ${d.vehiclePlaca}`,
       empresa: d.companyNome,
       createdAt: d.createdAt,
     })),
     ...queue.contratos.map((c) => ({
       id: c.id,
       tipo: "Contrato" as const,
-      titulo: `Contrato — ${c.studentNome}`,
+      titulo: `Contrato: ${c.studentNome}`,
       empresa: c.companyNome,
       createdAt: c.createdAt,
     })),
@@ -376,7 +375,7 @@ export default function AdminHomePage(): JSX.Element {
         )
         .map((v) => ({
           id: v.tripId,
-          titulo: `${v.placa} — ${v.companyNome ?? "Empresa"}`,
+          titulo: `${v.placa}: ${v.companyNome ?? "Empresa"}`,
           latitude: v.latitude,
           longitude: v.longitude,
           emMovimento: true,
@@ -541,7 +540,7 @@ export default function AdminHomePage(): JSX.Element {
 
                     <div className="flex flex-col gap-2">
                       <Typography variant="caption" color="muted">
-                        Viagens realizadas — período atual vs. anterior
+                        Viagens realizadas: período atual vs. anterior
                       </Typography>
                       <div className="flex items-end gap-4">
                         <div className="flex flex-col items-center gap-1">

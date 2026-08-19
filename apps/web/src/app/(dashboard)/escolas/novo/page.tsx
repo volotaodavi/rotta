@@ -18,7 +18,6 @@ import {
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { schoolsApi } from "@/lib/api-client";
 
-
 const INITIAL_STATE: CreateSchoolInput = {
   nomeOficial: "",
   dependenciaAdministrativa: "MUNICIPAL",
@@ -288,7 +287,7 @@ export default function NovaEscolaPage(): JSX.Element {
             <div className="sm:col-span-2 flex items-start gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-3">
               <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <Typography variant="caption" color="muted">
-                Você não precisa localizar a escola no mapa — a Rotta Geo AI calcula a latitude e a
+                Você não precisa localizar a escola no mapa: a Rotta Geo AI calcula a latitude e a
                 longitude sozinha, a partir do endereço abaixo, assim que a escola for salva.
               </Typography>
             </div>

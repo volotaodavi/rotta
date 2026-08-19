@@ -80,7 +80,7 @@ export default function InteligenciaPage(): JSX.Element {
         <div>
           <Typography variant="title">Central de Inteligência Operacional</Typography>
           <Typography variant="bodySmall" color="muted">
-            Período: {formatDate(data.periodo.de)} — {formatDate(data.periodo.ate)}
+            Período: {formatDate(data.periodo.de)} a {formatDate(data.periodo.ate)}
           </Typography>
         </div>
         <div className="flex gap-2">
@@ -206,7 +206,7 @@ export default function InteligenciaPage(): JSX.Element {
         <Card.Header title="Heatmap operacional nacional" />
         <Card.Body className="flex flex-col gap-3">
           <Typography variant="bodySmall" color="muted">
-            Densidade de paradas de rotas ativas, agregadas em grade — OpenStreetMap (MapLibre).
+            Densidade de paradas de rotas ativas, agregadas em grade (OpenStreetMap, MapLibre).
           </Typography>
           <div style={{ height: 480 }}>
             <RottaMap markers={[]} heatmapPoints={heatmapPoints} initialZoom={4} />
@@ -218,7 +218,7 @@ export default function InteligenciaPage(): JSX.Element {
         <Card.Header title="Detecção de anomalias (Analytics AI)" />
         <Card.Body>
           <Typography variant="bodySmall" color="muted">
-            Ainda não disponível — integração pendente de um provedor de séries temporais/ML e de
+            Ainda não disponível: integração pendente de um provedor de séries temporais/ML e de
             volume histórico suficiente para calibrar. Os alertas acima (baseados em
             regras/limiares) são o que existe de real hoje. Ver GET /analytics/anomalies.
           </Typography>

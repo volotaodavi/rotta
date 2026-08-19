@@ -1,6 +1,5 @@
 import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 
-
 import { StatusPill, VehicleButton, VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle } from "../hooks/use-vehicles";
 import { VEHICLE_STATUS_LABEL, VEHICLE_STATUS_TONE, VEHICLE_TYPE_LABEL } from "../labels";
@@ -66,7 +65,7 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
           />
         </View>
         <Text style={{ color: theme.colors.textMuted }}>
-          {vehicle.modelo} {vehicle.marca ? `— ${vehicle.marca}` : ""} ·{" "}
+          {vehicle.modelo} {vehicle.marca ? `, ${vehicle.marca}` : ""} ·{" "}
           {VEHICLE_TYPE_LABEL[vehicle.tipo]}
         </Text>
         <Text style={{ color: theme.colors.textMuted }}>
@@ -106,7 +105,7 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
           onPress={() => navigation.navigate("Escolas")}
         />
         <VehicleButton
-          label="Rotta Pay — minha carteira"
+          label="Rotta Pay: minha carteira"
           variant="secondary"
           onPress={() => navigation.navigate("Carteira")}
         />

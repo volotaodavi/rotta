@@ -159,9 +159,9 @@ export default function RotaDetalhePage(): JSX.Element {
         <Card>
           <Card.Body>
             <Typography variant="bodySmall" color="danger">
-              Esta rota está pausada — ela não aparece em &quot;Minha Rota&quot; para o motorista
-              nem para o monitor enquanto estiver assim. Clique em &quot;Ativar rota&quot; acima
-              quando ela estiver pronta para operar.
+              Esta rota está pausada: ela não aparece em &quot;Minha Rota&quot; para o motorista nem
+              para o monitor enquanto estiver assim. Clique em &quot;Ativar rota&quot; acima quando
+              ela estiver pronta para operar.
             </Typography>
           </Card.Body>
         </Card>
@@ -171,8 +171,8 @@ export default function RotaDetalhePage(): JSX.Element {
         <Card>
           <Card.Body>
             <Typography variant="bodySmall" color="danger">
-              Esta rota ainda não tem motorista atribuído — edite a rota (Equipe → vincular) antes
-              de esperar que ela apareça em &quot;Minha Rota&quot; para alguém.
+              Esta rota ainda não tem motorista atribuído: edite a rota (Equipe → vincular) antes de
+              esperar que ela apareça em &quot;Minha Rota&quot; para alguém.
             </Typography>
           </Card.Body>
         </Card>
@@ -290,7 +290,7 @@ function StopsSection({
           <Spinner size="sm" />
         ) : !stops || stops.length === 0 ? (
           <Typography variant="bodySmall" color="muted">
-            Nenhuma parada ainda — adicione ao menos uma antes de vincular alunos.
+            Nenhuma parada ainda: adicione ao menos uma antes de vincular alunos.
           </Typography>
         ) : (
           <div className="flex flex-col divide-y divide-border">
@@ -346,7 +346,7 @@ function StopsSection({
           {modo === "escola" ? (
             <FormField
               label="Escola"
-              helperText="Busca pelo nome, no catálogo já importado — a Rotta Geo AI já sabe a localização."
+              helperText="Busca pelo nome, no catálogo já importado: a Rotta Geo AI já sabe a localização."
             >
               <div className="flex flex-col gap-2">
                 <Input
@@ -390,10 +390,10 @@ function StopsSection({
           ) : (
             <FormField
               label="Endereço da parada"
-              helperText="A Rotta Geo AI localiza a latitude/longitude sozinha — nunca digitada manualmente."
+              helperText="A Rotta Geo AI localiza a latitude/longitude sozinha, nunca digitada manualmente."
             >
               <Input
-                placeholder="ex: Rua das Flores, 123 — Bela Vista, São Paulo, SP"
+                placeholder="ex: Rua das Flores, 123, Bela Vista, São Paulo, SP"
                 value={endereco}
                 onChange={(event) => {
                   setEndereco(event.target.value);
@@ -537,7 +537,7 @@ function RouteOptimizationSection({
               ))}
             </div>
             <Typography variant="caption" color="muted">
-              Esta sugestão não altera a rota sozinha — se quiser aplicá-la, reordene as paradas
+              Esta sugestão não altera a rota sozinha: se quiser aplicá-la, reordene as paradas
               acima manualmente.
             </Typography>
           </div>
@@ -747,8 +747,8 @@ function AddStudentCandidateRow({
         </div>
         {student && !turnoCompativel && (
           <Typography variant="caption" color="danger">
-            Turno diferente do turno desta rota ({SCHOOL_SHIFT_LABEL[routeTurno]}) — confira antes
-            de credenciar.
+            Turno diferente do turno desta rota ({SCHOOL_SHIFT_LABEL[routeTurno]}), confira antes de
+            credenciar.
           </Typography>
         )}
         {contract.origem === "TERMO_CIENCIA_AUTOMATICO" ? (

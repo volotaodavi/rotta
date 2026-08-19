@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-document-shell";
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 
-
 export const metadata: Metadata = {
   title: "Política Financeira RottaPay",
   description: "O que é a RottaPay, o papel da AbacatePay e da Lytex, e como o dinheiro circula.",
@@ -40,7 +39,7 @@ export default function RottaPayPage(): JSX.Element {
       ]}
     >
       <LegalSection id="o-que-e" title="1. O que é a RottaPay">
-        A RottaPay é a camada/experiência financeira da Rotta — a carteira dentro do app/painel onde
+        A RottaPay é a camada/experiência financeira da Rotta: a carteira dentro do app/painel onde
         uma transportadora acompanha saldo e extrato, e solicita saque de valores recebidos por
         transportes contratados na plataforma. A Rotta utiliza provedores/parceiros especializados
         em pagamentos para processar determinadas transações; a RottaPay em si não é uma instituição
@@ -49,7 +48,7 @@ export default function RottaPayPage(): JSX.Element {
 
       <LegalSection id="abacatepay" title="2. AbacatePay">
         A AbacatePay é a parceira usada para processar a{" "}
-        <strong>assinatura/plano da própria plataforma Rotta</strong> — a mensalidade que uma
+        <strong>assinatura/plano da própria plataforma Rotta</strong>: a mensalidade que uma
         transportadora paga para usar a Rotta, conforme a integração efetivamente implementada. A
         AbacatePay não é a Rotta, e não deve ser confundida com a RottaPay: uma processa a cobrança
         do plano da plataforma, a outra é a camada financeira voltada às operações da transportadora
@@ -58,9 +57,9 @@ export default function RottaPayPage(): JSX.Element {
 
       <LegalSection id="lytex" title="3. Lytex">
         A Lytex é uma parceira de infraestrutura de pagamentos utilizada para operações de pagamento
-        e split (divisão de valores entre partes) relacionadas ao ecossistema Rotta Pay — por
-        exemplo, uma transferência PIX de um saque solicitado por uma transportadora. A Lytex não é
-        parte da Rotta e não é a própria RottaPay — é um provedor de infraestrutura por trás de
+        e split (divisão de valores entre partes) relacionadas ao ecossistema Rotta Pay (por
+        exemplo, uma transferência PIX de um saque solicitado por uma transportadora). A Lytex não é
+        parte da Rotta e não é a própria RottaPay: é um provedor de infraestrutura por trás de
         operações específicas.
       </LegalSection>
 
@@ -68,7 +67,7 @@ export default function RottaPayPage(): JSX.Element {
         A Rotta não recebe, retém ou movimenta indevidamente os valores pertencentes às partes de
         uma contratação. Quando uma operação usa split (divisão automática de valores), o
         processamento ocorre pela infraestrutura de pagamento parceira contratada para aquela
-        operação, conforme a configuração aplicável — a Rotta não promete uma liquidação específica
+        operação, conforme a configuração aplicável. A Rotta não promete uma liquidação específica
         (prazo, valor líquido) sem confirmação do provedor responsável por aquela transação.
       </LegalSection>
 
@@ -76,7 +75,7 @@ export default function RottaPayPage(): JSX.Element {
         A Rotta pode emitir documentos fiscais relacionados à prestação dos serviços da própria
         plataforma (ex. a mensalidade cobrada de uma transportadora), conforme o plano contratado e
         as regras fiscais aplicáveis. A Rotta não emite nota fiscal em nome de terceiros quando isso
-        não fizer parte da implementação vigente — a emissão em nome de uma transportadora pelo
+        não fizer parte da implementação vigente: a emissão em nome de uma transportadora pelo
         serviço de transporte que ela prestou à família é responsabilidade da própria
         transportadora, salvo quando expressamente descrito de outra forma no seu plano.
       </LegalSection>

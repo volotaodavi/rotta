@@ -12,7 +12,6 @@ import { useGpsForStudent, useGpsForStudents } from "@/features/gps/hooks/use-gp
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useStudentsList } from "@/features/students/hooks/use-students";
 
-
 /**
  * "Meus Alunos" (briefing "Marketplace" §"CADASTRO DO ALUNO" — home do
  * Responsável no Painel Web). Até esta entrega, NENHUMA tela em nenhuma
@@ -114,7 +113,7 @@ function MapaAoVivoWidget({ students }: { students: Student[] }): JSX.Element | 
         )
         .map((row) => ({
           id: row.vehicle.tripId,
-          titulo: `${row.student.nome} — ${row.vehicle.routeNome} (${row.vehicle.motoristaNome})`,
+          titulo: `${row.student.nome}, ${row.vehicle.routeNome} (${row.vehicle.motoristaNome})`,
           latitude: row.vehicle.latitude,
           longitude: row.vehicle.longitude,
           emMovimento: true,
@@ -163,7 +162,7 @@ function StudentCard({ student }: { student: Student }): JSX.Element {
           <div className="flex items-center gap-1.5 text-text-muted">
             <MapPin className="h-3.5 w-3.5" />
             <Typography variant="caption" color="muted">
-              {viagem ? `${viagem.routeNome} — ${viagem.motoristaNome}` : "Toque para ver o mapa"}
+              {viagem ? `${viagem.routeNome} (${viagem.motoristaNome})` : "Toque para ver o mapa"}
             </Typography>
           </div>
         </Card.Body>

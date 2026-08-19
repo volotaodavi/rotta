@@ -33,7 +33,7 @@ export default function VeiculosMapaNacionalPage(): JSX.Element {
         )
         .map((v) => ({
           id: v.tripId,
-          titulo: `${v.placa} — ${v.companyNome ?? "Empresa"} (${v.routeNome})`,
+          titulo: `${v.placa}, ${v.companyNome ?? "Empresa"} (${v.routeNome})`,
           latitude: v.latitude,
           longitude: v.longitude,
           emMovimento: true,
@@ -82,7 +82,7 @@ export default function VeiculosMapaNacionalPage(): JSX.Element {
                 <Badge variant="neutral">{selected.companyNome}</Badge>
               ) : null}
               <Typography variant="bodySmall">
-                {selected.routeNome} ({selected.turno}) — motorista {selected.motoristaNome}
+                {selected.routeNome} ({selected.turno}), motorista {selected.motoristaNome}
                 {selected.monitorNome ? `, monitor ${selected.monitorNome}` : ""}
               </Typography>
               {selected.companyId ? (

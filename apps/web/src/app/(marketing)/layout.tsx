@@ -265,7 +265,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
         <div className="border-t border-border px-6 py-6">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 text-xs text-text-muted sm:flex-row">
             <p>
-              © {new Date().getFullYear()} Rotta do Brasil Tecnologia e Soluções de Transportes —
+              © {new Date().getFullYear()} Rotta do Brasil Tecnologia e Soluções de Transportes,
               CNPJ 54.623.584/0001-80. Todos os direitos reservados.
             </p>
             <p>Brasil · Português</p>

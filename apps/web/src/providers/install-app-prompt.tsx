@@ -128,7 +128,7 @@ export function InstallAppPrompt(): JSX.Element | null {
         <div className="flex-1">
           <p className="text-sm font-semibold text-text">Instale o app da Rotta</p>
           <p className="text-xs text-text-muted">
-            Para uma performance melhor, instale o app no seu dispositivo — celular ou computador.
+            Para uma performance melhor, instale o app no seu dispositivo (celular ou computador).
           </p>
         </div>
         <Button variant="primary" onClick={() => void handleInstall()}>

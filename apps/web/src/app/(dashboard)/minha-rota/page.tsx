@@ -66,7 +66,6 @@ import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/u
 import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
 
-
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
   TARDE: "Tarde",
@@ -533,7 +532,7 @@ function TripStatsGrid({
       >
         <LifeBuoy size={18} />
         <Typography variant="bodySmall" className={`font-semibold ${accent.text}`}>
-          Suporte — falar com a central
+          Suporte: falar com a central
         </Typography>
       </a>
     </div>

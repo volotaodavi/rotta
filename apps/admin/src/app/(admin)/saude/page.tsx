@@ -7,7 +7,6 @@ import type { IntegrationHealthSnapshot, IntegrationStatusLevel } from "@rotta/a
 
 import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-health";
 
-
 const STATUS_LABEL: Record<IntegrationStatusLevel, string> = {
   healthy: "Saudável",
   degraded: "Degradada",
@@ -34,10 +33,10 @@ const STATUS_ICON: Record<IntegrationStatusLevel, typeof CheckCircle2> = {
 
 const INTEGRATION_LABEL: Record<string, string> = {
   abacatepay: "AbacatePay (cobrança de assinaturas)",
-  lytex: "Lytex (Rotta Pay — split/transferência PIX)",
-  nominatim: "Nominatim (Rotta Geo Engine — geocodificação)",
-  osrm: "OSRM (Rotta Geo Engine — rotas)",
-  didit: "Didit (verificação de identidade — CNH/Selfie/Face Match)",
+  lytex: "Lytex (Rotta Pay: split/transferência PIX)",
+  nominatim: "Nominatim (Rotta Geo Engine: geocodificação)",
+  osrm: "OSRM (Rotta Geo Engine: rotas)",
+  didit: "Didit (verificação de identidade: CNH/Selfie/Face Match)",
 };
 
 function formatDateTime(iso: string | null): string {
@@ -85,7 +84,7 @@ export default function SaudePage(): JSX.Element {
       <div>
         <Typography variant="title">Rotta Control Center</Typography>
         <Typography variant="bodySmall" color="muted">
-          Saúde real acumulada — só reflete chamadas que de fato aconteceram, nunca um ping
+          Saúde real acumulada: só reflete chamadas que de fato aconteceram, nunca um ping
           artificial. Atualiza a cada 30s.
         </Typography>
       </div>

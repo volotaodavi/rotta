@@ -75,7 +75,7 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         </Text>
       ) : joinRequest.status === "PENDENTE" ? (
         <Text style={{ color: theme.colors.textMuted }}>
-          Pedido enviado para {joinRequest.companyName} — aguardando a empresa aprovar.
+          Pedido enviado para {joinRequest.companyName}, aguardando a empresa aprovar.
         </Text>
       ) : joinRequest.status === "RECUSADO" ? (
         <>
@@ -89,7 +89,7 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         </>
       ) : (
         <Text style={{ color: theme.colors.textMuted }}>
-          Pedido aprovado por {joinRequest.companyName} — entre novamente pra acessar.
+          Pedido aprovado por {joinRequest.companyName}, entre novamente pra acessar.
         </Text>
       )}
 

@@ -97,7 +97,7 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
             <AuthButton
               key={profile.companyId}
               variant="secondary"
-              label={`${profile.companyName} — ${ROLE_LABEL[profile.role] ?? profile.role}`}
+              label={`${profile.companyName} (${ROLE_LABEL[profile.role] ?? profile.role})`}
               onPress={() => void handleLogin(profile.companyId)}
               isLoading={isSubmitting}
             />

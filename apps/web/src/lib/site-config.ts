@@ -70,7 +70,7 @@ export function getAdminUrl(): string {
 export const SITE_NAME = "Rotta";
 
 export const SITE_DESCRIPTION =
-  "A Rotta conecta responsáveis, transportadoras, motoristas e monitores em um único lugar: rastreamento do transporte escolar em tempo real, notificação de embarque e desembarque, e gestão completa da frota — tudo em uma conta só.";
+  "A Rotta conecta responsáveis, transportadoras, motoristas e monitores em um único lugar: rastreamento do transporte escolar em tempo real, notificação de embarque e desembarque, e gestão completa da frota, tudo em uma conta só.";
 
 /** Logotipo real da marca (Dossiê 24) — usado como `logo` no JSON-LD Organization e como imagem de fallback do OpenGraph. */
 export const SITE_LOGO_PATH = "/brand/rotta-mark-512.png";

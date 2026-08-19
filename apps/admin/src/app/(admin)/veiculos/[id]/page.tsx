@@ -68,7 +68,7 @@ export default function VeiculoAdminDetalhesPage({
             <VehicleStatusBadge status={vehicle.status} />
           </div>
           <Typography variant="caption" color="muted">
-            {vehicle.modelo} {vehicle.marca ? `— ${vehicle.marca}` : ""} · Empresa (ID):{" "}
+            {vehicle.modelo} {vehicle.marca ? `, ${vehicle.marca}` : ""} · Empresa (ID):{" "}
             <span className="font-mono">{vehicle.companyId}</span>
           </Typography>
         </div>

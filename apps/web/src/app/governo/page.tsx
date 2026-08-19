@@ -64,7 +64,7 @@ import {
  * como uma certificação que a Rotta já obteve.
  */
 export const metadata: Metadata = {
-  title: "Rotta para Órgãos Públicos — Transporte Escolar Público",
+  title: "Rotta para Órgãos Públicos: Transporte Escolar Público",
   description:
     "Veja onde está cada van escolar do seu município, em tempo real. A Rotta leva GPS ao vivo, verificação de motoristas e trilha de auditoria para a gestão pública do transporte escolar. Marque uma reunião.",
   alternates: { canonical: "/governo" },
@@ -79,13 +79,13 @@ const CAPACIDADES: {
   {
     titulo: "GPS em tempo real",
     descricao:
-      "A frota escolar se move no mapa ao vivo — a gestão acompanha cada rota, cada veículo, do início ao fim do trajeto, sem depender de ligação para saber onde o veículo está.",
+      "A frota escolar se move no mapa ao vivo, e a gestão acompanha cada rota, cada veículo, do início ao fim do trajeto, sem depender de ligação para saber onde o veículo está.",
     icon: MapPin,
   },
   {
     titulo: "Notificação de embarque e desembarque",
     descricao:
-      "Aviso automático a cada parada — famílias e a gestão sabem na hora em que cada aluno entrou ou saiu do veículo.",
+      "Aviso automático a cada parada: famílias e a gestão sabem na hora em que cada aluno entrou ou saiu do veículo.",
     icon: Bell,
   },
   {
@@ -97,19 +97,19 @@ const CAPACIDADES: {
   {
     titulo: "Gestão de frota num painel só",
     descricao:
-      "Veículos, motoristas, rotas, escolas e alunos — sem planilha paralela, sem grupo de WhatsApp como sistema de gestão.",
+      "Veículos, motoristas, rotas, escolas e alunos: sem planilha paralela, sem grupo de WhatsApp como sistema de gestão.",
     icon: Building2,
   },
   {
     titulo: "Trilha de auditoria",
     descricao:
-      "Ações relevantes ficam registradas — quem verificou o quê, quando uma rota mudou, quando um motorista foi vinculado. Útil na hora de prestar contas.",
+      "Ações relevantes ficam registradas: quem verificou o quê, quando uma rota mudou, quando um motorista foi vinculado. Útil na hora de prestar contas.",
     icon: ScrollText,
   },
   {
     titulo: "Alunos e responsáveis vinculados",
     descricao:
-      "Cada aluno tem um responsável vinculado à própria rota — a comunicação com a família parte de um cadastro real, não de uma lista solta.",
+      "Cada aluno tem um responsável vinculado à própria rota, e a comunicação com a família parte de um cadastro real, não de uma lista solta.",
     icon: Users,
   },
 ];
@@ -163,7 +163,7 @@ export default function GovernoPage(): JSX.Element {
               Você sabe, agora, onde está cada van escolar do seu município?
             </Typography>
             <Typography variant="body" className="max-w-lg text-white/70">
-              A Rotta mostra a frota escolar pública se movendo no mapa em tempo real — o mesmo GPS
+              A Rotta mostra a frota escolar pública se movendo no mapa em tempo real: o mesmo GPS
               ao vivo que já roda hoje para transportadoras privadas, agora à disposição da gestão
               pública. Sem planilha, sem grupo de WhatsApp, sem ligar perguntando onde está o
               veículo.
@@ -208,13 +208,13 @@ export default function GovernoPage(): JSX.Element {
             O que a sua equipe veria no painel
           </Typography>
           <Typography variant="body" color="muted" className="max-w-2xl">
-            Exemplo ilustrativo de como a gestão da frota escolar pública aparece no painel da Rotta
-            — números de demonstração, não de um cliente real.
+            Exemplo ilustrativo de como a gestão da frota escolar pública aparece no painel da
+            Rotta: números de demonstração, não de um cliente real.
           </Typography>
         </div>
         <Card className="overflow-hidden">
           <Card.Header
-            title="Painel de gestão — exemplo"
+            title="Painel de gestão (exemplo)"
             action={<Badge variant="neutral">Dado ilustrativo</Badge>}
           />
           <Card.Body>
@@ -243,7 +243,7 @@ export default function GovernoPage(): JSX.Element {
             </Typography>
             <Typography variant="body" color="muted" className="max-w-2xl">
               Tudo que a Rotta já oferece hoje para transportadoras privadas está disponível,
-              inteiro, para a gestão pública do transporte escolar do seu município — nenhuma versão
+              inteiro, para a gestão pública do transporte escolar do seu município: nenhuma versão
               reduzida.
             </Typography>
           </div>
@@ -273,8 +273,9 @@ export default function GovernoPage(): JSX.Element {
             O mapa que você viu acima já está no ar
           </Typography>
           <Typography variant="body" color="muted" className="max-w-lg">
-            O site oficial da Rotta pode ser visitado antes de qualquer conversa comercial — a mesma
-            tecnologia de rastreamento em tempo real usada hoje pelas transportadoras privadas.
+            O site oficial da Rotta pode ser visitado antes de qualquer conversa comercial: é a
+            mesma tecnologia de rastreamento em tempo real usada hoje pelas transportadoras
+            privadas.
           </Typography>
           <Link
             href="/"
@@ -301,11 +302,11 @@ export default function GovernoPage(): JSX.Element {
             <strong>Lei nº 14.133/2021</strong> (Nova Lei de Licitações e Contratos Administrativos)
             e, a depender do enquadramento da empresa contratada, com a{" "}
             <strong>Lei Complementar nº 182/2021</strong> (Marco Legal das Startups). O tratamento
-            de dados pessoais de alunos e responsáveis segue a <strong>LGPD</strong> — ver a nossa{" "}
+            de dados pessoais de alunos e responsáveis segue a <strong>LGPD</strong> (ver a nossa{" "}
             <Link href="/legal/privacidade" className="font-semibold text-primary">
               Política de Privacidade
             </Link>
-            . A Rotta não substitui a análise da equipe jurídica do seu órgão: cada modalidade de
+            ). A Rotta não substitui a análise da equipe jurídica do seu órgão: cada modalidade de
             contratação e o enquadramento legal aplicável ao caso concreto devem ser avaliados por
             ela antes de qualquer processo formal.
           </Typography>
@@ -322,8 +323,8 @@ export default function GovernoPage(): JSX.Element {
             Vamos marcar uma reunião?
           </Typography>
           <Typography variant="body" className="max-w-lg text-white/70">
-            Conte um pouco sobre o seu órgão — a gente monta o e-mail pra {GOVERNO_CONTACT_EMAIL},
-            já pronto pra enviar do seu próprio cliente de e-mail, sem cadastro nenhum na Rotta.
+            Conte um pouco sobre o seu órgão: a gente monta o e-mail pra {GOVERNO_CONTACT_EMAIL}, já
+            pronto pra enviar do seu próprio cliente de e-mail, sem cadastro nenhum na Rotta.
           </Typography>
 
           <GovernoContactButton variant="primary" size="lg" showIcon>
@@ -336,7 +337,7 @@ export default function GovernoPage(): JSX.Element {
       <footer className="w-full bg-slate-950 px-6 py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
           <Typography variant="caption" className="text-white/50">
-            {COMPANY_LEGAL_NAME} — CNPJ {COMPANY_CNPJ} — Foro de {COMPANY_FORUM}
+            {COMPANY_LEGAL_NAME}, CNPJ {COMPANY_CNPJ}, Foro de {COMPANY_FORUM}
           </Typography>
           <div className="flex items-center gap-4">
             <Link href="/legal" className="text-xs font-medium text-white/50 hover:text-white/80">

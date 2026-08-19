@@ -84,7 +84,7 @@ export default function SuporteDetalhePage(): JSX.Element {
         <Card.Body className="flex flex-col gap-4">
           {ticket.mensagens.length === 0 ? (
             <Typography variant="body" color="muted">
-              Nenhuma mensagem ainda — responda abaixo.
+              Nenhuma mensagem ainda. Responda abaixo.
             </Typography>
           ) : (
             ticket.mensagens.map((message) => (

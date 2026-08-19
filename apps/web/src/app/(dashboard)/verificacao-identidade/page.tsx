@@ -129,7 +129,7 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
       DiditSdk.shared.onComplete = (result) => {
         if (result.type === "completed") {
           setAviso(
-            "Formulário concluído! A confirmação pode levar alguns instantes — atualizando o status a seguir.",
+            "Formulário concluído! A confirmação pode levar alguns instantes. Atualizando o status a seguir.",
           );
           void refetch();
         } else if (result.type === "failed") {
@@ -163,7 +163,7 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
         <div>
           <Typography variant="title">Verificação de identidade</Typography>
           <Typography variant="body" className="text-text-muted">
-            Confirme sua identidade com a Didit — documento + biometria facial, tudo num único
+            Confirme sua identidade com a Didit: documento + biometria facial, tudo num único
             formulário guiado, sem precisar sair desta página.
           </Typography>
         </div>
@@ -192,8 +192,8 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
               <Loader2 size={24} className="animate-spin" />
               <Typography variant="body">
                 {status === "EM_ANALISE"
-                  ? "Sua verificação está em análise manual — normalmente concluída em poucas horas."
-                  : "Verificação em andamento — se você já concluiu o formulário, aguarde a confirmação aparecer aqui."}
+                  ? "Sua verificação está em análise manual: normalmente concluída em poucas horas."
+                  : "Verificação em andamento: se você já concluiu o formulário, aguarde a confirmação aparecer aqui."}
               </Typography>
             </div>
           ) : (
@@ -201,9 +201,9 @@ export default function VerificacaoIdentidadePage(): JSX.Element {
               <ShieldAlert size={24} />
               <Typography variant="body">
                 {status === "REPROVADA"
-                  ? "Sua última verificação não foi aprovada — você pode tentar novamente."
+                  ? "Sua última verificação não foi aprovada, mas você pode tentar novamente."
                   : status === "EXPIRADA"
-                    ? "Sua verificação expirou — inicie uma nova quando puder."
+                    ? "Sua verificação expirou. Inicie uma nova quando puder."
                     : "Você ainda não verificou sua identidade."}
               </Typography>
             </div>

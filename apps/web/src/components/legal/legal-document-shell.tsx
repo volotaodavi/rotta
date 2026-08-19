@@ -58,7 +58,7 @@ export function LegalDocumentShell({
       )}
 
       {toc.length > 0 && (
-        <nav aria-label={`Índice — ${meta.titulo}`} className="rounded-md border border-border p-4">
+        <nav aria-label={`Índice: ${meta.titulo}`} className="rounded-md border border-border p-4">
           <Typography variant="overline" color="muted" className="mb-2 block">
             Nesta página
           </Typography>

@@ -13,7 +13,6 @@ import {
   useLookupStudentPreRegistration,
 } from "@/features/students/hooks/use-student-pre-registrations";
 
-
 /**
  * "Código único do transporte" (pedido do usuário: "o responsável ao
  * entrar no app/web deverá colocar o código único do transporte, após
@@ -159,8 +158,8 @@ export default function VincularTransportePage(): JSX.Element {
         <Card>
           <Card.Body className="flex flex-col items-center gap-3 py-8 text-center">
             <Typography variant="body" color="muted">
-              Não encontramos nenhum pré-cadastro com esse código e celular. Sem problema — você
-              pode cadastrar o aluno do zero agora mesmo.
+              Não encontramos nenhum pré-cadastro com esse código e celular. Sem problema: você pode
+              cadastrar o aluno do zero agora mesmo.
             </Typography>
           </Card.Body>
           <Card.Footer className="flex justify-center gap-3">

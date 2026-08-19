@@ -50,7 +50,7 @@ export default function DocumentosLegaisPage(): JSX.Element {
       setTitulo("");
       setShowForm(false);
     } catch {
-      setErrorMessage("Erro ao criar documento — confira se o slug já não existe.");
+      setErrorMessage("Erro ao criar documento: confira se o slug já não existe.");
     }
   }
 
@@ -135,7 +135,7 @@ export default function DocumentosLegaisPage(): JSX.Element {
                     </div>
                     {latest ? (
                       <Badge variant={STATUS_BADGE[latest.status]}>
-                        v{latest.versao} — {STATUS_LABEL[latest.status]}
+                        v{latest.versao} ({STATUS_LABEL[latest.status]})
                       </Badge>
                     ) : (
                       <Badge variant="neutral">Nenhuma versão criada ainda</Badge>

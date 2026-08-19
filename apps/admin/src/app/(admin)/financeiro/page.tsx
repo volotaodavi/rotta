@@ -39,7 +39,7 @@ function ValorCard({
             {label}
           </Typography>
           <Typography variant="title">
-            {value === null ? "—" : hidden ? "R$ ••••••" : value}
+            {value === null ? "-" : hidden ? "R$ ••••••" : value}
           </Typography>
         </div>
       </Card.Body>
@@ -97,7 +97,7 @@ export default function FinanceiroPage(): JSX.Element {
           <Card.Body>
             <Badge variant="warning">AbacatePay não configurada</Badge>
             <Typography variant="bodySmall" color="muted" className="mt-2">
-              Esta implantação não tem <code>ABACATEPAY_API_KEY</code> configurada — valores
+              Esta implantação não tem <code>ABACATEPAY_API_KEY</code> configurada: valores
               recebidos e taxa retida não podem ser consultados. Empresas e planos abaixo continuam
               corretos (vêm do banco da Rotta, não da AbacatePay).
             </Typography>

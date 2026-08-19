@@ -98,7 +98,7 @@ function TrialBanner({
               <Badge variant="info">Trial</Badge>
             </div>
             <Typography variant="bodySmall" color="muted">
-              Sua empresa está em período de teste gratuito. Assine o plano Rotta — R$ 39,90/mês —
+              Sua empresa está em período de teste gratuito. Assine o plano Rotta (R$ 39,90/mês)
               para continuar usando a plataforma sem interrupções.
             </Typography>
           </div>
@@ -113,7 +113,7 @@ function TrialBanner({
             Pagar com Pix
           </Button>
           <Button variant="primary" onClick={onSubscribe} isLoading={isLoading}>
-            Pagar com cartão — R$ 39,90/mês
+            Pagar com cartão (R$ 39,90/mês)
           </Button>
         </div>
       </Card.Body>
@@ -530,7 +530,7 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
         )
         .map((v) => ({
           id: v.tripId,
-          titulo: `${v.placa} — ${v.routeNome} (${v.motoristaNome})`,
+          titulo: `${v.placa}: ${v.routeNome} (${v.motoristaNome})`,
           latitude: v.latitude,
           longitude: v.longitude,
           emMovimento: true,
@@ -583,7 +583,7 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
                   Código da sua transportadora
                 </Typography>
                 <Typography variant="caption" color="muted">
-                  Compartilhe com responsáveis que já sabem que querem contratar vocês — eles
+                  Compartilhe com responsáveis que já sabem que querem contratar vocês: eles
                   informam esse código no app da Rotta em vez de buscar por proximidade.
                 </Typography>
               </div>

@@ -64,7 +64,7 @@ export default function AprovacoesPage(): JSX.Element {
               <div key={doc.id} className="flex items-center justify-between gap-4 px-6 py-4">
                 <div className="flex flex-col gap-0.5">
                   <Typography variant="body" className="font-semibold">
-                    {doc.userNome} — {doc.tipo}
+                    {doc.userNome} · {doc.tipo}
                   </Typography>
                   <Typography variant="caption" color="muted">
                     {doc.companyNome} · {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
@@ -87,7 +87,7 @@ export default function AprovacoesPage(): JSX.Element {
               <div key={doc.id} className="flex items-center justify-between gap-4 px-6 py-4">
                 <div className="flex flex-col gap-0.5">
                   <Typography variant="body" className="font-semibold">
-                    {doc.vehiclePlaca} — {doc.tipo}
+                    {doc.vehiclePlaca} · {doc.tipo}
                   </Typography>
                   <Typography variant="caption" color="muted">
                     {doc.companyNome} · {new Date(doc.createdAt).toLocaleDateString("pt-BR")}

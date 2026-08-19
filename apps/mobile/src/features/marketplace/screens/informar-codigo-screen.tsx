@@ -41,7 +41,7 @@ export function InformarCodigoScreen({ navigation }: Props): JSX.Element {
         Já sabe qual transportadora contratar?
       </Text>
       <Text style={{ color: theme.colors.textMuted }}>
-        Informe o código que a transportadora compartilhou com você — sem precisar buscar por
+        Informe o código que a transportadora compartilhou com você, sem precisar buscar por
         proximidade ou escola.
       </Text>
 

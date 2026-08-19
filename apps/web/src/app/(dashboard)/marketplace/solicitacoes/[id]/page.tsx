@@ -126,11 +126,11 @@ export default function SolicitacaoTransporteDetalhePage({
             {request.studentNome ?? "Aluno"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
-            Responsável: {request.responsavelNome ?? "—"}
+            Responsável: {request.responsavelNome ?? "Não informado"}
             {request.responsavelTelefone ? ` · ${request.responsavelTelefone}` : ""}
           </Typography>
           <Typography variant="bodySmall" color="muted">
-            Escola: {request.schoolNome ?? "—"}
+            Escola: {request.schoolNome ?? "Não informada"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
             Turno: {request.turno}
@@ -242,7 +242,7 @@ export default function SolicitacaoTransporteDetalhePage({
                 </FormField>
                 <FormField
                   label="Vigência (fim)"
-                  helperText="Opcional — em branco para indeterminado."
+                  helperText="Opcional: deixe em branco para indeterminado."
                 >
                   <Input
                     type="date"

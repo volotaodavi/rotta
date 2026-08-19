@@ -5,7 +5,6 @@ import { LEGAL_FOOTER_LINKS } from "./legal-footer-links";
 
 import { COMPANY_CNPJ, COMPANY_LEGAL_NAME } from "@/lib/site-config";
 
-
 /**
  * Rodapé "ROTTA" (Dossiê 45, prompt §2) — a mesma lista de links usada
  * na coluna de rodapé da Landing Page/Site (`(marketing)/layout.tsx`)
@@ -35,7 +34,7 @@ export function LegalFooter(): JSX.Element {
           </nav>
         </div>
         <Typography variant="caption" color="muted">
-          © {new Date().getFullYear()} {COMPANY_LEGAL_NAME} — CNPJ {COMPANY_CNPJ}. Todos os direitos
+          © {new Date().getFullYear()} {COMPANY_LEGAL_NAME}, CNPJ {COMPANY_CNPJ}. Todos os direitos
           reservados.
         </Typography>
       </div>

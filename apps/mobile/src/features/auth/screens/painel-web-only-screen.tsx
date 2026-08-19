@@ -5,7 +5,6 @@ import { AuthButton } from "../components";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * Papéis de gestão (Empresa/Gestor/Escola/Admin Rotta) ainda não têm
  * telas próprias no app mobile — este app é dedicado a Motorista/Monitor/
@@ -33,8 +32,8 @@ export function PainelWebOnlyScreen(): JSX.Element {
         Use o Painel Web
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        Olá, {user?.nome ?? ""}. A gestão da sua empresa ainda não está disponível no aplicativo —
-        acesse o Painel Web pelo navegador com a mesma conta.
+        Olá, {user?.nome ?? ""}. A gestão da sua empresa ainda não está disponível no aplicativo.
+        Acesse o Painel Web pelo navegador com a mesma conta.
       </Text>
       <AuthButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </View>

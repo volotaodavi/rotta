@@ -54,7 +54,7 @@ export default function VerificacaoIdentidadeDetailPage(): JSX.Element {
 
   function handleConfirmDecline(): void {
     if (!comment.trim()) {
-      setDeclineError("Informe o motivo — ele é mostrado direto para o usuário.");
+      setDeclineError("Informe o motivo: ele é mostrado direto para o usuário.");
       return;
     }
     decide.mutate(
@@ -194,7 +194,7 @@ export default function VerificacaoIdentidadeDetailPage(): JSX.Element {
             </pre>
           ) : (
             <Typography variant="body" color="muted">
-              Nenhuma decisão recebida ainda — a sessão pode estar em andamento, ou o usuário nunca
+              Nenhuma decisão recebida ainda: a sessão pode estar em andamento, ou o usuário nunca
               chegou a submeter os documentos.
             </Typography>
           )}
@@ -207,12 +207,12 @@ export default function VerificacaoIdentidadeDetailPage(): JSX.Element {
         </Modal.Header>
         <Modal.Body className="flex flex-col gap-3">
           <Typography variant="bodySmall" color="muted">
-            Este motivo é mostrado diretamente para {data.nome} na tela de bloqueio — seja
-            específico o bastante para que a pessoa saiba o que corrigir na próxima tentativa.
+            Este motivo é mostrado diretamente para {data.nome} na tela de bloqueio, seja específico
+            o bastante para que a pessoa saiba o que corrigir na próxima tentativa.
           </Typography>
           <textarea
             rows={4}
-            placeholder="Ex.: A foto do documento está ilegível — reenvie com boa iluminação."
+            placeholder="Ex.: A foto do documento está ilegível, reenvie com boa iluminação."
             value={comment}
             onChange={(event) => {
               setComment(event.target.value);

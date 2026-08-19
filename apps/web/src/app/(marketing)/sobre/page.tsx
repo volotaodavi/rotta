@@ -31,7 +31,7 @@ export default function SobrePage(): JSX.Element {
         </Typography>
         <Typography variant="body" color="muted">
           A Rotta é uma plataforma tecnológica destinada ao ecossistema de transporte escolar e
-          transporte infantil/executivo — ela conecta famílias a transportadores (empresas, MEIs e
+          transporte infantil/executivo: ela conecta famílias a transportadores (empresas, MEIs e
           motoristas autônomos) e fornece a essas transportadoras as ferramentas de gestão da
           própria operação: veículos, motoristas, rotas, alunos e cobrança.
         </Typography>
@@ -39,7 +39,7 @@ export default function SobrePage(): JSX.Element {
           A plataforma fornece tecnologia para conexão, gestão, contratação, comunicação,
           localização, contratos, pagamentos e organização operacional. A existência de um usuário
           ou prestador na plataforma não significa, isoladamente, garantia de qualidade, segurança,
-          regularidade ou cumprimento de todas as obrigações legais — os processos de verificação
+          regularidade ou cumprimento de todas as obrigações legais. Os processos de verificação
           disponíveis estão descritos na{" "}
           <Link href="/legal/marketplace" className="text-primary underline">
             Política de Contratação e Marketplace

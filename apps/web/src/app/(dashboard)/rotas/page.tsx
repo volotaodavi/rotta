@@ -66,7 +66,7 @@ export default function RotasPage(): JSX.Element {
         <div>
           <Typography variant="title">Rotas</Typography>
           <Typography variant="bodySmall" color="muted">
-            Crie a rota, atribua um motorista/veículo e adicione os alunos já credenciados — é isso
+            Crie a rota, atribua um motorista/veículo e adicione os alunos já credenciados: é isso
             que faz a rota aparecer em tempo real para o motorista e para os responsáveis.
           </Typography>
         </div>

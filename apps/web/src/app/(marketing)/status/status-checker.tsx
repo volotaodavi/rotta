@@ -61,7 +61,7 @@ export function StatusChecker(): JSX.Element {
       <ServiceRow label="Cache" state={state} field="cache" />
       {checadoEm && (
         <Typography variant="caption" className="text-text-muted">
-          Última verificação: {checadoEm.toLocaleTimeString("pt-BR")} — atualiza automaticamente a
+          Última verificação: {checadoEm.toLocaleTimeString("pt-BR")}, atualiza automaticamente a
           cada 30s.
         </Typography>
       )}

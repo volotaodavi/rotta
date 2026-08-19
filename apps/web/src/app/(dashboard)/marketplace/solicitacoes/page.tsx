@@ -75,17 +75,17 @@ export default function SolicitacoesTransportePage(): JSX.Element {
                     {
                       key: "studentNome",
                       header: "Aluno",
-                      render: (request) => request.studentNome ?? "—",
+                      render: (request) => request.studentNome ?? "-",
                     },
                     {
                       key: "responsavelNome",
                       header: "Responsável",
-                      render: (request) => request.responsavelNome ?? "—",
+                      render: (request) => request.responsavelNome ?? "-",
                     },
                     {
                       key: "schoolNome",
                       header: "Escola",
-                      render: (request) => request.schoolNome ?? "—",
+                      render: (request) => request.schoolNome ?? "-",
                     },
                     {
                       key: "createdAt",

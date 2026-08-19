@@ -55,7 +55,7 @@ export function DiditEvidenceCard({ decisao }: { decisao: DiditDecision }): JSX.
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <Typography variant="bodySmall" className="font-semibold">
-                Prova de vida{liveness.method ? ` — ${liveness.method}` : ""}
+                Prova de vida{liveness.method ? ` (${liveness.method})` : ""}
               </Typography>
               {typeof liveness.score === "number" && (
                 <Typography variant="bodySmall" color={liveness.score >= 70 ? "success" : "danger"}>

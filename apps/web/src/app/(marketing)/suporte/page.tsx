@@ -32,7 +32,7 @@ export default function SuportePage(): JSX.Element {
             </span>
             <Typography variant="subtitle">Já é cliente Rotta</Typography>
             <Typography variant="bodySmall" color="muted">
-              Abra um chamado direto pelo painel, na sua conta — nosso time acompanha empresas,
+              Abra um chamado direto pelo painel, na sua conta: nosso time acompanha empresas,
               motoristas e famílias todos os dias.
             </Typography>
           </Card.Body>

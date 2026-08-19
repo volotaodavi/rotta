@@ -159,7 +159,7 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
         <Section title="Equipe" theme={theme}>
           {data.equipe.map((membro, index) => (
             <Text key={`${membro.nome}-${index}`} style={{ color: theme.colors.textMuted }}>
-              {membro.nome} — {membro.papel === "motorista" ? "Motorista" : "Monitor(a)"}
+              {membro.nome}: {membro.papel === "motorista" ? "Motorista" : "Monitor(a)"}
             </Text>
           ))}
         </Section>
@@ -177,7 +177,7 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
 
       <Section title="Área atendida" theme={theme}>
         <Text style={{ color: theme.colors.textMuted }}>
-          {data.cidade}/{data.estado} — a {data.distanciaKm.toFixed(1)} km de você
+          {data.cidade}/{data.estado}, a {data.distanciaKm.toFixed(1)} km de você
         </Text>
       </Section>
 
@@ -202,7 +202,7 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
               <View style={styles.avaliacao}>
                 <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
                 <Text style={{ color: theme.colors.text }}>
-                  {avaliacao.nota} — {avaliacao.responsavelNome}
+                  {avaliacao.nota} · {avaliacao.responsavelNome}
                 </Text>
               </View>
               {avaliacao.comentario ? (

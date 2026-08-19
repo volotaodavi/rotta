@@ -27,7 +27,6 @@ import { STUDENT_SEX_LABEL } from "@/features/students/labels";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useMyLocation } from "@/hooks/use-my-location";
 
-
 const QUICK_REGISTER_INITIAL_STATE: QuickRegisterSchoolInput = {
   nomeOficial: "",
   dependenciaAdministrativa: "MUNICIPAL",
@@ -317,7 +316,7 @@ export default function NovoAlunoPage(): JSX.Element {
       <Typography variant="title">Adicionar aluno</Typography>
       {preRegistrationId ? (
         <Typography variant="bodySmall" color="muted">
-          A transportadora já adiantou o nome do aluno pra você — confira e complete o resto do
+          A transportadora já adiantou o nome do aluno pra você: confira e complete o resto do
           cadastro.
         </Typography>
       ) : null}

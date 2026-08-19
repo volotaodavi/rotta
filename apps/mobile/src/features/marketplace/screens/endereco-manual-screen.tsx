@@ -6,7 +6,6 @@ import type { Coords } from "../hooks/use-location";
 import { VehicleButton, VehicleScreen, VehicleTextField } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * Fallback de endereço manual (briefing "Marketplace" §"MAPA" —
  * "endereço manual: CEP, rua, número, cidade, estado") quando o
@@ -43,7 +42,7 @@ export function EnderecoManualScreen({
     <VehicleScreen>
       <Text style={[styles.titulo, { color: theme.colors.text }]}>Informe seu endereço</Text>
       <Text style={{ color: theme.colors.textMuted }}>
-        Não conseguimos acessar sua localização automaticamente. Preencha seu endereço abaixo — se
+        Não conseguimos acessar sua localização automaticamente. Preencha seu endereço abaixo. Se
         você souber as coordenadas (latitude/longitude), informe-as para já poder buscar
         transportadores próximos.
       </Text>
@@ -60,7 +59,7 @@ export function EnderecoManualScreen({
       <VehicleTextField label="Estado (UF)" value={estado} onChangeText={setEstado} maxLength={2} />
 
       <Text style={{ color: theme.colors.textMuted, fontSize: theme.typography.caption.fontSize }}>
-        Coordenadas (opcional — a Rotta ainda não geocodifica endereços automaticamente)
+        Coordenadas (opcional: a Rotta ainda não geocodifica endereços automaticamente)
       </Text>
       <VehicleTextField
         label="Latitude"

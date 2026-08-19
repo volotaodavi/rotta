@@ -26,7 +26,6 @@ import {
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -80,7 +79,7 @@ export function CarteiraScreen(): JSX.Element {
     try {
       await requestWithdrawal.mutateAsync({ valorCentavos, chavePix });
       setFeedback(
-        "Saque solicitado — aguardando processamento manual (integração com a provedora de pagamento ainda não está ativa).",
+        "Saque solicitado: aguardando processamento manual (integração com a provedora de pagamento ainda não está ativa).",
       );
       setValor("");
       setChavePix("");

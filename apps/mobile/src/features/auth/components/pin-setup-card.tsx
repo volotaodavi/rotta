@@ -9,8 +9,6 @@ import { PinCodeInput } from "./pin-code-input";
 import { VehicleButton } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
-
 type Step = "off" | "choose" | "confirm" | "on";
 
 /**
@@ -94,7 +92,7 @@ export function PinSetupCard(): JSX.Element | null {
     >
       <Text style={[styles.title, { color: theme.colors.text }]}>PIN de acesso rápido</Text>
       <Text style={{ color: theme.colors.textMuted }}>
-        Desbloqueie o app com um PIN de 4 dígitos em vez de digitar a senha inteira de novo — sua
+        Desbloqueie o app com um PIN de 4 dígitos em vez de digitar a senha inteira de novo. Sua
         sessão continua a mesma, é só uma forma mais rápida de reabrir.
       </Text>
 

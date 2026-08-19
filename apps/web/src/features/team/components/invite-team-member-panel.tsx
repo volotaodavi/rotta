@@ -8,7 +8,6 @@ import type { Role } from "@rotta/api-client";
 
 import { useCreateInvite } from "@/features/team/hooks/use-invites";
 
-
 /**
  * Pedido do usuário: "a janela de 'equipe' deve ter a possibilidade de
  * adicionar outro motorista e adicionar um monitor (cadastro manual ou
@@ -67,8 +66,8 @@ export function InviteTeamMemberPanel({
         {!codigo ? (
           <>
             <Typography variant="bodySmall" color="muted">
-              Gera um código de convite — a pessoa completa o próprio cadastro com ele e o vínculo
-              de {label.toLowerCase()} com a sua empresa é criado automaticamente.
+              Gera um código de convite: a pessoa completa o próprio cadastro com ele e o vínculo de{" "}
+              {label.toLowerCase()} com a sua empresa é criado automaticamente.
             </Typography>
             <div className="flex gap-2">
               <Button

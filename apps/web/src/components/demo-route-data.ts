@@ -17,21 +17,21 @@ export interface DemoStop {
 export const DEMO_ROUTE: DemoStop[] = [
   {
     id: "garagem",
-    nome: "Saída — Garagem Rotta",
+    nome: "Saída, Garagem Rotta",
     latitude: -23.5629,
     longitude: -46.6979,
     tipo: "garagem",
   },
   {
     id: "aluno-1",
-    nome: "João — Rua Girassol, 210",
+    nome: "João, Rua Girassol, 210",
     latitude: -23.5615,
     longitude: -46.69,
     tipo: "embarque",
   },
   {
     id: "aluno-2",
-    nome: "Maria — Av. Rebouças, 1450",
+    nome: "Maria, Av. Rebouças, 1450",
     latitude: -23.5661,
     longitude: -46.6822,
     tipo: "embarque",

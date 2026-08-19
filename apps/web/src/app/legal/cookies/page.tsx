@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-document-shell";
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 
-
 export const metadata: Metadata = {
   title: "Política de Cookies",
   description: "Como a sessão é mantida na Rotta e o que fazemos (e não fazemos) com cookies.",
@@ -40,8 +39,8 @@ export default function CookiesPage(): JSX.Element {
           não utiliza cookies de rastreamento, analytics de terceiros, pixels de publicidade nem
           ferramentas de tracking
         </strong>{" "}
-        no site, painel ou aplicativo. Este documento existe de forma preventiva, por transparência
-        — não porque exista algo a esconder, mas para que, no dia em que uma dessas tecnologias for
+        no site, painel ou aplicativo. Este documento existe de forma preventiva, por transparência:
+        não porque exista algo a esconder, mas para que, no dia em que uma dessas tecnologias for
         adotada, já exista um lugar certo para explicá-la e um histórico de quando ela passou a
         valer.
       </LegalSection>
@@ -49,7 +48,7 @@ export default function CookiesPage(): JSX.Element {
       <LegalSection id="sessao" title="2. Como sua sessão é mantida">
         A sessão da Rotta na web usa um token de acesso mantido em memória do navegador (perdido a
         cada recarregamento de página, por segurança) e um token de atualização guardado no
-        armazenamento local do navegador (<code>localStorage</code>) — não um cookie. Isso significa
+        armazenamento local do navegador (<code>localStorage</code>), não um cookie. Isso significa
         que a Rotta não usa cookie nenhum, nem para função essencial de sessão, hoje.
       </LegalSection>
 
@@ -57,7 +56,7 @@ export default function CookiesPage(): JSX.Element {
         Se a Rotta passar a usar cookies (por exemplo, ao migrar a sessão para um formato mais
         seguro, ou ao adicionar uma ferramenta de análise de uso), esta página será atualizada com a
         finalidade de cada cookie e as opções de preferência disponíveis, e a mudança será refletida
-        na versão deste documento (ver o selo de versão no topo desta página) — nunca adicionada
+        na versão deste documento (ver o selo de versão no topo desta página), nunca adicionada
         silenciosamente. Ver também{" "}
         <Link href="/legal/privacidade#cookies">
           Política de Privacidade, seção de cookies e tecnologias de rastreamento

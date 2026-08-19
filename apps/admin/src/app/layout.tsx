@@ -6,7 +6,7 @@ import { AppProviders } from "@/providers/app-providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Rotta — Admin",
+  title: "Rotta Admin",
   description: "Painel interno da equipe Rotta.",
 };
 

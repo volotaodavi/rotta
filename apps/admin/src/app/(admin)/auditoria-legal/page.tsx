@@ -63,7 +63,7 @@ export default function AuditoriaLegalPage(): JSX.Element {
       <div>
         <Typography variant="title">Auditoria de Consistência Legal ↔ Produto</Typography>
         <Typography variant="bodySmall" color="muted">
-          O que a Documentação Rotta promete, cruzado com o comportamento real do código — checklist
+          O que a Documentação Rotta promete, cruzado com o comportamento real do código: checklist
           curada manualmente, não gerada automaticamente.
         </Typography>
       </div>

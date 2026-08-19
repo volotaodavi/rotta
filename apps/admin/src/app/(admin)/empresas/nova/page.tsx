@@ -79,17 +79,17 @@ export default function NovaEmpresaPage(): JSX.Element {
     setErrorMessage(null);
 
     if (!isCompleteBrazilianCellphone(form.telefone)) {
-      setErrorMessage("Telefone incompleto — digite o DDD e os 9 dígitos do celular.");
+      setErrorMessage("Telefone incompleto: digite o DDD e os 9 dígitos do celular.");
       return;
     }
     if (!isCompleteBrazilianCellphone(form.administrador.telefone)) {
       setErrorMessage(
-        "Telefone do administrador incompleto — digite o DDD e os 9 dígitos do celular.",
+        "Telefone do administrador incompleto: digite o DDD e os 9 dígitos do celular.",
       );
       return;
     }
     if (form.whatsapp && !isCompleteBrazilianCellphone(form.whatsapp)) {
-      setErrorMessage("WhatsApp incompleto — digite o DDD e os 9 dígitos do celular.");
+      setErrorMessage("WhatsApp incompleto: digite o DDD e os 9 dígitos do celular.");
       return;
     }
 

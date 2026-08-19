@@ -12,7 +12,6 @@ import { JoinRequestRow } from "@/features/team/components/join-request-row";
 import { usePendingJoinRequests } from "@/features/team/hooks/use-join-requests";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 
-
 /** Mesmos rótulos/cores de `(dashboard)/verificacao-identidade` — a MESMA verificação, só vista de outro ângulo (o dono da empresa, não o próprio motorista). */
 const STATUS_LABEL: Record<IdentityVerificationStatus, string> = {
   NAO_INICIADA: "Não iniciada",
@@ -57,7 +56,7 @@ export default function EquipePage(): JSX.Element {
         <div className="flex flex-col gap-1">
           <Typography variant="title">Equipe</Typography>
           <Typography variant="bodySmall" color="muted">
-            Motoristas, monitores e gestores da sua empresa — incluindo o status da verificação de
+            Motoristas, monitores e gestores da sua empresa, incluindo o status da verificação de
             identidade.
           </Typography>
         </div>

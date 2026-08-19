@@ -31,7 +31,6 @@ import {
 import { SCHOOL_SHIFT_LABEL, SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
 import { schoolsApi } from "@/lib/api-client";
 
-
 /**
  * Listagem + Dashboard de Escolas (briefing "Gestão de Escolas" —
  * seções "DASHBOARD" e "PESQUISA"/"FILTROS") — mesma decisão de escopo
@@ -85,7 +84,7 @@ export default function EscolasPage(): JSX.Element {
         onSuccess: (result) => {
           setImportResultMessage(
             `${result.importadas} de ${result.totalLinhas} linha(s) importada(s)` +
-              (result.erros.length > 0 ? ` — ${result.erros.length} erro(s).` : "."),
+              (result.erros.length > 0 ? `, ${result.erros.length} erro(s).` : "."),
           );
         },
         onError: () => setImportResultMessage("Erro inesperado ao importar o arquivo."),

@@ -51,7 +51,7 @@ export function CookieConsentBanner({
       <div className="mx-auto flex max-w-4xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-text-muted">
           Usamos cookies do Google Analytics para entender como o site é usado e melhorar a
-          experiência. Você pode aceitar ou recusar — veja detalhes na{" "}
+          experiência. Você pode aceitar ou recusar: veja detalhes na{" "}
           <Link href="/legal/cookies" className="text-primary hover:underline">
             Política de Cookies
           </Link>

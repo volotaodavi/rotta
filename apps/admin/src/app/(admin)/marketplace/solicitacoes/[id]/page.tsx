@@ -57,17 +57,17 @@ export default function SolicitacaoTransporteAdminDetalhePage({
         <Card.Header title="Dados da solicitação" />
         <Card.Body className="flex flex-col gap-2">
           <Typography variant="bodySmall" color="muted">
-            Transportadora: {request.companyNome ?? "—"}
+            Transportadora: {request.companyNome ?? "Não informada"}
           </Typography>
           <Typography variant="body" className="font-semibold">
             {request.studentNome ?? "Aluno"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
-            Responsável: {request.responsavelNome ?? "—"}
+            Responsável: {request.responsavelNome ?? "Não informado"}
             {request.responsavelTelefone ? ` · ${request.responsavelTelefone}` : ""}
           </Typography>
           <Typography variant="bodySmall" color="muted">
-            Escola: {request.schoolNome ?? "—"}
+            Escola: {request.schoolNome ?? "Não informada"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
             Turno: {request.turno}

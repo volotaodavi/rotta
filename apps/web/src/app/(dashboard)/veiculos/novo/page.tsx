@@ -190,7 +190,7 @@ export default function NovoVeiculoPage(): JSX.Element {
             <div className="sm:col-span-2">
               <Typography variant="bodySmall" color="muted">
                 A categoria (Escolar, Fretamento ou Executivo) é sugerida automaticamente depois do
-                cadastro, a partir do tipo e da capacidade do veículo — dá pra conferir e trocar a
+                cadastro, a partir do tipo e da capacidade do veículo. Dá pra conferir e trocar a
                 qualquer momento na página do veículo.
               </Typography>
             </div>

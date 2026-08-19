@@ -110,7 +110,7 @@ export function DriverHistoricoScreen(): JSX.Element {
       <VehicleScreen>
         <PanelGreeting nome={user?.nome ?? ""} />
         <Text style={{ color: theme.colors.textMuted }}>
-          Nenhuma rota atribuída a você ainda — sem histórico para mostrar.
+          Nenhuma rota atribuída a você ainda: sem histórico para mostrar.
         </Text>
       </VehicleScreen>
     );
@@ -174,7 +174,7 @@ function TripHistoryCard({ trip }: { trip: Trip }): JSX.Element {
       </View>
       <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
         Início: {new Date(trip.iniciadaEm).toLocaleTimeString("pt-BR")}
-        {duracaoMin !== null ? ` — duração: ${duracaoMin} min` : ""}
+        {duracaoMin !== null ? ` (duração: ${duracaoMin} min)` : ""}
       </Text>
       {rotaPercorrida ? <RotaPercorridaPreview positions={rotaPercorrida} /> : null}
     </VehicleCard>

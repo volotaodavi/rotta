@@ -175,17 +175,17 @@ export default function CriarEmpresaPage(): JSX.Element {
     setErrorMessage(null);
 
     if (!isCompleteBrazilianCellphone(form.telefone)) {
-      setErrorMessage("Telefone incompleto — digite o DDD e os 9 dígitos do celular.");
+      setErrorMessage("Telefone incompleto: digite o DDD e os 9 dígitos do celular.");
       return;
     }
     if (!isCompleteBrazilianCellphone(form.administrador.telefone)) {
       setErrorMessage(
-        "Telefone do administrador incompleto — digite o DDD e os 9 dígitos do celular.",
+        "Telefone do administrador incompleto: digite o DDD e os 9 dígitos do celular.",
       );
       return;
     }
     if (form.whatsapp && !isCompleteBrazilianCellphone(form.whatsapp)) {
-      setErrorMessage("WhatsApp incompleto — digite o DDD e os 9 dígitos do celular.");
+      setErrorMessage("WhatsApp incompleto: digite o DDD e os 9 dígitos do celular.");
       return;
     }
 
@@ -234,7 +234,7 @@ export default function CriarEmpresaPage(): JSX.Element {
         </Typography>
         {isMotoristaAutonomo && (
           <Typography variant="bodySmall" color="muted">
-            Você é a própria transportadora — os mesmos dados de uma empresa, só que em seu nome. A
+            Você é a própria transportadora: os mesmos dados de uma empresa, só que em seu nome. A
             mensalidade da Rotta (R$ 39,90/mês) se aplica normalmente.
           </Typography>
         )}
@@ -249,7 +249,7 @@ export default function CriarEmpresaPage(): JSX.Element {
               isRequired
               helperText={
                 camposTravados
-                  ? "Confirmado pela Receita Federal — não é possível editar."
+                  ? "Confirmado pela Receita Federal: não é possível editar."
                   : undefined
               }
             >
@@ -265,7 +265,7 @@ export default function CriarEmpresaPage(): JSX.Element {
               isRequired
               helperText={
                 camposTravados
-                  ? "Sugerido pela Receita Federal — este é o único campo que você pode alterar."
+                  ? "Sugerido pela Receita Federal: este é o único campo que você pode alterar."
                   : undefined
               }
             >
@@ -285,11 +285,11 @@ export default function CriarEmpresaPage(): JSX.Element {
                     : cnpjLookup.status === "loading"
                       ? "Consultando a Receita Federal…"
                       : cnpjLookup.status === "not-found"
-                        ? "CNPJ não encontrado na Receita Federal — confira o número ou preencha os dados manualmente."
+                        ? "CNPJ não encontrado na Receita Federal: confira o número ou preencha os dados manualmente."
                         : cnpjLookup.status === "error"
-                          ? "Não foi possível consultar a Receita Federal agora — preencha os dados manualmente."
+                          ? "Não foi possível consultar a Receita Federal agora: preencha os dados manualmente."
                           : camposTravados
-                            ? "Confirmamos os dados na Receita Federal e travamos a edição — só o nome fantasia fica editável."
+                            ? "Confirmamos os dados na Receita Federal e travamos a edição: só o nome fantasia fica editável."
                             : undefined
                 }
               >
@@ -367,11 +367,11 @@ export default function CriarEmpresaPage(): JSX.Element {
               isRequired
               helperText={
                 camposTravados
-                  ? "Confirmado pela Receita Federal — não é possível editar."
+                  ? "Confirmado pela Receita Federal: não é possível editar."
                   : cepLookup.isLoading
                     ? "Buscando endereço…"
                     : cepLookup.notFound
-                      ? "CEP não encontrado — preencha o endereço manualmente."
+                      ? "CEP não encontrado: preencha o endereço manualmente."
                       : "Preenche o endereço automaticamente."
               }
             >

@@ -1,6 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { useSchool } from "../hooks/use-schools";
 import {
   SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL,
@@ -66,7 +65,7 @@ export function EscolaDetalhesScreen({ route, navigation }: Props): JSX.Element 
           {school.tipos.map((tipo) => SCHOOL_TYPE_LABEL[tipo]).join(", ")}
         </Text>
         <Text style={{ color: theme.colors.textMuted }}>
-          {school.logradouro}, {school.numero} — {school.bairro}, {school.cidade}/{school.estado}
+          {school.logradouro}, {school.numero}, {school.bairro}, {school.cidade}/{school.estado}
         </Text>
         {school.observacoesLocalizacao ? (
           <Text style={{ color: theme.colors.textMuted }}>{school.observacoesLocalizacao}</Text>

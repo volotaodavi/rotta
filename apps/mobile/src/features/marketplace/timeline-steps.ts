@@ -57,7 +57,7 @@ export function buildContratoSteps(contrato: Contract | null): TimelineStep[] {
       label: "Assinatura pendente",
       state: !contrato ? "pending" : contrato.assinadoResponsavelEm ? "done" : "current",
       description: contrato?.assinadoResponsavelEm
-        ? "Você já assinou — aguardando o transportador."
+        ? "Você já assinou, aguardando o transportador."
         : undefined,
     },
   ];

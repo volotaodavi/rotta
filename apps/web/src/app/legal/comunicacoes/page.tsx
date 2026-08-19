@@ -3,10 +3,9 @@ import type { Metadata } from "next";
 import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-document-shell";
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 
-
 export const metadata: Metadata = {
   title: "Política de Comunicações",
-  description: "Push, e-mail, WhatsApp e SMS — o que é transacional e o que é opcional.",
+  description: "Push, e-mail, WhatsApp e SMS: o que é transacional e o que é opcional.",
   alternates: { canonical: "/legal/comunicacoes" },
 };
 
@@ -29,17 +28,17 @@ export default function ComunicacoesPage(): JSX.Element {
   return (
     <LegalDocumentShell meta={meta} toc={TOC}>
       <LegalSection id="canais" title="1. Canais utilizados">
-        A Rotta pode se comunicar com você por notificação push (dentro do aplicativo), e-mail, e —
-        quando configurado para a sua conta/plano — WhatsApp e SMS. Nem todo canal está disponível
+        A Rotta pode se comunicar com você por notificação push (dentro do aplicativo), e-mail e,
+        quando configurado para a sua conta/plano, WhatsApp e SMS. Nem todo canal está disponível
         para toda conta: alguns dependem de um provedor específico estar habilitado.
       </LegalSection>
 
       <LegalSection id="transacional-marketing" title="2. Transacional × Marketing">
         Separamos dois tipos de comunicação. <strong>Transacional</strong>: essenciais para o
-        funcionamento do serviço que você contratou — aviso de embarque/desembarque, atraso, mudança
+        funcionamento do serviço que você contratou: aviso de embarque/desembarque, atraso, mudança
         de rota, cobrança, alteração de conta. Essas comunicações não podem ser totalmente
         desativadas enquanto sua conta estiver ativa, porque fazem parte do próprio serviço.{" "}
-        <strong>Marketing</strong>: novidades, dicas, conteúdo promocional — sempre opcional.
+        <strong>Marketing</strong>: novidades, dicas e conteúdo promocional, sempre opcional.
       </LegalSection>
 
       <LegalSection id="preferencias" title="3. Suas preferências">

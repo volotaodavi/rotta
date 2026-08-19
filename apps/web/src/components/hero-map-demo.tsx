@@ -63,7 +63,7 @@ export function HeroMapDemo(): JSX.Element {
         latitude: stop.latitude,
         longitude: stop.longitude,
       })),
-      { id: "veiculo-hero", titulo: "Van — exemplo", ...veiculoPos, emMovimento: true },
+      { id: "veiculo-hero", titulo: "Van (exemplo)", ...veiculoPos, emMovimento: true },
     ],
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `veiculoPos` muda todo frame de propósito (é a posição animada).
     [veiculoPos.latitude, veiculoPos.longitude],
@@ -89,7 +89,7 @@ export function HeroMapDemo(): JSX.Element {
       </div>
       <div className="absolute -bottom-6 -left-4 right-8 rotate-[-2deg] rounded-2xl border border-border bg-card p-4 shadow-2xl sm:right-10">
         <Typography variant="caption" color="muted">
-          A caminho de {para.nome.split(" — ")[0]}
+          A caminho de {para.nome.split(", ")[0]}
         </Typography>
         <Typography variant="subtitle" className="mt-1">
           Chegada em {minutosRestantes} min

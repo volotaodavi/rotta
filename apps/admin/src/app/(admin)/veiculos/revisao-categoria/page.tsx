@@ -11,7 +11,6 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_CATEGORY_LABEL, VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 
-
 /**
  * Uma linha da fila — Select próprio (default = categoria sugerida pela
  * IA) e um único botão que decide sozinho se confirma ou corrige: se o
@@ -32,7 +31,7 @@ function CategoryReviewRow({ vehicle }: { vehicle: Vehicle }): JSX.Element {
     <div className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-0.5">
         <Typography variant="body" className="font-semibold">
-          {vehicle.placa} — {vehicle.modelo}
+          {vehicle.placa} · {vehicle.modelo}
           {vehicle.marca ? ` (${vehicle.marca})` : ""}
         </Typography>
         <Typography variant="caption" color="muted">
@@ -94,7 +93,7 @@ export default function VeiculosRevisaoCategoriaPage(): JSX.Element {
         <Typography variant="title">Revisão de categoria (IA)</Typography>
         <Typography variant="bodySmall" color="muted">
           Veículos cujo tipo/capacidade não deram confiança suficiente pra IA decidir sozinha entre
-          Escolar, Fretamento ou Executivo — a empresa já está usando a categoria sugerida
+          Escolar, Fretamento ou Executivo: a empresa já está usando a categoria sugerida
           normalmente; confirme ou corrija quando puder.
         </Typography>
       </div>
@@ -130,7 +129,7 @@ export default function VeiculosRevisaoCategoriaPage(): JSX.Element {
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between">
           <Typography variant="caption" color="muted">
-            Página {data.page} de {Math.ceil(data.total / data.pageSize)} — {data.total} veículos
+            Página {data.page} de {Math.ceil(data.total / data.pageSize)} · {data.total} veículos
           </Typography>
           <div className="flex gap-2">
             <Button

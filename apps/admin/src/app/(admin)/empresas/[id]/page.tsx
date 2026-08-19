@@ -229,11 +229,11 @@ export default function EmpresaDetalhesPage({
           <InfoItem label="Tipo" value={COMPANY_TYPE_LABEL[company.tipo]} />
           <InfoItem
             label="Endereço"
-            value={`${company.endereco}, ${company.numero}${company.complemento ? ` — ${company.complemento}` : ""}`}
+            value={`${company.endereco}, ${company.numero}${company.complemento ? `, ${company.complemento}` : ""}`}
           />
           <InfoItem
             label="Bairro/Cidade"
-            value={`${company.bairro} — ${company.cidade}/${company.estado}`}
+            value={`${company.bairro}, ${company.cidade}/${company.estado}`}
           />
           <InfoItem label="CEP" value={company.cep} />
           {dashboard && (

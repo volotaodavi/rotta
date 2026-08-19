@@ -80,7 +80,7 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     slug: "termos",
     href: "/legal/termos",
     titulo: "Termos de Uso",
-    resumo: "As regras de uso da plataforma — cadastro, marketplace, cobrança, responsabilidades.",
+    resumo: "As regras de uso da plataforma: cadastro, marketplace, cobrança, responsabilidades.",
     versao: "1.1",
     publicadoEm: "01/08/2026",
     atualizadoEm: "11/08/2026",
@@ -93,7 +93,7 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     href: "/legal/seguranca",
     titulo: "Segurança na Rotta",
     resumo:
-      "Como protegemos contas, documentos, localização e dados financeiros — e como reportar uma vulnerabilidade.",
+      "Como protegemos contas, documentos, localização e dados financeiros, e como reportar uma vulnerabilidade.",
     versao: "1.1",
     publicadoEm: "11/08/2026",
     atualizadoEm: "19/08/2026",
@@ -191,7 +191,7 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     href: "/legal/comunicacoes",
     titulo: "Política de Comunicações",
     resumo:
-      "Push, e-mail, WhatsApp e SMS — o que é transacional, o que é opcional, e como ajustar preferências.",
+      "Push, e-mail, WhatsApp e SMS: o que é transacional, o que é opcional, e como ajustar preferências.",
     versao: "1.0",
     publicadoEm: "11/08/2026",
     atualizadoEm: "11/08/2026",

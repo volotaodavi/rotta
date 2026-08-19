@@ -6,7 +6,6 @@ import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-docum
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 import { CONTACT_EMAIL } from "@/lib/site-config";
 
-
 export const metadata: Metadata = {
   title: "Política da Comunidade Rotta",
   description: "O que não é tolerado na plataforma e quais são as consequências.",
@@ -38,7 +37,7 @@ export default function ComunidadePage(): JSX.Element {
       ]}
     >
       <LegalSection id="objetivo" title="1. Objetivo">
-        Esta política existe para proteger usuários e manter um ambiente confiável na Rotta — para
+        Esta política existe para proteger usuários e manter um ambiente confiável na Rotta: para
         famílias que buscam transporte, para transportadoras que prestam o serviço, e para
         motoristas e monitores que trabalham por meio da plataforma.
       </LegalSection>
@@ -50,7 +49,7 @@ export default function ComunidadePage(): JSX.Element {
         localização; uso da plataforma para atividades ilícitas; criação de contas falsas;
         manipulação de avaliações (avaliação falsa, coagida, ou em troca de vantagem); e tentativa
         de burlar os processos de verificação da plataforma (ex. tentar aparecer como elegível para
-        uma modalidade de transporte sem atender aos requisitos — ver{" "}
+        uma modalidade de transporte sem atender aos requisitos, ver{" "}
         <Link href="/legal/motoristas">Diretrizes para Motoristas e Modalidades de Transporte</Link>
         ).
       </LegalSection>
@@ -59,7 +58,7 @@ export default function ComunidadePage(): JSX.Element {
         Dependendo da gravidade e da reincidência, uma violação pode resultar em: advertência;
         suspensão temporária da conta; bloqueio de funcionalidades específicas; encerramento da
         conta; e, quando houver obrigação legal, comunicação às autoridades competentes. Sempre que
-        possível, a pessoa é avisada antes de uma ação restritiva — exceto em casos de fraude, risco
+        possível, a pessoa é avisada antes de uma ação restritiva, exceto em casos de fraude, risco
         à segurança de outros usuários, ou exigência legal, quando a ação pode ser imediata (mesma
         regra dos <Link href="/legal/termos#responsabilidade">Termos de Uso, seção 13</Link>).
       </LegalSection>

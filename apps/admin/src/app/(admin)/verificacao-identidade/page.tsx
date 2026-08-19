@@ -9,7 +9,6 @@ import type { IdentityVerificationStatus } from "@rotta/api-client";
 import { IdentityVerificationStatusBadge } from "@/features/identity-verification/components/identity-verification-status-badge";
 import { useIdentityVerificationsList } from "@/features/identity-verification/hooks/use-identity-verification-admin";
 
-
 /** Cargo (`Membership.role`) → rótulo curto — mesmo mapa que decide o documento exigido (`resolveDocumentoEsperado`, backend). */
 const ROLE_LABEL: Record<string, string> = {
   admin_rotta: "Admin Rotta",
@@ -57,7 +56,7 @@ export default function VerificacaoIdentidadeListPage(): JSX.Element {
       <div>
         <Typography variant="title">Verificação de Identidade</Typography>
         <Typography variant="bodySmall" color="muted">
-          Motorista e Empresa/Gestor verificando a própria identidade via Didit — sincronize com a
+          Motorista e Empresa/Gestor verificando a própria identidade via Didit: sincronize com a
           Didit ou decida (aprove/recuse) direto por aqui, sem abrir o Business Console dela.
         </Typography>
       </div>
@@ -159,8 +158,7 @@ export default function VerificacaoIdentidadeListPage(): JSX.Element {
       {data && data.total > data.pageSize && (
         <div className="flex items-center justify-between">
           <Typography variant="caption" color="muted">
-            Página {data.page} de {Math.ceil(data.total / data.pageSize)} — {data.total}{" "}
-            verificações
+            Página {data.page} de {Math.ceil(data.total / data.pageSize)}, {data.total} verificações
           </Typography>
           <div className="flex gap-2">
             <Button

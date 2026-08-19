@@ -26,7 +26,6 @@ import {
 } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
 
-
 /** Legenda curta de quando a última sincronização rodou — "há poucos segundos" é mais legível que um timestamp cru enquanto o worker ainda está rodando. */
 function formatarQuandoRodou(iso: string): string {
   const segundos = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
@@ -105,7 +104,7 @@ export default function EscolasAdminPage(): JSX.Element {
               Sincronização INEP (Censo Escolar)
             </Typography>
             <Typography variant="caption" color="muted">
-              Importa/atualiza o catálogo nacional de escolas. Roda em segundo plano — o resultado
+              Importa/atualiza o catálogo nacional de escolas. Roda em segundo plano: o resultado
               aparece abaixo automaticamente assim que o worker terminar (atualiza sozinho a cada
               15s).
             </Typography>
@@ -167,7 +166,7 @@ export default function EscolasAdminPage(): JSX.Element {
                       ? `, ${inepStatus.resumo.erros.length} erros de linha`
                       : ""
                   }.`
-                : `falhou — ${inepStatus.erro}`}
+                : `falhou: ${inepStatus.erro}`}
             </Typography>
           </Card.Body>
         ) : null}
@@ -190,8 +189,8 @@ export default function EscolasAdminPage(): JSX.Element {
                 {emAnaliseCount?.total.toLocaleString("pt-BR")} escolas aguardando revisão
               </Typography>
               <Typography variant="caption" color="muted">
-                Status &quot;Em análise&quot; — dado de origem externa/lote
-                (importação/sincronização INEP) que ainda não foi confirmado manualmente.
+                Status &quot;Em análise&quot;: dado de origem externa/lote (importação/sincronização
+                INEP) que ainda não foi confirmado manualmente.
               </Typography>
             </div>
             <Button

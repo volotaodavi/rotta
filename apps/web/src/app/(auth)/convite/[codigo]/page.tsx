@@ -65,7 +65,7 @@ export default function ResgatarConvitePage({
     setErrorMessage(null);
 
     if (!isCompleteBrazilianCellphone(telefone)) {
-      setErrorMessage("Telefone incompleto — digite o DDD e os 9 dígitos do celular.");
+      setErrorMessage("Telefone incompleto: digite o DDD e os 9 dígitos do celular.");
       return;
     }
 

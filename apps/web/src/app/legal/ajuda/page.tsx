@@ -6,7 +6,6 @@ import type { Metadata } from "next";
 import { LegalDocumentShell, LegalSection } from "@/components/legal/legal-document-shell";
 import { getLegalDocumentMeta } from "@/features/legal/documents";
 
-
 export const metadata: Metadata = {
   title: "Central de Ajuda / Transparência",
   description: "Onde tirar dúvidas, reportar problemas e acompanhar se a Rotta está no ar.",
@@ -77,7 +76,7 @@ export default function AjudaPage(): JSX.Element {
       </LegalSection>
 
       <LegalSection id="documentacao" title="Toda a documentação em um só lugar">
-        Esta central reúne links para os canais de ajuda existentes — a documentação legal completa
+        Esta central reúne links para os canais de ajuda existentes: a documentação legal completa
         (privacidade, termos, segurança, comunidade, RottaPay, motoristas, marketplace, cookies,
         comunicações) fica na navegação lateral desta página.
       </LegalSection>
