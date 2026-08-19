@@ -13,6 +13,7 @@ const ROLE_LABEL: Record<string, string> = {
   empresa: "Autônomo/MEI",
   motorista: "Motorista",
   monitor: "Monitor(a)",
+  responsavel: "Responsável",
 };
 
 interface AtalhoPerfil {
@@ -30,7 +31,7 @@ interface AtalhoPerfil {
  * (`DriverPerfilScreen`, que já bundle Verificar identidade/
  * Documentação/Sair).
  */
-const ATALHOS_PERFIL: AtalhoPerfil[] = [
+const ATALHOS_PERFIL_MOTORISTA: AtalhoPerfil[] = [
   { href: "/rotta-pay", label: "Rotta Pay", icon: Wallet },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/chamados", label: "Chamados", icon: MessageCircle },
@@ -39,16 +40,31 @@ const ATALHOS_PERFIL: AtalhoPerfil[] = [
 ];
 
 /**
- * "Perfil" (Frente O) — porta de `apps/mobile/.../perfil-screen.tsx`
- * pro Painel Web: vira o hub de conta do motorista/monitor funcionário/
- * autônomo/MEI depois que a barra de navegação reduziu a 4 ícones
- * (Início/Atividades/Veículo/Perfil, pedido do usuário com imagem de
- * referência). Sem isso, Rotta Pay/Notificações/Chamados ficariam sem
- * nenhum caminho de acesso pra este público.
+ * Frente AO — Responsável passou a usar esta mesma página (chegando
+ * pela aba "Perfil" do novo `ResponsavelBottomNav`). Nada de Rotta Pay/
+ * Verificar identidade (não se aplicam a este papel) nem Notificações/
+ * Chamados (Notificações já é a própria aba ao lado na barra; Chamados
+ * não existe no "Perfil" do Responsável no app mobile,
+ * `parent/screens/perfil-screen.tsx` — só Documentação Rotta) —
+ * mínimo necessário, mesmo catálogo do app nativo.
+ */
+const ATALHOS_PERFIL_RESPONSAVEL: AtalhoPerfil[] = [
+  { href: "/legal", label: "Documentação Rotta", icon: BookOpen },
+];
+
+/**
+ * "Perfil" (Frente O, estendido ao Responsável na Frente AO) — porta de
+ * `apps/mobile/.../perfil-screen.tsx` pro Painel Web: vira o hub de
+ * conta de quem usa a barra de 4 ícones (motorista/monitor funcionário/
+ * autônomo/MEI em Modo Ação, e agora também o Responsável) em vez do
+ * cabeçalho de texto. Sem isso, os atalhos que saíram do cabeçalho
+ * ficariam sem nenhum caminho de acesso pra este público.
  */
 export default function PerfilPage(): JSX.Element {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const atalhos =
+    user?.role === "responsavel" ? ATALHOS_PERFIL_RESPONSAVEL : ATALHOS_PERFIL_MOTORISTA;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -72,7 +88,7 @@ export default function PerfilPage(): JSX.Element {
       </Card>
 
       <div className="flex flex-col gap-2">
-        {ATALHOS_PERFIL.map(({ href, label, icon: Icon }) => (
+        {atalhos.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href}>
             <Card interactive>
               <Card.Body className="flex items-center gap-3 py-4">

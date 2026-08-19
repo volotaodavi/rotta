@@ -32,24 +32,38 @@ export type VinculoPendenteStackParamList = {
   InformarCodigo: undefined;
 };
 
+/**
+ * Frente AO — rótulos/abas corrigidos pra bater com as 3 imagens de
+ * referência (Início/Viagens/Notificações/Perfil, mesma barra em todos
+ * os papéis — ver `DriverBottomNav`/`ResponsavelBottomNav` da versão
+ * web). `Historico` continua sendo o nome da rota internamente (só o
+ * rótulo virou "Viagens", ver `DriverNavigator`) pra não obrigar renomear
+ * a tela em cascata; `Veiculo` saiu da barra (nenhuma das imagens de
+ * referência mostra essa aba) e virou uma tela dentro de `Perfil`
+ * (`DriverPerfilStackParamList` abaixo), igual à versão web.
+ */
 export type DriverTabParamList = {
   Inicio: undefined;
   Historico: undefined;
-  Veiculo: undefined;
+  Notificacoes: undefined;
   Perfil: undefined;
 };
 
 /**
  * Stack aninhada na aba `Perfil` do Motorista/Monitor (Dossiê 45 —
- * Rotta Legal, Trust & Community Center) — mesmo papel de
- * `VeiculoStackParamList` dentro de `DriverNavigator`: a aba em si
- * nunca muda, só a tela exibida dentro dela. `Documentacao` abre a
- * WebView de `/legal` (ver `LegalWebViewScreen`).
+ * Rotta Legal, Trust & Community Center; Frente AO — `Veiculo` entrou
+ * aqui) — mesmo papel de `VeiculoStackParamList` dentro de
+ * `DriverNavigator`: a aba em si nunca muda, só a tela exibida dentro
+ * dela. `Documentacao` abre a WebView de `/legal` (ver
+ * `LegalWebViewScreen`); `Veiculo` monta a MESMA `VeiculoNavigator` que
+ * antes era uma aba própria — nenhuma tela dela mudou, só de onde se
+ * chega.
  */
 export type DriverPerfilStackParamList = {
   PerfilHome: undefined;
   Documentacao: undefined;
   VerificacaoIdentidade: undefined;
+  Veiculo: undefined;
 };
 
 /** Stack de "Meu Veículo" (briefing "APP MOBILE"), aberta a partir da aba `Veiculo` do Motorista/Monitor. */

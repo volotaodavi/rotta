@@ -10,6 +10,7 @@ import type { Route } from "next";
 
 import { DriverBottomNav } from "@/components/driver-bottom-nav";
 import { LegalFooter } from "@/components/legal/legal-footer";
+import { ResponsavelBottomNav } from "@/components/responsavel-bottom-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAppMode } from "@/features/driver/hooks/use-app-mode";
 import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
@@ -87,21 +88,6 @@ const DRIVER_MODE_ALLOWED_PREFIXES = [
 ] as const;
 
 /**
- * Navegação da Área Pessoal (Responsável) — gap fechado nesta entrega:
- * até aqui o Painel Web só tinha a navegação Profissional acima, então
- * um Responsável autenticado via web caía neste mesmo layout sem nada
- * que fizesse sentido pra ele (nenhum item aplicável). "Meus Alunos" é
- * a home real dele — cadastro + acompanhamento de GPS ao vivo
- * (`/alunos`, Dossiê 45 — gap C: nenhuma UI em nenhuma plataforma
- * chamava `studentsApi.create` antes desta entrega).
- */
-const RESPONSAVEL_NAV: NavLink[] = [
-  { href: "/alunos", label: "Meus Alunos" },
-  { href: "/notificacoes", label: "Notificações" },
-  { href: "/chamados", label: "Chamados" },
-];
-
-/**
  * Layout do route group `(dashboard)` — Painel Administrativo autenticado
  * (Empresa, Gestor, Escola, Responsável — Dossie 11, Secao 2/5), com o
  * AppShell (sidebar + cabecalho, Dossie 10 Secao 11.2).
@@ -109,11 +95,13 @@ const RESPONSAVEL_NAV: NavLink[] = [
  * Toda rota sob este grupo exige sessão ativa (Dossiê 15) — nenhuma tela
  * individual reimplementa a checagem de autenticação, ela é garantida
  * estruturalmente por estar dentro deste layout (Dossiê 23, Secao 4.1).
- * A navegação exibida no cabeçalho passou a depender de `user.role`
- * (`RESPONSAVEL_NAV` vs `PROFISSIONAL_NAV`) — cada rota individual
- * dentro do grupo já é protegida pelo próprio backend (RBAC/tenant), o
- * papel deste `if` é só cosmético (não mostrar item que não serve pro
- * papel logado), nunca a única barreira de acesso.
+ * A navegação exibida depende de `user.role` — `PROFISSIONAL_NAV` (links
+ * de texto no cabeçalho) pra Empresa/Gestor/Escola, ou a barra fixa de 4
+ * ícones embaixo (`DriverBottomNav`/`ResponsavelBottomNav`, Frente O/AO)
+ * pro Motorista/Monitor/Autônomo em Modo Ação e pro Responsável — cada
+ * rota individual dentro do grupo já é protegida pelo próprio backend
+ * (RBAC/tenant), o papel deste `if` é só cosmético (não mostrar item que
+ * não serve pro papel logado), nunca a única barreira de acesso.
  */
 export default function DashboardLayout({ children }: { children: ReactNode }): JSX.Element {
   const { status, user, logout } = useAuth();
@@ -189,13 +177,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     );
   }
 
+  // Frente AO — o Responsável passou a usar a mesma barra de 4 ícones
+  // fixa embaixo (`ResponsavelBottomNav`) das 3 imagens de referência,
+  // então o cabeçalho de texto (`RESPONSAVEL_NAV`) sai daqui — mesmo
+  // tratamento que `showDriverNavBar` já dava pro Motorista/Monitor/
+  // Autônomo desde a Frente O.
   const navLinks = isResponsavel
-    ? RESPONSAVEL_NAV
+    ? []
     : showDriverNavBar
       ? []
       : canToggle
         ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
         : PROFISSIONAL_NAV;
+  const showBottomNav = showDriverNavBar || isResponsavel;
 
   return (
     // `min-h-dvh` em vez de `min-h-screen` (BUG corrigido — mapa em tela
@@ -283,10 +277,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       ) : (
         <>
           {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
-          {/* `pb-20` (Frente K/O) abre espaço pra `DriverBottomNav` fixa não cobrir o fim do conteúdo — agora sempre visível pra este público (Frente O, "todas as plataformas, sem exceção"), então sem exceção de breakpoint aqui também. */}
-          <main className={`flex-1 p-6 ${showDriverNavBar ? "pb-20" : ""}`}>{children}</main>
+          {/* `pb-20` (Frente K/O, estendido à Frente AO pro Responsável) abre espaço pra barra de 4 ícones fixa não cobrir o fim do conteúdo — sempre visível pra este público (Frente O, "todas as plataformas, sem exceção"), então sem exceção de breakpoint aqui também. */}
+          <main className={`flex-1 p-6 ${showBottomNav ? "pb-20" : ""}`}>{children}</main>
           <LegalFooter />
           {showDriverNavBar && <DriverBottomNav />}
+          {isResponsavel && <ResponsavelBottomNav />}
         </>
       )}
     </div>

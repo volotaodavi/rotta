@@ -47,6 +47,14 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
 
       {user?.role === "motorista" ? <PinSetupCard /> : null}
 
+      {/* Frente AO — "Veículo" saiu da barra de 4 ícones (a referência não
+          mostra essa aba) e virou um atalho aqui, igual à versão web
+          (`ATALHOS_PERFIL_MOTORISTA`, `apps/web/.../perfil/page.tsx`). */}
+      <VehicleButton
+        label="Meu Veículo"
+        variant="secondary"
+        onPress={() => navigation.navigate("Veiculo")}
+      />
       <VehicleButton
         label="Verificar identidade"
         variant="secondary"

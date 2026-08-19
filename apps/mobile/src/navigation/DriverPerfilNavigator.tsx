@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { VeiculoNavigator } from "./VeiculoNavigator";
+
 import type { DriverPerfilStackParamList } from "./types";
 
 import { DriverPerfilScreen } from "@/features/driver/screens";
@@ -10,11 +12,15 @@ const Stack = createNativeStackNavigator<DriverPerfilStackParamList>();
 
 /**
  * Stack da aba "Perfil" do Motorista/Monitor — mesmo papel de
- * `VeiculoNavigator`: dá à aba `Perfil` (antes uma tela única) telas
- * extras ("Documentação Rotta", Dossiê 45; "Verificar identidade",
- * verificação hospedada via Didit) sem consumir um item a mais do
+ * `VeiculoNavigator` (que agora vive DENTRO dela, ver `Veiculo` abaixo):
+ * dá à aba `Perfil` (antes uma tela única) telas extras ("Documentação
+ * Rotta", Dossiê 45; "Verificar identidade", verificação hospedada via
+ * Didit; "Meu Veículo", Frente AO) sem consumir um item a mais do
  * Bottom Navigation (que já está no limite de 3-4 itens, Dossiê 10
- * §11.1).
+ * §11.1 — a barra virou Início/Viagens/Notificações/Perfil, igual à
+ * referência, e não sobrava espaço pra manter "Veículo" como aba
+ * própria). `headerShown: false` em `Veiculo`: `VeiculoNavigator` já
+ * põe cabeçalho em cada uma das próprias telas.
  */
 export function DriverPerfilNavigator(): JSX.Element {
   return (
@@ -24,6 +30,7 @@ export function DriverPerfilNavigator(): JSX.Element {
         component={DriverPerfilScreen}
         options={{ title: "Perfil", headerShown: false }}
       />
+      <Stack.Screen name="Veiculo" component={VeiculoNavigator} options={{ headerShown: false }} />
       <Stack.Screen
         name="Documentacao"
         component={LegalWebViewScreen}
