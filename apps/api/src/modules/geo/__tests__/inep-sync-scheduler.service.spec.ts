@@ -45,7 +45,7 @@ describe("InepSyncSchedulerService", () => {
       "inep-sync-nacional",
       "geo/inep-sync",
       "0 4 1 * *",
-      { ano: new Date().getFullYear() - 1 },
+      { ano: new Date().getFullYear() - 1, permitirAnoAnterior: true },
     );
   });
 
@@ -65,7 +65,7 @@ describe("InepSyncSchedulerService", () => {
       "inep-sync-nacional",
       "geo/inep-sync",
       "0 3 * * *",
-      { ano: 2023 },
+      { ano: 2023, permitirAnoAnterior: true },
     );
   });
 });

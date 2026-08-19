@@ -84,7 +84,11 @@ export class GeoQueueController {
   @HttpCode(HttpStatus.OK)
   async inepSyncJob(@Body() data: InepSyncJobData): Promise<{ ok: true }> {
     this.logger.log(`Iniciando sincronização INEP ${data.ano}.`);
-    await this.inepSync.sincronizar(data.ano);
+    if (data.permitirAnoAnterior) {
+      await this.inepSync.sincronizarComFallbackDeAno(data.ano);
+    } else {
+      await this.inepSync.sincronizar(data.ano);
+    }
     return { ok: true };
   }
 

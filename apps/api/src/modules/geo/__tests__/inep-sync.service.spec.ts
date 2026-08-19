@@ -1,7 +1,12 @@
 import { BadGatewayException } from "@nestjs/common";
 import AdmZip from "adm-zip";
 
-import { InepSyncService } from "../agents/inep-sync.service";
+import {
+  DOWNLOAD_RETRY_ATTEMPTS,
+  DOWNLOAD_RETRY_DELAY_MS,
+  FALLBACK_ANOS_ANTERIORES,
+  InepSyncService,
+} from "../agents/inep-sync.service";
 import { INEP_COLUMNS } from "../inep/inep-row.mapper";
 
 import type { RedisService } from "@/infra/cache/redis.service";
@@ -230,11 +235,64 @@ describe("InepSyncService", () => {
       await expect(service.sincronizar(2024)).rejects.toThrow(BadGatewayException);
     });
 
-    it("lança BadGatewayException quando a rede está indisponível (fetch rejeita)", async () => {
-      const { service } = buildService();
-      global.fetch = jest.fn().mockRejectedValue(new Error("network unreachable"));
+    it("lança BadGatewayException após esgotar as tentativas quando a rede está indisponível (fetch sempre rejeita)", async () => {
+      jest.useFakeTimers();
+      try {
+        const { service } = buildService();
+        const fetchMock = jest.fn().mockRejectedValue(new Error("network unreachable"));
+        global.fetch = fetchMock;
 
-      await expect(service.sincronizar(2024)).rejects.toThrow(BadGatewayException);
+        // `expect(...).rejects` já anexa o handler de rejeição
+        // sincronamente, antes de qualquer `await` — evita que o Node
+        // veja a promise como rejeição não tratada enquanto os timers
+        // avançam logo abaixo.
+        const expectativa = expect(service.sincronizar(2024)).rejects.toThrow(BadGatewayException);
+        // Deixa as rejeições/retries encadeados avançarem sem esperar o
+        // tempo real de `DOWNLOAD_RETRY_DELAY_MS` entre cada tentativa.
+        await jest.advanceTimersByTimeAsync(DOWNLOAD_RETRY_DELAY_MS * DOWNLOAD_RETRY_ATTEMPTS);
+
+        await expectativa;
+        expect(fetchMock).toHaveBeenCalledTimes(DOWNLOAD_RETRY_ATTEMPTS);
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it("não tenta de novo quando o INEP responde com um HTTP não-ok (determinístico, ex. 404 de ano ainda não publicado)", async () => {
+      const { service } = buildService();
+      const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+      global.fetch = fetchMock;
+
+      await expect(service.sincronizar(2025)).rejects.toThrow(BadGatewayException);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("recupera numa tentativa seguinte quando só as primeiras falham por rede", async () => {
+      jest.useFakeTimers();
+      try {
+        const { service, redis } = buildService();
+        const zip = new AdmZip();
+        zip.addFile("escolas.csv", Buffer.from(buildCsv([buildInepRow()]), "latin1"));
+        const fetchMock = jest
+          .fn()
+          .mockRejectedValueOnce(new Error("ECONNRESET"))
+          .mockResolvedValueOnce({ ok: true, arrayBuffer: () => Promise.resolve(zip.toBuffer()) });
+        global.fetch = fetchMock;
+
+        const promise = service.sincronizar(2024);
+        await jest.advanceTimersByTimeAsync(DOWNLOAD_RETRY_DELAY_MS);
+
+        const resumo = await promise;
+
+        expect(resumo.novas).toBe(1);
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(redis.set).toHaveBeenCalledWith(
+          "geo:inep-sync:status",
+          expect.objectContaining({ ano: 2024, sucesso: true }),
+        );
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it("registra sucesso no Redis (getStatus) quando a sincronização termina bem", async () => {
@@ -264,6 +322,63 @@ describe("InepSyncService", () => {
         "geo:inep-sync:status",
         expect.objectContaining({ ano: 2024, sucesso: false }),
       );
+    });
+  });
+
+  describe("sincronizarComFallbackDeAno", () => {
+    it("usa o ano preferido direto quando ele funciona (sem tentar nenhum ano anterior)", async () => {
+      const { service } = buildService();
+      const zip = new AdmZip();
+      zip.addFile("escolas.csv", Buffer.from(buildCsv([buildInepRow()]), "latin1"));
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValue({ ok: true, arrayBuffer: () => Promise.resolve(zip.toBuffer()) });
+      global.fetch = fetchMock;
+
+      const resumo = await service.sincronizarComFallbackDeAno(2025);
+
+      expect(resumo.ano).toBe(2025);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining("microdados_censo_escolar_2025.zip"),
+        expect.anything(),
+      );
+    });
+
+    it("cai pro ano anterior quando o ano preferido devolve 404 (Censo ainda não publicado)", async () => {
+      const { service } = buildService();
+      const zip = new AdmZip();
+      zip.addFile("escolas.csv", Buffer.from(buildCsv([buildInepRow()]), "latin1"));
+      const fetchMock = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: false, status: 404 }) // 2025
+        .mockResolvedValueOnce({ ok: true, arrayBuffer: () => Promise.resolve(zip.toBuffer()) }); // 2024
+      global.fetch = fetchMock;
+
+      const resumo = await service.sincronizarComFallbackDeAno(2025);
+
+      expect(resumo.ano).toBe(2024);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        1,
+        expect.stringContaining("2025.zip"),
+        expect.anything(),
+      );
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        expect.stringContaining("2024.zip"),
+        expect.anything(),
+      );
+    });
+
+    it("relança o erro do último ano tentado quando TODOS os anos falharem", async () => {
+      const { service } = buildService();
+      const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+      global.fetch = fetchMock;
+
+      await expect(service.sincronizarComFallbackDeAno(2025)).rejects.toThrow(BadGatewayException);
+      // ano preferido + FALLBACK_ANOS_ANTERIORES anos anteriores.
+      expect(fetchMock).toHaveBeenCalledTimes(FALLBACK_ANOS_ANTERIORES + 1);
     });
   });
 

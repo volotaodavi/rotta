@@ -31,6 +31,35 @@ const INEP_DOWNLOAD_HEADERS: Record<string, string> = {
 /** ~200 mil escolas em ZIP costuma passar de 300MB — download real, sem timeout padrão do runtime cortando cedo demais nem ficando pendurado pra sempre. */
 const CENSO_DOWNLOAD_TIMEOUT_MS = 5 * 60 * 1000;
 
+/**
+ * Achado real (pedido do usuário: "verifique TODAS as escolas antes de
+ * lançar essa atualização de vez, pois tem escola faltando, ex.: EM
+ * Antonio Lopes (Maricá, RJ)"): investigação nos logs de produção
+ * (Render) mostrou que TODA execução do Education Sync Agent desde que
+ * o QStash foi configurado falhou com "TypeError: fetch failed" ao
+ * baixar `microdados_censo_escolar_2025.zip` — a sincronização
+ * nacional nunca completou nem uma vez. Duas causas reais, não
+ * excludentes: (1) o CDN do INEP nem sempre publica o Censo do ano
+ * corrente ainda (`ano = anoAtual - 1`, calculado em
+ * `InepSyncSchedulerService`) — testado agora, `.../2025.zip` devolve
+ * 404, enquanto `.../2024.zip`/`2023.zip` respondem 200 normalmente;
+ * (2) falhas de rede transitórias ao alcançar um servidor gov.br a
+ * partir da região do Render são plausíveis e nunca tinham nenhum
+ * retry. `DOWNLOAD_RETRY_ATTEMPTS`/`DOWNLOAD_RETRY_DELAY_MS` cobrem a
+ * causa (2); `sincronizarComFallbackDeAno` cobre a causa (1) — só para
+ * a execução AUTOMÁTICA (scheduler), nunca para um `POST
+ * /geo/inep-sync?ano=X` manual, que é uma escolha explícita do
+ * operador e nunca deve ser silenciosamente trocada por outro ano.
+ */
+export const DOWNLOAD_RETRY_ATTEMPTS = 3;
+export const DOWNLOAD_RETRY_DELAY_MS = 5000;
+/** Quantos anos anteriores tentar, em sequência, quando o ano preferido falhar (só na sincronização automática). */
+export const FALLBACK_ANOS_ANTERIORES = 2;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export interface InepSyncResumo {
   ano: number;
   totalLinhas: number;
@@ -104,34 +133,59 @@ export class InepSyncService {
     private readonly redis: RedisService,
   ) {}
 
+  /**
+   * `DOWNLOAD_RETRY_ATTEMPTS` tentativas só cobrem a falha de REDE (o
+   * `catch` — ECONNRESET, DNS, timeout, TLS...), nunca um HTTP não-ok:
+   * um 404 (ano ainda não publicado) ou 5xx do INEP é determinístico —
+   * tentar de novo a mesma URL não muda o resultado, só atrasa o erro
+   * real chegar a quem decide (aqui, `sincronizarComFallbackDeAno`, ou
+   * o operador no disparo manual).
+   */
   private async downloadCensoZip(ano: number): Promise<Buffer> {
     const url = CENSO_ZIP_URL(ano);
-    let response: Response;
-    try {
-      response = await fetch(url, {
-        headers: INEP_DOWNLOAD_HEADERS,
-        signal: AbortSignal.timeout(CENSO_DOWNLOAD_TIMEOUT_MS),
-      });
-    } catch (error) {
-      // Nunca "falha de rede" genérico e mudo: o nome/mensagem real do
-      // erro (ECONNRESET, DNS, timeout, TLS...) vai pro log e pro
-      // `InepSyncStatus.erro` — é a única forma de alguém sem acesso ao
-      // servidor diagnosticar qual dessas causas foi, da próxima vez.
-      const causa = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-      this.logger.error(
-        `Education Sync Agent: download do Censo Escolar ${ano} falhou (${url}). Causa: ${causa}`,
-      );
-      throw new BadGatewayException(
-        `Education Sync Agent: falha de rede ao baixar o Censo Escolar ${ano} (${url}). Causa: ${causa}`,
-        { cause: error instanceof Error ? error : undefined },
-      );
+    let ultimoErroDeRede: unknown;
+
+    for (let tentativa = 1; tentativa <= DOWNLOAD_RETRY_ATTEMPTS; tentativa += 1) {
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          headers: INEP_DOWNLOAD_HEADERS,
+          signal: AbortSignal.timeout(CENSO_DOWNLOAD_TIMEOUT_MS),
+        });
+      } catch (error) {
+        ultimoErroDeRede = error;
+        const causa = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
+        this.logger.warn(
+          `Education Sync Agent: download do Censo Escolar ${ano} falhou (${url}) na tentativa ${tentativa}/${DOWNLOAD_RETRY_ATTEMPTS}. Causa: ${causa}`,
+        );
+        if (tentativa < DOWNLOAD_RETRY_ATTEMPTS) {
+          await sleep(DOWNLOAD_RETRY_DELAY_MS);
+        }
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new BadGatewayException(
+          `Education Sync Agent: INEP retornou ${response.status} ao baixar o Censo Escolar ${ano}.`,
+        );
+      }
+      return Buffer.from(await response.arrayBuffer());
     }
-    if (!response.ok) {
-      throw new BadGatewayException(
-        `Education Sync Agent: INEP retornou ${response.status} ao baixar o Censo Escolar ${ano}.`,
-      );
-    }
-    return Buffer.from(await response.arrayBuffer());
+
+    // Esgotou as tentativas — só chega aqui se todas falharam por rede
+    // (um HTTP não-ok já retornou/lançou acima, sem consumir tentativas
+    // adicionais).
+    const causa =
+      ultimoErroDeRede instanceof Error
+        ? `${ultimoErroDeRede.name}: ${ultimoErroDeRede.message}`
+        : String(ultimoErroDeRede);
+    this.logger.error(
+      `Education Sync Agent: download do Censo Escolar ${ano} falhou (${url}) após ${DOWNLOAD_RETRY_ATTEMPTS} tentativas. Causa: ${causa}`,
+    );
+    throw new BadGatewayException(
+      `Education Sync Agent: falha de rede ao baixar o Censo Escolar ${ano} (${url}) após ${DOWNLOAD_RETRY_ATTEMPTS} tentativas. Causa: ${causa}`,
+      { cause: ultimoErroDeRede instanceof Error ? ultimoErroDeRede : undefined },
+    );
   }
 
   /**
@@ -183,6 +237,40 @@ export class InepSyncService {
       });
       throw error;
     }
+  }
+
+  /**
+   * Só usado pela sincronização AUTOMÁTICA (`InepSyncSchedulerService`,
+   * via QStash). O disparo manual (`POST /geo/inep-sync?ano=X`) chama
+   * `sincronizar(ano)` direto — é uma escolha explícita do operador e
+   * nunca deve ser silenciosamente trocada por outro ano.
+   *
+   * Tenta `anoPreferido`, depois `anoPreferido - 1`, `anoPreferido - 2`
+   * (`FALLBACK_ANOS_ANTERIORES`), na ordem, parando no primeiro que
+   * sincronizar com sucesso — cobre o INEP ainda não ter publicado o
+   * Censo do ano corrente quando o agendamento roda (achado real:
+   * `.../2025.zip` → 404, `.../2024.zip`/`2023.zip` → 200). Cada
+   * tentativa já passa pelo retry de rede de `downloadCensoZip`; isto
+   * aqui só lida com "ano não existe ainda", não com falha transitória.
+   * Se todos os anos falharem, relança o erro do ÚLTIMO ano tentado
+   * (o mais informativo — o mais próximo do ano preferido).
+   */
+  async sincronizarComFallbackDeAno(anoPreferido: number): Promise<InepSyncResumo> {
+    let ultimoErro: unknown;
+    for (let offset = 0; offset <= FALLBACK_ANOS_ANTERIORES; offset += 1) {
+      const ano = anoPreferido - offset;
+      try {
+        return await this.sincronizar(ano);
+      } catch (error) {
+        ultimoErro = error;
+        this.logger.warn(
+          `Education Sync Agent: sincronização automática do Censo Escolar ${ano} falhou${
+            offset < FALLBACK_ANOS_ANTERIORES ? `, tentando o ano anterior (${ano - 1})` : ""
+          }. Causa: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
+    throw ultimoErro;
   }
 
   /** Nunca lança — uma falha ao registrar o status (Redis indisponível) não pode mascarar o resultado real da sincronização. */

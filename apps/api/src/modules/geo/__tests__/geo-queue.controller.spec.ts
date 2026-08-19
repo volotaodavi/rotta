@@ -11,13 +11,17 @@ import type { SchoolCoordinate } from "@prisma/client";
 function buildController(options: {
   geocodeSchool?: jest.Mock;
   sincronizar?: jest.Mock;
+  sincronizarComFallbackDeAno?: jest.Mock;
   listByStatus?: jest.Mock;
   publishBatchJSON?: jest.Mock;
 }) {
   const geoPipeline = {
     geocodeSchool: options.geocodeSchool ?? jest.fn(),
   } as unknown as GeoPipelineService;
-  const inepSync = { sincronizar: options.sincronizar ?? jest.fn() } as unknown as InepSyncService;
+  const inepSync = {
+    sincronizar: options.sincronizar ?? jest.fn(),
+    sincronizarComFallbackDeAno: options.sincronizarComFallbackDeAno ?? jest.fn(),
+  } as unknown as InepSyncService;
   const coordinateRepository = {
     listByStatus: options.listByStatus ?? jest.fn().mockResolvedValue([]),
   } as unknown as SchoolCoordinateRepository;
@@ -80,13 +84,27 @@ describe("GeoQueueController", () => {
   });
 
   describe("inepSyncJob", () => {
-    it("chama InepSyncService.sincronizar com o ano do job", async () => {
+    it("chama InepSyncService.sincronizar com o ano do job (disparo manual, sem permitirAnoAnterior)", async () => {
       const sincronizar = jest.fn().mockResolvedValue({});
-      const controller = buildController({ sincronizar });
+      const sincronizarComFallbackDeAno = jest.fn();
+      const controller = buildController({ sincronizar, sincronizarComFallbackDeAno });
 
       const resultado = await controller.inepSyncJob({ ano: 2024 });
 
       expect(sincronizar).toHaveBeenCalledWith(2024);
+      expect(sincronizarComFallbackDeAno).not.toHaveBeenCalled();
+      expect(resultado).toEqual({ ok: true });
+    });
+
+    it("chama InepSyncService.sincronizarComFallbackDeAno quando permitirAnoAnterior=true (execução automática/agendada)", async () => {
+      const sincronizar = jest.fn();
+      const sincronizarComFallbackDeAno = jest.fn().mockResolvedValue({});
+      const controller = buildController({ sincronizar, sincronizarComFallbackDeAno });
+
+      const resultado = await controller.inepSyncJob({ ano: 2025, permitirAnoAnterior: true });
+
+      expect(sincronizarComFallbackDeAno).toHaveBeenCalledWith(2025);
+      expect(sincronizar).not.toHaveBeenCalled();
       expect(resultado).toEqual({ ok: true });
     });
   });

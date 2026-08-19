@@ -1,7 +1,6 @@
 import { Injectable, Logger, type OnModuleInit } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-
 import { INEP_SYNC_QUEUE } from "../geo.constants";
 
 import type { GeoConfig } from "@/config/geo.config";
@@ -66,7 +65,14 @@ export class InepSyncSchedulerService implements OnModuleInit {
     const cron = this.config.inepSyncCron ?? DEFAULT_INEP_SYNC_CRON;
     const ano = this.config.inepSyncAno ?? new Date().getFullYear() - 1;
 
-    await this.qstashSchedule.upsertSchedule(SCHEDULE_ID, `geo/${INEP_SYNC_QUEUE}`, cron, { ano });
+    // `permitirAnoAnterior: true` — só a execução automática pode cair
+    // pro ano anterior quando o INEP ainda não publicou o Censo do ano
+    // corrente (achado real: `.../2025.zip` → 404 até a publicação
+    // oficial); ver `InepSyncService.sincronizarComFallbackDeAno`.
+    await this.qstashSchedule.upsertSchedule(SCHEDULE_ID, `geo/${INEP_SYNC_QUEUE}`, cron, {
+      ano,
+      permitirAnoAnterior: true,
+    });
 
     const origem = this.config.inepSyncCron
       ? "INEP_SYNC_CRON"
