@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiError } from "@rotta/api-client";
+import { ApiError, COMPANY_TYPE_LABEL } from "@rotta/api-client";
 import {
   Button,
   Card,
@@ -18,13 +18,15 @@ import type { CreateCompanyInput, CompanyType } from "@rotta/api-client";
 
 import { useCreateCompany } from "@/features/companies/hooks/use-companies";
 
+/** Frente AN — rótulos de `COMPANY_TYPE_LABEL` (api-client), mesma fonte do cadastro self-service em `apps/web`. */
 const COMPANY_TYPE_OPTIONS: { value: CompanyType; label: string }[] = [
-  { value: "AUTONOMO", label: "Motorista Autônomo" },
-  { value: "MEI", label: "MEI" },
-  { value: "LTDA", label: "LTDA" },
-  { value: "SLU", label: "SLU" },
-  { value: "EIRELI", label: "EIRELI" },
-  { value: "OUTRO", label: "Outro" },
+  { value: "AUTONOMO", label: COMPANY_TYPE_LABEL.AUTONOMO },
+  { value: "MEI", label: COMPANY_TYPE_LABEL.MEI },
+  { value: "LTDA", label: COMPANY_TYPE_LABEL.LTDA },
+  { value: "SA", label: COMPANY_TYPE_LABEL.SA },
+  { value: "COOPERATIVA", label: COMPANY_TYPE_LABEL.COOPERATIVA },
+  { value: "SOCIEDADE_SIMPLES", label: COMPANY_TYPE_LABEL.SOCIEDADE_SIMPLES },
+  { value: "OUTRO", label: COMPANY_TYPE_LABEL.OUTRO },
 ];
 
 type FormState = CreateCompanyInput;

@@ -1,5 +1,6 @@
 "use client";
 
+import { COMPANY_TYPE_LABEL } from "@rotta/api-client";
 import {
   Badge,
   Button,
@@ -225,7 +226,7 @@ export default function EmpresaDetalhesPage({
           <InfoItem label="Email" value={company.email} />
           <InfoItem label="Telefone" value={company.telefone} />
           <InfoItem label="WhatsApp" value={company.whatsapp ?? "Não informado"} />
-          <InfoItem label="Tipo" value={company.tipo} />
+          <InfoItem label="Tipo" value={COMPANY_TYPE_LABEL[company.tipo]} />
           <InfoItem
             label="Endereço"
             value={`${company.endereco}, ${company.numero}${company.complemento ? ` — ${company.complemento}` : ""}`}

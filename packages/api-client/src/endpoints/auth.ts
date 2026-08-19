@@ -100,7 +100,7 @@ export interface RegisterEmpresaInput {
   razaoSocial: string;
   nomeFantasia: string;
   cpfCnpj: string;
-  tipo: "AUTONOMO" | "MEI" | "LTDA" | "SLU" | "EIRELI" | "OUTRO";
+  tipo: CompanyType;
   email: string;
   telefone: string;
   whatsapp?: string;

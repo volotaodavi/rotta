@@ -1,6 +1,5 @@
 import { BadRequestException } from "@nestjs/common";
 
-
 import {
   IdentityVerificationService,
   requerCnh,
@@ -75,7 +74,7 @@ describe("requerCnh/resolveDiditWorkflowId/resolveDocumentoEsperado", () => {
     expect(requerCnh(Role.GESTOR, "MEI")).toBe(false);
   });
 
-  it("Empresa comum (LTDA/SLU/EIRELI/OUTRO ou sem companyType) não exige CNH — não é quem dirige", () => {
+  it("Empresa comum (LTDA/SA/COOPERATIVA/OUTRO ou sem companyType) não exige CNH — não é quem dirige", () => {
     expect(requerCnh(Role.EMPRESA, "LTDA")).toBe(false);
     expect(requerCnh(Role.EMPRESA, null)).toBe(false);
     expect(requerCnh(Role.EMPRESA, undefined)).toBe(false);

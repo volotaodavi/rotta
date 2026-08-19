@@ -46,12 +46,17 @@ datasource db {
 /// dispara a regra "o motorista automaticamente e o Administrador da
 /// empresa" (Dossie 16, Secao 1.2) — o proprio motorista assina o CPF em
 /// `cpfCnpj` e vira o unico `Membership` com papel `empresa`.
+///
+/// Frente AN (pedido do usuario): `SLU`/`EIRELI` saem — formas raras no
+/// publico-alvo (transportadoras escolares) — e entram `SA`/
+/// `COOPERATIVA`/`SOCIEDADE_SIMPLES`.
 enum CompanyType {
   AUTONOMO
   MEI
   LTDA
-  SLU
-  EIRELI
+  SA
+  COOPERATIVA
+  SOCIEDADE_SIMPLES
   OUTRO
 }
 

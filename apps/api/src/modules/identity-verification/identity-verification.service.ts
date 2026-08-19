@@ -15,7 +15,6 @@ import {
 import { DiditService } from "@/infra/didit/didit.service";
 import { Role } from "@/shared/enums";
 
-
 /**
  * Documento exigido em cada workflow — mostrado no Admin Rotta pra
  * nunca decidir uma verificação sem saber qual documento era esperado
@@ -40,7 +39,7 @@ export const DOCUMENTO_ESPERADO_LABEL = {
  * Ação" pra dirigir a própria rota). Sem este caso, um Autônomo/MEI
  * passaria a verificação com RG/passaporte e nunca precisaria provar
  * CNH — a mesma exigência legal que um Motorista funcionário tem que
- * cumprir. Gestor/Empresa de empresas maiores (LTDA/SLU/EIRELI) não
+ * cumprir. Gestor/Empresa de empresas maiores (LTDA/SA/COOPERATIVA) não
  * dirigem por definição do cargo, então continuam no fluxo permissivo.
  */
 export function requerCnh(role: Role | string, companyType?: string | null): boolean {

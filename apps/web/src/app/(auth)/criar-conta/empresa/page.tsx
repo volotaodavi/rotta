@@ -1,7 +1,8 @@
 "use client";
 
-import { ApiError } from "@rotta/api-client";
+import { ApiError, COMPANY_TYPE_LABEL } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
+import { CheckCircle2 } from "@rotta/icons";
 import {
   Badge,
   Button,
@@ -22,13 +23,23 @@ import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox"
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useCnpjLookup } from "@/hooks/use-cnpj-lookup";
 
+/**
+ * Frente AN (pedido do usuário) — a lista de "Tipo" mistura dois grupos:
+ * Autônomo/MEI (pessoa física que É a transportadora, fluxo mantido
+ * como estava) e as formas societárias de empresa de verdade — essas
+ * sim trocadas aqui (LTDA/S-A/Cooperativa/Sociedade Simples/Outro no
+ * lugar de LTDA/SLU/EIRELI/Outro, que não fazem sentido pro
+ * público-alvo). Rótulos vêm de `COMPANY_TYPE_LABEL` (api-client) —
+ * mesma fonte usada pelo cadastro do Admin, nunca duplicados aqui.
+ */
 const COMPANY_TYPE_OPTIONS: { value: RegisterEmpresaInput["tipo"]; label: string }[] = [
-  { value: "AUTONOMO", label: "Motorista Autônomo" },
-  { value: "MEI", label: "MEI" },
-  { value: "LTDA", label: "LTDA" },
-  { value: "SLU", label: "SLU" },
-  { value: "EIRELI", label: "EIRELI" },
-  { value: "OUTRO", label: "Outro" },
+  { value: "AUTONOMO", label: COMPANY_TYPE_LABEL.AUTONOMO },
+  { value: "MEI", label: COMPANY_TYPE_LABEL.MEI },
+  { value: "LTDA", label: COMPANY_TYPE_LABEL.LTDA },
+  { value: "SA", label: COMPANY_TYPE_LABEL.SA },
+  { value: "COOPERATIVA", label: COMPANY_TYPE_LABEL.COOPERATIVA },
+  { value: "SOCIEDADE_SIMPLES", label: COMPANY_TYPE_LABEL.SOCIEDADE_SIMPLES },
+  { value: "OUTRO", label: COMPANY_TYPE_LABEL.OUTRO },
 ];
 
 const VALID_TIPOS = new Set(COMPANY_TYPE_OPTIONS.map((option) => option.value));
@@ -81,9 +92,17 @@ export default function CriarEmpresaPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
+  // Frente AN (pedido do usuário) — depois de criar a conta como LTDA/
+  // S-A/Cooperativa/Sociedade Simples/Outro, a página vira uma
+  // confirmação ("nossa equipe entrará em contato...") em vez de cair
+  // direto no painel. Autônomo/MEI mantém o fluxo atual (acesso
+  // imediato) — pedido explícito do usuário, é a própria pessoa quem
+  // dirige, sem necessidade de contato comercial antes.
+  const [contaCriada, setContaCriada] = useState(false);
   const cepLookup = useCepLookup();
   const cnpjLookup = useCnpjLookup();
   const isMotoristaAutonomo = form.tipo === "AUTONOMO";
+  const requerContatoComercial = form.tipo !== "AUTONOMO" && form.tipo !== "MEI";
   // Campos travados (só leitura) assim que a Receita Federal confirma o
   // CNPJ — pedido do usuário: "não podendo alterar os dados, apenas
   // possível alterar o nome fantasia". A trava aqui é só UX (o que
@@ -173,7 +192,11 @@ export default function CriarEmpresaPage(): JSX.Element {
     setIsSubmitting(true);
     try {
       await registerEmpresa(form);
-      router.replace("/empresa");
+      if (requerContatoComercial) {
+        setContaCriada(true);
+      } else {
+        router.replace("/empresa");
+      }
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Erro inesperado ao cadastrar empresa.",
@@ -181,6 +204,26 @@ export default function CriarEmpresaPage(): JSX.Element {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  if (contaCriada) {
+    return (
+      <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 py-20 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success">
+          <CheckCircle2 className="h-8 w-8" />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Typography variant="title">Que bom! 🎉</Typography>
+          <Typography variant="body" color="muted">
+            Sua conta foi criada com sucesso. Nossa equipe entrará em contato pelo número de celular
+            indicado ({form.telefone || form.administrador.telefone}). Fique atento!
+          </Typography>
+        </div>
+        <Button variant="primary" onClick={() => router.replace("/empresa")}>
+          Ir para o painel
+        </Button>
+      </div>
+    );
   }
 
   return (

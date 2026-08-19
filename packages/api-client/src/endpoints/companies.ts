@@ -9,8 +9,27 @@ import type { ApiClient } from "../http";
  * Empresas — sempre por uma destas funções.
  */
 
-export type CompanyType = "AUTONOMO" | "MEI" | "LTDA" | "SLU" | "EIRELI" | "OUTRO";
+/** Frente AN — `SLU`/`EIRELI` saíram (raros no público-alvo da Rotta), entraram `SA`/`COOPERATIVA`/`SOCIEDADE_SIMPLES`. */
+export type CompanyType =
+  "AUTONOMO" | "MEI" | "LTDA" | "SA" | "COOPERATIVA" | "SOCIEDADE_SIMPLES" | "OUTRO";
 export type CompanyStatus = "TRIAL" | "ATIVO" | "SUSPENSO" | "CANCELADO" | "INADIMPLENTE";
+
+/**
+ * Rótulo exibido do tipo societário — reaproveitado pelos dois
+ * formulários de cadastro (`apps/web/.../criar-conta/empresa`,
+ * `apps/admin/.../empresas/nova`) e pela exibição no detalhe do Admin
+ * (`apps/admin/.../empresas/[id]`), pra nunca mostrar o enum cru
+ * ("SA") nem duplicar os textos em 3 lugares.
+ */
+export const COMPANY_TYPE_LABEL: Record<CompanyType, string> = {
+  AUTONOMO: "Motorista Autônomo",
+  MEI: "MEI",
+  LTDA: "LTDA",
+  SA: "S/A",
+  COOPERATIVA: "Cooperativa",
+  SOCIEDADE_SIMPLES: "Sociedade Simples",
+  OUTRO: "Outro",
+};
 
 export interface CompanyAdminInput {
   nome: string;
