@@ -35,6 +35,7 @@ import {
   useRouteStops,
   useRouteStudents,
   useSuggestRouteOptimization,
+  useUpdateRoute,
 } from "@/features/routes/hooks/use-routes";
 import {
   ROUTE_STATUS_LABEL,
@@ -71,6 +72,7 @@ export default function RotaDetalhePage(): JSX.Element {
   const { data: routeStudents, isLoading: isLoadingStudents } = useRouteStudents(routeId);
   const { data: team } = useMyTeam();
   const { user } = useAuth();
+  const updateRoute = useUpdateRoute(routeId);
 
   if (isLoadingRoute || !route) {
     return (
@@ -101,10 +103,34 @@ export default function RotaDetalhePage(): JSX.Element {
               : " · Nenhum motorista atribuído ainda"}
           </Typography>
         </div>
-        <Badge variant={ROUTE_STATUS_VARIANT[route.status]}>
-          {ROUTE_STATUS_LABEL[route.status]}
-        </Badge>
+        <div className="flex flex-col items-end gap-2">
+          <Badge variant={ROUTE_STATUS_VARIANT[route.status]}>
+            {ROUTE_STATUS_LABEL[route.status]}
+          </Badge>
+          <Button
+            variant="secondary"
+            size="sm"
+            isLoading={updateRoute.isPending}
+            onClick={() =>
+              updateRoute.mutate({ status: route.status === "ATIVA" ? "PAUSADA" : "ATIVA" })
+            }
+          >
+            {route.status === "ATIVA" ? "Pausar rota" : "Ativar rota"}
+          </Button>
+        </div>
       </div>
+
+      {route.status === "PAUSADA" ? (
+        <Card>
+          <Card.Body>
+            <Typography variant="bodySmall" color="danger">
+              Esta rota está pausada — ela não aparece em &quot;Minha Rota&quot; para o motorista
+              nem para o monitor enquanto estiver assim. Clique em &quot;Ativar rota&quot; acima
+              quando ela estiver pronta para operar.
+            </Typography>
+          </Card.Body>
+        </Card>
+      ) : null}
 
       {!route.motoristaPadraoId ? (
         <Card>

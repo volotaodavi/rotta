@@ -7,6 +7,7 @@ import type {
   CreateRouteInput,
   CreateRouteStopInput,
   ListRoutesParams,
+  UpdateRouteInput,
 } from "@rotta/api-client";
 
 import { rottaAiApi, routesApi } from "@/lib/api-client";
@@ -38,6 +39,27 @@ export function useRoute(id: string) {
     queryKey: ["routes", id],
     queryFn: () => routesApi.getById(id),
     enabled: Boolean(id),
+  });
+}
+
+/**
+ * Pedido do usuário: "na aba 'minha rota', deverá ter todas as rotas."
+ * Achado real: toda rota nasce `status: PAUSADA` (default do backend,
+ * `Route.status @default(PAUSADA)`), e `useMinhasRotas`
+ * (`apps/web/src/features/driver/hooks/use-driver-routes.ts`) só busca
+ * `status: "ATIVA"` — uma rota recém-criada nunca aparecia em "Minha
+ * Rota" pra ninguém, porque não existia NENHUM botão em lugar nenhum
+ * do painel pra tirá-la de PAUSADA, mesmo o backend (`UpdateRouteDto.status`)
+ * já aceitando essa troca. `useUpdateRoute` fecha esse buraco.
+ */
+export function useUpdateRoute(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateRouteInput) => routesApi.update(id, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["routes"] });
+      void queryClient.invalidateQueries({ queryKey: ["driver", "routes"] });
+    },
   });
 }
 
