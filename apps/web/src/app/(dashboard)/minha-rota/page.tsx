@@ -63,6 +63,7 @@ import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
 import { useVehicle, useVehicleOccurrences } from "@/features/vehicles/hooks/use-vehicles";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
+import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
 
 
@@ -890,7 +891,12 @@ function RotaOperacional({
           isMotorista ? (
             <SlideToAction
               label="Deslize para iniciar a viagem"
-              onComplete={() => startTrip.mutate({ routeId: rota.id })}
+              onComplete={() =>
+                startTrip.mutate(
+                  { routeId: rota.id },
+                  { onSuccess: () => void notifyRouteStarted(rota.nome) },
+                )
+              }
               isLoading={startTrip.isPending}
             />
           ) : (
