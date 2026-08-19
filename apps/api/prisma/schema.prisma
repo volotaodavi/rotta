@@ -383,6 +383,12 @@ enum ContractStatus {
   ENCERRADO
 }
 
+/// Ver nota de `Contract.origem`.
+enum ContractOrigin {
+  NEGOCIADO
+  TERMO_CIENCIA_AUTOMATICO
+}
+
 /// Alvo de uma avaliação (briefing "AVALIAÇÕES") — ver nota de
 /// polimorfismo em `Rating.alvoId`.
 enum RatingTargetType {
@@ -1816,6 +1822,26 @@ model Contract {
   vigenciaFim              DateTime? @db.Date
 
   status ContractStatus @default(AGUARDANDO_ASSINATURA)
+
+  /// `TERMO_CIENCIA_AUTOMATICO` (pedido do usuário, "nesse primeiro
+  /// momento... um termo de ciência... para gerar a rota") — gerado sem
+  /// intervenção humana por `StudentCredentialedListener` assim que o
+  /// aluno é credenciado pelo fluxo "código do transporte", já `ATIVO`
+  /// (sem passar por `AGUARDANDO_ASSINATURA`/Authentique — não há duas
+  /// partes negociando, só a confirmação de que o credenciamento
+  /// aconteceu). `valorMensalidadeCentavos`/`planoDescricao`/`regras`
+  /// nascem com placeholder explícito ("a definir") — o texto do PDF
+  /// (`TermoCienciaPdfService`) É rotulado "Termo de Ciência", nunca
+  /// "Contrato", mesmo a linha do banco sendo um `Contract` de verdade
+  /// (é o mesmo registro que `RouteStudent.contractId` exige — ver nota
+  /// do model — então reaproveitar `Contract` em vez de criar uma
+  /// entidade paralela é o que permite a Empresa já usar a tela
+  /// self-service de Rotas hoje, sem esperar nenhuma tela nova). Segue
+  /// editável depois pela Empresa pelos mesmos endpoints de sempre
+  /// (nenhuma trava especial em `status`/`origem`) quando a mensalidade
+  /// real for combinada com a família. `NEGOCIADO` é o caminho que já
+  /// existia (`ContractsService.gerarContrato`, com Authentique).
+  origem ContractOrigin @default(NEGOCIADO)
 
   /// Preparado para a Authentique (sempre `null` hoje — ver nota do model).
   authentiqueDocumentId String?

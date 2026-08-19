@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { ContractsController } from "./contracts.controller";
 import { ContractsService } from "./contracts.service";
 import { StudentCredentialedListener } from "./listeners/student-credentialed.listener";
@@ -18,6 +17,7 @@ import { PrismaContractRepository } from "./repositories/prisma-contract.reposit
 import { PrismaRatingRepository } from "./repositories/prisma-rating.repository";
 import { PrismaTransportRequestRepository } from "./repositories/prisma-transport-request.repository";
 import { PrismaTransporterRepository } from "./repositories/prisma-transporter.repository";
+import { TermoCienciaPdfService } from "./termo-ciencia-pdf.service";
 import { TransportRequestsController } from "./transport-requests.controller";
 import { TransportRequestsService } from "./transport-requests.service";
 
@@ -26,7 +26,9 @@ import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
+import { SchoolsModule } from "@/modules/schools/schools.module";
 import { StudentsModule } from "@/modules/students/students.module";
+import { UsersModule } from "@/modules/users/users.module";
 import { WalletModule } from "@/modules/wallet/wallet.module";
 
 /**
@@ -65,6 +67,15 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
  * transporte + celular") criando a `TransportRequest` já `APROVADA` —
  * fecha o elo que faltava entre esse pré-cadastro e o resto do
  * Marketplace (gerar Contrato, escolher motorista/veículo/mensalidade).
+ * Também gera o "termo de ciência" automático (pedido do usuário — ver
+ * nota do próprio listener e de `Contract.origem` no schema Prisma).
+ *
+ * `UsersModule`/`SchoolsModule`: o listener e
+ * `ContractsService.gerarPdfTermoCiencia` precisam do nome/CPF do
+ * responsável (`UsersService.findById`) e do nome da escola
+ * (`SCHOOL_REPOSITORY`, exportado por `SchoolsModule`) pra montar o PDF
+ * do termo — nenhum dos dois importa `MarketplaceModule` de volta, sem
+ * risco de ciclo.
  */
 @Module({
   imports: [
@@ -75,6 +86,8 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     CompaniesModule,
     MessagePersonalizationModule,
     WalletModule,
+    UsersModule,
+    SchoolsModule,
   ],
   controllers: [
     MarketplaceController,
@@ -88,6 +101,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     ContractsService,
     RatingsService,
     StudentCredentialedListener,
+    TermoCienciaPdfService,
     { provide: TRANSPORTER_REPOSITORY, useClass: PrismaTransporterRepository },
     { provide: TRANSPORT_REQUEST_REPOSITORY, useClass: PrismaTransportRequestRepository },
     { provide: CONTRACT_REPOSITORY, useClass: PrismaContractRepository },

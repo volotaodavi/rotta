@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { ContractStatus } from "@prisma/client";
+import { ContractOrigin, ContractStatus } from "@prisma/client";
 
 /** Contrato (briefing "CONTRATO"/"TRANSPORTE ATIVO"). */
 export class ContractResponseDto {
@@ -21,6 +21,8 @@ export class ContractResponseDto {
   @ApiPropertyOptional() vigenciaFim?: Date | null;
 
   @ApiProperty({ enum: ContractStatus }) status!: ContractStatus;
+  /** `TERMO_CIENCIA_AUTOMATICO` = gerado sozinho no credenciamento, mensalidade/regras ainda placeholder — ver nota do model Prisma. */
+  @ApiProperty({ enum: ContractOrigin }) origem!: ContractOrigin;
 
   @ApiPropertyOptional() authentiqueDocumentId?: string | null;
   @ApiPropertyOptional() assinadoResponsavelEm?: Date | null;

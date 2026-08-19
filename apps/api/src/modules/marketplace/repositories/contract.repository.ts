@@ -16,6 +16,15 @@ export interface CreateContractData {
   monitorId?: string | null;
 }
 
+/** Ver nota de `ContractRepository.createTermoCienciaAutomatico`. */
+export interface CreateTermoCienciaData {
+  transportRequestId: string;
+  studentId: string;
+  responsavelId: string;
+  companyId: string;
+  schoolId: string;
+}
+
 /** Ver nota de escopo em `TransportRequestAccessScope` (mesma convenção). */
 export interface ContractAccessScope {
   responsavelId?: string;
@@ -45,6 +54,15 @@ export interface ListContractsResult {
  */
 export interface ContractRepository {
   create(data: CreateContractData): Promise<Contract>;
+  /**
+   * Cria o Contract já `ATIVO` com `origem: TERMO_CIENCIA_AUTOMATICO` e
+   * termos comerciais placeholder ("a definir") — chamada por
+   * `StudentCredentialedListener`, disparada por um evento sem contexto
+   * de tenant (o `Student` acabou de ser criado pelo Responsável, não
+   * pela Empresa), por isso sempre `withBypass`, mesmo motivo de
+   * `TransportRequestRepository.create`.
+   */
+  createTermoCienciaAutomatico(data: CreateTermoCienciaData): Promise<Contract>;
   findByTransportRequestId(transportRequestId: string): Promise<Contract | null>;
   findByIdScoped(id: string, scope: ContractAccessScope): Promise<Contract | null>;
   /** Sem escopo — só Admin Rotta. */

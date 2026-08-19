@@ -18,6 +18,7 @@ export function toContractResponseDto(contract: Contract): ContractResponseDto {
     vigenciaInicio: contract.vigenciaInicio,
     vigenciaFim: contract.vigenciaFim,
     status: contract.status,
+    origem: contract.origem,
     authentiqueDocumentId: contract.authentiqueDocumentId,
     assinadoResponsavelEm: contract.assinadoResponsavelEm,
     assinadoEmpresaEm: contract.assinadoEmpresaEm,

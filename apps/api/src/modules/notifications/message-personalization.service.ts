@@ -115,6 +115,14 @@ export class MessagePersonalizationService {
     return { titulo: "Contrato assinado", corpo: `O contrato com ${nomeEmpresa} foi assinado.` };
   }
 
+  /** Credenciamento pelo "código do transporte" (`StudentCredentialedListener`) — reaproveita `NOVO_CONTRATO` (é um `Contract` de verdade nascendo), com texto próprio pra não dizer "aguardando assinatura" de algo que já nasce ativo. */
+  termoCienciaGerado(nomeEmpresa: string): PersonalizedMessage {
+    return {
+      titulo: "Transporte credenciado",
+      corpo: `O transporte com ${nomeEmpresa} foi credenciado. Confira o termo de ciência no app.`,
+    };
+  }
+
   cnhVencendo(nomeMotorista: string, diasRestantes: number): PersonalizedMessage {
     return {
       titulo: "CNH vencendo",

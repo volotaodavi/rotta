@@ -71,6 +71,7 @@ function buildContract(overrides: Partial<Contract> = {}): Contract {
     vigenciaInicio: new Date(),
     vigenciaFim: null,
     status: "ATIVO",
+    origem: "NEGOCIADO",
     authentiqueDocumentId: null,
     assinadoResponsavelEm: new Date(),
     assinadoEmpresaEm: new Date(),

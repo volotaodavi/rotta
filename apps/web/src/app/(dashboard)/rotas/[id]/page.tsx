@@ -1,7 +1,15 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Check, GraduationCap, MapPin, Route as RouteIcon, Trash2, Users } from "@rotta/icons";
+import {
+  Check,
+  FileText,
+  GraduationCap,
+  MapPin,
+  Route as RouteIcon,
+  Trash2,
+  Users,
+} from "@rotta/icons";
 import { Badge, Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
 import { useParams } from "next/navigation";
 import { useState } from "react";
@@ -36,8 +44,7 @@ import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useMyLocation } from "@/hooks/use-my-location";
-import { geoApi } from "@/lib/api-client";
-
+import { geoApi, marketplaceApi } from "@/lib/api-client";
 
 function formatarDistanciaKm(distanciaKm: number): string {
   return distanciaKm < 1 ? `${Math.round(distanciaKm * 1000)} m` : `${distanciaKm.toFixed(1)} km`;
@@ -584,6 +591,32 @@ function AddStudentCandidateRow({
   const [paradaEmbarqueId, setParadaEmbarqueId] = useState("");
   const [paradaDesembarqueId, setParadaDesembarqueId] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isBaixandoTermo, setIsBaixandoTermo] = useState(false);
+
+  /**
+   * Só aparece pra contratos gerados automaticamente no credenciamento
+   * pelo "código do transporte" (`origem: TERMO_CIENCIA_AUTOMATICO`,
+   * ver nota do model Prisma) — um contrato `NEGOCIADO` de verdade segue
+   * pela Authentique, sem PDF de termo de ciência. Blob autenticado
+   * (mesmo padrão de `escolas/page.tsx.handleExport`), nunca um `<a
+   * href>` cru — a rota exige o Bearer token do usuário logado.
+   */
+  async function handleBaixarTermo(): Promise<void> {
+    setIsBaixandoTermo(true);
+    try {
+      const blob = await marketplaceApi.baixarTermoCienciaPdf(contract.id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `termo-ciencia-${contract.id}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setErrorMessage("Não foi possível baixar o termo de ciência agora.");
+    } finally {
+      setIsBaixandoTermo(false);
+    }
+  }
 
   async function handleAdd(): Promise<void> {
     setErrorMessage(null);
@@ -606,9 +639,22 @@ function AddStudentCandidateRow({
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between">
-      <Typography variant="bodySmall" className="font-medium">
-        {student?.nome ?? "Carregando..."}
-      </Typography>
+      <div className="flex flex-col gap-1">
+        <Typography variant="bodySmall" className="font-medium">
+          {student?.nome ?? "Carregando..."}
+        </Typography>
+        {contract.origem === "TERMO_CIENCIA_AUTOMATICO" ? (
+          <button
+            type="button"
+            onClick={() => void handleBaixarTermo()}
+            disabled={isBaixandoTermo}
+            className="flex w-fit items-center gap-1 text-xs text-text-muted underline decoration-dotted hover:text-primary disabled:opacity-60"
+          >
+            <FileText className="h-3.5 w-3.5" />
+            {isBaixandoTermo ? "Baixando termo..." : "Baixar termo de ciência"}
+          </button>
+        ) : null}
+      </div>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <Select
           value={paradaEmbarqueId}

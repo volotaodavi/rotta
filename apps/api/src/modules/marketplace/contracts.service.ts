@@ -9,9 +9,9 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType } from "@prisma/client";
 
-
 import { toContractResponseDto } from "./mappers/contract.mapper";
 import { CONTRACT_REPOSITORY, TRANSPORT_REQUEST_REPOSITORY } from "./marketplace.constants";
+import { TermoCienciaPdfService } from "./termo-ciencia-pdf.service";
 
 import type { ContractResponseDto, ListContractsResponseDto } from "./dto/contract-response.dto";
 import type { CreateContractDto } from "./dto/create-contract.dto";
@@ -19,14 +19,20 @@ import type { ListContractsQueryDto } from "./dto/list-contracts-query.dto";
 import type { ContractAccessScope, ContractRepository } from "./repositories/contract.repository";
 import type { TransportRequestRepository } from "./repositories/transport-request.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
+import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { Contract } from "@prisma/client";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { AuthentiqueService } from "@/modules/authentique/authentique.service";
+import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import { CompaniesService } from "@/modules/companies/companies.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
+import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
+import { StudentsService } from "@/modules/students/students.service";
+import { UsersService } from "@/modules/users/users.service";
 import { WalletService } from "@/modules/wallet/wallet.service";
 import { Role } from "@/shared/enums";
 
@@ -66,6 +72,11 @@ export class ContractsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly walletService: WalletService,
+    private readonly studentsService: StudentsService,
+    private readonly usersService: UsersService,
+    @Inject(SCHOOL_REPOSITORY) private readonly schoolRepository: SchoolRepository,
+    @Inject(COMPANY_REPOSITORY) private readonly companyRepository: CompanyRepository,
+    private readonly termoCienciaPdfService: TermoCienciaPdfService,
   ) {}
 
   /** Best-effort — nunca bloqueia a emissão do evento de comunicação por causa de uma falha ao resolver `nomeFantasia`. */
@@ -223,6 +234,36 @@ export class ContractsService {
    */
   async findRawByIdOrThrow(id: string, actor: AuthenticatedUser): Promise<Contract> {
     return this.fetchOrThrow(id, actor);
+  }
+
+  /**
+   * PDF do "termo de ciência" — só existe para `origem:
+   * TERMO_CIENCIA_AUTOMATICO` (ver nota do model Prisma); um contrato
+   * `NEGOCIADO` segue pela Authentique, não por aqui. Mesma checagem de
+   * acesso de `findByIdOrThrow` (Responsável dono/Empresa dona/Admin
+   * Rotta) — o termo é um documento pessoal das duas partes envolvidas.
+   */
+  async gerarPdfTermoCiencia(id: string, actor: AuthenticatedUser): Promise<Buffer> {
+    const contract = await this.fetchOrThrow(id, actor);
+    if (contract.origem !== "TERMO_CIENCIA_AUTOMATICO") {
+      throw new NotFoundException(
+        "Este contrato não tem termo de ciência (foi negociado manualmente).",
+      );
+    }
+
+    const [company, student, responsavel, school] = await Promise.all([
+      this.companyRepository.findById(contract.companyId),
+      this.studentsService.findRawById(contract.studentId),
+      this.usersService.findById(contract.responsavelId),
+      this.schoolRepository.findById(contract.schoolId),
+    ]);
+    if (!company || !student || !responsavel || !school) {
+      throw new NotFoundException(
+        "Não foi possível montar o termo de ciência — algum dado relacionado não foi encontrado.",
+      );
+    }
+
+    return this.termoCienciaPdfService.gerar({ contract, company, student, responsavel, school });
   }
 
   /**

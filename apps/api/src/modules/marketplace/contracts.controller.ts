@@ -8,15 +8,15 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-
 
 import { ContractsService, type RequestMeta } from "./contracts.service";
 import { CreateContractDto } from "./dto/create-contract.dto";
 import { ListContractsQueryDto } from "./dto/list-contracts-query.dto";
 
-import type { Request } from "express";
+import type { Request, Response } from "express";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
@@ -61,6 +61,20 @@ export class ContractsController {
   @Roles(...READ_ROLES)
   findById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
     return this.contractsService.findByIdOrThrow(id, actor);
+  }
+
+  /** `@Res()` sem `passthrough` — mesma razão de `SchoolsController.export`. */
+  @Get("contracts/:id/termo-ciencia.pdf")
+  @Roles(...READ_ROLES)
+  async baixarTermoCiencia(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.contractsService.gerarPdfTermoCiencia(id, actor);
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="termo-ciencia-${id}.pdf"`);
+    res.send(buffer);
   }
 
   @Patch("contracts/:id/assinar-responsavel")

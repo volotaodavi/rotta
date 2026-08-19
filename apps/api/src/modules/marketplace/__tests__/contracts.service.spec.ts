@@ -1,19 +1,23 @@
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { ContractsService } from "../contracts.service";
 
 import type { ContractRepository } from "../repositories/contract.repository";
 import type { TransportRequestRepository } from "../repositories/transport-request.repository";
+import type { TermoCienciaPdfService } from "../termo-ciencia-pdf.service";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { AuthentiqueService } from "@/modules/authentique/authentique.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
+import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
+import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
+import type { StudentsService } from "@/modules/students/students.service";
+import type { UsersService } from "@/modules/users/users.service";
 import type { WalletService } from "@/modules/wallet/wallet.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
-import type { Contract, TransportRequest } from "@prisma/client";
+import type { Company, Contract, School, Student, TransportRequest, User } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -64,6 +68,7 @@ function buildContract(overrides: Partial<Contract> = {}): Contract {
     vigenciaInicio: new Date("2026-02-01"),
     vigenciaFim: null,
     status: "AGUARDANDO_ASSINATURA",
+    origem: "NEGOCIADO",
     authentiqueDocumentId: null,
     assinadoResponsavelEm: null,
     assinadoEmpresaEm: null,
@@ -73,6 +78,86 @@ function buildContract(overrides: Partial<Contract> = {}): Contract {
     updatedAt: new Date(),
     ...overrides,
   };
+}
+
+function buildCompany(overrides: Partial<Company> = {}): Company {
+  return {
+    id: "company-1",
+    codigoInterno: "TRN-000001",
+    razaoSocial: "Gama Transportes LTDA",
+    nomeFantasia: "Gama Transportes",
+    cpfCnpj: "11222333000181",
+    tipo: "LTDA",
+    email: "contato@gama.com",
+    telefone: "11999990000",
+    whatsapp: null,
+    cep: "01000-000",
+    endereco: "Rua Exemplo",
+    numero: "100",
+    complemento: null,
+    bairro: "Centro",
+    cidade: "São Paulo",
+    estado: "SP",
+    latitude: null,
+    longitude: null,
+    logoUrl: null,
+    fotoUrl: null,
+    corPrimaria: "#3B6EF6",
+    idioma: "pt-BR",
+    fusoHorario: "America/Sao_Paulo",
+    status: "ATIVO",
+    planId: null,
+    trialExpiraEm: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+    ...overrides,
+  } as unknown as Company;
+}
+
+function buildStudent(overrides: Partial<Student> = {}): Student {
+  return {
+    id: "student-1",
+    responsavelId: "responsavel-1",
+    nome: "Pedro Aluno",
+    fotoUrl: null,
+    fotoPath: null,
+    dataNascimento: new Date("2015-01-01"),
+    sexo: "MASCULINO",
+    schoolId: "school-1",
+    turno: "MANHA",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  } as unknown as Student;
+}
+
+function buildUser(overrides: Partial<User> = {}): User {
+  return {
+    id: "responsavel-1",
+    nome: "Carla Responsável",
+    email: "carla@example.com",
+    telefone: "11988887777",
+    cpf: "52998224725",
+    passwordHash: "hash",
+    status: "ATIVO",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  } as unknown as User;
+}
+
+function buildSchool(overrides: Partial<School> = {}): School {
+  return {
+    id: "school-1",
+    codigoInterno: "ESC-000001",
+    nomeOficial: "Escola Exemplo",
+    nomeFantasia: null,
+    status: "ATIVA",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  } as unknown as School;
 }
 
 function buildCreateContractDto() {
@@ -97,10 +182,16 @@ describe("ContractsService", () => {
     Pick<MessagePersonalizationService, "novoContrato" | "contratoAssinado">
   >;
   let walletService: jest.Mocked<Pick<WalletService, "registrarMensalidadePendente">>;
+  let studentsService: jest.Mocked<Pick<StudentsService, "findRawById">>;
+  let usersService: jest.Mocked<Pick<UsersService, "findById">>;
+  let schoolRepository: jest.Mocked<Pick<SchoolRepository, "findById">>;
+  let companyRepository: jest.Mocked<Pick<CompanyRepository, "findById">>;
+  let termoCienciaPdfService: jest.Mocked<Pick<TermoCienciaPdfService, "gerar">>;
 
   beforeEach(() => {
     contractRepository = {
       create: jest.fn(),
+      createTermoCienciaAutomatico: jest.fn(),
       findByTransportRequestId: jest.fn(),
       findByIdScoped: jest.fn(),
       findById: jest.fn(),
@@ -139,6 +230,11 @@ describe("ContractsService", () => {
     walletService = {
       registrarMensalidadePendente: jest.fn().mockResolvedValue(undefined),
     };
+    studentsService = { findRawById: jest.fn().mockResolvedValue(buildStudent()) };
+    usersService = { findById: jest.fn().mockResolvedValue(buildUser()) };
+    schoolRepository = { findById: jest.fn().mockResolvedValue(buildSchool()) };
+    companyRepository = { findById: jest.fn().mockResolvedValue(buildCompany()) };
+    termoCienciaPdfService = { gerar: jest.fn().mockResolvedValue(Buffer.from("pdf")) };
 
     service = new ContractsService(
       contractRepository,
@@ -150,6 +246,11 @@ describe("ContractsService", () => {
       eventEmitter,
       messagePersonalizationService as unknown as MessagePersonalizationService,
       walletService as unknown as WalletService,
+      studentsService as unknown as StudentsService,
+      usersService as unknown as UsersService,
+      schoolRepository as unknown as SchoolRepository,
+      companyRepository as unknown as CompanyRepository,
+      termoCienciaPdfService as unknown as TermoCienciaPdfService,
     );
   });
 
@@ -340,6 +441,44 @@ describe("ContractsService", () => {
 
       expect(contractRepository.activate).toHaveBeenCalledWith("contract-1");
       expect(result.status).toBe("ATIVO");
+    });
+  });
+
+  describe("gerarPdfTermoCiencia", () => {
+    it("404 quando o contrato é NEGOCIADO (não tem termo de ciência)", async () => {
+      contractRepository.findByIdScoped.mockResolvedValue(buildContract({ origem: "NEGOCIADO" }));
+
+      await expect(service.gerarPdfTermoCiencia("contract-1", empresaActor)).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(termoCienciaPdfService.gerar).not.toHaveBeenCalled();
+    });
+
+    it("monta o PDF a partir dos dados de Empresa/Aluno/Responsável/Escola para um termo automático", async () => {
+      const contract = buildContract({ origem: "TERMO_CIENCIA_AUTOMATICO", status: "ATIVO" });
+      contractRepository.findByIdScoped.mockResolvedValue(contract);
+
+      const result = await service.gerarPdfTermoCiencia("contract-1", responsavelActor);
+
+      expect(companyRepository.findById).toHaveBeenCalledWith("company-1");
+      expect(studentsService.findRawById).toHaveBeenCalledWith("student-1");
+      expect(usersService.findById).toHaveBeenCalledWith("responsavel-1");
+      expect(schoolRepository.findById).toHaveBeenCalledWith("school-1");
+      expect(termoCienciaPdfService.gerar).toHaveBeenCalledWith(
+        expect.objectContaining({ contract }),
+      );
+      expect(result).toEqual(Buffer.from("pdf"));
+    });
+
+    it("404 quando algum dado relacionado não é encontrado", async () => {
+      contractRepository.findByIdScoped.mockResolvedValue(
+        buildContract({ origem: "TERMO_CIENCIA_AUTOMATICO" }),
+      );
+      studentsService.findRawById.mockResolvedValue(null);
+
+      await expect(service.gerarPdfTermoCiencia("contract-1", responsavelActor)).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

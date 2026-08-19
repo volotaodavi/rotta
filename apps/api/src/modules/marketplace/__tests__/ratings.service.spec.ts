@@ -1,6 +1,5 @@
 import { ConflictException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { RatingsService } from "../ratings.service";
 
 import type { ContractRepository } from "../repositories/contract.repository";
@@ -45,6 +44,7 @@ function buildContract(overrides: Partial<Contract> = {}): Contract {
     vigenciaInicio: new Date("2026-01-01"),
     vigenciaFim: null,
     status: "ATIVO",
+    origem: "NEGOCIADO",
     authentiqueDocumentId: null,
     assinadoResponsavelEm: new Date(),
     assinadoEmpresaEm: new Date(),
@@ -85,6 +85,7 @@ describe("RatingsService", () => {
     };
     contractRepository = {
       create: jest.fn(),
+      createTermoCienciaAutomatico: jest.fn(),
       findByTransportRequestId: jest.fn(),
       findByIdScoped: jest.fn(),
       findById: jest.fn(),

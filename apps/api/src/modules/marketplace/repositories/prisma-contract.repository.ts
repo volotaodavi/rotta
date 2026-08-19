@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   ContractAccessScope,
   ContractRepository,
   CreateContractData,
+  CreateTermoCienciaData,
   ListContractsFilter,
   ListContractsResult,
 } from "./contract.repository";
@@ -25,6 +25,25 @@ export class PrismaContractRepository implements ContractRepository {
 
   create(data: CreateContractData): Promise<Contract> {
     return this.prisma.withTenant(this.prisma.contract.create({ data }));
+  }
+
+  createTermoCienciaAutomatico(data: CreateTermoCienciaData): Promise<Contract> {
+    const agora = new Date();
+    return this.prisma.withBypass(
+      this.prisma.contract.create({
+        data: {
+          ...data,
+          origem: "TERMO_CIENCIA_AUTOMATICO",
+          status: "ATIVO",
+          valorMensalidadeCentavos: 0,
+          planoDescricao: "Mensalidade e plano a definir pela transportadora",
+          regras:
+            "Termo de ciência gerado automaticamente no credenciamento via código do transporte. As regras comerciais completas (mensalidade, condições de prestação do serviço) ainda serão definidas pela transportadora.",
+          vigenciaInicio: agora,
+          ativadoEm: agora,
+        },
+      }),
+    );
   }
 
   findByTransportRequestId(transportRequestId: string): Promise<Contract | null> {

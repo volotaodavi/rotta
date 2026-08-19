@@ -1,6 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 
-
 import { WalletService } from "../wallet.service";
 
 import type { WalletRepository } from "../repositories/wallet.repository";
@@ -98,6 +97,7 @@ function buildContract(overrides: Partial<Contract> = {}): Contract {
     vigenciaInicio: new Date("2026-02-01"),
     vigenciaFim: null,
     status: "ATIVO",
+    origem: "NEGOCIADO",
     authentiqueDocumentId: null,
     assinadoResponsavelEm: new Date(),
     assinadoEmpresaEm: new Date(),

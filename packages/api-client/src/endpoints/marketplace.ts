@@ -20,6 +20,8 @@ import type { ApiClient } from "../http";
 
 export type TransportRequestStatus = "RECEBIDA" | "EM_ANALISE" | "APROVADA" | "RECUSADA";
 export type ContractStatus = "AGUARDANDO_ASSINATURA" | "ATIVO" | "ENCERRADO";
+/** `TERMO_CIENCIA_AUTOMATICO` = gerado sozinho no credenciamento pelo "código do transporte" (mensalidade/regras ainda placeholder, "a definir"); `NEGOCIADO` = fluxo manual de sempre, com Authentique. */
+export type ContractOrigin = "NEGOCIADO" | "TERMO_CIENCIA_AUTOMATICO";
 export type RatingTargetType = "MOTORISTA" | "EMPRESA" | "MONITOR" | "VEICULO";
 
 // --- Busca de transportadores ---------------------------------------------
@@ -166,6 +168,7 @@ export interface Contract {
   vigenciaInicio: string;
   vigenciaFim: string | null;
   status: ContractStatus;
+  origem: ContractOrigin;
   authentiqueDocumentId: string | null;
   assinadoResponsavelEm: string | null;
   assinadoEmpresaEm: string | null;
@@ -313,6 +316,12 @@ export function createMarketplaceEndpoints(apiClient: ApiClient) {
 
     getContractById: async (id: string): Promise<Contract> =>
       (await apiClient.request<ApiEnvelope<Contract>>(`/marketplace/contracts/${id}`)).data,
+
+    /** Só existe pra `origem: "TERMO_CIENCIA_AUTOMATICO"` — mesmo padrão de `schoolsApi.exportList` (blob autenticado, nunca um `<a href>` cru). */
+    baixarTermoCienciaPdf: async (contractId: string): Promise<Blob> =>
+      apiClient.request<Blob>(`/marketplace/contracts/${contractId}/termo-ciencia.pdf`, {
+        responseType: "blob",
+      }),
 
     assinarContratoComoResponsavel: async (id: string): Promise<Contract> =>
       (
