@@ -150,6 +150,7 @@ describe("RoutesService", () => {
     usersService = {
       findActiveMembership: jest.fn(),
       findById: jest.fn(),
+      listActiveMembershipsWithCompany: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
     vehiclesService = {
       findByIdOrThrow: jest.fn(),
@@ -205,6 +206,60 @@ describe("RoutesService", () => {
             turno: SchoolShift.MANHA,
             diasSemana: ["SEGUNDA"] as never,
             motoristaPadraoId: "motorista-x",
+          },
+          empresaActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(routeRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("permite dono AUTONOMO/MEI se atribuir como motoristaPadraoId da própria rota (ele mesmo é o motorista)", async () => {
+      usersService.findActiveMembership.mockResolvedValue({
+        role: Role.EMPRESA,
+      } as never);
+      usersService.listActiveMembershipsWithCompany.mockResolvedValue([
+        {
+          companyId: "company-1",
+          company: { tipo: "AUTONOMO" },
+        } as never,
+      ]);
+      routeRepository.create.mockResolvedValue(buildRoute({ motoristaPadraoId: "user-empresa-1" }));
+
+      await service.create(
+        {
+          nome: "Rota Manhã",
+          turno: SchoolShift.MANHA,
+          diasSemana: ["SEGUNDA"] as never,
+          motoristaPadraoId: "user-empresa-1",
+        },
+        empresaActor,
+        {},
+      );
+
+      expect(routeRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ motoristaPadraoId: "user-empresa-1" }),
+      );
+    });
+
+    it("rejeita dono de empresa LTDA (não AUTONOMO/MEI) se atribuindo como motoristaPadraoId", async () => {
+      usersService.findActiveMembership.mockResolvedValue({
+        role: Role.EMPRESA,
+      } as never);
+      usersService.listActiveMembershipsWithCompany.mockResolvedValue([
+        {
+          companyId: "company-1",
+          company: { tipo: "LTDA" },
+        } as never,
+      ]);
+
+      await expect(
+        service.create(
+          {
+            nome: "Rota Manhã",
+            turno: SchoolShift.MANHA,
+            diasSemana: ["SEGUNDA"] as never,
+            motoristaPadraoId: "user-empresa-1",
           },
           empresaActor,
           {},

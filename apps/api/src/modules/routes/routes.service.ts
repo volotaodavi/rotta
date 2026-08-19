@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { NotificationEventType, type Route, type RouteStop } from "@prisma/client";
+import { CompanyType, NotificationEventType, type Route, type RouteStop } from "@prisma/client";
 
 import { toRouteStopResponseDto } from "./mappers/route-stop.mapper";
 import { toRouteStudentResponseDto } from "./mappers/route-student.mapper";
@@ -222,7 +222,11 @@ export class RoutesService {
         dto.motoristaPadraoId,
         companyId,
       );
-      if (!membership || (membership.role as Role) !== Role.MOTORISTA) {
+      const isSelfAsOwnerDriver =
+        (membership?.role as Role | undefined) === Role.EMPRESA &&
+        dto.motoristaPadraoId === actor.sub &&
+        (await this.isAutonomoOuMei(actor.sub, companyId));
+      if (!membership || ((membership.role as Role) !== Role.MOTORISTA && !isSelfAsOwnerDriver)) {
         throw new BadRequestException(
           "motoristaPadraoId não possui vínculo ativo de Motorista nesta empresa.",
         );
@@ -242,6 +246,28 @@ export class RoutesService {
     if (dto.veiculoPadraoId) {
       await this.assertVeiculoCapacidade(dto.veiculoPadraoId, actor, routeId);
     }
+  }
+
+  /**
+   * Pedido do usuário: "Quando o motorista é autônomo ou MEI, ele mesmo
+   * é o próprio motorista. Lembre disso, pois para criar uma rota não
+   * aparece essa questão." Achado real: quem cadastra a empresa (mesmo
+   * `CompanyType.AUTONOMO`/`MEI`) recebe `Membership.role = EMPRESA`
+   * (`CompaniesService.create`), nunca `MOTORISTA` — `assertValidDefaultResources`
+   * acima sempre rejeitava esse dono como `motoristaPadraoId` da própria
+   * rota, mesmo sendo ele quem de fato dirige (mesmo princípio já
+   * documentado em `useAppMode`, `apps/web`: "role=empresa com
+   * AUTONOMO/MEI — dono que também dirige"). `isSelfAsOwnerDriver` acima
+   * usa este helper para permitir exatamente esse caso, sem afastar a
+   * validação para nenhum outro `CompanyType` nem para outro usuário.
+   */
+  private async isAutonomoOuMei(userId: string, companyId: string): Promise<boolean> {
+    const memberships = await this.usersService.listActiveMembershipsWithCompany(userId);
+    const membership = memberships.find((m) => m.companyId === companyId);
+    return (
+      membership?.company.tipo === CompanyType.AUTONOMO ||
+      membership?.company.tipo === CompanyType.MEI
+    );
   }
 
   /** Compartilhado com `TripsService.substituirVeiculo` (tarefa #102) via chamada direta — ver nota ali. */

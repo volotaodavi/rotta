@@ -1,9 +1,10 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
+import { useAuth } from "@rotta/auth/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import type { CreateRouteInput, RouteWeekday, SchoolShift } from "@rotta/api-client";
 
@@ -40,14 +41,38 @@ const INITIAL_STATE: CreateRouteInput = {
  * `PAUSADA` (default do backend); o motorista só consegue "Deslize
  * para iniciar viagem" em `/minha-rota` depois que ela existir E tiver
  * pelo menos um aluno (próxima etapa, em `/rotas/[id]`).
+ *
+ * Achado real (pedido do usuário: "Quando o motorista é autônomo ou
+ * MEI, ele mesmo é o próprio motorista. Lembre disso, pois para criar
+ * uma rota não aparece essa questão"): quem cadastra uma empresa
+ * AUTONOMO/MEI recebe `Membership.role = "empresa"`, nunca "motorista"
+ * (mesmo princípio documentado em `useAppMode`: "dono que também
+ * dirige") — por isso nunca aparecia na lista de `useMyTeam()`
+ * (`papel === "motorista"`) e a rota ficava sem motorista padrão, ou
+ * pior, mostrava "nenhum motorista vinculado". Backend
+ * (`RoutesService.assertValidDefaultResources`) já aceita o próprio
+ * dono AUTONOMO/MEI como `motoristaPadraoId`; aqui a tela reconhece
+ * esse caso e nem pergunta — auto-preenche o próprio usuário e some
+ * com o campo de seleção.
  */
 export default function NovaRotaPage(): JSX.Element {
   const router = useRouter();
+  const { user } = useAuth();
   const createRoute = useCreateRoute();
   const { data: team } = useMyTeam();
   const { data: vehicles } = useVehiclesList({ pageSize: 100 });
   const [form, setForm] = useState<CreateRouteInput>(INITIAL_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const isAutonomoOuMei =
+    user?.role === "empresa" && (user.companyType === "AUTONOMO" || user.companyType === "MEI");
+
+  useEffect(() => {
+    if (isAutonomoOuMei && user && !form.motoristaPadraoId) {
+      setForm((current) => ({ ...current, motoristaPadraoId: user.id }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só preenche uma vez, na primeira renderização com `user` disponível.
+  }, [isAutonomoOuMei, user]);
 
   const motoristas = team?.filter((member) => member.papel === "motorista") ?? [];
   const monitores = team?.filter((member) => member.papel === "monitor") ?? [];
@@ -136,28 +161,37 @@ export default function NovaRotaPage(): JSX.Element {
         <Card>
           <Card.Header title="Recursos padrão" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField
-              label="Motorista"
-              helperText={
-                motoristas.length === 0
-                  ? "Nenhum motorista vinculado à empresa ainda — convide um em Equipe."
-                  : "Quem se credencia para dirigir esta rota."
-              }
-            >
-              <Select
-                value={form.motoristaPadraoId ?? ""}
-                onChange={(event) =>
-                  updateField("motoristaPadraoId", event.target.value || undefined)
+            {isAutonomoOuMei ? (
+              <FormField
+                label="Motorista"
+                helperText="Como motorista autônomo/MEI, você mesmo dirige esta rota."
+              >
+                <Typography variant="body">{user?.nome ?? "Você"}</Typography>
+              </FormField>
+            ) : (
+              <FormField
+                label="Motorista"
+                helperText={
+                  motoristas.length === 0
+                    ? "Nenhum motorista vinculado à empresa ainda — convide um em Equipe."
+                    : "Quem se credencia para dirigir esta rota."
                 }
               >
-                <option value="">Nenhum por enquanto</option>
-                {motoristas.map((member) => (
-                  <option key={member.userId} value={member.userId}>
-                    {member.nome}
-                  </option>
-                ))}
-              </Select>
-            </FormField>
+                <Select
+                  value={form.motoristaPadraoId ?? ""}
+                  onChange={(event) =>
+                    updateField("motoristaPadraoId", event.target.value || undefined)
+                  }
+                >
+                  <option value="">Nenhum por enquanto</option>
+                  {motoristas.map((member) => (
+                    <option key={member.userId} value={member.userId}>
+                      {member.nome}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            )}
             <FormField label="Monitor">
               <Select
                 value={form.monitorPadraoId ?? ""}

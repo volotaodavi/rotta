@@ -1,6 +1,7 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
+import { useAuth } from "@rotta/auth/web";
 import {
   Check,
   FileText,
@@ -46,6 +47,7 @@ import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useMyLocation } from "@/hooks/use-my-location";
 import { geoApi, marketplaceApi } from "@/lib/api-client";
 
+
 function formatarDistanciaKm(distanciaKm: number): string {
   return distanciaKm < 1 ? `${Math.round(distanciaKm * 1000)} m` : `${distanciaKm.toFixed(1)} km`;
 }
@@ -67,6 +69,7 @@ export default function RotaDetalhePage(): JSX.Element {
   const { data: stops, isLoading: isLoadingStops } = useRouteStops(routeId);
   const { data: routeStudents, isLoading: isLoadingStudents } = useRouteStudents(routeId);
   const { data: team } = useMyTeam();
+  const { user } = useAuth();
 
   if (isLoadingRoute || !route) {
     return (
@@ -76,7 +79,13 @@ export default function RotaDetalhePage(): JSX.Element {
     );
   }
 
-  const motoristaNome = team?.find((m) => m.userId === route.motoristaPadraoId)?.nome;
+  // Motorista autônomo/MEI nunca aparece em `useMyTeam()` (é `role: "empresa"`,
+  // não "motorista" — mesmo achado de `/rotas/novo`), mas pode muito bem ser
+  // ele mesmo o `motoristaPadraoId` da própria rota — sem este fallback, a
+  // rota mostrava "Nenhum motorista atribuído ainda" mesmo já tendo um.
+  const motoristaNome =
+    team?.find((m) => m.userId === route.motoristaPadraoId)?.nome ??
+    (route.motoristaPadraoId === user?.id ? user?.nome : undefined);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
