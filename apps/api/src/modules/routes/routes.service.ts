@@ -272,11 +272,23 @@ export class RoutesService {
     // gerencia (Admin Rotta/Empresa/Gestor) continua vendo tudo.
     const isDriverOrMonitor = actor.role === Role.MOTORISTA || actor.role === Role.MONITOR;
 
+    // ACHADO CRÍTICO (achado real em produção, testado ao vivo):
+    // `companyId` era `undefined` para todo ator que não fosse Admin
+    // Rotta, na crença de que a RLS do banco (`withTenant`) bastava
+    // como filtro. Isso deixava GET /routes SEM NENHUM filtro de tenant
+    // no `where` do Prisma para Empresa/Gestor/Motorista/Monitor — uma
+    // Empresa nova, sem rota própria, recebia as rotas de TODAS as
+    // empresas. RLS é defesa em profundidade, nunca o único filtro:
+    // todo papel não-Admin Rotta tem `tenantId` garantido pelo
+    // `TenantGuard` (rota exige `READ_ROLES`, nenhum deles é Responsável)
+    // — nunca confiar em `query.companyId` vindo do cliente aqui.
+    const companyId = actor.role === Role.ADMIN_ROTTA ? query.companyId : actor.tenantId!;
+
     const result = await this.routeRepository.list({
       search: query.search,
       status: query.status,
       turno: query.turno,
-      companyId: actor.role === Role.ADMIN_ROTTA ? query.companyId : undefined,
+      companyId,
       atribuidaAUserId: isDriverOrMonitor ? actor.sub : undefined,
       page: query.page,
       pageSize: query.pageSize,

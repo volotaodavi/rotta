@@ -369,22 +369,30 @@ export class VehiclesService {
   }
 
   /**
-   * Escopo de tenant é resolvido pela RLS (`withTenant`) para Empresa/Gestor.
-   * Admin Rotta tem `bypass: true` (sem RLS) — `companyId` é o único filtro
-   * que restringe sua visão cross-tenant, e só é aplicado para esse papel
-   * (mesmo padrão de `getDashboard`); se omitido, Admin Rotta vê todos os
-   * tenants.
+   * ACHADO CRÍTICO (achado real em produção, testado ao vivo): esta
+   * função assumia que a RLS do banco (`withTenant`) bastava como
+   * filtro de tenant para Empresa/Gestor, deixando `companyId` como
+   * `undefined` pra eles — ou seja, SEM NENHUM filtro de tenant no
+   * `where` do Prisma. Uma Empresa nova, sem veículo próprio, recebia
+   * os veículos de TODAS as empresas. RLS é defesa em profundidade,
+   * nunca o único filtro — `MANAGE_ROLES` (único grupo com acesso a
+   * este endpoint) sempre tem `tenantId` resolvido pelo `TenantGuard`
+   * exceto Admin Rotta, cujo `companyId` continua vindo de
+   * `query.companyId` (mesmo padrão de `getDashboard`; se omitido,
+   * Admin Rotta vê todos os tenants — intencional).
    */
   async list(
     query: ListVehiclesQueryDto,
     actor: AuthenticatedUser,
   ): Promise<ListVehiclesResponseDto> {
+    const companyId = actor.role === Role.ADMIN_ROTTA ? query.companyId : actor.tenantId!;
+
     const result = await this.vehicleRepository.list({
       search: query.search,
       status: query.status,
       tipo: query.tipo,
       motoristaId: query.motoristaId,
-      companyId: actor.role === Role.ADMIN_ROTTA ? query.companyId : undefined,
+      companyId,
       page: query.page,
       pageSize: query.pageSize,
       sortBy: query.sortBy,
@@ -1144,16 +1152,25 @@ export class VehiclesService {
   // Exportação (briefing "EXPORTAÇÃO")
   // ---------------------------------------------------------------------
 
+  /**
+   * ACHADO CRÍTICO (achado real em produção, testado ao vivo — mesmo
+   * incidente do `list()` acima): faltava `companyId` aqui por completo,
+   * nem condicional a Admin Rotta — qualquer Empresa/Gestor exportava a
+   * frota de TODAS as empresas em CSV/Excel/PDF.
+   */
   async exportList(
     query: ListVehiclesQueryDto,
     actor: AuthenticatedUser,
     format: "csv" | "excel" | "pdf",
   ): Promise<{ buffer: Buffer; contentType: string; filename: string }> {
+    const companyId = actor.role === Role.ADMIN_ROTTA ? query.companyId : actor.tenantId!;
+
     const { items } = await this.vehicleRepository.list({
       search: query.search,
       status: query.status,
       tipo: query.tipo,
       motoristaId: query.motoristaId,
+      companyId,
       page: 1,
       pageSize: 10_000,
       sortBy: query.sortBy,

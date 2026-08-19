@@ -235,7 +235,7 @@ describe("RoutesService", () => {
   });
 
   describe("list — Prompt Mestre, Seções 5/9 (Motorista/Monitor não veem a operação inteira)", () => {
-    it("não restringe a listagem para Empresa/Gestor/Admin Rotta", async () => {
+    it("não restringe por atribuidaAUserId para Empresa/Gestor/Admin Rotta (vêem a operação inteira)", async () => {
       routeRepository.list.mockResolvedValue({ items: [], total: 0 });
 
       await service.list({ page: 1, pageSize: 20 }, empresaActor);
@@ -252,6 +252,64 @@ describe("RoutesService", () => {
 
       expect(routeRepository.list).toHaveBeenCalledWith(
         expect.objectContaining({ atribuidaAUserId: "motorista-1" }),
+      );
+    });
+
+    // Regressão do achado CRÍTICO real em produção: `companyId` ficava
+    // `undefined` para todo ator não-Admin Rotta (Empresa/Gestor/
+    // Motorista/Monitor), confiando só na RLS do banco — uma Empresa
+    // sem rota própria recebia as rotas de TODAS as empresas. Nunca
+    // mais deixar isso sem filtro explícito no `where` do Prisma.
+    it("SEMPRE escopa companyId ao próprio tenant do ator para Empresa (nunca undefined)", async () => {
+      routeRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list({ page: 1, pageSize: 20 }, empresaActor);
+
+      expect(routeRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1" }),
+      );
+    });
+
+    it("SEMPRE escopa companyId ao próprio tenant do ator para Motorista/Monitor (nunca undefined)", async () => {
+      routeRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list({ page: 1, pageSize: 20 }, motoristaActor);
+
+      expect(routeRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1" }),
+      );
+    });
+
+    it("nunca aceita companyId vindo do cliente para ator não-Admin Rotta (ignora query.companyId)", async () => {
+      routeRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list(
+        { page: 1, pageSize: 20, companyId: "empresa-de-outro-tenant" },
+        empresaActor,
+      );
+
+      expect(routeRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1" }),
+      );
+    });
+
+    it("Admin Rotta usa o companyId informado na query (ou undefined = todos os tenants)", async () => {
+      routeRepository.list.mockResolvedValue({ items: [], total: 0 });
+      const adminActor: AuthenticatedUser = {
+        sub: "admin-1",
+        tenantId: null,
+        role: Role.ADMIN_ROTTA,
+        vinculoId: "vinculo-admin",
+      };
+
+      await service.list({ page: 1, pageSize: 20, companyId: "company-2" }, adminActor);
+      expect(routeRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-2" }),
+      );
+
+      await service.list({ page: 1, pageSize: 20 }, adminActor);
+      expect(routeRepository.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ companyId: undefined }),
       );
     });
   });

@@ -215,6 +215,81 @@ describe("VehiclesService", () => {
     vehicleRepository.findByPlaca.mockResolvedValue(null);
   });
 
+  // Regressão do achado CRÍTICO real em produção: `companyId` ficava
+  // `undefined` para todo ator não-Admin Rotta em `list`/`exportList`,
+  // confiando só na RLS do banco — uma Empresa sem veículo próprio
+  // recebia (e exportava em CSV/Excel/PDF) a frota de TODAS as
+  // empresas. Nunca mais deixar isso sem filtro explícito no `where`.
+  describe("list — vazamento cross-tenant (achado crítico real em produção)", () => {
+    it("SEMPRE escopa companyId ao próprio tenant do ator para Empresa (nunca undefined)", async () => {
+      vehicleRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list(
+        { page: 1, pageSize: 20, sortBy: "createdAt", sortOrder: "desc" },
+        empresaActor,
+      );
+
+      expect(vehicleRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1" }),
+      );
+    });
+
+    it("nunca aceita companyId vindo do cliente para ator não-Admin Rotta (ignora query.companyId)", async () => {
+      vehicleRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list(
+        {
+          page: 1,
+          pageSize: 20,
+          sortBy: "createdAt",
+          sortOrder: "desc",
+          companyId: "empresa-de-outro-tenant",
+        },
+        empresaActor,
+      );
+
+      expect(vehicleRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1" }),
+      );
+    });
+
+    it("Admin Rotta usa o companyId informado na query (ou undefined = todos os tenants)", async () => {
+      vehicleRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list(
+        { page: 1, pageSize: 20, sortBy: "createdAt", sortOrder: "desc", companyId: "company-2" },
+        adminActor,
+      );
+      expect(vehicleRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-2" }),
+      );
+
+      await service.list(
+        { page: 1, pageSize: 20, sortBy: "createdAt", sortOrder: "desc" },
+        adminActor,
+      );
+      expect(vehicleRepository.list).toHaveBeenLastCalledWith(
+        expect.objectContaining({ companyId: undefined }),
+      );
+    });
+  });
+
+  describe("exportList — vazamento cross-tenant (achado crítico real em produção)", () => {
+    it("SEMPRE escopa companyId ao próprio tenant do ator para Empresa (nunca undefined)", async () => {
+      vehicleRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.exportList(
+        { page: 1, pageSize: 20, sortBy: "createdAt", sortOrder: "desc" },
+        empresaActor,
+        "csv",
+      );
+
+      expect(vehicleRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1" }),
+      );
+    });
+  });
+
   describe("create", () => {
     it("rejeita capacidade fora da faixa esperada para o tipo (VAN: 8-16)", async () => {
       const dto = buildCreateDto({ capacidadePassageiros: 3 });
