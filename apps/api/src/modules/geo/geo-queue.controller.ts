@@ -1,12 +1,24 @@
-import { Body, Controller, HttpCode, HttpStatus, Logger, Post, UseGuards } from "@nestjs/common";
+import {
+  Body,
+  Controller,
+  HttpCode,
+  HttpStatus,
+  Inject,
+  Logger,
+  Post,
+  UseGuards,
+} from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 
 import { InepSyncService } from "./agents/inep-sync.service";
 import { GeoPipelineService } from "./geo-pipeline.service";
+import { SCHOOL_COORDINATE_REPOSITORY, SCHOOL_GEOCODE_QUEUE } from "./geo.constants";
 
 import type { InepSyncJobData, SchoolGeocodeJobData } from "./geo-queue.types";
+import type { SchoolCoordinateRepository } from "./repositories/school-coordinate.repository";
 
 import { Public } from "@/common/decorators/public.decorator";
+import { QstashPublisherService } from "@/infra/queue/qstash/qstash-publisher.service";
 import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guard";
 
 /**
@@ -30,6 +42,9 @@ export class GeoQueueController {
   constructor(
     private readonly geoPipeline: GeoPipelineService,
     private readonly inepSync: InepSyncService,
+    @Inject(SCHOOL_COORDINATE_REPOSITORY)
+    private readonly coordinateRepository: SchoolCoordinateRepository,
+    private readonly qstashPublisher: QstashPublisherService,
   ) {}
 
   /**
@@ -71,5 +86,44 @@ export class GeoQueueController {
     this.logger.log(`Iniciando sincronização INEP ${data.ano}.`);
     await this.inepSync.sincronizar(data.ano);
     return { ok: true };
+  }
+
+  /**
+   * Job sem payload, publicado por `GeoController.reprocessarFilaRevisaoManual`
+   * — quem de fato enumera a Fila de Revisão Manual atual e publica um
+   * `SCHOOL_GEOCODE_QUEUE` por escola pendente, reaproveitando o mesmo
+   * flowControl que `InepSyncService.enfileirarGeocodificacao` já usa
+   * pra respeitar a política pública do Nominatim (~1 req/seg). Tira
+   * esse trabalho (que pode envolver milhares de escolas) de dentro da
+   * requisição HTTP original — achado real testando contra produção:
+   * a 1ª versão fazia tudo isso síncrono no `POST /geo/revisao-manual/
+   * reprocessar` e estourava 408 Request Timeout.
+   */
+  @Post("revisao-manual-reprocess")
+  @HttpCode(HttpStatus.OK)
+  async revisaoManualReprocessJob(): Promise<{ ok: true; enfileiradas: number }> {
+    const pendentes = await this.coordinateRepository.listByStatus("REVISAO_MANUAL");
+    const schoolIds = [...new Set(pendentes.map((coordenada) => coordenada.schoolId))];
+
+    if (schoolIds.length > 0) {
+      await this.qstashPublisher.publishBatchJSON(
+        schoolIds.map((schoolId) => ({
+          route: `geo/${SCHOOL_GEOCODE_QUEUE}`,
+          body: { schoolId },
+          options: {
+            retries: 3,
+            flowControlKey: SCHOOL_GEOCODE_QUEUE,
+            flowControlParallelism: 1,
+            flowControlRate: 1,
+            flowControlPeriod: "1.1s",
+          },
+        })),
+      );
+    }
+
+    this.logger.log(
+      `Reprocessamento da Fila de Revisão Manual: ${schoolIds.length} escola(s) reenfileirada(s) para geocodificação.`,
+    );
+    return { ok: true, enfileiradas: schoolIds.length };
   }
 }

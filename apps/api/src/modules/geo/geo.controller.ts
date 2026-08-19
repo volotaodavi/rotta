@@ -27,8 +27,8 @@ import { GeoEngineService } from "./geo-engine.service";
 import { GeoPipelineService } from "./geo-pipeline.service";
 import {
   INEP_SYNC_QUEUE,
+  REVISAO_MANUAL_REPROCESS_QUEUE,
   SCHOOL_COORDINATE_REPOSITORY,
-  SCHOOL_GEOCODE_QUEUE,
 } from "./geo.constants";
 
 import type { SchoolCoordinateRepository } from "./repositories/school-coordinate.repository";
@@ -99,42 +99,27 @@ export class GeoController {
 
   /**
    * Reprocessa em lote toda a Fila de Revisão Manual atual (pedido do
-   * usuário: "investigue e faça as IAs trabalharem") — publica um job
-   * `SCHOOL_GEOCODE_QUEUE` por escola pendente, reaproveitando a MESMA
-   * fila/`flowControl` que `InepSyncService.enfileirarGeocodificacao`
-   * já usa pra respeitar a política pública do Nominatim (~1 req/seg):
-   * o Geocoding/Validation AI Agent tentam de novo com a escada de
-   * endereços cada vez mais simplificada (`buildAddressCandidate`),
-   * que agora varia de verdade a cada tentativa em vez de repetir a
-   * mesma pergunta. Escala/custo comparável à sincronização INEP (mesma
-   * gating, `SYNC_ROLES`) — sempre `202 Accepted`, o volume pode levar
-   * horas pra esvaziar contra o Nominatim público hospedado pela
-   * comunidade, nunca cabe numa requisição HTTP síncrona.
+   * usuário: "investigue e faça as IAs trabalharem") — publica só o
+   * job `REVISAO_MANUAL_REPROCESS_QUEUE` (sem payload) e responde
+   * `202 Accepted` imediatamente. ACHADO REAL testando contra
+   * produção: a 1ª versão fazia `listByStatus` + `publishBatchJSON` de
+   * milhares de itens DENTRO desta requisição HTTP — 408 Request
+   * Timeout contra a fila real (~5 mil escolas). A enumeração e o
+   * lote de fato acontecem em `GeoQueueController.
+   * revisaoManualReprocessJob`, entregue pelo próprio QStash (mesmo
+   * padrão de `sincronizarInep`/`INEP_SYNC_QUEUE` — nenhum trabalho
+   * pesado roda dentro do ciclo de requisição/resposta original).
    */
   @Post("revisao-manual/reprocessar")
   @Roles(...SYNC_ROLES)
   @HttpCode(HttpStatus.ACCEPTED)
   async reprocessarFilaRevisaoManual() {
-    const pendentes = await this.coordinateRepository.listByStatus("REVISAO_MANUAL");
-    const schoolIds = [...new Set(pendentes.map((coordenada) => coordenada.schoolId))];
-
-    if (schoolIds.length > 0) {
-      await this.qstashPublisher.publishBatchJSON(
-        schoolIds.map((schoolId) => ({
-          route: `geo/${SCHOOL_GEOCODE_QUEUE}`,
-          body: { schoolId },
-          options: {
-            retries: 3,
-            flowControlKey: SCHOOL_GEOCODE_QUEUE,
-            flowControlParallelism: 1,
-            flowControlRate: 1,
-            flowControlPeriod: "1.1s",
-          },
-        })),
-      );
-    }
-
-    return { enfileiradas: schoolIds.length };
+    const messageId = await this.qstashPublisher.publishJSON(
+      `geo/${REVISAO_MANUAL_REPROCESS_QUEUE}`,
+      {},
+      { retries: 3, flowControlKey: REVISAO_MANUAL_REPROCESS_QUEUE, flowControlParallelism: 1 },
+    );
+    return { messageId };
   }
 
   /**
