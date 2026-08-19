@@ -11,7 +11,17 @@ import {
   Trash2,
   Users,
 } from "@rotta/icons";
-import { Badge, Button, Card, FormField, Input, Select, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  FormField,
+  Input,
+  Select,
+  Spinner,
+  Typography,
+} from "@rotta/ui/web";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 
@@ -49,7 +59,6 @@ import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useMyLocation } from "@/hooks/use-my-location";
 import { geoApi, marketplaceApi } from "@/lib/api-client";
 
-
 function formatarDistanciaKm(distanciaKm: number): string {
   return distanciaKm < 1 ? `${Math.round(distanciaKm * 1000)} m` : `${distanciaKm.toFixed(1)} km`;
 }
@@ -67,18 +76,44 @@ export default function RotaDetalhePage(): JSX.Element {
   const params = useParams<{ id: string }>();
   const routeId = params.id;
 
-  const { data: route, isLoading: isLoadingRoute } = useRoute(routeId);
+  const {
+    data: route,
+    isLoading: isLoadingRoute,
+    isError: isRouteError,
+    refetch: refetchRoute,
+    isFetching: isFetchingRoute,
+  } = useRoute(routeId);
   const { data: stops, isLoading: isLoadingStops } = useRouteStops(routeId);
   const { data: routeStudents, isLoading: isLoadingStudents } = useRouteStudents(routeId);
   const { data: team } = useMyTeam();
   const { user } = useAuth();
   const updateRoute = useUpdateRoute(routeId);
 
-  if (isLoadingRoute || !route) {
+  if (isLoadingRoute) {
     return (
       <div className="flex justify-center py-16">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /**
+   * Achado real (pedido do usuário: "aparece que 'algo deu errado' ao
+   * criar uma rota"): esta é a tela pra onde `/rotas/novo` navega logo
+   * depois de criar a rota — sem isso, qualquer falha transitória nesse
+   * primeiro fetch (ex.: cold start do Render, réplica de leitura ainda
+   * sem ver a rota recém-criada) deixava a tela presa num spinner
+   * infinito, sem erro visível nem botão de tentar de novo. Mesmo padrão
+   * já corrigido nas outras telas de detalhe — este arquivo tinha ficado
+   * de fora daquela auditoria.
+   */
+  if (isRouteError || !route) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar esta rota."
+        onRetry={() => void refetchRoute()}
+        isRetrying={isFetchingRoute}
+      />
     );
   }
 
