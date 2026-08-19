@@ -85,7 +85,7 @@ function tempoRelativo(createdAt: string): string {
 export function CentralScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const [filtro, setFiltro] = useState<FiltroRapido>("todas");
-  const { data, isLoading, isError } = useNotificationsList(filtroParaParams(filtro));
+  const { data, isLoading, isError, refetch } = useNotificationsList(filtroParaParams(filtro));
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
@@ -122,6 +122,7 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
         <Text style={{ color: theme.colors.danger }}>
           Não foi possível carregar suas notificações. Tente novamente mais tarde.
         </Text>
+        <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
   }

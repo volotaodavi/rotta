@@ -1,7 +1,17 @@
 "use client";
 
 import { RefreshCw } from "@rotta/icons";
-import { Button, Card, Input, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import {
+  Button,
+  Card,
+  ErrorState,
+  Input,
+  Pagination,
+  Select,
+  Spinner,
+  Table,
+  Typography,
+} from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { ListSchoolsParams, School, SchoolStatus, SchoolType } from "@rotta/api-client";
@@ -15,6 +25,7 @@ import {
   useSyncInep,
 } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
+
 
 /** Legenda curta de quando a última sincronização rodou — "há poucos segundos" é mais legível que um timestamp cru enquanto o worker ainda está rodando. */
 function formatarQuandoRodou(iso: string): string {
@@ -71,7 +82,7 @@ export default function EscolasAdminPage(): JSX.Element {
   };
 
   const { data: dashboard } = useSchoolDashboard(companyId || undefined);
-  const { data, isLoading, isError } = useSchoolsList(params);
+  const { data, isLoading, isError, refetch, isFetching } = useSchoolsList(params);
 
   return (
     <div className="flex flex-col gap-6">
@@ -294,9 +305,11 @@ export default function EscolasAdminPage(): JSX.Element {
               <Spinner size="lg" />
             </div>
           ) : isError ? (
-            <Typography variant="body" color="danger">
-              Não foi possível carregar as escolas. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar as escolas."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           ) : data && data.items.length === 0 ? (
             <Typography variant="body" color="muted">
               Nenhuma escola encontrada.

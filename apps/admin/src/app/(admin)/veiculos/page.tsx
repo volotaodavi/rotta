@@ -2,6 +2,7 @@
 
 import {
   Card,
+  ErrorState,
   Input,
   Pagination,
   Select,
@@ -18,6 +19,7 @@ import type { ListVehiclesParams, Vehicle, VehicleStatus, VehicleType } from "@r
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
+
 
 /**
  * Listagem de veículos — visão CROSS-TENANT exclusiva do Admin Rotta
@@ -48,7 +50,7 @@ export default function VeiculosAdminPage(): JSX.Element {
     pageSize,
   };
 
-  const { data, isLoading, isError } = useVehiclesList(params);
+  const { data, isLoading, isError, refetch, isFetching } = useVehiclesList(params);
 
   return (
     <div className="flex flex-col gap-6">
@@ -134,9 +136,11 @@ export default function VeiculosAdminPage(): JSX.Element {
               <Spinner size="lg" />
             </div>
           ) : isError ? (
-            <Typography variant="body" color="danger">
-              Não foi possível carregar os veículos. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar os veículos."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           ) : data && data.items.length === 0 ? (
             <Typography variant="body" color="muted">
               Nenhum veículo encontrado.

@@ -1,6 +1,14 @@
 "use client";
 
-import { Badge, Button, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  Spinner,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -22,7 +30,7 @@ export default function EmpresasListPage(): JSX.Element {
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
-  const { data, isLoading, isError } = useCompaniesList({
+  const { data, isLoading, isError, refetch, isFetching } = useCompaniesList({
     page,
     pageSize: 20,
     search: search || undefined,
@@ -55,9 +63,11 @@ export default function EmpresasListPage(): JSX.Element {
           </Card.Body>
         ) : isError ? (
           <Card.Body>
-            <Typography variant="body" color="danger">
-              Não foi possível carregar as empresas. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar as empresas."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>

@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Select, Spinner, Typography } from "@rotta/ui/web";
+import { Card, ErrorState, Select, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -8,6 +8,7 @@ import type { SupportTicketStatus } from "@rotta/api-client";
 
 import { SupportTicketStatusBadge } from "@/features/support/components/support-ticket-status-badge";
 import { useSupportTickets } from "@/features/support/hooks/use-support";
+
 
 /**
  * Central de Atendimento — visão Admin Rotta (`ADM-04`/Dossiê 20 —
@@ -17,7 +18,7 @@ import { useSupportTickets } from "@/features/support/hooks/use-support";
  */
 export default function SuportePage(): JSX.Element {
   const [status, setStatus] = useState<SupportTicketStatus | "">("");
-  const { data, isLoading, isError } = useSupportTickets({
+  const { data, isLoading, isError, refetch, isFetching } = useSupportTickets({
     page: 1,
     pageSize: 50,
     status: status || undefined,
@@ -47,9 +48,11 @@ export default function SuportePage(): JSX.Element {
           </Card.Body>
         ) : isError ? (
           <Card.Body>
-            <Typography variant="body" color="danger">
-              Não foi possível carregar os chamados. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar os chamados."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>

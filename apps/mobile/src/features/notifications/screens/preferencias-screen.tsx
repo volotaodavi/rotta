@@ -44,7 +44,7 @@ const CANAIS: {
  */
 export function PreferenciasScreen(): JSX.Element {
   const { theme } = useTheme();
-  const { data: preference, isLoading, isError } = useNotificationPreference();
+  const { data: preference, isLoading, isError, refetch } = useNotificationPreference();
   const updatePreference = useUpdateNotificationPreference();
 
   const [form, setForm] = useState<FormState | null>(null);
@@ -91,6 +91,7 @@ export function PreferenciasScreen(): JSX.Element {
         <Text style={{ color: theme.colors.danger }}>
           Não foi possível carregar suas preferências. Tente novamente mais tarde.
         </Text>
+        <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
   }

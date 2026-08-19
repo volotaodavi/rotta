@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 
 import type { IdentityVerificationStatus } from "@rotta/api-client";
 import type { BadgeVariant } from "@rotta/ui/web";
@@ -8,6 +8,7 @@ import type { BadgeVariant } from "@rotta/ui/web";
 import { JoinRequestRow } from "@/features/team/components/join-request-row";
 import { usePendingJoinRequests } from "@/features/team/hooks/use-join-requests";
 import { useMyTeam } from "@/features/team/hooks/use-team";
+
 
 /** Mesmos rótulos/cores de `(dashboard)/verificacao-identidade` — a MESMA verificação, só vista de outro ângulo (o dono da empresa, não o próprio motorista). */
 const STATUS_LABEL: Record<IdentityVerificationStatus, string> = {
@@ -42,7 +43,7 @@ const PAPEL_LABEL: Record<string, string> = {
  * esperando o resultado" — antes desta tela não havia ONDE olhar isso.
  */
 export default function EquipePage(): JSX.Element {
-  const { data: equipe, isLoading, isError } = useMyTeam();
+  const { data: equipe, isLoading, isError, refetch, isFetching } = useMyTeam();
   const { data: pendingRequests, isLoading: isLoadingRequests } = usePendingJoinRequests();
 
   return (
@@ -78,9 +79,11 @@ export default function EquipePage(): JSX.Element {
               <Spinner size="lg" />
             </div>
           ) : isError ? (
-            <Typography variant="body" color="danger">
-              Não foi possível carregar a equipe. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar a equipe."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           ) : !equipe || equipe.length === 0 ? (
             <Typography variant="body" color="muted">
               Nenhum motorista, monitor ou gestor cadastrado ainda.

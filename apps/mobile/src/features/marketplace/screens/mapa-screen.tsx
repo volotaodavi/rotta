@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+
 import { TransporterCard } from "../components/transporter-card";
 import { useLocation } from "../hooks/use-location";
 import { useSchoolsSearch } from "../hooks/use-school-picker";
@@ -93,7 +94,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
           pageSize: 20,
         }
       : null;
-  const { data, isLoading, isError } = useTransportersSearch(searchParams);
+  const { data, isLoading, isError, refetch } = useTransportersSearch(searchParams);
 
   // Estado 2 — painel operacional (Prompt "UX/UI Master do Marketplace"
   // §HOME): quando o Responsável já tem uma solicitação/contrato em
@@ -309,7 +310,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
               <Text style={{ color: theme.colors.danger }}>
                 Não foi possível buscar transportadores agora. Tente novamente mais tarde.
               </Text>
-              <VehicleButton label="Tentar novamente" onPress={() => void requestLocation()} />
+              <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
             </>
           ) : !data || data.items.length === 0 ? (
             <Text style={{ color: theme.colors.textMuted }}>

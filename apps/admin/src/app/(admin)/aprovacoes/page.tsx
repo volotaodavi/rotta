@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 
 import { useApprovalQueue } from "@/features/backoffice/hooks/use-backoffice";
 
@@ -13,7 +13,7 @@ import { useApprovalQueue } from "@/features/backoffice/hooks/use-backoffice";
  * do "Plano de evolução" do Dossiê 29.
  */
 export default function AprovacoesPage(): JSX.Element {
-  const { data, isLoading, isError } = useApprovalQueue(50);
+  const { data, isLoading, isError, refetch, isFetching } = useApprovalQueue(50);
 
   if (isLoading) {
     return (
@@ -27,9 +27,11 @@ export default function AprovacoesPage(): JSX.Element {
     return (
       <Card>
         <Card.Body>
-          <Typography variant="body" color="danger">
-            Não foi possível carregar a fila de aprovações. Tente novamente.
-          </Typography>
+          <ErrorState
+            message="Não foi possível carregar a fila de aprovações."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
         </Card.Body>
       </Card>
     );

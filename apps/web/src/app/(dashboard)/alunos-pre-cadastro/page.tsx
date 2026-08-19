@@ -2,7 +2,16 @@
 
 import { ApiError } from "@rotta/api-client";
 import { X } from "@rotta/icons";
-import { Badge, Button, Card, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  FormField,
+  Input,
+  Spinner,
+  Typography,
+} from "@rotta/ui/web";
 import { useState, type FormEvent } from "react";
 
 
@@ -48,7 +57,7 @@ const INITIAL_FORM: CreateStudentPreRegistrationInput = {
  * "Minha Empresa") + o mesmo celular — ver `/vincular-transporte`.
  */
 export default function AlunosPreCadastroPage(): JSX.Element {
-  const { data: items, isLoading, isError } = useStudentPreRegistrations();
+  const { data: items, isLoading, isError, refetch, isFetching } = useStudentPreRegistrations();
   const createPreRegistration = useCreateStudentPreRegistration();
   const cancelPreRegistration = useCancelStudentPreRegistration();
 
@@ -133,9 +142,11 @@ export default function AlunosPreCadastroPage(): JSX.Element {
               <Spinner size="lg" />
             </div>
           ) : isError ? (
-            <Typography variant="body" color="danger">
-              Não foi possível carregar os pré-cadastros. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar os pré-cadastros."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           ) : !items || items.length === 0 ? (
             <Typography variant="body" color="muted">
               Nenhum pré-cadastro ainda.

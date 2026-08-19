@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Select, Spinner, Typography } from "@rotta/ui/web";
+import { Button, Card, ErrorState, Select, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { Vehicle, VehicleCategory } from "@rotta/api-client";
@@ -10,6 +10,7 @@ import {
   useVehicleCategoryReviewList,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_CATEGORY_LABEL, VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
+
 
 /**
  * Uma linha da fila — Select próprio (default = categoria sugerida pela
@@ -82,7 +83,10 @@ function CategoryReviewRow({ vehicle }: { vehicle: Vehicle }): JSX.Element {
 export default function VeiculosRevisaoCategoriaPage(): JSX.Element {
   const [page, setPage] = useState(1);
   const pageSize = 20;
-  const { data, isLoading, isError } = useVehicleCategoryReviewList({ page, pageSize });
+  const { data, isLoading, isError, refetch, isFetching } = useVehicleCategoryReviewList({
+    page,
+    pageSize,
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -102,9 +106,11 @@ export default function VeiculosRevisaoCategoriaPage(): JSX.Element {
           </Card.Body>
         ) : isError ? (
           <Card.Body>
-            <Typography variant="body" color="danger">
-              Não foi possível carregar a fila de revisão. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar a fila de revisão."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>

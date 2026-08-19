@@ -1,11 +1,12 @@
 "use client";
 
 import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from "@rotta/icons";
-import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 
 import type { IntegrationHealthSnapshot, IntegrationStatusLevel } from "@rotta/api-client";
 
 import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-health";
+
 
 const STATUS_LABEL: Record<IntegrationStatusLevel, string> = {
   healthy: "Saudável",
@@ -55,7 +56,7 @@ function formatDateTime(iso: string | null): string {
  * tracing distribuído) fica documentado como deferido, não fingido aqui.
  */
 export default function SaudePage(): JSX.Element {
-  const { data, isLoading, isError } = useIntegrationsHealth();
+  const { data, isLoading, isError, refetch, isFetching } = useIntegrationsHealth();
 
   if (isLoading) {
     return (
@@ -69,9 +70,11 @@ export default function SaudePage(): JSX.Element {
     return (
       <Card>
         <Card.Body>
-          <Typography variant="body" color="danger">
-            Não foi possível carregar o Rotta Control Center. Tente novamente.
-          </Typography>
+          <ErrorState
+            message="Não foi possível carregar o Rotta Control Center."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
         </Card.Body>
       </Card>
     );

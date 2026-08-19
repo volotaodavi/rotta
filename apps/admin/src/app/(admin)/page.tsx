@@ -16,7 +16,15 @@ import {
   TrendingUp,
 } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
-import { Badge, Card, PanelGreeting, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
+import {
+  Badge,
+  Card,
+  ErrorState,
+  PanelGreeting,
+  Spinner,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -345,7 +353,7 @@ function SaudeIntegracoesCard(): JSX.Element {
 export default function AdminHomePage(): JSX.Element {
   const { user } = useAuth();
   const { hidden } = usePrivacy();
-  const { data, isLoading, isError } = useBackofficeDashboard();
+  const { data, isLoading, isError, refetch, isFetching } = useBackofficeDashboard();
   const { data: fleet, isLoading: isFleetLoading } = useGpsMapNationwide();
   const { data: approvalQueue } = useApprovalQueue();
   const [periodoDias, setPeriodoDias] = useState(30);
@@ -405,9 +413,11 @@ export default function AdminHomePage(): JSX.Element {
     return (
       <Card>
         <Card.Body>
-          <Typography variant="body" color="danger">
-            Não foi possível carregar o painel. Tente novamente.
-          </Typography>
+          <ErrorState
+            message="Não foi possível carregar o painel."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
         </Card.Body>
       </Card>
     );

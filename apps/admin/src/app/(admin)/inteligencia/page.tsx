@@ -2,7 +2,7 @@
 
 import { AlertTriangle } from "@rotta/icons";
 import { RottaMap, type HeatmapPoint } from "@rotta/maps/web";
-import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { useMemo, useState } from "react";
 
 import { useNationalHeatmap, useNationalKpis } from "@/features/analytics/hooks/use-analytics";
@@ -29,7 +29,7 @@ function formatDate(iso: string): string {
  */
 export default function InteligenciaPage(): JSX.Element {
   const [exporting, setExporting] = useState<"csv" | "excel" | "pdf" | null>(null);
-  const { data, isLoading, isError } = useNationalKpis();
+  const { data, isLoading, isError, refetch, isFetching } = useNationalKpis();
   const { data: heatmap } = useNationalHeatmap();
 
   const heatmapPoints = useMemo<HeatmapPoint[]>(
@@ -64,9 +64,11 @@ export default function InteligenciaPage(): JSX.Element {
     return (
       <Card>
         <Card.Body>
-          <Typography variant="body" color="danger">
-            Não foi possível carregar a Central de Inteligência. Tente novamente.
-          </Typography>
+          <ErrorState
+            message="Não foi possível carregar a Central de Inteligência."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
         </Card.Body>
       </Card>
     );

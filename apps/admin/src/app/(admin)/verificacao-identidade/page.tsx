@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Select, Spinner, Typography } from "@rotta/ui/web";
+import { Button, Card, ErrorState, Select, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -8,6 +8,7 @@ import type { IdentityVerificationStatus } from "@rotta/api-client";
 
 import { IdentityVerificationStatusBadge } from "@/features/identity-verification/components/identity-verification-status-badge";
 import { useIdentityVerificationsList } from "@/features/identity-verification/hooks/use-identity-verification-admin";
+
 
 /** Cargo (`Membership.role`) → rótulo curto — mesmo mapa que decide o documento exigido (`resolveDocumentoEsperado`, backend). */
 const ROLE_LABEL: Record<string, string> = {
@@ -44,7 +45,7 @@ export default function VerificacaoIdentidadeListPage(): JSX.Element {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<IdentityVerificationStatus | "">("");
 
-  const { data, isLoading, isError } = useIdentityVerificationsList({
+  const { data, isLoading, isError, refetch, isFetching } = useIdentityVerificationsList({
     page,
     pageSize: 20,
     search: search || undefined,
@@ -95,9 +96,11 @@ export default function VerificacaoIdentidadeListPage(): JSX.Element {
           </Card.Body>
         ) : isError ? (
           <Card.Body>
-            <Typography variant="body" color="danger">
-              Não foi possível carregar as verificações de identidade. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar as verificações de identidade."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>

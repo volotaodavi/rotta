@@ -1,7 +1,7 @@
 "use client";
 
 import { Building2, DollarSign, ReceiptText, Wallet } from "@rotta/icons";
-import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 
 import { useBillingAdminOverview } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
@@ -58,7 +58,7 @@ function ValorCard({
  * dado nenhum.
  */
 export default function FinanceiroPage(): JSX.Element {
-  const { data, isLoading, isError } = useBillingAdminOverview();
+  const { data, isLoading, isError, refetch, isFetching } = useBillingAdminOverview();
   const { hidden } = usePrivacy();
 
   if (isLoading) {
@@ -73,9 +73,11 @@ export default function FinanceiroPage(): JSX.Element {
     return (
       <Card>
         <Card.Body>
-          <Typography variant="body" color="danger">
-            Não foi possível carregar o painel financeiro. Tente novamente.
-          </Typography>
+          <ErrorState
+            message="Não foi possível carregar o painel financeiro."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
         </Card.Body>
       </Card>
     );

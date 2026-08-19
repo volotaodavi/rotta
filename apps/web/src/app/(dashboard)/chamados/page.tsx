@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
+import { Card, ErrorState, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import { SupportTicketStatusBadge } from "@/features/support/components/support-ticket-status-badge";
@@ -12,7 +12,10 @@ import { useSupportTickets } from "@/features/support/hooks/use-support";
  * nunca reforçado apenas aqui).
  */
 export default function SuportePage(): JSX.Element {
-  const { data, isLoading, isError } = useSupportTickets({ page: 1, pageSize: 50 });
+  const { data, isLoading, isError, refetch, isFetching } = useSupportTickets({
+    page: 1,
+    pageSize: 50,
+  });
 
   return (
     <div className="flex flex-col gap-6">
@@ -30,9 +33,11 @@ export default function SuportePage(): JSX.Element {
           </Card.Body>
         ) : isError ? (
           <Card.Body>
-            <Typography variant="body" color="danger">
-              Não foi possível carregar seus chamados. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar seus chamados."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>

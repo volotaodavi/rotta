@@ -23,6 +23,7 @@ export * from "./atoms/ProgressRing";
 export * from "./atoms/Select";
 export * from "./atoms/Spinner";
 export * from "./atoms/Typography";
+export * from "./molecules/ErrorState";
 export * from "./molecules/FormField";
 export * from "./molecules/PanelGreeting";
 export * from "./molecules/Pagination";

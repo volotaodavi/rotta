@@ -1,12 +1,13 @@
 "use client";
 
-import { Card, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import { Card, ErrorState, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { TransportRequest, TransportRequestStatus } from "@rotta/api-client";
 
 import { TransportRequestStatusBadge } from "@/features/marketplace/components/transport-request-status-badge";
 import { useTransportRequestsList } from "@/features/marketplace/hooks/use-marketplace";
+
 
 const STATUS_OPTIONS: TransportRequestStatus[] = ["RECEBIDA", "EM_ANALISE", "APROVADA", "RECUSADA"];
 
@@ -21,7 +22,7 @@ export default function SolicitacoesTransportePage(): JSX.Element {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
-  const { data, isLoading, isError } = useTransportRequestsList({
+  const { data, isLoading, isError, refetch, isFetching } = useTransportRequestsList({
     status: status || undefined,
     page,
     pageSize,
@@ -58,9 +59,11 @@ export default function SolicitacoesTransportePage(): JSX.Element {
               <Spinner size="lg" />
             </div>
           ) : isError ? (
-            <Typography variant="body" color="danger">
-              Não foi possível carregar as solicitações. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar as solicitações."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           ) : data && data.items.length === 0 ? (
             <Typography variant="body" color="muted">
               Nenhuma solicitação de transporte recebida ainda.

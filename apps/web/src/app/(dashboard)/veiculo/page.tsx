@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { Card, PanelGreeting, Spinner, Typography } from "@rotta/ui/web";
+import { Card, ErrorState, PanelGreeting, Spinner, Typography } from "@rotta/ui/web";
 
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import { useMyVehicle } from "@/features/vehicles/hooks/use-vehicles";
@@ -25,7 +25,7 @@ import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
  */
 export default function MeuVeiculoPage(): JSX.Element {
   const { user } = useAuth();
-  const { data: vehicle, isLoading, isError } = useMyVehicle();
+  const { data: vehicle, isLoading, isError, refetch, isFetching } = useMyVehicle();
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -40,9 +40,11 @@ export default function MeuVeiculoPage(): JSX.Element {
           <Spinner size="lg" />
         </div>
       ) : isError ? (
-        <Typography variant="bodySmall" color="danger">
-          Não foi possível carregar seu veículo. Tente novamente mais tarde.
-        </Typography>
+        <ErrorState
+          message="Não foi possível carregar seu veículo."
+          onRetry={() => void refetch()}
+          isRetrying={isFetching}
+        />
       ) : !vehicle ? (
         <Typography variant="bodySmall" color="muted">
           Você ainda não está vinculado a nenhum veículo. Fale com sua transportadora.

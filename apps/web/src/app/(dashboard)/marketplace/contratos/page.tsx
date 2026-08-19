@@ -1,12 +1,13 @@
 "use client";
 
-import { Card, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import { Card, ErrorState, Select, Spinner, Table, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { Contract, ContractStatus } from "@rotta/api-client";
 
 import { ContractStatusBadge } from "@/features/marketplace/components/contract-status-badge";
 import { useContractsList } from "@/features/marketplace/hooks/use-marketplace";
+
 
 const STATUS_OPTIONS: ContractStatus[] = ["AGUARDANDO_ASSINATURA", "ATIVO", "ENCERRADO"];
 
@@ -22,7 +23,7 @@ const STATUS_OPTIONS: ContractStatus[] = ["AGUARDANDO_ASSINATURA", "ATIVO", "ENC
 export default function ContratosPage(): JSX.Element {
   const [status, setStatus] = useState<ContractStatus | "">("");
 
-  const { data, isLoading, isError } = useContractsList({ pageSize: 100 });
+  const { data, isLoading, isError, refetch, isFetching } = useContractsList({ pageSize: 100 });
   const items = status ? data?.items.filter((contract) => contract.status === status) : data?.items;
 
   return (
@@ -53,9 +54,11 @@ export default function ContratosPage(): JSX.Element {
               <Spinner size="lg" />
             </div>
           ) : isError ? (
-            <Typography variant="body" color="danger">
-              Não foi possível carregar os contratos. Tente novamente.
-            </Typography>
+            <ErrorState
+              message="Não foi possível carregar os contratos."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           ) : !items || items.length === 0 ? (
             <Typography variant="body" color="muted">
               Nenhum contrato encontrado.

@@ -21,7 +21,7 @@ type Props = NativeStackScreenProps<VeiculoStackParamList, "MeuVeiculo">;
  */
 export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
-  const { data: vehicle, isLoading, isError } = useMyVehicle();
+  const { data: vehicle, isLoading, isError, refetch } = useMyVehicle();
 
   if (isLoading) {
     return (
@@ -37,6 +37,7 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
         <Text style={{ color: theme.colors.danger }}>
           Não foi possível carregar seu veículo. Tente novamente mais tarde.
         </Text>
+        <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
   }
