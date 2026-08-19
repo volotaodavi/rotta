@@ -22,6 +22,7 @@ import type {
   RouteStop,
   RouteStudent,
   School,
+  SchoolShift,
 } from "@rotta/api-client";
 
 import { useContractsList } from "@/features/marketplace/hooks/use-marketplace";
@@ -120,6 +121,7 @@ export default function RotaDetalhePage(): JSX.Element {
       <RouteOptimizationSection routeId={routeId} stops={stops ?? []} />
       <StudentsSection
         routeId={routeId}
+        routeTurno={route.turno}
         stops={stops ?? []}
         routeStudents={routeStudents}
         isLoading={isLoadingStudents}
@@ -486,11 +488,13 @@ function RouteOptimizationSection({
 
 function StudentsSection({
   routeId,
+  routeTurno,
   stops,
   routeStudents,
   isLoading,
 }: {
   routeId: string;
+  routeTurno: SchoolShift;
   stops: RouteStop[];
   routeStudents: RouteStudent[] | undefined;
   isLoading: boolean;
@@ -547,6 +551,7 @@ function StudentsSection({
               <AddStudentCandidateRow
                 key={contract.id}
                 routeId={routeId}
+                routeTurno={routeTurno}
                 contract={contract}
                 stops={stops}
               />
@@ -572,7 +577,10 @@ function RouteStudentRow({
 
   return (
     <div className="flex items-center justify-between gap-3 py-2">
-      <Typography variant="bodySmall">{student?.nome ?? "Carregando..."}</Typography>
+      <div className="flex items-center gap-2">
+        <Typography variant="bodySmall">{student?.nome ?? "Carregando..."}</Typography>
+        {student && <Badge variant="neutral">{SCHOOL_SHIFT_LABEL[student.turno]}</Badge>}
+      </div>
       <Button
         variant="ghost"
         size="sm"
@@ -586,16 +594,33 @@ function RouteStudentRow({
   );
 }
 
+/**
+ * Pedido do usuário: "após criar uma rota, deverá ter ali os alunos que
+ * estão cadastrados no código da transportadora e credenciar a uma rota
+ * (manhã, tarde e noite)." O turno da rota é fixo (definido em
+ * `/rotas/novo`); o que faltava era o turno de CADA aluno candidato
+ * ficar visível aqui, pra quem credencia ver de cara se o horário bate
+ * — nunca escondido, pra não esconder por engano um candidato válido
+ * (ex. aluno turno INTEGRAL serve pra qualquer rota).
+ */
 function AddStudentCandidateRow({
   routeId,
+  routeTurno,
   contract,
   stops,
 }: {
   routeId: string;
+  routeTurno: SchoolShift;
   contract: Contract;
   stops: RouteStop[];
 }): JSX.Element {
   const { data: student } = useStudent(contract.studentId);
+  const turnoCompativel =
+    !student ||
+    student.turno === routeTurno ||
+    student.turno === "INTEGRAL" ||
+    routeTurno === "INTEGRAL" ||
+    routeTurno === "PERSONALIZADO";
   const addStudent = useAddRouteStudent(routeId);
   const [paradaEmbarqueId, setParadaEmbarqueId] = useState("");
   const [paradaDesembarqueId, setParadaDesembarqueId] = useState("");
@@ -649,9 +674,22 @@ function AddStudentCandidateRow({
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex flex-col gap-1">
-        <Typography variant="bodySmall" className="font-medium">
-          {student?.nome ?? "Carregando..."}
-        </Typography>
+        <div className="flex items-center gap-2">
+          <Typography variant="bodySmall" className="font-medium">
+            {student?.nome ?? "Carregando..."}
+          </Typography>
+          {student && (
+            <Badge variant={turnoCompativel ? "neutral" : "warning"}>
+              {SCHOOL_SHIFT_LABEL[student.turno]}
+            </Badge>
+          )}
+        </div>
+        {student && !turnoCompativel && (
+          <Typography variant="caption" color="danger">
+            Turno diferente do turno desta rota ({SCHOOL_SHIFT_LABEL[routeTurno]}) — confira antes
+            de credenciar.
+          </Typography>
+        )}
         {contract.origem === "TERMO_CIENCIA_AUTOMATICO" ? (
           <button
             type="button"
