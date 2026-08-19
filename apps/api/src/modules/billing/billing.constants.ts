@@ -33,3 +33,20 @@ export const ABACATEPAY_HMAC_PUBLIC_KEY =
   "t9dXRhHHo3yDEj5pVDYz0frf7q6bMKyMRmxxCPIPp3RCplBfXRxqlC6ZpiWmOqj4L63qEaeUOtrCI8P0VMUgo6iIga2ri9ogaHFs0WIIywSMg0q7RmBfybe1E5XJcfC4IW3alNqym0tXoAKkzvfEjZxV6bE0oG2zJrNNYmUCKZyV0KZ3JS8Votf9EAWWYdiDkMkpbMdPggfh1EqHlVkMiTady6jOR3hyzGEHrIz2Ret0xHKMbiqkr9HS1JhNHDX9";
 
 export const ABACATEPAY_CLIENT_TOKEN = Symbol("ABACATEPAY_CLIENT");
+
+/** 30 minutos — tempo generoso pra pagar o Pix sem expirar no meio do preenchimento. */
+export const ABACATEPAY_PIX_EXPIRES_IN_SECONDS = 30 * 60;
+
+/**
+ * Taxas públicas da AbacatePay (abacatepay.com/pricing, consultado em
+ * 2026-08 — Dossiê 26 extensão "painel financeiro do Admin"): Pix R$
+ * 0,80 por transação paga, Cartão 3,5% + R$ 0,60. Usadas pra calcular
+ * "taxa retida" no painel financeiro de forma determinística — não
+ * dependemos de nenhum campo `fee` da API (o contrato do `billing/list`
+ * não foi testado com uma chave real, ver `abacatepay.types.ts`), então
+ * calculamos a mesma conta que a AbacatePay já publica pro cliente
+ * final. Se o preço público mudar, só este arquivo precisa atualizar.
+ */
+export const ABACATEPAY_FEE_PIX_CENTS = 80;
+export const ABACATEPAY_FEE_CARD_PERCENT = 0.035;
+export const ABACATEPAY_FEE_CARD_FIXED_CENTS = 60;

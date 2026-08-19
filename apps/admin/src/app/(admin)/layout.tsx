@@ -8,6 +8,7 @@ import {
   Car,
   ChevronDown,
   ClipboardCheck,
+  DollarSign,
   Eye,
   EyeOff,
   FileText,
@@ -35,7 +36,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffice";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { PrivacyProvider, usePrivacy } from "@/providers/privacy-provider";
-
 
 interface NavItem {
   href: Route;
@@ -73,6 +73,7 @@ const NAV_PRINCIPAL: NavItem[] = [
  */
 const NAV_PLATAFORMA: NavItem[] = [
   { href: "/saude", label: "Saúde", icon: HeartPulse },
+  { href: "/financeiro", label: "Financeiro", icon: DollarSign },
   { href: "/documentos-legais", label: "Documentos legais", icon: FileText },
   { href: "/auditoria-legal", label: "Auditoria legal", icon: ScrollText },
 ];

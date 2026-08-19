@@ -3,6 +3,7 @@ import {
   createApiClient,
   createAuthEndpoints,
   createBackofficeEndpoints,
+  createBillingEndpoints,
   createCompaniesEndpoints,
   createGeoEndpoints,
   createGpsEndpoints,
@@ -47,3 +48,4 @@ export const analyticsApi = createAnalyticsEndpoints(apiClient);
 export const healthApi = createHealthEndpoints(apiClient);
 export const legalDocumentsApi = createLegalDocumentsEndpoints(apiClient);
 export const identityVerificationApi = createIdentityVerificationEndpoints(apiClient);
+export const billingApi = createBillingEndpoints(apiClient);

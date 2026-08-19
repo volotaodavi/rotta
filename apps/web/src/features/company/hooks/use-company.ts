@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { CompanySettings, CreateCheckoutResult, UpdateCompanyInput } from "@rotta/api-client";
+import type {
+  CompanySettings,
+  CreateCheckoutResult,
+  PixCheckout,
+  UpdateCompanyInput,
+} from "@rotta/api-client";
 
 import { billingApi, companiesApi } from "@/lib/api-client";
 
@@ -54,6 +59,32 @@ export function useUpdateMyCompany(companyId: string) {
 export function useCreateCheckout() {
   return useMutation<CreateCheckoutResult, unknown, { returnUrl: string }>({
     mutationFn: (input) => billingApi.createCheckout(input),
+  });
+}
+
+/**
+ * Checkout Pix embutido (pedido do usuário: "pagar sem precisar ir em
+ * outro lugar") — devolve QR Code + copia-e-cola direto, sem nenhuma
+ * página hospedada envolvida (ver `PixCheckoutModal`).
+ */
+export function useCreatePixCheckout() {
+  return useMutation<PixCheckout, unknown, void>({
+    mutationFn: () => billingApi.createPixCheckout(),
+  });
+}
+
+/**
+ * Polling do status do Pix enquanto o modal está aberto — o webhook
+ * (`billing.paid`) continua sendo a fonte de verdade que efetivamente
+ * ativa a empresa; isto só decide quando fechar o modal sozinho.
+ * `refetchInterval` para assim que sair de `PENDING`.
+ */
+export function usePixCheckoutStatus(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["billing", "pix-checkout", id],
+    queryFn: () => billingApi.getPixCheckoutStatus(id as string),
+    enabled: Boolean(id) && enabled,
+    refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 4_000 : false),
   });
 }
 
