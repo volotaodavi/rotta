@@ -60,6 +60,7 @@ function buildCoordinate(overrides: Partial<SchoolCoordinate> = {}): SchoolCoord
     tentativa: 1,
     validadoPorIa: false,
     motivoRevisao: null,
+    atual: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -137,6 +138,84 @@ describe("GeoPipelineService", () => {
     await service.geocodeSchool("school-1");
 
     expect(validationAgent.validate).toHaveBeenCalledTimes(3);
+  });
+
+  it("na 1ª tentativa usa o endereço completo, com número e bairro", async () => {
+    const school = buildSchool();
+    const coordinate = buildCoordinate();
+    const validado = { ...coordinate, status: "VALIDADO" as const };
+    const schoolRepository = {
+      findById: jest.fn().mockResolvedValue(school),
+    } as unknown as SchoolRepository;
+    const geocodingAgent = {
+      geocodeSchool: jest.fn().mockResolvedValue(coordinate),
+    } as unknown as GeocodingAiAgentService;
+    const validationAgent = {
+      validate: jest.fn().mockResolvedValue({ status: "VALIDADO", coordinate: validado }),
+    } as unknown as ValidationAiAgentService;
+
+    const service = new GeoPipelineService(
+      geocodingAgent,
+      validationAgent,
+      schoolRepository,
+      {} as SchoolCoordinateRepository,
+      {} as SchoolsService,
+    );
+    await service.geocodeSchool("school-1");
+
+    expect(geocodingAgent.geocodeSchool).toHaveBeenCalledWith(
+      "school-1",
+      "Avenida Paulista, 1000, Bela Vista, São Paulo - SP, 01310100",
+      1,
+    );
+  });
+
+  it('achado real ("faça as IAs trabalharem"): esgotadas as MAX_TENTATIVAS variações reais do endereço sem bater cidade/estado, aproxima pelo município em vez de aceitar uma coordenada que a própria IA não confia', async () => {
+    const school = buildSchool();
+    const reprovada = buildCoordinate({ id: "coordinate-reprovada", tentativa: 3 });
+    const aproximada = buildCoordinate({ id: "coordinate-municipio" });
+    const emRevisao = { ...aproximada, status: "REVISAO_MANUAL" as const };
+    const schoolRepository = {
+      findById: jest.fn().mockResolvedValue(school),
+    } as unknown as SchoolRepository;
+    const geocodingAgent = {
+      geocodeSchool: jest
+        .fn()
+        .mockResolvedValueOnce(reprovada) // 1ª tentativa (o loop chama validate com esta)
+        .mockResolvedValueOnce(aproximada), // fallback municipal
+    } as unknown as GeocodingAiAgentService;
+    const coordinateRepository = {
+      updateStatus: jest.fn().mockResolvedValue(emRevisao),
+    } as unknown as SchoolCoordinateRepository;
+    const validationAgent = {
+      validate: jest.fn().mockResolvedValue({ status: "REVISAO_MANUAL", coordinate: reprovada }),
+    } as unknown as ValidationAiAgentService;
+
+    const service = new GeoPipelineService(
+      geocodingAgent,
+      validationAgent,
+      schoolRepository,
+      coordinateRepository,
+      {} as SchoolsService,
+    );
+    const resultado = await service.geocodeSchool("school-1");
+
+    // Nunca aceita a coordenada reprovada como resultado final — busca a
+    // aproximação municipal em vez disso.
+    expect(geocodingAgent.geocodeSchool).toHaveBeenCalledWith(
+      "school-1",
+      "São Paulo - SP, Brasil",
+      1,
+    );
+    expect(coordinateRepository.updateStatus).toHaveBeenCalledWith(
+      "coordinate-municipio",
+      "REVISAO_MANUAL",
+      expect.objectContaining({
+        validadoPorIa: false,
+        motivoRevisao: expect.stringContaining("cidade/estado/precisão não conferem"),
+      }),
+    );
+    expect(resultado).toBe(emRevisao);
   });
 
   it("cai em REVISAO_MANUAL com coordenada aproximada por cidade/estado quando o endereço exato não tem NENHUM resultado no Nominatim", async () => {

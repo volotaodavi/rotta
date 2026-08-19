@@ -55,6 +55,7 @@ function buildCoordinate(overrides: Partial<SchoolCoordinate> = {}): SchoolCoord
     tentativa: 1,
     validadoPorIa: false,
     motivoRevisao: null,
+    atual: true,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

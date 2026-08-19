@@ -1,9 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 
-
 import { GeoEngineService } from "../geo-engine.service";
 import { SCHOOL_COORDINATE_REPOSITORY } from "../geo.constants";
 
+import { buildAddressCandidate } from "./address-candidate.util";
 import { GeocodingAiAgentService } from "./geocoding-ai-agent.service";
 
 import type { SchoolCoordinateRepository } from "../repositories/school-coordinate.repository";
@@ -72,9 +72,16 @@ export class ValidationAiAgentService {
     const anterior = await this.coordinateRepository.updateStatus(coordinate.id, "REPROCESSAR", {
       validadoPorIa: false,
     });
+    // Achado real (pedido do usuário: "faça as IAs trabalharem"): antes
+    // disto, toda tentativa de reprocessamento montava a MESMA string de
+    // endereço completo — o Nominatim é determinístico, reprovar aqui
+    // nunca podia dar um resultado diferente na próxima tentativa.
+    // `buildAddressCandidate` simplifica progressivamente (sem número,
+    // depois sem bairro) pra cada tentativa perguntar algo genuinamente
+    // diferente.
     const proxima = await this.geocodingAgent.geocodeSchool(
       school.id,
-      this.enderecoCompleto(school),
+      buildAddressCandidate(school, coordinate.tentativa + 1),
       coordinate.tentativa + 1,
     );
     return { status: "REPROCESSANDO", anterior, proxima };
@@ -94,9 +101,5 @@ export class ValidationAiAgentService {
       reverso.estado !== null && reverso.estado.toUpperCase() === school.estado.toUpperCase();
 
     return cidadeConfere && estadoConfere;
-  }
-
-  private enderecoCompleto(school: School): string {
-    return `${school.logradouro}, ${school.numero}, ${school.bairro}, ${school.cidade} - ${school.estado}, ${school.cep}`;
   }
 }

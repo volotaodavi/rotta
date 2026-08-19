@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 
+import { buildAddressCandidate, buildMunicipioFallback } from "./agents/address-candidate.util";
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { ValidationAiAgentService } from "./agents/validation-ai-agent.service";
 import { NominatimRateLimitedException } from "./geo-engine.service";
@@ -11,7 +12,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { SchoolResponseDto } from "@/modules/schools/dto/school-response.dto";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { RequestMeta } from "@/modules/schools/schools.service";
-import type { SchoolCoordinate } from "@prisma/client";
+import type { School, SchoolCoordinate } from "@prisma/client";
 
 import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 import { SchoolsService } from "@/modules/schools/schools.service";
@@ -52,11 +53,13 @@ export class GeoPipelineService {
       throw new NotFoundException("Escola não encontrada.");
     }
 
-    const endereco = `${school.logradouro}, ${school.numero}, ${school.bairro}, ${school.cidade} - ${school.estado}, ${school.cep}`;
-
     let coordinate: SchoolCoordinate;
     try {
-      coordinate = await this.geocodingAgent.geocodeSchool(school.id, endereco, 1);
+      coordinate = await this.geocodingAgent.geocodeSchool(
+        school.id,
+        buildAddressCandidate(school, 1),
+        1,
+      );
     } catch (error) {
       if (error instanceof NominatimRateLimitedException) {
         // Throttling temporário, não falta de dados — nunca aproximar por
@@ -71,35 +74,63 @@ export class GeoPipelineService {
       // antes disso simplesmente propagava e a escola ficava sem
       // coordenada E sem entrada na Fila de Revisão Manual, ao contrário
       // do que o listener que dispara este método promete ("endereço sem
-      // correspondência cai na Fila de Revisão Manual"). Fallback: tenta
-      // aproximar por cidade/estado (praticamente sempre resolve, é uma
+      // correspondência cai na Fila de Revisão Manual"). Fallback:
+      // aproxima por cidade/estado (praticamente sempre resolve, é uma
       // entidade administrativa grande) e já entra direto em
       // REVISAO_MANUAL — pino aproximado no mapa em vez de nenhum,
       // nunca fingindo a precisão de um endereço exato, sempre visível
       // pra um humano refinar depois.
-      const aproximada = await this.geocodingAgent.geocodeSchool(
-        school.id,
-        `${school.cidade} - ${school.estado}, Brasil`,
-        1,
-      );
-      return this.coordinateRepository.updateStatus(aproximada.id, "REVISAO_MANUAL", {
-        validadoPorIa: false,
-        motivoRevisao:
-          error instanceof Error
-            ? `Endereço exato sem correspondência no Nominatim/OpenStreetMap (${error.message}) — coordenada aproximada pelo município.`
-            : "Endereço exato sem correspondência no Nominatim/OpenStreetMap — coordenada aproximada pelo município.",
-      });
+      return this.aproximarPorMunicipio(school, error);
     }
 
     for (let iteracao = 0; iteracao < MAX_TENTATIVAS; iteracao += 1) {
       const outcome = await this.validationAgent.validate(coordinate, school);
-      if (outcome.status !== "REPROCESSANDO") {
+      if (outcome.status === "VALIDADO") {
         return outcome.coordinate;
+      }
+      if (outcome.status === "REVISAO_MANUAL") {
+        // Achado real investigando a fila (pedido do usuário: "faça as
+        // IAs trabalharem"): esgotadas as `MAX_TENTATIVAS` variações
+        // reais do endereço (endereço completo → sem número → sem
+        // bairro, ver `buildAddressCandidate`) sem nenhuma bater
+        // cidade/estado, o Validation AI Agent desistia aqui — a
+        // escola ficava com uma coordenada que a própria IA não
+        // confia (pode até estar na cidade errada, casou um logradouro
+        // homônimo em outro município) e nenhum pino visível no mapa
+        // até um humano intervir. Mesmo fallback do "Nominatim não
+        // achou nada": aproxima pelo município, que sabidamente está
+        // na cidade certa (é o próprio nome da cidade), só com menos
+        // precisão — sempre melhor que uma coordenada possivelmente
+        // errada ou nenhuma.
+        return this.aproximarPorMunicipio(school);
       }
       coordinate = outcome.proxima;
     }
 
     return coordinate;
+  }
+
+  /**
+   * Último recurso comum aos dois caminhos de falha de `geocodeSchool`
+   * (Nominatim sem nenhum resultado, e as `MAX_TENTATIVAS` variações do
+   * endereço reprovadas na validação) — nunca passa pelo Validation AI
+   * Agent (que aprovaria trivialmente uma coordenada de cidade contra
+   * `School.cidade`/`estado`, dando falsa confiança de precisão exata a
+   * um pino que só está no bairro certo por coincidência).
+   */
+  private async aproximarPorMunicipio(school: School, error?: unknown): Promise<SchoolCoordinate> {
+    const aproximada = await this.geocodingAgent.geocodeSchool(
+      school.id,
+      buildMunicipioFallback(school),
+      1,
+    );
+    const motivoNominatimSemResultado = error instanceof Error ? error.message : undefined;
+    return this.coordinateRepository.updateStatus(aproximada.id, "REVISAO_MANUAL", {
+      validadoPorIa: false,
+      motivoRevisao: motivoNominatimSemResultado
+        ? `Endereço exato sem correspondência no Nominatim/OpenStreetMap (${motivoNominatimSemResultado}) — coordenada aproximada pelo município.`
+        : `${MAX_TENTATIVAS} tentativas automáticas com endereço cada vez mais simplificado reprovadas (cidade/estado/precisão não conferem) — coordenada aproximada pelo município.`,
+    });
   }
 
   /**

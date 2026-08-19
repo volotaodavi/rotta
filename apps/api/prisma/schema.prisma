@@ -353,11 +353,25 @@ model SchoolCoordinate {
   validadoPorIa Boolean @default(false)
   motivoRevisao String?
 
+  /// Achado real em produção investigando a Fila de Revisão Manual
+  /// (pedido do usuário: "faça as IAs trabalharem"): esta tabela é um
+  /// log append-only (nunca sobrescreve uma linha, sempre grava uma
+  /// NOVA tentativa — ver nota de `resolveManualReview`,
+  /// `geo-pipeline.service.ts`), mas nenhuma linha antiga era
+  /// desativada quando uma nova a sucedia. `GET /geo/revisao-manual`
+  /// (`listByStatus`) devolvia TODA linha que já passou por
+  /// REVISAO_MANUAL algum dia, inclusive escolas já resolvidas depois
+  /// por uma tentativa melhor — fila crescendo pra sempre, nunca
+  /// esvaziando. `atual` marca qual linha é a vigente por escola;
+  /// `PrismaSchoolCoordinateRepository.create` desliga o `atual` da
+  /// linha anterior na mesma transação que cria a nova.
+  atual Boolean @default(true)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([schoolId, status])
-  @@index([status])
+  @@index([status, atual])
   @@map("school_coordinates")
 }
 

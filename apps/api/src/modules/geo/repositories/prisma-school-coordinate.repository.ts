@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CreateSchoolCoordinateData,
   SchoolCoordinateRepository,
@@ -18,8 +17,27 @@ import { PrismaService } from "@/infra/database/prisma.service";
 export class PrismaSchoolCoordinateRepository implements SchoolCoordinateRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(data: CreateSchoolCoordinateData): Promise<SchoolCoordinate> {
-    return this.prisma.schoolCoordinate.create({ data });
+  /**
+   * `atual` (achado real investigando a Fila de Revisão Manual, pedido
+   * do usuário "faça as IAs trabalharem"): esta tabela é um log
+   * append-only — nunca sobrescreve, sempre grava uma tentativa nova —
+   * mas até aqui nenhuma linha antiga era desativada quando uma
+   * sucessora chegava. `listByStatus` filtrava só por `status` e
+   * devolvia PARA SEMPRE toda linha que já passou por REVISAO_MANUAL,
+   * mesmo escolas já resolvidas por uma tentativa melhor depois. Corrigido
+   * aqui: cada `create` desliga o `atual` de qualquer linha anterior da
+   * MESMA escola, na mesma transação que cria a nova — nunca dois
+   * `$executeRaw`/updates soltos que poderiam divergir sob concorrência.
+   */
+  async create(data: CreateSchoolCoordinateData): Promise<SchoolCoordinate> {
+    const [, created] = await this.prisma.$transaction([
+      this.prisma.schoolCoordinate.updateMany({
+        where: { schoolId: data.schoolId, atual: true },
+        data: { atual: false },
+      }),
+      this.prisma.schoolCoordinate.create({ data }),
+    ]);
+    return created;
   }
 
   findById(id: string): Promise<SchoolCoordinate | null> {
@@ -53,7 +71,7 @@ export class PrismaSchoolCoordinateRepository implements SchoolCoordinateReposit
 
   listByStatus(status: SchoolCoordinateStatus): Promise<SchoolCoordinate[]> {
     return this.prisma.schoolCoordinate.findMany({
-      where: { status },
+      where: { status, atual: true },
       orderBy: { createdAt: "asc" },
     });
   }
