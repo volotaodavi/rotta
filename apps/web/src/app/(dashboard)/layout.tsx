@@ -277,8 +277,38 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       ) : (
         <>
           {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
-          {/* `pb-20` (Frente K/O, estendido à Frente AO pro Responsável) abre espaço pra barra de 4 ícones fixa não cobrir o fim do conteúdo — sempre visível pra este público (Frente O, "todas as plataformas, sem exceção"), então sem exceção de breakpoint aqui também. */}
-          <main className={`flex-1 p-6 ${showBottomNav ? "pb-20" : ""}`}>{children}</main>
+          {/*
+            `pb-20` (Frente K/O, estendido à Frente AO pro Responsável) abre
+            espaço pra barra de 4 ícones fixa não cobrir o fim do conteúdo —
+            sempre visível pra este público (Frente O, "todas as
+            plataformas, sem exceção"), então sem exceção de breakpoint aqui
+            também: a barra continua idêntica em qualquer largura.
+            A partir de `md`, só o ENQUADRAMENTO ao redor dela muda (pedido
+            do usuário: "está muito cru" no desktop — manter a navegação
+            igual, só refinar o visual): a página de Motorista/Monitor/
+            Responsável é sempre uma coluna estreita (`max-w-2xl` dentro de
+            cada tela) porque é uma tela de UMA AÇÃO por vez, não um painel
+            de gestão — em vez de deixar essa coluna flutuando sozinha numa
+            janela em branco, ela ganha um painel com fundo levemente
+            diferenciado (`bg-muted/40`) e um cartão com borda/sombra em
+            volta do conteúdo, a mesma leitura visual de qualquer app
+            desktop que centraliza um fluxo de uma tela só.
+          */}
+          <main
+            className={
+              showBottomNav
+                ? "flex-1 p-6 pb-24 md:flex md:justify-center md:bg-muted/40 md:px-6 md:py-10"
+                : "flex-1 p-6"
+            }
+          >
+            {showBottomNav ? (
+              <div className="w-full md:max-w-3xl md:rounded-2xl md:border md:border-border md:bg-surface md:p-8 md:shadow-sm">
+                {children}
+              </div>
+            ) : (
+              children
+            )}
+          </main>
           <LegalFooter />
           {showDriverNavBar && <DriverBottomNav />}
           {isResponsavel && <ResponsavelBottomNav />}

@@ -38,18 +38,25 @@ export function PortalBottomNav({ items }: { items: PortalBottomNavItem[] }): JS
   const pathname = usePathname();
 
   return (
+    // Mesmos 4 itens, mesmos rótulos, mesmo comportamento em qualquer
+    // largura (Frente O, "todas as plataformas, sem exceção" — decisão
+    // reafirmada, não revertida). Só o ENQUADRAMENTO muda a partir de
+    // `md`: em vez de uma faixa esticada de ponta a ponta da janela (que
+    // lia como "sobrou" numa tela larga), vira um dock flutuante
+    // centralizado — pedido do usuário: "está muito cru" no desktop, só
+    // refinar o visual, sem mexer na navegação em si.
     <nav
       aria-label="Navegação principal"
-      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface"
+      className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface md:inset-x-0 md:bottom-6 md:border-none md:bg-transparent"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto flex w-full max-w-xl">
+      <div className="mx-auto flex w-full max-w-xl md:w-fit md:gap-1 md:rounded-full md:border md:border-border md:bg-surface md:px-2 md:shadow-lg">
         {items.map(({ key, label, icon: Icon, badge, href, onNavigate, activePrefix, exact }) => {
           const prefix = activePrefix ?? href;
           const isActive = Boolean(
             prefix && (exact ? pathname === prefix : pathname?.startsWith(prefix)),
           );
-          const className = `relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors ${
+          const className = `relative flex flex-1 flex-col items-center gap-0.5 py-2 text-xs font-medium transition-colors md:flex-none md:px-5 md:py-2.5 ${
             isActive ? "text-primary" : "text-text-muted hover:text-text"
           }`;
           const content = (
