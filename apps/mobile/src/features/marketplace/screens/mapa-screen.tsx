@@ -77,7 +77,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
     }
   }, [status, requestLocation]);
 
-  const { data: schoolResults } = useSchoolsSearch(schoolQuery);
+  const { data: schoolResults } = useSchoolsSearch(schoolQuery, coords);
   const schoolsComCoordenada = useMemo(
     () => (schoolResults?.items ?? []).filter((school) => school.latitude && school.longitude),
     [schoolResults],

@@ -4,17 +4,8 @@ import {
   type SchoolShift,
   type StudentSex,
 } from "@rotta/api-client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
-
-
-import { useSchoolsSearch } from "../hooks/use-school-picker";
-import { useStudentsList } from "../hooks/use-students";
-import { useCreateTransportRequest } from "../hooks/use-transport-requests";
-
-import type { ParentTabParamList, MarketplaceStackParamList } from "@/navigation/types";
-import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
   StatusPill,
@@ -24,6 +15,15 @@ import {
   VehicleTextField,
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
+
+import { useLocation } from "../hooks/use-location";
+import { useSchoolsSearch } from "../hooks/use-school-picker";
+import { useStudentsList } from "../hooks/use-students";
+import { useCreateTransportRequest } from "../hooks/use-transport-requests";
+
+import type { ParentTabParamList, MarketplaceStackParamList } from "@/navigation/types";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 type Props = NativeStackScreenProps<MarketplaceStackParamList, "SolicitarTransporte">;
 
@@ -70,6 +70,10 @@ const ENDERECO_VAZIO: EnderecoForm = {
  * solicitação para o transportador (`POST /marketplace/transport-
  * requests`). O backend resolve `schoolId`/`turno` a partir do aluno —
  * aqui só coletamos os dados, nunca duplicamos a validação de negócio.
+ *
+ * Busca de escola tolerante a erro de digitação + proximidade
+ * (`useSchoolsSearch`, mesmo `GET /schools/sugestoes` já usado na web) —
+ * ver o achado real no doc de `use-school-picker.ts`.
  */
 export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -77,6 +81,16 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
 
   const { data: studentsData, isLoading: isLoadingStudents } = useStudentsList();
   const createRequest = useCreateTransportRequest();
+  // Localização aproximada só pra ordenar a busca de escola por
+  // proximidade (nunca bloqueia o cadastro) — mesmo hook/padrão de
+  // `MapaScreen`, pedida uma única vez ao entrar na tela.
+  const { status: locationStatus, coords, requestLocation } = useLocation();
+  useEffect(() => {
+    if (locationStatus === "idle") {
+      void requestLocation();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- só a 1ª vez ao entrar na tela.
+  }, []);
 
   const [mode, setMode] = useState<Mode>("escolher");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
@@ -96,7 +110,7 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const { data: schoolResults } = useSchoolsSearch(schoolSearch);
+  const { data: schoolResults } = useSchoolsSearch(schoolSearch, coords);
 
   const students = studentsData?.items ?? [];
 
