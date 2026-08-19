@@ -27,10 +27,31 @@ import { QUEUE_NAMES } from "@/infra/queue/queue.constants";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService } from "@/modules/companies/companies.service";
 
-/** `retries`/`flowControlKey` de todo job de entrega de canal externo — mesmos 3 `attempts` que o BullMQ usava; `failureCallbackRoute` substitui o `OnWorkerEvent('failed')` de antes (ver `NotificationDeliveryController.deliverDlq`). */
+/**
+ * `retries`/`flowControlKey` de todo job de entrega de canal externo —
+ * mesmos 3 `attempts` que o BullMQ usava; `failureCallbackRoute`
+ * substitui o `OnWorkerEvent('failed')` de antes (ver
+ * `NotificationDeliveryController.deliverDlq`).
+ *
+ * ACHADO REAL em produção (pedido do usuário: "deu erro inesperado" ao
+ * terminar de cadastrar um aluno): TODA entrega de canal externo — Push,
+ * WhatsApp, SMS, E-mail, de QUALQUER evento da plataforma, não só
+ * cadastro de aluno — falhava silenciosamente aqui (best-effort, nunca
+ * bloqueava a requisição principal, por isso nenhum 500 aparecia pro
+ * cliente) com "Provide at least one of parallelism or ratePerSecond for
+ * flowControl": faltava `flowControlParallelism`/`flowControlRate` nesta
+ * constante, e `flowControlKey` sozinho (sem nenhum dos dois) é
+ * combinação que o SDK do QStash rejeita antes mesmo de tentar publicar.
+ * `flowControlParallelism: 10` — nenhum provedor real por trás destes
+ * canais (FCM/WhatsApp/Twilio-like/e-mail transacional) tem problema com
+ * essa concorrência; o valor existe pra dar uma isolação básica entre
+ * canais (o motivo de cada canal ter sua própria `flowControlKey`), não
+ * pra represar entrega.
+ */
 const EXTERNAL_CHANNEL_JOB_OPTS = {
   retries: 3,
   failureCallbackRoute: "notifications/deliver/dlq",
+  flowControlParallelism: 10,
 };
 
 type PreferenceChannelKey = "receberPush" | "receberWhatsapp" | "receberSms" | "receberEmail";

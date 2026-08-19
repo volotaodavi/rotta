@@ -286,6 +286,34 @@ describe("NotificationsService", () => {
       expect(chaves).toContain("notifications-critical");
       expect(chaves).not.toContain("notifications-sms");
     });
+
+    // Achado real em produção (pedido do usuário: "deu erro inesperado"
+    // ao terminar de cadastrar um aluno) — `flowControlKey` sozinho, sem
+    // `flowControlParallelism`/`flowControlRate`, é combinação que o SDK
+    // do QStash rejeita ("Provide at least one of parallelism or
+    // ratePerSecond for flowControl"); como a publicação é best-effort
+    // (nunca derruba a requisição principal), isso vinha falhando calado
+    // em TODO canal externo — nenhum Push/WhatsApp/SMS/E-mail jamais saía.
+    it("toda publicação de canal externo (com flowControlKey) sempre leva flowControlParallelism ou flowControlRate — nunca só a key sozinha", async () => {
+      preferenceRepository.findByUser.mockResolvedValue(buildPreference());
+      channelSelector.selectChannels.mockReturnValue([
+        CommunicationChannel.PUSH,
+        CommunicationChannel.WHATSAPP,
+        CommunicationChannel.SMS,
+        CommunicationChannel.EMAIL,
+      ]);
+
+      await service.notify(baseInput({ prioridade: NotificationPriority.EMERGENCIA }));
+
+      expect(qstashPublisher.publishJSON.mock.calls.length).toBeGreaterThan(0);
+      for (const call of qstashPublisher.publishJSON.mock.calls) {
+        const options = call[2];
+        if (!options?.flowControlKey) continue;
+        expect(
+          options.flowControlParallelism !== undefined || options.flowControlRate !== undefined,
+        ).toBe(true);
+      }
+    });
   });
 
   describe("auditoria (best-effort)", () => {
