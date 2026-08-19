@@ -1,6 +1,15 @@
 "use client";
 
-import { Badge, Button, Card, Spinner, Table, Typography, buttonVariants } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  Spinner,
+  Table,
+  Typography,
+  buttonVariants,
+} from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -15,7 +24,6 @@ import {
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 
-
 /**
  * Listagem de Rotas (Empresa/Gestor) — achado da auditoria (pedido do
  * usuário: "o responsável... deverá mostrar qual motorista está se
@@ -28,10 +36,20 @@ import { useMyTeam } from "@/features/team/hooks/use-team";
  * botão de iniciar viagem (`/minha-rota` mostra "Nenhuma rota
  * atribuída" quando a lista vem vazia — não é um bug de UI, é a
  * consequência direta deste gap).
+ *
+ * Achado real (pedido do usuário: "tá dando erro ao criar uma rota"):
+ * esta tela — o ponto de entrada pra "Nova rota" — nunca tratava
+ * `isError` de `useRoutesList`; quando a busca falhava (ex. cold start
+ * do Render), `isLoading` virava `false` e `data` continuava
+ * `undefined`, então `items` também, e a condição `isLoading || !items`
+ * antiga ficava presa em spinner infinito pra sempre — sem erro visível
+ * nem botão de tentar de novo. Ficou de fora da varredura anterior de
+ * `ErrorState` (que cobriu marketplace/alunos-pre-cadastro/veiculo/
+ * equipe/chamados, mas não `/rotas`).
  */
 export default function RotasPage(): JSX.Element {
   const params: ListRoutesParams = { page: 1, pageSize: 100 };
-  const { data, isLoading } = useRoutesList(params);
+  const { data, isLoading, isError, refetch, isFetching } = useRoutesList(params);
   const { data: team } = useMyTeam();
   const [showAll, setShowAll] = useState(false);
 
@@ -65,10 +83,16 @@ export default function RotasPage(): JSX.Element {
             </Button>
           </div>
 
-          {isLoading || !items ? (
+          {isLoading ? (
             <div className="flex justify-center py-12">
               <Spinner size="lg" />
             </div>
+          ) : isError || !items ? (
+            <ErrorState
+              message="Não foi possível carregar as rotas."
+              onRetry={() => void refetch()}
+              isRetrying={isFetching}
+            />
           ) : items.length === 0 ? (
             <Typography variant="body" color="muted">
               Nenhuma rota ainda. Crie a primeira para começar a atender os alunos já credenciados.

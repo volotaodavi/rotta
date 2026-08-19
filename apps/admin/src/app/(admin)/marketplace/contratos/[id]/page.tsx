@@ -1,7 +1,7 @@
 "use client";
 
 import { Star } from "@rotta/icons";
-import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
@@ -20,14 +20,25 @@ export default function ContratoAdminDetalhePage({
 }): JSX.Element {
   const { id } = use(params);
   const router = useRouter();
-  const { data: contract, isLoading } = useContract(id);
+  const { data: contract, isLoading, isError, refetch, isFetching } = useContract(id);
   const { data: ratings } = useContractRatings(id);
 
-  if (isLoading || !contract) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro"): sem isso, uma falha na busca deixava a tela presa num spinner infinito, sem erro visível nem botão de tentar de novo. */
+  if (isError || !contract) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar este contrato."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 

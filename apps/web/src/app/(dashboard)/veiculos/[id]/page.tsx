@@ -4,6 +4,7 @@ import { ApiError } from "@rotta/api-client";
 import {
   Button,
   Card,
+  ErrorState,
   FormField,
   Input,
   Select,
@@ -80,14 +81,25 @@ export default function VeiculoDetalhePage({
 }): JSX.Element {
   const { id } = use(params);
   const router = useRouter();
-  const { data: vehicle, isLoading } = useVehicle(id);
+  const { data: vehicle, isLoading, isError, refetch, isFetching } = useVehicle(id);
   const [activeTab, setActiveTab] = useState("dados");
 
-  if (isLoading || !vehicle) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro"): sem isso, uma falha na busca deixava a tela presa num spinner infinito, sem erro visível nem botão de tentar de novo. */
+  if (isError || !vehicle) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar este veículo."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 

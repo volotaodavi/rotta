@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CreateTransportRequestData,
   ListTransportRequestsFilter,
   ListTransportRequestsResult,
   TransportRequestAccessScope,
   TransportRequestRepository,
+  TransportRequestWithRelations,
   UpdateTransportRequestStatusData,
 } from "./transport-request.repository";
 import type { Prisma, TransportRequest } from "@prisma/client";
@@ -24,6 +24,14 @@ function scopeWhere(scope: TransportRequestAccessScope): Prisma.TransportRequest
   };
 }
 
+/** Ver nota de `TransportRequestWithRelations` — só as leituras precisam do join. */
+const WITH_RELATIONS = {
+  student: { select: { nome: true } },
+  responsavel: { select: { nome: true, telefone: true, email: true } },
+  school: { select: { nomeOficial: true } },
+  company: { select: { nomeFantasia: true } },
+} satisfies Prisma.TransportRequestInclude;
+
 @Injectable()
 export class PrismaTransportRequestRepository implements TransportRequestRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -35,15 +43,21 @@ export class PrismaTransportRequestRepository implements TransportRequestReposit
   async findByIdScoped(
     id: string,
     scope: TransportRequestAccessScope,
-  ): Promise<TransportRequest | null> {
+  ): Promise<TransportRequestWithRelations | null> {
     const where: Prisma.TransportRequestWhereInput = { id, ...scopeWhere(scope) };
     return scope.responsavelId
-      ? this.prisma.withBypass(this.prisma.transportRequest.findFirst({ where }))
-      : this.prisma.withTenant(this.prisma.transportRequest.findFirst({ where }));
+      ? this.prisma.withBypass(
+          this.prisma.transportRequest.findFirst({ where, include: WITH_RELATIONS }),
+        )
+      : this.prisma.withTenant(
+          this.prisma.transportRequest.findFirst({ where, include: WITH_RELATIONS }),
+        );
   }
 
-  findById(id: string): Promise<TransportRequest | null> {
-    return this.prisma.withTenant(this.prisma.transportRequest.findFirst({ where: { id } }));
+  findById(id: string): Promise<TransportRequestWithRelations | null> {
+    return this.prisma.withTenant(
+      this.prisma.transportRequest.findFirst({ where: { id }, include: WITH_RELATIONS }),
+    );
   }
 
   findOpenByStudentAndCompany(
@@ -70,6 +84,7 @@ export class PrismaTransportRequestRepository implements TransportRequestReposit
     const findMany = () =>
       this.prisma.transportRequest.findMany({
         where,
+        include: WITH_RELATIONS,
         orderBy: { createdAt: "desc" },
         skip: (filter.page - 1) * filter.pageSize,
         take: filter.pageSize,

@@ -26,8 +26,24 @@ export interface ListTransportRequestsFilter extends TransportRequestAccessScope
   pageSize: number;
 }
 
+/**
+ * Achado real (pedido do usuário: "tá dando erro ao ver quem solicitou
+ * o transporte"): sem isso, a Empresa/Gestor só via UUIDs crus na tela
+ * — impossível de fato identificar quem pediu. Só as leituras
+ * (`findByIdScoped`/`findById`/`list`) carregam essas relações; `create`/
+ * `updateStatus` continuam devolvendo o registro cru (nunca renderizado
+ * direto pela tela — a query correspondente é invalidada e refeita).
+ */
+export interface TransportRequestWithRelations extends TransportRequest {
+  student: { nome: string };
+  responsavel: { nome: string; telefone: string; email: string };
+  school: { nomeOficial: string };
+  /** Nome fantasia da transportadora — usado pela visão cross-tenant do Admin Rotta (o `companyId` cru não identifica a empresa na tela). */
+  company: { nomeFantasia: string };
+}
+
 export interface ListTransportRequestsResult {
-  items: TransportRequest[];
+  items: TransportRequestWithRelations[];
   total: number;
 }
 
@@ -51,9 +67,12 @@ export interface UpdateTransportRequestStatusData {
  */
 export interface TransportRequestRepository {
   create(data: CreateTransportRequestData): Promise<TransportRequest>;
-  findByIdScoped(id: string, scope: TransportRequestAccessScope): Promise<TransportRequest | null>;
+  findByIdScoped(
+    id: string,
+    scope: TransportRequestAccessScope,
+  ): Promise<TransportRequestWithRelations | null>;
   /** Sem escopo — só Admin Rotta (bypass já concedido pelo `TenantGuard`). */
-  findById(id: string): Promise<TransportRequest | null>;
+  findById(id: string): Promise<TransportRequestWithRelations | null>;
   /** Checagem de duplicidade (briefing: não permitir 2 solicitações simultâneas para o mesmo par aluno/empresa) — sempre bypass, chamada durante `create`. */
   findOpenByStudentAndCompany(
     studentId: string,

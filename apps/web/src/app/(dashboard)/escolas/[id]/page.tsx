@@ -4,6 +4,7 @@ import { ApiError } from "@rotta/api-client";
 import {
   Button,
   Card,
+  ErrorState,
   FormField,
   Input,
   Select,
@@ -36,7 +37,6 @@ import {
   SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL,
 } from "@/features/schools/labels";
 
-
 const TABS = [
   { id: "dados", label: "Dados" },
   { id: "endereco", label: "Endereço" },
@@ -58,14 +58,25 @@ export default function EscolaDetalhePage({
 }): JSX.Element {
   const { id } = use(params);
   const router = useRouter();
-  const { data: school, isLoading } = useSchool(id);
+  const { data: school, isLoading, isError, refetch, isFetching } = useSchool(id);
   const [activeTab, setActiveTab] = useState("dados");
 
-  if (isLoading || !school) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro"): sem isso, uma falha na busca deixava a tela presa num spinner infinito, sem erro visível nem botão de tentar de novo. */
+  if (isError || !school) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar esta escola."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 

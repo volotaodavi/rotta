@@ -3,7 +3,10 @@ import { ConflictException, ForbiddenException, NotFoundException } from "@nestj
 import { ContractsService } from "../contracts.service";
 
 import type { ContractRepository } from "../repositories/contract.repository";
-import type { TransportRequestRepository } from "../repositories/transport-request.repository";
+import type {
+  TransportRequestRepository,
+  TransportRequestWithRelations,
+} from "../repositories/transport-request.repository";
 import type { TermoCienciaPdfService } from "../termo-ciencia-pdf.service";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -17,7 +20,7 @@ import type { StudentsService } from "@/modules/students/students.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { WalletService } from "@/modules/wallet/wallet.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
-import type { Company, Contract, School, Student, TransportRequest, User } from "@prisma/client";
+import type { Company, Contract, School, Student, User } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -35,7 +38,9 @@ const empresaActor: AuthenticatedUser = {
   vinculoId: "vinculo-1",
 };
 
-function buildTransportRequest(overrides: Partial<TransportRequest> = {}): TransportRequest {
+function buildTransportRequest(
+  overrides: Partial<TransportRequestWithRelations> = {},
+): TransportRequestWithRelations {
   return {
     id: "request-1",
     studentId: "student-1",
@@ -47,6 +52,10 @@ function buildTransportRequest(overrides: Partial<TransportRequest> = {}): Trans
     motivoRecusa: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    student: { nome: "Aluno Teste" },
+    responsavel: { nome: "Responsável Teste", telefone: "21987654321", email: "resp@teste.com" },
+    school: { nomeOficial: "Escola Teste" },
+    company: { nomeFantasia: "Transportadora Teste" },
     ...overrides,
   };
 }

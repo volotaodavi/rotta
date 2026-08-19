@@ -2,7 +2,7 @@
 
 import { ApiError } from "@rotta/api-client";
 import { Plus } from "@rotta/icons";
-import { Badge, Button, Card, FormField, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, ErrorState, FormField, Spinner, Typography } from "@rotta/ui/web";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -43,7 +43,7 @@ const STATUS_BADGE: Record<LegalDocumentVersionStatus, "neutral" | "info" | "war
 export default function DocumentoLegalDetalhePage(): JSX.Element {
   const params = useParams<{ id: string }>();
   const documentId = params.id;
-  const { data: document, isLoading } = useLegalDocument(documentId);
+  const { data: document, isLoading, isError, refetch, isFetching } = useLegalDocument(documentId);
 
   const createVersion = useCreateLegalDocumentVersion(documentId);
   const updateVersion = useUpdateLegalDocumentVersion(documentId);
@@ -73,11 +73,22 @@ export default function DocumentoLegalDetalhePage(): JSX.Element {
     }
   }
 
-  if (isLoading || !document) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro"): sem isso, uma falha na busca deixava a tela presa num spinner infinito, sem erro visível nem botão de tentar de novo. */
+  if (isError || !document) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar este documento."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 

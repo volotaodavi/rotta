@@ -113,12 +113,24 @@ export interface CreateTransportRequestInput {
   novoAluno?: CreateStudentInput;
 }
 
+/**
+ * Achado real (pedido do usuário: "tá dando erro ao ver quem solicitou
+ * o transporte"): sem os campos `*Nome`/`responsavelTelefone`, a tela
+ * só tinha UUIDs crus pra mostrar — impossível de fato "ver quem
+ * solicitou". Opcionais porque nem toda resposta do backend carrega o
+ * join (ver `TransportRequestResponseDto` na API).
+ */
 export interface TransportRequest {
   id: string;
   studentId: string;
+  studentNome?: string;
   responsavelId: string;
+  responsavelNome?: string;
+  responsavelTelefone?: string;
   companyId: string;
+  companyNome?: string;
   schoolId: string;
+  schoolNome?: string;
   turno: SchoolShift;
   status: TransportRequestStatus;
   motivoRecusa: string | null;

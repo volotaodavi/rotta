@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { use } from "react";
 
@@ -20,13 +20,24 @@ export default function SolicitacaoTransporteAdminDetalhePage({
 }): JSX.Element {
   const { id } = use(params);
   const router = useRouter();
-  const { data: request, isLoading } = useTransportRequest(id);
+  const { data: request, isLoading, isError, refetch, isFetching } = useTransportRequest(id);
 
-  if (isLoading || !request) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro ao ver quem solicitou o transporte"): sem isso, uma falha na busca deixava a tela presa num spinner infinito, sem erro visível nem botão de tentar de novo. */
+  if (isError || !request) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar esta solicitação."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
@@ -46,16 +57,17 @@ export default function SolicitacaoTransporteAdminDetalhePage({
         <Card.Header title="Dados da solicitação" />
         <Card.Body className="flex flex-col gap-2">
           <Typography variant="bodySmall" color="muted">
-            Empresa (ID): <span className="font-mono">{request.companyId}</span>
+            Transportadora: {request.companyNome ?? "—"}
+          </Typography>
+          <Typography variant="body" className="font-semibold">
+            {request.studentNome ?? "Aluno"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
-            Responsável (ID): <span className="font-mono">{request.responsavelId}</span>
+            Responsável: {request.responsavelNome ?? "—"}
+            {request.responsavelTelefone ? ` · ${request.responsavelTelefone}` : ""}
           </Typography>
           <Typography variant="bodySmall" color="muted">
-            Aluno (ID): <span className="font-mono">{request.studentId}</span>
-          </Typography>
-          <Typography variant="bodySmall" color="muted">
-            Escola (ID): <span className="font-mono">{request.schoolId}</span>
+            Escola: {request.schoolNome ?? "—"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
             Turno: {request.turno}

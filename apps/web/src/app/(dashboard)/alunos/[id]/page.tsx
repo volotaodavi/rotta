@@ -5,6 +5,7 @@ import { MapPin, Trash2 } from "@rotta/icons";
 import {
   Button,
   Card,
+  ErrorState,
   FormField,
   Input,
   Select,
@@ -37,7 +38,7 @@ export default function AlunoDetalhePage(): JSX.Element {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const studentId = params.id;
-  const { data: student, isLoading } = useStudent(studentId);
+  const { data: student, isLoading, isError, refetch, isFetching } = useStudent(studentId);
   const updateStudent = useUpdateStudent(studentId);
   const deleteStudent = useDeleteStudent();
 
@@ -88,11 +89,22 @@ export default function AlunoDetalhePage(): JSX.Element {
     }
   }
 
-  if (isLoading || !student) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro"): sem isso, uma falha na busca deixava a tela presa num spinner infinito, sem erro visível nem botão de tentar de novo. */
+  if (isError || !student) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar este aluno."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 

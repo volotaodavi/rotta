@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Button, Card, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
+import { Button, Card, ErrorState, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { use, useState, type FormEvent } from "react";
 
@@ -30,7 +30,7 @@ export default function SolicitacaoTransporteDetalhePage({
 }): JSX.Element {
   const { id } = use(params);
   const router = useRouter();
-  const { data: request, isLoading } = useTransportRequest(id);
+  const { data: request, isLoading, isError, refetch, isFetching } = useTransportRequest(id);
   const { data: contracts } = useContractsList({ pageSize: 100 });
   const marcarEmAnalise = useMarcarTransportRequestEmAnalise(id);
   const aprovar = useAprovarTransportRequest(id);
@@ -49,11 +49,30 @@ export default function SolicitacaoTransporteDetalhePage({
   const [motoristaId, setMotoristaId] = useState("");
   const [monitorId, setMonitorId] = useState("");
 
-  if (isLoading || !request) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /**
+   * Achado real (pedido do usuário: "tá dando erro ao ver quem
+   * solicitou o transporte"): esta tela nunca tratava `isError` —
+   * quando a busca falhava (ex. cold start do Render), `isLoading`
+   * virava `false` e `request` continuava `undefined` pra sempre: a
+   * tela ficava travada num spinner infinito, sem nenhum jeito de
+   * tentar de novo. Mesmo padrão `ErrorState` já usado no resto do
+   * painel.
+   */
+  if (isError || !request) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar esta solicitação."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
@@ -103,11 +122,15 @@ export default function SolicitacaoTransporteDetalhePage({
       <Card>
         <Card.Header title="Dados da solicitação" />
         <Card.Body className="flex flex-col gap-2">
-          <Typography variant="bodySmall" color="muted">
-            Aluno (ID): <span className="font-mono">{request.studentId}</span>
+          <Typography variant="body" className="font-semibold">
+            {request.studentNome ?? "Aluno"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
-            Escola (ID): <span className="font-mono">{request.schoolId}</span>
+            Responsável: {request.responsavelNome ?? "—"}
+            {request.responsavelTelefone ? ` · ${request.responsavelTelefone}` : ""}
+          </Typography>
+          <Typography variant="bodySmall" color="muted">
+            Escola: {request.schoolNome ?? "—"}
           </Typography>
           <Typography variant="bodySmall" color="muted">
             Turno: {request.turno}

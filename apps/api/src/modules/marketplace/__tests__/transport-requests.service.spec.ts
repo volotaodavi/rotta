@@ -7,7 +7,10 @@ import {
 
 import { TransportRequestsService } from "../transport-requests.service";
 
-import type { TransportRequestRepository } from "../repositories/transport-request.repository";
+import type {
+  TransportRequestRepository,
+  TransportRequestWithRelations,
+} from "../repositories/transport-request.repository";
 import type {
   TransporterCandidate,
   TransporterRepository,
@@ -15,7 +18,6 @@ import type {
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { StudentsService } from "@/modules/students/students.service";
-import type { TransportRequest } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -40,7 +42,9 @@ const adminActor: AuthenticatedUser = {
   vinculoId: "admin-1",
 };
 
-function buildTransportRequest(overrides: Partial<TransportRequest> = {}): TransportRequest {
+function buildTransportRequest(
+  overrides: Partial<TransportRequestWithRelations> = {},
+): TransportRequestWithRelations {
   return {
     id: "request-1",
     studentId: "student-1",
@@ -52,6 +56,10 @@ function buildTransportRequest(overrides: Partial<TransportRequest> = {}): Trans
     motivoRecusa: null,
     createdAt: new Date(),
     updatedAt: new Date(),
+    student: { nome: "Aluno Teste" },
+    responsavel: { nome: "Responsável Teste", telefone: "21987654321", email: "resp@teste.com" },
+    school: { nomeOficial: "Escola Teste" },
+    company: { nomeFantasia: "Transportadora Teste" },
     ...overrides,
   };
 }
@@ -245,6 +253,30 @@ describe("TransportRequestsService", () => {
       await expect(service.findByIdOrThrow("request-1", empresaActor)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    /**
+     * Pedido do usuário: "tá dando erro ao ver quem solicitou o
+     * transporte" — achado real: a Empresa só via UUIDs crus na tela,
+     * sem nenhum jeito de saber quem de fato pediu. `findByIdOrThrow`
+     * precisa devolver os nomes vindos do join do repositório.
+     */
+    it("expõe studentNome/responsavelNome/schoolNome quando o repositório devolve as relações", async () => {
+      transportRequestRepository.findByIdScoped.mockResolvedValue(
+        buildTransportRequest({
+          student: { nome: "Maria Aluna" },
+          responsavel: { nome: "João Responsável", telefone: "21999998888", email: "joao@x.com" },
+          school: { nomeOficial: "EM Antonio Lopes" },
+        }),
+      );
+
+      const result = await service.findByIdOrThrow("request-1", empresaActor);
+
+      expect(result.studentNome).toBe("Maria Aluna");
+      expect(result.responsavelNome).toBe("João Responsável");
+      expect(result.responsavelTelefone).toBe("21999998888");
+      expect(result.schoolNome).toBe("EM Antonio Lopes");
+      expect(result.companyNome).toBe("Transportadora Teste");
     });
   });
 

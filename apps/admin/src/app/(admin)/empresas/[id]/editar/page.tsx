@@ -1,7 +1,16 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Button, Card, FormField, Input, PhoneInput, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Button,
+  Card,
+  ErrorState,
+  FormField,
+  Input,
+  PhoneInput,
+  Spinner,
+  Typography,
+} from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState, type FormEvent } from "react";
 
@@ -19,7 +28,7 @@ export default function EditarEmpresaPage({
 }): JSX.Element {
   const { id } = use(params);
   const router = useRouter();
-  const { data: company, isLoading } = useCompany(id);
+  const { data: company, isLoading, isError, refetch, isFetching } = useCompany(id);
   const updateCompany = useUpdateCompany(id);
   const [form, setForm] = useState<FormState | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -61,11 +70,22 @@ export default function EditarEmpresaPage({
     }
   }
 
-  if (isLoading || !form) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro"): sem isso, uma falha na busca deixava a tela presa num spinner infinito (`form` nunca populava), sem erro visível nem botão de tentar de novo. */
+  if (isError || !company || !form) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar esta empresa."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 

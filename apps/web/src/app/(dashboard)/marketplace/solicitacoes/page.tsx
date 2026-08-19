@@ -8,7 +8,6 @@ import type { TransportRequest, TransportRequestStatus } from "@rotta/api-client
 import { TransportRequestStatusBadge } from "@/features/marketplace/components/transport-request-status-badge";
 import { useTransportRequestsList } from "@/features/marketplace/hooks/use-marketplace";
 
-
 const STATUS_OPTIONS: TransportRequestStatus[] = ["RECEBIDA", "EM_ANALISE", "APROVADA", "RECUSADA"];
 
 /**
@@ -74,9 +73,19 @@ export default function SolicitacoesTransportePage(): JSX.Element {
                 <Table<TransportRequest>
                   columns={[
                     {
-                      key: "id",
-                      header: "Solicitação",
-                      render: (request) => <span className="font-mono text-xs">{request.id}</span>,
+                      key: "studentNome",
+                      header: "Aluno",
+                      render: (request) => request.studentNome ?? "—",
+                    },
+                    {
+                      key: "responsavelNome",
+                      header: "Responsável",
+                      render: (request) => request.responsavelNome ?? "—",
+                    },
+                    {
+                      key: "schoolNome",
+                      header: "Escola",
+                      render: (request) => request.schoolNome ?? "—",
                     },
                     {
                       key: "createdAt",

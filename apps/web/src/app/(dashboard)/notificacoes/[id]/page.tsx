@@ -1,7 +1,7 @@
 "use client";
 
 import { Star } from "@rotta/icons";
-import { Badge, Button, Card, Modal, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, ErrorState, Modal, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { use, useEffect, useState } from "react";
 
@@ -32,7 +32,7 @@ export default function NotificacaoDetalhePage({
   const { id } = use(params);
   const router = useRouter();
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false);
-  const { data: notification, isLoading } = useNotification(id);
+  const { data: notification, isLoading, isError, refetch, isFetching } = useNotification(id);
   const markRead = useMarkNotificationRead();
   const setFavorita = useSetNotificationFavorita();
   const setArquivada = useSetNotificationArquivada();
@@ -45,11 +45,22 @@ export default function NotificacaoDetalhePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notification?.id, notification?.lida]);
 
-  if (isLoading || !notification) {
+  if (isLoading) {
     return (
       <div className="flex justify-center py-12">
         <Spinner size="lg" />
       </div>
+    );
+  }
+
+  /** Achado real (auditoria "tá dando erro"): sem isso, uma falha na busca deixava a tela presa num spinner infinito, sem erro visível nem botão de tentar de novo. */
+  if (isError || !notification) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar esta notificação."
+        onRetry={() => void refetch()}
+        isRetrying={isFetching}
+      />
     );
   }
 
