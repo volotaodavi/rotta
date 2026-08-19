@@ -1,10 +1,13 @@
 "use client";
 
-import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import { useAuth } from "@rotta/auth/web";
+import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import { useState } from "react";
 
 import type { IdentityVerificationStatus } from "@rotta/api-client";
 import type { BadgeVariant } from "@rotta/ui/web";
 
+import { InviteTeamMemberPanel } from "@/features/team/components/invite-team-member-panel";
 import { JoinRequestRow } from "@/features/team/components/join-request-row";
 import { usePendingJoinRequests } from "@/features/team/hooks/use-join-requests";
 import { useMyTeam } from "@/features/team/hooks/use-team";
@@ -43,18 +46,47 @@ const PAPEL_LABEL: Record<string, string> = {
  * esperando o resultado" — antes desta tela não havia ONDE olhar isso.
  */
 export default function EquipePage(): JSX.Element {
+  const { user } = useAuth();
   const { data: equipe, isLoading, isError, refetch, isFetching } = useMyTeam();
   const { data: pendingRequests, isLoading: isLoadingRequests } = usePendingJoinRequests();
+  const [painelAberto, setPainelAberto] = useState<"motorista" | "monitor" | null>(null);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-1">
-        <Typography variant="title">Equipe</Typography>
-        <Typography variant="bodySmall" color="muted">
-          Motoristas, monitores e gestores da sua empresa — incluindo o status da verificação de
-          identidade.
-        </Typography>
+      <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-1">
+          <Typography variant="title">Equipe</Typography>
+          <Typography variant="bodySmall" color="muted">
+            Motoristas, monitores e gestores da sua empresa — incluindo o status da verificação de
+            identidade.
+          </Typography>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPainelAberto(painelAberto === "motorista" ? null : "motorista")}
+          >
+            + Adicionar motorista
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPainelAberto(painelAberto === "monitor" ? null : "monitor")}
+          >
+            + Adicionar monitor
+          </Button>
+        </div>
       </div>
+
+      {painelAberto && (
+        <InviteTeamMemberPanel
+          companyId={user?.companyId}
+          role={painelAberto === "motorista" ? "motorista" : "monitor"}
+          label={painelAberto === "motorista" ? "Motorista" : "Monitor"}
+          onClose={() => setPainelAberto(null)}
+        />
+      )}
 
       {!isLoadingRequests && pendingRequests && pendingRequests.length > 0 ? (
         <Card>
