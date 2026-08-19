@@ -178,6 +178,58 @@ describe("GeoEngineService", () => {
     });
   });
 
+  describe("espaçamento entre chamadas reais ao Nominatim (throttleNominatim)", () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("espaça duas chamadas concorrentes em pelo menos 1.1s mesmo sem nenhum 429 — achado real investigando por que o reprocessamento em massa da Fila de Revisão Manual andava bem mais devagar que o flowControlPeriod do QStash: UM job sozinho já dispara geocode+reverseGeocode em sequência, e sem este espaçamento essa rajada interna furava a política pública do Nominatim (~1 req/seg) mesmo com o flowControl respeitado no início de cada job", async () => {
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve([
+            { lat: "-23.5", lon: "-46.6", display_name: "Endereço", importance: 0.5, address: {} },
+          ]),
+      });
+      global.fetch = fetchMock;
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+
+      const primeira = service.geocode("Endereço 1");
+      await jest.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      const segunda = service.geocode("Endereço 2");
+      await jest.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1); // 2ª chamada ainda represada, não saiu em rajada
+
+      await jest.advanceTimersByTimeAsync(1100);
+      await Promise.all([primeira, segunda]);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    });
+
+    it("nunca espera antes da 1ª chamada (throttle só entra a partir da 2ª)", async () => {
+      const fetchMock = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: () =>
+          Promise.resolve([
+            { lat: "-23.5", lon: "-46.6", display_name: "Endereço", importance: 0.5, address: {} },
+          ]),
+      });
+      global.fetch = fetchMock;
+      const service = new GeoEngineService(buildConfigService(), buildIntegrationHealthMock());
+
+      await service.geocode("Endereço 1");
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe("reverseGeocode", () => {
     it("extrai cidade e UF do address do Nominatim /reverse", async () => {
       mockFetchOnce(200, {

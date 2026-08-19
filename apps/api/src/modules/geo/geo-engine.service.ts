@@ -1,6 +1,8 @@
 import { BadGatewayException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
+import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
+
 import type {
   Coordenada,
   DirectionsResult,
@@ -10,8 +12,6 @@ import type {
 } from "./geo-engine.types";
 import type { GeoConfig } from "@/config/geo.config";
 
-import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
-
 /**
  * Nomes usados como chave nos snapshots de `IntegrationHealthService` —
  * dois provedores reais atrás do mesmo `GeoEngineService` (Nominatim
@@ -20,6 +20,28 @@ import { IntegrationHealthService } from "@/infra/observability/integration-heal
  */
 export const NOMINATIM_INTEGRATION_NAME = "nominatim";
 export const OSRM_INTEGRATION_NAME = "osrm";
+
+/**
+ * Intervalo mínimo entre disparos reais ao Nominatim (achado real
+ * investigando por que o reprocessamento em massa da Fila de Revisão
+ * Manual — pedido do usuário "fique rodando e investigue" — andava bem
+ * mais devagar que o teto do `flowControlPeriod: "1.1s"` do QStash: esse
+ * flowControl só espaça o INÍCIO de cada job de geocodificação, mas UM
+ * job sozinho já dispara várias chamadas sequenciais ao Nominatim
+ * (`geocode` + `reverseGeocode` por tentativa, até `MAX_TENTATIVAS`,
+ * mais a aproximação por município) sem nenhum espaçamento entre elas —
+ * furava a política pública de ~1 req/seg de dentro do próprio job,
+ * cada 429 custava a espera de `fetchNominatim` (2s) e, quando o retry
+ * também esbarrava em 429, o job inteiro falhava e reentrava no backoff
+ * de retry do QStash (bem mais lento que só esperar a vaga). Mesmo valor
+ * de `flowControlPeriod` acima, agora aplicado a CADA chamada real (não
+ * só ao início do job) — `GeoEngineService` é singleton (sem `Scope`
+ * declarado no módulo), então esta fila serializa todo o processo,
+ * cobrindo tanto chamadas sequenciais de um mesmo job quanto qualquer
+ * outra chamada concorrente (geocode avulso de endereço de aluno, prévia
+ * de rota, autocadastro de escola).
+ */
+const NOMINATIM_MIN_INTERVAL_MS = 1100;
 
 /**
  * Nominatim rate-limitou (HTTP 429) mesmo após a retentativa automática de
@@ -171,6 +193,11 @@ interface OsrmTripResponse {
 export class GeoEngineService {
   private readonly config: GeoConfig;
 
+  /** Timestamp (epoch ms) do último disparo real ao Nominatim — cursor da fila de `throttleNominatim`, nunca lido/escrito fora dela. */
+  private lastNominatimCallAt = 0;
+  /** Fila serial: cada chamada encadeia na anterior, garantindo que os disparos ao Nominatim nunca saem em rajada mesmo com chamadas concorrentes (`Promise.all`, requisições HTTP simultâneas). */
+  private nominatimQueue: Promise<void> = Promise.resolve();
+
   constructor(
     configService: ConfigService,
     private readonly integrationHealth: IntegrationHealthService,
@@ -183,18 +210,41 @@ export class GeoEngineService {
   }
 
   /**
+   * Serializa e espaça (`NOMINATIM_MIN_INTERVAL_MS`) todo disparo real ao
+   * Nominatim neste processo — ver o comentário da constante acima pro
+   * porquê. Encadear em `this.nominatimQueue` (em vez de só checar/gravar
+   * `lastNominatimCallAt` direto) evita a corrida onde duas chamadas
+   * concorrentes leem o mesmo timestamp "antigo" e as duas decidem que já
+   * podem disparar.
+   */
+  private async throttleNominatim(): Promise<void> {
+    const vez = this.nominatimQueue.then(async () => {
+      const espera = this.lastNominatimCallAt + NOMINATIM_MIN_INTERVAL_MS - Date.now();
+      if (espera > 0) {
+        await new Promise((resolve) => setTimeout(resolve, espera));
+      }
+      this.lastNominatimCallAt = Date.now();
+    });
+    this.nominatimQueue = vez;
+    await vez;
+  }
+
+  /**
    * `fetch` para o Nominatim com UMA retentativa automática em 429 (rate
-   * limit — política pública é ~1 req/seg, e outro consumidor no mesmo
-   * processo, ex. uma importação em massa, pode colidir com uma chamada
-   * pontual do produto). Uma espera curta + nova tentativa resolve a
-   * colisão pontual na maioria dos casos sem precisar propagar erro.
+   * limit — política pública é ~1 req/seg; `throttleNominatim` já evita a
+   * maioria das colisões, mas o Nominatim público é compartilhado com
+   * quem mais estiver usando a mesma instância, então o 429 ainda pode
+   * acontecer). Uma espera curta + nova tentativa resolve a colisão
+   * pontual na maioria dos casos sem precisar propagar erro.
    */
   private async fetchNominatim(url: string): Promise<Response> {
+    await this.throttleNominatim();
     const primeira = await fetch(url, { headers: this.nominatimHeaders() });
     if (primeira.status !== 429) {
       return primeira;
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
+    await this.throttleNominatim();
     return fetch(url, { headers: this.nominatimHeaders() });
   }
 
