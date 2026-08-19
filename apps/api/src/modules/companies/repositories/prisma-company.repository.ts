@@ -52,9 +52,11 @@ export class PrismaCompanyRepository implements CompanyRepository {
   }
 
   findActiveByCodigoInterno(codigoInterno: string): Promise<Company | null> {
+    // "ATIVO" (não SUSPENSO/CANCELADO) — ver o porquê de não ser
+    // literalmente `status: "ATIVO"` no doc da interface.
     return this.prisma.withBypass(
       this.prisma.company.findFirst({
-        where: { codigoInterno, status: "ATIVO", deletedAt: null },
+        where: { codigoInterno, status: { notIn: ["SUSPENSO", "CANCELADO"] }, deletedAt: null },
       }),
     );
   }

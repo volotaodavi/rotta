@@ -88,11 +88,29 @@ export interface CompanyRepository {
   /** Consumida via `nextval(...)` em `CompaniesService.generateCodigoInterno()` — mesmo padrão de `SchoolRepository.nextCodigoInternoSequence`. */
   nextCodigoInternoSequence(): Promise<number>;
   /**
-   * Frente N — resolve `Company.codigoInterno` (mesmo código público do
-   * Marketplace, Frente M) para `CompanyJoinRequestsService.create`.
+   * Frente N — resolve `Company.codigoInterno` para
+   * `CompanyJoinRequestsService.create` e `StudentPreRegistrationsService.lookup`.
    * Bypass de RLS (mesmo motivo de `TransporterRepository.findCandidateByCodigoInterno`
-   * — quem chama ainda não tem tenant). Só empresas `ATIVO`, não
-   * excluídas — mesmo filtro do Marketplace.
+   * — quem chama ainda não tem tenant).
+   *
+   * ACHADO REAL (pedido do usuário: código+celular corretos batendo
+   * "não foi possível encontrar"): copiava literalmente o filtro
+   * `status: "ATIVO"` do Marketplace (`TransporterRepository.
+   * findCandidateByCodigoInterno`), mas os dois usos daqui são bem
+   * diferentes de "aparecer pra um Responsável desconhecido buscar
+   * transportadora nova" — são um motorista/monitor ou Responsável que
+   * JÁ tem uma relação com a empresa (o código veio da própria
+   * transportadora, por WhatsApp/papel) tentando se vincular a algo que
+   * ela mesma já criou. `Company.status` só vira `ATIVO` depois da
+   * assinatura paga confirmada (`BillingService`, webhook AbacatePay) —
+   * toda empresa nova começa em `TRIAL` (`@default(TRIAL)`) e É
+   * exatamente durante o trial que a transportadora mais precisa
+   * cadastrar motoristas/alunos pra provar valor antes de pagar. Corrigido
+   * pra bloquear só os status que realmente significam "não deveria
+   * operar" (`SUSPENSO`: bloqueio manual do Admin Rotta; `CANCELADO`:
+   * não é mais cliente) — `TRIAL`/`INADIMPLENTE` continuam encontráveis,
+   * ao contrário do Marketplace (que decide deliberadamente só recomendar
+   * transportadoras pagantes pra Responsável NOVO descobrir).
    */
   findActiveByCodigoInterno(codigoInterno: string): Promise<Company | null>;
 }
