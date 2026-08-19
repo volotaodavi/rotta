@@ -77,6 +77,15 @@ export interface SchoolRepository {
   /** Busca em lote por `codigoInep` (Education Sync Agent — evita N consultas ao diferenciar um lote do Censo Escolar contra a base atual). */
   findManyByCodigosInep(codigosInep: string[]): Promise<School[]>;
   update(id: string, data: UpdateSchoolData): Promise<School>;
+  /**
+   * Troca de status EM MASSA (briefing "STATUS" + pedido do usuário:
+   * "passe todas as escolas [EM_ANALISE] para ativa") — um único
+   * `updateMany` no banco, nunca um loop de `update()` por linha (o
+   * catálogo nacional importado do INEP passa de 150 mil escolas; um
+   * loop levaria horas e geraria uma linha de `AuditLog` por escola).
+   * Devolve quantas linhas foram afetadas.
+   */
+  updateStatusBulk(fromStatus: SchoolStatus, toStatus: SchoolStatus): Promise<number>;
   list(filter: ListSchoolsFilter): Promise<ListSchoolsResult>;
   /** Todas as escolas ativas (para dashboard/mapa) — opcionalmente escopadas a uma Empresa via vínculo vigente. */
   listAllActive(companyId?: string): Promise<School[]>;

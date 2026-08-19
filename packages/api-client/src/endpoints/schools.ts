@@ -288,6 +288,23 @@ export function createSchoolsEndpoints(apiClient: ApiClient) {
         })
       ).data,
 
+    /**
+     * Troca de status EM MASSA (só Admin Rotta) — pedido do usuário:
+     * "as escolas que estiverem com o status de 'em análise', passe
+     * todas as escolas para 'ativa'". Um único `PATCH`, nunca um loop
+     * de `updateStatus()` chamado escola por escola.
+     */
+    bulkUpdateStatus: async (
+      fromStatus: SchoolStatus,
+      toStatus: SchoolStatus,
+    ): Promise<{ quantidadeAtualizada: number }> =>
+      (
+        await apiClient.request<ApiEnvelope<{ quantidadeAtualizada: number }>>(
+          "/schools/status/bulk",
+          { method: "PATCH", body: { fromStatus, toStatus } },
+        )
+      ).data,
+
     remove: async (id: string): Promise<void> => {
       await apiClient.request(`/schools/${id}`, { method: "DELETE" });
     },

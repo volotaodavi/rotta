@@ -18,6 +18,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 
+import { BulkUpdateSchoolStatusDto } from "./dto/bulk-update-school-status.dto";
 import { CreateSchoolAccessPointDto } from "./dto/create-school-access-point.dto";
 import { CreateSchoolCompanyLinkDto } from "./dto/create-school-company-link.dto";
 import { CreateSchoolDto } from "./dto/create-school.dto";
@@ -119,6 +120,22 @@ export class SchoolsController {
         "Content-Disposition": `attachment; filename="${filename}"`,
       })
       .send(buffer);
+  }
+
+  /**
+   * Troca de status EM MASSA — literal, precisa vir antes de `:id/status`
+   * (mesma precaução do resto da classe). Só Admin Rotta, ao contrário
+   * de `:id/status` (`MANAGE_ROLES`): isto afeta o catálogo nacional
+   * inteiro de uma vez, não uma escola de uma Empresa específica.
+   */
+  @Patch("status/bulk")
+  @Roles(Role.ADMIN_ROTTA)
+  bulkUpdateStatus(
+    @Body() dto: BulkUpdateSchoolStatusDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.schoolsService.bulkUpdateStatus(dto, actor, requestMeta(req));
   }
 
   @Post("import")

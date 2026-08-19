@@ -39,6 +39,7 @@ import {
   SCHOOL_REPOSITORY,
 } from "./schools.constants";
 
+import type { BulkUpdateSchoolStatusDto } from "./dto/bulk-update-school-status.dto";
 import type { CreateSchoolAccessPointDto } from "./dto/create-school-access-point.dto";
 import type { CreateSchoolCompanyLinkDto } from "./dto/create-school-company-link.dto";
 import type { CreateSchoolDto } from "./dto/create-school.dto";
@@ -344,6 +345,42 @@ export class SchoolsService {
     });
 
     return toSchoolResponseDto(updated);
+  }
+
+  /**
+   * Troca de status EM MASSA — só Admin Rotta (`@Roles(Role.ADMIN_ROTTA)`
+   * no controller). Pedido do usuário: "as escolas que estiverem com o
+   * status de 'em análise', passe todas as escolas para 'ativa'". Um
+   * único `updateMany` (nunca um loop de `updateStatus()` por escola —
+   * o catálogo nacional importado do INEP passa de 150 mil linhas) e
+   * UMA linha de auditoria resumindo a ação (não uma por escola, que
+   * inundaria `AuditLog` sem agregar nenhuma informação nova).
+   */
+  async bulkUpdateStatus(
+    dto: BulkUpdateSchoolStatusDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<{ quantidadeAtualizada: number }> {
+    if (dto.fromStatus === dto.toStatus) {
+      throw new BadRequestException("fromStatus e toStatus não podem ser iguais.");
+    }
+
+    const quantidadeAtualizada = await this.schoolRepository.updateStatusBulk(
+      dto.fromStatus,
+      dto.toStatus,
+    );
+
+    await this.recordAudit({
+      entidadeId: "bulk",
+      acao: "STATUS_CHANGED_BULK",
+      atorUserId: actor.sub,
+      dadosAntes: { status: dto.fromStatus },
+      dadosDepois: { status: dto.toStatus, quantidadeAtualizada },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return { quantidadeAtualizada };
   }
 
   async remove(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<void> {

@@ -118,6 +118,7 @@ describe("SchoolsService", () => {
       findByCodigoInep: jest.fn(),
       findManyByCodigosInep: jest.fn(),
       update: jest.fn(),
+      updateStatusBulk: jest.fn(),
       list: jest.fn(),
       listAllActive: jest.fn(),
       searchCandidates: jest.fn(),
@@ -318,6 +319,32 @@ describe("SchoolsService", () => {
       await expect(
         service.update("school-1", { codigoInep: "999" }, empresaActor, {}),
       ).rejects.toThrow(ConflictException);
+    });
+  });
+
+  describe("bulkUpdateStatus", () => {
+    it("rejeita fromStatus igual a toStatus", async () => {
+      await expect(
+        service.bulkUpdateStatus(
+          { fromStatus: "EM_ANALISE", toStatus: "EM_ANALISE" },
+          adminActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(schoolRepository.updateStatusBulk).not.toHaveBeenCalled();
+    });
+
+    it("faz um único updateMany e devolve a quantidade atualizada", async () => {
+      schoolRepository.updateStatusBulk.mockResolvedValue(155815);
+
+      const result = await service.bulkUpdateStatus(
+        { fromStatus: "EM_ANALISE", toStatus: "ATIVA" },
+        adminActor,
+        {},
+      );
+
+      expect(schoolRepository.updateStatusBulk).toHaveBeenCalledWith("EM_ANALISE", "ATIVA");
+      expect(result).toEqual({ quantidadeAtualizada: 155815 });
     });
   });
 

@@ -7,7 +7,7 @@ import type {
   SchoolRepository,
   UpdateSchoolData,
 } from "./school.repository";
-import type { Prisma, School } from "@prisma/client";
+import type { Prisma, School, SchoolStatus } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 
@@ -42,6 +42,14 @@ export class PrismaSchoolRepository implements SchoolRepository {
 
   update(id: string, data: UpdateSchoolData): Promise<School> {
     return this.prisma.school.update({ where: { id }, data });
+  }
+
+  async updateStatusBulk(fromStatus: SchoolStatus, toStatus: SchoolStatus): Promise<number> {
+    const result = await this.prisma.school.updateMany({
+      where: { status: fromStatus, deletedAt: null },
+      data: { status: toStatus },
+    });
+    return result.count;
   }
 
   async list(filter: ListSchoolsFilter): Promise<ListSchoolsResult> {

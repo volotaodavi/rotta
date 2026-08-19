@@ -62,6 +62,23 @@ export function useUpdateSchoolStatus(id: string) {
 }
 
 /**
+ * Troca de status EM MASSA (pedido do usuário: "as escolas que
+ * estiverem com o status de 'em análise', passe todas as escolas para
+ * 'ativa'") — um único `PATCH`, nunca um loop escola por escola (o
+ * catálogo nacional importado do INEP passa de 150 mil linhas).
+ */
+export function useBulkUpdateSchoolStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ fromStatus, toStatus }: { fromStatus: SchoolStatus; toStatus: SchoolStatus }) =>
+      schoolsApi.bulkUpdateStatus(fromStatus, toStatus),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["schools"] });
+    },
+  });
+}
+
+/**
  * Education Sync Agent (Dossiê 14) — sem disparar isso pelo menos uma
  * vez em produção, o catálogo `School` (compartilhado, sem
  * `companyId`) fica vazio pra toda a plataforma: nenhuma empresa

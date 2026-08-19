@@ -8,6 +8,7 @@ import type { ListSchoolsParams, School, SchoolStatus, SchoolType } from "@rotta
 
 import { SchoolStatusBadge } from "@/features/schools/components/school-status-badge";
 import {
+  useBulkUpdateSchoolStatus,
   useInepSyncStatus,
   useSchoolDashboard,
   useSchoolsList,
@@ -48,6 +49,17 @@ export default function EscolasAdminPage(): JSX.Element {
 
   const syncInep = useSyncInep();
   const { data: inepStatus } = useInepSyncStatus();
+  const bulkUpdateStatus = useBulkUpdateSchoolStatus();
+
+  // Só pra mostrar "quantas escolas isso afeta" no botão/confirmação
+  // abaixo — não tem relação com os filtros que o usuário escolheu na
+  // tabela (aquele `params` é sobre o que É EXIBIDO; este é sobre o que
+  // SERIA ativado, sempre EM_ANALISE, sempre o catálogo inteiro).
+  const { data: emAnaliseCount } = useSchoolsList({
+    status: "EM_ANALISE",
+    page: 1,
+    pageSize: 1,
+  });
 
   const params: ListSchoolsParams = {
     search: search || undefined,
@@ -149,6 +161,60 @@ export default function EscolasAdminPage(): JSX.Element {
           </Card.Body>
         ) : null}
       </Card>
+
+      {/*
+        Pedido do usuário: "as escolas que estiverem com o status de 'em
+        análise', passe todas as escolas para 'ativa'". Um único
+        `PATCH /schools/status/bulk` (nunca um clique por escola — o
+        catálogo importado do INEP passa de 150 mil linhas). Continua
+        valendo pra qualquer nova leva `EM_ANALISE` que entrar depois
+        (nova sincronização INEP, autocadastro do Responsável): o botão
+        fica disponível pra rodar de novo quando fizer sentido.
+      */}
+      {(emAnaliseCount?.total ?? 0) > 0 && (
+        <Card>
+          <Card.Body className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-1">
+              <Typography variant="bodySmall" className="font-semibold">
+                {emAnaliseCount?.total.toLocaleString("pt-BR")} escolas aguardando revisão
+              </Typography>
+              <Typography variant="caption" color="muted">
+                Status &quot;Em análise&quot; — dado de origem externa/lote
+                (importação/sincronização INEP) que ainda não foi confirmado manualmente.
+              </Typography>
+            </div>
+            <Button
+              variant="secondary"
+              isLoading={bulkUpdateStatus.isPending}
+              onClick={() => {
+                const quantidade = emAnaliseCount?.total ?? 0;
+                const confirmado = window.confirm(
+                  `Ativar TODAS as ${quantidade.toLocaleString("pt-BR")} escolas com status "Em análise"? Elas passam a aparecer em buscas e no mapa imediatamente.`,
+                );
+                if (!confirmado) return;
+                bulkUpdateStatus.mutate({ fromStatus: "EM_ANALISE", toStatus: "ATIVA" });
+              }}
+            >
+              Ativar todas em análise
+            </Button>
+          </Card.Body>
+          {bulkUpdateStatus.isSuccess && (
+            <Card.Body className="pt-0">
+              <Typography variant="bodySmall" color="success">
+                {bulkUpdateStatus.data.quantidadeAtualizada.toLocaleString("pt-BR")} escolas
+                ativadas.
+              </Typography>
+            </Card.Body>
+          )}
+          {bulkUpdateStatus.isError && (
+            <Card.Body className="pt-0">
+              <Typography variant="bodySmall" color="danger">
+                Não foi possível ativar as escolas. Tente novamente.
+              </Typography>
+            </Card.Body>
+          )}
+        </Card>
+      )}
 
       {dashboard && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
