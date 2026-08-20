@@ -68,7 +68,7 @@ export function createClientErrorsEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<ClientErrorReport>>("/client-errors", {
           method: "POST",
-          body: JSON.stringify(input),
+          body: input,
         })
       ).data,
 
