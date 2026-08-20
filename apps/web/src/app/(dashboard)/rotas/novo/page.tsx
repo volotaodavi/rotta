@@ -3,7 +3,6 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
-import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
 import type { CreateRouteInput, RouteWeekday, SchoolShift } from "@rotta/api-client";
@@ -60,7 +59,6 @@ const INITIAL_STATE: CreateRouteInput = {
  * com o campo de seleção.
  */
 export default function NovaRotaPage(): JSX.Element {
-  const router = useRouter();
   const { user } = useAuth();
   const createRoute = useCreateRoute();
   const { data: team } = useMyTeam();
@@ -103,7 +101,17 @@ export default function NovaRotaPage(): JSX.Element {
     }
     try {
       const route = await createRoute.mutateAsync(form);
-      router.replace(`/rotas/${route.id}`);
+      // Navegação FORÇADA (recarga completa), não `router.replace` — achado
+      // real depurando o "algo deu errado" logo após criar uma rota
+      // (pedido do usuário, ver `apps/web/src/lib/report-client-error.ts`):
+      // o `/rotas/[id]` recém-criado nunca foi buscado antes nesta sessão,
+      // e a navegação client-side do App Router pra um segmento dinâmico
+      // 100% novo intermitentemente falha em produção (não reproduz nem em
+      // `next dev` nem em `next build && next start` locais — só no
+      // deployment real da Vercel; a mesma URL via requisição nova, direta,
+      // sempre volta limpa). Uma recarga completa sempre busca o HTML fresco
+      // do servidor, sem depender do streaming RSC da navegação em memória.
+      window.location.href = `/rotas/${route.id}`;
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Erro inesperado ao criar a rota.",
