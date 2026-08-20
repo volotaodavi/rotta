@@ -63,7 +63,7 @@ vi.mock("@/components/driver-bottom-nav", () => ({
   DriverBottomNav: () => null,
 }));
 
-describe("DashboardLayout — guard de rota do Modo Ação", () => {
+describe("DashboardLayout: guard de rota do Modo Ação", () => {
   afterEach(() => {
     cleanup();
     replaceMock.mockClear();

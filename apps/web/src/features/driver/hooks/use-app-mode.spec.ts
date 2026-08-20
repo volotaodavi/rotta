@@ -77,13 +77,13 @@ describe("useAppMode", () => {
     expect(result.current.mode).toBe("completo");
   });
 
-  it("padrão é 'acao' na primeira vez, rodando como app instalado (standalone) — nunca escolheu antes", () => {
+  it("padrão é 'acao' na primeira vez, rodando como app instalado (standalone): nunca escolheu antes", () => {
     mockStandalone(true);
     const { result } = renderHook(() => useAppMode(buildUser()));
     expect(result.current.mode).toBe("acao");
   });
 
-  it("respeita a escolha salva mesmo rodando standalone — o palpite inicial nunca sobrescreve uma escolha explícita", () => {
+  it("respeita a escolha salva mesmo rodando standalone: o palpite inicial nunca sobrescreve uma escolha explícita", () => {
     const user = buildUser();
     localStorage.setItem(`rotta-app-mode:${user.id}`, "completo");
     mockStandalone(true);
