@@ -1,16 +1,6 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  Card,
-  ErrorState,
-  Spinner,
-  Table,
-  Typography,
-  buttonVariants,
-} from "@rotta/ui/web";
-import Link from "next/link";
+import { Badge, Button, Card, ErrorState, Spinner, Table, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { ListRoutesParams, Route } from "@rotta/api-client";
@@ -38,14 +28,19 @@ import { useMyTeam } from "@/features/team/hooks/use-team";
  * consequência direta deste gap).
  *
  * Achado real (pedido do usuário: "tá dando erro ao criar uma rota"):
- * esta tela — o ponto de entrada pra "Nova rota" — nunca tratava
- * `isError` de `useRoutesList`; quando a busca falhava (ex. cold start
- * do Render), `isLoading` virava `false` e `data` continuava
- * `undefined`, então `items` também, e a condição `isLoading || !items`
- * antiga ficava presa em spinner infinito pra sempre — sem erro visível
- * nem botão de tentar de novo. Ficou de fora da varredura anterior de
- * `ErrorState` (que cobriu marketplace/alunos-pre-cadastro/veiculo/
- * equipe/chamados, mas não `/rotas`).
+ * esta tela nunca tratava `isError` de `useRoutesList`; quando a busca
+ * falhava (ex. cold start do Render), `isLoading` virava `false` e
+ * `data` continuava `undefined`, então `items` também, e a condição
+ * `isLoading || !items` antiga ficava presa em spinner infinito pra
+ * sempre — sem erro visível nem botão de tentar de novo. Ficou de fora
+ * da varredura anterior de `ErrorState` (que cobriu marketplace/alunos-
+ * pre-cadastro/veiculo/equipe/chamados, mas não `/rotas`).
+ *
+ * O botão "Nova rota" (`/rotas/novo`) foi removido a pedido explícito
+ * do usuário — ver a nota completa em
+ * `apps/web/src/features/routes/hooks/use-routes.ts`. Esta tela
+ * continua mostrando e permitindo abrir (editar paradas/alunos/status)
+ * qualquer rota já existente normalmente.
  */
 export default function RotasPage(): JSX.Element {
   const params: ListRoutesParams = { page: 1, pageSize: 100 };
@@ -62,17 +57,12 @@ export default function RotasPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <Typography variant="title">Rotas</Typography>
-          <Typography variant="bodySmall" color="muted">
-            Crie a rota, atribua um motorista/veículo e adicione os alunos já credenciados: é isso
-            que faz a rota aparecer em tempo real para o motorista e para os responsáveis.
-          </Typography>
-        </div>
-        <Link href="/rotas/novo" className={buttonVariants({ variant: "primary" })}>
-          Nova rota
-        </Link>
+      <div>
+        <Typography variant="title">Rotas</Typography>
+        <Typography variant="bodySmall" color="muted">
+          Abra uma rota para atribuir motorista/veículo e adicionar os alunos já credenciados: é
+          isso que faz a rota aparecer em tempo real para o motorista e para os responsáveis.
+        </Typography>
       </div>
 
       <Card>
@@ -95,7 +85,7 @@ export default function RotasPage(): JSX.Element {
             />
           ) : items.length === 0 ? (
             <Typography variant="body" color="muted">
-              Nenhuma rota ainda. Crie a primeira para começar a atender os alunos já credenciados.
+              Nenhuma rota ainda.
             </Typography>
           ) : (
             <Table<Route>

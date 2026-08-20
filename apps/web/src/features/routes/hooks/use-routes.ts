@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
   AddRouteStudentInput,
-  CreateRouteInput,
   CreateRouteStopInput,
   ListRoutesParams,
   UpdateRouteInput,
@@ -13,18 +12,19 @@ import type {
 import { rottaAiApi, routesApi } from "@/lib/api-client";
 
 /**
- * Hooks de dados do módulo Rotas — auto-serviço de Empresa/Gestor
- * (`/rotas`, `/rotas/novo`, `/rotas/[id]`). Achado da auditoria (pedido
- * do usuário: "o responsável... deverá mostrar qual motorista está se
- * credenciando e de fato credenciar aquele motorista. Mostrando a rota
- * em tempo real"): a API de Rotas (`RoutesController`, Frente #92-108)
- * sempre existiu completa, mas NENHUMA tela em nenhuma plataforma
- * (web/admin/mobile) chamava `POST /routes`, `POST /routes/:id/stops`
- * ou `POST /routes/:id/students` — só a leitura (`useMinhasRotas`,
- * `use-driver-routes.ts`) existia. Sem isso, nenhum aluno linkado por
- * Contrato podia efetivamente entrar numa Rota, então nenhum motorista
- * "se credenciava" e a Rota nunca aparecia em tempo real pra ninguém.
- * Mesmo padrão de `use-schools.ts`/`use-vehicles.ts`.
+ * Hooks de dados do módulo Rotas — `/rotas`, `/rotas/[id]`.
+ *
+ * `POST /routes` (criar rota nova) foi removido desta interface a
+ * pedido explícito do usuário ("apague a opção de criar rota inteira"),
+ * depois de uma investigação extensa sobre um "algo deu errado"
+ * recorrente logo após a criação que não foi possível resolver a tempo
+ * — ver o histórico de `apps/web/src/app/(dashboard)/error.tsx` e
+ * `apps/web/src/lib/global-error-capture.ts`. As rotas já existentes
+ * continuam totalmente visíveis e editáveis (`/rotas`, `/rotas/[id]`,
+ * paradas, alunos, otimização) — só a criação de uma rota NOVA pelo
+ * painel foi retirada. O endpoint `POST /routes` continua existindo no
+ * backend (`RoutesController`) — só não há mais nenhum botão/tela nesta
+ * app que o chame.
  */
 export function useRoutesList(params: ListRoutesParams) {
   return useQuery({
@@ -58,16 +58,6 @@ export function useUpdateRoute(id: string) {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["routes"] });
       void queryClient.invalidateQueries({ queryKey: ["driver", "routes"] });
-    },
-  });
-}
-
-export function useCreateRoute() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateRouteInput) => routesApi.create(input),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["routes"] });
     },
   });
 }
