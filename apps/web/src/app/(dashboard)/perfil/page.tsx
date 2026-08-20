@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { BookOpen, Bell, LogOut, MessageCircle, ShieldCheck, Wallet } from "@rotta/icons";
+import { BookOpen, Bell, LogOut, MessageCircle, ShieldCheck } from "@rotta/icons";
 import { Card, PanelGreeting, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,7 +32,6 @@ interface AtalhoPerfil {
  * Documentação/Sair).
  */
 const ATALHOS_PERFIL_MOTORISTA: AtalhoPerfil[] = [
-  { href: "/rotta-pay", label: "Rotta Pay", icon: Wallet },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/chamados", label: "Chamados", icon: MessageCircle },
   { href: "/verificacao-identidade", label: "Verificar identidade", icon: ShieldCheck },

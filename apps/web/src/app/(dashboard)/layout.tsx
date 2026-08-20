@@ -37,7 +37,6 @@ const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/veiculos", label: "Veículos" },
   { href: "/escolas", label: "Escolas" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
-  { href: "/rotta-pay", label: "Rotta Pay" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
   { href: "/notificacoes", label: "Notificações" },
   { href: "/chamados", label: "Chamados" },
@@ -62,18 +61,17 @@ const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
  * está em 'modo de ação', ele não consegue clicar em nenhuma opção na
  * página de 'perfil'"): a lista só cobria os 4 destinos da barra
  * inferior, mas `ATALHOS_PERFIL` (`app/(dashboard)/perfil/page.tsx`)
- * linka pra 5 páginas fora dela — `/rotta-pay`, `/notificacoes`,
- * `/chamados`, `/verificacao-identidade`, `/legal`. Sem elas aqui, o
- * clique em qualquer atalho do Perfil navegava e era imediatamente
- * revertido pra `/minha-rota` por este mesmo guard, no próximo
- * `useEffect` — parecia que o botão não fazia nada.
+ * linka pra páginas fora dela — `/notificacoes`, `/chamados`,
+ * `/verificacao-identidade`, `/legal`. Sem elas aqui, o clique em
+ * qualquer atalho do Perfil navegava e era imediatamente revertido pra
+ * `/minha-rota` por este mesmo guard, no próximo `useEffect` — parecia
+ * que o botão não fazia nada.
  */
 const DRIVER_MODE_ALLOWED_PREFIXES = [
   "/minha-rota",
   "/atividades",
   "/veiculo",
   "/perfil",
-  "/rotta-pay",
   "/notificacoes",
   "/chamados",
   "/verificacao-identidade",

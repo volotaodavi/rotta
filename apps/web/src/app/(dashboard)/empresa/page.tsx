@@ -13,7 +13,6 @@ import {
   Sparkles,
   Store,
   Users,
-  Wallet,
   X,
 } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
@@ -267,20 +266,21 @@ interface AtalhoTile {
  * Atalhos rápidos do Painel (Frente L) — mesmo papel dos "Sickleave/
  * Leave/Vacation/Support/Requests/Reports/Projects/Schedule" de uma
  * imagem de referência de ERP de RH, adaptado ao que a transportadora
- * realmente faz no dia a dia: nenhum item aqui é novo, são as MESMAS 8
- * rotas que já existiam no menu de cabeçalho (`PROFISSIONAL_NAV`,
+ * realmente faz no dia a dia: nenhum item aqui é novo, são as MESMAS
+ * rotas que já existem no menu de cabeçalho (`PROFISSIONAL_NAV`,
  * `(dashboard)/layout.tsx`) — só ganharam um atalho visual maior/mais
  * rápido de tocar na tela inicial. Nada de "Rotas" aqui: a
  * transportadora ainda não tem uma tela própria de CRUD de rotas no
  * Painel Web (só o app mobile e a operação em "Minha Rota") — um atalho
- * pra ela seria um link morto.
+ * pra ela seria um link morto. Nada de "Rotta Pay" aqui também: removido
+ * a pedido explícito do usuário ("Apague a 'Rotta pay' também, não
+ * iremos utilizar também") — a transportadora não vai usar essa carteira.
  */
 const PAINEL_ATALHOS: AtalhoTile[] = [
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/veiculos", label: "Veículos", icon: Car },
   { href: "/escolas", label: "Escolas", icon: GraduationCap },
   { href: "/marketplace/solicitacoes", label: "Marketplace", icon: Store },
-  { href: "/rotta-pay", label: "Rotta Pay", icon: Wallet },
   { href: "/verificacao-identidade", label: "Verificar identidade", icon: ShieldCheck },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/chamados", label: "Chamados", icon: MessageCircle },
