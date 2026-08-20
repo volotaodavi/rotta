@@ -1,9 +1,10 @@
 "use client";
 
 import { ErrorState, Spinner } from "@rotta/ui/web";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
+import { readRecentRawClientError } from "@/lib/global-error-capture";
 import { reportClientError } from "@/lib/report-client-error";
 
 /**
@@ -41,6 +42,18 @@ import { reportClientError } from "@/lib/report-client-error";
  * estáticos. `useChunkLoadRecovery` reconhece esse padrão e recarrega a
  * página sozinha — nunca chega a mostrar a tela de erro genérica pra
  * esse caso. Ver `@/lib/chunk-load-error.ts` pro "porquê" completo.
+ *
+ * ACHADO REAL (pedido explícito do usuário, fundador testando em
+ * produção, depois de rodadas de fix que não bastaram sozinhas): boa
+ * parte das ocorrências reais de "Server Components render" nunca passa
+ * por um Error Boundary do React (Promise rejeitada sem `.catch()`,
+ * erro assíncrono fora do render) — o Next mostra essa mesma tela
+ * genérica REDIGIDA mesmo assim, sem stack nem digest de verdade.
+ * `readRecentRawClientError()` (`@/lib/global-error-capture.ts`) lê o
+ * registro do erro bruto ORIGINAL, capturado direto no navegador (nunca
+ * redigido) — se ele for recente o bastante pra ser quase certo que é a
+ * MESMA falha, mostramos o diagnóstico completo direto nesta tela, sem
+ * precisar de nenhum dashboard externo.
  */
 export default function DashboardError({
   error,
@@ -50,11 +63,13 @@ export default function DashboardError({
   reset: () => void;
 }): JSX.Element {
   const isRecovering = useChunkLoadRecovery(error);
+  const [rawError, setRawError] = useState<ReturnType<typeof readRecentRawClientError>>();
 
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
     reportClientError("WEB", error);
+    setRawError(readRecentRawClientError());
   }, [error]);
 
   if (isRecovering) {
@@ -66,10 +81,30 @@ export default function DashboardError({
   }
 
   return (
-    <ErrorState
-      message="Não foi possível carregar esta página. Tente novamente ou use a navegação acima para ir a outro lugar do painel."
-      detail={error.message || undefined}
-      onRetry={reset}
-    />
+    <div className="flex flex-col gap-4">
+      <ErrorState
+        message="Não foi possível carregar esta página. Tente novamente ou use a navegação acima para ir a outro lugar do painel."
+        detail={error.message || undefined}
+        onRetry={reset}
+      />
+      {rawError ? (
+        <div className="mx-auto w-full max-w-2xl rounded-md border border-danger/30 bg-danger/5 p-4 text-left">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-danger">
+            Diagnóstico técnico completo (capturado direto no navegador, sem redação)
+          </p>
+          <p className="mb-1 text-xs text-text-muted">
+            Origem: {rawError.source} · {rawError.name ?? "Error"}
+          </p>
+          <p className="mb-2 whitespace-pre-wrap break-words font-mono text-xs text-text">
+            {rawError.message}
+          </p>
+          {rawError.stack ? (
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-black/5 p-2 font-mono text-[11px] text-text-muted">
+              {rawError.stack}
+            </pre>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
   );
 }

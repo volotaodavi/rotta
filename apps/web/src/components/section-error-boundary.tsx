@@ -13,6 +13,8 @@ interface SectionErrorBoundaryProps {
 
 interface SectionErrorBoundaryState {
   hasError: boolean;
+  errorMessage?: string;
+  errorStack?: string;
 }
 
 /**
@@ -38,8 +40,8 @@ export class SectionErrorBoundary extends Component<
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(): SectionErrorBoundaryState {
-    return { hasError: true };
+  static getDerivedStateFromError(error: Error): SectionErrorBoundaryState {
+    return { hasError: true, errorMessage: error.message, errorStack: error.stack };
   }
 
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
@@ -50,7 +52,9 @@ export class SectionErrorBoundary extends Component<
     // Error Boundary de classe capturado aqui no cliente sempre vê o
     // `Error` real, com stack completa — por isso anexamos também o
     // `componentStack` (qual componente estava renderizando quando
-    // quebrou), informação que o `error.tsx` nunca tem acesso.
+    // quebrou), informação que o `error.tsx` nunca tem acesso. Mostrada
+    // direto na tela abaixo (pedido do usuário) — nunca escondida atrás
+    // de um dashboard externo.
     const enrichedError = new Error(error.message);
     enrichedError.name = error.name;
     enrichedError.stack = `[boundary:${this.props.label}] ${error.stack ?? error.message}\n--- component stack ---${errorInfo.componentStack ?? ""}`;
@@ -61,11 +65,24 @@ export class SectionErrorBoundary extends Component<
     if (this.state.hasError) {
       return (
         <Card>
-          <Card.Body>
+          <Card.Body className="flex flex-col gap-3">
             <Typography variant="bodySmall" color="danger">
               Não foi possível carregar esta seção agora. O resto da página continua funcionando —
               recarregue quando puder tentar de novo.
             </Typography>
+            <div className="rounded-md border border-danger/30 bg-danger/5 p-3">
+              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-danger">
+                Diagnóstico técnico ({this.props.label})
+              </p>
+              <p className="mb-2 whitespace-pre-wrap break-words font-mono text-xs text-text">
+                {this.state.errorMessage}
+              </p>
+              {this.state.errorStack ? (
+                <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-black/5 p-2 font-mono text-[11px] text-text-muted">
+                  {this.state.errorStack}
+                </pre>
+              ) : null}
+            </div>
           </Card.Body>
         </Card>
       );
