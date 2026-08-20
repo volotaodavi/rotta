@@ -19,7 +19,7 @@ import { useRoutesList } from "@/features/routes/hooks/use-routes";
 import {
   ROUTE_STATUS_LABEL,
   ROUTE_STATUS_VARIANT,
-  ROUTE_WEEKDAY_LABEL,
+  formatRouteWeekdaysAbbrev,
 } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
@@ -109,8 +109,7 @@ export default function RotasPage(): JSX.Element {
                 {
                   key: "dias",
                   header: "Dias",
-                  render: (route) =>
-                    route.diasSemana.map((dia) => ROUTE_WEEKDAY_LABEL[dia].slice(0, 3)).join(", "),
+                  render: (route) => formatRouteWeekdaysAbbrev(route.diasSemana),
                 },
                 {
                   key: "motorista",

@@ -50,7 +50,7 @@ import {
 import {
   ROUTE_STATUS_LABEL,
   ROUTE_STATUS_VARIANT,
-  ROUTE_WEEKDAY_LABEL,
+  formatRouteWeekdaysAbbrev,
 } from "@/features/routes/labels";
 import { useSuggestSchools } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
@@ -131,8 +131,7 @@ export default function RotaDetalhePage(): JSX.Element {
         <div>
           <Typography variant="title">{route.nome}</Typography>
           <Typography variant="bodySmall" color="muted">
-            {SCHOOL_SHIFT_LABEL[route.turno]} ·{" "}
-            {route.diasSemana.map((dia) => ROUTE_WEEKDAY_LABEL[dia].slice(0, 3)).join(", ")}
+            {SCHOOL_SHIFT_LABEL[route.turno]} · {formatRouteWeekdaysAbbrev(route.diasSemana)}
             {motoristaNome
               ? ` · Motorista: ${motoristaNome}`
               : " · Nenhum motorista atribuído ainda"}
