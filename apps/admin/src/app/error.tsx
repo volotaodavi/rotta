@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
+import { readRecentRawClientError } from "@/lib/global-error-capture";
 import { reportClientError } from "@/lib/report-client-error";
 
 /**
@@ -25,6 +26,15 @@ import { reportClientError } from "@/lib/report-client-error";
  * depurando esse fluxo (`ChunkLoadError` — aba com referências de chunk
  * de um deploy anterior): recarrega a página sozinha em vez de mostrar
  * essa tela genérica. Ver `@/lib/chunk-load-error.ts`.
+ *
+ * ACHADO REAL (mesmo "algo deu errado" confirmado acontecendo também
+ * aqui no Admin): boa parte das ocorrências reais nunca passa por um
+ * Error Boundary do React (Promise rejeitada sem `.catch()`, erro
+ * assíncrono fora do render) — o Next mostra esta mesma tela genérica
+ * REDIGIDA mesmo assim. `readRecentRawClientError()`
+ * (`@/lib/global-error-capture.ts`) lê o registro do erro bruto
+ * ORIGINAL, capturado direto no navegador — se for recente o bastante,
+ * mostramos o diagnóstico completo aqui mesmo.
  */
 export default function GlobalError({
   error,
@@ -34,11 +44,13 @@ export default function GlobalError({
   reset: () => void;
 }): JSX.Element {
   const isRecovering = useChunkLoadRecovery(error);
+  const [rawError, setRawError] = useState<ReturnType<typeof readRecentRawClientError>>();
 
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
     reportClientError("ADMIN", error);
+    setRawError(readRecentRawClientError());
   }, [error]);
 
   if (isRecovering) {
@@ -55,6 +67,24 @@ export default function GlobalError({
       <p className="text-text-muted">Ocorreu um erro inesperado. Tente novamente em instantes.</p>
       {error.message ? (
         <p className="max-w-md break-words text-xs text-text-muted">{error.message}</p>
+      ) : null}
+      {rawError ? (
+        <div className="mx-auto w-full max-w-2xl rounded-md border border-danger/30 bg-danger/5 p-4 text-left">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-danger">
+            Diagnóstico técnico completo (capturado direto no navegador, sem redação)
+          </p>
+          <p className="mb-1 text-xs text-text-muted">
+            Origem: {rawError.source} · {rawError.name ?? "Error"}
+          </p>
+          <p className="mb-2 whitespace-pre-wrap break-words font-mono text-xs text-text">
+            {rawError.message}
+          </p>
+          {rawError.stack ? (
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words rounded bg-black/5 p-2 text-left font-mono text-[11px] text-text-muted">
+              {rawError.stack}
+            </pre>
+          ) : null}
+        </div>
       ) : null}
       <button
         type="button"
