@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, Typography } from "@rotta/ui/web";
-import { Component, type ReactNode } from "react";
+import { Component, type ErrorInfo, type ReactNode } from "react";
 
 import { reportClientError } from "@/lib/report-client-error";
 
@@ -42,10 +42,19 @@ export class SectionErrorBoundary extends Component<
     return { hasError: true };
   }
 
-  override componentDidCatch(error: Error): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // eslint-disable-next-line no-console
-    console.error(`[SectionErrorBoundary:${this.props.label}]`, error);
-    reportClientError("WEB", error);
+    console.error(`[SectionErrorBoundary:${this.props.label}]`, error, errorInfo.componentStack);
+    // Ao contrário do `error.tsx` do Next (que só recebe a mensagem já
+    // REDIGIDA quando a falha nasce durante o render em produção), um
+    // Error Boundary de classe capturado aqui no cliente sempre vê o
+    // `Error` real, com stack completa — por isso anexamos também o
+    // `componentStack` (qual componente estava renderizando quando
+    // quebrou), informação que o `error.tsx` nunca tem acesso.
+    const enrichedError = new Error(error.message);
+    enrichedError.name = error.name;
+    enrichedError.stack = `[boundary:${this.props.label}] ${error.stack ?? error.message}\n--- component stack ---${errorInfo.componentStack ?? ""}`;
+    reportClientError("WEB", enrichedError);
   }
 
   override render(): ReactNode {

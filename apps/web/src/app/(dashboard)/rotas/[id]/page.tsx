@@ -41,6 +41,27 @@ import { useMyTeam } from "@/features/team/hooks/use-team";
  * rota). Ver `apps/web/src/components/section-error-boundary.tsx`.
  */
 export default function RotaDetalhePage(): JSX.Element {
+  return (
+    // Boundary EXTRA envolvendo o componente INTEIRO (não só o JSX do
+    // `return` de sucesso) — achado real da investigação: os 3
+    // boundaries por seção não bastaram, o "algo deu errado" continuou
+    // aparecendo mesmo depois do fix de ChunkLoadError e do Service
+    // Worker, provando que o que quebra está em algum lugar FORA das 3
+    // seções (cabeçalho, cards de status, ou um dos hooks chamados no
+    // topo do componente) — um boundary só dentro do `return` nunca
+    // capturaria uma exceção lançada ANTES dele ser construído. Um Error
+    // Boundary de classe do React captura qualquer exceção lançada
+    // durante o render dos filhos, direto no navegador — ao contrário do
+    // `error.tsx` do Next, nunca vem com a mensagem redigida:
+    // `SectionErrorBoundary` manda a mensagem e a stack REAIS pro
+    // `reportClientError`, incluindo agora também o `componentStack`.
+    <SectionErrorBoundary label="pagina-rota-detalhe">
+      <RotaDetalheContent />
+    </SectionErrorBoundary>
+  );
+}
+
+function RotaDetalheContent(): JSX.Element {
   const params = useParams<{ id: string }>();
   const routeId = params.id;
 
