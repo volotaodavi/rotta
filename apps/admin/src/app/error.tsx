@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 
+import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
 import { reportClientError } from "@/lib/report-client-error";
 
 /**
@@ -19,6 +20,11 @@ import { reportClientError } from "@/lib/report-client-error";
  * `reportClientError` manda a mensagem/digest/stack REAIS pro nosso
  * próprio backend (`POST /client-errors`) — ver
  * `apps/admin/src/lib/report-client-error.ts`.
+ *
+ * `useChunkLoadRecovery` cobre o caso real mais comum encontrado
+ * depurando esse fluxo (`ChunkLoadError` — aba com referências de chunk
+ * de um deploy anterior): recarrega a página sozinha em vez de mostrar
+ * essa tela genérica. Ver `@/lib/chunk-load-error.ts`.
  */
 export default function GlobalError({
   error,
@@ -27,11 +33,21 @@ export default function GlobalError({
   error: Error & { digest?: string };
   reset: () => void;
 }): JSX.Element {
+  const isRecovering = useChunkLoadRecovery(error);
+
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
     reportClientError("ADMIN", error);
   }, [error]);
+
+  if (isRecovering) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center text-text">
+        <p className="text-text-muted">Atualizando a página...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center text-text">

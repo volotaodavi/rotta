@@ -1,8 +1,9 @@
 "use client";
 
-import { ErrorState } from "@rotta/ui/web";
+import { ErrorState, Spinner } from "@rotta/ui/web";
 import { useEffect } from "react";
 
+import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
 import { reportClientError } from "@/lib/report-client-error";
 
 /**
@@ -30,6 +31,16 @@ import { reportClientError } from "@/lib/report-client-error";
  * `reportClientError` manda a mensagem/digest/stack REAIS pro nosso
  * próprio backend (`POST /client-errors`) antes que o Next.js as tenha
  * redigido em produção — ver `apps/web/src/lib/report-client-error.ts`.
+ *
+ * ACHADO REAL (depurando o "algo deu errado" que persistia mesmo depois
+ * de deploys corretos): boa parte das ocorrências reais capturadas por
+ * `reportClientError` eram `ChunkLoadError` — a aba do navegador ainda
+ * com referências de chunk de um deploy ANTERIOR, tentando abrir uma
+ * página nunca visitada antes na sessão (ex.: `/rotas/[id]` de uma rota
+ * recém-criada) logo depois de um deploy novo trocar os arquivos
+ * estáticos. `useChunkLoadRecovery` reconhece esse padrão e recarrega a
+ * página sozinha — nunca chega a mostrar a tela de erro genérica pra
+ * esse caso. Ver `@/lib/chunk-load-error.ts` pro "porquê" completo.
  */
 export default function DashboardError({
   error,
@@ -38,11 +49,21 @@ export default function DashboardError({
   error: Error & { digest?: string };
   reset: () => void;
 }): JSX.Element {
+  const isRecovering = useChunkLoadRecovery(error);
+
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
     reportClientError("WEB", error);
   }, [error]);
+
+  if (isRecovering) {
+    return (
+      <div className="flex justify-center py-16">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
 
   return (
     <ErrorState
