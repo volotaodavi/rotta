@@ -7,7 +7,8 @@
   "exports": {
     "./web": "./src/web/index.tsx",
     "./native": "./src/native/index.tsx",
-    "./navigation": "./src/navigation-link.ts"
+    "./navigation": "./src/navigation-link.ts",
+    "./distance": "./src/distance.ts"
   },
   "scripts": {
     "lint": "eslint . --ext .ts,.tsx",

@@ -155,13 +155,31 @@ export default function RotaDetalhePage(): JSX.Element {
         </div>
       </div>
 
-      {route.status === "PAUSADA" ? (
+      {route.status === "PAUSADA" &&
+      (stops?.length ?? 0) > 0 &&
+      (routeStudents?.length ?? 0) > 0 ? (
+        <Card className="border-success/40 bg-success/5">
+          <Card.Body className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <Typography variant="bodySmall">
+              Rota pronta: já tem parada e aluno credenciado. Conclua para ela aparecer em
+              &quot;Minha Rota&quot; para o motorista e o monitor.
+            </Typography>
+            <Button
+              variant="primary"
+              isLoading={updateRoute.isPending}
+              onClick={() => updateRoute.mutate({ status: "ATIVA" })}
+            >
+              Concluir e ativar rota
+            </Button>
+          </Card.Body>
+        </Card>
+      ) : route.status === "PAUSADA" ? (
         <Card>
           <Card.Body>
             <Typography variant="bodySmall" color="danger">
               Esta rota está pausada: ela não aparece em &quot;Minha Rota&quot; para o motorista nem
-              para o monitor enquanto estiver assim. Clique em &quot;Ativar rota&quot; acima quando
-              ela estiver pronta para operar.
+              para o monitor enquanto estiver assim. Adicione ao menos uma parada e um aluno abaixo
+              para poder concluir e ativar a rota.
             </Typography>
           </Card.Body>
         </Card>

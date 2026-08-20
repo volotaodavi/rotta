@@ -3,6 +3,8 @@ import {
   AlertTriangle,
   Check,
   Clock,
+  LogIn,
+  LogOut,
   MapPin,
   MessageCircle,
   Navigation,
@@ -13,6 +15,11 @@ import {
   UserX,
   X,
 } from "@rotta/icons/native";
+import {
+  estaProximo,
+  haversineDistanceMeters,
+  type DistanceCoordenada,
+} from "@rotta/maps/distance";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { buildNavigationUrl } from "@rotta/maps/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -616,9 +623,8 @@ function RotaOperacional({
   const gpsTrackTripId =
     trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? trip.id : undefined;
   const { data: gpsTrack } = useGpsTrack(gpsTrackTripId);
+  const ultimaPosicao = gpsTrack && gpsTrack.length > 0 ? gpsTrack[gpsTrack.length - 1] : undefined;
   const veiculoMarker: RottaMapMarker | null = useMemo(() => {
-    const ultimaPosicao =
-      gpsTrack && gpsTrack.length > 0 ? gpsTrack[gpsTrack.length - 1] : undefined;
     if (!ultimaPosicao) return null;
     return {
       id: "veiculo-em-movimento",
@@ -627,8 +633,19 @@ function RotaOperacional({
       longitude: ultimaPosicao.longitude,
       emMovimento: true,
     };
-  }, [gpsTrack]);
+  }, [ultimaPosicao]);
   const mapMarkers: RottaMapMarker[] = veiculoMarker ? [...markers, veiculoMarker] : markers;
+
+  // Posição do veículo, pro gate de proximidade (Frente 2, paridade com
+  // o Painel Web — pedido do usuário: "ao chegar próximo — raio de até
+  // 1km — poderá embarcar/desembarcar o aluno"). Mesma trilha de GPS já
+  // usada pro marcador acima, nunca uma segunda leitura de
+  // geolocalização — é a posição do VEÍCULO que importa, não a de quem
+  // está com a tela aberta (Motorista OU Monitor). `null` sem posição
+  // conhecida ainda — `estaProximo` nunca bloqueia nesse caso.
+  const driverPosition: DistanceCoordenada | null = ultimaPosicao
+    ? { latitude: ultimaPosicao.latitude, longitude: ultimaPosicao.longitude }
+    : null;
 
   // Respaldo (Frente M, mesma regra da Frente I no Painel Web): sem
   // paradas cadastradas ainda pra essa rota, mostra pelo menos onde o
@@ -909,6 +926,7 @@ function RotaOperacional({
                 eventos={studentEvents ?? []}
                 tripId={trip.id}
                 podeOperar={isActive}
+                driverPosition={driverPosition}
               />
             ))}
           </View>
@@ -924,12 +942,14 @@ function ParadaCard({
   eventos,
   tripId,
   podeOperar,
+  driverPosition,
 }: {
   parada: RouteStop;
   alunos: RouteStudent[];
   eventos: TripStudentEvent[];
   tripId: string;
   podeOperar: boolean;
+  driverPosition: DistanceCoordenada | null;
 }): JSX.Element {
   const { theme } = useTheme();
 
@@ -960,11 +980,18 @@ function ParadaCard({
             eventos={eventos}
             tripId={tripId}
             podeOperar={podeOperar}
+            driverPosition={driverPosition}
           />
         ))
       )}
     </VehicleCard>
   );
+}
+
+/** "350m"/"1,2km" — mesmo padrão de arredondamento do Painel Web. */
+function formatarDistancia(metros: number): string {
+  if (metros < 1000) return `${Math.round(metros)}m`;
+  return `${(metros / 1000).toFixed(1).replace(".", ",")}km`;
 }
 
 function AlunoParadaRow({
@@ -973,12 +1000,14 @@ function AlunoParadaRow({
   eventos,
   tripId,
   podeOperar,
+  driverPosition,
 }: {
   aluno: RouteStudent;
   parada: RouteStop;
   eventos: TripStudentEvent[];
   tripId: string;
   podeOperar: boolean;
+  driverPosition: DistanceCoordenada | null;
 }): JSX.Element {
   const { theme } = useTheme();
   const { data: student } = useStudent(aluno.studentId);
@@ -990,53 +1019,95 @@ function AlunoParadaRow({
   const jaEmbarcou = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === "EMBARCOU");
   const jaOcorreu = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === tipo);
   const jaAusente = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === "AUSENTE");
+
+  // Gate de proximidade (Frente 2, pedido do usuário: "ao chegar próximo
+  // — um raio de até 1km — poderá embarcar/desembarcar o aluno daquela
+  // localidade"). Sem posição conhecida ainda, `estaProximo` responde
+  // `true` (nunca trava o motorista por o GPS ainda não ter reportado).
+  const paradaCoordenada: DistanceCoordenada = {
+    latitude: parada.latitude,
+    longitude: parada.longitude,
+  };
+  const distanciaMetros = driverPosition
+    ? haversineDistanceMeters(driverPosition, paradaCoordenada)
+    : null;
+  const perto = estaProximo(driverPosition, paradaCoordenada);
   // Desembarque só é possível depois de um embarque registrado nesta viagem (mesma regra do backend).
-  const podeRegistrar = podeOperar && !jaOcorreu && !jaAusente && (isEmbarque || jaEmbarcou);
+  const elegivel = !jaOcorreu && !jaAusente && (isEmbarque || jaEmbarcou);
+  const podeRegistrar = podeOperar && elegivel && perto;
+  const longeDemais = podeOperar && elegivel && !perto;
 
   return (
-    <View style={styles.alunoRow}>
-      <Text style={{ color: theme.colors.text, flex: 1 }}>
-        {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}
-      </Text>
-      {jaOcorreu ? (
-        <Check size={18} color={theme.colors.success} />
-      ) : jaAusente ? (
-        <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Ausente</Text>
-      ) : motivoAusencia !== null && isEmbarque ? (
-        <View style={styles.ausenciaForm}>
-          <Pressable
-            onPress={() =>
-              addEvent.mutate(
-                { studentId: aluno.studentId, tipo: "AUSENTE" },
-                { onSuccess: () => setMotivoAusencia(null) },
-              )
-            }
-          >
-            <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Confirmar ausência</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <View style={styles.alunoActions}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={!podeRegistrar || addEvent.isPending}
-            onPress={() => addEvent.mutate({ studentId: aluno.studentId, tipo })}
-            style={{ opacity: podeRegistrar ? 1 : 0.4 }}
-          >
-            <Check size={20} color={theme.colors.success} />
-          </Pressable>
-          {isEmbarque ? (
+    <View style={styles.alunoRowContainer}>
+      <View style={styles.alunoRow}>
+        <Text style={{ color: theme.colors.text, flex: 1 }}>
+          {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}
+        </Text>
+        {jaOcorreu ? (
+          <Check size={18} color={theme.colors.success} />
+        ) : jaAusente ? (
+          <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Ausente</Text>
+        ) : motivoAusencia !== null && isEmbarque ? (
+          <View style={styles.ausenciaForm}>
+            <Pressable
+              onPress={() =>
+                addEvent.mutate(
+                  { studentId: aluno.studentId, tipo: "AUSENTE" },
+                  { onSuccess: () => setMotivoAusencia(null) },
+                )
+              }
+            >
+              <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Confirmar ausência</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <View style={styles.alunoActions}>
             <Pressable
               accessibilityRole="button"
-              disabled={!podeOperar}
-              onPress={() => setMotivoAusencia("")}
-              style={{ opacity: podeOperar ? 1 : 0.4 }}
+              disabled={!podeRegistrar || addEvent.isPending}
+              onPress={() => addEvent.mutate({ studentId: aluno.studentId, tipo })}
+              style={[
+                styles.alunoActionButton,
+                {
+                  backgroundColor: isEmbarque ? theme.colors.primary : theme.colors.danger,
+                  opacity: podeRegistrar ? 1 : 0.4,
+                },
+              ]}
             >
-              <UserX size={20} color={theme.colors.danger} />
+              {addEvent.isPending ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <>
+                  {isEmbarque ? (
+                    <LogIn size={16} color="#FFFFFF" />
+                  ) : (
+                    <LogOut size={16} color="#FFFFFF" />
+                  )}
+                  <Text style={styles.alunoActionButtonLabel}>
+                    {isEmbarque ? "Embarque" : "Desembarque"}
+                  </Text>
+                </>
+              )}
             </Pressable>
-          ) : null}
-        </View>
-      )}
+            {isEmbarque ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={!podeOperar}
+                onPress={() => setMotivoAusencia("")}
+                style={{ opacity: podeOperar ? 1 : 0.4 }}
+              >
+                <UserX size={20} color={theme.colors.danger} />
+              </Pressable>
+            ) : null}
+          </View>
+        )}
+      </View>
+      {longeDemais ? (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          Aproxime-se até 1km do local para liberar o botão
+          {distanciaMetros !== null ? ` (você está a ${formatarDistancia(distanciaMetros)})` : ""}.
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -1045,13 +1116,22 @@ const styles = StyleSheet.create({
   absoluteFill: { ...StyleSheet.absoluteFillObject },
   alunoABordoDot: { borderRadius: 999, height: 8, width: 8 },
   alunoABordoRow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 4 },
-  alunoActions: { flexDirection: "row", gap: 16 },
+  alunoActionButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  alunoActionButtonLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
+  alunoActions: { alignItems: "center", flexDirection: "row", gap: 16 },
   alunoRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 8,
-    paddingVertical: 6,
   },
+  alunoRowContainer: { gap: 4, paddingVertical: 6 },
   ausenciaForm: { alignItems: "center" },
   controlsRow: { flexDirection: "row", gap: 8 },
   controlsSection: { gap: 8, paddingHorizontal: 16 },

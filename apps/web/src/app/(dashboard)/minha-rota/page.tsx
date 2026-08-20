@@ -6,6 +6,8 @@ import {
   Check,
   Clock,
   LifeBuoy,
+  LogIn,
+  LogOut,
   MapPin,
   MessageCircle,
   Navigation,
@@ -15,6 +17,11 @@ import {
   Users,
   UserX,
 } from "@rotta/icons";
+import {
+  estaProximo,
+  haversineDistanceMeters,
+  type DistanceCoordenada,
+} from "@rotta/maps/distance";
 import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import {
@@ -674,9 +681,8 @@ function RotaOperacional({
   const gpsTrackTripId =
     trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? trip.id : undefined;
   const { data: gpsTrack } = useGpsTrack(gpsTrackTripId);
+  const ultimaPosicao = gpsTrack && gpsTrack.length > 0 ? gpsTrack[gpsTrack.length - 1] : undefined;
   const veiculoMarker: RottaMapMarker | null = useMemo(() => {
-    const ultimaPosicao =
-      gpsTrack && gpsTrack.length > 0 ? gpsTrack[gpsTrack.length - 1] : undefined;
     if (!ultimaPosicao) return null;
     return {
       id: "veiculo-em-movimento",
@@ -685,8 +691,21 @@ function RotaOperacional({
       longitude: ultimaPosicao.longitude,
       emMovimento: true,
     };
-  }, [gpsTrack, veiculoPadrao]);
+  }, [ultimaPosicao, veiculoPadrao]);
   const mapMarkers: RottaMapMarker[] = veiculoMarker ? [...markers, veiculoMarker] : markers;
+
+  // Posição do veículo, pro gate de proximidade (Frente 2, pedido do
+  // usuário: "ao chegar próximo — raio de até 1km — poderá embarcar o
+  // aluno") — mesma trilha de GPS já usada pro marcador acima, nunca uma
+  // segunda leitura de geolocalização: é a posição do VEÍCULO que importa
+  // aqui, não a do aparelho de quem está olhando a tela (Motorista OU
+  // Monitor podem estar com o painel aberto). `null` sem posição
+  // conhecida ainda — `estaProximo` nunca bloqueia nesse caso (ver
+  // `@rotta/maps/distance`), então o motorista não fica travado só por o
+  // GPS ainda não ter reportado a primeira posição.
+  const driverPosition: DistanceCoordenada | null = ultimaPosicao
+    ? { latitude: ultimaPosicao.latitude, longitude: ultimaPosicao.longitude }
+    : null;
 
   // Respaldo (Frente I): sem paradas cadastradas ainda pra essa rota
   // (ou enquanto `stops` carrega), mostra pelo menos onde o telefone
@@ -996,6 +1015,7 @@ function RotaOperacional({
               eventos={studentEvents ?? []}
               tripId={trip.id}
               podeOperar={isActive}
+              driverPosition={driverPosition}
             />
           ))}
         </>
@@ -1004,18 +1024,26 @@ function RotaOperacional({
   );
 }
 
+/** "350m"/"1,2km" — mesmo padrão de arredondamento visual usado nos cartões de ETA (nunca mais de uma casa decimal). */
+function formatarDistancia(metros: number): string {
+  if (metros < 1000) return `${Math.round(metros)}m`;
+  return `${(metros / 1000).toFixed(1).replace(".", ",")}km`;
+}
+
 function ParadaCard({
   parada,
   alunos,
   eventos,
   tripId,
   podeOperar,
+  driverPosition,
 }: {
   parada: RouteStop;
   alunos: RouteStudent[];
   eventos: { studentId: string; tipo: TripStudentEventType }[];
   tripId: string;
   podeOperar: boolean;
+  driverPosition: DistanceCoordenada | null;
 }): JSX.Element {
   return (
     <Card>
@@ -1045,6 +1073,7 @@ function ParadaCard({
               eventos={eventos}
               tripId={tripId}
               podeOperar={podeOperar}
+              driverPosition={driverPosition}
             />
           ))
         )}
@@ -1059,12 +1088,14 @@ function AlunoParadaRow({
   eventos,
   tripId,
   podeOperar,
+  driverPosition,
 }: {
   aluno: RouteStudent;
   parada: RouteStop;
   eventos: { studentId: string; tipo: TripStudentEventType }[];
   tripId: string;
   podeOperar: boolean;
+  driverPosition: DistanceCoordenada | null;
 }): JSX.Element {
   const { data: student } = useStudent(aluno.studentId);
   const addEvent = useAddStudentEvent(tripId);
@@ -1075,57 +1106,85 @@ function AlunoParadaRow({
   const jaEmbarcou = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === "EMBARCOU");
   const jaOcorreu = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === tipo);
   const jaAusente = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === "AUSENTE");
+
+  // Gate de proximidade (Frente 2, pedido do usuário: "ao chegar próximo
+  // — um raio de até 1km — poderá embarcar/desembarcar o aluno daquela
+  // localidade"). `driverPosition` vem da última posição de GPS já
+  // reportada pra esta viagem; sem posição ainda conhecida,
+  // `estaProximo` responde `true` (nunca trava o motorista por o GPS
+  // ainda não ter reportado nada — mesmo princípio "best effort" do
+  // geofencing de notificação no backend).
+  const paradaCoordenada: DistanceCoordenada = {
+    latitude: parada.latitude,
+    longitude: parada.longitude,
+  };
+  const distanciaMetros = driverPosition
+    ? haversineDistanceMeters(driverPosition, paradaCoordenada)
+    : null;
+  const perto = estaProximo(driverPosition, paradaCoordenada);
   // Desembarque só é possível depois de um embarque registrado nesta viagem (mesma regra do backend).
-  const podeRegistrar = podeOperar && !jaOcorreu && !jaAusente && (isEmbarque || jaEmbarcou);
+  const elegivel = !jaOcorreu && !jaAusente && (isEmbarque || jaEmbarcou);
+  const podeRegistrar = podeOperar && elegivel && perto;
+  const longeDemais = podeOperar && elegivel && !perto;
 
   return (
-    <div className="flex items-center justify-between gap-3 border-t border-border pt-3 first:border-t-0 first:pt-0">
-      <Typography variant="bodySmall">
-        {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}
-      </Typography>
-      {jaOcorreu ? (
-        <Check size={18} className="text-success" />
-      ) : jaAusente ? (
-        <Typography variant="caption" className="text-danger">
-          Ausente
+    <div className="flex flex-col gap-1.5 border-t border-border pt-3 first:border-t-0 first:pt-0">
+      <div className="flex items-center justify-between gap-3">
+        <Typography variant="bodySmall">
+          {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}
         </Typography>
-      ) : confirmandoAusencia && isEmbarque ? (
-        <button
-          type="button"
-          className="text-xs font-semibold text-danger hover:underline"
-          onClick={() =>
-            addEvent.mutate(
-              { studentId: aluno.studentId, tipo: "AUSENTE" },
-              { onSuccess: () => setConfirmandoAusencia(false) },
-            )
-          }
-        >
-          Confirmar ausência
-        </button>
-      ) : (
-        <div className="flex items-center gap-4">
+        {jaOcorreu ? (
+          <Check size={18} className="text-success" />
+        ) : jaAusente ? (
+          <Typography variant="caption" className="text-danger">
+            Ausente
+          </Typography>
+        ) : confirmandoAusencia && isEmbarque ? (
           <button
             type="button"
-            aria-label="Registrar"
-            disabled={!podeRegistrar || addEvent.isPending}
-            onClick={() => addEvent.mutate({ studentId: aluno.studentId, tipo })}
-            className="text-success disabled:opacity-40"
+            className="text-xs font-semibold text-danger hover:underline"
+            onClick={() =>
+              addEvent.mutate(
+                { studentId: aluno.studentId, tipo: "AUSENTE" },
+                { onSuccess: () => setConfirmandoAusencia(false) },
+              )
+            }
           >
-            <Check size={20} />
+            Confirmar ausência
           </button>
-          {isEmbarque ? (
-            <button
+        ) : (
+          <div className="flex items-center gap-3">
+            <Button
               type="button"
-              aria-label="Marcar ausência"
-              disabled={!podeOperar}
-              onClick={() => setConfirmandoAusencia(true)}
-              className="text-danger disabled:opacity-40"
+              variant={isEmbarque ? "primary" : "danger"}
+              size="sm"
+              iconLeft={isEmbarque ? <LogIn size={16} /> : <LogOut size={16} />}
+              isDisabled={!podeRegistrar}
+              isLoading={addEvent.isPending}
+              onClick={() => addEvent.mutate({ studentId: aluno.studentId, tipo })}
             >
-              <UserX size={20} />
-            </button>
-          ) : null}
-        </div>
-      )}
+              {isEmbarque ? "Embarque" : "Desembarque"}
+            </Button>
+            {isEmbarque ? (
+              <button
+                type="button"
+                aria-label="Marcar ausência"
+                disabled={!podeOperar}
+                onClick={() => setConfirmandoAusencia(true)}
+                className="text-danger disabled:opacity-40"
+              >
+                <UserX size={20} />
+              </button>
+            ) : null}
+          </div>
+        )}
+      </div>
+      {longeDemais ? (
+        <Typography variant="caption" color="muted">
+          Aproxime-se até 1km do local para liberar o botão
+          {distanciaMetros !== null ? ` (você está a ${formatarDistancia(distanciaMetros)})` : ""}.
+        </Typography>
+      ) : null}
     </div>
   );
 }
