@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { reportClientError } from "@/lib/report-client-error";
+
 /**
  * Error Boundary global do App Router (convencao de arquivo especial
  * `error.tsx` do Next.js) — captura qualquer erro nao tratado renderizado
@@ -13,6 +15,13 @@ import { useEffect } from "react";
  * discreta abaixo da frase principal — pedido do usuário depois de ver
  * repetidas vezes a mesma tela genérica sem nenhuma pista do que
  * quebrou. Integração com Sentry ainda a configurar (Dossie 23, Secao 9).
+ *
+ * `reportClientError` manda a mensagem/digest/stack REAIS pro nosso
+ * próprio backend (`POST /client-errors`) — ver a nota completa em
+ * `apps/web/src/lib/report-client-error.ts`. Isso existe porque em
+ * produção o Next.js redige `error.message` antes de chegar aqui; sem
+ * isso não há como saber o que quebrou de verdade sem vasculhar o
+ * dashboard da Vercel manualmente.
  */
 export default function GlobalError({
   error,
@@ -24,6 +33,7 @@ export default function GlobalError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
+    reportClientError("WEB", error);
   }, [error]);
 
   return (

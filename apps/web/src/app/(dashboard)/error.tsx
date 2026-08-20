@@ -3,6 +3,8 @@
 import { ErrorState } from "@rotta/ui/web";
 import { useEffect } from "react";
 
+import { reportClientError } from "@/lib/report-client-error";
+
 /**
  * Error Boundary do route group `(dashboard)` — pedido do usuário: "ao
  * criar uma rota... aparece que 'algo deu errado'". Sem isso, qualquer
@@ -24,6 +26,10 @@ import { useEffect } from "react";
  * a mensagem curta do `Error` lançado, nunca a stack inteira — o
  * `console.error` abaixo continua sendo o lugar certo pra investigação
  * completa, isto aqui é só uma legenda visível na própria tela.
+ *
+ * `reportClientError` manda a mensagem/digest/stack REAIS pro nosso
+ * próprio backend (`POST /client-errors`) antes que o Next.js as tenha
+ * redigido em produção — ver `apps/web/src/lib/report-client-error.ts`.
  */
 export default function DashboardError({
   error,
@@ -35,6 +41,7 @@ export default function DashboardError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
+    reportClientError("WEB", error);
   }, [error]);
 
   return (

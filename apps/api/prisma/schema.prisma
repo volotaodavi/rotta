@@ -553,6 +553,9 @@ model Company {
   /// Chamados de suporte abertos por esta empresa (Dossiê 20, `SUP-01`
   /// a `SUP-03` / `ADM-04`, Dossiê 29).
   chamadosSuporte        SupportTicket[]
+  /// Erros de front-end reportados pelo próprio navegador do usuário
+  /// (Frente client-error-reporting) — ver nota completa em `ClientErrorReport`.
+  clientErrorReports     ClientErrorReport[]
 
   @@index([status])
   @@index([tipo])
@@ -809,6 +812,10 @@ model User {
   /// quando `aprovadoPorId === autorId`).
   documentosLegaisAutor     LegalDocumentVersion[] @relation("LegalDocumentVersionAutor")
   documentosLegaisAprovados LegalDocumentVersion[] @relation("LegalDocumentVersionAprovador")
+
+  /// Erros de front-end reportados pelo próprio navegador enquanto este
+  /// usuário estava logado — ver nota completa em `ClientErrorReport`.
+  clientErrorReports ClientErrorReport[]
 
   @@map("users")
 }
@@ -2823,4 +2830,69 @@ model LegalDocumentVersion {
 
   @@unique([documentId, versao])
   @@map("legal_document_versions")
+}
+
+/// De qual app veio o erro — `web`/`admin` (Next.js) hoje;
+/// `mobile` reservado pro app nativo assim que ele também chamar
+/// `POST /client-errors` (nenhum código nativo chama isto ainda).
+enum ClientApp {
+  WEB
+  ADMIN
+  MOBILE
+}
+
+/// Captura o texto REAL de um erro de renderização não tratado no
+/// navegador do usuário (`error.tsx` do App Router de `apps/web`/
+/// `apps/admin`) — a peça que faltava numa saga real desta sessão: em
+/// produção (Vercel), o Next.js **redige** a mensagem original de todo
+/// erro de "Server Components render" antes de mandar pro navegador
+/// ("An error occurred... The specific message is omitted in
+/// production builds"), deixando só um `digest` opaco — e a Vercel só
+/// mostra a mensagem completa pra quem tem acesso ao painel do
+/// projeto (Deployments → Logs), nunca pra mim. Cada `error.tsx`
+/// (`apps/web/src/app/error.tsx`, `(dashboard)/error.tsx`,
+/// `apps/admin` equivalentes) já captura `error.message`/`error.stack`
+/// pro `console.error` do navegador (invisível pra mim também); agora
+/// eles TAMBÉM mandam pra cá via `POST /client-errors` (sem
+/// autenticação obrigatória — um erro pode acontecer ANTES do login
+/// funcionar) — assim toda quebra de tela vira uma linha consultável
+/// aqui (`GET /client-errors`, só Admin Rotta) sem depender de ninguém
+/// ir atrás de log nenhum.
+model ClientErrorReport {
+  id String @id @default(uuid()) @db.Uuid
+
+  app ClientApp
+
+  /// `error.message` — em produção, para um erro de Server Components,
+  /// esta é a mensagem REDIGIDA pelo Next.js (não a causa real); em
+  /// erros de client-side (evento/efeito, pós-hidratação) é a mensagem
+  /// genuína lançada pelo código da própria Rotta.
+  message String  @db.Text
+  /// `error.digest` — o único elo entre esta linha e o log completo
+  /// (com a mensagem real) que a Vercel guarda no painel do projeto,
+  /// pra erros de Server Components especificamente.
+  digest  String?
+  /// `error.stack`, quando o navegador o expõe (nem sempre, minificado
+  /// em produção sem source maps públicos — ainda assim, o nome do
+  /// arquivo/função costuma sobreviver e já ajuda a localizar o ponto).
+  stack   String? @db.Text
+
+  /// Caminho da página que quebrou (`window.location.pathname`, nunca
+  /// a URL inteira — sem query string, que pode carregar dado sensível).
+  path      String
+  userAgent String?
+
+  /// Nulo quando o erro aconteceu antes do login (ou a sessão já tinha
+  /// caído) — `onDelete: SetNull` porque o relato do erro em si continua
+  /// valendo mesmo que a conta seja apagada depois.
+  userId    String?  @db.Uuid
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  companyId String?  @db.Uuid
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([digest])
+  @@map("client_error_reports")
 }

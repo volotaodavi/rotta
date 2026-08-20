@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bell,
   Building2,
+  Bug,
   Car,
   ChevronDown,
   ClipboardCheck,
@@ -76,6 +77,7 @@ const NAV_PLATAFORMA: NavItem[] = [
   { href: "/financeiro", label: "Financeiro", icon: DollarSign },
   { href: "/documentos-legais", label: "Documentos legais", icon: FileText },
   { href: "/auditoria-legal", label: "Auditoria legal", icon: ScrollText },
+  { href: "/erros-cliente", label: "Erros do cliente", icon: Bug },
 ];
 
 function NavLink({ item, count }: { item: NavItem; count: number | undefined }): JSX.Element {

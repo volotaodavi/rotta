@@ -3,6 +3,8 @@
 import { ErrorState } from "@rotta/ui/web";
 import { useEffect } from "react";
 
+import { reportClientError } from "@/lib/report-client-error";
+
 /**
  * Error Boundary do route group `(admin)` — mesma correção de
  * `apps/web` (pedido do usuário: "aparece que 'algo deu errado'"): sem
@@ -15,6 +17,10 @@ import { useEffect } from "react";
  * `layout.tsx` deste mesmo grupo continua renderizado ao redor deste
  * boundary (comportamento padrão do App Router: `error.tsx` só
  * substitui `children`, nunca o `layout.tsx` da mesma pasta).
+ *
+ * `reportClientError` manda a mensagem/digest/stack REAIS pro nosso
+ * próprio backend (`POST /client-errors`) antes que o Next.js as tenha
+ * redigido em produção — ver `apps/admin/src/lib/report-client-error.ts`.
  */
 export default function AdminError({
   error,
@@ -26,6 +32,7 @@ export default function AdminError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
+    reportClientError("ADMIN", error);
   }, [error]);
 
   return (

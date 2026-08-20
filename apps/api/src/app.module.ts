@@ -40,6 +40,7 @@ import { AuthModule } from "@/modules/auth/auth.module";
 import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
 import { BackofficeModule } from "@/modules/backoffice/backoffice.module";
 import { BillingModule } from "@/modules/billing/billing.module";
+import { ClientErrorsModule } from "@/modules/client-errors/client-errors.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
@@ -108,6 +109,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     // --- Modulos de dominio (Dossie 13) — todos vazios nesta fase ---
     AuthModule,
     AuthentiqueModule,
+    ClientErrorsModule,
     UsersModule,
     CompaniesModule,
     BillingModule,

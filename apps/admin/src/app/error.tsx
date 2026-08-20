@@ -2,6 +2,8 @@
 
 import { useEffect } from "react";
 
+import { reportClientError } from "@/lib/report-client-error";
+
 /**
  * Error Boundary global do App Router (convencao de arquivo especial
  * `error.tsx` do Next.js) — captura qualquer erro nao tratado renderizado
@@ -13,6 +15,10 @@ import { useEffect } from "react";
  * discreta abaixo da frase principal — mesmo pedido do usuário
  * atendido em `apps/web/src/app/error.tsx`. Integração com Sentry
  * ainda a configurar (Dossie 23, Secao 9).
+ *
+ * `reportClientError` manda a mensagem/digest/stack REAIS pro nosso
+ * próprio backend (`POST /client-errors`) — ver
+ * `apps/admin/src/lib/report-client-error.ts`.
  */
 export default function GlobalError({
   error,
@@ -24,6 +30,7 @@ export default function GlobalError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
+    reportClientError("ADMIN", error);
   }, [error]);
 
   return (
