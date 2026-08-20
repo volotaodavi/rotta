@@ -12,7 +12,6 @@ import type {
 
 import { rottaAiApi, routesApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do módulo Rotas — auto-serviço de Empresa/Gestor
  * (`/rotas`, `/rotas/novo`, `/rotas/[id]`). Achado da auditoria (pedido
@@ -115,6 +114,15 @@ export function useAddRouteStudent(routeId: string) {
     mutationFn: (input: AddRouteStudentInput) => routesApi.addStudent(routeId, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["routes", routeId, "students"] });
+      // Vincular o primeiro aluno a uma rota PAUSADA com parada já
+      // ativa a automaticamente no backend (`RoutesService.addStudent`
+      // — pedido do usuário: "após selecionar os alunos, salvar para
+      // dar início"). `["routes"]` (sem mais nada) invalida tanto esta
+      // rota (`useRoute`, `["routes", id]`) quanto a listagem
+      // (`useRoutesList`, `["routes", params]`) — sem isso o badge de
+      // status continuava mostrando "Pausada" até um refresh manual, a
+      // mudança já tinha acontecido no banco, só não refletia na tela.
+      void queryClient.invalidateQueries({ queryKey: ["routes"] });
     },
   });
 }

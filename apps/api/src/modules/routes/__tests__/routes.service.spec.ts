@@ -499,6 +499,87 @@ describe("RoutesService", () => {
         ),
       ).rejects.toThrow(BadRequestException);
     });
+
+    /**
+     * Pedido do usuário: "ao criar uma rota, não deverá ir para
+     * 'pausada'. Deverá ser ativa... após selecionar os alunos, salvar
+     * para dar início". Uma rota nasce `PAUSADA` (correto — sem parada
+     * nem aluno não faz sentido aparecer em "Minha Rota"), mas o
+     * primeiro aluno vinculado a uma rota que já tem parada (a própria
+     * `addStudent` exige `paradaEmbarqueId`/`paradaDesembarqueId`
+     * válidos) deve virar `ATIVA` sozinha, sem exigir um clique manual
+     * separado em nenhuma plataforma (web, admin ou mobile — todas
+     * passam por este mesmo endpoint).
+     */
+    it("ativa a rota automaticamente ao vincular o primeiro aluno numa rota PAUSADA", async () => {
+      routeRepository.findById.mockResolvedValue(
+        buildRoute({ id: "route-1", status: RouteStatus.PAUSADA }),
+      );
+      contractsService.findRawByIdOrThrow.mockResolvedValue(
+        buildContract({ studentId: "student-1", companyId: "company-1" }),
+      );
+      routeStudentRepository.findByContractId.mockResolvedValue(null);
+      routeStopRepository.findById.mockImplementation((id) =>
+        Promise.resolve(buildStop({ id, routeId: "route-1" })),
+      );
+      routeStudentRepository.listActiveByStudentAcrossTenants.mockResolvedValue([]);
+      routeStudentRepository.create.mockResolvedValue({
+        id: "vinculo-1",
+        routeId: "route-1",
+        companyId: "company-1",
+        contractId: "contract-1",
+        studentId: "student-1",
+        paradaEmbarqueId: "stop-1",
+        paradaDesembarqueId: "stop-2",
+        ativo: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await service.addStudent(
+        "route-1",
+        { contractId: "contract-1", paradaEmbarqueId: "stop-1", paradaDesembarqueId: "stop-2" },
+        empresaActor,
+        {},
+      );
+
+      expect(routeRepository.update).toHaveBeenCalledWith("route-1", { status: "ATIVA" });
+    });
+
+    it("não mexe no status quando a rota já está ATIVA", async () => {
+      routeRepository.findById.mockResolvedValue(
+        buildRoute({ id: "route-1", status: RouteStatus.ATIVA }),
+      );
+      contractsService.findRawByIdOrThrow.mockResolvedValue(
+        buildContract({ studentId: "student-1", companyId: "company-1" }),
+      );
+      routeStudentRepository.findByContractId.mockResolvedValue(null);
+      routeStopRepository.findById.mockImplementation((id) =>
+        Promise.resolve(buildStop({ id, routeId: "route-1" })),
+      );
+      routeStudentRepository.listActiveByStudentAcrossTenants.mockResolvedValue([]);
+      routeStudentRepository.create.mockResolvedValue({
+        id: "vinculo-1",
+        routeId: "route-1",
+        companyId: "company-1",
+        contractId: "contract-1",
+        studentId: "student-1",
+        paradaEmbarqueId: "stop-1",
+        paradaDesembarqueId: "stop-2",
+        ativo: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+
+      await service.addStudent(
+        "route-1",
+        { contractId: "contract-1", paradaEmbarqueId: "stop-1", paradaDesembarqueId: "stop-2" },
+        empresaActor,
+        {},
+      );
+
+      expect(routeRepository.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("addStop — pedido do usuário: parada por Escola do catálogo, não endereço digitado", () => {

@@ -157,18 +157,27 @@ export default function RotaDetalhePage(): JSX.Element {
       {route.status === "PAUSADA" &&
       (stops?.length ?? 0) > 0 &&
       (routeStudents?.length ?? 0) > 0 ? (
+        /*
+         * Pedido do usuário: "ao criar uma rota, não deverá ir para
+         * 'pausada'. Deverá ser ativa... após selecionar os alunos,
+         * salvar para dar início". Desde então (`RoutesService.addStudent`,
+         * apps/api) vincular o primeiro aluno a uma rota com parada já
+         * ativa ela automaticamente — este card só aparece se a empresa
+         * PAUSOU manualmente uma rota que já tinha tudo pronto, nunca
+         * mais como parte do fluxo normal de criação.
+         */
         <Card className="border-success/40 bg-success/5">
           <Card.Body className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Typography variant="bodySmall">
-              Rota pronta: já tem parada e aluno credenciado. Conclua para ela aparecer em
-              &quot;Minha Rota&quot; para o motorista e o monitor.
+              Você pausou esta rota, mas ela já tem parada e aluno credenciado. Reative para ela
+              voltar a aparecer em &quot;Minha Rota&quot; para o motorista e o monitor.
             </Typography>
             <Button
               variant="primary"
               isLoading={updateRoute.isPending}
               onClick={() => updateRoute.mutate({ status: "ATIVA" })}
             >
-              Concluir e ativar rota
+              Reativar rota
             </Button>
           </Card.Body>
         </Card>
@@ -178,7 +187,7 @@ export default function RotaDetalhePage(): JSX.Element {
             <Typography variant="bodySmall" color="danger">
               Esta rota está pausada: ela não aparece em &quot;Minha Rota&quot; para o motorista nem
               para o monitor enquanto estiver assim. Adicione ao menos uma parada e um aluno abaixo
-              para poder concluir e ativar a rota.
+              — a rota é ativada automaticamente assim que o primeiro aluno for vinculado.
             </Typography>
           </Card.Body>
         </Card>

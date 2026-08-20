@@ -37,9 +37,14 @@ const INITIAL_STATE: CreateRouteInput = {
  * aquele motorista". Motorista/monitor/veículo padrão são escolhidos
  * aqui entre os já vinculados a esta empresa (`useMyTeam`/
  * `useVehiclesList`) — nunca digitados, nunca inventados. A rota nasce
- * `PAUSADA` (default do backend); o motorista só consegue "Deslize
- * para iniciar viagem" em `/minha-rota` depois que ela existir E tiver
- * pelo menos um aluno (próxima etapa, em `/rotas/[id]`).
+ * `PAUSADA` (default do backend, propositalmente: sem parada nem aluno
+ * ainda não faz sentido ela aparecer em "Minha Rota" pra ninguém), mas
+ * essa etapa é 100% automática — o usuário nunca precisa de um clique
+ * manual separado pra "ativar": basta adicionar ao menos uma parada e
+ * um aluno na próxima etapa (`/rotas/[id]`, pra onde esta tela navega
+ * assim que a rota é criada) que o backend já vira `ATIVA` sozinho
+ * (`RoutesService.addStudent`) — só então o motorista consegue
+ * "Deslize para iniciar viagem" em `/minha-rota`.
  *
  * Achado real (pedido do usuário: "Quando o motorista é autônomo ou
  * MEI, ele mesmo é o próprio motorista. Lembre disso, pois para criar

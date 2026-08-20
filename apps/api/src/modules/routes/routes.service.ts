@@ -673,6 +673,41 @@ export class RoutesService {
       userAgent: meta.userAgent,
     });
 
+    /**
+     * Auto-ativação (pedido do usuário: "ao criar uma rota, não deverá
+     * ir para 'pausada'. Deverá ser ativa... após selecionar os alunos,
+     * salvar para dar início à utilização na web e no app mobile") —
+     * antes desta mudança, uma rota nascia `PAUSADA` (correto: sem
+     * parada nem aluno, não faz sentido ela já aparecer em "Minha Rota"
+     * pro motorista) e SÓ virava `ATIVA` com um clique manual separado
+     * ("Concluir e ativar rota", Frente 1) — uma etapa extra que o
+     * usuário não queria, e que o app mobile (mesmo endpoint) também
+     * teria que replicar por conta própria.
+     *
+     * Aqui, no ponto único onde web/admin/mobile todos passam pra
+     * vincular um aluno, o momento em que a rota passa a ter parada
+     * (já validado acima, `fetchStopOrThrow`) E pelo menos um aluno
+     * (este `addStudent` que acabou de rodar) é exatamente o "salvar
+     * para dar início" que o usuário pediu — a rota vira `ATIVA`
+     * automaticamente, sem exigir uma segunda ação manual. Só dispara
+     * se ainda estiver `PAUSADA` (idempotente — não reabre uma rota que
+     * o usuário pausou de propósito) e só quando de fato tinha vindo de
+     * `PAUSADA` nasce um segundo registro de auditoria, pra manter o
+     * histórico claro de que foi uma ativação automática, não manual.
+     */
+    if (route.status === "PAUSADA") {
+      await this.routeRepository.update(routeId, { status: "ATIVA" });
+      await this.recordAudit({
+        companyId: route.companyId,
+        entidadeId: routeId,
+        acao: "ROUTE_AUTO_ATIVADA_PRIMEIRO_ALUNO",
+        atorUserId: actor.sub,
+        dadosDepois: { status: "ATIVA" },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+    }
+
     return toRouteStudentResponseDto(routeStudent);
   }
 
