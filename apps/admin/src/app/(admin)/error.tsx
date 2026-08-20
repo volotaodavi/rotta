@@ -31,6 +31,7 @@ export default function AdminError({
   return (
     <ErrorState
       message="Não foi possível carregar esta página. Tente novamente ou use a navegação acima para ir a outro lugar do painel."
+      detail={error.message || undefined}
       onRetry={reset}
     />
   );

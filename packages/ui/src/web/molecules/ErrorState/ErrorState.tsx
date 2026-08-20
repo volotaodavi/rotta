@@ -16,6 +16,15 @@ export interface ErrorStateProps {
   onRetry: () => void;
   isRetrying?: boolean;
   retryLabel?: string;
+  /**
+   * Mensagem técnica opcional (ex. `error.message` de um `error.tsx`),
+   * mostrada como legenda discreta abaixo da frase principal — pedido
+   * do usuário depois de ver a mesma tela genérica repetidas vezes sem
+   * nenhuma pista do que quebrou. Nunca a stack completa (só a
+   * `message`, curta e já sem dado sensível — o próprio `Error` lançado
+   * pelo código da tela), e só aparece quando informado.
+   */
+  detail?: string;
 }
 
 export function ErrorState({
@@ -23,12 +32,18 @@ export function ErrorState({
   onRetry,
   isRetrying = false,
   retryLabel = "Tentar novamente",
+  detail,
 }: ErrorStateProps) {
   return (
     <div className="flex flex-col items-center gap-3 py-12 text-center">
       <Typography variant="body" color="danger">
         {message}
       </Typography>
+      {detail ? (
+        <Typography variant="caption" color="muted" className="max-w-md break-words">
+          {detail}
+        </Typography>
+      ) : null}
       <Button variant="secondary" size="sm" isLoading={isRetrying} onClick={onRetry}>
         {retryLabel}
       </Button>

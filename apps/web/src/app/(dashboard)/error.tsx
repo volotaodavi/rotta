@@ -18,6 +18,12 @@ import { useEffect } from "react";
  * substitui `children`, nunca o `layout.tsx` da mesma pasta) — o
  * usuário sempre mantém a navegação e consegue sair da tela quebrada
  * sem perder a sessão nem o resto do painel.
+ *
+ * `detail={error.message}` (pedido do usuário depois de ver esta MESMA
+ * frase genérica várias vezes sem nenhuma pista do que quebrou): mostra
+ * a mensagem curta do `Error` lançado, nunca a stack inteira — o
+ * `console.error` abaixo continua sendo o lugar certo pra investigação
+ * completa, isto aqui é só uma legenda visível na própria tela.
  */
 export default function DashboardError({
   error,
@@ -34,6 +40,7 @@ export default function DashboardError({
   return (
     <ErrorState
       message="Não foi possível carregar esta página. Tente novamente ou use a navegação acima para ir a outro lugar do painel."
+      detail={error.message || undefined}
       onRetry={reset}
     />
   );
