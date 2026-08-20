@@ -36,7 +36,6 @@ const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/alunos-pre-cadastro", label: "Alunos" },
   { href: "/veiculos", label: "Veículos" },
   { href: "/escolas", label: "Escolas" },
-  { href: "/rotas", label: "Rotas" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/rotta-pay", label: "Rotta Pay" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
