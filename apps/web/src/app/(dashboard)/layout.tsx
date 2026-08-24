@@ -18,6 +18,7 @@ import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { PostSignupIdentityPopup } from "@/features/identity-verification/components/post-signup-identity-popup";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
+import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
 
 
@@ -113,6 +114,18 @@ const DRIVER_MODE_ALLOWED_PREFIXES = [
  * não serve pro papel logado), nunca a única barreira de acesso.
  */
 export default function DashboardLayout({ children }: { children: ReactNode }): JSX.Element {
+  // Instrumentação temporária (ver `@/lib/render-checkpoint.ts` e a nota
+  // grande em `rotas/[id]/page.tsx`) — 2ª reprodução ao vivo do "Server
+  // Components render" mostrou que a falha acontece DEPOIS do render de
+  // `RotaDetalheContent` ter chegado com sucesso até o Spinner de
+  // "carregando" (último checkpoint visto: `retorno-spinner-carregando`)
+  // — ou seja, fora do que essa instrumentação já cobria. Este layout
+  // ENVOLVE toda página do painel mas não é coberto por nenhum
+  // `SectionErrorBoundary` (esses só existem dentro de cada página) —
+  // candidato natural pra onde a falha real pode estar, dado que os
+  // checkpoints dentro da própria página não capturaram nada depois do
+  // Spinner.
+  recordCheckpoint("dashboard-layout:inicio-render");
   const { status, user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -200,13 +213,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     (canToggle || isEmployeeDriver) && !isOnMinhaRota && !isBlockedByIdentityVerification,
   );
 
+  recordCheckpoint("dashboard-layout:hooks-ok");
+
   if (status !== "authenticated" || (shouldCheckIdentity && isIdentityLoading)) {
+    recordCheckpoint("dashboard-layout:retorno-spinner-auth-carregando");
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
         <Spinner size="lg" />
       </div>
     );
   }
+  recordCheckpoint("dashboard-layout:autenticado-vai-renderizar-shell");
 
   // Frente AO — o Responsável passou a usar a mesma barra de 4 ícones
   // fixa embaixo (`ResponsavelBottomNav`) das 3 imagens de referência,
@@ -221,6 +238,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
         ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
         : PROFISSIONAL_NAV;
   const showBottomNav = showDriverNavBar || isResponsavel;
+  recordCheckpoint("dashboard-layout:antes-do-jsx-final");
 
   return (
     // `min-h-dvh` em vez de `min-h-screen` (BUG corrigido — mapa em tela
