@@ -48,6 +48,15 @@ export class NotificationChannelSelectorService {
     NOVA_ESCOLA: [PUSH],
     NOVO_ALUNO: [PUSH],
     NOVO_RESPONSAVEL: [PUSH],
+    // Trial de 15 dias grátis (pedido do usuário: avisos "pela web, push
+    // notifications do próprio app e email") — web é o IN_APP que
+    // `NotificationsService.notify()` já adiciona sozinho a todo evento.
+    TRIAL_EXPIRANDO: [PUSH, EMAIL],
+    TRIAL_VENCE_HOJE: [PUSH, EMAIL],
+    // Bloqueado (dia 16+) ganha WHATSAPP a mais — mesmo padrão já usado
+    // pra outros avisos de cobrança (PAGAMENTO_PENDENTE/RECUSADO acima),
+    // é o momento de maior urgência de ação do usuário.
+    TRIAL_BLOQUEADO: [PUSH, EMAIL, WHATSAPP],
   };
 
   selectChannels(tipo: NotificationEventType): CommunicationChannel[] {

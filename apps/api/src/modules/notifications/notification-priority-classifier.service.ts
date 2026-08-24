@@ -37,6 +37,12 @@ export class NotificationPriorityClassifierService {
     NOVA_ESCOLA: INFORMATIVA,
     NOVO_ALUNO: INFORMATIVA,
     NOVO_RESPONSAVEL: INFORMATIVA,
+    // Nenhum dos três é EMERGENCIA (só bypassa Quiet Hours) — é um
+    // aviso de cobrança, não um incidente de segurança; mesmo de
+    // madrugada o Quiet Hours deve valer, entregue quando reabrir.
+    TRIAL_EXPIRANDO: IMPORTANTE,
+    TRIAL_VENCE_HOJE: URGENTE,
+    TRIAL_BLOQUEADO: CRITICA,
   };
 
   classify(tipo: NotificationEventType): NotificationPriority {

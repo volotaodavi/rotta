@@ -95,6 +95,39 @@ enum IdentityVerificationStatus {
   EXPIRADA
 }
 
+/// Histórico append-only de cada decisão de verificação de identidade
+/// processada — uma linha por evento, tanto vindo do webhook da Didit
+/// (`DiditWebhookController`) quanto de uma decisão manual do Admin
+/// Rotta direto no painel (`IdentityVerificationService.decideForAdmin`).
+/// Pedido do usuário: "os comentários feitos no Didit (quando aprova,
+/// reprova ou pede uma nova foto)... isso pode ser quando faz uma ação
+/// no Didit, quanto na Rotta" — as duas origens já convergiam pro mesmo
+/// `motivo` extraído (`extractDiditDecisionReason`); este model só para
+/// de sobrescrever esse motivo a cada nova tentativa e passa a guardar
+/// todo o histórico, visível pro próprio usuário em
+/// `GET /identity-verification/me/reviews`.
+model IdentityVerificationReview {
+  id      String                     @id @default(uuid()) @db.Uuid
+  userId  String                     @db.Uuid
+  user    User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status  IdentityVerificationStatus
+  /// Mesmo texto que `User.identityVerificationMotivo` tinha no momento
+  /// deste evento — `null` quando o evento não trouxe nada extraível
+  /// (ex. um "In Progress" puro, sem decisão).
+  motivo  String?
+  /// Corpo bruto da decisão (`decision`/`resubmit_info`) — mesmo dado
+  /// que `User.identityVerificationDecisao` guarda, preservado aqui por
+  /// linha do histórico (auditoria/debug).
+  decisao Json?
+  /// De onde veio esta decisão — nunca inferido, sempre setado
+  /// explicitamente por quem grava a linha (webhook vs. `decideForAdmin`).
+  origem  String
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
 /// Status do vinculo Usuario<->Empresa<->Papel (Dossie 8, Secao 2 —
 /// `VinculoPapel`). Um `Membership` `REMOVIDO` e preservado (nunca
 /// apagado) para trilha de auditoria de quem já pertenceu ao tenant.
@@ -497,6 +530,15 @@ model Company {
   planId String        @db.Uuid
   plan   Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
 
+  /// Quando o trial de 15 dias grátis vence — setado em
+  /// `CompaniesService.create()` como `createdAt + 15 dias` sempre que a
+  /// empresa nasce em `TRIAL`. `null` pra empresas criadas já `ATIVO`
+  /// (fluxo administrativo). Antes deste campo, `TRIAL` era um status
+  /// sem prazo nenhum (nada no schema sabia dizer "vence quando"); é a
+  /// base pros avisos de vencimento (dias 12/13/14/15) e pro bloqueio
+  /// real do dia 16+ (`TrialGuard`, `apps/api/src/common/guards`).
+  trialExpiraEm DateTime?
+
   /// ID da assinatura na AbacatePay (formato `subs_...`) — preenchido pelo
   /// webhook `subscription.completed` (Dossiê 26, Rotta Pay/Billing). Nulo
   /// enquanto a empresa nunca concluiu um checkout de assinatura (inclui
@@ -701,12 +743,18 @@ model User {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  memberships         Membership[]
-  auditLogs           AuditLog[]
-  sessions            Session[]
-  passwordResetTokens PasswordResetToken[]
-  invitesCriados      Invite[]             @relation("InviteCriadoPor")
-  invitesUsados       Invite[]             @relation("InviteUsadoPor")
+  memberships                 Membership[]
+  auditLogs                   AuditLog[]
+  /// Histórico append-only de cada decisão de verificação de identidade
+  /// processada (webhook Didit OU decisão manual do Admin Rotta) — ver
+  /// `IdentityVerificationReview`. Existe porque `identityVerificationMotivo`
+  /// acima só guarda o motivo da ÚLTIMA decisão: uma segunda tentativa
+  /// apagava o comentário da primeira.
+  identityVerificationReviews IdentityVerificationReview[]
+  sessions                    Session[]
+  passwordResetTokens         PasswordResetToken[]
+  invitesCriados              Invite[]                     @relation("InviteCriadoPor")
+  invitesUsados               Invite[]                     @relation("InviteUsadoPor")
 
   /// Frente N — pedidos de vínculo que este usuário fez (`Solicitante`) e,
   /// quando atua como Empresa/Gestor, os que ele aprovou/recusou
@@ -2234,6 +2282,13 @@ enum NotificationEventType {
   NOVA_ESCOLA
   NOVO_ALUNO
   NOVO_RESPONSAVEL
+  /// Trial de 15 dias grátis se aproximando do fim (dias 12/13/14) —
+  /// `TrialSchedulerService`.
+  TRIAL_EXPIRANDO
+  /// Trial vence HOJE (dia 15) — mesmo scheduler.
+  TRIAL_VENCE_HOJE
+  /// Trial vencido, ações bloqueadas (dia 16+) — mesmo scheduler.
+  TRIAL_BLOQUEADO
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —
