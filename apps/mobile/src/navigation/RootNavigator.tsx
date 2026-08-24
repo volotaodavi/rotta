@@ -60,7 +60,14 @@ export function RootNavigator(): JSX.Element {
     return <PinLockScreen onUnlock={unlock} />;
   }
 
-  if (isMotoristaOuMonitor && identityVerification?.status === "REPROVADA") {
+  // Ampliado de `=== "REPROVADA"` (mesma mudança de `apps/web`, pedido
+  // do usuário: "travar quase tudo" até a identidade estar de fato
+  // aprovada) — antes só quem tinha sido RECUSADO ficava bloqueado.
+  if (
+    isMotoristaOuMonitor &&
+    identityVerification != null &&
+    identityVerification.status !== "APROVADA"
+  ) {
     return <IdentityVerificationBlockedScreen />;
   }
 

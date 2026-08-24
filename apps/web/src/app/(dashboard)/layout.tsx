@@ -16,8 +16,10 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useAppMode } from "@/features/driver/hooks/use-app-mode";
 import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
+import { PostSignupIdentityPopup } from "@/features/identity-verification/components/post-signup-identity-popup";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
+
 
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
@@ -178,7 +180,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   const { data: identityVerification, isLoading: isIdentityLoading } = useMyIdentityVerification({
     enabled: shouldCheckIdentity,
   });
-  const isBlockedByIdentityVerification = identityVerification?.status === "REPROVADA";
+  // Ampliado de `=== "REPROVADA"` (pedido do usuário: "travar quase
+  // tudo" até a identidade estar de fato aprovada) — antes só quem
+  // tinha sido RECUSADO ficava bloqueado; NAO_INICIADA/EM_ANDAMENTO/
+  // EM_ANALISE/EXPIRADA passavam batido e usavam o painel inteiro sem
+  // nunca ter validado nada. `identityVerification == null` (ainda
+  // carregando, ou não se aplica a este papel) nunca bloqueia à toa.
+  const isBlockedByIdentityVerification =
+    identityVerification != null && identityVerification.status !== "APROVADA";
 
   // "Em viagem agora" (Frente G, "inove"; Frente H estende pro
   // funcionário): só busca quando faz sentido — elegível ao alternador
@@ -224,6 +233,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     // layout.tsx`), fecha o problema de ponta a ponta.
     <div className="flex min-h-dvh flex-col bg-background text-text">
       <StaleBuildWatchdog />
+      {shouldCheckIdentity && user && identityVerification ? (
+        <PostSignupIdentityPopup userId={user.id} status={identityVerification.status} />
+      ) : null}
       <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
         <div className="flex items-center gap-8">
           <Typography variant="subtitle">
@@ -321,7 +333,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
         </Link>
       )}
       {isBlockedByIdentityVerification ? (
-        <IdentityVerificationBlockScreen motivo={identityVerification?.motivo ?? null} />
+        <IdentityVerificationBlockScreen
+          status={identityVerification.status}
+          motivo={identityVerification.motivo}
+        />
       ) : (
         <>
           {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}
