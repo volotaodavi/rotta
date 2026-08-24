@@ -92,12 +92,13 @@ export default function CriarEmpresaPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
-  // Frente AN (pedido do usuário) — depois de criar a conta como LTDA/
-  // S-A/Cooperativa/Sociedade Simples/Outro, a página vira uma
-  // confirmação ("nossa equipe entrará em contato...") em vez de cair
-  // direto no painel. Autônomo/MEI mantém o fluxo atual (acesso
-  // imediato) — pedido explícito do usuário, é a própria pessoa quem
-  // dirige, sem necessidade de contato comercial antes.
+  // Depois de criar a conta, SEMPRE mostra uma tela de confirmação antes
+  // de entrar no painel (pedido do usuário: "deverá aparecer uma tela
+  // informando que a conta foi criada com sucesso... um botão para
+  // 'entrar'") — a cópia varia por `requerContatoComercial` (Frente AN):
+  // LTDA/S-A/Cooperativa/Sociedade Simples/Outro avisam que a equipe vai
+  // entrar em contato; Autônomo/MEI (acesso imediato, sem necessidade de
+  // contato comercial) só confirma o sucesso com o botão "Entrar".
   const [contaCriada, setContaCriada] = useState(false);
   const cepLookup = useCepLookup();
   const cnpjLookup = useCnpjLookup();
@@ -192,11 +193,16 @@ export default function CriarEmpresaPage(): JSX.Element {
     setIsSubmitting(true);
     try {
       await registerEmpresa(form);
-      if (requerContatoComercial) {
-        setContaCriada(true);
-      } else {
-        router.replace("/empresa");
-      }
+      // Pedido do usuário: "após criar uma conta, deverá aparecer uma
+      // tela informando que a conta foi criada com sucesso... terá um
+      // botão para 'entrar'." Antes desta mudança só quem exigia contato
+      // comercial (LTDA/S-A/Cooperativa/Sociedade Simples/Outro) via essa
+      // confirmação — Autônomo/MEI caía direto no painel sem nenhuma
+      // tela de sucesso. A pessoa já está autenticada nesse ponto (mesma
+      // sessão aberta por `registerEmpresa`, ver `auth-context.tsx`) —
+      // "entrar" aqui é literal: o botão só navega pro painel, não pede
+      // login de novo.
+      setContaCriada(true);
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Erro inesperado ao cadastrar empresa.",
@@ -215,12 +221,13 @@ export default function CriarEmpresaPage(): JSX.Element {
         <div className="flex flex-col gap-2">
           <Typography variant="title">Que bom! 🎉</Typography>
           <Typography variant="body" color="muted">
-            Sua conta foi criada com sucesso. Nossa equipe entrará em contato pelo número de celular
-            indicado ({form.telefone || form.administrador.telefone}). Fique atento!
+            {requerContatoComercial
+              ? `Sua conta foi criada com sucesso. Nossa equipe entrará em contato pelo número de celular indicado (${form.telefone || form.administrador.telefone}). Fique atento!`
+              : "Sua conta foi criada com sucesso. Você já pode entrar e começar a usar a Rotta."}
           </Typography>
         </div>
         <Button variant="primary" onClick={() => router.replace("/empresa")}>
-          Ir para o painel
+          {requerContatoComercial ? "Ir para o painel" : "Entrar"}
         </Button>
       </div>
     );
