@@ -26,28 +26,36 @@ export function isChunkLoadError(error: unknown): boolean {
 
 /**
  * ACHADO REAL (investigação do "algo deu errado" recorrente na conta real
- * de um usuário — 21 ocorrências ao longo de dias, sempre segundos depois
- * de criar/abrir uma rota, sempre com `digest` VAZIO). Buscando cada uma
- * na tela "Erros do cliente" do Admin Rotta: todas eram a mesma frase
- * genérica que o Next.js usa pra "algo quebrou no render de Server
- * Components" — só que sem `digest` nenhum. Isso é anômalo: um erro
- * REAL de render em produção sempre ganha um `digest` (é assim que o
- * Next correlaciona com o log do servidor); a ÚNICA forma documentada
- * neste código de essa mensagem aparecer SEM `digest` é o mesmo padrão já
- * mapeado em `isChunkLoadError` acima e em
- * `service-worker-registration.tsx` — o navegador ainda executando algo
- * desatualizado (chunk antigo, payload RSC de um deploy anterior,
- * Service Worker que nunca chegou a atualizar aquela aba) — só que desta
- * vez o próprio Next.js, ao invés de deixar o `import()` falhar com
- * `ChunkLoadError`, absorve a falha internamente e devolve essa mensagem
- * genérica redigida (com `digest: undefined`) direto pro Error Boundary.
- * Fetchs repetidos direto no HTML de produção (curl, sem JS, mesma rota)
- * NUNCA reproduziram esse erro — o problema não está no HTML servido, é
- * sempre algo já em memória/cache no navegador de quem está vendo.
+ * de um usuário — 22+ ocorrências ao longo de dias, quase sempre segundos
+ * depois de criar/abrir uma rota, sempre com `digest` VAZIO). Buscando
+ * cada uma na tela "Erros do cliente" do Admin Rotta: todas eram a mesma
+ * frase genérica que o Next.js usa pra "algo quebrou no render de Server
+ * Components" — só que sem `digest` nenhum. Isso é anômalo: um erro REAL
+ * de render em produção normalmente ganha um `digest` (é assim que o Next
+ * correlaciona com o log do servidor).
+ *
+ * CORREÇÃO DE ROTA (achado numa investigação posterior, com `buildId` da
+ * ocorrência mais recente batendo EXATAMENTE com o deploy atual e
+ * `serviceWorkerActive: false`): a causa NÃO É sempre "navegador com algo
+ * obsoleto em memória" — esta função também casa com uma corrida
+ * intermitente de infraestrutura, já vista na investigação ORIGINAL deste
+ * mesmo padrão (`fix(web): navegação forçada`, commit `0c90857`): a mesma
+ * mensagem, mesmo `digest` vazio, numa navegação pra um segmento dinâmico
+ * (`/rotas/[id]`) NUNCA renderizado antes (rota recém-criada) — nunca
+ * reproduzido localmente, e a mesma URL exata buscada via `curl` segundos
+ * depois sempre voltava limpa (200). Trocar a navegação por
+ * `window.location.href` reduziu a frequência mas não eliminou (prova: a
+ * ocorrência com `buildId` do deploy atual já usa essa navegação). As
+ * duas causas (bundle obsoleto E corrida de cold start num segmento
+ * dinâmico novo) produzem o EXATO mesmo sintoma no navegador — o que
+ * importa aqui é reconhecer o padrão, não distinguir qual das duas foi
+ * desta vez, porque a mitigação é idêntica pras duas.
  *
  * Mesma correção que já existe pra `ChunkLoadError`: recarregar a página
- * uma vez (guardado contra loop) resolve, porque busca tudo de novo, sem
- * depender de nada que já estava obsoleto na aba.
+ * (agora até 2 vezes — ver `MAX_RELOAD_ATTEMPTS` em
+ * `use-chunk-load-recovery.ts`) resolve nos dois casos, porque busca tudo
+ * de novo, sem depender de nada obsoleto na aba nem esperar a mesma
+ * invocação fria.
  */
 export function isStaleClientRenderError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;

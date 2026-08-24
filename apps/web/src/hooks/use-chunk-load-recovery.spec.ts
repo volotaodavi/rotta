@@ -3,10 +3,16 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useChunkLoadRecovery } from "./use-chunk-load-recovery";
 
+const GUARD_KEY = "rotta_chunk_reload_state";
+
 function chunkLoadError(message = "Loading chunk 8039 failed."): Error {
   const error = new Error(message);
   error.name = "ChunkLoadError";
   return error;
+}
+
+function setGuardState(attempts: number, lastAttemptAt: number): void {
+  sessionStorage.setItem(GUARD_KEY, JSON.stringify({ attempts, lastAttemptAt }));
 }
 
 describe("useChunkLoadRecovery", () => {
@@ -26,12 +32,12 @@ describe("useChunkLoadRecovery", () => {
     vi.restoreAllMocks();
   });
 
-  it("recarrega a página exatamente uma vez diante de um ChunkLoadError real", () => {
+  it("recarrega a página na primeira ocorrência de um ChunkLoadError real", () => {
     const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
 
     expect(reloadSpy).toHaveBeenCalledTimes(1);
     expect(result.current).toBe(true);
-    expect(sessionStorage.getItem("rotta_chunk_reload_at")).not.toBeNull();
+    expect(sessionStorage.getItem(GUARD_KEY)).not.toBeNull();
   });
 
   it("NÃO recarrega para um erro de aplicação normal (não é ChunkLoadError)", () => {
@@ -43,9 +49,25 @@ describe("useChunkLoadRecovery", () => {
     expect(result.current).toBe(false);
   });
 
-  it("guarda de 10s evita loop infinito de reload", () => {
-    // Simula um reload já disparado há pouco (dentro da janela de 10s).
-    sessionStorage.setItem("rotta_chunk_reload_at", String(Date.now()));
+  /**
+   * ACHADO REAL (ver nota grande em `use-chunk-load-recovery.ts`): a
+   * ocorrência mais recente em produção provou que uma corrida
+   * intermitente de cold start pode sobreviver a UM reload — por isso
+   * agora tenta até `MAX_RELOAD_ATTEMPTS` (2) vezes no mesmo episódio,
+   * não mais só uma.
+   */
+  it("tenta recarregar uma SEGUNDA vez se o mesmo episódio de erro persistir", () => {
+    setGuardState(1, Date.now() - 2_000);
+
+    const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
+
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+    expect(result.current).toBe(true);
+    expect(JSON.parse(sessionStorage.getItem(GUARD_KEY) ?? "{}").attempts).toBe(2);
+  });
+
+  it("desiste depois de MAX_RELOAD_ATTEMPTS (2) tentativas no mesmo episódio", () => {
+    setGuardState(2, Date.now() - 2_000);
 
     const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
 
@@ -53,16 +75,17 @@ describe("useChunkLoadRecovery", () => {
     expect(result.current).toBe(false);
   });
 
-  it("permite recarregar de novo depois que a janela de 10s expira", () => {
-    sessionStorage.setItem("rotta_chunk_reload_at", String(Date.now() - 11_000));
+  it("começa um episódio novo (zera a contagem) depois que a janela de 20s expira", () => {
+    setGuardState(2, Date.now() - 21_000);
 
     const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
 
     expect(reloadSpy).toHaveBeenCalledTimes(1);
     expect(result.current).toBe(true);
+    expect(JSON.parse(sessionStorage.getItem(GUARD_KEY) ?? "{}").attempts).toBe(1);
   });
 
-  it("recarrega diante da mensagem genérica de 'Server Components render' sem digest (caso real de produção, 21 ocorrências)", () => {
+  it("recarrega diante da mensagem genérica de 'Server Components render' sem digest (caso real de produção)", () => {
     const error = new Error(
       "An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.",
     );
@@ -73,7 +96,7 @@ describe("useChunkLoadRecovery", () => {
     expect(result.current).toBe(true);
   });
 
-  it("NÃO recarrega a mesma mensagem genérica quando vem com um digest real (erro de app de verdade, não bundle obsoleto)", () => {
+  it("NÃO recarrega a mesma mensagem genérica quando vem com um digest real (erro de app de verdade, não bundle obsoleto/cold start)", () => {
     const error = new Error(
       "An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.",
     ) as Error & { digest?: string };
@@ -83,5 +106,14 @@ describe("useChunkLoadRecovery", () => {
 
     expect(reloadSpy).not.toHaveBeenCalled();
     expect(result.current).toBe(false);
+  });
+
+  it("ignora um valor corrompido/antigo em sessionStorage em vez de quebrar (formato anterior à mudança pra JSON)", () => {
+    sessionStorage.setItem(GUARD_KEY, "not-json-and-not-a-number");
+
+    const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
+
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+    expect(result.current).toBe(true);
   });
 });
