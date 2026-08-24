@@ -2,8 +2,10 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
-import dynamic from "next/dynamic";
-import { useParams } from "next/navigation";
+
+import { RouteOptimizationSection } from "./route-optimization-section";
+import { StopsSection } from "./stops-section";
+import { StudentsSection } from "./students-section";
 
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import {
@@ -21,100 +23,45 @@ import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 
-/**
- * ACHADO REAL — 2ª reprodução ao vivo (build `9a04698`, isolar só as três
- * seções via `dynamic(..., { ssr: false })` NÃO resolveu): o último
- * checkpoint registrado foi `rota-detalhe:retorno-spinner-carregando` —
- * ou seja, TODOS os hooks (`useParams`, `useRoute`, `useRouteStops`,
- * `useRouteStudents`, `useMyTeam`, `useAuth`, `useUpdateRoute`) e o
- * primeiro `return` (o Spinner de "carregando") já tinham rodado sem
- * problema — a falha acontece DEPOIS desse ponto, fora do alcance desta
- * instrumentação. Isso descarta as três seções como causa isolada (nem
- * chegam a ser avaliadas antes do Spinner) e aponta pra algo na
- * hidratação/commit do restante da árvore (`(dashboard)/layout.tsx`, que
- * envolve esta página mas não é coberto por `SectionErrorBoundary`), não
- * dentro desta implementação em si.
- *
- * Movida pra este arquivo, importado só via `dynamic(..., { ssr: false
- * })` em `page.tsx` — isola a implementação INTEIRA (não só as três
- * seções) do SSR desta página, como próximo passo de bisseção. Ver
- * `page.tsx` pro carregador mínimo.
- */
-const StopsSection = dynamic(
-  () => import("./stops-section").then((module) => module.StopsSection),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex justify-center py-6">
-        <Spinner size="sm" />
-      </div>
-    ),
-  },
-);
 
-const StudentsSection = dynamic(
-  () => import("./students-section").then((module) => module.StudentsSection),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex justify-center py-6">
-        <Spinner size="sm" />
-      </div>
-    ),
-  },
-);
-
-const RouteOptimizationSection = dynamic(
-  () => import("./route-optimization-section").then((module) => module.RouteOptimizationSection),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="flex justify-center py-6">
-        <Spinner size="sm" />
-      </div>
-    ),
-  },
-);
+interface RouteDetailClientProps {
+  routeId: string;
+}
 
 /**
- * Passos 2+3 do assistente "Criar rota" (Frente 4 do plano aprovado) —
- * paradas + alunos + "Concluir rota". Sem uma `RouteStop` real, não há
- * onde embarcar/desembarcar ninguém; sem um `RouteStudent`, o aluno
- * credenciado (`Contract` ATIVO) nunca aparece na rota do
- * motorista/monitor nem no mapa do responsável. O endereço da parada é
- * geocodificado pela Rotta Geo AI (`POST /geo/geocode`, Nominatim/OSM)
- * — nunca lat/long digitado manualmente.
- *
- * Frente 7 (prevenção de riscos, vazamentos e erros): três
- * `SectionErrorBoundary` — um envolvendo a página INTEIRA (não só o
- * `return` de sucesso, pra também cobrir os hooks chamados no topo do
- * componente) e um por seção (Rotta Route AI/paradas/alunos), pra um bug
- * isolado numa seção nunca derrubar a tela inteira e esconder até a
- * navegação e o cabeçalho da rota. Ver
- * `apps/web/src/components/section-error-boundary.tsx`.
+ * CAUSA CONFIRMADA (investigação do incidente "Server Components
+ * render" indeterminístico, reproduzido em TODA rota dinâmica do App
+ * Router — `/rotas/[id]`, `/veiculos/[id]`, `/convite/[codigo]`, tanto
+ * pública quanto autenticada, nunca numa rota estática): este arquivo
+ * era `page.tsx` diretamente, um Client Component (`"use client"`) que
+ * declarava `params: Promise<{ id: string }>` e chamava
+ * `useParams<{ id: string }>()`/`use(params)` pra resolver a Promise
+ * dentro do próprio cliente. Passar a Promise de `params` pra um
+ * Client Component (ou resolvê-la lá dentro) não é o contrato suportado
+ * pelo App Router do Next 15.5.22 + React 18.3.1 — o Server Component
+ * (`page.tsx`) precisa fazer `await params` e entregar só o valor final
+ * (`string`) por prop. `dynamic(..., { ssr: false })` (nesta página
+ * inteira e nas três seções abaixo) foi tentado antes como contenção e
+ * NÃO resolveu — removido: mascarava o sintoma, nunca a causa.
  */
-export default function RouteDetailClient(): JSX.Element {
+export function RouteDetailClient({ routeId }: RouteDetailClientProps): JSX.Element {
   return (
     <SectionErrorBoundary label="pagina-rota-detalhe">
-      <RotaDetalheContent />
+      <RotaDetalheContent routeId={routeId} />
     </SectionErrorBoundary>
   );
 }
 
-function RotaDetalheContent(): JSX.Element {
-  // Instrumentação temporária (ver `@/lib/render-checkpoint.ts`) —
-  // investigação em andamento do "Server Components render" genérico e
-  // determinístico nesta página, confirmado por reprodução ao vivo com
-  // deploymentId idêntico em cliente/assets/RSC (version skew já
-  // descartado). Escreve síncrono a cada checkpoint — se o render travar
-  // em algum ponto entre um e outro, o ÚLTIMO checkpoint gravado antes
-  // da tela quebrar sobrevive no `sessionStorage` e aparece no
-  // diagnóstico de `(dashboard)/error.tsx` na PRÓXIMA carga.
+function RotaDetalheContent({ routeId }: RouteDetailClientProps): JSX.Element {
+  // Instrumentação temporária (ver `@/lib/render-checkpoint.ts`) — mantida
+  // por enquanto como sinal complementar ao `onRequestError`
+  // (`apps/web/src/instrumentation.ts`, captura a exceção real do
+  // servidor nos Runtime Logs da Vercel). Escreve síncrono a cada
+  // checkpoint — se o render travar em algum ponto entre um e outro, o
+  // ÚLTIMO checkpoint gravado antes da tela quebrar sobrevive no
+  // `sessionStorage` e aparece no diagnóstico de `(dashboard)/error.tsx`
+  // na PRÓXIMA carga.
   recordCheckpoint("rota-detalhe:antes-dos-hooks");
-
-  const params = useParams<{ id: string }>();
-  const routeId = params.id;
-  recordCheckpoint("rota-detalhe:params-ok");
 
   const {
     data: route,
