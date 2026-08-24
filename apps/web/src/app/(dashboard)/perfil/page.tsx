@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { BookOpen, Bell, LogOut, MessageCircle, ShieldCheck } from "@rotta/icons";
+import { BookOpen, Bell, LogOut, Map, MessageCircle, ShieldCheck } from "@rotta/icons";
 import { Card, PanelGreeting, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,8 +30,14 @@ interface AtalhoPerfil {
  * aqui em vez de espalhado na barra — igual ao "Perfil" do app mobile
  * (`DriverPerfilScreen`, que já bundle Verificar identidade/
  * Documentação/Sair).
+ *
+ * "Minhas rotas" (fluxo novo de Rotas — pedido do usuário: "no modo
+ * ação também aparece essa opção") — único ponto de entrada do
+ * motorista/monitor autônomo/MEI pra criar/gerenciar/executar rotas,
+ * já que a barra inferior de 4 ícones não ganha um 5º item.
  */
 const ATALHOS_PERFIL_MOTORISTA: AtalhoPerfil[] = [
+  { href: "/rotas", label: "Minhas rotas", icon: Map },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/chamados", label: "Chamados", icon: MessageCircle },
   { href: "/verificacao-identidade", label: "Verificar identidade", icon: ShieldCheck },

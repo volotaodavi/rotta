@@ -34,4 +34,16 @@ export interface TripStudentEventRepository {
    * antes — nunca exposto direto sem essa checagem.
    */
   listByStudentAcrossTenants(studentId: string, since: Date): Promise<TripStudentEvent[]>;
+
+  /**
+   * Alunos, dentre `studentIds`, que têm um evento `AUSENTE` registrado
+   * HOJE (`date`, `@db.Date`) em QUALQUER viagem/rota da MESMA empresa
+   * (RLS de `withTenant` — nunca cross-tenant, ao contrário do método
+   * acima). Usado por `TripsService.getStudentsAttendanceToday` (fluxo
+   * novo de Rotas — "ao reiniciar a rota" pra pegar os alunos na
+   * escola, quem faltou de manhã não deve aparecer como pendente de
+   * embarque). Devolve só os IDs que TÊM o evento — quem não aparece
+   * na lista é considerado presente.
+   */
+  listStudentIdsAusenteToday(studentIds: string[], date: Date): Promise<string[]>;
 }

@@ -14,6 +14,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { CreateTripStudentEventDto } from "./dto/create-trip-student-event.dto";
 import { IngestPositionDto, IngestPositionsBatchDto } from "./dto/ingest-position.dto";
 import { StartTripDto } from "./dto/start-trip.dto";
+import { StudentsAttendanceTodayQueryDto } from "./dto/students-attendance-today-query.dto";
 import { SubstituirMonitorDto } from "./dto/substituir-monitor.dto";
 import { SubstituirMotoristaDto } from "./dto/substituir-motorista.dto";
 import { SubstituirVeiculoDto } from "./dto/substituir-veiculo.dto";
@@ -82,6 +83,18 @@ export class TripsController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.tripsService.findTodayByRoute(routeId, actor);
+  }
+
+  // Rota literal ("students-attendance-today") registrada ANTES de
+  // ":id" — mesma precaução de "routes/:routeId/history"/"routes/:routeId/today"
+  // acima, pra nunca colidir com o parâmetro coringa.
+  @Get("students-attendance-today")
+  @Roles(...OPERATE_ROLES)
+  getStudentsAttendanceToday(
+    @Query() query: StudentsAttendanceTodayQueryDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.getStudentsAttendanceToday(query.studentIds, actor);
   }
 
   @Get(":id")

@@ -45,4 +45,19 @@ export class PrismaTripStudentEventRepository implements TripStudentEventReposit
       }),
     );
   }
+
+  async listStudentIdsAusenteToday(studentIds: string[], date: Date): Promise<string[]> {
+    const eventos = await this.prisma.withTenant(
+      this.prisma.tripStudentEvent.findMany({
+        where: {
+          studentId: { in: studentIds },
+          tipo: "AUSENTE",
+          trip: { data: date },
+        },
+        select: { studentId: true },
+        distinct: ["studentId"],
+      }),
+    );
+    return eventos.map((e) => e.studentId);
+  }
 }

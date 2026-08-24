@@ -36,6 +36,7 @@ const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/alunos-pre-cadastro", label: "Alunos" },
   { href: "/veiculos", label: "Veículos" },
   { href: "/escolas", label: "Escolas" },
+  { href: "/rotas", label: "Rotas" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
   { href: "/notificacoes", label: "Notificações" },
@@ -82,6 +83,13 @@ const DRIVER_MODE_ALLOWED_PREFIXES = [
   // clicado (mesmo bug já corrigido uma vez pro Perfil, ver comentário
   // "BUG 2" acima).
   "/ocorrencia",
+  // Fluxo novo "Criar Rota" (pedido do usuário: "no modo ação também
+  // aparece essa opção") — motorista/monitor autônomo/MEI acessa
+  // "Minhas Rotas"/"Nova rota"/execução a partir do atalho em Perfil
+  // (`ATALHOS_PERFIL_MOTORISTA`); sem `/rotas` aqui, o guard acima
+  // mandaria de volta pra "Minha Rota" assim que o atalho fosse
+  // clicado — mesmo bug já corrigido antes pro Perfil e pra Ocorrência.
+  "/rotas",
 ] as const;
 
 /**

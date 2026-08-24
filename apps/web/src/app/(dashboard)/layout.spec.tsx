@@ -108,8 +108,14 @@ describe("DashboardLayout: guard de rota do Modo Ação", () => {
    * revertido pra `/minha-rota` no próximo efeito, parecendo que o botão
    * não fazia nada.
    */
-  it("não redireciona quando já está num atalho de Perfil (Notificações/Chamados/Verificação/Legal)", async () => {
-    for (const rota of ["/notificacoes", "/chamados", "/verificacao-identidade", "/legal"]) {
+  it("não redireciona quando já está num atalho de Perfil (Notificações/Chamados/Verificação/Legal/Minhas rotas)", async () => {
+    for (const rota of [
+      "/notificacoes",
+      "/chamados",
+      "/verificacao-identidade",
+      "/legal",
+      "/rotas",
+    ]) {
       mockPathname = rota;
       const { unmount } = render(<DashboardLayout>conteúdo</DashboardLayout>);
       await new Promise((resolve) => setTimeout(resolve, 0));

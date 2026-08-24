@@ -97,6 +97,12 @@ export interface TripStudentEvent {
   processadoEm: string;
 }
 
+/** Presença de um aluno hoje (fluxo novo de Rotas — "ao reiniciar a rota"). */
+export interface StudentAttendanceToday {
+  studentId: string;
+  ausenteHoje: boolean;
+}
+
 /** Parada ainda pendente hoje, com ETA recalculado (tarefa #99). */
 export interface NextEta {
   routeStopId: string;
@@ -210,6 +216,21 @@ export function createTripsEndpoints(apiClient: ApiClient) {
 
     getProximasEtas: async (id: string): Promise<NextEta[]> =>
       (await apiClient.request<ApiEnvelope<NextEta[]>>(`/trips/${id}/proximas-etas`)).data,
+
+    /**
+     * Presença de hoje pra um lote de alunos (fluxo novo de Rotas — "ao
+     * reiniciar a rota" pra pegar os alunos NA escola, quem faltou de
+     * manhã não deve aparecer como pendente de embarque). `studentIds`
+     * vazio nunca é chamado por quem consome isto (ver
+     * `features/routes` no apps/web) — nenhuma validação extra aqui,
+     * o backend já rejeita um array vazio.
+     */
+    getAttendanceToday: async (studentIds: string[]): Promise<StudentAttendanceToday[]> =>
+      (
+        await apiClient.request<ApiEnvelope<StudentAttendanceToday[]>>(
+          `/trips/students-attendance-today${buildQueryString({ studentIds: studentIds.join(",") })}`,
+        )
+      ).data,
   };
 }
 

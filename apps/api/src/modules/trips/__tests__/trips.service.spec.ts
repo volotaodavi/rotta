@@ -99,6 +99,7 @@ describe("TripsService", () => {
       findByTripStudentAndTipo: jest.fn(),
       listByTrip: jest.fn(),
       listByStudentAcrossTenants: jest.fn(),
+      listStudentIdsAusenteToday: jest.fn(),
     };
     routesService = {
       findByIdOrThrow: jest.fn(),
@@ -986,6 +987,60 @@ describe("TripsService", () => {
       );
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({ id: "event-1", tipo: "EMBARCOU" });
+    });
+  });
+
+  describe("getStudentsAttendanceToday (Frente 1 — fluxo novo de Rotas, 'ao reiniciar a rota')", () => {
+    it("marca ausenteHoje: false pra aluno sem nenhum evento hoje", async () => {
+      studentEventRepository.listStudentIdsAusenteToday.mockResolvedValue([]);
+
+      const result = await service.getStudentsAttendanceToday(["student-1"], empresaActor);
+
+      expect(result).toEqual([{ studentId: "student-1", ausenteHoje: false }]);
+    });
+
+    it("marca ausenteHoje: true pra aluno com evento AUSENTE hoje", async () => {
+      studentEventRepository.listStudentIdsAusenteToday.mockResolvedValue(["student-1"]);
+
+      const result = await service.getStudentsAttendanceToday(["student-1"], empresaActor);
+
+      expect(result).toEqual([{ studentId: "student-1", ausenteHoje: true }]);
+    });
+
+    it("marca ausenteHoje: false pra aluno com EMBARCOU+DESEMBARCOU hoje sem AUSENTE", async () => {
+      // O repositório só devolve quem tem AUSENTE — um aluno que só
+      // embarcou/desembarcou nunca entra nessa lista, então o service
+      // já responde `false` sem precisar de nenhuma lógica extra aqui.
+      studentEventRepository.listStudentIdsAusenteToday.mockResolvedValue([]);
+
+      const result = await service.getStudentsAttendanceToday(["student-2"], empresaActor);
+
+      expect(result).toEqual([{ studentId: "student-2", ausenteHoje: false }]);
+    });
+
+    it("nunca vaza AUSENTE de outra empresa — o isolamento é feito pelo repositório (RLS de withTenant), não filtrado aqui", async () => {
+      // Este teste documenta a garantia: `TripsService` passa os
+      // `studentIds` recebidos direto pro repositório, sem nenhum
+      // `companyId` explícito — é a chamada `withTenant` (RLS real no
+      // Postgres) dentro de `PrismaTripStudentEventRepository` quem
+      // garante que só eventos da empresa do ator autenticado (a
+      // sessão do banco) entram no resultado. Um aluno com `AUSENTE`
+      // registrado por OUTRA empresa nunca chega a
+      // `listStudentIdsAusenteToday` pra começo de conversa — o mock
+      // aqui simula exatamente isso: mesmo perguntando por um aluno
+      // "compartilhado", o repositório só devolve o que a RLS permitiu.
+      studentEventRepository.listStudentIdsAusenteToday.mockResolvedValue([]);
+
+      const result = await service.getStudentsAttendanceToday(
+        ["student-de-outra-empresa"],
+        empresaActor,
+      );
+
+      expect(result).toEqual([{ studentId: "student-de-outra-empresa", ausenteHoje: false }]);
+      expect(studentEventRepository.listStudentIdsAusenteToday).toHaveBeenCalledWith(
+        ["student-de-outra-empresa"],
+        expect.any(Date),
+      );
     });
   });
 });

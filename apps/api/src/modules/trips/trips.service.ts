@@ -25,6 +25,7 @@ import type { IngestPositionDto, IngestPositionsBatchDto } from "./dto/ingest-po
 import type { MapVehicleResponseDto } from "./dto/map-vehicle-response.dto";
 import type { NextEtaResponseDto } from "./dto/next-eta-response.dto";
 import type { StartTripDto } from "./dto/start-trip.dto";
+import type { StudentAttendanceTodayResponseDto } from "./dto/student-attendance-today-response.dto";
 import type { SubstituirMonitorDto } from "./dto/substituir-monitor.dto";
 import type { SubstituirMotoristaDto } from "./dto/substituir-motorista.dto";
 import type { SubstituirVeiculoDto } from "./dto/substituir-veiculo.dto";
@@ -861,6 +862,34 @@ export class TripsService {
       throw new BadRequestException("Só é possível recalcular ETAs de uma viagem em andamento.");
     }
     return this.computeProximasEtas(trip, actor);
+  }
+
+  // ---------------------------------------------------------------------
+  // Presença do dia (fluxo novo de Rotas — "Frente 1": ao reiniciar a
+  // rota pra pegar os alunos NA escola, quem faltou de manhã não deve
+  // aparecer como pendente de embarque)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Para cada `studentId`, diz se ele foi marcado `AUSENTE` HOJE em
+   * QUALQUER viagem/rota da MESMA empresa do ator — nunca cross-tenant
+   * (o repositório usa `withTenant`, RLS de verdade no Postgres, não só
+   * um filtro de aplicação). `actor` não é usado diretamente aqui além
+   * de já ter passado pelo `@Roles` do controller — a própria RLS de
+   * `withTenant` é quem decide o que é visível, mesmo padrão de
+   * `listByTrip`/`create` deste repositório.
+   */
+  async getStudentsAttendanceToday(
+    studentIds: string[],
+    _actor: AuthenticatedUser,
+  ): Promise<StudentAttendanceTodayResponseDto[]> {
+    const ausentesIds = new Set(
+      await this.studentEventRepository.listStudentIdsAusenteToday(studentIds, today()),
+    );
+    return studentIds.map((studentId) => ({
+      studentId,
+      ausenteHoje: ausentesIds.has(studentId),
+    }));
   }
 
   /**
