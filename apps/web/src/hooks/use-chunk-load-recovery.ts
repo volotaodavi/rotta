@@ -5,63 +5,64 @@ import { useEffect, useRef, useState } from "react";
 import { isRecoverableStaleBundleError } from "@/lib/chunk-load-error";
 
 const RELOAD_GUARD_KEY = "rotta_chunk_reload_state";
-/** Janela em que tentativas consecutivas contam pro mesmo "episódio" —
- * passado isso sem nenhum novo erro, a próxima ocorrência começa a
- * contagem do zero (não é mais o mesmo incidente). Alargada de 20s pra
- * 30s junto da 3ª tentativa (abaixo) — com o atraso de `RELOAD_DELAY_MS`
- * antes de cada reload, um episódio de 3 tentativas já consome ~4.5s só
- * de atraso deliberado, sem contar o tempo de reload/render em si. */
-const RELOAD_GUARD_WINDOW_MS = 30_000;
+/** Janela em que uma nova ocorrência ainda conta como o mesmo "episódio"
+ * — passado isso sem nenhum novo erro, a próxima ocorrência começa a
+ * contagem do zero (não é mais o mesmo incidente). */
+const RELOAD_GUARD_WINDOW_MS = 15_000;
 /**
- * Atraso antes de CADA reload (era imediato) — achado real na 2ª conta
- * de produção a reproduzir esta assinatura (`Davi Volotão`, build
- * `240d0b5...`, `/rotas/[id]` de uma rota criada segundos antes): as 3
- * tentativas dentro do mesmo episódio (reload imediato de cada vez)
- * falharam as 3, span de ~6s inteiro — ou seja, o reload imediato
- * reproduzia a MESMA corrida de cold start antes que ela tivesse tempo de
- * se resolver, gastando as tentativas do episódio sem dar nenhuma chance
- * real de pegar uma invocação diferente/já aquecida. Dar um respiro antes
- * de cada tentativa aumenta a chance de cair numa invocação que já
- * estabilizou, em vez de bater na mesma janela de corrida repetidamente.
+ * Atraso antes do reload (era imediato) — dá um respiro pra qualquer
+ * condição transitória (deploy ainda propagando, invocação fria) ter
+ * chance de se resolver antes da nova tentativa bater na mesma janela.
  */
 const RELOAD_DELAY_MS = 1_500;
 /**
- * ACHADO REAL (conta real em produção, 22 ocorrências confirmadas na tela
- * "Erros do cliente" do Admin Rotta — a mais recente já rodando o build
- * ATUAL, `serviceWorkerActive: false`, o que descarta "bundle antigo no
- * navegador" como explicação pra ESSA ocorrência específica): nem toda
- * ocorrência desta assinatura é bundle desatualizado. A investigação
- * ORIGINAL do mesmíssimo padrão (ver `fix(web): navegação forçada`, commit
- * `0c90857`) já tinha achado a mesma frase genérica com `digest` nulo
- * numa navegação client-side (`router.replace`) pra `/rotas/[id]` de uma
- * rota 100% nova — reproduzido no relato do usuário, nunca localmente
- * (`next dev`/`next build && next start`), e a mesma URL exata, buscada
- * de novo via `curl` segundos depois, sempre voltava limpa (200). Isso é
- * a assinatura de uma corrida intermitente de infraestrutura (cold start
- * da função serverless renderizando um segmento dinâmico NUNCA
- * renderizado antes), não de bundle obsoleto — mas o SINTOMA no
- * navegador é idêntico, e a mitigação é a mesma (uma nova requisição
- * geralmente cai numa invocação já aquecida). Trocar a navegação pra
- * `window.location.href` (navegação completa, não mais só RSC em
- * streaming) reduziu a frequência mas não eliminou.
+ * NÃO é mais a defesa principal contra este padrão — ver `deploymentId`
+ * em `next.config.mjs`, que ataca a causa mais provável (version skew:
+ * o navegador já carregou o bundle de um deploy, mas a navegação
+ * seguinte é respondida por outro deploy, e o payload RSC não bate com
+ * os módulos que o cliente já tem). Este hook é só o último recurso pro
+ * que ainda chegar até aqui — por isso UMA tentativa, não várias:
+ * múltiplas recargas automáticas escondem um problema persistente atrás
+ * de uma tela piscando, sem ajudar quem realmente não é transitório (ver
+ * a 2ª ocorrência real abaixo, onde 2-3 tentativas não bastaram e o
+ * ganho real só veio de atacar a causa, não de tentar mais vezes).
  *
- * 2ª OCORRÊNCIA REAL (conta `Davi Volotão`, build `240d0b5...`, ~5min
- * depois do deploy — a janela mais provável de propagação de CDN/lambda
- * ainda incompleta): as 2 tentativas já existentes (reload imediato)
- * esgotaram e o erro persistiu numa 3ª carga, E numa 4ª tentativa manual
- * quase 5 minutos depois (confirmado via `GET /client-errors` no Admin) —
- * prova concreta de que 2 tentativas SEM atraso não bastam pra esse
- * deploy específico. Confirmado depois, via `curl` na mesma URL exata,
- * que o problema se resolveu por conta própria (200 limpo) — o código da
- * página em si nunca teve bug: `identityVerification.status` desta conta
- * já estava `APROVADA` bem antes do erro (verificado no Admin), então o
- * bloqueio de identidade nem chegou a renderizar. Por isso agora tenta
- * até 3 vezes (era 2), cada uma com `RELOAD_DELAY_MS` de atraso (era
- * imediato) — dar tempo pra propagação/cold start se resolver entre
- * tentativas, não só multiplicar tentativas instantâneas que batem na
- * mesma corrida.
+ * HISTÓRICO (múltiplas ocorrências reais em produção da mesma
+ * assinatura — "Server Components render" genérico, sem `digest`, quase
+ * sempre segundos depois de abrir uma rota recém-criada em
+ * `/rotas/[id]`, ver `@/lib/chunk-load-error.ts` pro detalhe de cada
+ * padrão reconhecido):
+ *
+ * - 1ª investigação (commit `0c90857`): mesma frase, `digest` nulo, numa
+ *   navegação client-side pra `/rotas/[id]` de uma rota 100% nova —
+ *   nunca reproduzido localmente, e a mesma URL buscada de novo via
+ *   `curl` segundos depois sempre voltava limpa (200). Trocar a
+ *   navegação pra `window.location.href` reduziu a frequência, mas não
+ *   eliminou.
+ * - 2ª ocorrência (conta `Davi Volotão`, build `240d0b5...`, minutos
+ *   depois desse deploy subir): 2 tentativas de reload imediato
+ *   esgotaram sem resolver — 3 cargas seguidas falharam num intervalo de
+ *   ~6s, e uma 4ª tentativa manual ~5min depois também falhou (visto via
+ *   `GET /client-errors` no Admin). A mesma URL, testada via `curl`
+ *   depois, voltou limpa (200) — e o status de verificação de identidade
+ *   dessa conta já estava `APROVADA` durante todo o incidente (visto via
+ *   `GET /identity-verification/admin/:userId`), o que descarta o
+ *   próprio gate de identidade como causa visível pra esse caso
+ *   específico.
+ *
+ * O que NÃO está comprovado, e não deve ser tratado como fato em nenhum
+ * comentário deste arquivo: nem "é sempre bundle obsoleto no navegador",
+ * nem "é sempre cold start de função serverless", nem "é sempre version
+ * skew". A assinatura (mensagem genérica + `digest` ausente + acontece
+ * ao navegar pra um segmento nunca renderizado antes) é compatível com
+ * as três, e nenhuma delas foi confirmada por um stack trace real ou
+ * pelos Runtime Logs da Vercel no horário exato — este projeto/sessão
+ * não tem acesso a esses logs. Se um novo relato vier com `digest`
+ * preenchido, ELE aponta pra uma exceção real do servidor — tratar como
+ * bug de aplicação, correlacionar pelo digest, nunca presumir que é mais
+ * uma ocorrência deste mesmo padrão de infraestrutura.
  */
-const MAX_RELOAD_ATTEMPTS = 3;
+const MAX_RELOAD_ATTEMPTS = 1;
 
 interface ReloadGuardState {
   attempts: number;
@@ -83,19 +84,21 @@ function readGuardState(): ReloadGuardState {
 }
 
 /**
- * Recuperação automática de bundle desatualizado no navegador — cobre
- * tanto `ChunkLoadError` quanto a variante que o próprio Next.js absorve
- * e devolve como a mensagem genérica de "Server Components render" sem
- * `digest` (ver `isRecoverableStaleBundleError` em
- * `@/lib/chunk-load-error.ts` pro "porquê" completo de cada padrão, e a
- * nota grande acima sobre por que essa mesma assinatura também cobre uma
- * corrida intermitente de cold start, não só bundle obsoleto). Recarregar
- * a página inteira resolve nos dois casos — busca tudo de novo, sem
- * depender de nada obsoleto na aba nem esperar a mesma invocação fria.
+ * Recuperação automática de última linha para `ChunkLoadError` e para a
+ * variante que o Next.js absorve como a mensagem genérica de "Server
+ * Components render" sem `digest` (ver `isRecoverableStaleBundleError`
+ * em `@/lib/chunk-load-error.ts`, e a nota grande acima sobre o que está
+ * e o que NÃO está comprovado sobre a causa). A defesa estrutural contra
+ * o padrão mais provável (version skew) é `deploymentId`
+ * (`next.config.mjs`) — este hook só cobre o que ainda chegar até o
+ * Error Boundary depois disso, com UMA tentativa (ver `MAX_RELOAD_ATTEMPTS`
+ * acima pro porquê de não ser mais de uma).
  *
  * Retorna `true` enquanto está recarregando (pra a tela mostrar uma
  * mensagem neutra em vez do aviso de erro genérico, que nem chega a
- * fazer sentido pro usuário aqui).
+ * fazer sentido pro usuário aqui). Se a única tentativa não resolver, o
+ * chamador (`error.tsx`) mostra a tela normal de erro com o botão manual
+ * "Tentar novamente".
  */
 export function useChunkLoadRecovery(error: Error & { digest?: string }): boolean {
   const [isRecovering, setIsRecovering] = useState(false);
@@ -105,7 +108,7 @@ export function useChunkLoadRecovery(error: Error & { digest?: string }): boolea
   // e chamaria `window.location.reload()` uma segunda vez ANTES da
   // navegação de verdade sequer começar. Como só faz sentido disparar o
   // reload uma vez por instância montada deste hook (o resto do controle
-  // — quantas tentativas no episódio, através de reloads de verdade — já
+  // — se este episódio já tentou, através de reloads de verdade — já
   // vive em `sessionStorage`), este `ref` é a trava real contra esse
   // efeito colateral, independente de quem chama.
   const hasAttemptedRef = useRef(false);
@@ -122,7 +125,7 @@ export function useChunkLoadRecovery(error: Error & { digest?: string }): boolea
 
     if (attemptsSoFar >= MAX_RELOAD_ATTEMPTS) {
       // Já tentou o máximo de vezes neste episódio e o erro persiste —
-      // não é mais uma corrida pontual, deixa a tela normal de erro
+      // não é mais uma condição transitória, deixa a tela normal de erro
       // aparecer (com o botão "Tentar novamente" manual).
       return;
     }
@@ -134,8 +137,7 @@ export function useChunkLoadRecovery(error: Error & { digest?: string }): boolea
     );
     setIsRecovering(true);
     // Atraso deliberado (ver `RELOAD_DELAY_MS` acima) — reload imediato
-    // reproduzia a mesma corrida de cold start/propagação antes que ela
-    // tivesse tempo de se resolver.
+    // bate na mesma janela antes dela ter chance de se resolver.
     window.setTimeout(() => window.location.reload(), RELOAD_DELAY_MS);
   }, [error]);
 

@@ -57,46 +57,16 @@ describe("useChunkLoadRecovery", () => {
   });
 
   /**
-   * ACHADO REAL (ver nota grande em `use-chunk-load-recovery.ts`): a
-   * ocorrência mais recente em produção provou que uma corrida
-   * intermitente de cold start pode sobreviver a UM reload — por isso
-   * agora tenta até `MAX_RELOAD_ATTEMPTS` (3) vezes no mesmo episódio,
-   * não mais só uma.
+   * A defesa estrutural contra este padrão passou a ser `deploymentId`
+   * (`next.config.mjs`) — este hook é só o último recurso, com no máximo
+   * `MAX_RELOAD_ATTEMPTS` (1) tentativa por episódio. Uma ocorrência real
+   * já provou que mais tentativas automáticas (2 e depois 3) não
+   * resolveram uma falha persistente — só adiaram a mesma tela de erro,
+   * escondendo o incidente atrás de recargas piscando. Ver a nota grande
+   * em `use-chunk-load-recovery.ts`.
    */
-  it("tenta recarregar uma SEGUNDA vez se o mesmo episódio de erro persistir", () => {
+  it("desiste depois de MAX_RELOAD_ATTEMPTS (1) tentativa no mesmo episódio", () => {
     setGuardState(1, Date.now() - 2_000);
-    vi.useFakeTimers();
-
-    const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
-    vi.runAllTimers();
-
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
-    expect(result.current).toBe(true);
-    expect(JSON.parse(sessionStorage.getItem(GUARD_KEY) ?? "{}").attempts).toBe(2);
-    vi.useRealTimers();
-  });
-
-  /**
-   * 2ª OCORRÊNCIA REAL (conta `Davi Volotão`, ver nota grande em
-   * `use-chunk-load-recovery.ts`): 2 tentativas não bastaram — uma 3ª
-   * carga na mesma sessão ainda reproduziu o erro. `MAX_RELOAD_ATTEMPTS`
-   * subiu pra 3 por causa disso.
-   */
-  it("tenta recarregar uma TERCEIRA vez se o mesmo episódio de erro persistir de novo", () => {
-    setGuardState(2, Date.now() - 2_000);
-    vi.useFakeTimers();
-
-    const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
-    vi.runAllTimers();
-
-    expect(reloadSpy).toHaveBeenCalledTimes(1);
-    expect(result.current).toBe(true);
-    expect(JSON.parse(sessionStorage.getItem(GUARD_KEY) ?? "{}").attempts).toBe(3);
-    vi.useRealTimers();
-  });
-
-  it("desiste depois de MAX_RELOAD_ATTEMPTS (3) tentativas no mesmo episódio", () => {
-    setGuardState(3, Date.now() - 2_000);
 
     const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
 
@@ -104,8 +74,8 @@ describe("useChunkLoadRecovery", () => {
     expect(result.current).toBe(false);
   });
 
-  it("começa um episódio novo (zera a contagem) depois que a janela de 30s expira", () => {
-    setGuardState(3, Date.now() - 31_000);
+  it("começa um episódio novo (zera a contagem) depois que a janela de 15s expira", () => {
+    setGuardState(1, Date.now() - 16_000);
     vi.useFakeTimers();
 
     const { result } = renderHook(() => useChunkLoadRecovery(chunkLoadError()));
@@ -131,7 +101,7 @@ describe("useChunkLoadRecovery", () => {
     vi.useRealTimers();
   });
 
-  it("NÃO recarrega a mesma mensagem genérica quando vem com um digest real (erro de app de verdade, não bundle obsoleto/cold start)", () => {
+  it("NÃO recarrega a mesma mensagem genérica quando vem com um digest real (erro de app de verdade, não bundle obsoleto/version skew)", () => {
     const error = new Error(
       "An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.",
     ) as Error & { digest?: string };
