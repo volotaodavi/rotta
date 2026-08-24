@@ -2,11 +2,8 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-
-import { RouteOptimizationSection } from "./_components/route-optimization-section";
-import { StopsSection } from "./_components/stops-section";
-import { StudentsSection } from "./_components/students-section";
 
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import {
@@ -24,6 +21,60 @@ import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 
+/**
+ * ACHADO REAL — reprodução ao vivo confirmada com o MESMO `deploymentId`
+ * em cliente/assets/RSC (version skew descartado como causa desta
+ * ocorrência): "qualquer `/rotas/[id]` falha quando a sessão autenticada
+ * permite renderizar os `children` do dashboard", sempre a mensagem
+ * genérica de "Server Components render" sem `digest`. As três seções
+ * abaixo são EXCLUSIVAS desta página (`/rotas` e `/rotas/novo`, que
+ * funcionam, nunca as importam) — carregá-las via `dynamic(...,
+ * { ssr: false })` impede que o servidor sequer AVALIE o módulo delas
+ * (e de tudo que elas importam) durante o SSR desta página, isolando se
+ * a causa está em alguma das três árvores (ou em algo que elas puxam
+ * transitivamente) sem precisar adivinhar qual. Nenhuma das três precisa
+ * de SEO, todas são autenticadas, dependem de React Query/APIs do
+ * navegador, e já tinham seu próprio estado de loading — não há perda
+ * funcional real em nunca rodá-las no servidor.
+ */
+const StopsSection = dynamic(
+  () => import("./_components/stops-section").then((module) => module.StopsSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-6">
+        <Spinner size="sm" />
+      </div>
+    ),
+  },
+);
+
+const StudentsSection = dynamic(
+  () => import("./_components/students-section").then((module) => module.StudentsSection),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-6">
+        <Spinner size="sm" />
+      </div>
+    ),
+  },
+);
+
+const RouteOptimizationSection = dynamic(
+  () =>
+    import("./_components/route-optimization-section").then(
+      (module) => module.RouteOptimizationSection,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-6">
+        <Spinner size="sm" />
+      </div>
+    ),
+  },
+);
 
 /**
  * Passos 2+3 do assistente "Criar rota" (Frente 4 do plano aprovado) —
