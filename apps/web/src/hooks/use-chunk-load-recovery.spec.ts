@@ -61,4 +61,27 @@ describe("useChunkLoadRecovery", () => {
     expect(reloadSpy).toHaveBeenCalledTimes(1);
     expect(result.current).toBe(true);
   });
+
+  it("recarrega diante da mensagem genérica de 'Server Components render' sem digest (caso real de produção, 21 ocorrências)", () => {
+    const error = new Error(
+      "An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.",
+    );
+
+    const { result } = renderHook(() => useChunkLoadRecovery(error));
+
+    expect(reloadSpy).toHaveBeenCalledTimes(1);
+    expect(result.current).toBe(true);
+  });
+
+  it("NÃO recarrega a mesma mensagem genérica quando vem com um digest real (erro de app de verdade, não bundle obsoleto)", () => {
+    const error = new Error(
+      "An error occurred in the Server Components render. The specific message is omitted in production builds to avoid leaking sensitive details. A digest property is included on this error instance which may provide additional details about the nature of the error.",
+    ) as Error & { digest?: string };
+    error.digest = "abc123";
+
+    const { result } = renderHook(() => useChunkLoadRecovery(error));
+
+    expect(reloadSpy).not.toHaveBeenCalled();
+    expect(result.current).toBe(false);
+  });
 });
