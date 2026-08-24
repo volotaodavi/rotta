@@ -14,11 +14,11 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { AddRouteStudentDto } from "./dto/add-route-student.dto";
 import { CreateRouteStopDto } from "./dto/create-route-stop.dto";
 import { CreateRouteDto } from "./dto/create-route.dto";
 import { ListRoutesQueryDto } from "./dto/list-routes-query.dto";
+import { ReorderRouteStopsDto } from "./dto/reorder-route-stops.dto";
 import { UpdateRouteStopDto } from "./dto/update-route-stop.dto";
 import { UpdateRouteDto } from "./dto/update-route.dto";
 import { RoutesService, type RequestMeta } from "./routes.service";
@@ -119,6 +119,24 @@ export class RoutesController {
   @Roles(...READ_ROLES)
   listStops(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
     return this.routesService.listStops(id, actor);
+  }
+
+  /**
+   * Registrado ANTES de `:id/stops/:stopId` — senão o Nest tratasse
+   * `reorder` como um `:stopId` literal e este handler nunca seria
+   * alcançado (mesmo cuidado de rota literal x parâmetro já usado em
+   * outros controllers desta sessão). Aplica de fato a ordem sugerida
+   * pela Rotta Route AI (`RottaAiService.suggestRouteOptimization`) ou
+   * qualquer reordenação manual — ver `RoutesService.reorderStops`.
+   */
+  @Patch(":id/stops/reorder")
+  @Roles(...MANAGE_ROLES)
+  reorderStops(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: ReorderRouteStopsDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.routesService.reorderStops(id, dto.stopIds, actor);
   }
 
   @Patch(":id/stops/:stopId")

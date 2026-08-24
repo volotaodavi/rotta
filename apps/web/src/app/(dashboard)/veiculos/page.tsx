@@ -21,7 +21,6 @@ import { useVehicleDashboard, useVehiclesList } from "@/features/vehicles/hooks/
 import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 import { vehiclesApi } from "@/lib/api-client";
 
-
 /**
  * Listagem + Dashboard de Veículos (briefing "Gestão de Veículos" —
  * seções "DASHBOARD" e "PESQUISA") — mesma decisão de escopo de
@@ -59,9 +58,9 @@ export default function VeiculosPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Typography variant="title">Veículos</Typography>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           <Link href="/veiculos/mapa" className={buttonVariants({ variant: "secondary" })}>
             Mapa
           </Link>

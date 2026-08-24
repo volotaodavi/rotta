@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   CreateRouteStopData,
   RouteStopRepository,
@@ -61,9 +60,22 @@ export class PrismaRouteStopRepository implements RouteStopRepository {
    * tenant corrente são visíveis/atualizáveis) — o parâmetro existe só
    * para deixar a assinatura explícita sobre o escopo da operação para
    * quem lê `RoutesService`.
+   *
+   * Duas fases dentro da MESMA transação, nunca uma sequência simples de
+   * `update`: `RouteStop` tem `@@unique([routeId, ordem])` e o Postgres
+   * não adia checagem de unicidade dentro de transação por padrão (Prisma
+   * também não tem atributo de schema pra isso) — trocar A<->B de posição
+   * com um único passe colide em cima do valor `ordem` que a outra parada
+   * ainda ocupa. Fase 1 move todas as paradas pra um deslocamento negativo
+   * (nunca ocupado, `ordem` é sempre `@Min(0)`) e sem colisão entre si
+   * (`-1 - índice`, todos distintos); fase 2 aplica os valores finais,
+   * já livres de qualquer conflito com o estado anterior.
    */
   async reorder(_routeId: string, ordered: { id: string; ordem: number }[]): Promise<void> {
     await this.prisma.runInTenantTransaction(async (tx) => {
+      for (const [index, { id }] of ordered.entries()) {
+        await tx.routeStop.update({ where: { id }, data: { ordem: -1 - index } });
+      }
       for (const { id, ordem } of ordered) {
         await tx.routeStop.update({ where: { id }, data: { ordem } });
       }

@@ -4,6 +4,7 @@ import { useAuth } from "@rotta/auth/web";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { useParams } from "next/navigation";
 
+import { RouteOptimizationSection } from "./_components/route-optimization-section";
 import { StopsSection } from "./_components/stops-section";
 import { StudentsSection } from "./_components/students-section";
 
@@ -32,16 +33,13 @@ import { useMyTeam } from "@/features/team/hooks/use-team";
  * geocodificado pela Rotta Geo AI (`POST /geo/geocode`, Nominatim/OSM)
  * — nunca lat/long digitado manualmente.
  *
- * FORA DE ESCOPO (decisão consciente do plano aprovado): nenhuma seção
- * de sugestão de otimização via Rotta Route AI aqui — o roteiro do
- * usuário não pede isso desta vez.
- *
- * Frente 7 (prevenção de riscos, vazamentos e erros): dois
+ * Frente 7 (prevenção de riscos, vazamentos e erros): três
  * `SectionErrorBoundary` — um envolvendo a página INTEIRA (não só o
  * `return` de sucesso, pra também cobrir os hooks chamados no topo do
- * componente) e um por seção (paradas/alunos), pra um bug isolado numa
- * seção nunca derrubar a tela inteira e esconder até a navegação e o
- * cabeçalho da rota. Ver `apps/web/src/components/section-error-boundary.tsx`.
+ * componente) e um por seção (Rotta Route AI/paradas/alunos), pra um bug
+ * isolado numa seção nunca derrubar a tela inteira e esconder até a
+ * navegação e o cabeçalho da rota. Ver
+ * `apps/web/src/components/section-error-boundary.tsx`.
  */
 export default function RotaDetalhePage(): JSX.Element {
   return (
@@ -178,6 +176,12 @@ function RotaDetalheContent(): JSX.Element {
       <SectionErrorBoundary label="paradas-da-rota">
         <StopsSection routeId={routeId} stops={stops} isLoading={isLoadingStops} />
       </SectionErrorBoundary>
+
+      {stops && stops.length >= 3 ? (
+        <SectionErrorBoundary label="rotta-route-ai">
+          <RouteOptimizationSection routeId={routeId} stops={stops} />
+        </SectionErrorBoundary>
+      ) : null}
 
       <SectionErrorBoundary label="alunos-da-rota">
         <StudentsSection

@@ -28,14 +28,14 @@ export default function AlunosPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <Typography variant="title">Meus Alunos</Typography>
           <Typography variant="bodySmall" color="muted">
             Acompanhe o transporte de cada um em tempo real.
           </Typography>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link href="/vincular-transporte" className={buttonVariants({ variant: "secondary" })}>
             <KeyRound className="h-4 w-4" />
             Tenho um código de transporte

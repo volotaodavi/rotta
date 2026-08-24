@@ -7,11 +7,13 @@ import type {
   CreateRouteInput,
   CreateRouteStopInput,
   ListRoutesParams,
+  RouteOptimizationResult,
   UpdateRouteInput,
   UpdateRouteStopInput,
 } from "@rotta/api-client";
 
-import { routesApi } from "@/lib/api-client";
+import { rottaAiApi, routesApi } from "@/lib/api-client";
+
 
 /**
  * Hooks de dados do novo fluxo de Rotas (pedido do usuário: "crie uma
@@ -20,10 +22,6 @@ import { routesApi } from "@/lib/api-client";
  * (`RoutesController`) nunca mudou nas remoções anteriores desta
  * sessão — só a UI que a chamava foi apagada e agora é reconstruída do
  * zero. Mesmo padrão de `use-schools.ts`/`use-vehicles.ts`.
- *
- * FORA DE ESCOPO (decisão consciente do plano aprovado): nenhum hook
- * de sugestão de otimização via Rotta Route AI aqui — o roteiro do
- * usuário não pede isso desta vez.
  */
 export function useRoutesList(params: ListRoutesParams = {}) {
   return useQuery({
@@ -99,6 +97,37 @@ export function useRemoveRouteStop(routeId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (stopId: string) => routesApi.removeStop(routeId, stopId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["routes", routeId, "stops"] });
+    },
+  });
+}
+
+/**
+ * Frente A ("otimize a Rotta Route AI"): calcula a sugestão de ordem
+ * por proximidade (OSRM via Rotta Geo Engine, Frente D) — nunca altera
+ * a rota sozinha (ROT-08). Sem `onSuccess`/invalidação nenhuma: é só
+ * um cálculo, quem decide aplicar é `useReorderRouteStops` abaixo, num
+ * clique explícito e separado do Gestor.
+ */
+export function useSuggestRouteOptimization(routeId: string) {
+  return useMutation<RouteOptimizationResult, unknown, void>({
+    mutationFn: () => rottaAiApi.suggestRouteOptimization({ routeId }),
+  });
+}
+
+/**
+ * Aplica de fato uma ordem de paradas (a sugerida pela Rotta Route AI,
+ * ou qualquer outra) — fecha a lacuna que a versão anterior desta seção
+ * admitia ("esta sugestão não altera a rota sozinha... reordene as
+ * paradas manualmente", nenhuma UI de reordenar manual sequer existia).
+ * `stopIds` precisa ser a sequência COMPLETA e final (o backend rejeita
+ * um subconjunto — `RoutesService.reorderStops`).
+ */
+export function useReorderRouteStops(routeId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (stopIds: string[]) => routesApi.reorderStops(routeId, stopIds),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["routes", routeId, "stops"] });
     },

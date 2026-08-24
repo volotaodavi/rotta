@@ -169,6 +169,21 @@ export function createRoutesEndpoints(apiClient: ApiClient) {
       await apiClient.request(`/routes/${id}/stops/${stopId}`, { method: "DELETE" });
     },
 
+    /**
+     * Aplica de fato a ordem sugerida pela Rotta Route AI
+     * (`rottaAiApi.suggestRouteOptimization`) ou qualquer reordenação
+     * manual — `stopIds` precisa ser a sequência COMPLETA e final (a
+     * rota inteira, não só um trecho); o backend rejeita se faltar ou
+     * sobrar algum ID (`RoutesService.reorderStops`).
+     */
+    reorderStops: async (id: string, stopIds: string[]): Promise<RouteStop[]> =>
+      (
+        await apiClient.request<ApiEnvelope<RouteStop[]>>(`/routes/${id}/stops/reorder`, {
+          method: "PATCH",
+          body: { stopIds },
+        })
+      ).data,
+
     addStudent: async (id: string, input: AddRouteStudentInput): Promise<RouteStudent> =>
       (
         await apiClient.request<ApiEnvelope<RouteStudent>>(`/routes/${id}/students`, {

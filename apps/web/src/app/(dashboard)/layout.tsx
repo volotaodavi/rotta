@@ -1,10 +1,11 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
+import { Menu, X } from "@rotta/icons";
 import { Button, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { Route } from "next";
 
@@ -112,6 +113,21 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   const { status, user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  // Frente B1 ("otimize a interface e web para celular"): abaixo de
+  // `md`, `navLinks` (10 itens do Painel ERP) sai do cabeçalho fixo e
+  // vira este painel embutido, aberto/fechado pelo hambúrguer — sem
+  // isso, o `<nav>` sempre visível (`flex items-center gap-4`, sem
+  // quebra nem colapso) ou estoura o cabeçalho ou empilha feio numa
+  // tela de celular. A partir de `md`, nada muda (cabeçalho igual a
+  // antes desta mudança).
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+
+  // Fecha o painel sozinho ao trocar de rota (ex.: navegação pelo
+  // botão "Voltar" do celular) — sem isso, o painel ficaria aberto por
+  // cima do conteúdo da página seguinte.
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -206,13 +222,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     // atual do viewport — junto com `viewportFit: "cover"` (`app/
     // layout.tsx`), fecha o problema de ponta a ponta.
     <div className="flex min-h-dvh flex-col bg-background text-text">
-      <header className="flex items-center justify-between border-b border-border px-6 py-4">
+      <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
         <div className="flex items-center gap-8">
           <Typography variant="subtitle">
             {isResponsavel ? (user?.nome ?? "Rotta") : (user?.companyName ?? "Rotta")}
           </Typography>
           {!isBlockedByIdentityVerification && navLinks.length > 0 && (
-            <nav className="flex items-center gap-4">
+            <nav className="hidden items-center gap-4 md:flex">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -266,8 +282,33 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           >
             Sair
           </Button>
+          {!isBlockedByIdentityVerification && navLinks.length > 0 && (
+            <button
+              type="button"
+              aria-label={isMobileNavOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={isMobileNavOpen}
+              onClick={() => setIsMobileNavOpen((open) => !open)}
+              className="flex items-center justify-center rounded-lg border border-border p-2 text-text-muted transition-colors hover:text-text md:hidden"
+            >
+              {isMobileNavOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          )}
         </div>
       </header>
+      {!isBlockedByIdentityVerification && navLinks.length > 0 && isMobileNavOpen && (
+        <nav className="flex flex-col gap-1 border-b border-border bg-surface px-4 py-3 md:hidden">
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setIsMobileNavOpen(false)}
+              className="rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-muted/40 hover:text-text"
+            >
+              {link.label}
+            </Link>
+          ))}
+        </nav>
+      )}
       {activeTrip && !isBlockedByIdentityVerification && (
         <Link
           href="/minha-rota"

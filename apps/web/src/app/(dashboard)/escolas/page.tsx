@@ -95,9 +95,9 @@ export default function EscolasPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <Typography variant="title">Escolas</Typography>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-2">
           <Link href="/escolas/mapa" className={buttonVariants({ variant: "secondary" })}>
             Mapa
           </Link>

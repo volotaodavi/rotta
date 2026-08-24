@@ -598,6 +598,46 @@ export class RoutesService {
     await this.routeStopRepository.delete(stopId);
   }
 
+  /**
+   * Frente A do pedido "otimize a Rotta Route AI": aplica de fato a
+   * ordem sugerida por `RottaAiService.suggestRouteOptimization` (ou
+   * qualquer outra reordenação manual) — sem este endpoint, a sugestão
+   * da IA era só informativa, sem nenhum jeito de vira ordem real.
+   * `stopIds` precisa ser o conjunto EXATO das paradas já cadastradas
+   * na rota (mesmo tamanho, mesmos IDs, sem repetição — `ArrayUnique`
+   * do DTO já barra duplicata) — nunca um subconjunto nem um ID de
+   * outra rota, senão a rota terminaria com paradas "órfãs" (ainda no
+   * banco, mas fora de qualquer `ordem` conhecida) ou com um ID de
+   * outra empresa sendo aceito sem checagem de tenant.
+   */
+  async reorderStops(
+    routeId: string,
+    stopIds: string[],
+    actor: AuthenticatedUser,
+  ): Promise<RouteStopResponseDto[]> {
+    await this.fetchOrThrow(routeId, actor);
+    const stops = await this.routeStopRepository.listByRoute(routeId);
+
+    if (stopIds.length !== stops.length || !this.isSameIdSet(stopIds, stops)) {
+      throw new BadRequestException(
+        "A nova ordem precisa conter exatamente as mesmas paradas já cadastradas nesta rota, sem repetir nem faltar nenhuma.",
+      );
+    }
+
+    await this.routeStopRepository.reorder(
+      routeId,
+      stopIds.map((id, index) => ({ id, ordem: index })),
+    );
+
+    const reordered = await this.routeStopRepository.listByRoute(routeId);
+    return reordered.map(toRouteStopResponseDto);
+  }
+
+  private isSameIdSet(stopIds: string[], stops: RouteStop[]): boolean {
+    const existingIds = new Set(stops.map((stop) => stop.id));
+    return stopIds.every((id) => existingIds.has(id));
+  }
+
   // ---------------------------------------------------------------------
   // Alunos na rota (ROT-07/EMB-01 + RN-26)
   // ---------------------------------------------------------------------

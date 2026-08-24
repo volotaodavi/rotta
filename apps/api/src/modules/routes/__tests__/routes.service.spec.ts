@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException } from "@nestjs/common";
+import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { RouteStatus, SchoolShift } from "@prisma/client";
 
 import { RoutesService } from "../routes.service";
@@ -691,6 +691,81 @@ describe("RoutesService", () => {
         service.addStop("route-1", { ordem: 0, horarioPrevisto: "07:15" }, empresaActor),
       ).rejects.toThrow(BadRequestException);
       expect(routeStopRepository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Frente A ("otimize a Rotta Route AI"): endpoint que finalmente
+   * torna a sugestão de `RottaAiService.suggestRouteOptimization`
+   * acionável — antes só existia a comparação lado a lado, sem nenhum
+   * jeito de aplicar. `RouteStopRepository.reorder` em si (o
+   * two-phase update que evita colisão de `@@unique`) é mockado aqui
+   * — verificado à parte, na implementação Prisma.
+   */
+  describe("reorderStops — Frente A (aplicar a ordem sugerida pela Rotta Route AI)", () => {
+    it("reordena com sucesso quando stopIds é exatamente o conjunto de paradas da rota", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      routeStopRepository.listByRoute
+        .mockResolvedValueOnce([
+          buildStop({ id: "stop-1", ordem: 0 }),
+          buildStop({ id: "stop-2", ordem: 1 }),
+          buildStop({ id: "stop-3", ordem: 2 }),
+        ])
+        .mockResolvedValueOnce([
+          buildStop({ id: "stop-3", ordem: 0 }),
+          buildStop({ id: "stop-1", ordem: 1 }),
+          buildStop({ id: "stop-2", ordem: 2 }),
+        ]);
+
+      const result = await service.reorderStops(
+        "route-1",
+        ["stop-3", "stop-1", "stop-2"],
+        empresaActor,
+      );
+
+      expect(routeStopRepository.reorder).toHaveBeenCalledWith("route-1", [
+        { id: "stop-3", ordem: 0 },
+        { id: "stop-1", ordem: 1 },
+        { id: "stop-2", ordem: 2 },
+      ]);
+      expect(result.map((s) => s.id)).toEqual(["stop-3", "stop-1", "stop-2"]);
+    });
+
+    it("rejeita quando stopIds inclui um ID que não pertence à rota", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      routeStopRepository.listByRoute.mockResolvedValue([
+        buildStop({ id: "stop-1" }),
+        buildStop({ id: "stop-2" }),
+      ]);
+
+      await expect(
+        service.reorderStops("route-1", ["stop-1", "stop-de-outra-rota"], empresaActor),
+      ).rejects.toThrow(BadRequestException);
+      expect(routeStopRepository.reorder).not.toHaveBeenCalled();
+    });
+
+    it("rejeita quando stopIds tem tamanho diferente do total de paradas da rota (faltando uma)", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute());
+      routeStopRepository.listByRoute.mockResolvedValue([
+        buildStop({ id: "stop-1" }),
+        buildStop({ id: "stop-2" }),
+        buildStop({ id: "stop-3" }),
+      ]);
+
+      await expect(
+        service.reorderStops("route-1", ["stop-1", "stop-2"], empresaActor),
+      ).rejects.toThrow(BadRequestException);
+      expect(routeStopRepository.reorder).not.toHaveBeenCalled();
+    });
+
+    it("isolamento entre empresas: rejeita com NotFoundException quando a rota é de outro tenant", async () => {
+      routeRepository.findById.mockResolvedValue(buildRoute({ companyId: "company-outra" }));
+
+      await expect(
+        service.reorderStops("route-1", ["stop-1", "stop-2"], empresaActor),
+      ).rejects.toThrow(NotFoundException);
+      expect(routeStopRepository.listByRoute).not.toHaveBeenCalled();
+      expect(routeStopRepository.reorder).not.toHaveBeenCalled();
     });
   });
 });
