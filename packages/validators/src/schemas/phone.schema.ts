@@ -1,6 +1,22 @@
 import { z } from "zod";
 
-/** Telefone brasileiro (fixo ou celular), com DDD — Dossiê 15 `AUTH-01`. */
+/**
+ * Telefone brasileiro (fixo ou celular), com DDD — Dossiê 15 `AUTH-01`.
+ *
+ * ACHADO REAL (pedido explícito do usuário, bloqueado tentando criar
+ * conta com um número real: "Quem é você para validar um telefone
+ * celular?... libere a criação de conta, depois eu verifico se é
+ * verdadeiro ou não"): a versão anterior exigia, além da contagem de
+ * dígitos, um padrão rígido por tipo — DDD estritamente 11-99, "9"
+ * obrigatório na posição certa pra celular, dígito inicial 2-8 pra
+ * fixo. Isso rejeitava números reais que só não bateam essas
+ * suposições (numeração corporativa/VOIP, formatos regionais menos
+ * comuns, ou simplesmente um número que o usuário quer confirmar
+ * depois). Mantém só a normalização (código do país, prefixo de tronco)
+ * e a contagem de dígitos (10 ou 11) — suficiente pra pegar erro de
+ * digitação grosseiro (poucos/muitos dígitos) sem recusar um número de
+ * verdade por não caber num padrão de formato.
+ */
 export function isValidBrazilianPhone(value: string): boolean {
   let digits = value.replace(/\D/g, "");
 
@@ -26,17 +42,9 @@ export function isValidBrazilianPhone(value: string): boolean {
     digits = digits.slice(1);
   }
 
-  if (digits.length === 11) {
-    // Celular: DDD (11-99) + 9 (nono dígito) + 8 dígitos.
-    return /^[1-9]{2}9\d{8}$/.test(digits);
-  }
-
-  if (digits.length === 10) {
-    // Fixo: DDD (11-99) + dígito inicial 2-8 + 7 dígitos.
-    return /^[1-9]{2}[2-8]\d{7}$/.test(digits);
-  }
-
-  return false;
+  // 11 dígitos (celular) ou 10 (fixo) — sem exigir padrão de DDD/prefixo
+  // específico, ver nota acima do porquê.
+  return digits.length === 11 || digits.length === 10;
 }
 
 export const phoneSchema = z
