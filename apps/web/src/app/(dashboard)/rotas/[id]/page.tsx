@@ -22,6 +22,7 @@ import {
 } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
+import { recordCheckpoint } from "@/lib/render-checkpoint";
 
 
 /**
@@ -50,8 +51,19 @@ export default function RotaDetalhePage(): JSX.Element {
 }
 
 function RotaDetalheContent(): JSX.Element {
+  // Instrumentação temporária (ver `@/lib/render-checkpoint.ts`) —
+  // investigação em andamento do "Server Components render" genérico e
+  // determinístico nesta página, confirmado por reprodução ao vivo com
+  // deploymentId idêntico em cliente/assets/RSC (version skew já
+  // descartado). Escreve síncrono a cada checkpoint — se o render travar
+  // em algum ponto entre um e outro, o ÚLTIMO checkpoint gravado antes
+  // da tela quebrar sobrevive no `sessionStorage` e aparece no
+  // diagnóstico de `(dashboard)/error.tsx` na PRÓXIMA carga.
+  recordCheckpoint("rota-detalhe:antes-dos-hooks");
+
   const params = useParams<{ id: string }>();
   const routeId = params.id;
+  recordCheckpoint("rota-detalhe:params-ok");
 
   const {
     data: route,
@@ -60,13 +72,20 @@ function RotaDetalheContent(): JSX.Element {
     refetch: refetchRoute,
     isFetching: isFetchingRoute,
   } = useRoute(routeId);
+  recordCheckpoint("rota-detalhe:use-route-ok");
   const { data: stops, isLoading: isLoadingStops } = useRouteStops(routeId);
+  recordCheckpoint("rota-detalhe:use-route-stops-ok");
   const { data: routeStudents, isLoading: isLoadingStudents } = useRouteStudents(routeId);
+  recordCheckpoint("rota-detalhe:use-route-students-ok");
   const { data: team } = useMyTeam();
+  recordCheckpoint("rota-detalhe:use-my-team-ok");
   const { user } = useAuth();
+  recordCheckpoint("rota-detalhe:use-auth-ok");
   const updateRoute = useUpdateRoute(routeId);
+  recordCheckpoint("rota-detalhe:use-update-route-ok");
 
   if (isLoadingRoute) {
+    recordCheckpoint("rota-detalhe:retorno-spinner-carregando");
     return (
       <div className="flex justify-center py-16">
         <Spinner size="lg" />
@@ -82,6 +101,7 @@ function RotaDetalheContent(): JSX.Element {
    * visível nem botão de tentar de novo.
    */
   if (isRouteError || !route) {
+    recordCheckpoint("rota-detalhe:retorno-erro-carregar-rota");
     return (
       <ErrorState
         message="Não foi possível carregar esta rota."
@@ -90,6 +110,7 @@ function RotaDetalheContent(): JSX.Element {
       />
     );
   }
+  recordCheckpoint("rota-detalhe:route-carregada-com-sucesso");
 
   // Motorista autônomo/MEI nunca aparece em `useMyTeam()` (é `role: "empresa"`,
   // não "motorista"), mas pode muito bem ser ele mesmo o `motoristaPadraoId`
@@ -98,8 +119,10 @@ function RotaDetalheContent(): JSX.Element {
   const motoristaNome =
     team?.find((m) => m.userId === route.motoristaPadraoId)?.nome ??
     (route.motoristaPadraoId === user?.id ? user?.nome : undefined);
+  recordCheckpoint("rota-detalhe:motorista-nome-ok");
 
   const podeConcluir = (stops?.length ?? 0) > 0 && (routeStudents?.length ?? 0) > 0;
+  recordCheckpoint("rota-detalhe:antes-do-jsx-final");
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
 import { readRecentRawClientError } from "@/lib/global-error-capture";
+import { readLastCheckpoint } from "@/lib/render-checkpoint";
 import { reportClientError } from "@/lib/report-client-error";
 import { isServiceWorkerActive } from "@/lib/service-worker-status";
 
@@ -55,6 +56,20 @@ import { isServiceWorkerActive } from "@/lib/service-worker-status";
  * redigido) — se ele for recente o bastante pra ser quase certo que é a
  * MESMA falha, mostramos o diagnóstico completo direto nesta tela, sem
  * precisar de nenhum dashboard externo.
+ *
+ * ACHADO REAL (reprodução ao vivo confirmada com o MESMO `deploymentId`
+ * em cliente/assets/RSC — version skew descartado como causa desta
+ * ocorrência específica): nem `readRecentRawClientError` (cobre
+ * `window.onerror`/`unhandledrejection`) nem `SectionErrorBoundary`
+ * (cobre exceção de render dentro da árvore que ele envolve) capturaram
+ * nada nas ocorrências reais confirmadas — todas chegaram aqui com a
+ * mensagem genérica do Next, nunca a real. `readLastCheckpoint()`
+ * (`@/lib/render-checkpoint.ts`) é uma 3ª instrumentação, específica de
+ * `/rotas/[id]` por enquanto: escreve um marcador síncrono a cada passo
+ * do render dessa página — se a falha for de hidratação (um terceiro
+ * caso que nem os dois mecanismos acima alcançam), o ÚLTIMO marcador
+ * escrito antes da tela quebrar aparece aqui, apontando exatamente onde
+ * o render parou.
  */
 export default function DashboardError({
   error,
@@ -65,11 +80,25 @@ export default function DashboardError({
 }): JSX.Element {
   const isRecovering = useChunkLoadRecovery(error);
   const [rawError, setRawError] = useState<ReturnType<typeof readRecentRawClientError>>();
+  const [lastCheckpoint, setLastCheckpoint] = useState<ReturnType<typeof readLastCheckpoint>>();
 
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
-    reportClientError("WEB", error, {
+    const checkpoint = readLastCheckpoint();
+    setLastCheckpoint(checkpoint);
+    // Anexa o checkpoint ao relatório mandado pro backend (sem migration
+    // nova — reaproveita o campo `stack`, já texto livre) — ver a nota
+    // grande acima. `[checkpoint: ...]` fica sempre no INÍCIO da stack
+    // pra aparecer mesmo se o resto for cortado em algum lugar.
+    const reportedError = checkpoint
+      ? Object.assign(new Error(error.message), {
+          name: error.name,
+          stack: `[checkpoint: ${checkpoint.label} @ ${new Date(checkpoint.at).toISOString()}]\n${error.stack ?? ""}`,
+          digest: error.digest,
+        })
+      : error;
+    reportClientError("WEB", reportedError, {
       source: "error-boundary",
       serviceWorkerActive: isServiceWorkerActive(),
     });
@@ -91,6 +120,17 @@ export default function DashboardError({
         detail={error.message || undefined}
         onRetry={reset}
       />
+      {lastCheckpoint ? (
+        <div className="mx-auto w-full max-w-2xl rounded-md border border-warning/30 bg-warning/5 p-4 text-left">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-warning">
+            Último ponto do render antes da falha
+          </p>
+          <p className="whitespace-pre-wrap break-words font-mono text-xs text-text">
+            {lastCheckpoint.label} · {lastCheckpoint.pathname} ·{" "}
+            {new Date(lastCheckpoint.at).toLocaleTimeString("pt-BR")}
+          </p>
+        </div>
+      ) : null}
       {rawError ? (
         <div className="mx-auto w-full max-w-2xl rounded-md border border-danger/30 bg-danger/5 p-4 text-left">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-danger">
