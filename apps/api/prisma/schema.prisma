@@ -2882,6 +2882,33 @@ model ClientErrorReport {
   path      String
   userAgent String?
 
+  /// ACHADO REAL (investigação de 21 ocorrências reais em produção, todas
+  /// com `digest` vazio — a mesma "impressão digital" já documentada em
+  /// `apps/web/src/lib/chunk-load-error.ts` pra bundle desatualizado no
+  /// navegador). Estes três campos existem pra provar isso de vez, sem
+  /// precisar mais de investigação manual a cada nova ocorrência:
+  ///
+  /// `buildId` — `process.env.NEXT_PUBLIC_BUILD_ID` do bundle que o
+  /// navegador tinha carregado NO MOMENTO do erro (embutido em build via
+  /// `next.config.js`, mesmo valor do `<meta name="rotta-build-id">` que
+  /// toda página do painel emite). Comparar este valor contra o deploy
+  /// mais recente na Vercel diz, sem ambiguidade, se o navegador estava
+  /// rodando algo desatualizado quando o erro aconteceu.
+  buildId String?
+
+  /// Se havia um Service Worker ATIVO controlando a aba no momento do
+  /// erro (`navigator.serviceWorker.controller`) — um Service Worker
+  /// velho servindo HTML/JS cacheado é a explicação mais provável pra um
+  /// `digest` vazio nesta mesma investigação.
+  serviceWorkerActive Boolean?
+
+  /// De onde este relato veio: `"error-boundary"` (Error Boundary de
+  /// verdade — `error.tsx`, tem acesso ao `error.digest` real quando
+  /// existe), `"window-error"` ou `"unhandledrejection"` (eventos
+  /// globais do navegador — nunca passam por um Error Boundary do React,
+  /// ver nota completa em `apps/web/src/lib/global-error-capture.ts`).
+  source String?
+
   /// Nulo quando o erro aconteceu antes do login (ou a sessão já tinha
   /// caído) — `onDelete: SetNull` porque o relato do erro em si continua
   /// valendo mesmo que a conta seja apagada depois.
@@ -2894,5 +2921,6 @@ model ClientErrorReport {
 
   @@index([createdAt])
   @@index([digest])
+  @@index([buildId])
   @@map("client_error_reports")
 }

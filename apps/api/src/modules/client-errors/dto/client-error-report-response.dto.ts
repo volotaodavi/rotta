@@ -9,6 +9,9 @@ export class ClientErrorReportResponseDto {
   @ApiPropertyOptional() stack!: string | null;
   @ApiProperty() path!: string;
   @ApiPropertyOptional() userAgent!: string | null;
+  @ApiPropertyOptional() buildId!: string | null;
+  @ApiPropertyOptional() serviceWorkerActive!: boolean | null;
+  @ApiPropertyOptional() source!: string | null;
   @ApiPropertyOptional() userId!: string | null;
   @ApiPropertyOptional() userNome!: string | null;
   @ApiPropertyOptional() companyId!: string | null;
@@ -39,6 +42,9 @@ export function toClientErrorReportResponseDto(
     stack: report.stack,
     path: report.path,
     userAgent: report.userAgent,
+    buildId: report.buildId,
+    serviceWorkerActive: report.serviceWorkerActive,
+    source: report.source,
     userId: report.userId,
     userNome: report.user?.nome ?? null,
     companyId: report.companyId,

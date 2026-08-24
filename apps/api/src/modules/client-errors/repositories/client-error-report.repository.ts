@@ -17,6 +17,9 @@ export interface CreateClientErrorReportData {
   stack?: string;
   path: string;
   userAgent?: string;
+  buildId?: string;
+  serviceWorkerActive?: boolean;
+  source?: string;
   userId?: string;
   companyId?: string;
 }
@@ -24,6 +27,7 @@ export interface CreateClientErrorReportData {
 export interface ListClientErrorReportsFilter {
   app?: ClientApp;
   digest?: string;
+  buildId?: string;
   page: number;
   pageSize: number;
 }

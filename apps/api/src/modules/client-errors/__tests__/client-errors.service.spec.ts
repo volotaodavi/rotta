@@ -23,6 +23,9 @@ const REPORT = {
   stack: null,
   path: "/rotas/novo",
   userAgent: "Mozilla/5.0",
+  buildId: null,
+  serviceWorkerActive: null,
+  source: null,
   userId: null,
   companyId: null,
   createdAt: new Date(),
@@ -108,6 +111,7 @@ describe("ClientErrorsService", () => {
       expect(repository.list).toHaveBeenCalledWith({
         app: undefined,
         digest: undefined,
+        buildId: undefined,
         page: 1,
         pageSize: 20,
       });

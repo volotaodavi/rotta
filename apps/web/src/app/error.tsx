@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
 import { readRecentRawClientError } from "@/lib/global-error-capture";
 import { reportClientError } from "@/lib/report-client-error";
+import { isServiceWorkerActive } from "@/lib/service-worker-status";
 
 /**
  * Error Boundary global do App Router (convencao de arquivo especial
@@ -52,7 +53,10 @@ export default function GlobalError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
-    reportClientError("WEB", error);
+    reportClientError("WEB", error, {
+      source: "error-boundary",
+      serviceWorkerActive: isServiceWorkerActive(),
+    });
     setRawError(readRecentRawClientError());
   }, [error]);
 

@@ -26,6 +26,7 @@ export class PrismaClientErrorReportRepository implements ClientErrorReportRepos
     const where = {
       app: filter.app,
       digest: filter.digest,
+      buildId: filter.buildId,
     };
 
     const [items, total] = await Promise.all([

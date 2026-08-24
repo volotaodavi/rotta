@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Card, ErrorState, Select, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, ErrorState, Input, Select, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { ClientApp, ClientErrorReport } from "@rotta/api-client";
@@ -20,6 +20,36 @@ const APP_BADGE_VARIANT: Record<ClientApp, BadgeVariant> = {
   MOBILE: "success",
 };
 
+const SOURCE_LABEL: Record<string, string> = {
+  "error-boundary": "Error Boundary",
+  "window-error": "window.onerror",
+  unhandledrejection: "Promise rejeitada",
+};
+
+/**
+ * ACHADO REAL (21 ocorrências reais investigadas manualmente antes desta
+ * tela ganhar isso — ver `apps/web/src/lib/chunk-load-error.ts`): um erro
+ * REAL de app, redigido pelo Next.js em produção, sempre ganha um
+ * `digest` — é assim que a Vercel correlaciona com o log do servidor. A
+ * ausência de `digest` na mesma frase genérica de "Server Components
+ * render" é a assinatura de um navegador rodando um bundle/cache
+ * desatualizado (ver `isStaleClientRenderError`), não um bug de
+ * componente de verdade. Esse diagnóstico já existia na cabeça de quem
+ * investigava manualmente — agora fica na própria tela, calculado uma
+ * vez por linha, sem precisar reabrir esta investigação a cada relato novo.
+ */
+const GENERIC_RSC_MESSAGE = /error occurred in the server components render/i;
+
+function diagnose(report: ClientErrorReport): { label: string; variant: BadgeVariant } | null {
+  if (!report.digest && GENERIC_RSC_MESSAGE.test(report.message)) {
+    return { label: "Bundle desatualizado no navegador", variant: "warning" };
+  }
+  if (report.digest) {
+    return { label: "Erro de app real (com digest)", variant: "danger" };
+  }
+  return null;
+}
+
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleString("pt-BR");
 }
@@ -27,11 +57,14 @@ function formatDate(iso: string): string {
 /** Uma ocorrência — mensagem + digest sempre visíveis, stack atrás de um "Ver stack" (pode ser longa). */
 function ReportRow({ report }: { report: ClientErrorReport }): JSX.Element {
   const [showStack, setShowStack] = useState(false);
+  const diagnosis = diagnose(report);
 
   return (
     <div className="flex flex-col gap-2 px-6 py-4">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant={APP_BADGE_VARIANT[report.app]}>{APP_LABEL[report.app]}</Badge>
+        {diagnosis && <Badge variant={diagnosis.variant}>{diagnosis.label}</Badge>}
+        {report.serviceWorkerActive && <Badge variant="warning">Service Worker ativo</Badge>}
         <Typography variant="caption" color="muted">
           {formatDate(report.createdAt)}
         </Typography>
@@ -43,6 +76,11 @@ function ReportRow({ report }: { report: ClientErrorReport }): JSX.Element {
             · digest {report.digest}
           </Typography>
         )}
+        {report.source && (
+          <Typography variant="caption" color="muted">
+            · origem: {SOURCE_LABEL[report.source] ?? report.source}
+          </Typography>
+        )}
       </div>
 
       <Typography variant="body" className="font-semibold break-words">
@@ -52,6 +90,7 @@ function ReportRow({ report }: { report: ClientErrorReport }): JSX.Element {
       <Typography variant="caption" color="muted">
         {report.userNome ? `Usuário: ${report.userNome}` : "Usuário: não identificado (sem login)"}
         {report.companyNome ? ` · Empresa: ${report.companyNome}` : ""}
+        {report.buildId ? ` · Build: ${report.buildId}` : ""}
       </Typography>
 
       {report.stack && (
@@ -88,10 +127,12 @@ function ReportRow({ report }: { report: ClientErrorReport }): JSX.Element {
 export default function ErrosClientePage(): JSX.Element {
   const [page, setPage] = useState(1);
   const [app, setApp] = useState<ClientApp | "">("");
+  const [buildId, setBuildId] = useState("");
   const pageSize = 20;
 
   const { data, isLoading, isError, refetch, isFetching } = useClientErrorReportsList({
     app: app || undefined,
+    buildId: buildId || undefined,
     page,
     pageSize,
   });
@@ -106,7 +147,7 @@ export default function ErrosClientePage(): JSX.Element {
         </Typography>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <Select
           className="w-full max-w-[220px]"
           value={app}
@@ -120,6 +161,15 @@ export default function ErrosClientePage(): JSX.Element {
           <option value="ADMIN">Admin Rotta</option>
           <option value="MOBILE">App Mobile</option>
         </Select>
+        <Input
+          className="w-full max-w-[260px]"
+          placeholder="Filtrar por build (ex: a1b2c3d)"
+          value={buildId}
+          onChange={(event) => {
+            setBuildId(event.target.value);
+            setPage(1);
+          }}
+        />
       </div>
 
       <Card>

@@ -17,6 +17,7 @@ import { useAppMode } from "@/features/driver/hooks/use-app-mode";
 import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
+import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
 
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
@@ -222,6 +223,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     // atual do viewport — junto com `viewportFit: "cover"` (`app/
     // layout.tsx`), fecha o problema de ponta a ponta.
     <div className="flex min-h-dvh flex-col bg-background text-text">
+      <StaleBuildWatchdog />
       <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
         <div className="flex items-center gap-8">
           <Typography variant="subtitle">

@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ClientApp } from "@prisma/client";
-import { IsEnum, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 
 /**
  * Reporte de um erro real capturado no navegador do usuário (`error.tsx`
@@ -40,6 +40,31 @@ export class CreateClientErrorReportDto {
   @IsString()
   @MaxLength(500)
   path!: string;
+
+  /**
+   * `process.env.NEXT_PUBLIC_BUILD_ID` do bundle carregado no navegador
+   * no momento do erro — ver a nota completa em `ClientErrorReport`
+   * (schema.prisma). Comparar com o deploy mais recente diz na hora se
+   * o navegador estava rodando algo desatualizado.
+   */
+  @ApiPropertyOptional({ example: "a1b2c3d" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  buildId?: string;
+
+  /** `Boolean(navigator.serviceWorker?.controller)` no momento do erro. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  serviceWorkerActive?: boolean;
+
+  /** `"error-boundary" | "window-error" | "unhandledrejection"` — ver `ClientErrorReport`. */
+  @ApiPropertyOptional({ enum: ["error-boundary", "window-error", "unhandledrejection"] })
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  source?: string;
 
   /**
    * `companyId` do usuário logado no momento do erro, quando o front

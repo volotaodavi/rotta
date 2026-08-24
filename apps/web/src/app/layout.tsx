@@ -178,6 +178,13 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <OrganizationJsonLd />
+        {/*
+         * Ver a nota completa em `next.config.mjs` — `<meta>` embutido em
+         * TODO html servido, sempre o build ATUAL do servidor no momento
+         * da requisição. `stale-build-watchdog.tsx` compara isto contra
+         * `NEXT_PUBLIC_BUILD_ID` (o bundle JS já carregado no navegador).
+         */}
+        <meta name="rotta-build-id" content={process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"} />
       </head>
       <body>
         <ServiceWorkerRegistration />

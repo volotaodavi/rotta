@@ -16,6 +16,12 @@ export class ListClientErrorReportsQueryDto {
   @IsString()
   digest?: string;
 
+  /** Filtra por `buildId` exato — útil pra isolar todas as ocorrências de um bundle específico desatualizado. */
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  buildId?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)

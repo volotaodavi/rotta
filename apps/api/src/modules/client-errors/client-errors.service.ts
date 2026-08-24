@@ -65,6 +65,9 @@ export class ClientErrorsService {
       stack: dto.stack,
       path: dto.path,
       userAgent: context.userAgent,
+      buildId: dto.buildId,
+      serviceWorkerActive: dto.serviceWorkerActive,
+      source: dto.source,
       userId,
       companyId: dto.companyId,
     });
@@ -86,6 +89,7 @@ export class ClientErrorsService {
     const result = await this.repository.list({
       app: query.app,
       digest: query.digest,
+      buildId: query.buildId,
       page,
       pageSize,
     });

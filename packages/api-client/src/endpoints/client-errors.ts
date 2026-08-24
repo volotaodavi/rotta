@@ -15,12 +15,18 @@ import type { ApiClient } from "../http";
 
 export type ClientApp = "WEB" | "ADMIN" | "MOBILE";
 
+/** Ver a nota completa em `ClientErrorReport` (schema.prisma). */
+export type ClientErrorSource = "error-boundary" | "window-error" | "unhandledrejection";
+
 export interface CreateClientErrorReportInput {
   app: ClientApp;
   message: string;
   digest?: string;
   stack?: string;
   path: string;
+  buildId?: string;
+  serviceWorkerActive?: boolean;
+  source?: ClientErrorSource;
   companyId?: string;
 }
 
@@ -32,6 +38,9 @@ export interface ClientErrorReport {
   stack: string | null;
   path: string;
   userAgent: string | null;
+  buildId: string | null;
+  serviceWorkerActive: boolean | null;
+  source: string | null;
   userId: string | null;
   userNome: string | null;
   companyId: string | null;
@@ -42,6 +51,7 @@ export interface ClientErrorReport {
 export interface ListClientErrorReportsParams {
   app?: ClientApp;
   digest?: string;
+  buildId?: string;
   page?: number;
   pageSize?: number;
 }

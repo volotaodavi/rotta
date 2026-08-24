@@ -1,6 +1,7 @@
 "use client";
 
 import { reportClientError } from "./report-client-error";
+import { isServiceWorkerActive } from "./service-worker-status";
 
 const STORAGE_KEY = "rotta_last_raw_client_error";
 /** Só mostra o diagnóstico bruto se ele foi capturado há pouco — evita
@@ -12,7 +13,7 @@ interface RawClientError {
   message: string;
   stack?: string;
   name?: string;
-  source: "window.error" | "unhandledrejection";
+  source: "window-error" | "unhandledrejection";
   capturedAt: number;
 }
 
@@ -43,7 +44,7 @@ export function initGlobalErrorCapture(): void {
 
   window.addEventListener("error", (event: ErrorEvent) => {
     const error = event.error instanceof Error ? event.error : new Error(String(event.message));
-    persistAndReport(error, "window.error");
+    persistAndReport(error, "window-error");
   });
 
   window.addEventListener("unhandledrejection", (event: PromiseRejectionEvent) => {
@@ -70,7 +71,10 @@ function persistAndReport(error: Error, source: RawClientError["source"]): void 
     // sessionStorage indisponível (modo privado, quota) — só perde o
     // diagnóstico na tela, o report ao backend abaixo ainda funciona.
   }
-  reportClientError("WEB", error);
+  reportClientError("WEB", error, {
+    source,
+    serviceWorkerActive: isServiceWorkerActive(),
+  });
 }
 
 /** Lido pelas telas de erro (`error.tsx`) pra mostrar o diagnóstico bruto

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
 import { readRecentRawClientError } from "@/lib/global-error-capture";
 import { reportClientError } from "@/lib/report-client-error";
+import { isServiceWorkerActive } from "@/lib/service-worker-status";
 
 /**
  * Error Boundary do route group `(dashboard)` — pedido do usuário: "ao
@@ -68,7 +69,10 @@ export default function DashboardError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
-    reportClientError("WEB", error);
+    reportClientError("WEB", error, {
+      source: "error-boundary",
+      serviceWorkerActive: isServiceWorkerActive(),
+    });
     setRawError(readRecentRawClientError());
   }, [error]);
 
