@@ -22,6 +22,7 @@ import {
 } from "@rotta/maps/distance";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { buildNavigationUrl } from "@rotta/maps/navigation";
+import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -604,6 +605,21 @@ function RotaOperacional({
   const { status: gpsStatus } = useTripGpsReporting(
     isMotorista && isActive && trip ? trip.id : null,
   );
+
+  // Mantém a tela acesa durante a viagem (pedido do usuário: "manter a
+  // tela do motorista ligada... tanto no app quanto na web") — paridade
+  // com `useWakeLock` já usado no Painel Web (`minha-rota/page.tsx`),
+  // mesmo escopo: só o Motorista, só enquanto a viagem está
+  // `EM_ANDAMENTO`. `expo-keep-awake` já era uma dependência instalada,
+  // mas nunca chamada em lugar nenhum — sem isso, o celular apaga a tela
+  // sozinho e o app para de reportar GPS/mostrar o checklist até alguém
+  // desbloquear de novo (mesmo problema que motivou o hook web).
+  useEffect(() => {
+    if (!isMotorista || !isActive) return;
+    const tag = "rotta-viagem-ativa";
+    void activateKeepAwakeAsync(tag);
+    return () => void deactivateKeepAwake(tag);
+  }, [isMotorista, isActive]);
 
   const paradasOrdenadas = [...(stops ?? [])].sort((a, b) => a.ordem - b.ordem);
   const markers: RottaMapMarker[] = paradasOrdenadas.map((parada) => ({
