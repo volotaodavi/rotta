@@ -22,10 +22,12 @@ import { initGlobalErrorCapture } from "@/lib/global-error-capture";
  * havendo ações nos botões". Nenhuma mutação do Admin tinha feedback
  * visível de erro (`QueryProvider.mutations.retry: false`, e nenhuma
  * tela renderizava `isError`) — o botão simplesmente parava de carregar
- * e nada mudava na tela, indistinguível de "não fez nada". Ainda não é
- * automático (cada mutação continua precisando chamar `toast.error(...)`
- * no seu próprio `onError` — ver `verificacao-identidade/[userId]/
- * page.tsx`), mas agora existe ONDE mostrar isso.
+ * e nada mudava na tela, indistinguível de "não fez nada". Hoje é
+ * automático: `QueryProvider` registra um `MutationCache.onError` global
+ * que mostra o toast sozinho pra qualquer mutação que falhar — uma
+ * mutação específica ainda pode chamar `toast.error(...)` no próprio
+ * `onError` quando quiser uma mensagem sob medida (ver
+ * `verificacao-identidade/[userId]/page.tsx`), os dois convivem.
  */
 export function AppProviders({ children }: { children: ReactNode }): JSX.Element {
   // Ver `@/lib/global-error-capture.ts` — captura, sem redação, qualquer

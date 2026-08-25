@@ -56,6 +56,22 @@ export interface ToastContextValue {
 
 const ToastContext = createContext<ToastContextValue | null>(null);
 
+/**
+ * Ponte pra disparar um toast de FORA da árvore React — necessário porque
+ * o gatilho mais importante (erro de qualquer `useMutation` do app,
+ * `MutationCache.onError` em `QueryProvider`) roda fora de qualquer
+ * componente. Só existe um `<ToastProvider>` real por app (montado uma vez
+ * em `AppProviders`), então "o último provider montado" é sempre o
+ * correto — não precisa de fila/replay: se disparar antes do provider
+ * montar (só no primeiro instante da app, antes de qualquer mutação
+ * poder rodar), o toast é descartado silenciosamente em vez de quebrar.
+ */
+let activeToastBridge: ((input: ToastInput) => void) | null = null;
+
+export function pushToastFromOutsideReact(input: ToastInput): void {
+  activeToastBridge?.(input);
+}
+
 const DEFAULT_DURATION = 6000;
 
 const VARIANT_STYLES: Record<ToastVariant, string> = {
@@ -93,6 +109,13 @@ export function ToastProvider({ children }: { children: ReactNode }): JSX.Elemen
       },
     ]);
   }, []);
+
+  useEffect(() => {
+    activeToastBridge = show;
+    return () => {
+      activeToastBridge = null;
+    };
+  }, [show]);
 
   const value = useMemo<ToastContextValue>(
     () => ({

@@ -32,9 +32,10 @@ import {
   Spinner,
   Typography,
   buttonVariants,
+  useToast,
 } from "@rotta/ui/web";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type {
   NextEta,
@@ -42,9 +43,11 @@ import type {
   RouteStop,
   RouteStudent,
   RouteStudentDetalhado,
+  Trip,
   TripStudentEventType,
 } from "@rotta/api-client";
 import type { Route as NextRoute } from "next";
+import type { ReactNode } from "react";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
@@ -675,6 +678,7 @@ function RotaOperacional({
   const { user } = useAuth();
   const isMotorista = user?.role === "motorista";
   const accent = isMotorista ? MOTORISTA_ACCENT : MONITOR_ACCENT;
+  const toast = useToast();
 
   const { data: trip, isLoading: isLoadingTrip } = useTodayTrip(rota.id);
   const { data: stops } = useRouteStops(rota.id);
@@ -808,6 +812,44 @@ function RotaOperacional({
   }).length;
 
   const viagemEncerrada = trip && (trip.status === "FINALIZADA" || trip.status === "CANCELADA");
+
+  // Frente AP (pedido do usuário, depois de reportar que "deslizar para
+  // iniciar não faz nada": "o mapa inteiro na tela... com um retângulo
+  // flutuante... com os alunos, com um botão do lado - azul (embarque),
+  // vermelho (desembarque)... mostra a próxima rota traçada... quando
+  // todos, a próxima rota será a escola"). Tela cheia IN-PLACE — troca de
+  // layout, nunca uma navegação de verdade (mesmo motivo já documentado
+  // em `rotas/[id]/executar/page.tsx`: navegar pra um segmento dinâmico
+  // já causou crash de renderização neste código). Continua enquanto
+  // existir uma viagem não encerrada (inclusive `PAUSADA`, pra não trocar
+  // de layout no meio da operação) — pro Motorista E o Monitor, já que os
+  // dois operam embarque/desembarque (`AlunoParadaRow` abaixo nunca
+  // filtrava por papel).
+  if (trip && !viagemEncerrada) {
+    return (
+      <ModoOperacionalFullScreen
+        rota={rota}
+        trip={trip}
+        accent={accent}
+        isMotorista={isMotorista}
+        isActive={isActive}
+        mapMarkers={mapMarkers}
+        paradasOrdenadas={paradasOrdenadas}
+        driverPosition={driverPosition}
+        routeStudents={routeStudents ?? []}
+        studentEvents={studentEvents ?? []}
+        proximasEtas={proximasEtas ?? []}
+        alunosEmbarcados={alunosEmbarcados}
+        totalAlunos={totalAlunos}
+        gpsAvisoTexto={gpsAvisoTexto}
+        pauseTrip={pauseTrip}
+        resumeTrip={resumeTrip}
+        finishTrip={finishTrip}
+        mapKey={mapKey}
+        onRecenter={() => setMapKey((k) => k + 1)}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
@@ -977,7 +1019,17 @@ function RotaOperacional({
               onComplete={() =>
                 startTrip.mutate(
                   { routeId: rota.id },
-                  { onSuccess: () => void notifyRouteStarted(rota.nome) },
+                  {
+                    // Erro já cai sozinho no toast global
+                    // (`MutationCache.onError`, `QueryProvider`) — aqui só
+                    // o feedback positivo, pra ficar claro que a viagem
+                    // começou de verdade (pedido do usuário: "não
+                    // acontece a devida ação... fica na mesma tela").
+                    onSuccess: () => {
+                      toast.success("Viagem iniciada.");
+                      void notifyRouteStarted(rota.nome);
+                    },
+                  },
                 )
               }
               isLoading={startTrip.isPending}
@@ -1085,6 +1137,337 @@ function RotaOperacional({
           ))}
         </>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Frente AP — tela cheia do Modo Ação depois que a viagem existe (pedido
+ * detalhado do usuário: "o mapa inteiro na tela, literalmente o mapa
+ * inteiro... um retângulo com borda redonda flutuante... com os alunos,
+ * com um botão do lado - azul (embarque), vermelho (desembarque)...
+ * mostra a próxima rota traçada... quando todos, a próxima rota será a
+ * escola"). Reaproveita tudo que já existia (nunca duplicado): `estaProximo`/
+ * raio de 1km e o próprio botão embarque/desembarque vêm de
+ * `AlunoParadaRow`; a "próxima parada" real (com ETA por rota OSRM,
+ * reordenada por proximidade real do veículo) vem de `useTripProximasEtas`
+ * (já existia, só nunca tinha virado o alvo visual do mapa). A escola é só
+ * a ÚLTIMA parada pendente na mesma lista — nenhuma regra nova precisou
+ * ser escrita pra "ir pra escola no final": quando só sobra desembarque,
+ * é a própria `computeProximasEtas` do backend que aponta pra lá.
+ */
+function ModoOperacionalFullScreen({
+  rota,
+  trip,
+  accent,
+  isMotorista,
+  isActive,
+  mapMarkers,
+  paradasOrdenadas,
+  driverPosition,
+  routeStudents,
+  studentEvents,
+  proximasEtas,
+  alunosEmbarcados,
+  totalAlunos,
+  gpsAvisoTexto,
+  pauseTrip,
+  resumeTrip,
+  finishTrip,
+  mapKey,
+  onRecenter,
+}: {
+  rota: Route;
+  trip: Trip;
+  accent: RoleAccent;
+  isMotorista: boolean;
+  isActive: boolean;
+  mapMarkers: RottaMapMarker[];
+  paradasOrdenadas: RouteStop[];
+  driverPosition: DistanceCoordenada | null;
+  routeStudents: RouteStudent[];
+  studentEvents: { studentId: string; tipo: TripStudentEventType }[];
+  proximasEtas: NextEta[];
+  alunosEmbarcados: number;
+  totalAlunos: number;
+  gpsAvisoTexto: string | null;
+  pauseTrip: ReturnType<typeof usePauseTrip>;
+  resumeTrip: ReturnType<typeof useResumeTrip>;
+  finishTrip: ReturnType<typeof useFinishTrip>;
+  mapKey: number;
+  onRecenter: () => void;
+}): JSX.Element {
+  // Mesmo filtro de "falta o evento esperado" usado em `paradasRestantesCount`
+  // e em `ParadaCard` (duplicado de propósito — três lugares, uma regra só).
+  const paradasPendentes = paradasOrdenadas.filter((parada) => {
+    const alunosDaParada = routeStudents.filter(
+      (aluno) => aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
+    );
+    if (alunosDaParada.length === 0) return false;
+    return alunosDaParada.some((aluno) => {
+      const isEmbarque = aluno.paradaEmbarqueId === parada.id;
+      const tipoEsperado: TripStudentEventType = isEmbarque ? "EMBARCOU" : "DESEMBARCOU";
+      const resolvido = studentEvents.some(
+        (e) => e.studentId === aluno.studentId && (e.tipo === tipoEsperado || e.tipo === "AUSENTE"),
+      );
+      return !resolvido;
+    });
+  });
+
+  // ETA real (Rotta AI de proximidade, `computeProximasEtas` no backend)
+  // quando o GPS já reportou alguma posição; sem isso ainda — viagem
+  // recém-iniciada ou `PAUSADA` — cai pra ordem cadastrada, nunca deixa o
+  // cartão vazio à toa.
+  const proximaEta = proximasEtas[0];
+  const paradaAlvo = proximaEta
+    ? (paradasOrdenadas.find((p) => p.id === proximaEta.routeStopId) ?? paradasPendentes[0])
+    : paradasPendentes[0];
+
+  const alunosDaParadaAlvo = paradaAlvo
+    ? routeStudents.filter(
+        (aluno) =>
+          aluno.paradaEmbarqueId === paradaAlvo.id || aluno.paradaDesembarqueId === paradaAlvo.id,
+      )
+    : [];
+
+  const chegouNaEscola =
+    alunosDaParadaAlvo.length > 0 &&
+    alunosDaParadaAlvo.every((aluno) => aluno.paradaDesembarqueId === paradaAlvo?.id);
+
+  // "Próxima rota traçada" (pedido do usuário) — veículo → parada-alvo. De
+  // propósito mais simples que redesenhar o itinerário inteiro de novo: o
+  // traçado estático de todas as paradas já existe por baixo (`mapMarkers`
+  // + rota completa quando ainda não há alvo), isso aqui é só o "pra onde
+  // ir AGORA" ficar óbvio no mapa.
+  const rotaTracada =
+    paradaAlvo && driverPosition
+      ? [driverPosition, { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude }]
+      : paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
+
+  const distanciaAteAlvo =
+    driverPosition && paradaAlvo
+      ? haversineDistanceMeters(driverPosition, {
+          latitude: paradaAlvo.latitude,
+          longitude: paradaAlvo.longitude,
+        })
+      : null;
+
+  function handleNavegar(): void {
+    if (!paradaAlvo) return;
+    const app = detectNavigationApp(navigator.userAgent);
+    const url = buildNavigationUrl(
+      { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude },
+      app,
+    );
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  return (
+    <div className="fixed inset-0 z-modal flex flex-col bg-background">
+      <div className="relative flex-1">
+        {mapMarkers.length > 0 ? (
+          <RottaMap key={mapKey} markers={mapMarkers} route={rotaTracada} initialZoom={13} />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <Spinner size="lg" />
+          </div>
+        )}
+
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-full bg-surface-elevated/95 px-4 py-2 shadow-lg backdrop-blur">
+            <span
+              className={`h-2 w-2 shrink-0 rounded-full ${isActive ? accent.bg : "bg-text-muted"}`}
+            />
+            <Typography variant="bodySmall" className="max-w-[10rem] truncate font-semibold">
+              {rota.nome}
+            </Typography>
+            <TripElapsedTimer iniciadaEm={trip.iniciadaEm} isRunning={isActive} accent={accent} />
+          </div>
+          <div className="pointer-events-auto flex items-center gap-2">
+            {isMotorista ? (
+              <button
+                type="button"
+                onClick={() => (isActive ? pauseTrip.mutate(trip.id) : resumeTrip.mutate(trip.id))}
+                disabled={pauseTrip.isPending || resumeTrip.isPending}
+                aria-label={isActive ? "Pausar viagem" : "Retomar viagem"}
+                title={isActive ? "Pausar viagem" : "Retomar viagem"}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-elevated/95 text-text shadow-lg backdrop-blur transition-colors hover:text-primary disabled:opacity-60"
+              >
+                {isActive ? <Pause size={18} /> : <Play size={18} />}
+              </button>
+            ) : null}
+            <RecenterButton onClick={onRecenter} />
+          </div>
+        </div>
+
+        {gpsAvisoTexto ? (
+          <div className="pointer-events-none absolute inset-x-3 top-16 flex justify-center">
+            <Typography
+              variant="caption"
+              color="muted"
+              className="pointer-events-auto max-w-xs rounded-full bg-surface-elevated/95 px-3 py-1 text-center shadow backdrop-blur"
+            >
+              {gpsAvisoTexto}
+            </Typography>
+          </div>
+        ) : null}
+      </div>
+
+      <DraggableFloatingCard>
+        <div className="flex items-center justify-between gap-2 pb-3">
+          <Typography variant="caption" color="muted">
+            {alunosEmbarcados}/{totalAlunos} embarcados
+          </Typography>
+          <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} accent={accent} />
+        </div>
+
+        {paradaAlvo ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-start justify-between gap-3 border-t border-border pt-3">
+              <div className="min-w-0">
+                <Typography variant="caption" color="muted">
+                  {chegouNaEscola ? "Próximo destino · Escola" : "Próxima parada"}
+                </Typography>
+                <Typography variant="bodySmall" className="font-semibold leading-tight">
+                  {paradaAlvo.ordem}. {paradaAlvo.endereco}
+                </Typography>
+                {proximaEta ? (
+                  <Typography variant="caption" color="muted">
+                    {new Date(proximaEta.etaPrevista).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    · {formatarDistancia(proximaEta.distanciaMetros)}
+                  </Typography>
+                ) : distanciaAteAlvo !== null ? (
+                  <Typography variant="caption" color="muted">
+                    {formatarDistancia(distanciaAteAlvo)}
+                  </Typography>
+                ) : null}
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={<Navigation size={16} />}
+                onClick={handleNavegar}
+                className="shrink-0"
+              >
+                Navegar
+              </Button>
+            </div>
+
+            <div className="flex flex-col">
+              {alunosDaParadaAlvo.map((aluno) => (
+                <AlunoParadaRow
+                  key={aluno.id}
+                  aluno={aluno}
+                  parada={paradaAlvo}
+                  eventos={studentEvents}
+                  tripId={trip.id}
+                  podeOperar={isActive}
+                  driverPosition={driverPosition}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2 border-t border-border py-4 text-center">
+            <Check size={28} className="text-success" />
+            <Typography variant="bodySmall" className="font-semibold">
+              Todos os alunos foram desembarcados.
+            </Typography>
+            {isMotorista ? (
+              <div className="w-full pt-2">
+                <SlideToAction
+                  label="Deslize para finalizar"
+                  onComplete={() => finishTrip.mutate(trip.id)}
+                  isLoading={finishTrip.isPending}
+                  thumbColorClassName="bg-danger"
+                />
+              </div>
+            ) : (
+              <Typography variant="caption" color="muted">
+                Aguardando o motorista finalizar a viagem.
+              </Typography>
+            )}
+          </div>
+        )}
+      </DraggableFloatingCard>
+    </div>
+  );
+}
+
+/**
+ * Cartão flutuante ARRASTÁVEL por cima do mapa em tela cheia (pedido do
+ * usuário: "um retângulo com borda redonda flutuante, onde clicando ele
+ * se arrasta e fica suspenso na tela, porém com maior visibilidade").
+ * Pointer Events puro — mesma técnica de `SlideToAction` (sem lib de
+ * gesto nova), só que arrastando livremente nas duas direções em vez de
+ * deslizar travado num eixo. Começa "docado" perto do fim da tela
+ * (posição via CSS, sem `left`/`top` inline); depois do primeiro arrasto,
+ * passa a ser posicionado por coordenada absoluta, sempre restrita à
+ * área visível da tela (nunca pode sumir arrastado pra fora). Só a ALÇA
+ * (a barrinha no topo) inicia o arrasto — os botões de embarque/
+ * desembarque dentro do cartão continuam clicáveis normalmente.
+ */
+function DraggableFloatingCard({ children }: { children: ReactNode }): JSX.Element {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(
+    null,
+  );
+
+  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>): void {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rect = cardRef.current?.getBoundingClientRect();
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      origX: pos?.x ?? rect?.left ?? 16,
+      origY: pos?.y ?? rect?.top ?? 16,
+    };
+  }
+
+  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>): void {
+    if (!dragRef.current) return;
+    const rect = cardRef.current?.getBoundingClientRect();
+    const width = rect?.width ?? 320;
+    const height = rect?.height ?? 200;
+    const margem = 12;
+    const nextX = dragRef.current.origX + (event.clientX - dragRef.current.startX);
+    const nextY = dragRef.current.origY + (event.clientY - dragRef.current.startY);
+    setPos({
+      x: Math.min(Math.max(nextX, margem), window.innerWidth - width - margem),
+      y: Math.min(Math.max(nextY, margem), window.innerHeight - height - margem),
+    });
+  }
+
+  function handlePointerUp(event: React.PointerEvent<HTMLDivElement>): void {
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current = null;
+  }
+
+  return (
+    <div
+      ref={cardRef}
+      style={pos ? { left: pos.x, top: pos.y } : undefined}
+      className={`fixed z-modal flex max-h-[65vh] w-[min(92vw,400px)] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-modal ${
+        pos ? "" : "inset-x-0 bottom-4 mx-auto"
+      }`}
+    >
+      <div
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        aria-hidden="true"
+        className="flex shrink-0 cursor-grab touch-none items-center justify-center py-2 active:cursor-grabbing"
+      >
+        <div className="h-1.5 w-10 rounded-full bg-border" />
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 pb-4">{children}</div>
     </div>
   );
 }

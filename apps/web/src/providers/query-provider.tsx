@@ -1,6 +1,8 @@
 "use client";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ApiError } from "@rotta/api-client";
+import { pushToastFromOutsideReact } from "@rotta/ui/web";
+import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState, type ReactNode } from "react";
 
@@ -11,11 +13,31 @@ import { useState, type ReactNode } from "react";
  * arriscar duplicar uma acao de escrita por reenvio automatico — cada
  * fluxo de escrita critico (ex. checklist, GPS) implementa sua propria
  * idempotencia quando for construido (Dossie 14, Secao 1.7).
+ *
+ * `MutationCache.onError` (pedido do usuário: "ao deslizar para iniciar
+ * a rota, não acontece a devida ação... fica na mesma tela" — a causa
+ * real era `useStartTrip` sem `onError` nenhum, e essa mesma ausência
+ * se repetia em toda mutação do app, exatamente o gap que o próprio
+ * `Toast.tsx` já documentava desde que foi criado) — dispara UM toast
+ * de erro pra QUALQUER mutação que falhar em qualquer tela, sem
+ * precisar lembrar de adicionar `onError` em cada `useMutation` um por
+ * um. Mutações que já têm seu próprio `onError` continuam recebendo
+ * ele normalmente (o TanStack Query chama os dois) — isso aqui é só a
+ * rede de segurança que garante que nenhuma falha vira silêncio.
  */
 export function QueryProvider({ children }: { children: ReactNode }): JSX.Element {
   const [queryClient] = useState(
     () =>
       new QueryClient({
+        mutationCache: new MutationCache({
+          onError: (error) => {
+            const message =
+              error instanceof ApiError
+                ? error.message
+                : "Não foi possível concluir a ação. Tente novamente.";
+            pushToastFromOutsideReact({ variant: "danger", message, duration: 0 });
+          },
+        }),
         defaultOptions: {
           queries: {
             retry: 3,

@@ -77,6 +77,12 @@ export function useAddStudentEvent(tripId: string | undefined) {
       tripsApi.addStudentEvent(tripId as string, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["trips", tripId, "student-events"] });
+      // Frente AP (pedido do usuário: "mostra a próxima rota traçada" logo
+      // depois de embarcar/desembarcar) — sem isso o cartão flutuante só
+      // apontaria pro próximo aluno mais próximo depois do refetch
+      // periódico de 30s de `useTripProximasEtas`, uma demora perceptível
+      // logo após o clique.
+      void queryClient.invalidateQueries({ queryKey: ["trips", tripId, "proximas-etas"] });
     },
   });
 }
