@@ -37,6 +37,18 @@ if (isVercelBuild && !buildId) {
  */
 const nextConfig = {
   reactStrictMode: true,
+  /**
+   * TEMPORÁRIO — investigação ao vivo do "Server Components render"
+   * indeterminístico em `/rotas/[id]` recém-criada (ver HISTÓRICO em
+   * `rotas/[id]/_components/route-detail-client.tsx`): a pilha real do
+   * erro (React #460, "Suspense Exception") só aparece minificada
+   * (`ui`, `uk`, `iP`...) sem isso — sem nomes de arquivo/função reais
+   * não dá pra saber com certeza qual código está em cada frame. Não
+   * muda nenhum comportamento em runtime, só publica os `.map` ao lado
+   * do JS pro DevTools traduzir a pilha de volta pro fonte original.
+   * Remover assim que a pilha traduzida tiver sido capturada.
+   */
+  productionBrowserSourceMaps: true,
   env: {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
