@@ -27,7 +27,7 @@
     "@didit-protocol/sdk-web": "^0.2.1",
     "@tanstack/react-query": "^5.62.11",
     "maplibre-gl": "^6.1.0",
-    "next": "15.5.22",
+    "next": "15.5.23",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "zod": "^3.24.1",
