@@ -463,41 +463,41 @@ importers:
         version: link:../../packages/validators
       '@sentry/nextjs':
         specifier: 10.70.0
-        version: 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(next@15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(webpack@5.97.1(postcss@8.5.25))
+        version: 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(next@15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)(webpack@5.97.1(postcss@8.5.25))
       '@tanstack/react-query':
         specifier: ^5.62.11
-        version: 5.101.4(react@19.2.8)
+        version: 5.101.4(react@19.2.0-canary-0bdb9206-20250818)
       maplibre-gl:
         specifier: ^6.1.0
         version: 6.1.0
       next:
         specifier: 15.5.23
-        version: 15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)
       react:
-        specifier: 19.2.8
-        version: 19.2.8
+        specifier: 19.2.0-canary-0bdb9206-20250818
+        version: 19.2.0-canary-0bdb9206-20250818
       react-dom:
-        specifier: 19.2.8
-        version: 19.2.8(react@19.2.8)
+        specifier: 19.2.0-canary-0bdb9206-20250818
+        version: 19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818)
       zod:
         specifier: ^3.24.1
         version: 3.25.76
       zustand:
         specifier: ^5.0.2
-        version: 5.0.14(@types/react@19.2.18)(react@19.2.8)(use-sync-external-store@1.6.0(react@19.2.8))
+        version: 5.0.14(@types/react@19.2.18)(react@19.2.0-canary-0bdb9206-20250818)(use-sync-external-store@1.6.0(react@19.2.0-canary-0bdb9206-20250818))
     devDependencies:
       '@rotta/config':
         specifier: workspace:*
         version: link:../../packages/config
       '@tanstack/react-query-devtools':
         specifier: ^5.62.11
-        version: 5.101.4(@tanstack/react-query@5.101.4(react@19.2.8))(react@19.2.8)
+        version: 5.101.4(@tanstack/react-query@5.101.4(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)
       '@testing-library/jest-dom':
         specifier: ^7.0.1
         version: 7.0.1(@testing-library/dom@10.4.1)(vitest@4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(jsdom@30.0.1(@noble/hashes@2.3.0))(vite@8.2.1(@types/node@22.20.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0)))
       '@testing-library/react':
         specifier: ^16.3.2
-        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)
       '@testing-library/user-event':
         specifier: ^14.6.3
         version: 14.6.3(@testing-library/dom@10.4.1)
@@ -8553,10 +8553,10 @@ packages:
     peerDependencies:
       react: ^18.3.1
 
-  react-dom@19.2.8:
-    resolution: {integrity: sha512-rVprimfGBG3DR+Tq0IQG2DT5PxKth1WIGDmj5yPmlzr4YBe7uyE+Du4oVqTDXZSHGGGXRtTJEGSSePyQCMBglQ==}
+  react-dom@19.2.0-canary-0bdb9206-20250818:
+    resolution: {integrity: sha512-l23NV/M7l7pLZUZJ39aCp0Rb50oWT/10Ho7HmJVqBtBNJB9A6mUdGhPDpQJfQySlxQ3Cg98VAHL/MDt8W4emzw==}
     peerDependencies:
-      react: ^19.2.8
+      react: 19.2.0-canary-0bdb9206-20250818
 
   react-freeze@1.0.4:
     resolution: {integrity: sha512-r4F0Sec0BLxWicc7HEyo2x3/2icUTrRmDjaaRyzzn+7aDyFZliszMDOgLVwSnQnYENOlL1o569Ze2HZefk8clA==}
@@ -8625,8 +8625,8 @@ packages:
     resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
     engines: {node: '>=0.10.0'}
 
-  react@19.2.8:
-    resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
+  react@19.2.0-canary-0bdb9206-20250818:
+    resolution: {integrity: sha512-fMBNvMVmN6ano0voXZ3rjcK3zbnBs1cQSmNqk29RADbFWkRufX5Ku8WL0ZoU3/Noo3OkIyeeIfh3dYHigZ6pYA==}
     engines: {node: '>=0.10.0'}
 
   read-cache@1.0.0:
@@ -8903,8 +8903,8 @@ packages:
   scheduler@0.24.0-canary-efb381bbf-20230505:
     resolution: {integrity: sha512-ABvovCDe/k9IluqSh4/ISoq8tIJnW8euVAWYt5j/bg6dRnqwQwiGO1F/V4AyK96NGF/FB04FhOUDuWj8IKfABA==}
 
-  scheduler@0.27.0:
-    resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
+  scheduler@0.27.0-canary-0bdb9206-20250818:
+    resolution: {integrity: sha512-+NunKh+x5HciIIoI9jo7oYGZ3sKXe2n+1leIa40tKwnzpPYfgio4UQ8jxnWLnTe/rHOlR5kB7sjRuLysmp5rNw==}
 
   schema-utils@3.3.0:
     resolution: {integrity: sha512-pN/yOAvcC+5rQ5nERGuwrjLlYvLTbCibnZ1I7B1LaiAz9BRBlE9GMgE/eqV30P7aJQUf7Ddimy/RsbYO/GrVGg==}
@@ -13535,7 +13535,7 @@ snapshots:
       '@sentry/utils': 7.120.4
       localforage: 1.10.0
 
-  '@sentry/nextjs@10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(next@15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(webpack@5.97.1(postcss@8.5.25))':
+  '@sentry/nextjs@10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(next@15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)(webpack@5.97.1(postcss@8.5.25))':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@rollup/plugin-commonjs': 28.0.1(rollup@4.63.0)
@@ -13545,11 +13545,11 @@ snapshots:
       '@sentry/core': 10.70.0
       '@sentry/node': 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))
       '@sentry/opentelemetry': 10.70.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))
-      '@sentry/react': 10.70.0(react@19.2.8)
+      '@sentry/react': 10.70.0(react@19.2.0-canary-0bdb9206-20250818)
       '@sentry/server-utils': 10.70.0
       '@sentry/vercel-edge': 10.70.0
       '@sentry/webpack-plugin': 5.4.0(rollup@4.63.0)(webpack@5.97.1(postcss@8.5.25))
-      next: 15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      next: 15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)
       rollup: 4.63.0
       stacktrace-parser: 0.1.11
     transitivePeerDependencies:
@@ -13605,12 +13605,12 @@ snapshots:
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.70.0
 
-  '@sentry/react@10.70.0(react@19.2.8)':
+  '@sentry/react@10.70.0(react@19.2.0-canary-0bdb9206-20250818)':
     dependencies:
       '@sentry/browser': 10.70.0
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.70.0
-      react: 19.2.8
+      react: 19.2.0-canary-0bdb9206-20250818
 
   '@sentry/replay-canvas@10.70.0':
     dependencies:
@@ -13716,21 +13716,21 @@ snapshots:
       '@tanstack/react-query': 5.101.4(react@18.3.1)
       react: 18.3.1
 
-  '@tanstack/react-query-devtools@5.101.4(@tanstack/react-query@5.101.4(react@19.2.8))(react@19.2.8)':
+  '@tanstack/react-query-devtools@5.101.4(@tanstack/react-query@5.101.4(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)':
     dependencies:
       '@tanstack/query-devtools': 5.101.4
-      '@tanstack/react-query': 5.101.4(react@19.2.8)
-      react: 19.2.8
+      '@tanstack/react-query': 5.101.4(react@19.2.0-canary-0bdb9206-20250818)
+      react: 19.2.0-canary-0bdb9206-20250818
 
   '@tanstack/react-query@5.101.4(react@18.3.1)':
     dependencies:
       '@tanstack/query-core': 5.101.4
       react: 18.3.1
 
-  '@tanstack/react-query@5.101.4(react@19.2.8)':
+  '@tanstack/react-query@5.101.4(react@19.2.0-canary-0bdb9206-20250818)':
     dependencies:
       '@tanstack/query-core': 5.101.4
-      react: 19.2.8
+      react: 19.2.0-canary-0bdb9206-20250818
 
   '@testing-library/dom@10.4.1':
     dependencies:
@@ -13755,12 +13755,12 @@ snapshots:
     optionalDependencies:
       vitest: 4.1.10(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(jsdom@30.0.1(@noble/hashes@2.3.0))(vite@8.2.1(@types/node@22.20.1)(jiti@2.7.0)(terser@5.49.0)(yaml@2.9.0))
 
-  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
+  '@testing-library/react@16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@testing-library/dom': 10.4.1
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
+      react: 19.2.0-canary-0bdb9206-20250818
+      react-dom: 19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818)
     optionalDependencies:
       '@types/react': 19.2.18
       '@types/react-dom': 19.2.5(@types/react@19.2.18)
@@ -19009,15 +19009,15 @@ snapshots:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8):
+  next@15.5.23(@opentelemetry/api@1.9.1)(react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818))(react@19.2.0-canary-0bdb9206-20250818):
     dependencies:
       '@next/env': 15.5.23
       '@swc/helpers': 0.5.15
       caniuse-lite: 1.0.30001806
       postcss: 8.4.31
-      react: 19.2.8
-      react-dom: 19.2.8(react@19.2.8)
-      styled-jsx: 5.1.6(react@19.2.8)
+      react: 19.2.0-canary-0bdb9206-20250818
+      react-dom: 19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818)
+      styled-jsx: 5.1.6(react@19.2.0-canary-0bdb9206-20250818)
     optionalDependencies:
       '@next/swc-darwin-arm64': 15.5.23
       '@next/swc-darwin-x64': 15.5.23
@@ -19763,10 +19763,10 @@ snapshots:
       react: 18.3.1
       scheduler: 0.23.2
 
-  react-dom@19.2.8(react@19.2.8):
+  react-dom@19.2.0-canary-0bdb9206-20250818(react@19.2.0-canary-0bdb9206-20250818):
     dependencies:
-      react: 19.2.8
-      scheduler: 0.27.0
+      react: 19.2.0-canary-0bdb9206-20250818
+      scheduler: 0.27.0-canary-0bdb9206-20250818
 
   react-freeze@1.0.4(react@18.3.1):
     dependencies:
@@ -19869,7 +19869,7 @@ snapshots:
     dependencies:
       loose-envify: 1.4.0
 
-  react@19.2.8: {}
+  react@19.2.0-canary-0bdb9206-20250818: {}
 
   read-cache@1.0.0:
     dependencies:
@@ -20212,7 +20212,7 @@ snapshots:
     dependencies:
       loose-envify: 1.4.0
 
-  scheduler@0.27.0: {}
+  scheduler@0.27.0-canary-0bdb9206-20250818: {}
 
   schema-utils@3.3.0:
     dependencies:
@@ -20697,10 +20697,10 @@ snapshots:
       client-only: 0.0.1
       react: 18.3.1
 
-  styled-jsx@5.1.6(react@19.2.8):
+  styled-jsx@5.1.6(react@19.2.0-canary-0bdb9206-20250818):
     dependencies:
       client-only: 0.0.1
-      react: 19.2.8
+      react: 19.2.0-canary-0bdb9206-20250818
 
   sucrase@3.35.0:
     dependencies:
@@ -21303,9 +21303,9 @@ snapshots:
     dependencies:
       react: 18.3.1
 
-  use-sync-external-store@1.6.0(react@19.2.8):
+  use-sync-external-store@1.6.0(react@19.2.0-canary-0bdb9206-20250818):
     dependencies:
-      react: 19.2.8
+      react: 19.2.0-canary-0bdb9206-20250818
     optional: true
 
   util-deprecate@1.0.2: {}
@@ -21743,8 +21743,8 @@ snapshots:
       react: 18.3.1
       use-sync-external-store: 1.6.0(react@18.3.1)
 
-  zustand@5.0.14(@types/react@19.2.18)(react@19.2.8)(use-sync-external-store@1.6.0(react@19.2.8)):
+  zustand@5.0.14(@types/react@19.2.18)(react@19.2.0-canary-0bdb9206-20250818)(use-sync-external-store@1.6.0(react@19.2.0-canary-0bdb9206-20250818)):
     optionalDependencies:
       '@types/react': 19.2.18
-      react: 19.2.8
-      use-sync-external-store: 1.6.0(react@19.2.8)
+      react: 19.2.0-canary-0bdb9206-20250818
+      use-sync-external-store: 1.6.0(react@19.2.0-canary-0bdb9206-20250818)
