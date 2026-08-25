@@ -152,7 +152,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
 
   const isResponsavel = user?.role === "responsavel";
   const isEmployeeDriver = user?.role === "motorista" || user?.role === "monitor";
-  const { mode, canToggle, setMode } = useAppMode(user);
+  const { mode, canToggle, setMode, isModeResolved } = useAppMode(user);
 
   // Quem roda a rota no dia a dia (Frente K/O) — dono autônomo/MEI em
   // "Modo Ação" e Motorista/Monitor funcionário (esse nunca tem
@@ -214,7 +214,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
 
   recordCheckpoint("dashboard-layout:hooks-ok");
 
-  if (status !== "authenticated" || (shouldCheckIdentity && isIdentityLoading)) {
+  // `canToggle && !isModeResolved` (Autônomo/MEI, "Modo Ação" ainda não
+  // leu o localStorage) — CAUSA REAL do "Server Components render"
+  // indeterminístico em `/rotas/[id]` recém-criada (achado real,
+  // capturado direto no navegador: `TypeError: Cannot destructure
+  // property 'segmentPath' of 'e' as it is undefined`, dentro do
+  // próprio roteador do Next ao processar o PREFETCH de um `<Link>`
+  // cancelado — ver HISTÓRICO em `useAppMode`). Sem este guard, o
+  // primeiro render sempre "chutava" `mode = "completo"` e mostrava os
+  // ~10 links de texto (`PROFISSIONAL_NAV`) por um instante — o Next
+  // já começa a pré-carregar cada `<Link>` assim que ele aparece na
+  // tela. Um instante depois, quando `mode` resolvia pra "acao" (users
+  // que já tinham escolhido Modo Ação antes), esses `<Link>` eram
+  // desmontados com o prefetch ainda em andamento — e ao tentar aplicar
+  // o resultado desse prefetch órfão ao cache do roteador, o Next
+  // quebrava a árvore INTEIRA da página (não só a navegação),
+  // justamente enquanto `/rotas/[id]` estava hidratando pela primeira
+  // vez. Esperar `isModeResolved` garante que o conjunto certo de
+  // links já nasce certo no primeiro render — nenhum `<Link>` chega a
+  // montar pra ser desmontado um instante depois.
+  if (
+    status !== "authenticated" ||
+    (shouldCheckIdentity && isIdentityLoading) ||
+    (canToggle && !isModeResolved)
+  ) {
     recordCheckpoint("dashboard-layout:retorno-spinner-auth-carregando");
     return (
       <div className="flex min-h-dvh items-center justify-center bg-background">
