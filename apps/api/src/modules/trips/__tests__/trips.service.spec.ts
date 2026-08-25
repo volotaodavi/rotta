@@ -28,6 +28,7 @@ function buildTrip(overrides: Partial<Trip> = {}): Trip {
     routeId: "route-1",
     data: new Date(),
     status: TripStatus.EM_ANDAMENTO,
+    codigo: "ABC234",
     veiculoId: "vehicle-1",
     motoristaId: "motorista-1",
     monitorId: null,
@@ -655,7 +656,7 @@ describe("TripsService", () => {
       expect(geoEngineService.getRoute).not.toHaveBeenCalled();
     });
 
-    it("recalcula o ETA acumulado só para as paradas ainda pendentes, na ordem da rota", async () => {
+    it("recalcula o ETA acumulado só para as paradas ainda pendentes, reordenadas da mais pra menos próxima do veículo (não mais a ordem fixa da rota)", async () => {
       positionRepository.findLatestByTrip.mockResolvedValue({
         latitude: -23.0,
         longitude: -46.0,
@@ -663,7 +664,11 @@ describe("TripsService", () => {
       // student-1 já embarcou (falta só o desembarque, parada B); student-2
       // ainda não fez nada (falta o embarque, parada C) — parada A (já
       // embarcado) e D (aluno 2 não embarcou ainda, então não pendente)
-      // ficam de fora.
+      // ficam de fora. B (-23.2/-46.2) está mais perto da posição atual
+      // (-23.0/-46.0) do que C (-23.3/-46.3) — o vizinho-mais-próximo
+      // guloso (`ordenarPorProximidade`) visita B primeiro, mesmo B tendo
+      // aparecido DEPOIS de C na ordem cadastrada da rota
+      // (`routesService.listStops` retorna `[stopA, stopC, stopB, stopD]`).
       studentEventRepository.listByTrip.mockResolvedValue([
         { studentId: "student-1", tipo: "EMBARCOU" },
       ] as never);
@@ -681,17 +686,17 @@ describe("TripsService", () => {
 
       expect(geoEngineService.getRoute).toHaveBeenCalledWith(
         { latitude: -23.0, longitude: -46.0 },
-        { latitude: stopB.latitude, longitude: stopB.longitude },
-        [{ latitude: stopC.latitude, longitude: stopC.longitude }],
+        { latitude: stopC.latitude, longitude: stopC.longitude },
+        [{ latitude: stopB.latitude, longitude: stopB.longitude }],
       );
       expect(result).toHaveLength(2);
       expect(result[0]).toMatchObject({
-        routeStopId: stopC.id,
+        routeStopId: stopB.id,
         distanciaMetros: 1000,
         etaSegundos: 120,
       });
       expect(result[1]).toMatchObject({
-        routeStopId: stopB.id,
+        routeStopId: stopC.id,
         distanciaMetros: 1500,
         etaSegundos: 180,
       });
@@ -899,6 +904,33 @@ describe("TripsService", () => {
       await service.ingestPosition("trip-1", posicaoPerto, motoristaActor);
 
       expect(eventEmitter.emit).not.toHaveBeenCalled();
+    });
+
+    it("com duas paradas pendentes ao mesmo tempo, considera 'próxima' a geograficamente mais perto do veículo, não a primeira na ordem cadastrada da rota (pedido do usuário: 'a Rotta AI vai direcionar para o aluno/responsável mais próximo')", async () => {
+      // `paradaLonge` aparece PRIMEIRO na ordem cadastrada da rota, mas
+      // `paradaPerto` está geograficamente mais perto da posição atual do
+      // veículo — sem o vizinho-mais-próximo guloso, o código antigo
+      // notificaria sobre `paradaLonge` só por ela vir primeiro em
+      // `listStops`.
+      routesService.listStops.mockResolvedValue([paradaLonge, paradaPerto] as never);
+      routesService.listStudents.mockResolvedValue([
+        vinculo,
+        { ...vinculo, id: "vinculo-2", studentId: "student-2", paradaEmbarqueId: paradaLonge.id },
+      ] as never);
+
+      await service.ingestPosition("trip-1", posicaoPerto, motoristaActor);
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        COMMUNICATION_REQUESTED_EVENT,
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.VEICULO_PROXIMO,
+          dadosContexto: { routeId: "route-1", studentId: "student-1" },
+        }),
+      );
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
+        ultimaParadaProximaNotificadaId: paradaPerto.id,
+      });
     });
   });
 

@@ -8,6 +8,7 @@ export function toTripResponseDto(trip: Trip): TripResponseDto {
     routeId: trip.routeId,
     data: trip.data,
     status: trip.status,
+    codigo: trip.codigo,
     veiculoId: trip.veiculoId,
     motoristaId: trip.motoristaId,
     monitorId: trip.monitorId,

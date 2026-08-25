@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import {
   BadRequestException,
   ConflictException,
@@ -8,7 +10,8 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { NotificationEventType, type Trip } from "@prisma/client";
+import { NotificationEventType, Prisma, type Trip } from "@prisma/client";
+
 
 import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
 import { toTripPositionResponseDto } from "./mappers/trip-position.mapper";
@@ -34,7 +37,7 @@ import type { ListTripsResponseDto, TripResponseDto } from "./dto/trip-response.
 import type { TripStudentEventResponseDto } from "./dto/trip-student-event-response.dto";
 import type { TripPositionRepository } from "./repositories/trip-position.repository";
 import type { TripStudentEventRepository } from "./repositories/trip-student-event.repository";
-import type { TripRepository } from "./repositories/trip.repository";
+import type { CreateTripData, TripRepository } from "./repositories/trip.repository";
 import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
@@ -71,6 +74,17 @@ function today(): Date {
  * documentado é preferível a fingir uma calibração que não existe.
  */
 const GEOFENCE_APPROACHING_METERS = 400;
+
+/**
+ * Código único e legível da viagem (pedido do usuário: "o código da
+ * viagem - único") — mesmo alfabeto/tamanho/mecanismo de retry já
+ * usado em `InvitesService.generateCode` (sem `0`/`O`/`1`/`I`, fáceis de
+ * confundir ditando por telefone), reaproveitado aqui em vez de
+ * reinventado.
+ */
+const TRIP_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+const TRIP_CODE_LENGTH = 6;
+const MAX_TRIP_CODE_GENERATION_ATTEMPTS = 5;
 
 /**
  * Núcleo de negócio do módulo Trips (GPS-01/02/03/06 + EMB-01/05 +
@@ -146,6 +160,38 @@ export class TripsService {
       );
       this.logger.warn(error instanceof Error ? error.message : String(error));
     }
+  }
+
+  /** Mesmo alfabeto/`randomBytes` de `InvitesService.generateCode` — nunca reinventado. */
+  private generateTripCode(): string {
+    const bytes = randomBytes(TRIP_CODE_LENGTH);
+    let code = "";
+    for (let i = 0; i < TRIP_CODE_LENGTH; i++) {
+      code += TRIP_CODE_ALPHABET[bytes[i]! % TRIP_CODE_ALPHABET.length];
+    }
+    return code;
+  }
+
+  /**
+   * Gera o `codigo` único da viagem e só então insere — mesmo padrão de
+   * retry-em-colisão de `InvitesService.create` (a chance real de duas
+   * tentativas colidirem em 32^6 combinações é desprezível, mas o
+   * `@unique` do schema é a garantia de verdade, nunca só a
+   * probabilidade).
+   */
+  private async createTripWithUniqueCode(data: Omit<CreateTripData, "codigo">): Promise<Trip> {
+    for (let attempt = 0; attempt < MAX_TRIP_CODE_GENERATION_ATTEMPTS; attempt++) {
+      try {
+        return await this.tripRepository.create({ ...data, codigo: this.generateTripCode() });
+      } catch (error) {
+        const isUniqueViolation =
+          error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+        if (!isUniqueViolation || attempt === MAX_TRIP_CODE_GENERATION_ATTEMPTS - 1) {
+          throw error;
+        }
+      }
+    }
+    throw new Error("Não foi possível gerar um código único de viagem.");
   }
 
   /** 404 (não 403) fora do escopo — mesmo princípio de não-enumeração usado no resto do backend. */
@@ -265,7 +311,7 @@ export class TripsService {
       );
     }
 
-    const trip = await this.tripRepository.create({
+    const trip = await this.createTripWithUniqueCode({
       companyId: route.companyId,
       routeId: dto.routeId,
       data,
@@ -937,6 +983,55 @@ export class TripsService {
   }
 
   /**
+   * Reordena paradas pendentes pela mais PRÓXIMA da posição atual do
+   * veículo primeiro (vizinho-mais-próximo guloso, Haversine — pedido do
+   * usuário: "a Rotta AI vai direcionar para o aluno/responsável mais
+   * próximo... assim vai ficar melhor para o GPS"). Antes desta função,
+   * a ordem era sempre a `ordem` fixa definida na criação/reordenação da
+   * rota — nunca recalculada durante a viagem em si. Distância em linha
+   * reta, não OSRM: mesmo raciocínio já documentado em
+   * `detectarAproximacaoBestEffort` (roda a cada ping de GPS, uma
+   * chamada de roteamento aqui seria cara demais) — o traçado/ETA de
+   * verdade continua vindo do OSRM depois, só a ORDEM de visita muda.
+   * Não é o TSP ótimo (isso exigiria `GeoEngineService.optimizeTrip`,
+   * uma chamada de rede por recálculo) — guloso já resolve o pedido real
+   * ("ir pro mais próximo agora") com custo zero de rede.
+   */
+  private ordenarPorProximidade<T extends { latitude: number; longitude: number }>(
+    origem: { latitude: number; longitude: number },
+    paradas: T[],
+  ): T[] {
+    const restantes = [...paradas];
+    const ordenadas: T[] = [];
+    let atual = origem;
+    while (restantes.length > 0) {
+      let melhorIndice = 0;
+      let melhorDistancia = haversineDistanceKm(
+        atual.latitude,
+        atual.longitude,
+        restantes[0]!.latitude,
+        restantes[0]!.longitude,
+      );
+      for (let i = 1; i < restantes.length; i += 1) {
+        const distancia = haversineDistanceKm(
+          atual.latitude,
+          atual.longitude,
+          restantes[i]!.latitude,
+          restantes[i]!.longitude,
+        );
+        if (distancia < melhorDistancia) {
+          melhorDistancia = distancia;
+          melhorIndice = i;
+        }
+      }
+      const [proxima] = restantes.splice(melhorIndice, 1);
+      ordenadas.push(proxima!);
+      atual = proxima!;
+    }
+    return ordenadas;
+  }
+
+  /**
    * ETA completo (com rota OSRM real) para cada parada pendente (ver
    * `listParadasPendentes`). Sem nenhuma posição GPS ainda, não há
    * "onde o veículo está agora" para recalcular a partir daí — devolve
@@ -952,15 +1047,17 @@ export class TripsService {
       return [];
     }
 
-    const paradasPendentes = await this.listParadasPendentes(trip, actor);
-    if (paradasPendentes.length === 0) {
-      return [];
-    }
-
     const origem = {
       latitude: Number(ultimaPosicao.latitude),
       longitude: Number(ultimaPosicao.longitude),
     };
+
+    const pendentesNaOrdemCadastrada = await this.listParadasPendentes(trip, actor);
+    if (pendentesNaOrdemCadastrada.length === 0) {
+      return [];
+    }
+    const paradasPendentes = this.ordenarPorProximidade(origem, pendentesNaOrdemCadastrada);
+
     const destino = paradasPendentes[paradasPendentes.length - 1]!;
     const intermediarias = paradasPendentes.slice(0, -1);
 
@@ -1075,7 +1172,11 @@ export class TripsService {
     longitude: number,
   ): Promise<void> {
     try {
-      const paradasPendentes = await this.listParadasPendentes(trip, actor);
+      const pendentesNaOrdemCadastrada = await this.listParadasPendentes(trip, actor);
+      const paradasPendentes = this.ordenarPorProximidade(
+        { latitude, longitude },
+        pendentesNaOrdemCadastrada,
+      );
       const proxima = paradasPendentes[0];
       if (!proxima) return;
       if (trip.ultimaParadaProximaNotificadaId === proxima.id) return;

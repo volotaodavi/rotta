@@ -25,6 +25,8 @@ export interface Trip {
   routeId: string;
   data: string;
   status: TripStatus;
+  /** Código único legível da viagem (pedido do usuário: "o código da viagem - único") — gerado uma vez ao iniciar. */
+  codigo: string;
   veiculoId: string;
   motoristaId: string;
   monitorId: string | null;

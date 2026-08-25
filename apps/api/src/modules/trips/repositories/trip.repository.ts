@@ -7,6 +7,8 @@ export interface CreateTripData {
   veiculoId: string;
   motoristaId: string;
   monitorId?: string;
+  /** Código único legível da viagem (pedido do usuário: "código da viagem - único") — gerado por `TripsService.createTripWithUniqueCode`, nunca pelo repositório. */
+  codigo: string;
 }
 
 export interface UpdateTripData {

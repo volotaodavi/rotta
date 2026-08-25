@@ -8,6 +8,8 @@ export class TripResponseDto {
   @ApiProperty() routeId!: string;
   @ApiProperty() data!: Date;
   @ApiProperty({ enum: TripStatus }) status!: TripStatus;
+  /** Código único legível da viagem (pedido do usuário: "código da viagem - único") — ver `TripsService.generateTripCode`. */
+  @ApiProperty() codigo!: string;
   @ApiProperty() veiculoId!: string;
   @ApiProperty() motoristaId!: string;
   @ApiPropertyOptional() monitorId?: string | null;

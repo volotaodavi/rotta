@@ -2102,6 +2102,15 @@ model Trip {
   data   DateTime   @db.Date
   status TripStatus @default(EM_ANDAMENTO)
 
+  /// Código único e legível da viagem (pedido do usuário: "o código da
+  /// viagem - único"), gerado uma vez ao iniciar (`TripsService.start`) —
+  /// 6 caracteres maiúsculos alfanuméricos, sem `0`/`O`/`1`/`I` (fáceis de
+  /// confundir ditando por telefone). Exibido no card pré-início e em
+  /// qualquer tela que precise identificar a viagem sem expor o `id`
+  /// (UUID) interno. `@unique` — colisão é resolvida gerando de novo
+  /// (`TripRepository.create`), nunca um retry silencioso sem checagem.
+  codigo String @unique @db.VarChar(6)
+
   veiculoId   String  @db.Uuid
   veiculo     Vehicle @relation("TripVeiculo", fields: [veiculoId], references: [id], onDelete: Restrict)
   motoristaId String  @db.Uuid
