@@ -4,6 +4,7 @@ import type { StartTripInput } from "@rotta/api-client";
 
 import { tripsApi } from "@/lib/api-client";
 
+
 /**
  * Ciclo de vida da viagem do dia, do lado do Motorista/Monitor (Prompt
  * Mestre da Rotta, Seção 8 — "o sistema deve diferenciar ONLINE/
@@ -116,6 +117,13 @@ export function useAddStudentEvent(tripId: string | undefined) {
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: ["driver", "trips", tripId, "student-events"],
+      });
+      // Frente AP (paridade com o Painel Web, pedido do usuário: "mostra
+      // a próxima rota traçada" logo depois de embarcar/desembarcar) —
+      // sem isso o cartão flutuante só apontaria pro próximo aluno mais
+      // próximo depois do refetch periódico de 30s.
+      void queryClient.invalidateQueries({
+        queryKey: ["driver", "trips", tripId, "proximas-etas"],
       });
     },
   });

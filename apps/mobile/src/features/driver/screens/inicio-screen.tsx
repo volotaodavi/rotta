@@ -23,11 +23,14 @@ import {
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { buildNavigationUrl } from "@rotta/maps/navigation";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
+  Dimensions,
   Linking,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -65,8 +68,10 @@ import type {
   RouteStop,
   RouteStudent,
   RouteStudentDetalhado,
+  Trip,
   TripStudentEvent,
 } from "@rotta/api-client";
+import type { ReactNode } from "react";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
@@ -83,6 +88,8 @@ import {
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
+
+
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -760,6 +767,38 @@ function RotaOperacional({
   const totalAlunos = (routeStudents ?? []).length;
   const progressoEmbarquePct = totalAlunos > 0 ? (alunosEmbarcados / totalAlunos) * 100 : 0;
 
+  // Frente AP (paridade com o Painel Web — pedido do usuário: "o mapa
+  // inteiro na tela... com um retângulo com borda redonda flutuante...
+  // com os alunos, com um botão do lado - azul (embarque), vermelho
+  // (desembarque)... mostra a próxima rota traçada... quando todos, a
+  // próxima rota será a escola"). Continua enquanto existir uma viagem
+  // não encerrada (inclusive `PAUSADA`) — pro Motorista E o Monitor.
+  if (trip && !viagemEncerrada) {
+    return (
+      <ModoOperacionalFullScreen
+        rota={rota}
+        trip={trip}
+        accentColor={accentColor}
+        isMotorista={isMotorista}
+        isActive={isActive}
+        mapMarkers={mapMarkers}
+        paradasOrdenadas={paradasOrdenadas}
+        driverPosition={driverPosition}
+        routeStudents={routeStudents ?? []}
+        studentEvents={studentEvents ?? []}
+        proximasEtas={proximasEtas ?? []}
+        alunosEmbarcados={alunosEmbarcados}
+        totalAlunos={totalAlunos}
+        gpsAvisoTexto={gpsAvisoTexto}
+        pauseTrip={pauseTrip}
+        resumeTrip={resumeTrip}
+        finishTrip={finishTrip}
+        mapKey={mapKey}
+        onRecenter={() => setMapKey((k) => k + 1)}
+      />
+    );
+  }
+
   return (
     <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
       <ScrollView contentContainerStyle={styles.opScrollContent}>
@@ -1076,6 +1115,340 @@ function ParadaCard({
   );
 }
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const FLOATING_CARD_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
+const FLOATING_CARD_MARGIN = 12;
+const FLOATING_CARD_DEFAULT_HEIGHT = 280;
+
+/**
+ * Frente AP (mobile) — tela cheia do Modo Ação depois que a viagem
+ * existe, porta exata da lógica já usada no Painel Web
+ * (`ModoOperacionalFullScreen`, `apps/web/.../minha-rota/page.tsx`).
+ * Mesma regra de reaproveitamento: `AlunoParadaRow` (raio de 1km) e
+ * `useTripProximasEtas` (ETA real, já reordenado por proximidade) já
+ * existiam — a escola no final não precisa de regra nova, é só a última
+ * parada pendente dessa mesma lista quando só sobra desembarque.
+ */
+function ModoOperacionalFullScreen({
+  rota,
+  trip,
+  accentColor,
+  isMotorista,
+  isActive,
+  mapMarkers,
+  paradasOrdenadas,
+  driverPosition,
+  routeStudents,
+  studentEvents,
+  proximasEtas,
+  alunosEmbarcados,
+  totalAlunos,
+  gpsAvisoTexto,
+  pauseTrip,
+  resumeTrip,
+  finishTrip,
+  mapKey,
+  onRecenter,
+}: {
+  rota: Route;
+  trip: Trip;
+  accentColor: string;
+  isMotorista: boolean;
+  isActive: boolean;
+  mapMarkers: RottaMapMarker[];
+  paradasOrdenadas: RouteStop[];
+  driverPosition: DistanceCoordenada | null;
+  routeStudents: RouteStudent[];
+  studentEvents: TripStudentEvent[];
+  proximasEtas: NextEta[];
+  alunosEmbarcados: number;
+  totalAlunos: number;
+  gpsAvisoTexto: string | null;
+  pauseTrip: ReturnType<typeof usePauseTrip>;
+  resumeTrip: ReturnType<typeof useResumeTrip>;
+  finishTrip: ReturnType<typeof useFinishTrip>;
+  mapKey: number;
+  onRecenter: () => void;
+}): JSX.Element {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  // Mesmo filtro de "falta o evento esperado" usado em `paradasRestantesCount`/`ParadaCard`.
+  const paradasPendentes = paradasOrdenadas.filter((parada) => {
+    const alunosDaParada = routeStudents.filter(
+      (aluno) => aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
+    );
+    if (alunosDaParada.length === 0) return false;
+    return alunosDaParada.some((aluno) => {
+      const isEmbarque = aluno.paradaEmbarqueId === parada.id;
+      const tipoEsperado = isEmbarque ? "EMBARCOU" : "DESEMBARCOU";
+      const resolvido = studentEvents.some(
+        (e) => e.studentId === aluno.studentId && (e.tipo === tipoEsperado || e.tipo === "AUSENTE"),
+      );
+      return !resolvido;
+    });
+  });
+
+  const proximaEta = proximasEtas[0];
+  const paradaAlvo = proximaEta
+    ? (paradasOrdenadas.find((p) => p.id === proximaEta.routeStopId) ?? paradasPendentes[0])
+    : paradasPendentes[0];
+
+  const alunosDaParadaAlvo = paradaAlvo
+    ? routeStudents.filter(
+        (aluno) =>
+          aluno.paradaEmbarqueId === paradaAlvo.id || aluno.paradaDesembarqueId === paradaAlvo.id,
+      )
+    : [];
+
+  const chegouNaEscola =
+    alunosDaParadaAlvo.length > 0 &&
+    alunosDaParadaAlvo.every((aluno) => aluno.paradaDesembarqueId === paradaAlvo?.id);
+
+  const rotaTracada =
+    paradaAlvo && driverPosition
+      ? [driverPosition, { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude }]
+      : paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
+
+  const distanciaAteAlvo =
+    driverPosition && paradaAlvo
+      ? haversineDistanceMeters(driverPosition, {
+          latitude: paradaAlvo.latitude,
+          longitude: paradaAlvo.longitude,
+        })
+      : null;
+
+  function handleNavegar(): void {
+    if (!paradaAlvo) return;
+    const app = Platform.OS === "ios" ? "apple" : "google";
+    const url = buildNavigationUrl(
+      { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude },
+      app,
+    );
+    Linking.openURL(url).catch(() => {
+      // Sem app de mapas instalado/URL recusada — sem fallback silencioso.
+    });
+  }
+
+  return (
+    <View style={[styles.fsRoot, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.fsMapArea}>
+        {mapMarkers.length > 0 ? (
+          <RottaMap key={mapKey} markers={mapMarkers} route={rotaTracada} initialZoom={13} />
+        ) : (
+          <View style={styles.fsMapLoading}>
+            <ActivityIndicator color={theme.colors.primary} />
+          </View>
+        )}
+
+        <View style={[styles.fsTopBar, { top: insets.top + 8 }]}>
+          <View style={[styles.fsTopPill, { backgroundColor: theme.colors.surfaceElevated }]}>
+            <View
+              style={[
+                styles.fsStatusDot,
+                { backgroundColor: isActive ? accentColor : theme.colors.textMuted },
+              ]}
+            />
+            <Text
+              numberOfLines={1}
+              style={{ color: theme.colors.text, fontWeight: "700", fontSize: 13, maxWidth: 110 }}
+            >
+              {rota.nome}
+            </Text>
+            <TripElapsedTimer
+              iniciadaEm={trip.iniciadaEm}
+              isRunning={isActive}
+              accentColor={accentColor}
+            />
+          </View>
+          <View style={styles.fsTopBarActions}>
+            {isMotorista ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={isActive ? "Pausar viagem" : "Retomar viagem"}
+                disabled={pauseTrip.isPending || resumeTrip.isPending}
+                onPress={() => (isActive ? pauseTrip.mutate(trip.id) : resumeTrip.mutate(trip.id))}
+                style={[styles.fsRoundButton, { backgroundColor: theme.colors.surfaceElevated }]}
+              >
+                {isActive ? (
+                  <Pause size={18} color={theme.colors.text} />
+                ) : (
+                  <Play size={18} color={theme.colors.text} />
+                )}
+              </Pressable>
+            ) : null}
+            <RecenterButton onPress={onRecenter} />
+          </View>
+        </View>
+
+        {gpsAvisoTexto ? (
+          <View style={[styles.fsGpsAviso, { top: insets.top + 60 }]}>
+            <Text
+              style={[
+                styles.fsGpsAvisoTexto,
+                { color: theme.colors.textMuted, backgroundColor: theme.colors.surfaceElevated },
+              ]}
+            >
+              {gpsAvisoTexto}
+            </Text>
+          </View>
+        ) : null}
+      </View>
+
+      <DraggableFloatingCard>
+        <View style={styles.mapCardBodyRow}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            {alunosEmbarcados}/{totalAlunos} embarcados
+          </Text>
+          <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} accentColor={accentColor} />
+        </View>
+
+        {paradaAlvo ? (
+          <View style={{ gap: 12 }}>
+            <View style={[styles.fsAlvoHeader, { borderTopColor: theme.colors.border }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                  {chegouNaEscola ? "Próximo destino · Escola" : "Próxima parada"}
+                </Text>
+                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+                  {paradaAlvo.ordem}. {paradaAlvo.endereco}
+                </Text>
+                {proximaEta ? (
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    {new Date(proximaEta.etaPrevista).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}{" "}
+                    · {formatarDistancia(proximaEta.distanciaMetros)}
+                  </Text>
+                ) : distanciaAteAlvo !== null ? (
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    {formatarDistancia(distanciaAteAlvo)}
+                  </Text>
+                ) : null}
+              </View>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Navegar até a próxima parada"
+                onPress={handleNavegar}
+                style={[styles.navegarButton, { backgroundColor: theme.colors.primaryMuted }]}
+              >
+                <Navigation size={16} color={theme.colors.primary} />
+              </Pressable>
+            </View>
+
+            {alunosDaParadaAlvo.map((aluno) => (
+              <AlunoParadaRow
+                key={aluno.id}
+                aluno={aluno}
+                parada={paradaAlvo}
+                eventos={studentEvents}
+                tripId={trip.id}
+                podeOperar={isActive}
+                driverPosition={driverPosition}
+              />
+            ))}
+          </View>
+        ) : (
+          <View style={[styles.fsConcluido, { borderTopColor: theme.colors.border }]}>
+            <Check size={28} color={theme.colors.success} />
+            <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+              Todos os alunos foram desembarcados.
+            </Text>
+            {isMotorista ? (
+              <View style={{ paddingTop: 8, width: "100%" }}>
+                <SlideToAction
+                  label="Deslize para finalizar"
+                  theme={theme}
+                  onComplete={() => finishTrip.mutate(trip.id)}
+                  isLoading={finishTrip.isPending}
+                  thumbColor={theme.colors.danger}
+                />
+              </View>
+            ) : (
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                Aguardando o motorista finalizar a viagem.
+              </Text>
+            )}
+          </View>
+        )}
+      </DraggableFloatingCard>
+    </View>
+  );
+}
+
+/**
+ * Cartão flutuante ARRASTÁVEL por cima do mapa em tela cheia (pedido do
+ * usuário: "um retângulo com borda redonda flutuante, onde clicando ele
+ * se arrasta e fica suspenso na tela, porém com maior visibilidade") —
+ * `PanResponder` + `Animated` (mesma dupla já usada por `SlideToAction`
+ * nativo, sem `react-native-gesture-handler`/Reanimated só pra isto).
+ * Diferente do slide (travado num eixo, sempre volta ao início), aqui o
+ * arrasto é livre nas duas direções e o cartão FICA onde foi solto — só
+ * nunca sai da área visível da tela (clampado a cada movimento, nunca só
+ * no fim do gesto). Só a ALÇA no topo inicia o arrasto — os botões de
+ * embarque/desembarque dentro do cartão continuam tocáveis normalmente.
+ */
+function DraggableFloatingCard({ children }: { children: ReactNode }): JSX.Element {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [cardHeight, setCardHeight] = useState(FLOATING_CARD_DEFAULT_HEIGHT);
+  const initialLeft = (SCREEN_WIDTH - FLOATING_CARD_WIDTH) / 2;
+  const initialTop = SCREEN_HEIGHT - cardHeight - insets.bottom - 16;
+
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const dragStartRef = useRef({ x: 0, y: 0 });
+  const offsetRef = useRef({ x: 0, y: 0 });
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_event, gesture) =>
+        Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
+      onPanResponderGrant: () => {
+        dragStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
+      },
+      onPanResponderMove: (_event, gesture) => {
+        const minX = FLOATING_CARD_MARGIN - initialLeft;
+        const maxX = SCREEN_WIDTH - FLOATING_CARD_WIDTH - FLOATING_CARD_MARGIN - initialLeft;
+        const minY = insets.top + FLOATING_CARD_MARGIN - initialTop;
+        const maxY = SCREEN_HEIGHT - cardHeight - insets.bottom - FLOATING_CARD_MARGIN - initialTop;
+        const nextX = Math.min(Math.max(dragStartRef.current.x + gesture.dx, minX), maxX);
+        const nextY = Math.min(Math.max(dragStartRef.current.y + gesture.dy, minY), maxY);
+        offsetRef.current = { x: nextX, y: nextY };
+        pan.setValue({ x: nextX, y: nextY });
+      },
+    }),
+  ).current;
+
+  return (
+    <Animated.View
+      onLayout={(event) => setCardHeight(event.nativeEvent.layout.height)}
+      style={[
+        styles.floatingCard,
+        {
+          left: initialLeft,
+          top: initialTop,
+          width: FLOATING_CARD_WIDTH,
+          backgroundColor: theme.colors.surfaceElevated,
+          borderColor: theme.colors.border,
+          transform: pan.getTranslateTransform(),
+        },
+      ]}
+    >
+      <View {...panResponder.panHandlers} style={styles.floatingCardHandle}>
+        <View style={[styles.floatingCardHandleBar, { backgroundColor: theme.colors.border }]} />
+      </View>
+      <ScrollView
+        style={styles.floatingCardScroll}
+        contentContainerStyle={styles.floatingCardContent}
+      >
+        {children}
+      </ScrollView>
+    </Animated.View>
+  );
+}
+
 /** "350m"/"1,2km" — mesmo padrão de arredondamento do Painel Web. */
 function formatarDistancia(metros: number): string {
   if (metros < 1000) return `${Math.round(metros)}m`;
@@ -1238,6 +1611,66 @@ const styles = StyleSheet.create({
   controlsSection: { gap: 8, paddingHorizontal: 16 },
   etaCard: { alignItems: "center", flexDirection: "row", gap: 12 },
   etaHorario: { alignItems: "center", flexDirection: "row", gap: 4 },
+  floatingCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 8,
+    maxHeight: "65%",
+    position: "absolute",
+    shadowColor: "#000",
+    shadowOffset: { height: 4, width: 0 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  floatingCardContent: { gap: 4, padding: 16, paddingTop: 4 },
+  floatingCardHandle: { alignItems: "center", paddingVertical: 8 },
+  floatingCardHandleBar: { borderRadius: 999, height: 5, width: 40 },
+  floatingCardScroll: { flexGrow: 0 },
+  fsAlvoHeader: {
+    alignItems: "flex-start",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    gap: 12,
+    paddingTop: 12,
+  },
+  fsConcluido: { alignItems: "center", borderTopWidth: 1, gap: 8, paddingVertical: 16 },
+  fsGpsAviso: { alignItems: "center", left: 12, position: "absolute", right: 12 },
+  fsGpsAvisoTexto: {
+    borderRadius: 999,
+    fontSize: 12,
+    overflow: "hidden",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    textAlign: "center",
+  },
+  fsMapArea: { flex: 1, position: "relative" },
+  fsMapLoading: { alignItems: "center", flex: 1, justifyContent: "center" },
+  fsRoot: { flex: 1 },
+  fsRoundButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  fsStatusDot: { borderRadius: 999, height: 8, width: 8 },
+  fsTopBar: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    left: 12,
+    position: "absolute",
+    right: 12,
+  },
+  fsTopBarActions: { flexDirection: "row", gap: 8 },
+  fsTopPill: {
+    alignItems: "center",
+    borderRadius: 999,
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
   mapCard: { borderRadius: 16, borderWidth: 1, margin: 16, overflow: "hidden" },
   mapCardBody: { gap: 4, padding: 12 },
   mapCardBodyRow: {
