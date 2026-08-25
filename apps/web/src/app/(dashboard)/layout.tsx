@@ -233,6 +233,30 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   // vez. Esperar `isModeResolved` garante que o conjunto certo de
   // links já nasce certo no primeiro render — nenhum `<Link>` chega a
   // montar pra ser desmontado um instante depois.
+  //
+  // ACHADO REAL (esse fix acima, sozinho, NÃO bastou — reprodução ao
+  // vivo confirmada de novo, mesmo depois dele publicado, e mesmo depois
+  // de atualizar o Next pra 15.5.23): consultando os `ClientErrorReport`
+  // reais em produção (`GET /client-errors`, Admin Rotta), todas as
+  // ~100 ocorrências têm `digest: null`, nenhuma tem stack de verdade
+  // (só o texto genérico do próprio Next) e nenhuma chega como
+  // `window.onerror`/`unhandledrejection` — sempre via Error Boundary.
+  // Os Runtime Logs da Vercel (`onRequestError`, `instrumentation.ts`)
+  // ficam mudos nessas ocorrências: não há exceção nenhuma no
+  // SERVIDOR. Ou seja, o problema é 100% client-side, sem digest — bate
+  // com o mecanismo já documentado acima (aplicação de PREFETCH ao
+  // cache do roteador), só que disparado por OUTRO `<Link>` que
+  // continua fazendo prefetch normalmente mesmo com `isModeResolved`
+  // certo: a barra de navegação inteira (topo, mobile, banner de viagem
+  // ativa, `PortalBottomNav`) monta em TODA página do painel — inclusive
+  // `/rotas/[id]` logo após criar uma rota — e cada `<Link>` dela começa
+  // a pré-carregar sozinho assim que aparece, concorrendo com o
+  // carregamento da própria página que acabou de abrir. `prefetch={false}`
+  // em todos eles (aqui e em `portal-bottom-nav.tsx`) remove esse
+  // gatilho concorrente por completo, sem desistir de SSR nem duplicar
+  // lógica — só deixa de pré-carregar destinos que o usuário talvez nem
+  // visite, uma perda de performance pequena perto do app quebrar
+  // inteiro.
   if (
     status !== "authenticated" ||
     (shouldCheckIdentity && isIdentityLoading) ||
@@ -287,6 +311,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
                 <Link
                   key={link.href}
                   href={link.href}
+                  prefetch={false}
                   className="text-sm text-text-muted transition-colors hover:text-text"
                 >
                   {link.label}
@@ -355,6 +380,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
             <Link
               key={link.href}
               href={link.href}
+              prefetch={false}
               onClick={() => setIsMobileNavOpen(false)}
               className="rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-muted/40 hover:text-text"
             >
@@ -366,6 +392,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       {activeTrip && !isBlockedByIdentityVerification && (
         <Link
           href="/minha-rota"
+          prefetch={false}
           className="flex items-center justify-center gap-2 bg-primary px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
         >
           {activeTrip.status === "EM_ANDAMENTO" ? "🚐 Em viagem agora" : "⏸️ Viagem pausada"}:{" "}

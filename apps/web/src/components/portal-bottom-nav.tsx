@@ -81,7 +81,7 @@ export function PortalBottomNav({ items }: { items: PortalBottomNavItem[] }): JS
             );
           }
           return (
-            <Link key={key} href={href ?? "#"} className={className}>
+            <Link key={key} href={href ?? "#"} prefetch={false} className={className}>
               {content}
             </Link>
           );
