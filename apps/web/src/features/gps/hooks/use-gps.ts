@@ -6,6 +6,18 @@ import type { MapVehicle, StudentEventsHistoryRange } from "@rotta/api-client";
 
 import { gpsApi } from "@/lib/api-client";
 
+
+/**
+ * Cadência do polling de posição ao vivo (GPS-01/03/06) — pedido do
+ * usuário: "diminuir o tempo de mostrar o veículo se movendo... algo
+ * que fique suave e contínuo até o encerramento da rota" (era 10s).
+ * `RottaMap` (`@rotta/maps/web`) anima o marcador suavemente ENTRE duas
+ * posições consecutivas por `VEHICLE_MOVE_ANIMATION_MS` (também ~3s) —
+ * os dois valores andam juntos: o marcador termina de deslizar até a
+ * posição atual pouco antes da próxima chegar, sem "saltar".
+ */
+const GPS_LIVE_POLL_INTERVAL_MS = 3_000;
+
 /**
  * Hooks de dados do "localizador"/mapa (GPS-01/03/06, painel web —
  * Empresa/Gestor). `refetchInterval` faz o polling que substitui um
@@ -17,7 +29,7 @@ export function useGpsMap(companyId?: string) {
   return useQuery({
     queryKey: ["gps", "map", companyId],
     queryFn: () => gpsApi.getMap(companyId),
-    refetchInterval: 10_000,
+    refetchInterval: GPS_LIVE_POLL_INTERVAL_MS,
   });
 }
 
@@ -34,7 +46,7 @@ export function useGpsTrack(tripId: string | undefined) {
     queryKey: ["gps", "track", tripId],
     queryFn: () => gpsApi.getTrack(tripId!),
     enabled: Boolean(tripId),
-    refetchInterval: 10_000,
+    refetchInterval: GPS_LIVE_POLL_INTERVAL_MS,
   });
 }
 
@@ -43,8 +55,8 @@ export function useGpsTrack(tripId: string | undefined) {
  * — mapa/GPS/ETA da viagem do próprio filho, GPS-01/03/06). Mesmo hook
  * que já existia no app mobile (`apps/mobile/src/features/gps/hooks/
  * use-gps.ts`) — faltava a versão web, que é o gap fechado por esta
- * entrega (`/alunos/:id/mapa`). Polling a cada 10s substitui um canal
- * em tempo real dedicado (WebSocket, `apps/realtime-gateway`, ainda não
+ * entrega (`/alunos/:id/mapa`). Polling substitui um canal em tempo
+ * real dedicado (WebSocket, `apps/realtime-gateway`, ainda não
  * implementado) — mesmo princípio do restante do módulo GPS.
  */
 export function useGpsForStudent(studentId: string | undefined) {
@@ -52,7 +64,7 @@ export function useGpsForStudent(studentId: string | undefined) {
     queryKey: ["gps", "student", studentId],
     queryFn: () => gpsApi.getForStudent(studentId as string),
     enabled: Boolean(studentId),
-    refetchInterval: 10_000,
+    refetchInterval: GPS_LIVE_POLL_INTERVAL_MS,
   });
 }
 
@@ -90,7 +102,7 @@ export function useGpsForStudents(students: { id: string; nome: string }[]) {
     queries: students.map(({ id }) => ({
       queryKey: ["gps", "student", id],
       queryFn: () => gpsApi.getForStudent(id),
-      refetchInterval: 10_000,
+      refetchInterval: GPS_LIVE_POLL_INTERVAL_MS,
     })),
     combine: (results) => ({
       isLoading: results.some((r) => r.isLoading),

@@ -72,12 +72,85 @@ const ROUTE_LAYER_ID = "rotta-route-line";
 const HEATMAP_SOURCE_ID = "rotta-heatmap";
 const HEATMAP_LAYER_ID = "rotta-heatmap-layer";
 
+/**
+ * Abaixo disto, uma posição nova chegou rápido demais pra ser um poll
+ * de GPS real (o carrossel animado da hero da landing page,
+ * `HeroMapDemo`, também usa `emMovimento: true` e atualiza a posição a
+ * cada frame — ~16ms, ~60x/s). Nesse caso o marcador só salta direto
+ * (`setLngLat` instantâneo, comportamento de sempre) — animar um
+ * deslizamento de segundos entre posições que trocam a cada frame
+ * faria o marcador nunca alcançar o alvo de verdade (o alvo já teria
+ * mudado de novo antes da animação terminar).
+ */
+const HIGH_FREQUENCY_UPDATE_THRESHOLD_MS = 400;
+/**
+ * Teto do deslizamento suave — mesmo se a app ficar um tempo anormal
+ * sem uma posição nova (aba em segundo plano, GPS instável), o
+ * marcador nunca demora mais que isto pra alcançar a posição real.
+ */
+const MAX_VEHICLE_MOVE_ANIMATION_MS = 3000;
+
+interface MarkerEntry {
+  marker: Marker;
+  emMovimento: boolean;
+  /** `requestAnimationFrame` em andamento do deslizamento suave (só para `emMovimento`) — cancelado/substituído a cada nova posição recebida. */
+  animationFrame?: number;
+  /** `performance.now()` da última posição recebida — usado só pra medir o intervalo real entre polls (ver `HIGH_FREQUENCY_UPDATE_THRESHOLD_MS`). */
+  lastUpdatedAt?: number;
+}
+
 /** Elemento DOM do ícone de veículo (`marker.emMovimento`) — ver `vehicle-icon.ts`. */
 function buildVehicleMarkerElement(): HTMLDivElement {
   const el = document.createElement("div");
   el.innerHTML = vehicleIconMarkup(MARKER_COLOR);
   el.style.cursor = "pointer";
   return el;
+}
+
+/**
+ * Desliza suavemente um marcador `emMovimento` da posição atual até
+ * `target`, interpolando linearmente (lerp) quadro a quadro, em vez do
+ * `setLngLat` instantâneo padrão — pedido do usuário: "diminuir o
+ * tempo de mostrar o veículo se movendo... algo que fique suave e
+ * contínuo até o encerramento da rota" (era um salto instantâneo a
+ * cada poll). A duração da animação se ADAPTA ao intervalo real desde
+ * a última posição recebida (tipicamente ~3s, o `refetchInterval` de
+ * `use-gps.ts`) — o marcador termina de deslizar até a posição atual
+ * um instante antes da próxima chegar, então nunca fica "esperando
+ * parado" nem "atrasado". Uma posição nova chegando NO MEIO de uma
+ * animação em andamento cancela a anterior e recomeça a partir de
+ * onde o marcador está agora (nunca "pula" pra trás).
+ */
+function animateMarkerTo(entry: MarkerEntry, target: [number, number]): void {
+  const now = performance.now();
+  const elapsedSinceLastUpdate =
+    entry.lastUpdatedAt === undefined ? undefined : now - entry.lastUpdatedAt;
+  entry.lastUpdatedAt = now;
+
+  if (entry.animationFrame !== undefined) cancelAnimationFrame(entry.animationFrame);
+
+  const start = entry.marker.getLngLat();
+  const from: [number, number] = [start.lng, start.lat];
+  if (from[0] === target[0] && from[1] === target[1]) return;
+
+  if (
+    elapsedSinceLastUpdate === undefined ||
+    elapsedSinceLastUpdate < HIGH_FREQUENCY_UPDATE_THRESHOLD_MS
+  ) {
+    entry.marker.setLngLat(target);
+    return;
+  }
+
+  const durationMs = Math.min(elapsedSinceLastUpdate, MAX_VEHICLE_MOVE_ANIMATION_MS);
+  const step = (frameNow: number): void => {
+    const t = Math.min((frameNow - now) / durationMs, 1);
+    entry.marker.setLngLat([
+      from[0] + (target[0] - from[0]) * t,
+      from[1] + (target[1] - from[1]) * t,
+    ]);
+    entry.animationFrame = t < 1 ? requestAnimationFrame(step) : undefined;
+  };
+  entry.animationFrame = requestAnimationFrame(step);
 }
 
 /** Desenha/atualiza a linha do `route` (GeoJSON LineString) — chamado só quando o estilo já carregou (ver nota no efeito abaixo). */
@@ -183,7 +256,7 @@ export function RottaMap({
 }: RottaMapProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
-  const markersRef = useRef<Map<string, { marker: Marker; emMovimento: boolean }>>(new Map());
+  const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
   const previousMarkerIdsRef = useRef<Set<string>>(new Set());
   // Refs para os callbacks: evita recriar o mapa a cada render quando o
   // app chamador passa uma arrow function inline (padrão comum em
@@ -236,6 +309,9 @@ export function RottaMap({
       // `markersRef`) que eles já existem no mapa NOVO, e nunca os
       // recriaria de verdade.
       // eslint-disable-next-line react-hooks/exhaustive-deps -- `markersRef` guarda um `Map` comum (não um nó do DOM React), sempre seguro de ler em `.current` no cleanup.
+      for (const entry of markersRef.current.values()) {
+        if (entry.animationFrame !== undefined) cancelAnimationFrame(entry.animationFrame);
+      }
       markersRef.current.clear();
       previousMarkerIdsRef.current = new Set();
     };
@@ -263,6 +339,7 @@ export function RottaMap({
     const nextIds = new Set(markers.map((marker) => marker.id));
     for (const [id, entry] of markersRef.current) {
       if (!nextIds.has(id)) {
+        if (entry.animationFrame !== undefined) cancelAnimationFrame(entry.animationFrame);
         entry.marker.remove();
         markersRef.current.delete(id);
       }
@@ -273,7 +350,14 @@ export function RottaMap({
       const emMovimento = marker.emMovimento ?? false;
 
       if (existing && existing.emMovimento === emMovimento) {
-        existing.marker.setLngLat([marker.longitude, marker.latitude]);
+        // `emMovimento` desliza suavemente entre posições (ver
+        // `animateMarkerTo`); um marcador estático (parada, escola)
+        // não precisa disso — pula direto, sem custo de animação.
+        if (emMovimento) {
+          animateMarkerTo(existing, [marker.longitude, marker.latitude]);
+        } else {
+          existing.marker.setLngLat([marker.longitude, marker.latitude]);
+        }
         existing.marker.getPopup()?.setText(marker.titulo);
         continue;
       }
@@ -282,6 +366,7 @@ export function RottaMap({
       // em movimento) — o elemento DOM do `Marker` não dá pra mudar de
       // "pino padrão" pra "ícone de veículo" depois de criado, então
       // esse caso raro ainda recria.
+      if (existing?.animationFrame !== undefined) cancelAnimationFrame(existing.animationFrame);
       existing?.marker.remove();
       const mapMarker = emMovimento
         ? new Marker({ element: buildVehicleMarkerElement() })

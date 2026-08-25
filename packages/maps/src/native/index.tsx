@@ -6,10 +6,10 @@ import {
   PointAnnotation,
   ShapeSource,
 } from "@maplibre/maplibre-react-native";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, View } from "react-native";
 
-import type { RottaMapProps } from "../types";
+import type { RottaMapMarker, RottaMapProps } from "../types";
 import type { MapViewRef } from "@maplibre/maplibre-react-native";
 import type { Feature, LineString } from "geojson";
 
@@ -42,6 +42,73 @@ const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
 const DEFAULT_ROUTE_COLOR = "#3b6ef6";
+
+/**
+ * Mesmo princípio de `@rotta/maps/web` (`animateMarkerTo`) — desliza o
+ * marcador de veículo suavemente entre duas posições de GPS
+ * consecutivas em vez de saltar instantâneo, adaptando a duração ao
+ * intervalo real entre atualizações (tipicamente ~3s, `use-gps.ts`).
+ * Pedido do usuário: "diminuir o tempo de mostrar o veículo se
+ * movendo... suave e contínuo até o encerramento da rota".
+ */
+const HIGH_FREQUENCY_UPDATE_THRESHOLD_MS = 400;
+/** Teto do deslizamento — nunca demora mais que isto pra alcançar a posição real, mesmo após um hiato incomum (app em segundo plano, GPS instável). */
+const MAX_VEHICLE_MOVE_ANIMATION_MS = 3000;
+
+/**
+ * Desliza a coordenada exibida de um marcador `emMovimento` de forma
+ * contínua até `target`, em vez do salto instantâneo padrão do
+ * `PointAnnotation` — ver documentação completa em `../web/index.tsx`
+ * (`animateMarkerTo`), mesmo princípio adaptado pra um hook de React
+ * (aqui não há um `Marker` imperativo pra empurrar posição direto,
+ * então a interpolação vira estado que o `PointAnnotation` recebe via
+ * `coordinate`).
+ */
+function useAnimatedVehicleCoordinate(target: [number, number]): [number, number] {
+  const currentRef = useRef<[number, number]>(target);
+  const lastUpdatedAtRef = useRef<number | undefined>(undefined);
+  const rafRef = useRef<number | null>(null);
+  const [, forceRender] = useState(0);
+
+  useEffect(() => {
+    const now = Date.now();
+    const elapsedSinceLastUpdate =
+      lastUpdatedAtRef.current === undefined ? undefined : now - lastUpdatedAtRef.current;
+    lastUpdatedAtRef.current = now;
+
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+
+    const from = currentRef.current;
+    const to = target;
+    if (from[0] === to[0] && from[1] === to[1]) return;
+
+    if (
+      elapsedSinceLastUpdate === undefined ||
+      elapsedSinceLastUpdate < HIGH_FREQUENCY_UPDATE_THRESHOLD_MS
+    ) {
+      currentRef.current = to;
+      forceRender((n) => n + 1);
+      return;
+    }
+
+    const durationMs = Math.min(elapsedSinceLastUpdate, MAX_VEHICLE_MOVE_ANIMATION_MS);
+    const startedAt = now;
+    const step = (): void => {
+      const t = Math.min((Date.now() - startedAt) / durationMs, 1);
+      currentRef.current = [from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t];
+      forceRender((n) => n + 1);
+      rafRef.current = t < 1 ? requestAnimationFrame(step) : null;
+    };
+    rafRef.current = requestAnimationFrame(step);
+
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reage só à mudança real de coordenada; `currentRef`/`lastUpdatedAtRef` são lidos via ref, nunca disparam o efeito de novo sozinhos.
+  }, [target[0], target[1]]);
+
+  return currentRef.current;
+}
 
 /**
  * Anel de pulso do marcador de veículo (`marker.emMovimento`) — pedido
@@ -83,6 +150,37 @@ function VehiclePulseRing(): JSX.Element {
         },
       ]}
     />
+  );
+}
+
+/**
+ * Marcador de veículo com deslizamento suave entre posições (ver
+ * `useAnimatedVehicleCoordinate`) — extraído em componente próprio
+ * porque um Hook só pode rodar dentro de um componente, e cada
+ * marcador `emMovimento` precisa da sua própria animação
+ * independente.
+ */
+function AnimatedVehicleAnnotation({
+  marker,
+  onPress,
+}: {
+  marker: RottaMapMarker;
+  onPress: () => void;
+}): JSX.Element {
+  const [longitude, latitude] = useAnimatedVehicleCoordinate([marker.longitude, marker.latitude]);
+  return (
+    <PointAnnotation id={marker.id} coordinate={[longitude, latitude]} onSelected={onPress}>
+      <View style={styles.vehicleMarkerWrap}>
+        <VehiclePulseRing />
+        <View style={styles.vehicleMarker}>
+          <View style={styles.vehicleMarkerBody}>
+            <View style={styles.vehicleMarkerWindow} />
+            <View style={styles.vehicleMarkerWindow} />
+          </View>
+        </View>
+      </View>
+      <Callout title={marker.titulo} />
+    </PointAnnotation>
   );
 }
 
@@ -156,29 +254,25 @@ export function RottaMap({
             />
           </ShapeSource>
         ) : null}
-        {markers.map((marker) => (
-          <PointAnnotation
-            key={marker.id}
-            id={marker.id}
-            coordinate={[marker.longitude, marker.latitude]}
-            onSelected={() => onMarkerPress?.(marker)}
-          >
-            {marker.emMovimento ? (
-              <View style={styles.vehicleMarkerWrap}>
-                <VehiclePulseRing />
-                <View style={styles.vehicleMarker}>
-                  <View style={styles.vehicleMarkerBody}>
-                    <View style={styles.vehicleMarkerWindow} />
-                    <View style={styles.vehicleMarkerWindow} />
-                  </View>
-                </View>
-              </View>
-            ) : (
+        {markers.map((marker) =>
+          marker.emMovimento ? (
+            <AnimatedVehicleAnnotation
+              key={marker.id}
+              marker={marker}
+              onPress={() => onMarkerPress?.(marker)}
+            />
+          ) : (
+            <PointAnnotation
+              key={marker.id}
+              id={marker.id}
+              coordinate={[marker.longitude, marker.latitude]}
+              onSelected={() => onMarkerPress?.(marker)}
+            >
               <View style={styles.marker} />
-            )}
-            <Callout title={marker.titulo} />
-          </PointAnnotation>
-        ))}
+              <Callout title={marker.titulo} />
+            </PointAnnotation>
+          ),
+        )}
       </MapView>
     </View>
   );

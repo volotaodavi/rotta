@@ -6,9 +6,20 @@ import { gpsApi } from "@/lib/api-client";
 
 
 /**
+ * Cadência do polling de posição ao vivo (GPS-01/03/06) — pedido do
+ * usuário: "diminuir o tempo de mostrar o veículo se movendo... algo
+ * que fique suave e contínuo até o encerramento da rota" (era 10s).
+ * `RottaMap` (`@rotta/maps/native`) anima o marcador suavemente ENTRE
+ * duas posições consecutivas por um período equivalente — o marcador
+ * termina de deslizar até a posição atual pouco antes da próxima
+ * chegar, sem "saltar".
+ */
+const GPS_LIVE_POLL_INTERVAL_MS = 3_000;
+
+/**
  * Localizador do Responsável (briefing "Marketplace" §"ACOMPANHAMENTO"
- * — mapa/GPS/ETA da viagem do próprio filho, GPS-01/03/06). Polling a
- * cada 10s substitui um canal em tempo real dedicado (WebSocket,
+ * — mapa/GPS/ETA da viagem do próprio filho, GPS-01/03/06). Polling
+ * substitui um canal em tempo real dedicado (WebSocket,
  * `apps/realtime-gateway`, ainda não implementado) — mesmo princípio
  * documentado em `gps.module.ts` do backend.
  */
@@ -17,7 +28,7 @@ export function useGpsForStudent(studentId: string | undefined) {
     queryKey: ["gps", "student", studentId],
     queryFn: () => gpsApi.getForStudent(studentId as string),
     enabled: Boolean(studentId),
-    refetchInterval: 10_000,
+    refetchInterval: GPS_LIVE_POLL_INTERVAL_MS,
   });
 }
 
@@ -34,7 +45,7 @@ export function useGpsTrack(tripId: string | undefined) {
     queryKey: ["gps", "track", tripId],
     queryFn: () => gpsApi.getTrack(tripId as string),
     enabled: Boolean(tripId),
-    refetchInterval: 10_000,
+    refetchInterval: GPS_LIVE_POLL_INTERVAL_MS,
   });
 }
 
