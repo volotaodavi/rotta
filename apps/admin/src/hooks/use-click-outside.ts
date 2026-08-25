@@ -10,7 +10,10 @@ import { useEffect, type RefObject } from "react";
  * hoje) — hook pequeno o bastante pra não justificar uma dependência
  * nova.
  */
-export function useClickOutside(ref: RefObject<HTMLElement>, onOutsideClick: () => void): void {
+export function useClickOutside(
+  ref: RefObject<HTMLElement | null>,
+  onOutsideClick: () => void,
+): void {
   useEffect(() => {
     function handlePointerDown(event: PointerEvent): void {
       if (ref.current && !ref.current.contains(event.target as Node)) {

@@ -1,3 +1,5 @@
+import { fileURLToPath } from "node:url";
+
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vitest/config";
 
@@ -27,6 +29,22 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": new URL("./src", import.meta.url).pathname,
+      /**
+       * Migração pro React 19 (`apps/web`): pacotes como `@rotta/auth`/
+       * `@rotta/ui` têm sua própria `devDependency` de `react` fixada em
+       * `^18.3.1` (exigência do `apps/mobile`), resolvida pelo pnpm numa
+       * cópia física separada da `react@19.2.8` deste app. O bundler do
+       * Next (`next build`/`next dev`) já resolve tudo pra uma única
+       * cópia sozinho — confirmado com build de produção limpo — mas o
+       * Vitest resolve módulos pelo caminho real de cada arquivo (sem
+       * essa camada extra do Next), então sem forçar aqui a mesma cópia
+       * ele renderiza componentes desses pacotes com um `react` diferente
+       * do `react-dom` — daí o crash real "A React Element from an older
+       * version of React was rendered" (reproduzido e corrigido nesta
+       * migração).
+       */
+      react: fileURLToPath(new URL("./node_modules/react", import.meta.url)),
+      "react-dom": fileURLToPath(new URL("./node_modules/react-dom", import.meta.url)),
     },
   },
 });
