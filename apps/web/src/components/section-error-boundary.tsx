@@ -1,6 +1,7 @@
 "use client";
 
 import { Card, Typography } from "@rotta/ui/web";
+import * as Sentry from "@sentry/nextjs";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
 import { reportClientError } from "@/lib/report-client-error";
@@ -79,6 +80,9 @@ export class SectionErrorBoundary extends Component<
   override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // eslint-disable-next-line no-console
     console.error(`[SectionErrorBoundary:${this.props.label}]`, error, errorInfo.componentStack);
+    // `Sentry.captureException` NÃO é automático aqui — precisa da
+    // chamada manual, ver a nota completa em `apps/web/src/app/error.tsx`.
+    Sentry.captureException(error, { extra: { componentStack: errorInfo.componentStack } });
     // Ao contrário do `error.tsx` do Next (que só recebe a mensagem já
     // REDIGIDA quando a falha nasce durante o render em produção), um
     // Error Boundary de classe capturado aqui no cliente sempre vê o

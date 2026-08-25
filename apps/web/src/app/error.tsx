@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useEffect, useState } from "react";
 
 import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
@@ -53,6 +54,13 @@ export default function GlobalError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
+    // `Sentry.captureException` NÃO é automático aqui — a integração do
+    // SDK com Server Actions/rotas cobre o servidor (`onRequestError`,
+    // `instrumentation.ts`), mas o próprio arquivo especial `error.tsx`
+    // do App Router precisa chamar isso manualmente (documentação
+    // oficial do Sentry pra Next.js). Sem esta linha, o GlitchTip nunca
+    // recebe nada — só os testes manuais funcionavam.
+    Sentry.captureException(error);
     reportClientError("WEB", error, {
       source: "error-boundary",
       serviceWorkerActive: isServiceWorkerActive(),

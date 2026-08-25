@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorState, Spinner } from "@rotta/ui/web";
+import * as Sentry from "@sentry/nextjs";
 import { useEffect, useState } from "react";
 
 import { useChunkLoadRecovery } from "@/hooks/use-chunk-load-recovery";
@@ -85,6 +86,12 @@ export default function DashboardError({
   useEffect(() => {
     // eslint-disable-next-line no-console
     console.error(error);
+    // `Sentry.captureException` NÃO é automático aqui — precisa da
+    // chamada manual (documentação oficial do Sentry pra Next.js App
+    // Router). Sem isso o GlitchTip nunca recebia nada de verdade, só os
+    // testes manuais enviados direto por `curl` — ver a nota completa em
+    // `apps/web/src/app/error.tsx`.
+    Sentry.captureException(error);
     const checkpoint = readLastCheckpoint();
     setLastCheckpoint(checkpoint);
     // Anexa o checkpoint ao relatório mandado pro backend (sem migration
