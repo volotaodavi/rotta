@@ -2,15 +2,26 @@
 
 import { ApiError } from "@rotta/api-client";
 import { Check, GraduationCap, MapPin, Trash2 } from "@rotta/icons";
-import { Button, Card, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
-import type { GeocodeResult, RouteStop, School } from "@rotta/api-client";
+import { getStopDirection, STOP_DIRECTION_LABEL, type StopDirection } from "./stop-direction";
+
+import type { GeocodeResult, RouteStop, RouteStudent, School } from "@rotta/api-client";
 
 import { useAddRouteStop, useRemoveRouteStop } from "@/features/routes/hooks/use-routes";
 import { useSuggestSchools } from "@/features/schools/hooks/use-schools";
 import { useMyLocation } from "@/hooks/use-my-location";
 import { geoApi } from "@/lib/api-client";
+
+
+
+/** Cor do selo Ida/Volta — mesma paleta neutra usada nos demais `Badge` informativos desta tela (nunca semântica de sucesso/erro, é só rótulo). */
+const STOP_DIRECTION_BADGE_VARIANT: Record<StopDirection, "neutral" | "info"> = {
+  IDA: "info",
+  VOLTA: "neutral",
+  IDA_E_VOLTA: "info",
+};
 
 function formatarDistanciaKm(distanciaKm: number): string {
   return distanciaKm < 1 ? `${Math.round(distanciaKm * 1000)} m` : `${distanciaKm.toFixed(1)} km`;
@@ -30,10 +41,13 @@ function formatarDistanciaKm(distanciaKm: number): string {
 export function StopsSection({
   routeId,
   stops,
+  routeStudents,
   isLoading,
 }: {
   routeId: string;
   stops: RouteStop[] | undefined;
+  /** Pedido do usuário: "paradas IDA e paradas volta" — selo por parada, derivado (ver `getStopDirection`). `undefined` enquanto ainda carrega: sem selo nenhum, nunca um "Ida"/"Volta" adivinhado. */
+  routeStudents: RouteStudent[] | undefined;
   isLoading: boolean;
 }): JSX.Element {
   const addStop = useAddRouteStop(routeId);
@@ -121,32 +135,42 @@ export function StopsSection({
           </Typography>
         ) : (
           <div className="flex flex-col divide-y divide-border">
-            {stops.map((stop) => (
-              <div key={stop.id} className="flex items-center justify-between gap-3 py-2">
-                <div className="flex items-center gap-2">
-                  {stop.schoolId ? (
-                    <GraduationCap className="h-4 w-4 shrink-0 text-primary" />
-                  ) : (
-                    <MapPin className="h-4 w-4 shrink-0 text-primary" />
-                  )}
-                  <div>
-                    <Typography variant="bodySmall">{stop.endereco}</Typography>
-                    <Typography variant="caption" color="muted">
-                      {stop.horarioPrevisto}
-                    </Typography>
+            {stops.map((stop) => {
+              const direction = getStopDirection(stop, routeStudents);
+              return (
+                <div key={stop.id} className="flex items-center justify-between gap-3 py-2">
+                  <div className="flex items-center gap-2">
+                    {stop.schoolId ? (
+                      <GraduationCap className="h-4 w-4 shrink-0 text-primary" />
+                    ) : (
+                      <MapPin className="h-4 w-4 shrink-0 text-primary" />
+                    )}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Typography variant="bodySmall">{stop.endereco}</Typography>
+                        {direction ? (
+                          <Badge variant={STOP_DIRECTION_BADGE_VARIANT[direction]}>
+                            {STOP_DIRECTION_LABEL[direction]}
+                          </Badge>
+                        ) : null}
+                      </div>
+                      <Typography variant="caption" color="muted">
+                        {stop.horarioPrevisto}
+                      </Typography>
+                    </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    iconLeft={<Trash2 className="h-4 w-4" />}
+                    isLoading={removeStop.isPending && removeStop.variables === stop.id}
+                    onClick={() => removeStop.mutate(stop.id)}
+                  >
+                    Remover
+                  </Button>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  iconLeft={<Trash2 className="h-4 w-4" />}
-                  isLoading={removeStop.isPending && removeStop.variables === stop.id}
-                  onClick={() => removeStop.mutate(stop.id)}
-                >
-                  Remover
-                </Button>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 

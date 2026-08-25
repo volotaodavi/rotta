@@ -13,6 +13,9 @@ import {
 import Link from "next/link";
 import { useState } from "react";
 
+import { RouteDetailClient } from "./[id]/_components/route-detail-client";
+import { ExecuteRouteClient } from "./[id]/executar/_components/execute-route-client";
+
 import type { ListRoutesParams, Route } from "@rotta/api-client";
 
 import { useRoutesList } from "@/features/routes/hooks/use-routes";
@@ -23,6 +26,8 @@ import {
 } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
+
+
 
 /**
  * "Minhas Rotas" (pedido do usuário: "crie uma aba para 'Criar
@@ -37,18 +42,35 @@ import { useMyTeam } from "@/features/team/hooks/use-team";
  * nenhum filtro adicional é necessário aqui, o mesmo componente serve
  * os dois públicos (painel da empresa e Modo Ação).
  *
- * Navegação pra `/rotas/[id]` e `/rotas/[id]/executar` usa
- * `window.location.href` (recarga completa), não `router.push` — achado
- * de uma sessão anterior depurando "algo deu errado" logo após entrar
- * num segmento dinâmico 100% novo em produção (Frente 7 do plano
- * aprovado: prevenção de riscos, vazamentos e erros). O botão "Nova
- * rota" usa `Link` normal (rota estática, sem esse risco).
+ * ACHADO REAL — bug de infraestrutura do próprio Next.js (o mesmo
+ * documentado em `rotas/novo/page.tsx`, confirmado pelo usuário: ocorre
+ * em QUALQUER conta, não só numa específica): navegar por
+ * `window.location.href` OU `router.push` pra `/rotas/[id]` ou
+ * `/rotas/[id]/executar` num segmento dinâmico nunca renderizado antes
+ * neste deploy dispara, intermitente mas repetidamente em produção
+ * (só na Vercel, nunca localmente), um erro interno indeterminístico do
+ * motor de Server Components/Suspense do App Router. Como abrir uma
+ * rota e executá-la são as duas ações mais centrais deste fluxo, o
+ * clique na linha (abrir detalhe) e o botão "Executar" NÃO navegam mais
+ * — "Minhas Rotas" monta `RouteDetailClient`/`ExecuteRouteClient`
+ * (os mesmos componentes que `/rotas/[id]` e `/rotas/[id]/executar`
+ * usam) embutidos NESTA MESMA tela, trocando só o que é exibido via
+ * estado local. Zero navegação pro segmento dinâmico = zero chance de
+ * bater no gatilho exato do bug (mesma técnica já aplicada em
+ * `rotas/novo/page.tsx` pra "criar rota").
+ *
+ * O botão "Nova rota" continua usando `Link` normal (rota estática
+ * `/rotas/novo`, sem esse risco). As páginas `/rotas/[id]` e
+ * `/rotas/[id]/executar` em si continuam existindo, pra quem chega
+ * direto por um link salvo/compartilhado.
  */
 export default function RotasPage(): JSX.Element {
   const params: ListRoutesParams = { page: 1, pageSize: 100 };
   const { data, isLoading, isError, refetch, isFetching } = useRoutesList(params);
   const { data: team } = useMyTeam();
   const [showAll, setShowAll] = useState(false);
+  const [openRouteId, setOpenRouteId] = useState<string | null>(null);
+  const [executingRouteId, setExecutingRouteId] = useState<string | null>(null);
 
   const motoristaNome = (id: string | null): string => {
     if (!id) return "Nenhum motorista atribuído";
@@ -56,6 +78,30 @@ export default function RotasPage(): JSX.Element {
   };
 
   const items = showAll ? data?.items : data?.items.filter((route) => route.status === "ATIVA");
+
+  if (executingRouteId) {
+    return (
+      <div className="flex flex-col gap-6">
+        <ExecuteRouteClient routeId={executingRouteId} onVoltar={() => setExecutingRouteId(null)} />
+      </div>
+    );
+  }
+
+  if (openRouteId) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setOpenRouteId(null)}
+        >
+          ← Voltar para Minhas Rotas
+        </Button>
+        <RouteDetailClient routeId={openRouteId} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -132,7 +178,7 @@ export default function RotasPage(): JSX.Element {
                         size="sm"
                         onClick={(event) => {
                           event.stopPropagation();
-                          window.location.href = `/rotas/${route.id}/executar`;
+                          setExecutingRouteId(route.id);
                         }}
                       >
                         Executar
@@ -142,9 +188,7 @@ export default function RotasPage(): JSX.Element {
               ]}
               rows={items}
               keyExtractor={(route) => route.id}
-              onRowClick={(route) => {
-                window.location.href = `/rotas/${route.id}`;
-              }}
+              onRowClick={(route) => setOpenRouteId(route.id)}
             />
           )}
         </Card.Body>

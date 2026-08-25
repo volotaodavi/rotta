@@ -1,13 +1,18 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
+import { Navigation } from "@rotta/icons";
+import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
+import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 
 import { RouteOptimizationSection } from "./route-optimization-section";
+import { getStopDirection, STOP_DIRECTION_LABEL } from "./stop-direction";
 import { StopsSection } from "./stops-section";
 import { StudentsSection } from "./students-section";
 
+import { RecenterButton } from "@/components/route-screen-chrome";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import {
   useRoute,
@@ -22,6 +27,7 @@ import {
 } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
+import { useMyLocation } from "@/hooks/use-my-location";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 
 
@@ -105,6 +111,14 @@ function RotaDetalheContent({ routeId }: RouteDetailClientProps): JSX.Element {
   recordCheckpoint("rota-detalhe:use-auth-ok");
   const updateRoute = useUpdateRoute(routeId);
   recordCheckpoint("rota-detalhe:use-update-route-ok");
+  // Localização atual do motorista (pedido do usuário: "para o motorista
+  // ter uma ideia de onde é, principalmente a localização dele atual")
+  // — mesmo `useMyLocation` já usado em "Minha Rota"/cadastro de aluno,
+  // nunca enviada ao servidor, só orientação visual neste mapa.
+  const { location: myLocation } = useMyLocation(true);
+  recordCheckpoint("rota-detalhe:use-my-location-ok");
+  // Botão "centralizar" (mesmo padrão de `/minha-rota`/`/alunos/[id]/mapa`) — `RottaMap` só lê `initialCenter`/`markers` na montagem, então recentralizar remonta com uma nova `key`.
+  const [mapKey, setMapKey] = useState(0);
 
   if (isLoadingRoute) {
     recordCheckpoint("rota-detalhe:retorno-spinner-carregando");
@@ -146,6 +160,58 @@ function RotaDetalheContent({ routeId }: RouteDetailClientProps): JSX.Element {
   const podeConcluir = (stops?.length ?? 0) > 0 && (routeStudents?.length ?? 0) > 0;
   recordCheckpoint("rota-detalhe:antes-do-jsx-final");
 
+  const paradasOrdenadas = [...(stops ?? [])].sort((a, b) => a.ordem - b.ordem);
+
+  /**
+   * Mapa OpenStreet com o pino de cada parada + a localização atual do
+   * motorista (pedido do usuário: "adicione o mapa da openstreet na
+   * questão de criar rota, para o motorista ter uma ideia de onde é...
+   * caso vincule mais alunos, deverá aparecer todos os pontos de
+   * parada"). Rótulo de direção (Ida/Volta) direto no título do
+   * marcador — mesma derivação de `getStopDirection` usada abaixo em
+   * `StopsSection`.
+   */
+  const markers: RottaMapMarker[] = paradasOrdenadas.map((parada) => {
+    const direction = getStopDirection(parada, routeStudents);
+    return {
+      id: parada.id,
+      titulo: direction
+        ? `${parada.ordem}. ${parada.endereco} · ${STOP_DIRECTION_LABEL[direction]}`
+        : `${parada.ordem}. ${parada.endereco}`,
+      latitude: parada.latitude,
+      longitude: parada.longitude,
+    };
+  });
+  const mapMarkers: RottaMapMarker[] = myLocation
+    ? [
+        ...markers,
+        {
+          id: "minha-localizacao",
+          titulo: "Você está aqui",
+          latitude: myLocation.latitude,
+          longitude: myLocation.longitude,
+        },
+      ]
+    : markers;
+
+  // Botão "Navegar" único (pedido do usuário: "tudo no botão 'navegar'
+  // único, para já ter as rotas para prosseguir") — mesmo deep-link
+  // nativo (Apple/Google Maps) já usado em "Minha Rota"
+  // (`ProximaParadaEtaCard`), aqui sempre mirando a PRIMEIRA parada da
+  // rota (menor `ordem`) — esta tela não está numa viagem em curso
+  // (sem ETA/posição do veículo pra saber "a próxima"), então o ponto de
+  // partida natural é o começo do trajeto cadastrado.
+  const primeiraParada = paradasOrdenadas[0];
+  function handleNavegar(): void {
+    if (!primeiraParada) return;
+    const app = detectNavigationApp(navigator.userAgent);
+    const url = buildNavigationUrl(
+      { latitude: primeiraParada.latitude, longitude: primeiraParada.longitude },
+      app,
+    );
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
@@ -174,6 +240,45 @@ function RotaDetalheContent({ routeId }: RouteDetailClientProps): JSX.Element {
           </Button>
         </div>
       </div>
+
+      {/*
+       * Mapa OpenStreet (pedido do usuário: "adicione o mapa da
+       * openstreet na questão de criar rota, para o motorista ter uma
+       * ideia de onde é — principalmente a localização dele atual...
+       * caso vincule mais alunos, deverá aparecer todos os pontos de
+       * parada") — mesmo cartão compacto (não tela cheia) já usado em
+       * `/minha-rota` e `/alunos/[id]/mapa`. Um único botão "Navegar"
+       * (pedido do usuário: "tudo no botão 'navegar' único, para já ter
+       * as rotas para prosseguir") reaproveita o mesmo deep-link nativo
+       * (Google/Apple Maps) já usado em "Minha Rota" — sem repetir um
+       * botão por parada.
+       */}
+      {mapMarkers.length > 0 ? (
+        <Card className="overflow-hidden">
+          <div className="relative h-52 w-full">
+            <RottaMap key={mapKey} markers={mapMarkers} initialZoom={13} />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end p-2">
+              <RecenterButton onClick={() => setMapKey((k) => k + 1)} />
+            </div>
+          </div>
+          {primeiraParada ? (
+            <Card.Body className="flex items-center justify-between gap-3">
+              <Typography variant="bodySmall" color="muted">
+                {paradasOrdenadas.length}{" "}
+                {paradasOrdenadas.length === 1 ? "parada cadastrada" : "paradas cadastradas"}
+              </Typography>
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={<Navigation size={16} />}
+                onClick={handleNavegar}
+              >
+                Navegar
+              </Button>
+            </Card.Body>
+          ) : null}
+        </Card>
+      ) : null}
 
       {route.status === "PAUSADA" && podeConcluir ? (
         // Vincular o primeiro aluno a uma rota com parada já ativa
@@ -219,7 +324,12 @@ function RotaDetalheContent({ routeId }: RouteDetailClientProps): JSX.Element {
       ) : null}
 
       <SectionErrorBoundary label="paradas-da-rota">
-        <StopsSection routeId={routeId} stops={stops} isLoading={isLoadingStops} />
+        <StopsSection
+          routeId={routeId}
+          stops={stops}
+          routeStudents={routeStudents}
+          isLoading={isLoadingStops}
+        />
       </SectionErrorBoundary>
 
       {stops && stops.length >= 3 ? (
