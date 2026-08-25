@@ -21,7 +21,6 @@ import { useMyIdentityVerification } from "@/features/identity-verification/hook
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
 
-
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
   href: Route;
@@ -374,6 +373,29 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
             diferenciado (`bg-muted/40`) e um cartão com borda/sombra em
             volta do conteúdo, a mesma leitura visual de qualquer app
             desktop que centraliza um fluxo de uma tela só.
+
+            CAUSA REAL do "Server Components render" indeterminístico em
+            `/rotas/[id]` recém-criada (achado nesta investigação, 3
+            ocorrências reais reproduzidas, sempre no mesmo checkpoint —
+            ver `rotas/[id]/_components/route-detail-client.tsx`): este
+            `{children}` ficava ora filho DIRETO de `<main>` (quando
+            `showBottomNav` é `false`), ora encapsulado dentro de uma
+            `<div>` extra (quando `true`) — dois formatos de árvore
+            DIFERENTES pro mesmo conteúdo. `showBottomNav` depende de
+            `useAppMode`'s `useEffect` (só dispara DEPOIS do primeiro
+            render, nunca durante) — pra conta Autônomo/MEI, ele troca
+            `mode` de "completo" pra "acao" pouco depois de montar, ou
+            seja, o wrapper de `{children}` mudava de forma bem no meio
+            da hidratação. O React não consegue reconciliar isso como uma
+            atualização — desmonta e remonta TODA a árvore de `{children}`
+            (inclusive toda a página `/rotas/[id]`) nesse instante exato,
+            justamente enquanto essa mesma página está hidratando um
+            segmento dinâmico 100% novo pela primeira vez (a rota recém-
+            criada) — o mesmo tipo de instabilidade documentado alhures
+            neste código como exclusivo de produção/Vercel. Corrigido
+            mantendo `{children}` SEMPRE na mesma posição da árvore (um
+            único wrapper, variando só a classe CSS) — nunca mais alterna
+            entre "filho direto" e "encapsulado".
           */}
           <main
             className={
@@ -382,13 +404,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
                 : "flex-1 p-6"
             }
           >
-            {showBottomNav ? (
-              <div className="w-full md:max-w-3xl md:rounded-2xl md:border md:border-border md:bg-surface md:p-8 md:shadow-sm">
-                {children}
-              </div>
-            ) : (
-              children
-            )}
+            <div
+              className={
+                showBottomNav
+                  ? "w-full md:max-w-3xl md:rounded-2xl md:border md:border-border md:bg-surface md:p-8 md:shadow-sm"
+                  : "contents"
+              }
+            >
+              {children}
+            </div>
           </main>
           <LegalFooter />
           {showDriverNavBar && <DriverBottomNav />}
