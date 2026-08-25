@@ -41,6 +41,38 @@ export class SectionErrorBoundary extends Component<
   }
 
   static getDerivedStateFromError(error: Error): SectionErrorBoundaryState {
+    /**
+     * ACHADO REAL (pesquisa em issues reais do React/Next.js, depois de
+     * `isModeResolved`, upgrade do Next e `prefetch={false}` nos links do
+     * painel NÃO terem resolvido sozinhos o "Server Components render"
+     * indeterminístico em `/rotas/[id]` recém-criada): o "erro" real
+     * capturado uma vez direto no navegador era `Minified React error
+     * #460` — "Suspense Exception: this is not a real error! It's an
+     * implementation detail of `use` to interrupt the current render...
+     * capturing without rethrowing will lead to unexpected behavior"
+     * (https://react.dev/errors/460). Esse "erro" é, na verdade, um sinal
+     * INTERNO (um thenable/Promise) que o próprio roteador do Next usa
+     * pra pausar o render — nunca deveria chegar até um Error Boundary
+     * comum. Se ALGO no meio do caminho (aqui documentado como um bug
+     * conhecido do lado do Next, não nosso: "não sobra nenhum `use()`
+     * nosso nesta rota") capturar esse sinal sem relançá-lo, ele vira um
+     * "erro" de verdade pro React — e a documentação do próprio React é
+     * explícita: "capturing without rethrowing will lead to unexpected
+     * behavior". Um `getDerivedStateFromError` escrito à mão como o
+     * nosso, sem essa checagem, é candidato perfeito a ser justamente
+     * esse "algo" — captura QUALQUER coisa lançada, sem distinguir um
+     * `Error` de verdade desse sinal interno.
+     *
+     * A correção: detectar o formato de um sinal do React/Suspense (um
+     * thenable — tem `.then` — em vez de um `Error` de verdade) e
+     * RELANÇAR em vez de tratar como erro de seção. Relançar aqui faz
+     * este componente "falhar ao capturar", e o React propaga o sinal
+     * pro Error/Suspense boundary de verdade mais próximo acima —
+     * exatamente a orientação da própria mensagem do React.
+     */
+    if (error && typeof (error as unknown as { then?: unknown }).then === "function") {
+      throw error;
+    }
     return { hasError: true, errorMessage: error.message, errorStack: error.stack };
   }
 
