@@ -2,6 +2,7 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import { Suspense } from "react";
 
 import { RouteOptimizationSection } from "./route-optimization-section";
 import { StopsSection } from "./stops-section";
@@ -29,25 +30,48 @@ interface RouteDetailClientProps {
 }
 
 /**
- * CAUSA CONFIRMADA (investigação do incidente "Server Components
- * render" indeterminístico, reproduzido em TODA rota dinâmica do App
- * Router — `/rotas/[id]`, `/veiculos/[id]`, `/convite/[codigo]`, tanto
- * pública quanto autenticada, nunca numa rota estática): este arquivo
- * era `page.tsx` diretamente, um Client Component (`"use client"`) que
- * declarava `params: Promise<{ id: string }>` e chamava
- * `useParams<{ id: string }>()`/`use(params)` pra resolver a Promise
- * dentro do próprio cliente. Passar a Promise de `params` pra um
- * Client Component (ou resolvê-la lá dentro) não é o contrato suportado
- * pelo App Router do Next 15.5.22 + React 18.3.1 — o Server Component
- * (`page.tsx`) precisa fazer `await params` e entregar só o valor final
- * (`string`) por prop. `dynamic(..., { ssr: false })` (nesta página
- * inteira e nas três seções abaixo) foi tentado antes como contenção e
- * NÃO resolveu — removido: mascarava o sintoma, nunca a causa.
+ * HISTÓRICO da investigação do "Server Components render"
+ * indeterminístico em `/rotas/[id]` recém-criada (reproduzido 5+ vezes
+ * ao vivo em produção, sempre a mesma conta Autônomo/MEI, sempre logo
+ * após criar rota): duas hipóteses anteriores foram descartadas com
+ * prova real, não suposição —
+ *
+ * 1. `use(params)` dentro de Client Component (o `page.tsx` original) —
+ *    descartada: a página já foi convertida pra Server Component
+ *    (`page.tsx` faz `await params`) e o incidente continuou.
+ * 2. `{children}` do `(dashboard)/layout.tsx` mudando de wrapper quando
+ *    o Modo Ação resolve depois do primeiro render — descartada: a
+ *    correção foi publicada e o incidente reproduziu de novo, idêntico.
+ *
+ * CAUSA REAL capturada com o depurador do navegador pausando na
+ * exceção real (não a redigida): `Error: Minified React error #460` —
+ * "Suspense Exception: this is not a real error! It's an
+ * implementation detail of `use` to interrupt the current render...
+ * capturing without rethrowing will lead to unexpected behavior"
+ * (https://react.dev/errors/460). Ou seja: um `use()` (do próprio
+ * roteador do Next, não nosso — não sobra nenhum `use()` nosso nesta
+ * rota) suspende, e o sinal interno do Suspense está sendo perdido
+ * antes de chegar num `<Suspense>` de verdade. Não existia nenhum
+ * `<Suspense>` explícito aqui — só o `SectionErrorBoundary` (Error
+ * Boundary). Tentativa: parear o Error Boundary com um `<Suspense>`
+ * explícito por dentro dele (padrão documentado do React pra evitar
+ * exatamente esse tipo de sinal perdido) — se não resolver, a próxima
+ * hipótese é incompatibilidade de versão entre Next 15.5.22 (que já
+ * pode depender de semântica de `use()`/Suspense mais próxima da do
+ * React 19) e o React 18.3.1 fixado neste projeto.
  */
 export function RouteDetailClient({ routeId }: RouteDetailClientProps): JSX.Element {
   return (
     <SectionErrorBoundary label="pagina-rota-detalhe">
-      <RotaDetalheContent routeId={routeId} />
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-16">
+            <Spinner size="lg" />
+          </div>
+        }
+      >
+        <RotaDetalheContent routeId={routeId} />
+      </Suspense>
     </SectionErrorBoundary>
   );
 }
