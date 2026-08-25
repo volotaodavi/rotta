@@ -7,7 +7,20 @@
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**", "build/**"],
-      "inputs": ["src/**", "package.json", "tsconfig.json"]
+      "inputs": [
+        "src/**",
+        "package.json",
+        "tsconfig.json",
+        "tsconfig.*.json",
+        "next.config.*",
+        "postcss.config.*",
+        "tailwind.config.*",
+        "nest-cli.json",
+        "jest.config.*",
+        "babel.config.*",
+        "metro.config.*",
+        "app.config.*"
+      ]
     },
     "dev": {
       "cache": false,
