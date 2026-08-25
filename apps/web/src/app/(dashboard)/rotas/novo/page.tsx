@@ -5,6 +5,8 @@ import { useAuth } from "@rotta/auth/web";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useEffect, useState, type FormEvent } from "react";
 
+import { RouteDetailClient } from "../[id]/_components/route-detail-client";
+
 import type { CreateRouteInput, RouteWeekday, SchoolShift } from "@rotta/api-client";
 
 import { useCreateRoute } from "@/features/routes/hooks/use-routes";
@@ -12,6 +14,8 @@ import { ROUTE_WEEKDAY_LABEL } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
+
+
 
 const WEEKDAYS: RouteWeekday[] = [
   "SEGUNDA",
@@ -57,13 +61,32 @@ const INITIAL_STATE: CreateRouteInput = {
  * esse caso e nem pergunta — autopreenche o próprio usuário e some com
  * o campo de seleção.
  *
- * Navegação forçada (`window.location.href`, não `router.push`) pro
- * `/rotas/[id]` recém-criado — achado de uma sessão anterior (Frente 7
- * do plano aprovado: prevenção de riscos, vazamentos e erros): a
- * navegação client-side do App Router pra um segmento dinâmico 100%
- * novo falhava intermitentemente em produção (só na Vercel, nunca
- * localmente) — uma recarga completa sempre busca o HTML fresco do
- * servidor, sem depender do streaming RSC da navegação em memória.
+ * ACHADO REAL — bug de infraestrutura do próprio Next.js, não da nossa
+ * conta/dado (o usuário confirmou: acontece em QUALQUER conta, não só
+ * numa específica): tanto `window.location.href` (recarga completa)
+ * quanto `router.push` (navegação client-side) pro `/rotas/[id]` de uma
+ * rota RECÉM-CRIADA — ou seja, o PRIMEIRO acesso a esse segmento
+ * dinâmico exato, nunca renderizado antes neste deploy — disparam,
+ * intermitente mas repetidamente em produção (só na Vercel, nunca
+ * localmente), um erro interno indeterminístico do motor de Server
+ * Components/Suspense do App Router (investigação extensa, ver o
+ * histórico em `rotas/[id]/_components/route-detail-client.tsx` e
+ * `section-error-boundary.tsx` — múltiplas causas reais já corrigidas
+ * uma a uma, nenhuma bastou sozinha porque a raiz vive dentro do
+ * próprio Next, fora do nosso alcance de correção).
+ *
+ * Como criar rota é a funcionalidade central do produto, a solução aqui
+ * é CONTORNAR o gatilho, não tentar consertar o motor interno do Next:
+ * depois de criar a rota, em vez de NAVEGAR pro segmento dinâmico
+ * `/rotas/[id]` (o que sempre dispara o bug pra um ID novo), esta MESMA
+ * página passa a mostrar `RouteDetailClient` (paradas, alunos, Rotta
+ * Route AI, concluir rota — o mesmo componente que `/rotas/[id]` usa)
+ * embutido aqui, sem trocar de URL nem de segmento nenhum. Zero
+ * navegação = zero chance de bater no gatilho exato do bug. O usuário
+ * só visita `/rotas/[id]` de verdade depois, pela lista "Minhas Rotas"
+ * — nesse ponto o segmento já foi renderizado ao menos uma vez neste
+ * deploy (por outra pessoa/sessão) ou o próprio ID já não é mais
+ * "recém-criado", o que historicamente nunca reproduziu o bug.
  */
 export default function NovaRotaPage(): JSX.Element {
   const { user } = useAuth();
@@ -72,6 +95,7 @@ export default function NovaRotaPage(): JSX.Element {
   const { data: vehicles } = useVehiclesList({ pageSize: 100 });
   const [form, setForm] = useState<CreateRouteInput>(INITIAL_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [createdRouteId, setCreatedRouteId] = useState<string | null>(null);
 
   const isAutonomoOuMei =
     user?.role === "empresa" && (user.companyType === "AUTONOMO" || user.companyType === "MEI");
@@ -108,12 +132,28 @@ export default function NovaRotaPage(): JSX.Element {
     }
     try {
       const route = await createRoute.mutateAsync(form);
-      window.location.href = `/rotas/${route.id}`;
+      setCreatedRouteId(route.id);
     } catch (error) {
       setErrorMessage(
         error instanceof ApiError ? error.message : "Erro inesperado ao criar a rota.",
       );
     }
+  }
+
+  // Ver a nota grande acima: assim que a rota é criada, a tela troca
+  // pro mesmo componente de `/rotas/[id]` embutido AQUI, sem navegar —
+  // `max-w-3xl` (mesma largura de `RouteDetailClient`) em vez do
+  // `max-w-2xl` do formulário.
+  if (createdRouteId) {
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        <Typography variant="title">Rota criada</Typography>
+        <Typography variant="bodySmall" color="muted">
+          Agora adicione ao menos uma parada e um aluno abaixo para a rota entrar em operação.
+        </Typography>
+        <RouteDetailClient routeId={createdRouteId} />
+      </div>
+    );
   }
 
   return (
