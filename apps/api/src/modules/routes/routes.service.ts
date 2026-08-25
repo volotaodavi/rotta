@@ -24,6 +24,7 @@ import type { CreateRouteDto } from "./dto/create-route.dto";
 import type { ListRoutesQueryDto } from "./dto/list-routes-query.dto";
 import type { ListRoutesResponseDto, RouteResponseDto } from "./dto/route-response.dto";
 import type { RouteStopResponseDto } from "./dto/route-stop-response.dto";
+import type { RouteStudentDetalhadoResponseDto } from "./dto/route-student-detalhado-response.dto";
 import type { RouteStudentResponseDto } from "./dto/route-student-response.dto";
 import type { UpdateRouteStopDto } from "./dto/update-route-stop.dto";
 import type { UpdateRouteDto } from "./dto/update-route.dto";
@@ -758,6 +759,57 @@ export class RoutesService {
     await this.fetchOrThrow(routeId, actor);
     const vinculos = await this.routeStudentRepository.listByRoute(routeId);
     return vinculos.map(toRouteStudentResponseDto);
+  }
+
+  /**
+   * `listStudents` + nomes legíveis (pedido do usuário: "aparecerá as
+   * informações — nome dos alunos, escolas, horário, bairros,
+   * responsáveis" — no card antes de deslizar para iniciar a viagem).
+   * NUNCA usado no lugar de `listStudents` nos caminhos já existentes
+   * (geofencing a cada ping de GPS, notificação de início/fim de rota):
+   * os joins extras aqui (aluno/escola/contrato/responsável, um por
+   * aluno) são um custo aceitável só porque isto é chamado uma vez, ao
+   * abrir o card pré-viagem — nunca em um caminho de alta frequência.
+   * Cada join falha isoladamente (`.catch(() => null)`, mesmo princípio
+   * de `notifyActiveStudentsOfRoute`) — um aluno/escola/responsável
+   * removido nunca derruba a lista inteira, só aparece sem aquele campo.
+   */
+  async listStudentsDetalhado(
+    routeId: string,
+    actor: AuthenticatedUser,
+  ): Promise<RouteStudentDetalhadoResponseDto[]> {
+    const [vinculos, stops] = await Promise.all([
+      this.listStudents(routeId, actor),
+      this.listStops(routeId, actor),
+    ]);
+    const stopsById = new Map(stops.map((stop) => [stop.id, stop]));
+
+    return Promise.all(
+      vinculos.map(async (vinculo) => {
+        const [student, contract] = await Promise.all([
+          this.studentsService.findRawById(vinculo.studentId).catch(() => null),
+          this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor).catch(() => null),
+        ]);
+        const [school, responsavel] = await Promise.all([
+          student
+            ? this.schoolsService.findByIdOrThrow(student.schoolId, actor).catch(() => null)
+            : Promise.resolve(null),
+          contract
+            ? this.usersService.findById(contract.responsavelId).catch(() => null)
+            : Promise.resolve(null),
+        ]);
+        const paradaEmbarque = stopsById.get(vinculo.paradaEmbarqueId);
+
+        return {
+          ...vinculo,
+          studentNome: student?.nome,
+          schoolNome: school?.nomeOficial,
+          bairro: student?.embarqueBairro,
+          responsavelNome: responsavel?.nome,
+          horarioPrevisto: paradaEmbarque?.horarioPrevisto,
+        };
+      }),
+    );
   }
 
   /**

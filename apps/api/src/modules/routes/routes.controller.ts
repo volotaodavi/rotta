@@ -180,6 +180,23 @@ export class RoutesController {
     return this.routesService.listStudents(id, actor);
   }
 
+  /**
+   * `listStudents` + nome do aluno/escola/bairro/responsável (pedido do
+   * usuário: card pré-início da viagem — "aparecerá as informações...
+   * nome dos alunos, escolas, horário, bairros, responsáveis"). Endpoint
+   * separado (não um `?detalhado=true` em `listStudents`) — mantém o
+   * caminho de alta frequência (geofencing a cada ping de GPS) livre dos
+   * joins extras que só fazem sentido uma vez, ao abrir o card.
+   */
+  @Get(":id/students/detalhado")
+  @Roles(...READ_ROLES)
+  listStudentsDetalhado(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.routesService.listStudentsDetalhado(id, actor);
+  }
+
   @Delete(":id/students/:routeStudentId")
   @Roles(...MANAGE_ROLES)
   @HttpCode(HttpStatus.NO_CONTENT)

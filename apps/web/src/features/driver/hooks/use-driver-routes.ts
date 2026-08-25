@@ -38,3 +38,16 @@ export function useRouteStudents(routeId: string | undefined) {
     enabled: Boolean(routeId),
   });
 }
+
+/**
+ * `useRouteStudents` + nomes legíveis (pedido do usuário: card
+ * pré-início da viagem — "aparecerá as informações... nome dos alunos,
+ * escolas, horário, bairros, responsáveis").
+ */
+export function useRouteStudentsDetalhado(routeId: string | undefined) {
+  return useQuery({
+    queryKey: ["driver", "routes", routeId, "students", "detalhado"],
+    queryFn: () => routesApi.listStudentsDetalhado(routeId as string),
+    enabled: Boolean(routeId),
+  });
+}

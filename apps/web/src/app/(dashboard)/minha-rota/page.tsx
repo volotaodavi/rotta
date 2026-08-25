@@ -41,6 +41,7 @@ import type {
   Route,
   RouteStop,
   RouteStudent,
+  RouteStudentDetalhado,
   TripStudentEventType,
 } from "@rotta/api-client";
 import type { Route as NextRoute } from "next";
@@ -52,6 +53,7 @@ import {
   useMinhasRotas,
   useRouteStops,
   useRouteStudents,
+  useRouteStudentsDetalhado,
 } from "@/features/driver/hooks/use-driver-routes";
 import {
   useAddStudentEvent,
@@ -395,6 +397,38 @@ function ProximaParadaEtaCard({
   );
 }
 
+/**
+ * Uma linha por aluno no card "Próxima viagem" (pedido do usuário:
+ * "aparecerá as informações — nome dos alunos, escolas, horário,
+ * bairros, responsáveis"). Todo campo de `RouteStudentDetalhado` é
+ * opcional (join que pode falhar isoladamente no backend) — nunca
+ * mostra um traço genérico, só omite a informação que não veio.
+ */
+function AlunoPreViagemRow({ aluno }: { aluno: RouteStudentDetalhado }): JSX.Element {
+  return (
+    <div className="flex flex-col gap-0.5 rounded-xl bg-muted px-3 py-2">
+      <div className="flex items-center justify-between gap-2">
+        <Typography variant="bodySmall" className="font-semibold leading-tight">
+          {aluno.studentNome ?? "Aluno"}
+        </Typography>
+        {aluno.horarioPrevisto ? (
+          <Typography variant="caption" color="muted">
+            {aluno.horarioPrevisto}
+          </Typography>
+        ) : null}
+      </div>
+      <Typography variant="caption" color="muted">
+        {[aluno.schoolNome, aluno.bairro].filter(Boolean).join(" · ")}
+      </Typography>
+      {aluno.responsavelNome ? (
+        <Typography variant="caption" color="muted">
+          Responsável: {aluno.responsavelNome}
+        </Typography>
+      ) : null}
+    </div>
+  );
+}
+
 /** Mensagem exata já usada no popup de suporte pós-CNH — mesmo canal real, aqui só o contexto muda (motorista pedindo ajuda durante a operação, não logo após a verificação). */
 const DRIVER_SUPPORT_WHATSAPP_MESSAGE = "Olá! Preciso de ajuda do suporte durante uma viagem.";
 
@@ -645,6 +679,13 @@ function RotaOperacional({
   const { data: trip, isLoading: isLoadingTrip } = useTodayTrip(rota.id);
   const { data: stops } = useRouteStops(rota.id);
   const { data: routeStudents } = useRouteStudents(rota.id);
+  // Card "Próxima viagem" (pedido do usuário: "aparecerá as informações
+  // — nome dos alunos, escolas, horário, bairros, responsáveis... embaixo
+  // dessas informações, deverá ter o botão deslizante para iniciar a
+  // viagem") — só busca antes da viagem existir, mesmo princípio de
+  // `useMyLocation`/outros hooks condicionais nesta tela: nenhuma
+  // consulta extra depois que a viagem já começou.
+  const { data: routeStudentsDetalhado } = useRouteStudentsDetalhado(!trip ? rota.id : undefined);
   const { data: studentEvents } = useTripStudentEvents(trip?.id);
   const { data: veiculoPadrao } = useVehicle(rota.veiculoPadraoId ?? "");
 
@@ -825,6 +866,12 @@ function RotaOperacional({
               </Typography>
             )}
           </div>
+          {/* Código único da viagem (pedido do usuário: "o código da viagem - único") — só existe depois que a viagem já foi iniciada. */}
+          {trip ? (
+            <Typography variant="caption" color="muted" className="font-mono tracking-wide">
+              Código da viagem: {trip.codigo}
+            </Typography>
+          ) : null}
           <Typography variant="bodySmall" color="muted">
             {proximaParada
               ? `Próxima parada: ${proximaParada.endereco}`
@@ -842,25 +889,43 @@ function RotaOperacional({
       {!trip && (veiculoPadrao ?? routeStudents) ? (
         <Card>
           <Card.Header title="Próxima viagem" />
-          <Card.Body className="flex gap-2">
-            {veiculoPadrao ? (
-              <div className="flex flex-1 flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-2">
-                <Typography variant="caption" color="muted">
-                  Veículo
-                </Typography>
-                <Typography variant="bodySmall" className="font-semibold leading-tight">
-                  {veiculoPadrao.modelo} · {veiculoPadrao.placa}
-                </Typography>
-              </div>
-            ) : null}
-            {routeStudents ? (
-              <div className="flex flex-1 flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-2">
-                <Typography variant="caption" color="muted">
-                  Alunos
-                </Typography>
-                <Typography variant="bodySmall" className="font-semibold leading-tight">
-                  {routeStudents.length} confirmados
-                </Typography>
+          <Card.Body className="flex flex-col gap-3">
+            <div className="flex gap-2">
+              {veiculoPadrao ? (
+                <div className="flex flex-1 flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-2">
+                  <Typography variant="caption" color="muted">
+                    Veículo
+                  </Typography>
+                  <Typography variant="bodySmall" className="font-semibold leading-tight">
+                    {veiculoPadrao.modelo} · {veiculoPadrao.placa}
+                  </Typography>
+                </div>
+              ) : null}
+              {routeStudents ? (
+                <div className="flex flex-1 flex-col items-start gap-0.5 rounded-xl bg-muted px-3 py-2">
+                  <Typography variant="caption" color="muted">
+                    Alunos
+                  </Typography>
+                  <Typography variant="bodySmall" className="font-semibold leading-tight">
+                    {routeStudents.length} confirmados
+                  </Typography>
+                </div>
+              ) : null}
+            </div>
+
+            {/*
+              Lista detalhada por aluno (pedido do usuário: "aparecerá as
+              informações — nome dos alunos, escolas, horário, bairros,
+              responsáveis. Embaixo dessas informações, deverá ter o
+              botão deslizante para iniciar a viagem/rota") — o botão
+              deslizante em si já vive mais abaixo nesta mesma tela,
+              fora deste cartão.
+            */}
+            {routeStudentsDetalhado && routeStudentsDetalhado.length > 0 ? (
+              <div className="flex flex-col gap-2 border-t border-border pt-3">
+                {routeStudentsDetalhado.map((aluno) => (
+                  <AlunoPreViagemRow key={aluno.id} aluno={aluno} />
+                ))}
               </div>
             ) : null}
           </Card.Body>

@@ -113,6 +113,21 @@ export interface RouteStudent {
   updatedAt: string;
 }
 
+/**
+ * `RouteStudent` + nomes legíveis (pedido do usuário: card pré-início da
+ * viagem — "aparecerá as informações... nome dos alunos, escolas,
+ * horário, bairros, responsáveis"). Todos opcionais — um join que falhou
+ * isoladamente no backend nunca derruba a linha inteira, só aparece sem
+ * aquele campo (mesmo princípio de `TransportRequest.studentNome`/etc.).
+ */
+export interface RouteStudentDetalhado extends RouteStudent {
+  studentNome?: string;
+  schoolNome?: string;
+  bairro?: string;
+  responsavelNome?: string;
+  horarioPrevisto?: string;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -194,6 +209,13 @@ export function createRoutesEndpoints(apiClient: ApiClient) {
 
     listStudents: async (id: string): Promise<RouteStudent[]> =>
       (await apiClient.request<ApiEnvelope<RouteStudent[]>>(`/routes/${id}/students`)).data,
+
+    listStudentsDetalhado: async (id: string): Promise<RouteStudentDetalhado[]> =>
+      (
+        await apiClient.request<ApiEnvelope<RouteStudentDetalhado[]>>(
+          `/routes/${id}/students/detalhado`,
+        )
+      ).data,
 
     removeStudent: async (id: string, routeStudentId: string): Promise<void> => {
       await apiClient.request(`/routes/${id}/students/${routeStudentId}`, { method: "DELETE" });

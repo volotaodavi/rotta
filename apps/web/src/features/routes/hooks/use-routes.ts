@@ -14,7 +14,6 @@ import type {
 
 import { rottaAiApi, routesApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do novo fluxo de Rotas (pedido do usuário: "crie uma
  * aba para 'Criar rota'... esquece o fluxo anterior") — `/rotas`,
@@ -138,6 +137,21 @@ export function useRouteStudents(routeId: string | undefined) {
   return useQuery({
     queryKey: ["routes", routeId, "students"],
     queryFn: () => routesApi.listStudents(routeId as string),
+    enabled: Boolean(routeId),
+  });
+}
+
+/**
+ * `useRouteStudents` + nomes legíveis (pedido do usuário: card
+ * pré-início da viagem — "aparecerá as informações... nome dos alunos,
+ * escolas, horário, bairros, responsáveis"). Chave de cache própria
+ * (`"detalhado"`) — nunca reaproveita a de `useRouteStudents`, já que
+ * são respostas de formatos diferentes.
+ */
+export function useRouteStudentsDetalhado(routeId: string | undefined) {
+  return useQuery({
+    queryKey: ["routes", routeId, "students", "detalhado"],
+    queryFn: () => routesApi.listStudentsDetalhado(routeId as string),
     enabled: Boolean(routeId),
   });
 }

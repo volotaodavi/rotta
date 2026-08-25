@@ -43,6 +43,7 @@ import {
   useMinhasRotas,
   useRouteStops,
   useRouteStudents,
+  useRouteStudentsDetalhado,
   useStudent,
 } from "../hooks/use-driver-routes";
 import {
@@ -58,7 +59,14 @@ import {
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "../hooks/use-my-location";
 import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
-import type { NextEta, Route, RouteStop, RouteStudent, TripStudentEvent } from "@rotta/api-client";
+import type {
+  NextEta,
+  Route,
+  RouteStop,
+  RouteStudent,
+  RouteStudentDetalhado,
+  TripStudentEvent,
+} from "@rotta/api-client";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
@@ -239,6 +247,42 @@ function MeuMapa({
  * vira marcador no `RottaMap`). Sem custo, sem SDK de navegação
  * embutido. Só aparece quando `parada` existe.
  */
+/**
+ * Uma linha por aluno no card "Próxima viagem" (pedido do usuário:
+ * "aparecerá as informações — nome dos alunos, escolas, horário,
+ * bairros, responsáveis"). Todo campo de `RouteStudentDetalhado` é
+ * opcional (join que pode falhar isoladamente no backend) — nunca
+ * mostra um traço genérico, só omite a informação que não veio.
+ */
+function AlunoPreViagemRow({ aluno }: { aluno: RouteStudentDetalhado }): JSX.Element {
+  const { theme } = useTheme();
+  const subtitulo = [aluno.schoolNome, aluno.bairro].filter(Boolean).join(" · ");
+  return (
+    <View style={[styles.alunoPreViagemRow, { backgroundColor: theme.colors.surface }]}>
+      <View style={{ flex: 1 }}>
+        <View style={styles.alunoPreViagemHeaderRow}>
+          <Text style={{ color: theme.colors.text, fontWeight: "600", fontSize: 13 }}>
+            {aluno.studentNome ?? "Aluno"}
+          </Text>
+          {aluno.horarioPrevisto ? (
+            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+              {aluno.horarioPrevisto}
+            </Text>
+          ) : null}
+        </View>
+        {subtitulo ? (
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{subtitulo}</Text>
+        ) : null}
+        {aluno.responsavelNome ? (
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            Responsável: {aluno.responsavelNome}
+          </Text>
+        ) : null}
+      </View>
+    </View>
+  );
+}
+
 function ProximaParadaEtaCard({
   eta,
   parada,
@@ -595,6 +639,11 @@ function RotaOperacional({
   const { data: stops } = useRouteStops(rota.id);
   const { data: routeStudents } = useRouteStudents(rota.id);
   const { data: studentEvents } = useTripStudentEvents(trip?.id);
+  // Card "Próxima viagem" (pedido do usuário: "aparecerá as informações
+  // — nome dos alunos, escolas, horário, bairros, responsáveis") — só
+  // busca antes da viagem existir, mesma regra de outros hooks
+  // condicionais nesta tela.
+  const { data: routeStudentsDetalhado } = useRouteStudentsDetalhado(!trip ? rota.id : undefined);
 
   const startTrip = useStartTrip(rota.id);
   const pauseTrip = usePauseTrip(rota.id);
@@ -767,6 +816,14 @@ function RotaOperacional({
                 </Text>
               )}
             </View>
+            {/* Código único da viagem (pedido do usuário: "o código da viagem - único") — só existe depois que a viagem já foi iniciada. */}
+            {trip ? (
+              <Text
+                style={{ color: theme.colors.textMuted, fontSize: 12, fontFamily: "monospace" }}
+              >
+                Código da viagem: {trip.codigo}
+              </Text>
+            ) : null}
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {proximaParada
                 ? `Próxima parada: ${proximaParada.endereco}`
@@ -794,6 +851,21 @@ function RotaOperacional({
                 {totalAlunos} alunos confirmados
               </Text>
             </View>
+            {/*
+              Lista detalhada por aluno (pedido do usuário: "aparecerá
+              as informações — nome dos alunos, escolas, horário,
+              bairros, responsáveis. Embaixo dessas informações, deverá
+              ter o botão deslizante para iniciar a viagem/rota") — o
+              botão deslizante em si já vive mais abaixo nesta mesma
+              tela, fora deste cartão.
+            */}
+            {routeStudentsDetalhado && routeStudentsDetalhado.length > 0 ? (
+              <View style={[styles.alunosPreViagemList, { borderTopColor: theme.colors.border }]}>
+                {routeStudentsDetalhado.map((aluno) => (
+                  <AlunoPreViagemRow key={aluno.id} aluno={aluno} />
+                ))}
+              </View>
+            ) : null}
           </VehicleCard>
         ) : null}
 
@@ -1142,12 +1214,25 @@ const styles = StyleSheet.create({
   },
   alunoActionButtonLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
   alunoActions: { alignItems: "center", flexDirection: "row", gap: 16 },
+  alunoPreViagemHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  alunoPreViagemRow: {
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: 8,
+    padding: 10,
+  },
   alunoRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 8,
   },
   alunoRowContainer: { gap: 4, paddingVertical: 6 },
+  alunosPreViagemList: { borderTopWidth: 1, gap: 8, paddingTop: 12 },
   ausenciaForm: { alignItems: "center" },
   controlsRow: { flexDirection: "row", gap: 8 },
   controlsSection: { gap: 8, paddingHorizontal: 16 },

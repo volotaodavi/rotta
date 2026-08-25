@@ -32,6 +32,19 @@ export function useRouteStudents(routeId: string | undefined) {
   });
 }
 
+/**
+ * `useRouteStudents` + nomes legíveis (pedido do usuário: card
+ * pré-início da viagem — "aparecerá as informações... nome dos alunos,
+ * escolas, horário, bairros, responsáveis").
+ */
+export function useRouteStudentsDetalhado(routeId: string | undefined) {
+  return useQuery({
+    queryKey: ["driver", "routes", routeId, "students", "detalhado"],
+    queryFn: () => routesApi.listStudentsDetalhado(routeId as string),
+    enabled: Boolean(routeId),
+  });
+}
+
 /** Nome do aluno para exibir em cada parada — cada linha busca o próprio, mesmo padrão de `transporte-inicio-screen.tsx#DetalhesContrato`. */
 export function useStudent(studentId: string | undefined) {
   return useQuery({
