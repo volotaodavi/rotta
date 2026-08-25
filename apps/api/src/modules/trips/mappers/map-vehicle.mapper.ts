@@ -17,5 +17,8 @@ export function toMapVehicleResponseDto(trip: ActiveTripWithDetails): MapVehicle
     iniciadaEm: trip.iniciadaEm,
     companyId: trip.company?.id,
     companyNome: trip.company?.nomeFantasia,
+    companyCidade: trip.company?.cidade,
+    companyBairro: trip.company?.bairro,
+    companyCpfCnpj: trip.company?.cpfCnpj,
   };
 }

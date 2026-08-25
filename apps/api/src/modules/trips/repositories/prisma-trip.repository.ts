@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
+
 import type {
   ActiveTripWithDetails,
   CreateTripData,
@@ -63,7 +64,9 @@ export class PrismaTripRepository implements TripRepository {
           route: { select: { id: true, nome: true, turno: true } },
           motorista: { select: { id: true, nome: true } },
           monitor: { select: { id: true, nome: true } },
-          company: { select: { id: true, nomeFantasia: true } },
+          company: {
+            select: { id: true, nomeFantasia: true, cidade: true, bairro: true, cpfCnpj: true },
+          },
         },
       }),
     );

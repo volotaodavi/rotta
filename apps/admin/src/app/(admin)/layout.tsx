@@ -19,6 +19,7 @@ import {
   LogOut,
   MessageCircle,
   Plus,
+  Radar,
   ScrollText,
   Search,
   ShieldCheck,
@@ -37,6 +38,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffice";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { PrivacyProvider, usePrivacy } from "@/providers/privacy-provider";
+
 
 interface NavItem {
   href: Route;
@@ -61,6 +63,7 @@ const NAV_PRINCIPAL: NavItem[] = [
   { href: "/inteligencia", label: "Inteligência", icon: BarChart3 },
   { href: "/empresas", label: "Empresas", icon: Building2 },
   { href: "/veiculos", label: "Veículos", icon: Car },
+  { href: "/monitoramento", label: "Monitoramento", icon: Radar },
   { href: "/escolas", label: "Escolas", icon: GraduationCap },
   { href: "/marketplace/solicitacoes", label: "Marketplace", icon: Store },
   { href: "/verificacao-identidade", label: "Verificação de identidade", icon: ShieldCheck },

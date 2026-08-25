@@ -28,6 +28,10 @@ export interface MapVehicle {
   /** Só vem preenchido no Mapa Nacional de Veículos (Admin Rotta chamando `getMap()` sem `companyId`). */
   companyId?: string;
   companyNome?: string;
+  /** Idem — alimentam a busca por localidade/CNPJ da Central de Monitoramento do Admin (`/monitoramento`). */
+  companyCidade?: string;
+  companyBairro?: string;
+  companyCpfCnpj?: string;
 }
 
 interface ApiEnvelope<T> {

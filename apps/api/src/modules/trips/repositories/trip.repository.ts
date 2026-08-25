@@ -30,8 +30,15 @@ export interface ActiveTripWithDetails extends Trip {
   route: { id: string; nome: string; turno: string };
   motorista: { id: string; nome: string };
   monitor: { id: string; nome: string } | null;
-  /** Só populado por `listActiveNationwide` — o mapa por tenant já sabe de qual empresa é (é a própria empresa logada). */
-  company?: { id: string; nomeFantasia: string };
+  /**
+   * Só populado por `listActiveNationwide` — o mapa por tenant já sabe
+   * de qual empresa é (é a própria empresa logada). `cidade`/`bairro`/
+   * `cpfCnpj` alimentam a busca da Central de Monitoramento do Admin
+   * (pedido do usuário: "pesquisar a transportadora e localidade... o
+   * admin vai clicar e aparecerá o mapa e a localização em tempo
+   * real") — nunca usados fora dessa busca client-side.
+   */
+  company?: { id: string; nomeFantasia: string; cidade: string; bairro: string; cpfCnpj: string };
 }
 
 /**

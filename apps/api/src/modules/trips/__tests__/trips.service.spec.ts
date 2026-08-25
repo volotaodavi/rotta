@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 import { NotificationEventType, TripStatus } from "@prisma/client";
 
+
 import { TripsService } from "../trips.service";
 
 import type { TripPositionRepository } from "../repositories/trip-position.repository";
@@ -967,7 +968,13 @@ describe("TripsService", () => {
           route: { id: "route-1", nome: "Rota A", turno: "MANHA" },
           motorista: { id: "motorista-1", nome: "João" },
           monitor: null,
-          company: { id: "company-1", nomeFantasia: "Transportadora Azul" },
+          company: {
+            id: "company-1",
+            nomeFantasia: "Transportadora Azul",
+            cidade: "São Paulo",
+            bairro: "Vila Mariana",
+            cpfCnpj: "12345678000199",
+          },
         },
       ]);
 
@@ -979,6 +986,9 @@ describe("TripsService", () => {
       expect(result[0]).toMatchObject({
         companyId: "company-1",
         companyNome: "Transportadora Azul",
+        companyCidade: "São Paulo",
+        companyBairro: "Vila Mariana",
+        companyCpfCnpj: "12345678000199",
         placa: "ABC1D23",
       });
     });

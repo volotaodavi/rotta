@@ -22,4 +22,8 @@ export class MapVehicleResponseDto {
   /** Só populado no Mapa Nacional de Veículos (Admin Rotta sem `companyId`) — identifica de qual empresa é cada marcador. */
   @ApiPropertyOptional() companyId?: string;
   @ApiPropertyOptional() companyNome?: string;
+  /** Idem — alimentam a busca por localidade/CNPJ da Central de Monitoramento do Admin. */
+  @ApiPropertyOptional() companyCidade?: string;
+  @ApiPropertyOptional() companyBairro?: string;
+  @ApiPropertyOptional() companyCpfCnpj?: string;
 }
