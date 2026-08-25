@@ -16,6 +16,7 @@
     "clean": "rm -rf .next .turbo"
   },
   "dependencies": {
+    "@didit-protocol/sdk-web": "^0.2.1",
     "@rotta/api-client": "workspace:*",
     "@rotta/auth": "workspace:*",
     "@rotta/icons": "workspace:*",
@@ -24,7 +25,7 @@
     "@rotta/types": "workspace:*",
     "@rotta/ui": "workspace:*",
     "@rotta/validators": "workspace:*",
-    "@didit-protocol/sdk-web": "^0.2.1",
+    "@sentry/nextjs": "10.70.0",
     "@tanstack/react-query": "^5.62.11",
     "maplibre-gl": "^6.1.0",
     "next": "15.5.23",

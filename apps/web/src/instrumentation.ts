@@ -1,4 +1,7 @@
+import * as Sentry from "@sentry/nextjs";
+
 import type { Instrumentation } from "next";
+
 
 /**
  * Pedido explícito do usuário (fundador, investigando o "Server
@@ -9,21 +12,21 @@ import type { Instrumentation } from "next";
  * roda no SERVIDOR, antes dessa redação acontecer — é o único hook do
  * próprio Next.js pensado pra isso (https://nextjs.org/docs/app/guides/instrumentation#capturing-errors).
  *
- * De propósito: só `console.error`/`console.log` (aparece nos Runtime
- * Logs da Vercel) — nenhuma chamada de rede, nenhuma alteração
- * funcional em nenhuma página, nenhum outro comportamento novo. Nunca
- * registra headers, cookies, tokens, senha ou `Authorization`.
- *
- * `register()` abaixo é TEMPORÁRIO — pedido explícito do usuário pra
- * provar, com uma linha própria e inconfundível nos Runtime Logs
- * (`[ROTTA_INSTRUMENTATION_REGISTERED]`), que este arquivo
- * (`apps/web/src/instrumentation.ts`) realmente foi compilado e
- * carregado pelo runtime do deployment publicado — sem essa prova
- * separada, um "onRequestError nunca disparou" é ambíguo entre "não
- * aconteceu nenhum erro" e "a instrumentação nunca rodou". Remover
- * depois que a causa raiz for confirmada.
+ * `register()` carrega o init do SDK do Sentry (`@sentry/nextjs`, aponta
+ * pro GlitchTip — ver `instrumentation-client.ts`) por runtime — sem
+ * isso, `Sentry.captureRequestError` roda sem cliente configurado. O
+ * `console.log`/`console.error` seguem aqui também (aparecem nos Runtime
+ * Logs da Vercel), com a mesma tag `[ROTTA_SERVER_RENDER_ERROR]` de
+ * antes — nenhuma chamada de rede própria, nenhuma alteração funcional em
+ * nenhuma página, nenhum registro de headers/cookies/tokens/senha.
  */
-export function register(): void {
+export async function register(): Promise<void> {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    await import("../sentry.server.config");
+  }
+  if (process.env.NEXT_RUNTIME === "edge") {
+    await import("../sentry.edge.config");
+  }
   // eslint-disable-next-line no-console
   console.log("[ROTTA_INSTRUMENTATION_REGISTERED]", {
     runtime: process.env.NEXT_RUNTIME,
@@ -32,6 +35,8 @@ export function register(): void {
 }
 
 export const onRequestError: Instrumentation.onRequestError = (error, request, context) => {
+  Sentry.captureRequestError(error, request, context);
+
   const err = error as { name?: string; message?: string; digest?: string; stack?: string };
   // `renderType` NÃO existe em `RequestErrorContext` no `.d.ts` realmente
   // instalado desta versão do Next (15.5.22) — só `routerKind, routePath,

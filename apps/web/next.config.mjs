@@ -20,6 +20,8 @@
  * estáticas funcionavam, sempre com o SHA completo em `?dpl=`. A remoção
  * abaixo é deliberada e deve ser validada como experimento isolado.
  */
+import { withSentryConfig } from "@sentry/nextjs";
+
 const isVercelBuild = Boolean(process.env.VERCEL);
 const buildId = process.env.VERCEL_GIT_COMMIT_SHA ?? (isVercelBuild ? undefined : "development");
 
@@ -64,4 +66,19 @@ const nextConfig = {
   },
 };
 
-export default nextConfig;
+/**
+ * `withSentryConfig` embrulha o build pra registrar o release/source maps
+ * no Sentry (aqui, GlitchTip — mesmo protocolo, ver
+ * `instrumentation-client.ts`). Sem `SENTRY_AUTH_TOKEN` configurado (não
+ * temos um), o upload de source map é pulado silenciosamente — o SDK
+ * continua funcionando normalmente pra captura de erro, só não resolve
+ * nomes de arquivo/linha originais a partir do minificado.
+ */
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  disableLogger: true,
+  sourcemaps: {
+    disable: true,
+  },
+  telemetry: false,
+});
