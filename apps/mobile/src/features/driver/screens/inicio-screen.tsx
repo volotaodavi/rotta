@@ -739,11 +739,13 @@ function RotaOperacional({
   const gpsAvisoTexto =
     gpsStatus === "reporting"
       ? "Compartilhando sua localização com os responsáveis."
-      : gpsStatus === "requesting"
-        ? "Solicitando permissão de localização…"
-        : gpsStatus === "denied"
-          ? "Localização negada. Os responsáveis não verão o veículo no mapa até você permitir."
-          : null;
+      : gpsStatus === "reporting-foreground-only"
+        ? 'Compartilhando localização só com o app aberto — permita "Sempre" nas configurações para continuar com o app em segundo plano.'
+        : gpsStatus === "requesting"
+          ? "Solicitando permissão de localização…"
+          : gpsStatus === "denied"
+            ? "Localização negada. Os responsáveis não verão o veículo no mapa até você permitir."
+            : null;
 
   // Números reais do "Resumo da viagem" (paridade com o Painel Web) —
   // mesma regra que já decide o ícone de cada `AlunoParadaRow` abaixo.

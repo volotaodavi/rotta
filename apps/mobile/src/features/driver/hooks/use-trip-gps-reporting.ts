@@ -1,43 +1,59 @@
 import * as Location from "expo-location";
 import { useEffect, useRef, useState } from "react";
 
+import { BACKGROUND_TRIP_LOCATION_TASK, setActiveTripId } from "./background-trip-location-task";
+
 import { tripsApi } from "@/lib/api-client";
 
-export type GpsReportingStatus = "idle" | "requesting" | "reporting" | "denied" | "error";
+export type GpsReportingStatus =
+  "idle" | "requesting" | "reporting" | "reporting-foreground-only" | "denied" | "error";
 
 /**
  * Envio de posição do Motorista durante a viagem (Prompt Mestre da
  * Rotta, Seção 8 — "quando o motorista iniciar uma viagem... o GPS
  * atualiza sua posição"; "nunca deixar o GPS ativo desnecessariamente").
- * Só assina `watchPositionAsync` enquanto `tripId` não é `null` — a
- * tela chamadora passa `null` sempre que a viagem não está
- * `EM_ANDAMENTO` (pausada, ainda não iniciada, finalizada), então a
- * assinatura é removida automaticamente nesses casos, nunca ficando
- * ligada em segundo plano.
+ * Só inicia o rastreamento enquanto `tripId` não é `null` — a tela
+ * chamadora passa `null` sempre que a viagem não está `EM_ANDAMENTO`
+ * (pausada, ainda não iniciada, finalizada), então o rastreamento para
+ * automaticamente nesses casos, nunca ficando ligado à toa.
  *
- * Rastreamento em PRIMEIRO PLANO apenas (`requestForegroundPermissionsAsync`,
- * mesma API já usada por `marketplace/hooks/use-location.ts`) — GPS em
- * segundo plano exigiria `expo-task-manager` + permissão "Always" do
- * SO, um compromisso nativo maior (mesma categoria de decisão do
- * `BottomSheet` sem `react-native-gesture-handler`, Dossiê 37 §3.1);
- * registrado como próximo passo, não fingido aqui.
+ * Item 4 do pedido do usuário: "GPS continuar rodando de verdade em
+ * segundo plano" — tenta sempre `startLocationUpdatesAsync`
+ * (`expo-location` + `expo-task-manager`, ver `background-trip-location-task.ts`),
+ * que o SO mantém entregando posições mesmo com o app minimizado/
+ * bloqueado (Android: serviço em primeiro plano com notificação
+ * persistente, já configurado em `app.config.ts`; iOS: "Always"). Só
+ * cai pro antigo `watchPositionAsync` (foreground-only, mesmo
+ * comportamento de antes) quando a permissão "Always"/background é
+ * negada — nunca deixa de reportar posição nenhuma, só perde a
+ * cobertura em segundo plano nesse caso específico.
  */
 export function useTripGpsReporting(tripId: string | null): { status: GpsReportingStatus } {
   const [status, setStatus] = useState<GpsReportingStatus>("idle");
-  const subscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const foregroundSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
+  const backgroundStartedByThisRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function startWatching(): Promise<void> {
-      setStatus("requesting");
-      const { status: permissionStatus } = await Location.requestForegroundPermissionsAsync();
-      if (cancelled) return;
-      if (permissionStatus !== "granted") {
-        setStatus("denied");
-        return;
+    async function stopEverything(): Promise<void> {
+      setActiveTripId(null);
+      if (backgroundStartedByThisRef.current) {
+        backgroundStartedByThisRef.current = false;
+        const started = await Location.hasStartedLocationUpdatesAsync(
+          BACKGROUND_TRIP_LOCATION_TASK,
+        ).catch(() => false);
+        if (started) {
+          await Location.stopLocationUpdatesAsync(BACKGROUND_TRIP_LOCATION_TASK).catch(() => {
+            // Já pode ter sido parado pelo SO (app encerrado) — sem efeito colateral aqui.
+          });
+        }
       }
+      foregroundSubscriptionRef.current?.remove();
+      foregroundSubscriptionRef.current = null;
+    }
 
+    async function startForegroundOnlyFallback(): Promise<void> {
       const subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 15_000, distanceInterval: 25 },
         (position) => {
@@ -62,20 +78,68 @@ export function useTripGpsReporting(tripId: string | null): { status: GpsReporti
         subscription.remove();
         return;
       }
-      subscriptionRef.current = subscription;
+      foregroundSubscriptionRef.current = subscription;
+      setStatus("reporting-foreground-only");
+    }
+
+    async function startTracking(): Promise<void> {
+      setStatus("requesting");
+      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      if (cancelled) return;
+      if (foregroundStatus !== "granted") {
+        setStatus("denied");
+        return;
+      }
+
+      setActiveTripId(tripId);
+
+      // "Always"/background — sem ela, o SO suspende qualquer rastreamento
+      // assim que o app sai de primeiro plano; com ela, o serviço nativo
+      // continua entregando posições pra `BACKGROUND_TRIP_LOCATION_TASK`
+      // mesmo minimizado. Negada (comum em versões mais antigas de
+      // Android/iOS ou escolha explícita do usuário) → cai pro fallback
+      // foreground-only, nunca trava a tela nem deixa de reportar nada.
+      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+      if (cancelled) return;
+      if (backgroundStatus !== "granted") {
+        await startForegroundOnlyFallback();
+        return;
+      }
+
+      const jaIniciado = await Location.hasStartedLocationUpdatesAsync(
+        BACKGROUND_TRIP_LOCATION_TASK,
+      ).catch(() => false);
+      if (!jaIniciado) {
+        await Location.startLocationUpdatesAsync(BACKGROUND_TRIP_LOCATION_TASK, {
+          accuracy: Location.Accuracy.Balanced,
+          timeInterval: 15_000,
+          distanceInterval: 25,
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: "Rotta — viagem em andamento",
+            notificationBody: "Compartilhando sua localização com as famílias em tempo real.",
+          },
+        });
+      }
+      if (cancelled) {
+        setActiveTripId(null);
+        await Location.stopLocationUpdatesAsync(BACKGROUND_TRIP_LOCATION_TASK).catch(() => {});
+        return;
+      }
+      backgroundStartedByThisRef.current = true;
       setStatus("reporting");
     }
 
     if (tripId) {
-      void startWatching().catch(() => setStatus("error"));
+      void startTracking().catch(() => setStatus("error"));
     } else {
       setStatus("idle");
+      void stopEverything();
     }
 
     return () => {
       cancelled = true;
-      subscriptionRef.current?.remove();
-      subscriptionRef.current = null;
+      void stopEverything();
     };
   }, [tripId]);
 
