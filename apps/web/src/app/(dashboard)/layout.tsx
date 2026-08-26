@@ -11,6 +11,7 @@ import type { Route } from "next";
 
 import { DriverBottomNav } from "@/components/driver-bottom-nav";
 import { LegalFooter } from "@/components/legal/legal-footer";
+import { NotificationBell } from "@/components/notification-bell";
 import { ResponsavelBottomNav } from "@/components/responsavel-bottom-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAppMode } from "@/features/driver/hooks/use-app-mode";
@@ -44,7 +45,6 @@ const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/rotas", label: "Rotas" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
-  { href: "/notificacoes", label: "Notificações" },
   { href: "/chamados", label: "Chamados" },
 ];
 
@@ -362,6 +362,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
               </button>
             </div>
           )}
+          {!showBottomNav && !isBlockedByIdentityVerification && <NotificationBell />}
           <ThemeToggle />
           <Button
             variant="ghost"
