@@ -30,6 +30,7 @@ import {
   Card,
   Modal,
   PanelGreeting,
+  Select,
   Spinner,
   Typography,
   buttonVariants,
@@ -73,9 +74,14 @@ import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
+import { useUpdateRoute } from "@/features/routes/hooks/use-routes";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
-import { useVehicle, useVehicleOccurrences } from "@/features/vehicles/hooks/use-vehicles";
+import {
+  useVehicle,
+  useVehicleOccurrences,
+  useVehiclesList,
+} from "@/features/vehicles/hooks/use-vehicles";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
 import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
@@ -849,6 +855,33 @@ function RotaOperacional({
     if (semVeiculoPadrao) setAvisoSemVeiculoAberto(true);
   }, [semVeiculoPadrao]);
 
+  // Pedido do usuário: "caso crie uma rota sem veículo... ele pode
+  // credenciar um veículo para essa rota (caso já tenha cadastrado um
+  // veículo na plataforma)... caso ele não tenha cadastrado nenhum
+  // veículo, ele deverá cadastrar o veículo e depois poderá inserir na
+  // rota" — antes só existia o caminho "cadastrar um veículo novo"
+  // (`/veiculos/novo`), mesmo quando a empresa já tinha algum. Busca a
+  // frota já cadastrada e, se houver pelo menos um veículo, oferece
+  // vincular direto aqui em vez de obrigar um cadastro novo.
+  const { data: veiculosDaEmpresa } = useVehiclesList({});
+  const [veiculoEscolhidoId, setVeiculoEscolhidoId] = useState("");
+  const updateRota = useUpdateRoute(rota.id);
+
+  function handleVincularVeiculoExistente(): void {
+    if (!veiculoEscolhidoId) return;
+    updateRota.mutate(
+      { veiculoPadraoId: veiculoEscolhidoId },
+      {
+        onSuccess: () => {
+          toast.success("Veículo vinculado a esta rota.");
+          setAvisoSemVeiculoAberto(false);
+          setVeiculoEscolhidoId("");
+        },
+        onError: () => toast.error("Não foi possível vincular o veículo. Tente de novo."),
+      },
+    );
+  }
+
   // Frente AP (pedido do usuário, depois de reportar que "deslizar para
   // iniciar não faz nada": "o mapa inteiro na tela... com um retângulo
   // flutuante... com os alunos, com um botão do lado - azul (embarque),
@@ -902,18 +935,44 @@ function RotaOperacional({
             <Typography variant="subtitle">Nenhum veículo cadastrado</Typography>
           </div>
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body className="flex flex-col gap-4">
           <Typography variant="body" color="muted">
             {isDono
-              ? "Esta rota ainda não tem um veículo vinculado. Cadastre um veículo antes de iniciar a viagem."
+              ? "Esta rota ainda não tem um veículo vinculado."
               : "Esta rota ainda não tem um veículo vinculado. Fale com sua transportadora para vincular um antes de iniciar a viagem."}
           </Typography>
+          {isDono && veiculosDaEmpresa && veiculosDaEmpresa.items.length > 0 ? (
+            <div className="flex flex-col gap-2">
+              <Typography variant="bodySmall" className="font-medium">
+                Já tem veículo cadastrado — vincule um a esta rota
+              </Typography>
+              <Select
+                value={veiculoEscolhidoId}
+                onChange={(event) => setVeiculoEscolhidoId(event.target.value)}
+              >
+                <option value="">Selecione um veículo</option>
+                {veiculosDaEmpresa.items.map((veiculo) => (
+                  <option key={veiculo.id} value={veiculo.id}>
+                    {veiculo.modelo} · {veiculo.placa}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
         </Modal.Body>
         <Modal.Footer className="flex justify-end gap-2">
           <Button variant="ghost" onClick={() => setAvisoSemVeiculoAberto(false)}>
             Fechar
           </Button>
-          {isDono ? (
+          {isDono && veiculoEscolhidoId ? (
+            <Button
+              variant="primary"
+              isLoading={updateRota.isPending}
+              onClick={handleVincularVeiculoExistente}
+            >
+              Vincular veículo
+            </Button>
+          ) : isDono ? (
             <Link href="/veiculos/novo" className={buttonVariants({ variant: "primary" })}>
               Cadastrar veículo
             </Link>
@@ -1367,18 +1426,6 @@ function ModoOperacionalFullScreen({
             <TripElapsedTimer iniciadaEm={trip.iniciadaEm} isRunning={isActive} accent={accent} />
           </div>
           <div className="pointer-events-auto flex items-center gap-2">
-            {isMotorista ? (
-              <button
-                type="button"
-                onClick={() => (isActive ? pauseTrip.mutate(trip.id) : resumeTrip.mutate(trip.id))}
-                disabled={pauseTrip.isPending || resumeTrip.isPending}
-                aria-label={isActive ? "Pausar viagem" : "Retomar viagem"}
-                title={isActive ? "Pausar viagem" : "Retomar viagem"}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-elevated/95 text-text shadow-lg backdrop-blur transition-colors hover:text-primary disabled:opacity-60"
-              >
-                {isActive ? <Pause size={18} /> : <Play size={18} />}
-              </button>
-            ) : null}
             <RecenterButton onClick={onRecenter} />
           </div>
         </div>
@@ -1401,7 +1448,27 @@ function ModoOperacionalFullScreen({
           <Typography variant="caption" color="muted">
             {alunosEmbarcados}/{totalAlunos} embarcados
           </Typography>
-          <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} accent={accent} />
+          <div className="flex shrink-0 items-center gap-2">
+            {/* Pedido do usuário: "o botão de pausar rota deverá sair de
+                onde está, pois ele está muito difícil de ser clicado" —
+                antes era um círculo de 44px flutuando por cima do mapa,
+                disputando toque com os gestos de arrastar/zoom do próprio
+                mapa. Movido pra dentro do cartão (mesma fileira do botão
+                de ocorrência), como botão normal com rótulo — alvo de
+                toque bem maior e sem concorrer com o mapa. */}
+            {isMotorista ? (
+              <Button
+                variant="secondary"
+                size="sm"
+                iconLeft={isActive ? <Pause size={16} /> : <Play size={16} />}
+                onClick={() => (isActive ? pauseTrip.mutate(trip.id) : resumeTrip.mutate(trip.id))}
+                isLoading={pauseTrip.isPending || resumeTrip.isPending}
+              >
+                {isActive ? "Pausar" : "Retomar"}
+              </Button>
+            ) : null}
+            <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} accent={accent} />
+          </div>
         </div>
 
         {paradaAlvo ? (

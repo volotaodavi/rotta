@@ -57,7 +57,6 @@ import {
   VEHICLE_TYPE_LABEL,
 } from "@/features/vehicles/labels";
 
-
 const TABS = [
   { id: "dados", label: "Dados" },
   { id: "documentos", label: "Documentos" },
@@ -209,8 +208,9 @@ function DadosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
                 onChange={(event) => updateField("modelo", event.target.value)}
               />
             </FormField>
-            <FormField label="Marca">
+            <FormField label="Marca" isRequired>
               <Input
+                required
                 value={form.marca ?? ""}
                 onChange={(event) => updateField("marca", event.target.value)}
               />

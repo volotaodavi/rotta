@@ -89,8 +89,6 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
 
-
-
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
  * ("visualizar escala/rota/paradas, iniciar/pausar/finalizar viagem")
@@ -1318,21 +1316,6 @@ function ModoOperacionalFullScreen({
             />
           </View>
           <View style={styles.fsTopBarActions}>
-            {isMotorista ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={isActive ? "Pausar viagem" : "Retomar viagem"}
-                disabled={pauseTrip.isPending || resumeTrip.isPending}
-                onPress={() => (isActive ? pauseTrip.mutate(trip.id) : resumeTrip.mutate(trip.id))}
-                style={[styles.fsRoundButton, { backgroundColor: theme.colors.surfaceElevated }]}
-              >
-                {isActive ? (
-                  <Pause size={18} color={theme.colors.text} />
-                ) : (
-                  <Play size={18} color={theme.colors.text} />
-                )}
-              </Pressable>
-            ) : null}
             <RecenterButton onPress={onRecenter} />
           </View>
         </View>
@@ -1356,6 +1339,28 @@ function ModoOperacionalFullScreen({
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             {alunosEmbarcados}/{totalAlunos} embarcados
           </Text>
+          {/* Pedido do usuário: "o botão de pausar rota deverá sair de
+              onde está, pois ele está muito difícil de ser clicado" —
+              antes era um círculo pequeno flutuando por cima do mapa
+              (`fsRoundButton`), competindo por toque com o próprio gesto
+              de arrastar/dar zoom no mapa. Movido pra dentro do cartão,
+              mesmo `VehicleButton` já usado no modo não-tela-cheia —
+              alvo de toque bem maior. */}
+          {isMotorista ? (
+            <VehicleButton
+              label={isActive ? "Pausar" : "Retomar"}
+              variant="secondary"
+              icon={
+                isActive ? (
+                  <Pause size={16} color={theme.colors.text} />
+                ) : (
+                  <Play size={16} color={theme.colors.text} />
+                )
+              }
+              onPress={() => (isActive ? pauseTrip.mutate(trip.id) : resumeTrip.mutate(trip.id))}
+              isLoading={pauseTrip.isPending || resumeTrip.isPending}
+            />
+          ) : null}
           <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} accentColor={accentColor} />
         </View>
 
@@ -1723,13 +1728,6 @@ const styles = StyleSheet.create({
   fsMapArea: { flex: 1, position: "relative" },
   fsMapLoading: { alignItems: "center", flex: 1, justifyContent: "center" },
   fsRoot: { flex: 1 },
-  fsRoundButton: {
-    alignItems: "center",
-    borderRadius: 999,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-  },
   fsStatusDot: { borderRadius: 999, height: 8, width: 8 },
   fsTopBar: {
     alignItems: "flex-start",

@@ -16,11 +16,10 @@ export class CreateVehicleDto {
   @MaxLength(120)
   modelo!: string;
 
-  @ApiPropertyOptional({ example: "Mercedes-Benz" })
-  @IsOptional()
+  @ApiProperty({ example: "Mercedes-Benz" })
   @IsString()
   @MaxLength(80)
-  marca?: string;
+  marca!: string;
 
   @ApiPropertyOptional({ example: 2022 })
   @IsOptional()

@@ -38,7 +38,6 @@ export default function NovoVeiculoPage(): JSX.Element {
   const lookupByPlate = useLookupVehicleByPlate();
   const [form, setForm] = useState<CreateVehicleInput>(INITIAL_STATE);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [plateLookupMessage, setPlateLookupMessage] = useState<string | null>(null);
   /** Última placa já buscada (normalizada) — evita disparar a mesma busca de novo a cada tecla enquanto o usuário continua digitando outra coisa no campo. */
   const lastLookedUpPlate = useRef<string | null>(null);
 
@@ -57,10 +56,14 @@ export default function NovoVeiculoPage(): JSX.Element {
    * busca sozinha depois de um debounce de 500ms (dá tempo da pessoa
    * terminar de digitar o último caractere sem disparar uma chamada por
    * tecla). Nunca sobrescreve o que a empresa já digitou (só preenche
-   * campo vazio), e nunca bloqueia o cadastro quando o provedor não está
-   * configurado neste ambiente (`VehiclePlateLookupService`, backend) —
-   * a mensagem deixa isso explícito em vez de fingir que a busca
-   * simplesmente não achou nada.
+   * campo vazio).
+   *
+   * Silenciosa de propósito (pedido do usuário: "retire os avisos de que
+   * a placa não foi localizada, ou que a placa foi averiguada... deixe
+   * limpo") — se o provedor não achar nada, deu erro ou não está
+   * configurado neste ambiente, o formulário simplesmente segue vazio
+   * pra pessoa preencher à mão, sem nenhuma mensagem. A busca em si
+   * nunca bloqueia o cadastro.
    */
   useEffect(() => {
     const placa = form.placa.trim().toUpperCase();
@@ -68,7 +71,6 @@ export default function NovoVeiculoPage(): JSX.Element {
 
     const timer = setTimeout(() => {
       lastLookedUpPlate.current = placa;
-      setPlateLookupMessage(null);
       lookupByPlate
         .mutateAsync(placa)
         .then((result) => {
@@ -79,16 +81,9 @@ export default function NovoVeiculoPage(): JSX.Element {
             cor: current.cor || result.cor || current.cor,
             ano: current.ano ?? result.ano ?? current.ano,
           }));
-          if (!result.marca && !result.modelo && !result.ano && !result.cor) {
-            setPlateLookupMessage("O provedor não devolveu dados pra essa placa.");
-          }
         })
-        .catch((error: unknown) => {
-          setPlateLookupMessage(
-            error instanceof ApiError
-              ? error.message
-              : "Não foi possível buscar a placa agora. Preencha os dados manualmente.",
-          );
+        .catch(() => {
+          // Silencioso de propósito — ver comentário acima.
         });
     }, 500);
 
@@ -117,14 +112,7 @@ export default function NovoVeiculoPage(): JSX.Element {
         <Card>
           <Card.Header title="Dados do veículo" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <FormField
-              label="Placa"
-              isRequired
-              helperText={
-                plateLookupMessage ??
-                (lookupByPlate.isPending ? "Buscando dados da placa…" : undefined)
-              }
-            >
+            <FormField label="Placa" isRequired>
               <Input
                 required
                 placeholder="ABC1D23"
@@ -139,8 +127,9 @@ export default function NovoVeiculoPage(): JSX.Element {
                 onChange={(event) => updateField("modelo", event.target.value)}
               />
             </FormField>
-            <FormField label="Marca">
+            <FormField label="Marca" isRequired>
               <Input
+                required
                 value={form.marca}
                 onChange={(event) => updateField("marca", event.target.value)}
               />
