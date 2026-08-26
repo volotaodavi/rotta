@@ -12,8 +12,6 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, Prisma, type Trip } from "@prisma/client";
 
-import { haversineDistanceKm } from "@/shared/utils/geo.util";
-
 import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
 import { toTripPositionResponseDto } from "./mappers/trip-position.mapper";
 import { toTripStudentEventResponseDto } from "./mappers/trip-student-event.mapper";
@@ -42,6 +40,7 @@ import type { CreateTripData, TripRepository } from "./repositories/trip.reposit
 import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
 import type { RouteStudentResponseDto } from "../routes/dto/route-student-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService } from "@/modules/companies/companies.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
@@ -53,6 +52,7 @@ import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
+import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 export interface RequestMeta {
   ip?: string;
@@ -983,28 +983,83 @@ export class TripsService {
    * aluno que já embarcou só porque a parada dele coincide com a de
    * outro aluno ainda pendente.
    */
+  /**
+   * `waypointId` é o identificador EFETIVO da parada pro resto do
+   * pipeline (ordenação/ETA/geofencing/"vez do aluno") — normalmente é
+   * o próprio `routeStopId`, mas vira um id sintético
+   * (`override:{overrideId}`) quando o aluno tem um `StudentAddressOverride`
+   * ativo pra data da viagem que se aplica a este `tipo` (`AMBOS` ou o
+   * mesmo trecho). `routeStopId` continua sempre o FK permanente (nunca
+   * o sintético) — é o que `addStudentEvent` grava em
+   * `TripStudentEvent.routeStopId`. Dois alunos na mesma parada física,
+   * um com desvio hoje e outro sem, viram dois waypoints distintos —
+   * nunca notificam/calculam ETA como se fossem o mesmo ponto.
+   */
   private async listPendenciasPorAluno(
     trip: Trip,
     actor: AuthenticatedUser,
   ): Promise<
-    Array<{ vinculo: RouteStudentResponseDto; tipo: "EMBARQUE" | "DESEMBARQUE"; routeStopId: string }>
-  > {
-    const [vinculos, eventos] = await Promise.all([
-      this.routesService.listStudents(trip.routeId, actor),
-      this.studentEventRepository.listByTrip(trip.id),
-    ]);
-
-    const pendencias: Array<{
+    Array<{
       vinculo: RouteStudentResponseDto;
       tipo: "EMBARQUE" | "DESEMBARQUE";
       routeStopId: string;
-    }> = [];
+      waypointId: string;
+      latitude: number;
+      longitude: number;
+      endereco: string;
+      horarioPrevisto: string;
+    }>
+  > {
+    const [vinculos, eventos, stops] = await Promise.all([
+      this.routesService.listStudents(trip.routeId, actor),
+      this.studentEventRepository.listByTrip(trip.id),
+      this.routesService.listStops(trip.routeId, actor),
+    ]);
+    const stopsById = new Map(stops.map((stop) => [stop.id, stop]));
+    const overridesByStudent = await this.studentsService.listAddressOverridesByStudentsAndDate(
+      vinculos.map((v) => v.studentId),
+      trip.data,
+    );
+
+    const resolverPendencia = (
+      vinculo: RouteStudentResponseDto,
+      tipo: "EMBARQUE" | "DESEMBARQUE",
+      routeStopId: string,
+    ) => {
+      const stop = stopsById.get(routeStopId);
+      const override = overridesByStudent.get(vinculo.studentId);
+      const trechoAplica = !!override && (override.trecho === "AMBOS" || override.trecho === tipo);
+      if (override && trechoAplica) {
+        return {
+          vinculo,
+          tipo,
+          routeStopId,
+          waypointId: `override:${override.id}`,
+          latitude: override.latitude,
+          longitude: override.longitude,
+          endereco: `${override.logradouro}, ${override.numero} - ${override.bairro}, ${override.cidade}/${override.estado}`,
+          horarioPrevisto: stop?.horarioPrevisto ?? "",
+        };
+      }
+      return {
+        vinculo,
+        tipo,
+        routeStopId,
+        waypointId: routeStopId,
+        latitude: stop?.latitude ?? 0,
+        longitude: stop?.longitude ?? 0,
+        endereco: stop?.endereco ?? "",
+        horarioPrevisto: stop?.horarioPrevisto ?? "",
+      };
+    };
+
+    const pendencias: Array<ReturnType<typeof resolverPendencia>> = [];
     for (const vinculo of vinculos) {
       const embarqueOuAusente = eventos.find(
         (e) => e.studentId === vinculo.studentId && (e.tipo === "EMBARCOU" || e.tipo === "AUSENTE"),
       );
       if (!embarqueOuAusente) {
-        pendencias.push({ vinculo, tipo: "EMBARQUE", routeStopId: vinculo.paradaEmbarqueId });
+        pendencias.push(resolverPendencia(vinculo, "EMBARQUE", vinculo.paradaEmbarqueId));
         continue;
       }
       if (embarqueOuAusente.tipo === "EMBARCOU") {
@@ -1012,7 +1067,7 @@ export class TripsService {
           (e) => e.studentId === vinculo.studentId && e.tipo === "DESEMBARCOU",
         );
         if (!jaDesembarcou) {
-          pendencias.push({ vinculo, tipo: "DESEMBARQUE", routeStopId: vinculo.paradaDesembarqueId });
+          pendencias.push(resolverPendencia(vinculo, "DESEMBARQUE", vinculo.paradaDesembarqueId));
         }
       }
     }
@@ -1021,13 +1076,19 @@ export class TripsService {
 
   /**
    * "Pendente" = tem pelo menos um aluno ativo que ainda não passou por
-   * esta parada hoje (ver `listPendenciasPorAluno`). `stops` já vem
-   * ordenado por `ordem` (`RouteStopRepository.listByRoute`) — o
-   * `filter` preserva essa ordem. Compartilhado com o geofencing
-   * (`detectarAproximacaoBestEffort`) e com `notificarVezDoAlunoBestEffort`,
-   * ambos precisam da mesma "próxima parada pendente" sem o custo de uma
-   * chamada OSRM a cada ping de GPS (Prompt "Rotta Geo Platform" §29 —
-   * "evitar consultas pesadas").
+   * esta parada hoje (ver `listPendenciasPorAluno`). Agrupa por
+   * `waypointId` (não mais por `routeStopId` cru): um aluno com desvio
+   * de endereço ativo pra hoje vira sua PRÓPRIA entrada sintética,
+   * separada da parada física compartilhada — nunca mistura o endereço
+   * de hoje dele com o de outro aluno que embarca no mesmo ponto de
+   * sempre. Itera `stops` na ordem cadastrada (`RouteStopRepository.
+   * listByRoute`) pra preservar a ordem original o quanto der; o desvio
+   * dentro do grupo de cada parada segue a ordem de `pendencias`.
+   * Compartilhado com o geofencing (`detectarAproximacaoBestEffort`) e
+   * com `notificarVezDoAlunoBestEffort`, ambos precisam da mesma
+   * "próxima parada pendente" sem o custo de uma chamada OSRM a cada
+   * ping de GPS (Prompt "Rotta Geo Platform" §29 — "evitar consultas
+   * pesadas").
    */
   private async listParadasPendentes(
     trip: Trip,
@@ -1037,8 +1098,39 @@ export class TripsService {
       this.routesService.listStops(trip.routeId, actor),
       this.listPendenciasPorAluno(trip, actor),
     ]);
-    const paradasPendentesIds = new Set(pendencias.map((p) => p.routeStopId));
-    return stops.filter((stop) => paradasPendentesIds.has(stop.id));
+
+    const pendenciasPorRouteStop = new Map<string, typeof pendencias>();
+    for (const pendencia of pendencias) {
+      const lista = pendenciasPorRouteStop.get(pendencia.routeStopId) ?? [];
+      lista.push(pendencia);
+      pendenciasPorRouteStop.set(pendencia.routeStopId, lista);
+    }
+
+    const resultado: RouteStopResponseDto[] = [];
+    const waypointsVistos = new Set<string>();
+    for (const stop of stops) {
+      for (const pendencia of pendenciasPorRouteStop.get(stop.id) ?? []) {
+        if (waypointsVistos.has(pendencia.waypointId)) continue;
+        waypointsVistos.add(pendencia.waypointId);
+        resultado.push(
+          pendencia.waypointId === stop.id
+            ? stop
+            : {
+                id: pendencia.waypointId,
+                routeId: stop.routeId,
+                ordem: stop.ordem,
+                endereco: pendencia.endereco,
+                latitude: pendencia.latitude,
+                longitude: pendencia.longitude,
+                horarioPrevisto: pendencia.horarioPrevisto,
+                schoolId: null,
+                createdAt: stop.createdAt,
+                updatedAt: stop.updatedAt,
+              },
+        );
+      }
+    }
+    return resultado;
   }
 
   /**
@@ -1164,15 +1256,11 @@ export class TripsService {
       if (!proxima) return;
 
       const horario = proxima.etaPrevista.slice(11, 16);
-      const vinculos = await this.routesService.listStudents(trip.routeId, actor);
+      const pendencias = await this.listPendenciasPorAluno(trip, actor);
 
-      for (const vinculo of vinculos) {
-        if (
-          vinculo.paradaEmbarqueId !== proxima.routeStopId &&
-          vinculo.paradaDesembarqueId !== proxima.routeStopId
-        ) {
-          continue;
-        }
+      for (const pendencia of pendencias) {
+        if (pendencia.waypointId !== proxima.routeStopId) continue;
+        const vinculo = pendencia.vinculo;
         try {
           const [contract, student] = await Promise.all([
             this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
@@ -1244,11 +1332,10 @@ export class TripsService {
         haversineDistanceKm(latitude, longitude, proxima.latitude, proxima.longitude) * 1000;
       if (distanciaMetros > GEOFENCE_APPROACHING_METERS) return;
 
-      const vinculos = await this.routesService.listStudents(trip.routeId, actor);
-      for (const vinculo of vinculos) {
-        if (vinculo.paradaEmbarqueId !== proxima.id && vinculo.paradaDesembarqueId !== proxima.id) {
-          continue;
-        }
+      const pendencias = await this.listPendenciasPorAluno(trip, actor);
+      for (const pendencia of pendencias) {
+        if (pendencia.waypointId !== proxima.id) continue;
+        const vinculo = pendencia.vinculo;
         try {
           const [contract, student] = await Promise.all([
             this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
@@ -1307,19 +1394,10 @@ export class TripsService {
    * pendente) — nunca lança, mesmo princípio best-effort de
    * `recalcularEnotificarBestEffort`/`detectarAproximacaoBestEffort`.
    */
-  private async notificarVezDoAlunoBestEffort(
-    trip: Trip,
-    actor: AuthenticatedUser,
-  ): Promise<void> {
+  private async notificarVezDoAlunoBestEffort(trip: Trip, actor: AuthenticatedUser): Promise<void> {
     try {
-      const [stops, pendencias] = await Promise.all([
-        this.routesService.listStops(trip.routeId, actor),
-        this.listPendenciasPorAluno(trip, actor),
-      ]);
-      if (pendencias.length === 0) return;
-
-      const paradaIdsPendentes = new Set(pendencias.map((p) => p.routeStopId));
-      const pendentesNaOrdemCadastrada = stops.filter((stop) => paradaIdsPendentes.has(stop.id));
+      const pendentesNaOrdemCadastrada = await this.listParadasPendentes(trip, actor);
+      if (pendentesNaOrdemCadastrada.length === 0) return;
 
       const ultimaPosicao = await this.positionRepository.findLatestByTrip(trip.id);
       const paradasPendentes = ultimaPosicao
@@ -1336,8 +1414,9 @@ export class TripsService {
       if (!proxima) return;
       if (trip.ultimaParadaEmVezNotificadaId === proxima.id) return;
 
+      const pendencias = await this.listPendenciasPorAluno(trip, actor);
       for (const pendencia of pendencias) {
-        if (pendencia.routeStopId !== proxima.id) continue;
+        if (pendencia.waypointId !== proxima.id) continue;
         const vinculo = pendencia.vinculo;
         try {
           const [contract, student] = await Promise.all([

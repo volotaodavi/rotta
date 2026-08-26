@@ -9,7 +9,6 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Student } from "@prisma/client";
 
-
 import { STUDENT_CREDENTIALED_EVENT } from "./events/student-credentialed.event";
 import { toStudentAddressOverrideResponseDto } from "./mappers/student-address-override.mapper";
 import { toStudentAuthorizedPersonResponseDto } from "./mappers/student-authorized-person.mapper";
@@ -580,5 +579,32 @@ export class StudentsService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+  }
+
+  /**
+   * Leitura interna (sem RBAC de ator humano, mesmo padrão de
+   * `CompaniesService.getNomeFantasia`) usada por `TripsService` pra
+   * saber, ao montar as paradas pendentes de uma viagem, quais alunos
+   * têm hoje um endereço diferente do cadastro permanente (pedido do
+   * usuário: calendário de endereço alternativo). Mapa por `studentId`
+   * — `@@unique([studentId, data])` garante no máximo um desvio por
+   * aluno por dia, então nunca há ambiguidade de qual usar.
+   */
+  async listAddressOverridesByStudentsAndDate(
+    studentIds: string[],
+    data: Date,
+  ): Promise<Map<string, StudentAddressOverrideResponseDto>> {
+    if (studentIds.length === 0) return new Map();
+    const overrides = await this.prisma.withBypass(
+      this.prisma.studentAddressOverride.findMany({
+        where: { studentId: { in: studentIds }, data },
+      }),
+    );
+    return new Map(
+      overrides.map((override) => [
+        override.studentId,
+        toStudentAddressOverrideResponseDto(override),
+      ]),
+    );
   }
 }

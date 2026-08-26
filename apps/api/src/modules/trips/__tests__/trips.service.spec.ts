@@ -1,9 +1,6 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 import { NotificationEventType, TripStatus } from "@prisma/client";
 
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { Role } from "@/shared/enums";
-
 import { TripsService } from "../trips.service";
 
 import type { TripPositionRepository } from "../repositories/trip-position.repository";
@@ -21,6 +18,9 @@ import type { UsersService } from "@/modules/users/users.service";
 import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Trip } from "@prisma/client";
+
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { Role } from "@/shared/enums";
 
 function buildTrip(overrides: Partial<Trip> = {}): Trip {
   return {
@@ -125,6 +125,7 @@ describe("TripsService", () => {
     studentsService = {
       findRawById: jest.fn(),
       findByIdOrThrow: jest.fn(),
+      listAddressOverridesByStudentsAndDate: jest.fn().mockResolvedValue(new Map()),
     } as unknown as jest.Mocked<StudentsService>;
     usersService = {
       findActiveMembership: jest.fn(),
@@ -390,9 +391,7 @@ describe("TripsService", () => {
       await service.start({ routeId: "route-1" }, motoristaActor, {});
 
       expect(companiesService.getNomeFantasia).toHaveBeenCalledWith("company-1");
-      expect(messagePersonalizationService.viagemIniciada).toHaveBeenCalledWith(
-        "Gama Transportes",
-      );
+      expect(messagePersonalizationService.viagemIniciada).toHaveBeenCalledWith("Gama Transportes");
     });
   });
 
@@ -988,6 +987,160 @@ describe("TripsService", () => {
           motoristaActor,
         ),
       ).resolves.toBeDefined();
+    });
+  });
+
+  describe("desvio de endereço por dia (StudentAddressOverride) — 'waypoint efetivo'", () => {
+    const stopCompartilhada = {
+      id: "stop-compartilhada",
+      endereco: "Rua da Escola, 100",
+      latitude: -23.1,
+      longitude: -46.1,
+      horarioPrevisto: "07:00",
+    };
+
+    const vinculoComDesvio = {
+      id: "vinculo-1",
+      routeId: "route-1",
+      contractId: "contract-1",
+      studentId: "student-1",
+      paradaEmbarqueId: stopCompartilhada.id,
+      paradaDesembarqueId: "stop-2",
+      ativo: true,
+    };
+    const vinculoSemDesvio = {
+      id: "vinculo-2",
+      routeId: "route-1",
+      contractId: "contract-2",
+      studentId: "student-2",
+      paradaEmbarqueId: stopCompartilhada.id,
+      paradaDesembarqueId: "stop-2",
+      ativo: true,
+    };
+
+    const override = {
+      id: "override-1",
+      studentId: "student-1",
+      data: "2026-08-26",
+      trecho: "AMBOS",
+      cep: "24000-000",
+      logradouro: "Rua Nova Provisória",
+      numero: "42",
+      complemento: null,
+      bairro: "Centro",
+      cidade: "Niterói",
+      estado: "RJ",
+      latitude: -22.9,
+      longitude: -43.1,
+      observacao: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    beforeEach(() => {
+      tripRepository.findById.mockResolvedValue(buildTrip());
+      routesService.listStops.mockResolvedValue([stopCompartilhada] as never);
+      routesService.listStudents.mockResolvedValue([vinculoComDesvio, vinculoSemDesvio] as never);
+    });
+
+    it("usa as coordenadas do desvio (não as da parada compartilhada) para o aluno com StudentAddressOverride ativo hoje", async () => {
+      studentsService.listAddressOverridesByStudentsAndDate.mockResolvedValue(
+        new Map([["student-1", override]]) as never,
+      );
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+      geoEngineService.getRoute.mockResolvedValue({
+        distanciaMetros: 900,
+        duracaoSegundos: 100,
+        geometria: null,
+        pernas: [{ distanciaMetros: 400, duracaoSegundos: 40 }],
+      });
+
+      const result = await service.recalcularProximasEtas("trip-1", empresaActor);
+
+      // Um aluno com desvio ativo e outro sem, na MESMA parada física,
+      // viram duas entradas distintas — nunca uma só.
+      expect(result).toHaveLength(2);
+      const entradaComDesvio = result.find((item) => item.routeStopId === "override:override-1");
+      expect(entradaComDesvio).toBeDefined();
+      expect(entradaComDesvio).toMatchObject({
+        endereco: "Rua Nova Provisória, 42 - Centro, Niterói/RJ",
+      });
+      const entradaSemDesvio = result.find((item) => item.routeStopId === stopCompartilhada.id);
+      expect(entradaSemDesvio).toBeDefined();
+      expect(entradaSemDesvio).toMatchObject({ endereco: stopCompartilhada.endereco });
+    });
+
+    it("ao iniciar a rota, notifica 'vez do aluno' usando o waypoint sintético do desvio (não o routeStopId real) na dedup", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(null);
+      tripRepository.create.mockResolvedValue(buildTrip());
+      companiesService.getNomeFantasia.mockResolvedValue("Gama Transportes");
+      studentsService.listAddressOverridesByStudentsAndDate.mockResolvedValue(
+        new Map([["student-1", override]]) as never,
+      );
+      routesService.listStudents.mockResolvedValue([vinculoComDesvio] as never);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-1",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "Isac Ribeiro" } as never);
+
+      await service.start({ routeId: "route-1" }, motoristaActor, {});
+
+      expect(messagePersonalizationService.alunoVezEmbarque).toHaveBeenCalledWith("Isac Ribeiro");
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        COMMUNICATION_REQUESTED_EVENT,
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.ALUNO_VEZ_EMBARQUE,
+          dadosContexto: { routeId: "route-1", studentId: "student-1" },
+        }),
+      );
+      // A dedup grava o waypoint EFETIVO (sintético do desvio), não o
+      // routeStopId real da parada compartilhada — senão um segundo aluno
+      // sem desvio na mesma parada física nunca seria notificado depois.
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
+        ultimaParadaEmVezNotificadaId: "override:override-1",
+      });
+    });
+
+    it("um desvio só de DESEMBARQUE não se aplica ao embarque do mesmo aluno (continua na parada real)", async () => {
+      const overrideSoDesembarque = { ...override, trecho: "DESEMBARQUE" };
+      studentsService.listAddressOverridesByStudentsAndDate.mockResolvedValue(
+        new Map([["student-1", overrideSoDesembarque]]) as never,
+      );
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+      geoEngineService.getRoute.mockResolvedValue({
+        distanciaMetros: 400,
+        duracaoSegundos: 40,
+        geometria: null,
+        pernas: [],
+      });
+
+      const result = await service.recalcularProximasEtas("trip-1", empresaActor);
+
+      // Embarque de ambos os alunos continua na mesma parada física real —
+      // o desvio (só de desembarque) não se aplica aqui, então dedup por
+      // waypoint junta os dois no mesmo `routeStopId`, não em dois.
+      expect(result).toHaveLength(1);
+      expect(result[0]).toMatchObject({ routeStopId: stopCompartilhada.id });
     });
   });
 
