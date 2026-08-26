@@ -1,8 +1,13 @@
 import { Module } from "@nestjs/common";
 
+import { PrismaStudentAddressOverrideRepository } from "./repositories/prisma-student-address-override.repository";
 import { PrismaStudentAuthorizedPersonRepository } from "./repositories/prisma-student-authorized-person.repository";
 import { PrismaStudentRepository } from "./repositories/prisma-student.repository";
-import { STUDENT_AUTHORIZED_PERSON_REPOSITORY, STUDENT_REPOSITORY } from "./students.constants";
+import {
+  STUDENT_ADDRESS_OVERRIDE_REPOSITORY,
+  STUDENT_AUTHORIZED_PERSON_REPOSITORY,
+  STUDENT_REPOSITORY,
+} from "./students.constants";
 import { StudentsController } from "./students.controller";
 import { StudentsService } from "./students.service";
 
@@ -39,6 +44,14 @@ import { StudentPreRegistrationsModule } from "@/modules/student-pre-registratio
  * `STUDENT_PRE_REGISTRATION_REPOSITORY` (fluxo "código do transporte +
  * celular", pedido do usuário) — sem risco de ciclo, aquele módulo só
  * depende de `CompaniesModule`.
+ *
+ * `StudentAddressOverride` (pedido do usuário: "informar se algum dia
+ * ele irá para outro endereço") não importa `RoutesModule`/`TripsModule`
+ * (ciclo real — ambos já importam `StudentsModule`): a checagem "viagem
+ * de hoje já começou" em `StudentsService` lê `RouteStudent`/`Trip`
+ * direto via `PrismaService` (`withBypass`, mesmo padrão de
+ * `CompaniesService.getNomeFantasia`), nunca via `RoutesService`/
+ * `TripsService`.
  */
 @Module({
   imports: [
@@ -55,6 +68,10 @@ import { StudentPreRegistrationsModule } from "@/modules/student-pre-registratio
     {
       provide: STUDENT_AUTHORIZED_PERSON_REPOSITORY,
       useClass: PrismaStudentAuthorizedPersonRepository,
+    },
+    {
+      provide: STUDENT_ADDRESS_OVERRIDE_REPOSITORY,
+      useClass: PrismaStudentAddressOverrideRepository,
     },
   ],
   exports: [StudentsService],

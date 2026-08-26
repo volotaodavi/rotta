@@ -11,16 +11,24 @@ import { NotificationEventType, type Student } from "@prisma/client";
 
 
 import { STUDENT_CREDENTIALED_EVENT } from "./events/student-credentialed.event";
+import { toStudentAddressOverrideResponseDto } from "./mappers/student-address-override.mapper";
 import { toStudentAuthorizedPersonResponseDto } from "./mappers/student-authorized-person.mapper";
 import { toStudentResponseDto } from "./mappers/student.mapper";
-import { STUDENT_AUTHORIZED_PERSON_REPOSITORY, STUDENT_REPOSITORY } from "./students.constants";
+import {
+  STUDENT_ADDRESS_OVERRIDE_REPOSITORY,
+  STUDENT_AUTHORIZED_PERSON_REPOSITORY,
+  STUDENT_REPOSITORY,
+} from "./students.constants";
 
+import type { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
 import type { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
 import type { CreateStudentDto } from "./dto/create-student.dto";
 import type { ListStudentsQueryDto } from "./dto/list-students-query.dto";
+import type { StudentAddressOverrideResponseDto } from "./dto/student-address-override-response.dto";
 import type { StudentAuthorizedPersonResponseDto } from "./dto/student-authorized-person-response.dto";
 import type { ListStudentsResponseDto, StudentResponseDto } from "./dto/student-response.dto";
 import type { UpdateStudentDto } from "./dto/update-student.dto";
+import type { StudentAddressOverrideRepository } from "./repositories/student-address-override.repository";
 import type { StudentAuthorizedPersonRepository } from "./repositories/student-authorized-person.repository";
 import type { StudentAccessScope, StudentRepository } from "./repositories/student.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
@@ -28,6 +36,7 @@ import type { ListAuditLogsResponseDto } from "@/common/dto/audit-log-response.d
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { StudentPreRegistrationRepository } from "@/modules/student-pre-registrations/repositories/student-pre-registration.repository";
 
+import { PrismaService } from "@/infra/database/prisma.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
@@ -68,6 +77,9 @@ export class StudentsService {
     @Inject(SCHOOL_REPOSITORY) private readonly schoolRepository: SchoolRepository,
     @Inject(STUDENT_PRE_REGISTRATION_REPOSITORY)
     private readonly preRegistrationRepository: StudentPreRegistrationRepository,
+    @Inject(STUDENT_ADDRESS_OVERRIDE_REPOSITORY)
+    private readonly addressOverrideRepository: StudentAddressOverrideRepository,
+    private readonly prisma: PrismaService,
   ) {}
 
   /**
@@ -439,6 +451,132 @@ export class StudentsService {
       acao: "AUTHORIZED_PERSON_REMOVED",
       atorUserId: actor.sub,
       dadosAntes: { nome: person.nome },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // Desvio de endereço por dia (pedido do usuário: "o responsável pode
+  // informar se algum dia ele irá para outro endereço — na ida, na
+  // volta ou ambos... isso pode ser feito até antes da van iniciar o
+  // novo serviço")
+  // ---------------------------------------------------------------------
+
+  /** "2026-09-01" → meia-noite UTC daquele dia — mesma convenção de `StudentAddressOverride.data` (`@db.Date`) e do `today()` de `TripsService`. */
+  private parseDataOnly(data: string): Date {
+    return new Date(`${data}T00:00:00.000Z`);
+  }
+
+  /**
+   * Bloqueia criar/editar/remover o desvio quando a viagem do dia já
+   * começou (pedido do usuário: "isso pode ser feito até antes da van
+   * iniciar o novo serviço"). Consulta `RouteStudent`/`Trip` direto via
+   * `PrismaService` (`withBypass`) — nunca via `RoutesService`/
+   * `TripsService` (ciclo real de módulo, ver nota em
+   * `students.module.ts`). Aluno sem nenhuma rota ativa (ainda não
+   * credenciado por nenhum transportador) nunca é bloqueado: não há
+   * viagem possível pra travar.
+   */
+  private async assertDiaAindaNaoIniciado(studentId: string, dia: Date): Promise<void> {
+    const vinculos = await this.prisma.withBypass(
+      this.prisma.routeStudent.findMany({
+        where: { studentId, ativo: true },
+        select: { routeId: true },
+      }),
+    );
+    if (vinculos.length === 0) return;
+
+    const routeIds = vinculos.map((v) => v.routeId);
+    const viagemJaExiste = await this.prisma.withBypass(
+      this.prisma.trip.findFirst({ where: { routeId: { in: routeIds }, data: dia } }),
+    );
+    if (viagemJaExiste) {
+      throw new BadRequestException(
+        "Não é mais possível alterar o endereço deste dia: a viagem já começou.",
+      );
+    }
+  }
+
+  async upsertAddressOverride(
+    studentId: string,
+    dto: CreateStudentAddressOverrideDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<StudentAddressOverrideResponseDto> {
+    const student = await this.fetchOrThrow(studentId, actor);
+    this.assertOwnedByActor(student, actor);
+
+    const dia = this.parseDataOnly(dto.data);
+    await this.assertDiaAindaNaoIniciado(studentId, dia);
+
+    const override = await this.addressOverrideRepository.upsert({
+      studentId,
+      data: dia,
+      trecho: dto.trecho,
+      cep: dto.cep,
+      logradouro: dto.logradouro,
+      numero: dto.numero,
+      complemento: dto.complemento,
+      bairro: dto.bairro,
+      cidade: dto.cidade,
+      estado: dto.estado,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      observacao: dto.observacao,
+      criadoPorUserId: actor.sub,
+    });
+
+    await this.recordAudit({
+      entidadeId: studentId,
+      acao: "ADDRESS_OVERRIDE_SET",
+      atorUserId: actor.sub,
+      dadosDepois: { data: dto.data, trecho: dto.trecho },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toStudentAddressOverrideResponseDto(override);
+  }
+
+  /** `from`/`to` opcionais no formato "YYYY-MM-DD" — alimenta o calendário do Responsável (mês visível). */
+  async listAddressOverrides(
+    studentId: string,
+    actor: AuthenticatedUser,
+    from?: string,
+    to?: string,
+  ): Promise<StudentAddressOverrideResponseDto[]> {
+    await this.fetchOrThrow(studentId, actor);
+    const overrides = await this.addressOverrideRepository.listByStudent(
+      studentId,
+      from ? this.parseDataOnly(from) : undefined,
+      to ? this.parseDataOnly(to) : undefined,
+    );
+    return overrides.map(toStudentAddressOverrideResponseDto);
+  }
+
+  async removeAddressOverride(
+    studentId: string,
+    overrideId: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<void> {
+    const student = await this.fetchOrThrow(studentId, actor);
+    this.assertOwnedByActor(student, actor);
+
+    const override = await this.addressOverrideRepository.findById(overrideId);
+    if (!override || override.studentId !== studentId) {
+      throw new NotFoundException("Desvio de endereço não encontrado.");
+    }
+    await this.assertDiaAindaNaoIniciado(studentId, override.data);
+
+    await this.addressOverrideRepository.remove(overrideId);
+
+    await this.recordAudit({
+      entidadeId: studentId,
+      acao: "ADDRESS_OVERRIDE_REMOVED",
+      atorUserId: actor.sub,
+      dadosAntes: { data: override.data.toISOString().slice(0, 10) },
       ip: meta.ip,
       userAgent: meta.userAgent,
     });

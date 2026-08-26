@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UploadedFile,
@@ -18,6 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 
 
+import { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
 import { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
 import { CreateStudentDto } from "./dto/create-student.dto";
 import { ListStudentsQueryDto } from "./dto/list-students-query.dto";
@@ -157,5 +159,45 @@ export class StudentsController {
     @Req() req: Request,
   ) {
     return this.studentsService.removeAuthorizedPerson(id, personId, actor, requestMeta(req));
+  }
+
+  /**
+   * `PUT` (não `POST`): idempotente por dia — reenviar o mesmo dia
+   * substitui o desvio anterior daquele dia, nunca acumula (pedido do
+   * usuário: "um endereço alternativo por dia", `@@unique([studentId,
+   * data])` no schema).
+   */
+  @Put(":id/address-overrides")
+  @Roles(...OWNER_ROLES)
+  upsertAddressOverride(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CreateStudentAddressOverrideDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.upsertAddressOverride(id, dto, actor, requestMeta(req));
+  }
+
+  @Get(":id/address-overrides")
+  @Roles(...OWNER_ROLES)
+  listAddressOverrides(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Query("from") from?: string,
+    @Query("to") to?: string,
+  ) {
+    return this.studentsService.listAddressOverrides(id, actor, from, to);
+  }
+
+  @Delete(":id/address-overrides/:overrideId")
+  @Roles(...OWNER_ROLES)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeAddressOverride(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("overrideId", ParseUUIDPipe) overrideId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.removeAddressOverride(id, overrideId, actor, requestMeta(req));
   }
 }

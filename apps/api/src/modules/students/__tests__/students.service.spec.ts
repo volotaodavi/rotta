@@ -2,9 +2,11 @@ import { BadRequestException, ForbiddenException, NotFoundException } from "@nes
 
 import { StudentsService } from "../students.service";
 
+import type { StudentAddressOverrideRepository } from "../repositories/student-address-override.repository";
 import type { StudentAuthorizedPersonRepository } from "../repositories/student-authorized-person.repository";
 import type { StudentRepository } from "../repositories/student.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { PrismaService } from "@/infra/database/prisma.service";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -150,6 +152,13 @@ describe("StudentsService", () => {
   let messagePersonalizationService: jest.Mocked<Pick<MessagePersonalizationService, "novoAluno">>;
   let schoolRepository: jest.Mocked<SchoolRepository>;
   let preRegistrationRepository: jest.Mocked<StudentPreRegistrationRepository>;
+  let addressOverrideRepository: jest.Mocked<StudentAddressOverrideRepository>;
+  let prisma: jest.Mocked<PrismaService>;
+  // Métodos genéricos do Prisma Client não tipam bem com `jest.Mocked<T>`
+  // (TS não consegue inferir `MockedFunction` pra métodos genéricos dos
+  // delegates) — handles próprios só pra estes dois usados nos testes.
+  let routeStudentFindMany: jest.Mock;
+  let tripFindFirst: jest.Mock;
 
   beforeEach(() => {
     studentRepository = {
@@ -204,6 +213,20 @@ describe("StudentsService", () => {
       claim: jest.fn(),
       markConcluded: jest.fn(),
     };
+    addressOverrideRepository = {
+      upsert: jest.fn(),
+      findById: jest.fn(),
+      findByStudentAndDate: jest.fn(),
+      listByStudent: jest.fn(),
+      remove: jest.fn(),
+    };
+    routeStudentFindMany = jest.fn().mockResolvedValue([]);
+    tripFindFirst = jest.fn().mockResolvedValue(null);
+    prisma = {
+      withBypass: jest.fn((operation: unknown) => operation),
+      routeStudent: { findMany: routeStudentFindMany },
+      trip: { findFirst: tripFindFirst },
+    } as unknown as jest.Mocked<PrismaService>;
 
     service = new StudentsService(
       studentRepository,
@@ -214,6 +237,8 @@ describe("StudentsService", () => {
       messagePersonalizationService as unknown as MessagePersonalizationService,
       schoolRepository,
       preRegistrationRepository,
+      addressOverrideRepository,
+      prisma,
     );
   });
 
@@ -476,6 +501,118 @@ describe("StudentsService", () => {
       await expect(
         service.removeAuthorizedPerson("student-1", "person-1", outroResponsavelActor, {}),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe("Desvio de endereço por dia (calendário do Responsável)", () => {
+    const overrideDto = {
+      data: "2026-09-01",
+      trecho: "AMBOS",
+      cep: "20000000",
+      logradouro: "Rua da Avó",
+      numero: "50",
+      bairro: "Centro",
+      cidade: "Rio de Janeiro",
+      estado: "RJ",
+      latitude: -22.9,
+      longitude: -43.2,
+    } as never;
+
+    it("cria o desvio quando nenhuma rota do aluno tem viagem hoje", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      routeStudentFindMany.mockResolvedValue([{ routeId: "route-1" }] as never);
+      tripFindFirst.mockResolvedValue(null);
+      addressOverrideRepository.upsert.mockResolvedValue({
+        id: "override-1",
+        studentId: "student-1",
+        data: new Date("2026-09-01T00:00:00.000Z"),
+        trecho: "AMBOS",
+        cep: "20000000",
+        logradouro: "Rua da Avó",
+        numero: "50",
+        complemento: null,
+        bairro: "Centro",
+        cidade: "Rio de Janeiro",
+        estado: "RJ",
+        latitude: -22.9,
+        longitude: -43.2,
+        observacao: null,
+        criadoPorUserId: "responsavel-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never);
+
+      const result = await service.upsertAddressOverride(
+        "student-1",
+        overrideDto,
+        responsavelActor,
+        {},
+      );
+
+      expect(result.data).toBe("2026-09-01");
+      expect(addressOverrideRepository.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ studentId: "student-1", criadoPorUserId: "responsavel-1" }),
+      );
+    });
+
+    it("rejeita criar/editar o desvio quando a viagem do dia já começou", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      routeStudentFindMany.mockResolvedValue([{ routeId: "route-1" }] as never);
+      tripFindFirst.mockResolvedValue({ id: "trip-1" });
+
+      await expect(
+        service.upsertAddressOverride("student-1", overrideDto, responsavelActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(addressOverrideRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    it("rejeita um Responsável que não é dono do aluno", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+
+      await expect(
+        service.upsertAddressOverride("student-1", overrideDto, outroResponsavelActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("nunca bloqueia um aluno ainda sem nenhuma rota ativa", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      routeStudentFindMany.mockResolvedValue([]);
+      addressOverrideRepository.upsert.mockResolvedValue({
+        id: "override-1",
+        studentId: "student-1",
+        data: new Date("2026-09-01T00:00:00.000Z"),
+        trecho: "AMBOS",
+        cep: "20000000",
+        logradouro: "Rua da Avó",
+        numero: "50",
+        complemento: null,
+        bairro: "Centro",
+        cidade: "Rio de Janeiro",
+        estado: "RJ",
+        latitude: -22.9,
+        longitude: -43.2,
+        observacao: null,
+        criadoPorUserId: "responsavel-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never);
+
+      await service.upsertAddressOverride("student-1", overrideDto, responsavelActor, {});
+
+      expect(tripFindFirst).not.toHaveBeenCalled();
+      expect(addressOverrideRepository.upsert).toHaveBeenCalled();
+    });
+
+    it("rejeita remover um desvio de outro aluno (id não bate)", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      addressOverrideRepository.findById.mockResolvedValue({
+        id: "override-1",
+        studentId: "student-outro",
+      } as never);
+
+      await expect(
+        service.removeAddressOverride("student-1", "override-1", responsavelActor, {}),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
