@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { RouteStatus, SchoolShift } from "@prisma/client";
 
+
 import { RoutesService } from "../routes.service";
 
 import type { RouteStopRepository } from "../repositories/route-stop.repository";
@@ -151,6 +152,7 @@ describe("RoutesService", () => {
       findActiveMembership: jest.fn(),
       findById: jest.fn(),
       listActiveMembershipsWithCompany: jest.fn(),
+      isAutonomoOuMei: jest.fn().mockResolvedValue(false),
     } as unknown as jest.Mocked<UsersService>;
     vehiclesService = {
       findByIdOrThrow: jest.fn(),
@@ -218,12 +220,7 @@ describe("RoutesService", () => {
       usersService.findActiveMembership.mockResolvedValue({
         role: Role.EMPRESA,
       } as never);
-      usersService.listActiveMembershipsWithCompany.mockResolvedValue([
-        {
-          companyId: "company-1",
-          company: { tipo: "AUTONOMO" },
-        } as never,
-      ]);
+      usersService.isAutonomoOuMei.mockResolvedValue(true);
       routeRepository.create.mockResolvedValue(buildRoute({ motoristaPadraoId: "user-empresa-1" }));
 
       await service.create(
@@ -246,12 +243,7 @@ describe("RoutesService", () => {
       usersService.findActiveMembership.mockResolvedValue({
         role: Role.EMPRESA,
       } as never);
-      usersService.listActiveMembershipsWithCompany.mockResolvedValue([
-        {
-          companyId: "company-1",
-          company: { tipo: "LTDA" },
-        } as never,
-      ]);
+      usersService.isAutonomoOuMei.mockResolvedValue(false);
 
       await expect(
         service.create(

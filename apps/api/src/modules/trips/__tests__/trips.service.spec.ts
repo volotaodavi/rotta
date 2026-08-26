@@ -126,6 +126,7 @@ describe("TripsService", () => {
     usersService = {
       findActiveMembership: jest.fn(),
       findById: jest.fn(),
+      isAutonomoOuMei: jest.fn().mockResolvedValue(false),
     } as unknown as jest.Mocked<UsersService>;
     auditLogService = { record: jest.fn() } as unknown as jest.Mocked<AuditLogService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
@@ -254,6 +255,49 @@ describe("TripsService", () => {
       await expect(service.start({ routeId: "route-1" }, empresaActor, {})).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it("rejeita motoristaPadraoId sem vínculo de Motorista mesmo quando o ator é Role.EMPRESA (não-dono)", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: "motorista-1",
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      usersService.findActiveMembership.mockResolvedValue({ role: Role.EMPRESA } as never);
+      usersService.isAutonomoOuMei.mockResolvedValue(false);
+
+      await expect(service.start({ routeId: "route-1" }, empresaActor, {})).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("REGRESSÃO — dono AUTONOMO/MEI inicia a própria rota (motoristaPadraoId = ele mesmo, Membership.role = EMPRESA)", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: empresaActor.sub,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(null);
+      tripRepository.create.mockResolvedValue(buildTrip({ motoristaId: empresaActor.sub }));
+      usersService.findActiveMembership.mockResolvedValue({ role: Role.EMPRESA } as never);
+      usersService.isAutonomoOuMei.mockResolvedValue(true);
+
+      const result = await service.start({ routeId: "route-1" }, empresaActor, {});
+
+      expect(usersService.isAutonomoOuMei).toHaveBeenCalledWith(empresaActor.sub, "company-1");
+      expect(tripRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ motoristaId: empresaActor.sub }),
+      );
+      expect(result.id).toBe("trip-1");
     });
   });
 
@@ -476,6 +520,25 @@ describe("TripsService", () => {
         empresaActor,
       );
       expect(result.motoristaId).toBe("motorista-2");
+    });
+
+    it("REGRESSÃO — permite substituir de volta pelo dono AUTONOMO/MEI (Membership.role = EMPRESA)", async () => {
+      usersService.findActiveMembership.mockResolvedValue({ role: Role.EMPRESA } as never);
+      usersService.isAutonomoOuMei.mockResolvedValue(true);
+      tripRepository.update.mockResolvedValue(buildTrip({ motoristaId: empresaActor.sub }));
+
+      const result = await service.substituirMotorista(
+        "trip-1",
+        { motoristaId: empresaActor.sub },
+        empresaActor,
+        {},
+      );
+
+      expect(usersService.isAutonomoOuMei).toHaveBeenCalledWith(empresaActor.sub, "company-1");
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
+        motoristaId: empresaActor.sub,
+      });
+      expect(result.motoristaId).toBe(empresaActor.sub);
     });
 
     it("é um no-op (sem update/auditoria/notificação) quando o motoristaId é o mesmo já em uso", async () => {

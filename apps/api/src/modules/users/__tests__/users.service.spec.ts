@@ -39,7 +39,9 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
       updateAuthState: jest.fn(),
     };
 
-    membershipRepository = {} as unknown as jest.Mocked<MembershipRepository>;
+    membershipRepository = {
+      listActiveByUserWithCompany: jest.fn(),
+    } as unknown as jest.Mocked<MembershipRepository>;
 
     consentRecordRepository = {
       recordAcceptance: jest.fn(),
@@ -76,6 +78,38 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
       expect(consentRecordRepository.recordAcceptance).toHaveBeenCalledWith("user-1", [
         { tipo: "POLITICA_PRIVACIDADE", versao: "1.0" },
       ]);
+    });
+  });
+
+  describe("isAutonomoOuMei (regressão — 'motorista não credenciado' ao iniciar viagem)", () => {
+    it("retorna true para o dono de uma empresa AUTONOMO", async () => {
+      membershipRepository.listActiveByUserWithCompany.mockResolvedValue([
+        { companyId: "company-1", company: { tipo: "AUTONOMO" } } as never,
+      ]);
+
+      await expect(service.isAutonomoOuMei("user-1", "company-1")).resolves.toBe(true);
+    });
+
+    it("retorna true para o dono de uma empresa MEI", async () => {
+      membershipRepository.listActiveByUserWithCompany.mockResolvedValue([
+        { companyId: "company-1", company: { tipo: "MEI" } } as never,
+      ]);
+
+      await expect(service.isAutonomoOuMei("user-1", "company-1")).resolves.toBe(true);
+    });
+
+    it("retorna false para outros CompanyType (ex. LTDA)", async () => {
+      membershipRepository.listActiveByUserWithCompany.mockResolvedValue([
+        { companyId: "company-1", company: { tipo: "LTDA" } } as never,
+      ]);
+
+      await expect(service.isAutonomoOuMei("user-1", "company-1")).resolves.toBe(false);
+    });
+
+    it("retorna false quando o usuário não tem vínculo ativo com essa empresa", async () => {
+      membershipRepository.listActiveByUserWithCompany.mockResolvedValue([]);
+
+      await expect(service.isAutonomoOuMei("user-1", "company-1")).resolves.toBe(false);
     });
   });
 

@@ -12,6 +12,7 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, Prisma, type Trip } from "@prisma/client";
 
+import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
 import { toTripPositionResponseDto } from "./mappers/trip-position.mapper";
@@ -40,7 +41,6 @@ import type { TripStudentEventRepository } from "./repositories/trip-student-eve
 import type { CreateTripData, TripRepository } from "./repositories/trip.repository";
 import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import { ContractsService } from "@/modules/marketplace/contracts.service";
@@ -51,7 +51,6 @@ import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
-import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 export interface RequestMeta {
   ip?: string;
@@ -275,7 +274,19 @@ export class TripsService {
     }
     if (actor.role !== Role.MOTORISTA) {
       const membership = await this.usersService.findActiveMembership(motoristaId, route.companyId);
-      if (!membership || (membership.role as Role) !== Role.MOTORISTA) {
+      // Dono AUTONOMO/MEI é o próprio motorista (`Membership.role =
+      // EMPRESA`, nunca `MOTORISTA` — mesmo achado de sempre) — mesma
+      // exceção já aplicada em `RoutesService.assertValidDefaultResources`
+      // ao validar `motoristaPadraoId` na criação da rota. Faltava aqui,
+      // em `start`, causando exatamente o bug relatado: a rota já é
+      // criada corretamente com o dono como motorista padrão, mas
+      // iniciar a viagem sempre rejeitava com "motoristaId não possui
+      // vínculo ativo de Motorista nesta empresa".
+      const isSelfAsOwnerDriver =
+        (membership?.role as Role | undefined) === Role.EMPRESA &&
+        motoristaId === actor.sub &&
+        (await this.usersService.isAutonomoOuMei(actor.sub, route.companyId));
+      if (!membership || ((membership.role as Role) !== Role.MOTORISTA && !isSelfAsOwnerDriver)) {
         throw new BadRequestException(
           "motoristaId não possui vínculo ativo de Motorista nesta empresa.",
         );
@@ -516,7 +527,14 @@ export class TripsService {
       dto.motoristaId,
       trip.companyId,
     );
-    if (!membership || (membership.role as Role) !== Role.MOTORISTA) {
+    // Mesma exceção de `start` acima: o dono AUTONOMO/MEI pode ser
+    // colocado de volta como motorista da própria viagem mesmo com
+    // `Membership.role = EMPRESA`.
+    const isSelfAsOwnerDriver =
+      (membership?.role as Role | undefined) === Role.EMPRESA &&
+      dto.motoristaId === actor.sub &&
+      (await this.usersService.isAutonomoOuMei(actor.sub, trip.companyId));
+    if (!membership || ((membership.role as Role) !== Role.MOTORISTA && !isSelfAsOwnerDriver)) {
       throw new BadRequestException(
         "motoristaId não possui vínculo ativo de Motorista nesta empresa.",
       );

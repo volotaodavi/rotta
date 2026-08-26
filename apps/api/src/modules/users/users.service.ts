@@ -1,5 +1,7 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
+import { CompanyType } from "@prisma/client";
 import { passwordEqualsIdentifier } from "@rotta/validators";
+
 
 import {
   CONSENT_RECORD_REPOSITORY,
@@ -167,6 +169,30 @@ export class UsersService {
   /** Vínculos ativos do usuário em QUALQUER tenant (Dossiê 15, `AUTH-02` — seletor de perfil no login). */
   listActiveMembershipsWithCompany(userId: string): Promise<MembershipWithCompany[]> {
     return this.membershipRepository.listActiveByUserWithCompany(userId);
+  }
+
+  /**
+   * Pedido do usuário: "Quando o motorista é autônomo ou MEI, ele mesmo
+   * é o próprio motorista." Achado real: quem cadastra a empresa (mesmo
+   * `CompanyType.AUTONOMO`/`MEI`) recebe `Membership.role = EMPRESA`
+   * (`CompaniesService.create`), nunca `MOTORISTA` — qualquer checagem
+   * de "é o motorista?" baseada só em `role === MOTORISTA` rejeita esse
+   * dono, mesmo sendo ele quem de fato dirige. Única fonte desta
+   * checagem (antes vivia duplicada, `private`, dentro de
+   * `RoutesService` — `TripsService.start`/`substituirMotorista` nunca
+   * receberam a mesma correção, causando exatamente o bug relatado:
+   * "aparece que não tem motorista credenciado" ao iniciar a viagem,
+   * mesmo com a rota corretamente criada com o dono como motorista
+   * padrão). Usado por `RoutesService` (validar `motoristaPadraoId`) e
+   * `TripsService` (iniciar viagem / substituir motorista).
+   */
+  async isAutonomoOuMei(userId: string, companyId: string): Promise<boolean> {
+    const memberships = await this.listActiveMembershipsWithCompany(userId);
+    const membership = memberships.find((m) => m.companyId === companyId);
+    return (
+      membership?.company.tipo === CompanyType.AUTONOMO ||
+      membership?.company.tipo === CompanyType.MEI
+    );
   }
 
   isLockedOut(user: User): boolean {
