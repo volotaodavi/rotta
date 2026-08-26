@@ -1,13 +1,16 @@
 "use client";
 
-import { Search } from "@rotta/icons";
+import { Clock, MapPin, Search } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { useGpsMapNationwide } from "@/features/gps/hooks/use-gps";
+import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { searchMonitoringCandidates } from "@/features/gps/monitoring-search.util";
+import { tripsApi } from "@/lib/api-client";
 
 /**
  * Central de Monitoramento (pedido do usuário: "poderá ter uma central
@@ -58,6 +61,28 @@ export default function MonitoramentoPage(): JSX.Element {
           },
         ]
       : [];
+
+  // "Vez do aluno" + linha azul traçada (pedido do usuário: "essa
+  // questão também no painel do admin, já que poderemos monitorar") —
+  // mesmo dado que já alimenta o cartão de ETA do Motorista/Responsável
+  // (`GET /trips/:id/proximas-etas`, primeira entrada = quem é a vez
+  // agora), só que aqui o Admin Rotta enxerga de qualquer transportadora
+  // que esteja monitorando, não só a própria.
+  const { data: proximasEtas } = useQuery({
+    queryKey: ["trips", selected?.tripId, "proximas-etas"],
+    queryFn: () => tripsApi.getProximasEtas(selected!.tripId),
+    enabled: Boolean(selected?.tripId),
+    refetchInterval: 30_000,
+  });
+  const proximaEta = proximasEtas?.[0];
+  const origemVeiculo =
+    selected?.latitude != null && selected.longitude != null
+      ? { latitude: selected.latitude, longitude: selected.longitude }
+      : null;
+  const destinoAlvo = proximaEta
+    ? { latitude: proximaEta.latitude, longitude: proximaEta.longitude }
+    : null;
+  const tracedRoute = useNextStopTracedRoute(origemVeiculo, destinoAlvo);
 
   return (
     <div className="flex flex-col gap-6">
@@ -175,9 +200,36 @@ export default function MonitoramentoPage(): JSX.Element {
               ) : null}
             </div>
 
+            {proximaEta ? (
+              <div className="flex flex-wrap items-center gap-3 rounded-xl bg-muted px-4 py-3">
+                <MapPin size={16} className="shrink-0 text-primary" />
+                <div className="flex-1">
+                  <Typography variant="caption" color="muted">
+                    Vez do aluno agora · próxima parada
+                  </Typography>
+                  <Typography variant="bodySmall" className="font-semibold leading-tight">
+                    {proximaEta.endereco}
+                  </Typography>
+                </div>
+                <div className="flex items-center gap-1 text-text-muted">
+                  <Clock size={14} />
+                  <Typography variant="bodySmall" color="muted">
+                    {new Date(proximaEta.etaPrevista).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </Typography>
+                </div>
+              </div>
+            ) : null}
+
             {markers.length > 0 ? (
               <div className="relative" style={{ height: 560 }}>
-                <RottaMap markers={markers} initialZoom={14} />
+                <RottaMap
+                  markers={markers}
+                  route={tracedRoute.route ?? undefined}
+                  initialZoom={14}
+                />
               </div>
             ) : (
               <Typography variant="bodySmall" color="muted">
