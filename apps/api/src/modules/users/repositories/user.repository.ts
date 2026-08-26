@@ -44,4 +44,8 @@ export interface UserRepository {
   updateAuthState(id: string, data: UpdateUserAuthStateInput): Promise<User>;
   /** IDs de todo Admin Rotta ativo (`User.isAdminRotta`) — usado pra fan-out cross-tenant (Suporte, Avisos). */
   listAdminRottaIds(): Promise<string[]>;
+  /** IDs de todo `User` ativo, sem filtro de papel — usado pelo público `TODOS` de um `Announcement`. */
+  listActiveIds(): Promise<string[]>;
+  /** IDs de todo Responsável ativo (`User.isResponsavel`) — usado pelo público `RESPONSAVEIS` de um `Announcement`. */
+  listResponsavelIds(): Promise<string[]>;
 }

@@ -9,6 +9,7 @@
 
 export * from "./endpoints/agenda";
 export * from "./endpoints/analytics";
+export * from "./endpoints/announcements";
 export * from "./endpoints/auth";
 export * from "./endpoints/backoffice";
 export * from "./endpoints/billing";

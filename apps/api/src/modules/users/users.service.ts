@@ -19,6 +19,7 @@ import type { ConsentType, Membership, Prisma, User } from "@prisma/client";
 
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
 import { CURRENT_PRIVACY_VERSION, CURRENT_TERMS_VERSION } from "@/modules/auth/legal-versions";
+import { Role } from "@/shared/enums";
 
 /** Versão vigente de cada tipo de consentimento (Dossiê 45 FRENTE 5) — única fonte usada por `recordConsent`/`getPendingConsents`. */
 const CURRENT_CONSENT_VERSION: Record<ConsentType, string> = {
@@ -168,6 +169,21 @@ export class UsersService {
   /** Pra fan-out cross-tenant (Suporte, Avisos) — nunca um `:userId` de parâmetro, sempre resolvido aqui. */
   listAdminRottaUserIds(): Promise<string[]> {
     return this.userRepository.listAdminRottaIds();
+  }
+
+  /** Pra fan-out cross-tenant do público `TODOS` de um `Announcement`. */
+  listAllActiveUserIds(): Promise<string[]> {
+    return this.userRepository.listActiveIds();
+  }
+
+  /** Pra fan-out cross-tenant do público `RESPONSAVEIS` de um `Announcement`. */
+  listResponsavelUserIds(): Promise<string[]> {
+    return this.userRepository.listResponsavelIds();
+  }
+
+  /** Pra fan-out cross-tenant dos públicos `EMPRESAS`/`MOTORISTAS_MONITORES` de um `Announcement`. */
+  listActiveUserIdsByRoles(roles: Role[]): Promise<string[]> {
+    return this.membershipRepository.listActiveUserIdsByRoles(roles);
   }
 
   /** Vínculos ativos do usuário em QUALQUER tenant (Dossiê 15, `AUTH-02` — seletor de perfil no login). */

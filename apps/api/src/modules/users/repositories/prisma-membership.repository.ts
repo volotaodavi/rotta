@@ -56,4 +56,15 @@ export class PrismaMembershipRepository implements MembershipRepository {
       }),
     );
   }
+
+  async listActiveUserIdsByRoles(roles: string[]): Promise<string[]> {
+    const memberships = await this.prisma.withBypass(
+      this.prisma.membership.findMany({
+        where: { role: { in: roles }, status: "ATIVO" },
+        select: { userId: true },
+        distinct: ["userId"],
+      }),
+    );
+    return memberships.map((membership) => membership.userId);
+  }
 }

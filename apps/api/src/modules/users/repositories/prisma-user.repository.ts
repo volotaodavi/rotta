@@ -45,4 +45,20 @@ export class PrismaUserRepository implements UserRepository {
     });
     return admins.map((admin) => admin.id);
   }
+
+  async listActiveIds(): Promise<string[]> {
+    const users = await this.prisma.user.findMany({
+      where: { status: "ATIVO" },
+      select: { id: true },
+    });
+    return users.map((user) => user.id);
+  }
+
+  async listResponsavelIds(): Promise<string[]> {
+    const responsaveis = await this.prisma.user.findMany({
+      where: { isResponsavel: true, status: "ATIVO" },
+      select: { id: true },
+    });
+    return responsaveis.map((responsavel) => responsavel.id);
+  }
 }

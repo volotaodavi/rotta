@@ -28,4 +28,11 @@ export interface MembershipRepository {
    * legítimo, nunca uma consulta cross-tenant de terceiros).
    */
   listActiveByUserWithCompany(userId: string): Promise<MembershipWithCompany[]>;
+  /**
+   * IDs distintos de `User` com vínculo ativo em QUALQUER tenant, para
+   * algum dos papéis informados — usado pelo fan-out cross-tenant de um
+   * `Announcement` (públicos `EMPRESAS`/`MOTORISTAS_MONITORES`). Mesma
+   * justificativa de bypass que `listActiveByUserWithCompany`.
+   */
+  listActiveUserIdsByRoles(roles: string[]): Promise<string[]>;
 }

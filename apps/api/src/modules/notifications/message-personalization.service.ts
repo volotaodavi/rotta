@@ -202,4 +202,16 @@ export class MessagePersonalizationService {
       corpo: `${autorNome}: ${previa}`,
     };
   }
+
+  /**
+   * Aviso/comunicado geral publicado pelo Admin Rotta (pedido do
+   * usuário: "aba de criação de avisos, comunicados e notificações
+   * gerais"). Título/corpo já vêm prontos do `CreateAnnouncementDto` —
+   * este método só existe pra manter o mesmo ponto único de passagem
+   * dos demais eventos (`AnnouncementsService` nunca monta o payload
+   * do evento sozinho).
+   */
+  avisoGeral(titulo: string, corpo: string): PersonalizedMessage {
+    return { titulo, corpo };
+  }
 }

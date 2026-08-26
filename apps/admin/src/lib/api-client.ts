@@ -1,5 +1,6 @@
 import {
   createAnalyticsEndpoints,
+  createAnnouncementsEndpoints,
   createApiClient,
   createAuthEndpoints,
   createBackofficeEndpoints,
@@ -45,6 +46,7 @@ export const routesApi = createRoutesEndpoints(apiClient);
 export const tripsApi = createTripsEndpoints(apiClient);
 export const gpsApi = createGpsEndpoints(apiClient);
 export const supportApi = createSupportEndpoints(apiClient);
+export const announcementsApi = createAnnouncementsEndpoints(apiClient);
 export const backofficeApi = createBackofficeEndpoints(apiClient);
 export const analyticsApi = createAnalyticsEndpoints(apiClient);
 export const healthApi = createHealthEndpoints(apiClient);

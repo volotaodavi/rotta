@@ -38,6 +38,8 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
       findByCpf: jest.fn(),
       updateAuthState: jest.fn(),
       listAdminRottaIds: jest.fn(),
+      listActiveIds: jest.fn(),
+      listResponsavelIds: jest.fn(),
     };
 
     membershipRepository = {
