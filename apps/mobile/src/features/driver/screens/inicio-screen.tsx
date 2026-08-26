@@ -59,6 +59,7 @@ import {
   useTodayTrip,
   useTripProximasEtas,
   useTripStudentEvents,
+  useTripStudentLocations,
 } from "../hooks/use-driver-trip";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "../hooks/use-my-location";
 import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
@@ -89,8 +90,6 @@ import {
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
-
-
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -1601,14 +1600,25 @@ function AlunoParadaRow({
   const jaOcorreu = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === tipo);
   const jaAusente = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === "AUSENTE");
 
+  // Item 3 do pedido do usuário: "reconhecer o endereço alternativo do
+  // responsável dentro do raio de embarque/desembarque" — quando este
+  // aluno tem um `StudentAddressOverride` ativo hoje pro trecho atual,
+  // `useTripStudentLocations` já devolve a coordenada EFETIVA (a casa
+  // alternativa, não a `RouteStop` física); sem desvio, cai pra própria
+  // parada (mesmo comportamento de antes).
+  const { data: studentLocations } = useTripStudentLocations(tripId);
+  const localizacaoEfetiva = studentLocations?.find(
+    (loc) =>
+      loc.studentId === aluno.studentId && loc.tipo === (isEmbarque ? "EMBARQUE" : "DESEMBARQUE"),
+  );
+
   // Gate de proximidade (Frente 2, pedido do usuário: "ao chegar próximo
   // — um raio de até 1km — poderá embarcar/desembarcar o aluno daquela
   // localidade"). Sem posição conhecida ainda, `estaProximo` responde
   // `true` (nunca trava o motorista por o GPS ainda não ter reportado).
-  const paradaCoordenada: DistanceCoordenada = {
-    latitude: parada.latitude,
-    longitude: parada.longitude,
-  };
+  const paradaCoordenada: DistanceCoordenada = localizacaoEfetiva
+    ? { latitude: localizacaoEfetiva.latitude, longitude: localizacaoEfetiva.longitude }
+    : { latitude: parada.latitude, longitude: parada.longitude };
   const distanciaMetros = driverPosition
     ? haversineDistanceMeters(driverPosition, paradaCoordenada)
     : null;

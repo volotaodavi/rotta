@@ -1151,6 +1151,32 @@ describe("TripsService", () => {
       expect(entradaSemDesvio).toMatchObject({ endereco: stopCompartilhada.endereco });
     });
 
+    it("REGRESSÃO — listStudentPendingLocations expõe a coordenada EFETIVA por aluno (a mesma do desvio, não a da parada física) pro raio de embarque/desembarque", async () => {
+      studentsService.listAddressOverridesByStudentsAndDate.mockResolvedValue(
+        new Map([["student-1", override]]) as never,
+      );
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+
+      const result = await service.listStudentPendingLocations("trip-1", empresaActor);
+
+      expect(result).toHaveLength(2);
+      const doAlunoComDesvio = result.find((item) => item.studentId === "student-1");
+      expect(doAlunoComDesvio).toMatchObject({
+        tipo: "EMBARQUE",
+        routeStopId: stopCompartilhada.id,
+        latitude: override.latitude,
+        longitude: override.longitude,
+        endereco: "Rua Nova Provisória, 42 - Centro, Niterói/RJ",
+      });
+      const doAlunoSemDesvio = result.find((item) => item.studentId === "student-2");
+      expect(doAlunoSemDesvio).toMatchObject({
+        tipo: "EMBARQUE",
+        routeStopId: stopCompartilhada.id,
+        latitude: stopCompartilhada.latitude,
+        longitude: stopCompartilhada.longitude,
+      });
+    });
+
     it("ao iniciar a rota, notifica 'vez do aluno' usando o waypoint sintético do desvio (não o routeStopId real) na dedup", async () => {
       routesService.findByIdOrThrow.mockResolvedValue({
         id: "route-1",

@@ -78,7 +78,11 @@ import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-trace
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import { useUpdateRoute } from "@/features/routes/hooks/use-routes";
 import { useStudent } from "@/features/students/hooks/use-students";
-import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
+import {
+  useTripProximasEtas,
+  useTripStudentEvents,
+  useTripStudentLocations,
+} from "@/features/trips/hooks/use-trips";
 import {
   useVehicle,
   useVehicleOccurrences,
@@ -1776,6 +1780,19 @@ function AlunoParadaRow({
   const jaOcorreu = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === tipo);
   const jaAusente = eventos.some((e) => e.studentId === aluno.studentId && e.tipo === "AUSENTE");
 
+  // Item 3 do pedido do usuário: "reconhecer o endereço alternativo do
+  // responsável dentro do raio de embarque/desembarque" — quando este
+  // aluno tem um `StudentAddressOverride` ativo hoje pro trecho atual,
+  // `useTripStudentLocations` já devolve a coordenada EFETIVA (a casa
+  // alternativa, não a `RouteStop` física); sem desvio, o backend já
+  // devolve as mesmas coordenadas da própria parada, então o `?? ` de
+  // baixo é só um respaldo pro instante antes do primeiro fetch.
+  const { data: studentLocations } = useTripStudentLocations(tripId);
+  const localizacaoEfetiva = studentLocations?.find(
+    (loc) =>
+      loc.studentId === aluno.studentId && loc.tipo === (isEmbarque ? "EMBARQUE" : "DESEMBARQUE"),
+  );
+
   // Gate de proximidade (Frente 2, pedido do usuário: "ao chegar próximo
   // — um raio de até 1km — poderá embarcar/desembarcar o aluno daquela
   // localidade"). `driverPosition` vem da última posição de GPS já
@@ -1783,10 +1800,9 @@ function AlunoParadaRow({
   // `estaProximo` responde `true` (nunca trava o motorista por o GPS
   // ainda não ter reportado nada — mesmo princípio "best effort" do
   // geofencing de notificação no backend).
-  const paradaCoordenada: DistanceCoordenada = {
-    latitude: parada.latitude,
-    longitude: parada.longitude,
-  };
+  const paradaCoordenada: DistanceCoordenada = localizacaoEfetiva
+    ? { latitude: localizacaoEfetiva.latitude, longitude: localizacaoEfetiva.longitude }
+    : { latitude: parada.latitude, longitude: parada.longitude };
   const distanciaMetros = driverPosition
     ? haversineDistanceMeters(driverPosition, paradaCoordenada)
     : null;

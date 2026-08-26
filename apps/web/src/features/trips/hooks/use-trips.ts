@@ -31,6 +31,23 @@ export function useTripStudentEvents(tripId: string | undefined) {
 }
 
 /**
+ * Item 3 do pedido do usuário: "reconhecer o endereço alternativo do
+ * responsável dentro do raio de embarque/desembarque" — coordenada
+ * EFETIVA de cada aluno pendente hoje (já resolve `StudentAddressOverride`
+ * do lado do backend). O botão de embarque/desembarque usa isto pra
+ * gatear o raio de 1km contra o lugar certo, não a parada física de
+ * sempre.
+ */
+export function useTripStudentLocations(tripId: string | undefined) {
+  return useQuery({
+    queryKey: ["trips", tripId, "student-locations"],
+    queryFn: () => tripsApi.listStudentLocations(tripId as string),
+    enabled: Boolean(tripId),
+    refetchInterval: 30_000,
+  });
+}
+
+/**
  * Presença de hoje de um lote de alunos (fluxo novo de Rotas — "ao
  * reiniciar a rota" pra pegar os alunos NA escola, quem faltou de
  * manhã não deve aparecer como pendente de embarque). Usado pela tela

@@ -120,6 +120,23 @@ export interface StudentAttendanceToday {
   ausenteHoje: boolean;
 }
 
+/**
+ * Item 3 do pedido do usuário: "reconhecer o endereço alternativo do
+ * responsável dentro do raio de embarque/desembarque" — coordenada
+ * EFETIVA de um aluno ainda pendente hoje (já resolve
+ * `StudentAddressOverride` do lado do backend). Um aluno sem desvio
+ * ativo hoje ainda aparece aqui — só que com a coordenada da própria
+ * `RouteStop` física.
+ */
+export interface StudentPendingLocation {
+  studentId: string;
+  tipo: "EMBARQUE" | "DESEMBARQUE";
+  routeStopId: string;
+  latitude: number;
+  longitude: number;
+  endereco: string;
+}
+
 /** Parada ainda pendente hoje, com ETA recalculado (tarefa #99). */
 export interface NextEta {
   routeStopId: string;
@@ -231,6 +248,18 @@ export function createTripsEndpoints(apiClient: ApiClient) {
     listStudentEvents: async (id: string): Promise<TripStudentEvent[]> =>
       (await apiClient.request<ApiEnvelope<TripStudentEvent[]>>(`/trips/${id}/student-events`))
         .data,
+
+    /**
+     * Item 3 do pedido do usuário: "reconhecer o endereço alternativo
+     * do responsável dentro do raio de embarque/desembarque" —
+     * coordenada efetiva de cada aluno ainda pendente hoje.
+     */
+    listStudentLocations: async (id: string): Promise<StudentPendingLocation[]> =>
+      (
+        await apiClient.request<ApiEnvelope<StudentPendingLocation[]>>(
+          `/trips/${id}/student-locations`,
+        )
+      ).data,
 
     // --- Recálculo de ETA por ausência de aluno (tarefa #99) ---
 

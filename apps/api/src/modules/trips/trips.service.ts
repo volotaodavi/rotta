@@ -28,6 +28,7 @@ import type { MapVehicleResponseDto } from "./dto/map-vehicle-response.dto";
 import type { NextEtaResponseDto } from "./dto/next-eta-response.dto";
 import type { StartTripDto } from "./dto/start-trip.dto";
 import type { StudentAttendanceTodayResponseDto } from "./dto/student-attendance-today-response.dto";
+import type { StudentPendingLocationResponseDto } from "./dto/student-pending-location-response.dto";
 import type { SubstituirMonitorDto } from "./dto/substituir-monitor.dto";
 import type { SubstituirMotoristaDto } from "./dto/substituir-motorista.dto";
 import type { SubstituirVeiculoDto } from "./dto/substituir-veiculo.dto";
@@ -940,6 +941,33 @@ export class TripsService {
       throw new BadRequestException("Só é possível recalcular ETAs de uma viagem em andamento.");
     }
     return this.computeProximasEtas(trip, actor);
+  }
+
+  /**
+   * Pedido do usuário: "reconhecer o endereço alternativo do
+   * responsável dentro do raio de embarque/desembarque" — expõe, por
+   * aluno pendente hoje, a MESMA coordenada efetiva que `computeProximasEtas`/
+   * a linha azul/a notificação de "vez do aluno" já usam
+   * (`listPendenciasPorAluno`, que já resolve `StudentAddressOverride`
+   * quando ativo). Sem isso, o botão de embarque/desembarque do
+   * frontend só enxergava a coordenada FIXA da `RouteStop`, então um
+   * responsável com desvio ativo hoje nunca liberava o botão perto de
+   * casa (só perto da parada de sempre, onde o veículo não passa hoje).
+   */
+  async listStudentPendingLocations(
+    id: string,
+    actor: AuthenticatedUser,
+  ): Promise<StudentPendingLocationResponseDto[]> {
+    const trip = await this.fetchOrThrow(id, actor);
+    const pendencias = await this.listPendenciasPorAluno(trip, actor);
+    return pendencias.map((p) => ({
+      studentId: p.vinculo.studentId,
+      tipo: p.tipo,
+      routeStopId: p.routeStopId,
+      latitude: p.latitude,
+      longitude: p.longitude,
+      endereco: p.endereco,
+    }));
   }
 
   // ---------------------------------------------------------------------

@@ -228,6 +228,21 @@ export class TripsController {
     return this.tripsService.listStudentEvents(id, actor);
   }
 
+  /**
+   * Item 3 do pedido do usuário: "reconhecer o endereço alternativo do
+   * responsável dentro do raio de embarque/desembarque" — coordenada
+   * EFETIVA de cada aluno ainda pendente hoje (já resolve
+   * `StudentAddressOverride`, ver `TripsService.listStudentPendingLocations`).
+   */
+  @Get(":id/student-locations")
+  @Roles(...OPERATE_ROLES)
+  listStudentPendingLocations(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.listStudentPendingLocations(id, actor);
+  }
+
   // --- Recálculo de ETA por ausência de aluno (tarefa #99) ---
 
   @Get(":id/proximas-etas")

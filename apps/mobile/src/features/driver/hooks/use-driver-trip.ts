@@ -94,6 +94,22 @@ export function useTripStudentEvents(tripId: string | undefined) {
 }
 
 /**
+ * Item 3 do pedido do usuário: "reconhecer o endereço alternativo do
+ * responsável dentro do raio de embarque/desembarque" — coordenada
+ * EFETIVA de cada aluno pendente hoje (já resolve `StudentAddressOverride`
+ * do lado do backend). Paridade exata com `use-trips.ts#useTripStudentLocations`
+ * no Painel Web.
+ */
+export function useTripStudentLocations(tripId: string | undefined) {
+  return useQuery({
+    queryKey: ["driver", "trips", tripId, "student-locations"],
+    queryFn: () => tripsApi.listStudentLocations(tripId as string),
+    enabled: Boolean(tripId),
+    refetchInterval: tripId ? 30_000 : false,
+  });
+}
+
+/**
  * Trilha completa de posições de uma viagem já encerrada (Frente 3 —
  * preview de rota em "Histórico", paridade com o Painel Web). Mesmo
  * endpoint (`GET /trips/:id/positions`, libera Motorista/Monitor) que
