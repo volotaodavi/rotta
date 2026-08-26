@@ -8,6 +8,7 @@ import {
   useNotificationPreference,
   useUpdateNotificationPreference,
 } from "@/features/notifications/hooks/use-notifications";
+import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
 
 interface FormState {
   receberPush: boolean;
@@ -38,6 +39,7 @@ const CANAIS: {
 export default function NotificacoesPreferenciasPage(): JSX.Element {
   const { data: preference, isLoading } = useNotificationPreference();
   const updatePreference = useUpdateNotificationPreference();
+  const pushBrowser = usePushRegistration();
 
   const [form, setForm] = useState<FormState | null>(null);
 
@@ -105,6 +107,39 @@ export default function NotificacoesPreferenciasPage(): JSX.Element {
           ))}
         </Card.Body>
       </Card>
+
+      {pushBrowser.disponivel && (
+        <Card>
+          <Card.Body className="flex flex-col gap-3">
+            <Typography variant="subtitle">Push no navegador</Typography>
+            <Typography variant="caption" color="muted">
+              Ative para receber os avisos da Rotta como notificação do sistema, mesmo com esta
+              aba fechada — precisa ser feito uma vez em cada navegador/dispositivo.
+            </Typography>
+            <div>
+              <Button
+                variant="secondary"
+                isLoading={pushBrowser.status === "ativando"}
+                disabled={pushBrowser.status === "ativado"}
+                onClick={() => void pushBrowser.ativarPushNoNavegador()}
+              >
+                {pushBrowser.status === "ativado" ? "Push ativado" : "Ativar push no navegador"}
+              </Button>
+            </div>
+            {pushBrowser.status === "negado" && (
+              <Typography variant="caption" color="danger">
+                Permissão negada — libere notificações para este site nas configurações do
+                navegador e tente de novo.
+              </Typography>
+            )}
+            {pushBrowser.status === "erro" && (
+              <Typography variant="caption" color="danger">
+                Não foi possível ativar agora. Tente novamente em instantes.
+              </Typography>
+            )}
+          </Card.Body>
+        </Card>
+      )}
 
       <Card>
         <Card.Body className="flex flex-col gap-4">

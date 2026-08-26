@@ -88,3 +88,50 @@ self.addEventListener("fetch", (event) => {
       .catch(() => caches.match(event.request)),
   );
 });
+
+/**
+ * Push real (Frente 0) — RFC 8030/VAPID via `web-push` no backend
+ * (`WebPushService`). O payload chega como JSON simples (`titulo`/`corpo`/
+ * `url` opcional, mesmo formato de dados usado pro Expo no app mobile) —
+ * qualquer erro de parse não derruba o evento, só cai pro texto genérico.
+ */
+self.addEventListener("push", (event) => {
+  let dados = { titulo: "Rotta", corpo: "Você tem uma notificação nova." };
+  try {
+    if (event.data) {
+      dados = { ...dados, ...event.data.json() };
+    }
+  } catch {
+    // Payload não era JSON — mantém o texto genérico acima em vez de
+    // deixar o evento inteiro falhar.
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(dados.titulo, {
+      body: dados.corpo,
+      icon: "/brand/rotta-mark-192.png",
+      badge: "/brand/rotta-mark-192.png",
+      data: { url: dados.url || "/notificacoes" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const destino = event.notification.data?.url || "/notificacoes";
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(destino) && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (clientList.length > 0 && "focus" in clientList[0]) {
+        clientList[0].navigate(destino);
+        return clientList[0].focus();
+      }
+      return self.clients.openWindow(destino);
+    }),
+  );
+});
