@@ -804,6 +804,7 @@ model User {
   /// `contratosMonitor` quando atua como Motorista/Monitor de uma
   /// Empresa (Dossiê 8 §2 — "múltiplos papéis simultâneos").
   alunos                 Student[]          @relation("StudentResponsavel")
+  desviosEnderecoCriados StudentAddressOverride[] @relation("StudentAddressOverrideCriadoPor")
   solicitacoesTransporte TransportRequest[] @relation("TransportRequestResponsavel")
   contratos              Contract[]         @relation("ContractResponsavel")
   contratosMotorista     Contract[]         @relation("ContractMotorista")
@@ -1786,6 +1787,7 @@ model Student {
   contracts          Contract[]
   vinculosRota       RouteStudent[]
   eventosViagem      TripStudentEvent[]
+  desviosEndereco    StudentAddressOverride[]
 
   @@index([responsavelId, deletedAt])
   @@index([schoolId])
@@ -1810,6 +1812,61 @@ model StudentAuthorizedPerson {
 
   @@index([studentId])
   @@map("student_authorized_persons")
+}
+
+/// Qual trecho da viagem o desvio de endereço afeta (pedido do usuário:
+/// "informar se algum dia ele irá para outro endereço — na ida, na
+/// volta ou ambos").
+enum StudentAddressOverrideTrecho {
+  EMBARQUE
+  DESEMBARQUE
+  AMBOS
+}
+
+/// Desvio de endereço agendado pelo Responsável para UM dia específico
+/// (calendário + painel — pedido do usuário: "informar se algum dia ele
+/// irá para outro endereço... até antes da van iniciar o novo
+/// serviço"). Um único endereço alternativo por dia por aluno
+/// (`@@unique`) — o `trecho` decide se ele vale só pro embarque, só pro
+/// desembarque ou pros dois. Nunca sobrescreve `Student.embarqueX`/
+/// `desembarqueX` (o cadastro permanente do aluno): é lido em tempo real
+/// por `TripsService` ao montar as paradas efetivas do dia
+/// (`resolverParadaEfetiva`), então perde o efeito sozinho no dia
+/// seguinte sem exigir nenhuma limpeza manual.
+///
+/// Sem RLS/tenant — mesma justificativa de `Student` (dado do aluno,
+/// não da empresa): a trava de acesso é sempre "é o próprio
+/// Responsável do aluno", nunca `companyId`.
+model StudentAddressOverride {
+  id        String  @id @default(uuid()) @db.Uuid
+  studentId String  @db.Uuid
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Dia em que o desvio vale (não timestamp — mesma convenção de `Trip.data`).
+  data    DateTime                      @db.Date
+  trecho  StudentAddressOverrideTrecho
+
+  cep         String
+  logradouro  String
+  numero      String
+  complemento String?
+  bairro      String
+  cidade      String
+  estado      String
+  latitude    Decimal @db.Decimal(9, 6)
+  longitude   Decimal @db.Decimal(9, 6)
+
+  observacao String?
+
+  criadoPorUserId String @db.Uuid
+  criadoPor       User   @relation("StudentAddressOverrideCriadoPor", fields: [criadoPorUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, data])
+  @@index([studentId, data])
+  @@map("student_address_overrides")
 }
 
 // =============================================================================
@@ -2140,6 +2197,15 @@ model Trip {
   /// registrado) — nunca precisa de limpeza manual.
   ultimaParadaProximaNotificadaId String? @db.Uuid
 
+  /// Mesmo mecanismo de dedup de `ultimaParadaProximaNotificadaId`, só
+  /// que para o aviso de "chegou a vez do aluno" (`ALUNO_VEZ_EMBARQUE`/
+  /// `ALUNO_VEZ_DESEMBARQUE`) — deliberadamente um campo PRÓPRIO, nunca
+  /// reaproveitado: aquele é gated por proximidade de GPS (só dispara
+  /// dentro do raio); este dispara por TRANSIÇÃO de estado (a parada
+  /// pendente mudou), incluindo o instante em que a viagem começa, antes
+  /// de qualquer posição de GPS existir.
+  ultimaParadaEmVezNotificadaId String? @db.Uuid
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2312,6 +2378,17 @@ enum NotificationEventType {
   /// Aviso/comunicado geral publicado pelo Admin Rotta
   /// (`AnnouncementsService`) — broadcast pra um público-alvo inteiro.
   AVISO_GERAL
+  /// A parada pendente da viagem virou a de EMBARQUE deste aluno (pedido
+  /// do usuário: "aluno 1 será o primeiro a ser buscado... Boas
+  /// notícias! O aluno está na rota para ser buscado"). Disparado por
+  /// transição de estado (`TripsService.notificarVezDoAlunoBestEffort`),
+  /// nunca por proximidade de GPS — ver `VEICULO_PROXIMO` para o aviso
+  /// baseado em distância.
+  ALUNO_VEZ_EMBARQUE
+  /// Mesma mecânica de `ALUNO_VEZ_EMBARQUE`, mas para quando a parada
+  /// pendente vira a de DESEMBARQUE de um aluno já embarcado ("está na
+  /// rota para retornar ao endereço informado").
+  ALUNO_VEZ_DESEMBARQUE
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —

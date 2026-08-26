@@ -1,6 +1,8 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
 import { NotificationEventType, TripStatus } from "@prisma/client";
 
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { Role } from "@/shared/enums";
 
 import { TripsService } from "../trips.service";
 
@@ -9,6 +11,7 @@ import type { TripStudentEventRepository } from "../repositories/trip-student-ev
 import type { TripRepository } from "../repositories/trip.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import type { ContractsService } from "@/modules/marketplace/contracts.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -18,9 +21,6 @@ import type { UsersService } from "@/modules/users/users.service";
 import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Trip } from "@prisma/client";
-
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { Role } from "@/shared/enums";
 
 function buildTrip(overrides: Partial<Trip> = {}): Trip {
   return {
@@ -37,6 +37,8 @@ function buildTrip(overrides: Partial<Trip> = {}): Trip {
     pausadaEm: null,
     finalizadaEm: null,
     canceladaEm: null,
+    ultimaParadaProximaNotificadaId: null,
+    ultimaParadaEmVezNotificadaId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -78,6 +80,7 @@ describe("TripsService", () => {
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let geoEngineService: jest.Mocked<GeoEngineService>;
+  let companiesService: jest.Mocked<CompaniesService>;
 
   beforeEach(() => {
     tripRepository = {
@@ -140,14 +143,20 @@ describe("TripsService", () => {
       monitorAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       veiculoAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       veiculoProximo: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      alunoVezEmbarque: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      alunoVezDesembarque: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
     geoEngineService = {
       getRoute: jest.fn(),
     } as unknown as jest.Mocked<GeoEngineService>;
+    companiesService = {
+      getNomeFantasia: jest.fn().mockResolvedValue("Gama Transportes"),
+    } as unknown as jest.Mocked<CompaniesService>;
 
     routesService.listStudents.mockResolvedValue([]);
     routesService.listStops.mockResolvedValue([]);
     positionRepository.findLatestByTrip.mockResolvedValue(null);
+    studentEventRepository.listByTrip.mockResolvedValue([]);
 
     service = new TripsService(
       tripRepository,
@@ -162,6 +171,7 @@ describe("TripsService", () => {
       eventEmitter,
       messagePersonalizationService,
       geoEngineService,
+      companiesService,
     );
   });
 
@@ -299,6 +309,91 @@ describe("TripsService", () => {
       );
       expect(result.id).toBe("trip-1");
     });
+
+    it("ao iniciar, avisa o responsável do PRIMEIRO aluno da fila que 'está na rota para ser buscado' (ALUNO_VEZ_EMBARQUE)", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(null);
+      tripRepository.create.mockResolvedValue(buildTrip());
+      companiesService.getNomeFantasia.mockResolvedValue("Gama Transportes");
+      routesService.listStops.mockResolvedValue([
+        { id: "stop-1", latitude: -23.0, longitude: -46.0, horarioPrevisto: "07:00" },
+      ] as never);
+      routesService.listStudents.mockResolvedValue([
+        {
+          id: "vinculo-1",
+          contractId: "contract-1",
+          studentId: "student-1",
+          paradaEmbarqueId: "stop-1",
+          paradaDesembarqueId: "stop-2",
+        },
+      ] as never);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-1",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "Pedro Henrique" } as never);
+
+      await service.start({ routeId: "route-1" }, motoristaActor, {});
+
+      expect(messagePersonalizationService.alunoVezEmbarque).toHaveBeenCalledWith("Pedro Henrique");
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        COMMUNICATION_REQUESTED_EVENT,
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.ALUNO_VEZ_EMBARQUE,
+        }),
+      );
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
+        ultimaParadaEmVezNotificadaId: "stop-1",
+      });
+    });
+
+    it("usa o nomeFantasia da empresa na mensagem 'a van está em serviço'", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(null);
+      tripRepository.create.mockResolvedValue(buildTrip());
+      companiesService.getNomeFantasia.mockResolvedValue("Gama Transportes");
+      routesService.listStudents.mockResolvedValue([
+        {
+          id: "vinculo-1",
+          contractId: "contract-1",
+          studentId: "student-1",
+          paradaEmbarqueId: "stop-1",
+          paradaDesembarqueId: "stop-2",
+        },
+      ] as never);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-1",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "Pedro" } as never);
+      usersService.findById.mockResolvedValue({ nome: "Ana" } as never);
+
+      await service.start({ routeId: "route-1" }, motoristaActor, {});
+
+      expect(companiesService.getNomeFantasia).toHaveBeenCalledWith("company-1");
+      expect(messagePersonalizationService.viagemIniciada).toHaveBeenCalledWith(
+        "Gama Transportes",
+      );
+    });
   });
 
   describe("addStudentEvent (EMB-01/05 + DESEMB-01/03)", () => {
@@ -373,6 +468,44 @@ describe("TripsService", () => {
       );
       expect(result.routeStopId).toBe("stop-embarque");
       expect(eventEmitter.emit).toHaveBeenCalled();
+    });
+
+    it("depois do EMBARCOU, avisa que chegou a vez do aluno DESEMBARCAR (ALUNO_VEZ_DESEMBARQUE) — a parada pendente mudou", async () => {
+      routesService.listStops.mockResolvedValue([
+        { id: "stop-desembarque", latitude: -23.0, longitude: -46.0, horarioPrevisto: "07:30" },
+      ] as never);
+      studentEventRepository.findByTripStudentAndTipo.mockResolvedValue(null);
+      studentEventRepository.listByTrip.mockResolvedValue([
+        { studentId: "student-1", tipo: "EMBARCOU" },
+      ] as never);
+      studentEventRepository.create.mockResolvedValue({
+        id: "event-1",
+        tripId: "trip-1",
+        studentId: "student-1",
+        routeStopId: "stop-embarque",
+        tipo: "EMBARCOU",
+        motivoAusencia: null,
+        processadoPorId: "motorista-1",
+        processadoEm: new Date(),
+      } as never);
+
+      await service.addStudentEvent(
+        "trip-1",
+        { studentId: "student-1", tipo: "EMBARCOU" },
+        motoristaActor,
+      );
+
+      expect(messagePersonalizationService.alunoVezDesembarque).toHaveBeenCalledWith("Pedro");
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        COMMUNICATION_REQUESTED_EVENT,
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.ALUNO_VEZ_DESEMBARQUE,
+        }),
+      );
+      expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
+        ultimaParadaEmVezNotificadaId: "stop-desembarque",
+      });
     });
 
     it("rejeita registrar o MESMO evento duas vezes para o mesmo aluno na viagem", async () => {

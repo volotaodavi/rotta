@@ -28,10 +28,23 @@ export class MessagePersonalizationService {
     return `${periodo}, ${nome}.`;
   }
 
-  viagemIniciada(nomeResponsavel: string, nomeAluno: string): PersonalizedMessage {
+  /** "João Pedro da Silva" → "João" — os avisos de vez/embarque do aluno usam só o primeiro nome (pedido do usuário), nunca o nome completo. */
+  private primeiroNome(nomeCompleto: string): string {
+    return nomeCompleto.trim().split(/\s+/)[0] ?? nomeCompleto;
+  }
+
+  /**
+   * "A van está em serviço" (pedido do usuário, texto literal): dispara
+   * pra TODOS os responsáveis da rota assim que a viagem começa,
+   * independente de qual aluno está na vez. `nomeTransportador` é o
+   * `nomeFantasia` da empresa (ou o nome do próprio motorista quando é
+   * autônomo/MEI sem nome fantasia próprio de transporte) — quem
+   * chama decide qual dos dois faz mais sentido passar.
+   */
+  viagemIniciada(nomeTransportador: string): PersonalizedMessage {
     return {
-      titulo: "Viagem iniciada",
-      corpo: `${this.saudacao(nomeResponsavel)} A viagem de ${nomeAluno} começou.`,
+      titulo: "Van em serviço",
+      corpo: `A van ${nomeTransportador} está em serviço! Em breve o seu filho estará retornando para o endereço informado.`,
     };
   }
 
@@ -42,8 +55,12 @@ export class MessagePersonalizationService {
     };
   }
 
+  /** Texto literal pedido pelo usuário — dispara quando o checklist marca o aluno como EMBARCOU. */
   alunoEmbarcou(nomeAluno: string): PersonalizedMessage {
-    return { titulo: "Embarque confirmado", corpo: `O ${nomeAluno} acabou de embarcar.` };
+    return {
+      titulo: "Embarque confirmado",
+      corpo: `O aluno ${this.primeiroNome(nomeAluno)} embarcou na van e em breve estará na rota para retornar ao endereço informado.`,
+    };
   }
 
   alunoDesembarcou(nomeAluno: string): PersonalizedMessage {
@@ -54,6 +71,28 @@ export class MessagePersonalizationService {
     return {
       titulo: "Aluno ausente",
       corpo: `O ${nomeAluno} não foi encontrado no ponto de embarque combinado.`,
+    };
+  }
+
+  /**
+   * "Chegou a vez do aluno" (pedido do usuário, texto literal) —
+   * dispara quando a parada de EMBARQUE do aluno vira a próxima da fila
+   * (`ALUNO_VEZ_EMBARQUE`), diferente de `veiculoProximo` (que depende
+   * de proximidade real por GPS): aqui o aviso é por TRANSIÇÃO de
+   * estado, inclusive no instante em que a viagem começa.
+   */
+  alunoVezEmbarque(nomeAluno: string): PersonalizedMessage {
+    return {
+      titulo: "Está quase na hora",
+      corpo: `Boas notícias! O aluno ${this.primeiroNome(nomeAluno)} está na rota para ser buscado🤗`,
+    };
+  }
+
+  /** Mesma mecânica de `alunoVezEmbarque`, para quando a parada de DESEMBARQUE vira a próxima da fila (`ALUNO_VEZ_DESEMBARQUE`). */
+  alunoVezDesembarque(nomeAluno: string): PersonalizedMessage {
+    return {
+      titulo: "Ele já está a caminho de casa",
+      corpo: `Boas notícias! O aluno ${this.primeiroNome(nomeAluno)} está na rota para retornar ao endereço informado. Fique de olho👀.`,
     };
   }
 

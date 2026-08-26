@@ -40,8 +40,10 @@ import type { TripPositionRepository } from "./repositories/trip-position.reposi
 import type { TripStudentEventRepository } from "./repositories/trip-student-event.repository";
 import type { CreateTripData, TripRepository } from "./repositories/trip.repository";
 import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
+import type { RouteStudentResponseDto } from "../routes/dto/route-student-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { CompaniesService } from "@/modules/companies/companies.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
 import { ContractsService } from "@/modules/marketplace/contracts.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
@@ -135,6 +137,7 @@ export class TripsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly geoEngineService: GeoEngineService,
+    private readonly companiesService: CompaniesService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -343,13 +346,20 @@ export class TripsService {
       userAgent: meta.userAgent,
     });
 
+    // "A van está em serviço" (texto literal pedido pelo usuário) vale
+    // pra TODOS os responsáveis da rota, sempre com o mesmo texto — por
+    // isso ignora `nomeResponsavel`/`nomeAluno` do build padrão e fecha
+    // sobre `nomeTransportador` já resolvido uma vez antes do loop.
+    const nomeTransportador =
+      (await this.companiesService.getNomeFantasia(route.companyId)) ?? "sua transportadora";
     await this.notifyActiveStudentsOfRoute(
       dto.routeId,
       actor,
       NotificationEventType.VIAGEM_INICIADA,
-      (nomeResponsavel, nomeAluno) =>
-        this.messagePersonalizationService.viagemIniciada(nomeResponsavel, nomeAluno),
+      () => this.messagePersonalizationService.viagemIniciada(nomeTransportador),
     );
+
+    await this.notificarVezDoAlunoBestEffort(trip, actor);
 
     return toTripResponseDto(trip);
   }
@@ -849,6 +859,12 @@ export class TripsService {
       await this.recalcularEnotificarBestEffort(trip, actor);
     }
 
+    // Qualquer checklist (EMBARCOU/AUSENTE/DESEMBARCOU) muda quem é a
+    // próxima parada pendente — reavalia a "vez do aluno" depois de
+    // TODO evento, não só de ausência (diferente do recálculo de ETA
+    // acima, que só faz sentido reagir a AUSENTE).
+    await this.notificarVezDoAlunoBestEffort(trip, actor);
+
     return toTripStudentEventResponseDto(event);
   }
 
@@ -957,34 +973,38 @@ export class TripsService {
   }
 
   /**
-   * "Pendente" = tem pelo menos um aluno ativo que ainda não passou por
-   * esta parada hoje: sem EMBARCOU/AUSENTE registrado (falta embarque),
-   * ou com EMBARCOU mas sem DESEMBARCOU (falta desembarque — um aluno
-   * AUSENTE nunca gera pendência de desembarque). Extraído para ser
-   * compartilhado com o geofencing (`detectarAproximacaoBestEffort`),
-   * que precisa da mesma "próxima parada pendente" mas SEM o custo de
-   * uma chamada OSRM a cada ping de GPS (Prompt "Rotta Geo Platform"
-   * §29 — "evitar consultas pesadas"). `stops` já vem ordenado por
-   * `ordem` (`RouteStopRepository.listByRoute`) — o `filter` preserva
-   * essa ordem.
+   * Um item por aluno que ainda não passou por sua próxima etapa hoje:
+   * `EMBARQUE` (sem EMBARCOU/AUSENTE registrado) ou `DESEMBARQUE` (com
+   * EMBARCOU mas sem DESEMBARCOU — um aluno AUSENTE nunca gera pendência
+   * de desembarque). Extraído de `listParadasPendentes` pra ser
+   * reaproveitado por `notificarVezDoAlunoBestEffort`, que precisa saber
+   * exatamente QUAIS alunos (não só quais paradas) estão pendentes na
+   * próxima parada da fila — evita notificar de novo o responsável de um
+   * aluno que já embarcou só porque a parada dele coincide com a de
+   * outro aluno ainda pendente.
    */
-  private async listParadasPendentes(
+  private async listPendenciasPorAluno(
     trip: Trip,
     actor: AuthenticatedUser,
-  ): Promise<RouteStopResponseDto[]> {
-    const [stops, vinculos, eventos] = await Promise.all([
-      this.routesService.listStops(trip.routeId, actor),
+  ): Promise<
+    Array<{ vinculo: RouteStudentResponseDto; tipo: "EMBARQUE" | "DESEMBARQUE"; routeStopId: string }>
+  > {
+    const [vinculos, eventos] = await Promise.all([
       this.routesService.listStudents(trip.routeId, actor),
       this.studentEventRepository.listByTrip(trip.id),
     ]);
 
-    const paradasPendentesIds = new Set<string>();
+    const pendencias: Array<{
+      vinculo: RouteStudentResponseDto;
+      tipo: "EMBARQUE" | "DESEMBARQUE";
+      routeStopId: string;
+    }> = [];
     for (const vinculo of vinculos) {
       const embarqueOuAusente = eventos.find(
         (e) => e.studentId === vinculo.studentId && (e.tipo === "EMBARCOU" || e.tipo === "AUSENTE"),
       );
       if (!embarqueOuAusente) {
-        paradasPendentesIds.add(vinculo.paradaEmbarqueId);
+        pendencias.push({ vinculo, tipo: "EMBARQUE", routeStopId: vinculo.paradaEmbarqueId });
         continue;
       }
       if (embarqueOuAusente.tipo === "EMBARCOU") {
@@ -992,11 +1012,32 @@ export class TripsService {
           (e) => e.studentId === vinculo.studentId && e.tipo === "DESEMBARCOU",
         );
         if (!jaDesembarcou) {
-          paradasPendentesIds.add(vinculo.paradaDesembarqueId);
+          pendencias.push({ vinculo, tipo: "DESEMBARQUE", routeStopId: vinculo.paradaDesembarqueId });
         }
       }
     }
+    return pendencias;
+  }
 
+  /**
+   * "Pendente" = tem pelo menos um aluno ativo que ainda não passou por
+   * esta parada hoje (ver `listPendenciasPorAluno`). `stops` já vem
+   * ordenado por `ordem` (`RouteStopRepository.listByRoute`) — o
+   * `filter` preserva essa ordem. Compartilhado com o geofencing
+   * (`detectarAproximacaoBestEffort`) e com `notificarVezDoAlunoBestEffort`,
+   * ambos precisam da mesma "próxima parada pendente" sem o custo de uma
+   * chamada OSRM a cada ping de GPS (Prompt "Rotta Geo Platform" §29 —
+   * "evitar consultas pesadas").
+   */
+  private async listParadasPendentes(
+    trip: Trip,
+    actor: AuthenticatedUser,
+  ): Promise<RouteStopResponseDto[]> {
+    const [stops, pendencias] = await Promise.all([
+      this.routesService.listStops(trip.routeId, actor),
+      this.listPendenciasPorAluno(trip, actor),
+    ]);
+    const paradasPendentesIds = new Set(pendencias.map((p) => p.routeStopId));
     return stops.filter((stop) => paradasPendentesIds.has(stop.id));
   }
 
@@ -1237,6 +1278,100 @@ export class TripsService {
       await this.tripRepository.update(trip.id, { ultimaParadaProximaNotificadaId: proxima.id });
     } catch (error) {
       this.logger.warn(`Falha ao detectar aproximação por geofencing da viagem ${trip.id}.`);
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  /**
+   * "Chegou a vez do aluno" (pedido do usuário, texto literal: "Boas
+   * notícias! O aluno {nome} está na rota para ser buscado" /
+   * "...para retornar ao endereço informado") — avisa os responsáveis
+   * dos alunos vinculados à PRÓXIMA parada pendente assim que ela vira a
+   * primeira da fila, de embarque ou de desembarque.
+   *
+   * Diferente de `detectarAproximacaoBestEffort` (gated por proximidade
+   * REAL de GPS — só dispara dentro do raio de geofencing): este método
+   * dispara por TRANSIÇÃO de estado, a parada pendente mudou, inclusive
+   * no instante em que a viagem começa (`start`), antes de qualquer
+   * posição de GPS existir. Por isso usa `Trip.
+   * ultimaParadaEmVezNotificadaId`, um campo de dedup PRÓPRIO — nunca
+   * `ultimaParadaProximaNotificadaId` (esse é do geofencing).
+   *
+   * Reordena as pendentes pela última posição GPS conhecida quando ela
+   * existir (mesmo critério guloso de `ordenarPorProximidade`); sem
+   * nenhuma posição ainda (caso comum logo no `start`), usa a ordem
+   * cadastrada da rota mesmo — é a melhor estimativa disponível de qual
+   * aluno é "o primeiro a ser buscado" antes do motorista sequer se
+   * mover. Chamado depois de `start()` e depois de todo
+   * `addStudentEvent` (qualquer checklist muda quem é a próxima parada
+   * pendente) — nunca lança, mesmo princípio best-effort de
+   * `recalcularEnotificarBestEffort`/`detectarAproximacaoBestEffort`.
+   */
+  private async notificarVezDoAlunoBestEffort(
+    trip: Trip,
+    actor: AuthenticatedUser,
+  ): Promise<void> {
+    try {
+      const [stops, pendencias] = await Promise.all([
+        this.routesService.listStops(trip.routeId, actor),
+        this.listPendenciasPorAluno(trip, actor),
+      ]);
+      if (pendencias.length === 0) return;
+
+      const paradaIdsPendentes = new Set(pendencias.map((p) => p.routeStopId));
+      const pendentesNaOrdemCadastrada = stops.filter((stop) => paradaIdsPendentes.has(stop.id));
+
+      const ultimaPosicao = await this.positionRepository.findLatestByTrip(trip.id);
+      const paradasPendentes = ultimaPosicao
+        ? this.ordenarPorProximidade(
+            {
+              latitude: Number(ultimaPosicao.latitude),
+              longitude: Number(ultimaPosicao.longitude),
+            },
+            pendentesNaOrdemCadastrada,
+          )
+        : pendentesNaOrdemCadastrada;
+
+      const proxima = paradasPendentes[0];
+      if (!proxima) return;
+      if (trip.ultimaParadaEmVezNotificadaId === proxima.id) return;
+
+      for (const pendencia of pendencias) {
+        if (pendencia.routeStopId !== proxima.id) continue;
+        const vinculo = pendencia.vinculo;
+        try {
+          const [contract, student] = await Promise.all([
+            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+            this.studentsService.findRawById(vinculo.studentId),
+          ]);
+          if (!student) continue;
+          const message =
+            pendencia.tipo === "EMBARQUE"
+              ? this.messagePersonalizationService.alunoVezEmbarque(student.nome)
+              : this.messagePersonalizationService.alunoVezDesembarque(student.nome);
+          const eventType =
+            pendencia.tipo === "EMBARQUE"
+              ? NotificationEventType.ALUNO_VEZ_EMBARQUE
+              : NotificationEventType.ALUNO_VEZ_DESEMBARQUE;
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: contract.responsavelId,
+            companyId: contract.companyId,
+            tipo: eventType,
+            titulo: message.titulo,
+            corpo: message.corpo,
+            dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao notificar responsável do vínculo ${vinculo.id} sobre a vez do aluno (rota ${trip.routeId}).`,
+          );
+          this.logger.warn(error instanceof Error ? error.message : String(error));
+        }
+      }
+
+      await this.tripRepository.update(trip.id, { ultimaParadaEmVezNotificadaId: proxima.id });
+    } catch (error) {
+      this.logger.warn(`Falha ao notificar a vez do aluno na viagem ${trip.id}.`);
       this.logger.warn(error instanceof Error ? error.message : String(error));
     }
   }

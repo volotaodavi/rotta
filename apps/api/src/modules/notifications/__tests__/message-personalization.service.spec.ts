@@ -15,12 +15,16 @@ describe("MessagePersonalizationService", () => {
   });
 
   it("nunca retorna mensagem genérica — todo método interpola o dado real recebido", () => {
-    expect(service.viagemIniciada("Ana", "Pedro").corpo).toContain("Pedro");
+    expect(service.viagemIniciada("Gama Transportes").corpo).toContain("Gama Transportes");
     expect(service.viagemEncerrada("Ana", "Pedro").corpo).toContain("Pedro");
-    expect(service.alunoEmbarcou("Pedro").corpo).toContain("Pedro");
+    expect(service.alunoEmbarcou("Pedro Henrique").corpo).toContain("Pedro");
     expect(service.alunoDesembarcou("Pedro").corpo).toContain("Pedro");
     expect(service.alunoAusente("Pedro").corpo).toContain("Pedro");
     expect(service.veiculoProximo("Pedro", "07:18").corpo).toContain("07:18");
+    expect(service.alunoVezEmbarque("Pedro Henrique").corpo).toContain("Pedro");
+    expect(service.alunoVezEmbarque("Pedro Henrique").corpo).not.toContain("Henrique");
+    expect(service.alunoVezDesembarque("Pedro Henrique").corpo).toContain("Pedro");
+    expect(service.alunoVezDesembarque("Pedro Henrique").corpo).not.toContain("Henrique");
     expect(service.motoristaAlterado("Pedro", "Carlos").corpo).toContain("Carlos");
     expect(service.monitorAlterado("Pedro", "Carla").corpo).toContain("Carla");
     expect(service.veiculoAlterado("Pedro", "ABC1D23").corpo).toContain("ABC1D23");
@@ -42,12 +46,14 @@ describe("MessagePersonalizationService", () => {
 
   it("todo método retorna titulo e corpo não vazios", () => {
     const mensagens = [
-      service.viagemIniciada("Ana", "Pedro"),
+      service.viagemIniciada("Gama Transportes"),
       service.viagemEncerrada("Ana", "Pedro"),
       service.alunoEmbarcou("Pedro"),
       service.alunoDesembarcou("Pedro"),
       service.alunoAusente("Pedro"),
       service.veiculoProximo("Pedro", "07:18"),
+      service.alunoVezEmbarque("Pedro"),
+      service.alunoVezDesembarque("Pedro"),
       service.motoristaAlterado("Pedro", "Carlos"),
       service.monitorAlterado("Pedro", "Carla"),
       service.veiculoAlterado("Pedro", "ABC1D23"),

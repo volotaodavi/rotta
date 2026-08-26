@@ -18,6 +18,8 @@ export interface UpdateTripData {
   canceladaEm?: Date | null;
   /** Geofencing (Prompt "Rotta Geo Platform" §25) — dedup do aviso de aproximação, ver nota no schema. */
   ultimaParadaProximaNotificadaId?: string | null;
+  /** Dedup do aviso de "chegou a vez do aluno" (`notificarVezDoAlunoBestEffort`) — campo próprio, nunca `ultimaParadaProximaNotificadaId`, ver nota no schema. */
+  ultimaParadaEmVezNotificadaId?: string | null;
   /** Substituição pontual do dia (`ROT-05`/`ROT-06`, tarefa #102) — nunca sobrescreve `Route.motoristaPadraoId`/`veiculoPadraoId`/`monitorPadraoId`. */
   veiculoId?: string;
   motoristaId?: string;

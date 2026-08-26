@@ -32,6 +32,13 @@ export class NotificationChannelSelectorService {
     ALUNO_DESEMBARCOU: [PUSH],
     ALUNO_AUSENTE: [PUSH, WHATSAPP],
     VEICULO_PROXIMO: [PUSH, WHATSAPP],
+    // Chegou a vez do aluno (pedido do usuário: pop-up + notificação no
+    // instante em que a parada dele fica em primeiro na fila) — mesmo
+    // canal de ALUNO_EMBARCOU/ALUNO_DESEMBARCOU, é o mesmo tipo de aviso
+    // operacional do dia a dia, só que disparado por transição de
+    // estado (não por proximidade de GPS).
+    ALUNO_VEZ_EMBARQUE: [PUSH],
+    ALUNO_VEZ_DESEMBARQUE: [PUSH],
     MOTORISTA_ALTERADO: [PUSH],
     MONITOR_ALTERADO: [PUSH],
     VEICULO_ALTERADO: [PUSH],
