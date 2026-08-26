@@ -16,28 +16,18 @@ import type { Feature, LineString } from "geojson";
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
 /**
- * Tiles RASTER com dados do OpenStreetMap, servidos pela CDN da CARTO
- * (`basemaps.cartocdn.com`, estilo "Voyager") — NÃO usa mais
- * `tile.openstreetmap.org` direto (ver nota completa em
- * `../web/index.tsx`: hotlinking de app de produção contra esse host
- * viola a Tile Usage Policy da OSM Foundation e passou a ser bloqueado
- * por lá, sem erro visível — o mapa só fica em branco). `mapStyle`
- * aceita `string | object` (`MapView` do
- * `@maplibre/maplibre-react-native`), então o mesmo objeto de estilo
- * inline funciona aqui igual à web.
+ * Estilo padrão do mapa — VETORIAL `liberty` da OpenFreeMap, sem
+ * chave/token (ver o histórico completo em `../web/index.tsx`: a CARTO,
+ * que era usada antes aqui, passou a exigir chave de API pra qualquer
+ * tile — confirmado com `curl`, a imagem devolvida vem com "API KEY
+ * REQUIRED" carimbado em cima, reproduzido pelo usuário direto no app
+ * publicado). `mapStyle` aceita `string | object` (`MapView` do
+ * `@maplibre/maplibre-react-native`), então passar só a URL do estilo
+ * funciona igual à web — o próprio MapLibre resolve tiles/sprite/glyphs
+ * (todos do mesmo domínio `tiles.openfreemap.org`, sem dependência
+ * cruzada de outro provedor).
  */
-const OSM_RASTER_STYLE = {
-  version: 8,
-  sources: {
-    "osm-raster": {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "© OpenStreetMap contributors © CARTO",
-    },
-  },
-  layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster" }],
-};
+const DEFAULT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
@@ -233,7 +223,7 @@ export function RottaMap({
       <MapView
         ref={mapRef}
         style={styles.map}
-        mapStyle={styleUrl ?? OSM_RASTER_STYLE}
+        mapStyle={styleUrl ?? DEFAULT_STYLE_URL}
         onRegionDidChange={async () => {
           if (!onBoundsChangeRef.current || !mapRef.current) return;
           const [ne, sw] = await mapRef.current.getVisibleBounds();

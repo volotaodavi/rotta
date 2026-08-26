@@ -7,7 +7,6 @@ import {
   NavigationControl,
   Popup,
   type GeoJSONSource,
-  type StyleSpecification,
 } from "maplibre-gl";
 import { useEffect, useRef } from "react";
 
@@ -27,41 +26,35 @@ export type {
 } from "../types";
 
 /**
- * Tiles RASTER com dados do OpenStreetMap, servidos pela CDN da CARTO
- * (`basemaps.cartocdn.com`, estilo "Voyager") — NÃO usa mais
- * `tile.openstreetmap.org` direto: hotlinking de app de produção contra
- * esse host viola a Tile Usage Policy da OSM Foundation
- * (operations.osmfoundation.org/policies/tiles) e passou a ser
- * bloqueado por lá (`HTTP 200` com header `x-blocked: Access denied`,
- * sem nenhum erro visível — o mapa só fica em branco). A CARTO publica
- * a mesma base de dados do OSM como CDN gratuita, sem token, feita
- * exatamente para uso direto de app (troca aqui feita depois de
- * confirmar via `curl` que `tile.openstreetmap.org` está bloqueado e
- * `basemaps.cartocdn.com` responde `200 image/png` normalmente).
- * `attribution` inclui os dois créditos exigidos (OSM + CARTO).
+ * Estilo padrão do mapa — VETORIAL `liberty`, servido pela OpenFreeMap
+ * (`tiles.openfreemap.org`), sem token/chave nenhuma.
  *
- * Antes desta troca, o padrão era um estilo VETORIAL `liberty` do
- * OpenFreeMap (tiles.openfreemap.org), que ficava com a tela branca:
- * um estilo vetorial depende de VÁRIOS fetches extras (o próprio
- * `style.json`, sprite, glyphs) além dos tiles em si — se qualquer um
- * desses domínios estiver bloqueado/fora do ar, o MapLibre não desenha
- * nada e não existe nenhum sinal visível disso fora do console
- * (`map.on("error", ...)` abaixo). Um estilo raster inline como este só
- * depende de UM tipo de requisição (a imagem do tile), então é muito
- * mais resiliente como padrão.
+ * Histórico (pra quem for mexer aqui de novo): usávamos tiles RASTER da
+ * CARTO (`basemaps.cartocdn.com/rastertiles/voyager`), achando que era
+ * uma CDN gratuita sem autenticação — só que a CARTO passou a EXIGIR
+ * chave de API pra qualquer requisição (confirmado com `curl`: toda
+ * imagem devolvida, mesmo com HTTP 200, vem com a marca d'água "API KEY
+ * REQUIRED" carimbada em cima do próprio tile — não é um erro nosso de
+ * configuração, é a régua nova deles). Reproduzido pelo usuário direto
+ * no app publicado ("aparece um aviso dentro do mapa pedindo API key"),
+ * com print confirmando a marca d'água. Antes disso, também abandonamos
+ * `tile.openstreetmap.org` direto (hotlinking de produção viola a Tile
+ * Usage Policy da OSM Foundation e passou a ser bloqueado por lá, sem
+ * erro visível — o mapa só ficava em branco).
+ *
+ * A tentativa anterior de usar a própria OpenFreeMap tinha ficado com a
+ * tela branca — mas o problema não era o provedor, era o antigo hábito
+ * de compor um estilo à mão puxando tiles/sprite/glyphs de domínios
+ * diferentes (qualquer um fora do ar e nada desenha, sem erro visível).
+ * Usando a URL do estilo pronto da própria OpenFreeMap (abaixo), tiles,
+ * sprite e glyphs vêm todos do MESMO domínio — testado com `curl`
+ * confirmando as três respostas (`/styles/liberty`, `/planet` tilejson,
+ * tiles `.pbf`) antes de trocar aqui. Documentação e termos de uso em
+ * openfreemap.org — hospedagem própria, sem limite de requisição
+ * documentado para uso razoável, pensada exatamente pra evitar esse
+ * tipo de exigência de chave.
  */
-const OSM_RASTER_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    "osm-raster": {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-    },
-  },
-  layers: [{ id: "osm-raster-layer", type: "raster", source: "osm-raster" }],
-};
+const DEFAULT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
@@ -272,7 +265,7 @@ export function RottaMap({
 
     const map = new MapLibreMap({
       container: containerRef.current,
-      style: styleUrl ?? OSM_RASTER_STYLE,
+      style: styleUrl ?? DEFAULT_STYLE_URL,
       center: initialCenter ? [initialCenter.longitude, initialCenter.latitude] : FALLBACK_CENTER,
       zoom: initialZoom,
     });

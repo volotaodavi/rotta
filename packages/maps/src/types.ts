@@ -88,6 +88,6 @@ export interface RottaMapProps {
   /** Disparado quando o usuário termina de mover/dar zoom no mapa (debounced pela implementação) — use para buscar novos marcadores via `GET /geo/mapa/marcadores`. */
   onBoundsChange?: (bounds: BoundingBox) => void;
   onMarkerPress?: (marker: RottaMapMarker) => void;
-  /** URL de um estilo MapLibre (vetor, https://maplibre.org/maplibre-style-spec/) — padrão: tiles RASTER com dados do OpenStreetMap servidos pela CDN da CARTO (`basemaps.cartocdn.com`), sem token, mais resilientes que um estilo vetorial (ver nota em `./web/index.tsx`). */
+  /** URL de um estilo MapLibre (vetor, https://maplibre.org/maplibre-style-spec/) — padrão: estilo `liberty` da OpenFreeMap (`tiles.openfreemap.org`), sem token (ver nota em `./web/index.tsx`). */
   styleUrl?: string;
 }
