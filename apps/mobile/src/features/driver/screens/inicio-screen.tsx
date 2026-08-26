@@ -767,6 +767,21 @@ function RotaOperacional({
   const totalAlunos = (routeStudents ?? []).length;
   const progressoEmbarquePct = totalAlunos > 0 ? (alunosEmbarcados / totalAlunos) * 100 : 0;
 
+  // Frente AP (paridade com o Painel Web, pedido do usuário: "quando a
+  // pessoa for iniciar uma rota, deverá ter um veículo cadastrado —
+  // caso o motorista não tenha, o pop-up deverá informar isso") —
+  // mesma checagem proativa do lado web: sem `rota.veiculoPadraoId`, o
+  // backend rejeitaria `POST /trips/start` de qualquer forma
+  // (`"Informe veiculoId..."`, hoje visível via o `Alert` global de
+  // erro), mas essa mensagem é pensada pra quem chama a API, não pra
+  // quem dirige.
+  const semVeiculoPadrao = !isLoadingTrip && !trip && isMotorista && !rota.veiculoPadraoId;
+  const isDono = user?.role === "empresa";
+  const [avisoSemVeiculoAberto, setAvisoSemVeiculoAberto] = useState(false);
+  useEffect(() => {
+    if (semVeiculoPadrao) setAvisoSemVeiculoAberto(true);
+  }, [semVeiculoPadrao]);
+
   // Frente AP (paridade com o Painel Web — pedido do usuário: "o mapa
   // inteiro na tela... com um retângulo com borda redonda flutuante...
   // com os alunos, com um botão do lado - azul (embarque), vermelho
@@ -801,6 +816,38 @@ function RotaOperacional({
 
   return (
     <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
+      <Modal
+        visible={avisoSemVeiculoAberto}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAvisoSemVeiculoAberto(false)}
+      >
+        <View style={styles.avisoVeiculoOverlay}>
+          <View
+            style={[styles.avisoVeiculoCard, { backgroundColor: theme.colors.surfaceElevated }]}
+          >
+            <View
+              style={[styles.avisoVeiculoIcone, { backgroundColor: `${theme.colors.warning}1A` }]}
+            >
+              <AlertTriangle size={20} color={theme.colors.warning} />
+            </View>
+            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+              Nenhum veículo cadastrado
+            </Text>
+            <Text style={{ color: theme.colors.textMuted, textAlign: "center" }}>
+              {isDono
+                ? "Esta rota ainda não tem um veículo vinculado. Cadastre um veículo pelo Painel Web antes de iniciar a viagem."
+                : "Esta rota ainda não tem um veículo vinculado. Fale com sua transportadora para vincular um antes de iniciar a viagem."}
+            </Text>
+            <VehicleButton
+              label="Entendi"
+              variant="primary"
+              onPress={() => setAvisoSemVeiculoAberto(false)}
+            />
+          </View>
+        </View>
+      </Modal>
+
       <ScrollView contentContainerStyle={styles.opScrollContent}>
         <PanelGreeting nome={user?.nome ?? ""} />
 
@@ -951,12 +998,21 @@ function RotaOperacional({
             <ActivityIndicator color={accentColor} />
           ) : !trip ? (
             isMotorista ? (
-              <SlideToAction
-                label="Deslize para iniciar a viagem"
-                theme={theme}
-                onComplete={() => startTrip.mutate({ routeId: rota.id })}
-                isLoading={startTrip.isPending}
-              />
+              semVeiculoPadrao ? (
+                <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                  Esta rota ainda não tem um veículo cadastrado.{" "}
+                  {isDono
+                    ? "Cadastre um veículo antes de iniciar a viagem."
+                    : "Fale com sua transportadora para vincular um veículo a esta rota."}
+                </Text>
+              ) : (
+                <SlideToAction
+                  label="Deslize para iniciar a viagem"
+                  theme={theme}
+                  onComplete={() => startTrip.mutate({ routeId: rota.id })}
+                  isLoading={startTrip.isPending}
+                />
+              )
             ) : (
               <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
                 Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
@@ -1607,6 +1663,27 @@ const styles = StyleSheet.create({
   alunoRowContainer: { gap: 4, paddingVertical: 6 },
   alunosPreViagemList: { borderTopWidth: 1, gap: 8, paddingTop: 12 },
   ausenciaForm: { alignItems: "center" },
+  avisoVeiculoCard: {
+    borderRadius: 20,
+    gap: 12,
+    padding: 20,
+    width: "100%",
+  },
+  avisoVeiculoIcone: {
+    alignItems: "center",
+    alignSelf: "center",
+    borderRadius: 999,
+    height: 44,
+    justifyContent: "center",
+    width: 44,
+  },
+  avisoVeiculoOverlay: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+    flex: 1,
+    justifyContent: "center",
+    padding: 24,
+  },
   controlsRow: { flexDirection: "row", gap: 8 },
   controlsSection: { gap: 8, paddingHorizontal: 16 },
   etaCard: { alignItems: "center", flexDirection: "row", gap: 12 },

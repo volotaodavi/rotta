@@ -21,6 +21,7 @@ import { useMyIdentityVerification } from "@/features/identity-verification/hook
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
 
+
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
   href: Route;
@@ -94,6 +95,16 @@ const DRIVER_MODE_ALLOWED_PREFIXES = [
   // mandaria de volta pra "Minha Rota" assim que o atalho fosse
   // clicado — mesmo bug já corrigido antes pro Perfil e pra Ocorrência.
   "/rotas",
+  // Frente AP (pedido do usuário: "deverá ter a questão de motoristas e
+  // veículos no modo ação, lá no hambúrguer") — mesmo raciocínio de
+  // `/rotas` acima: o dono autônomo/MEI ganhou os atalhos "Equipe" e
+  // "Veículos" em Perfil (`ATALHOS_PERFIL_MOTORISTA`, só pra
+  // `role === "empresa"`) pra cadastrar motorista adicional/veículo sem
+  // trocar pra "Visão completa" — sem as duas linhas abaixo, o mesmo
+  // bug de sempre: o clique navegaria e seria imediatamente revertido
+  // pra "Minha Rota".
+  "/equipe",
+  "/veiculos",
 ] as const;
 
 /**

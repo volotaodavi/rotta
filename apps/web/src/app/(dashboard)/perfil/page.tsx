@@ -1,7 +1,17 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { BookOpen, Bell, Car, LogOut, Map, MessageCircle, ShieldCheck } from "@rotta/icons";
+import {
+  BookOpen,
+  Bell,
+  Car,
+  LogOut,
+  Map,
+  MessageCircle,
+  ShieldCheck,
+  Truck,
+  Users,
+} from "@rotta/icons";
 import { Card, PanelGreeting, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,6 +65,24 @@ const ATALHOS_PERFIL_MOTORISTA: AtalhoPerfil[] = [
 ];
 
 /**
+ * "Equipe" e "Veículos" (Frente AP — pedido do usuário: "deverá ter a
+ * questão de motoristas e veículos no modo ação, lá no hambúrguer... no
+ * motorista MEI/autônomo, o próprio dono da empresa é o motorista. Mas
+ * se ele quiser colocar outro motorista, ele pode cadastrar [em] '/equipe'
+ * (mesmo fluxo de convite já usado na Visão completa, tarefa "Tela
+ * 'Equipe': permitir adicionar motorista adicional e monitor") e
+ * `/veiculos` (frota — cadastro de novos veículos, plural, diferente do
+ * "Meu veículo" acima que só EXIBE o veículo já vinculado). Só pro
+ * dono autônomo/MEI (`role === "empresa"`, o mesmo `canToggle` de
+ * `useAppMode`) — um Motorista/Monitor FUNCIONÁRIO não tem empresa
+ * nenhuma pra gerenciar aqui, então nunca vê este atalho.
+ */
+const ATALHOS_PERFIL_DONO: AtalhoPerfil[] = [
+  { href: "/equipe", label: "Equipe", icon: Users },
+  { href: "/veiculos", label: "Veículos", icon: Truck },
+];
+
+/**
  * Frente AO — Responsável passou a usar esta mesma página (chegando
  * pela aba "Perfil" do novo `ResponsavelBottomNav`). Nada de Rotta Pay/
  * Verificar identidade (não se aplicam a este papel) nem Notificações/
@@ -79,7 +107,15 @@ export default function PerfilPage(): JSX.Element {
   const { user, logout } = useAuth();
   const router = useRouter();
   const atalhos =
-    user?.role === "responsavel" ? ATALHOS_PERFIL_RESPONSAVEL : ATALHOS_PERFIL_MOTORISTA;
+    user?.role === "responsavel"
+      ? ATALHOS_PERFIL_RESPONSAVEL
+      : user?.role === "empresa"
+        ? [
+            ATALHOS_PERFIL_MOTORISTA[0]!,
+            ...ATALHOS_PERFIL_DONO,
+            ...ATALHOS_PERFIL_MOTORISTA.slice(1),
+          ]
+        : ATALHOS_PERFIL_MOTORISTA;
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">

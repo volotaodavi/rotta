@@ -28,6 +28,7 @@ import {
   Badge,
   Button,
   Card,
+  Modal,
   PanelGreeting,
   Spinner,
   Typography,
@@ -77,6 +78,7 @@ import { useVehicle, useVehicleOccurrences } from "@/features/vehicles/hooks/use
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
 import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
+
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -813,6 +815,26 @@ function RotaOperacional({
 
   const viagemEncerrada = trip && (trip.status === "FINALIZADA" || trip.status === "CANCELADA");
 
+  // Frente AP (pedido do usuário: "quando a pessoa for iniciar uma
+  // rota, deverá ter um veículo cadastrado — caso o motorista não
+  // tenha, o pop-up deverá informar isso") — checagem PROATIVA no
+  // cliente: o backend já rejeitava `POST /trips/start` sem
+  // `veiculoPadraoId` (`"Informe veiculoId (rota sem veículo padrão)."`,
+  // hoje visível via o toast global de erro), mas essa mensagem é
+  // pensada pra quem chama a API, não pra quem dirige. Em vez de deixar
+  // o motorista arrastar o botão e só então ver o erro técnico, a
+  // ausência de veículo já bloqueia o slide e abre um pop-up (`Modal`)
+  // assim que a tela carrega — `isDono` decide se aparece um botão de
+  // ação (autônomo/MEI pode cadastrar o próprio veículo) ou só o aviso
+  // (funcionário depende da transportadora, mesmo princípio de "Nenhuma
+  // rota atribuída" logo acima nesta tela).
+  const semVeiculoPadrao = !isLoadingTrip && !trip && isMotorista && !rota.veiculoPadraoId;
+  const isDono = user?.role === "empresa";
+  const [avisoSemVeiculoAberto, setAvisoSemVeiculoAberto] = useState(false);
+  useEffect(() => {
+    if (semVeiculoPadrao) setAvisoSemVeiculoAberto(true);
+  }, [semVeiculoPadrao]);
+
   // Frente AP (pedido do usuário, depois de reportar que "deslizar para
   // iniciar não faz nada": "o mapa inteiro na tela... com um retângulo
   // flutuante... com os alunos, com um botão do lado - azul (embarque),
@@ -853,6 +875,38 @@ function RotaOperacional({
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
+      <Modal
+        isOpen={avisoSemVeiculoAberto}
+        onClose={() => setAvisoSemVeiculoAberto(false)}
+        ariaLabel="Nenhum veículo cadastrado"
+      >
+        <Modal.Header onClose={() => setAvisoSemVeiculoAberto(false)}>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-warning/10 text-warning">
+              <AlertTriangle size={20} />
+            </span>
+            <Typography variant="subtitle">Nenhum veículo cadastrado</Typography>
+          </div>
+        </Modal.Header>
+        <Modal.Body>
+          <Typography variant="body" color="muted">
+            {isDono
+              ? "Esta rota ainda não tem um veículo vinculado. Cadastre um veículo antes de iniciar a viagem."
+              : "Esta rota ainda não tem um veículo vinculado. Fale com sua transportadora para vincular um antes de iniciar a viagem."}
+          </Typography>
+        </Modal.Body>
+        <Modal.Footer className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => setAvisoSemVeiculoAberto(false)}>
+            Fechar
+          </Button>
+          {isDono ? (
+            <Link href="/veiculos/novo" className={buttonVariants({ variant: "primary" })}>
+              Cadastrar veículo
+            </Link>
+          ) : null}
+        </Modal.Footer>
+      </Modal>
+
       <div className="flex items-start gap-2">
         <PanelGreeting nome={user?.nome ?? ""} className="flex-1" />
         {showTrocarRota ? (
@@ -1014,26 +1068,35 @@ function RotaOperacional({
           </div>
         ) : !trip ? (
           isMotorista ? (
-            <SlideToAction
-              label="Deslize para iniciar a viagem"
-              onComplete={() =>
-                startTrip.mutate(
-                  { routeId: rota.id },
-                  {
-                    // Erro já cai sozinho no toast global
-                    // (`MutationCache.onError`, `QueryProvider`) — aqui só
-                    // o feedback positivo, pra ficar claro que a viagem
-                    // começou de verdade (pedido do usuário: "não
-                    // acontece a devida ação... fica na mesma tela").
-                    onSuccess: () => {
-                      toast.success("Viagem iniciada.");
-                      void notifyRouteStarted(rota.nome);
+            semVeiculoPadrao ? (
+              <Typography variant="bodySmall" color="muted" className="py-2 text-center">
+                Esta rota ainda não tem um veículo cadastrado.{" "}
+                {isDono
+                  ? "Cadastre um veículo antes de iniciar a viagem."
+                  : "Fale com sua transportadora para vincular um veículo a esta rota."}
+              </Typography>
+            ) : (
+              <SlideToAction
+                label="Deslize para iniciar a viagem"
+                onComplete={() =>
+                  startTrip.mutate(
+                    { routeId: rota.id },
+                    {
+                      // Erro já cai sozinho no toast global
+                      // (`MutationCache.onError`, `QueryProvider`) — aqui só
+                      // o feedback positivo, pra ficar claro que a viagem
+                      // começou de verdade (pedido do usuário: "não
+                      // acontece a devida ação... fica na mesma tela").
+                      onSuccess: () => {
+                        toast.success("Viagem iniciada.");
+                        void notifyRouteStarted(rota.nome);
+                      },
                     },
-                  },
-                )
-              }
-              isLoading={startTrip.isPending}
-            />
+                  )
+                }
+                isLoading={startTrip.isPending}
+              />
+            )
           ) : (
             <Typography variant="bodySmall" color="muted" className="py-2 text-center">
               Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
