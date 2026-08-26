@@ -2,10 +2,11 @@
 
 import { ApiError } from "@rotta/api-client";
 import { FileText, Trash2, Users } from "@rotta/icons";
+import { haversineDistanceMeters } from "@rotta/maps/distance";
 import { Badge, Button, Card, Select, Spinner, Typography } from "@rotta/ui/web";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import type { Contract, RouteStop, RouteStudent, SchoolShift } from "@rotta/api-client";
+import type { Contract, RouteStop, RouteStudent, SchoolShift, Student } from "@rotta/api-client";
 
 import { useContractsList } from "@/features/marketplace/hooks/use-marketplace";
 import { useAddRouteStudent, useRemoveRouteStudent } from "@/features/routes/hooks/use-routes";
@@ -127,6 +128,71 @@ function RouteStudentRow({
   );
 }
 
+/** Raio de tolerância pra considerar uma parada "a residência do aluno" — mesma casa geocodificada pode cair alguns metros longe do pino salvo na parada. */
+const RAIO_PARADA_RESIDENCIA_METROS = 500;
+
+/** Parada sem `schoolId` mais próxima da coordenada informada, dentro do raio — `null` se nenhuma bater (aluno ainda sem parada de casa cadastrada nesta rota). */
+function encontrarParadaResidencia(
+  stops: RouteStop[],
+  latitude: number,
+  longitude: number,
+): RouteStop | null {
+  const candidatas = stops.filter((stop) => stop.schoolId == null);
+  let maisProxima: RouteStop | null = null;
+  let menorDistancia = Number.POSITIVE_INFINITY;
+  for (const stop of candidatas) {
+    const distancia = haversineDistanceMeters({ latitude, longitude }, stop);
+    if (distancia < menorDistancia) {
+      menorDistancia = distancia;
+      maisProxima = stop;
+    }
+  }
+  return menorDistancia <= RAIO_PARADA_RESIDENCIA_METROS ? maisProxima : null;
+}
+
+/**
+ * "Seja inteligente" (pedido do usuário) — antes disso, embarque e
+ * desembarque nasciam sempre em branco, mesmo quando dava pra deduzir
+ * os dois com o que já se sabe: a escola do aluno (`student.schoolId`,
+ * casada com a parada correspondente) e a residência dele (a parada sem
+ * escola geograficamente mais próxima do endereço cadastrado). O turno
+ * da rota decide o SENTIDO — de manhã o aluno sai de casa (embarque) e
+ * chega na escola (desembarque); à tarde/noite é o retorno, o contrário.
+ * Isso corrige exatamente o caso relatado (transportador AUTONOMO/MEI
+ * credenciando o próprio filho): o primeiro embarque de uma rota da
+ * manhã passa a sugerir a residência, nunca a escola. Só um PONTO DE
+ * PARTIDA — o campo continua editável, nunca trava a escolha manual.
+ * Turno `INTEGRAL`/`PERSONALIZADO` não diz sozinho qual é o sentido:
+ * melhor deixar em branco que arriscar embarque/desembarque trocados.
+ */
+function sugerirParadas(
+  student: Student | undefined,
+  stops: RouteStop[],
+  routeTurno: SchoolShift,
+): { embarqueId: string; desembarqueId: string } {
+  if (!student) return { embarqueId: "", desembarqueId: "" };
+
+  const paradaEscola = stops.find((stop) => stop.schoolId === student.schoolId) ?? null;
+
+  const coordenadaCasa =
+    student.embarqueLatitude != null && student.embarqueLongitude != null
+      ? { latitude: student.embarqueLatitude, longitude: student.embarqueLongitude }
+      : student.desembarqueLatitude != null && student.desembarqueLongitude != null
+        ? { latitude: student.desembarqueLatitude, longitude: student.desembarqueLongitude }
+        : null;
+  const paradaCasa = coordenadaCasa
+    ? encontrarParadaResidencia(stops, coordenadaCasa.latitude, coordenadaCasa.longitude)
+    : null;
+
+  if (routeTurno === "MANHA") {
+    return { embarqueId: paradaCasa?.id ?? "", desembarqueId: paradaEscola?.id ?? "" };
+  }
+  if (routeTurno === "TARDE" || routeTurno === "NOITE") {
+    return { embarqueId: paradaEscola?.id ?? "", desembarqueId: paradaCasa?.id ?? "" };
+  }
+  return { embarqueId: "", desembarqueId: "" };
+}
+
 /**
  * Turno de CADA aluno candidato fica visível aqui, pra quem credencia
  * ver de cara se o horário bate com o turno da rota — nunca escondido,
@@ -154,8 +220,22 @@ function AddStudentCandidateRow({
   const addStudent = useAddRouteStudent(routeId);
   const [paradaEmbarqueId, setParadaEmbarqueId] = useState("");
   const [paradaDesembarqueId, setParadaDesembarqueId] = useState("");
+  const [foiSugerido, setFoiSugerido] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isBaixandoTermo, setIsBaixandoTermo] = useState(false);
+
+  // Sugere embarque/desembarque assim que o aluno carrega — só uma vez,
+  // e só enquanto os dois campos ainda estão em branco (nunca sobrescreve
+  // uma escolha manual que o próprio usuário já fez).
+  useEffect(() => {
+    if (!student || foiSugerido) return;
+    const sugestao = sugerirParadas(student, stops, routeTurno);
+    if (sugestao.embarqueId || sugestao.desembarqueId) {
+      setParadaEmbarqueId((atual) => atual || sugestao.embarqueId);
+      setParadaDesembarqueId((atual) => atual || sugestao.desembarqueId);
+    }
+    setFoiSugerido(true);
+  }, [student, stops, routeTurno, foiSugerido]);
 
   /**
    * Só aparece pra contratos gerados automaticamente no credenciamento
