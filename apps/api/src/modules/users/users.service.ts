@@ -2,7 +2,6 @@ import { BadRequestException, ConflictException, Inject, Injectable } from "@nes
 import { CompanyType } from "@prisma/client";
 import { passwordEqualsIdentifier } from "@rotta/validators";
 
-
 import {
   CONSENT_RECORD_REPOSITORY,
   MEMBERSHIP_REPOSITORY,
@@ -164,6 +163,11 @@ export class UsersService {
 
   findById(id: string): Promise<User | null> {
     return this.userRepository.findById(id);
+  }
+
+  /** Pra fan-out cross-tenant (Suporte, Avisos) — nunca um `:userId` de parâmetro, sempre resolvido aqui. */
+  listAdminRottaUserIds(): Promise<string[]> {
+    return this.userRepository.listAdminRottaIds();
   }
 
   /** Vínculos ativos do usuário em QUALQUER tenant (Dossiê 15, `AUTH-02` — seletor de perfil no login). */

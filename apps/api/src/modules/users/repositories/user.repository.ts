@@ -42,4 +42,6 @@ export interface UserRepository {
   findByTelefone(telefone: string): Promise<User | null>;
   findByCpf(cpf: string): Promise<User | null>;
   updateAuthState(id: string, data: UpdateUserAuthStateInput): Promise<User>;
+  /** IDs de todo Admin Rotta ativo (`User.isAdminRotta`) — usado pra fan-out cross-tenant (Suporte, Avisos). */
+  listAdminRottaIds(): Promise<string[]>;
 }

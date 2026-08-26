@@ -43,6 +43,9 @@ export class NotificationPriorityClassifierService {
     TRIAL_EXPIRANDO: IMPORTANTE,
     TRIAL_VENCE_HOJE: URGENTE,
     TRIAL_BLOQUEADO: CRITICA,
+    SUPORTE_TICKET_ABERTO: IMPORTANTE,
+    SUPORTE_NOVA_MENSAGEM: IMPORTANTE,
+    AVISO_GERAL: IMPORTANTE,
   };
 
   classify(tipo: NotificationEventType): NotificationPriority {

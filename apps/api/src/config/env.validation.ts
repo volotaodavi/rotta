@@ -136,6 +136,15 @@ export const envSchema = z.object({
   EMAIL_FROM_ADDRESS: z.string().optional(),
   EMAIL_FROM_NAME: z.string().optional(),
 
+  // Suporte (pedido do usuário: "a cada pedido de suporte deverá ser
+  // notificado no e-mail da Rotta também"). `SUPPORT_INBOX_EMAIL` é a
+  // caixa fixa que recebe uma cópia de todo chamado/mensagem nova — só
+  // é usada se `EMAIL_API_KEY` também estiver configurado (mesma
+  // dependência de `EmailService`). `ADMIN_APP_URL` é opcional: sem
+  // ela, o e-mail só descreve o chamado, sem link clicável pro painel.
+  SUPPORT_INBOX_EMAIL: z.string().email().or(z.literal("")).optional(),
+  ADMIN_APP_URL: z.string().url().or(z.literal("")).optional(),
+
   // Didit (didit.me) — verificação de identidade (OCR de CNH, Face
   // Match, Liveness) usada por `RottaAiService.validateDocument`
   // (Dossiê 15, tipos CNH/SELFIE/FACE_MATCH/OCR). Opcional: sem

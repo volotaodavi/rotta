@@ -57,6 +57,20 @@ export class NotificationChannelSelectorService {
     // pra outros avisos de cobrança (PAGAMENTO_PENDENTE/RECUSADO acima),
     // é o momento de maior urgência de ação do usuário.
     TRIAL_BLOQUEADO: [PUSH, EMAIL, WHATSAPP],
+    // Suporte (pedido do usuário: "esse fluxo deverá estar funcionando")
+    // — mesmo padrão de `NOVO_CONTRATO` (evento administrativo, não
+    // operacional de viagem). O e-mail pra caixa fixa da Rotta
+    // (`SUPPORT_INBOX_EMAIL`) é enviado à parte, direto pelo
+    // `SupportService` — este canal aqui é só o `EMAIL`
+    // pessoal/individual de cada destinatário (Admin Rotta ou o
+    // próprio tenant, dependendo do sentido).
+    SUPORTE_TICKET_ABERTO: [PUSH, EMAIL],
+    SUPORTE_NOVA_MENSAGEM: [PUSH, EMAIL],
+    // Aviso/comunicado geral (pedido do usuário: "a cada comunicação
+    // nova deverá ser um push notification, tanto na web quanto no
+    // app") — só PUSH; o `IN_APP` (sino/Central) já é automático em
+    // toda notificação, cobrindo o "aparecer no sino" sem duplicar.
+    AVISO_GERAL: [PUSH],
   };
 
   selectChannels(tipo: NotificationEventType): CommunicationChannel[] {

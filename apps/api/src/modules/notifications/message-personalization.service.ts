@@ -172,4 +172,34 @@ export class MessagePersonalizationService {
       corpo: `${nomeResponsavel} foi cadastrado como responsável.`,
     };
   }
+
+  /**
+   * Pedido do usuário: "quando as pessoas forem acionar o suporte,
+   * esse fluxo deverá estar funcionando... aparecer no painel do
+   * admin o chamado de suporte" — enviado a cada Admin Rotta quando um
+   * tenant abre um chamado novo (`SupportService.createTicket`).
+   */
+  suporteTicketAberto(
+    assunto: string,
+    autorNome: string,
+    empresaNome: string,
+  ): PersonalizedMessage {
+    return {
+      titulo: "Novo chamado de suporte",
+      corpo: `${autorNome} (${empresaNome}) abriu um chamado: "${assunto}".`,
+    };
+  }
+
+  /**
+   * Mesmo tipo, reaproveitado nos dois sentidos (`SupportService.
+   * addMessage`): Admin Rotta responde → tenant é notificado; tenant
+   * escreve de novo → todos os Admin Rotta são notificados. O texto
+   * muda pelo `autorNome` recebido, nunca pelo tipo do evento.
+   */
+  suporteNovaMensagem(assunto: string, autorNome: string, previa: string): PersonalizedMessage {
+    return {
+      titulo: `Nova mensagem em "${assunto}"`,
+      corpo: `${autorNome}: ${previa}`,
+    };
+  }
 }

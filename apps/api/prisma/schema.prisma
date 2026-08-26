@@ -850,6 +850,9 @@ model User {
   chamadosSuporteEncerrados SupportTicket[]  @relation("SupportTicketEncerradoPor")
   mensagensSuporte          SupportMessage[] @relation("SupportMessageAutor")
 
+  /// Avisos/comunicados publicados por este Admin Rotta (aba "Avisos").
+  avisosCriados Announcement[] @relation("AnnouncementCriadoPor")
+
   /// Consentimentos versionados (Dossiê 45 FRENTE 5) — ver `ConsentRecord`.
   consentRecords ConsentRecord[]
 
@@ -2298,6 +2301,17 @@ enum NotificationEventType {
   TRIAL_VENCE_HOJE
   /// Trial vencido, ações bloqueadas (dia 16+) — mesmo scheduler.
   TRIAL_BLOQUEADO
+  /// Chamado de suporte aberto por um tenant (`Empresa`/`Gestor`) —
+  /// notifica todo Admin Rotta (`SupportService.createTicket`).
+  SUPORTE_TICKET_ABERTO
+  /// Nova mensagem numa conversa de suporte já aberta — reaproveitado
+  /// nos dois sentidos (Admin responde → tenant é notificado; tenant
+  /// escreve de novo → Admin Rotta é notificado), `SupportService.
+  /// addMessage`.
+  SUPORTE_NOVA_MENSAGEM
+  /// Aviso/comunicado geral publicado pelo Admin Rotta
+  /// (`AnnouncementsService`) — broadcast pra um público-alvo inteiro.
+  AVISO_GERAL
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —
@@ -2453,6 +2467,44 @@ model DeviceToken {
 
   @@index([userId, ativo])
   @@map("device_tokens")
+}
+
+/// Público-alvo de um `Announcement` — quem recebe o broadcast.
+/// `TODOS` cruza qualquer papel; os demais restringem por `User.role`
+/// (`EMPRESAS`/`MOTORISTAS_MONITORES`/`RESPONSAVEIS`).
+enum AnnouncementAudience {
+  TODOS
+  EMPRESAS
+  MOTORISTAS_MONITORES
+  RESPONSAVEIS
+}
+
+/// Aviso/comunicado geral publicado pelo Admin Rotta (pedido do
+/// usuário: "no painel do admin também deverá ter uma aba de criação
+/// de avisos, comunicados e notificações gerais"). Cada publicação
+/// dispara um `Notification` (tipo `AVISO_GERAL`) + fan-out de push
+/// para cada usuário do público escolhido — o registro aqui é só o
+/// histórico do que já foi publicado (quem viu/lida fica em
+/// `Notification`, nunca duplicado neste model).
+model Announcement {
+  id String @id @default(uuid()) @db.Uuid
+
+  titulo String
+  corpo  String
+  publico AnnouncementAudience
+
+  criadoPorUserId String @db.Uuid
+  criadoPor       User   @relation("AnnouncementCriadoPor", fields: [criadoPorUserId], references: [id], onDelete: Restrict)
+
+  /// Quantos usuários receberam o fan-out no momento da publicação —
+  /// snapshot, não recalculado depois (novos usuários que se cadastrem
+  /// após a publicação nunca retroagem pra um aviso já publicado).
+  destinatariosCount Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("announcements")
 }
 
 /// Preferências de comunicação de UM usuário (briefing
