@@ -131,6 +131,50 @@ export interface ListStudentAuditLogsResult {
   pageSize: number;
 }
 
+/** `AMBOS` cobre embarque E desembarque do dia — o caso mais comum ("vou levar e buscar num endereço diferente hoje"). */
+export type StudentAddressOverrideTrecho = "EMBARQUE" | "DESEMBARQUE" | "AMBOS";
+
+/**
+ * Endereço alternativo do responsável pra um dia específico (calendário
+ * "Endereço do dia") — pedido do usuário: "informar se algum dia ele irá
+ * para outro endereço". Só pode ser criado/editado/removido ANTES da
+ * viagem daquele dia começar (o backend rejeita depois, com uma mensagem
+ * clara — nunca falha silenciosamente).
+ */
+export interface StudentAddressOverride {
+  id: string;
+  studentId: string;
+  data: string;
+  trecho: StudentAddressOverrideTrecho;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento: string | null;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  latitude: number;
+  longitude: number;
+  observacao: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpsertStudentAddressOverrideInput {
+  data: string;
+  trecho: StudentAddressOverrideTrecho;
+  cep: string;
+  logradouro: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  latitude: number;
+  longitude: number;
+  observacao?: string;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -209,6 +253,33 @@ export function createStudentsEndpoints(apiClient: ApiClient) {
 
     removeAuthorizedPerson: async (id: string, personId: string): Promise<void> => {
       await apiClient.request(`/students/${id}/authorized-persons/${personId}`, {
+        method: "DELETE",
+      });
+    },
+
+    upsertAddressOverride: async (
+      id: string,
+      input: UpsertStudentAddressOverrideInput,
+    ): Promise<StudentAddressOverride> =>
+      (
+        await apiClient.request<ApiEnvelope<StudentAddressOverride>>(
+          `/students/${id}/address-overrides`,
+          { method: "PUT", body: input },
+        )
+      ).data,
+
+    listAddressOverrides: async (
+      id: string,
+      params: { from?: string; to?: string } = {},
+    ): Promise<StudentAddressOverride[]> =>
+      (
+        await apiClient.request<ApiEnvelope<StudentAddressOverride[]>>(
+          `/students/${id}/address-overrides${buildQueryString(params)}`,
+        )
+      ).data,
+
+    removeAddressOverride: async (id: string, overrideId: string): Promise<void> => {
+      await apiClient.request(`/students/${id}/address-overrides/${overrideId}`, {
         method: "DELETE",
       });
     },

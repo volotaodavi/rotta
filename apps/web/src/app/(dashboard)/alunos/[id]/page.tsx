@@ -182,6 +182,12 @@ export default function AlunoDetalhePage(): JSX.Element {
             <Typography variant="caption" color="muted">
               Para alterar um endereço, fale com o suporte pelos Chamados.
             </Typography>
+            <Link
+              href={`/alunos/${studentId}/endereco-do-dia`}
+              className="mt-1 text-sm font-medium text-primary hover:underline"
+            >
+              Vai levar ou buscar num endereço diferente algum dia? Marque no calendário →
+            </Link>
           </Card.Body>
         </Card>
 

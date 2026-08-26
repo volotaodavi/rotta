@@ -2,7 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { CreateStudentInput, ListStudentsParams, UpdateStudentInput } from "@rotta/api-client";
+import type {
+  CreateStudentInput,
+  ListStudentsParams,
+  UpdateStudentInput,
+  UpsertStudentAddressOverrideInput,
+} from "@rotta/api-client";
 
 import { studentsApi } from "@/lib/api-client";
 
@@ -55,6 +60,49 @@ export function useDeleteStudent() {
     mutationFn: (id: string) => studentsApi.remove(id),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["students"] });
+    },
+  });
+}
+
+/**
+ * Calendário "Endereço do dia" (pedido do usuário: "informar se algum
+ * dia ele irá para outro endereço... na ida, na volta ou ambos"). Busca
+ * uma janela de datas (mês exibido no calendário) por vez — nunca a
+ * vida inteira do aluno, mesmo padrão de paginação por período já usado
+ * em `useStudentEventsHistory`.
+ */
+export function useStudentAddressOverrides(
+  studentId: string | undefined,
+  range: { from?: string; to?: string } = {},
+) {
+  return useQuery({
+    queryKey: ["students", studentId, "address-overrides", range],
+    queryFn: () => studentsApi.listAddressOverrides(studentId as string, range),
+    enabled: Boolean(studentId),
+  });
+}
+
+export function useUpsertStudentAddressOverride(studentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpsertStudentAddressOverrideInput) =>
+      studentsApi.upsertAddressOverride(studentId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["students", studentId, "address-overrides"],
+      });
+    },
+  });
+}
+
+export function useRemoveStudentAddressOverride(studentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (overrideId: string) => studentsApi.removeAddressOverride(studentId, overrideId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["students", studentId, "address-overrides"],
+      });
     },
   });
 }
