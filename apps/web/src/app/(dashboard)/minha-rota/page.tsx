@@ -79,7 +79,6 @@ import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/u
 import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
 
-
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
   TARDE: "Tarde",
@@ -678,7 +677,21 @@ function RotaOperacional({
   onTrocarRota: () => void;
 }): JSX.Element {
   const { user } = useAuth();
-  const isMotorista = user?.role === "motorista";
+  // BUG CRÍTICO corrigido (pedido do usuário: "no modo ação não tem a
+  // questão de escolher as rotas, nem de iniciar. Cadê o que eu te
+  // pedi?") — `isMotorista` só checava `role === "motorista"`, mas o
+  // dono autônomo/MEI (o público-alvo real do "Modo Ação") tem
+  // `role === "empresa"` (mesmo princípio já documentado em
+  // `rotas/novo/page.tsx`: "quem cadastra uma empresa AUTONOMO/MEI
+  // recebe Membership.role = 'empresa', nunca 'motorista'"). Sem este
+  // reconhecimento, TODO o bloco `isMotorista` desta tela — o botão
+  // deslizante de iniciar, pausar/finalizar, o próprio reporte de GPS —
+  // ficava permanentemente invisível pra essa conta, mesmo com uma rota
+  // ATIVA de verdade: ela só via "Aguardando o motorista iniciar.",
+  // como se nada tivesse sido implementado.
+  const isAutonomoOuMei =
+    user?.role === "empresa" && (user.companyType === "AUTONOMO" || user.companyType === "MEI");
+  const isMotorista = user?.role === "motorista" || isAutonomoOuMei;
   const accent = isMotorista ? MOTORISTA_ACCENT : MONITOR_ACCENT;
   const toast = useToast();
 
@@ -829,7 +842,7 @@ function RotaOperacional({
   // (funcionário depende da transportadora, mesmo princípio de "Nenhuma
   // rota atribuída" logo acima nesta tela).
   const semVeiculoPadrao = !isLoadingTrip && !trip && isMotorista && !rota.veiculoPadraoId;
-  const isDono = user?.role === "empresa";
+  const isDono = isAutonomoOuMei;
   const [avisoSemVeiculoAberto, setAvisoSemVeiculoAberto] = useState(false);
   useEffect(() => {
     if (semVeiculoPadrao) setAvisoSemVeiculoAberto(true);
