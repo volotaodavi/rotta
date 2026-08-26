@@ -3,6 +3,7 @@ import type { MetadataRoute } from "next";
 import { LEGAL_DOCUMENTS } from "@/features/legal/documents";
 import { getSiteUrl } from "@/lib/site-config";
 
+
 /**
  * `sitemap.xml` gerado nativamente pelo Next.js 15 a partir deste
  * arquivo (Dossiê 12 §7.4 — indexação gratuita no Google: nenhuma
@@ -18,7 +19,7 @@ import { getSiteUrl } from "@/lib/site-config";
  * Deliberadamente FORA do sitemap:
  * - `/blog` — `noindex` (página vazia, "estrutura preparada", ver
  *   `blog/page.tsx`); volta pro sitemap quando tiver conteúdo real.
- * - `/convite` e `/convite/[codigo]` — convite é um link privado
+ * - `/convite` (com ou sem `?codigo=`) — convite é um link privado
  *   endereçado a uma pessoa específica, não uma página de descoberta.
  * - Tudo em `(dashboard)` — exige login, sem valor de busca nenhum
  *   (ver `robots.ts`, que também bloqueia o rastreamento dessas rotas).

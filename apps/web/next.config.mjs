@@ -57,11 +57,24 @@ const nextConfig = {
    * (`/legal/termos`, `/legal/privacidade`), com navegação lateral,
    * índice e versionamento. Redirect permanente para não quebrar links
    * já publicados/indexados nas URLs antigas.
+   *
+   * `/convite/:codigo` → `/convite?codigo=:codigo`: `/convite/[codigo]`
+   * era exatamente uma das rotas dinâmicas citadas no comentário acima
+   * como reprodutora do "Server Components render" em produção — e a
+   * pior das três, porque todo código de convite é único, então TODO
+   * acesso era necessariamente "primeiro render deste segmento exato".
+   * A página foi convertida pra estática (`/convite/page.tsx`, lê
+   * `codigo` da query string). Redirect NÃO permanente (é uma
+   * reestruturação interna de rota, não uma mudança de URL definitiva)
+   * preserva links de convite já enviados antes desta correção —
+   * resolvido pelo roteamento do Next antes de qualquer render de
+   * página, então nunca mais cai no segmento dinâmico (removido).
    */
   async redirects() {
     return [
       { source: "/termos", destination: "/legal/termos", permanent: true },
       { source: "/privacidade", destination: "/legal/privacidade", permanent: true },
+      { source: "/convite/:codigo", destination: "/convite?codigo=:codigo", permanent: false },
     ];
   },
 };

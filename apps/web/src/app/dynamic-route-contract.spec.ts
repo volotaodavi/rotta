@@ -5,19 +5,29 @@ import { describe, expect, it } from "vitest";
 
 /**
  * Regressão do incidente "Server Components render" indeterminístico,
- * reproduzido em toda rota dinâmica do App Router (`/rotas/[id]`,
- * `/veiculos/[id]`, `/convite/[codigo]`, pública e autenticada, nunca
- * em rota estática). Causa apontada: `page.tsx` era um Client Component
- * (`"use client"`) que recebia `params: Promise<...>` e resolvia a
- * Promise no próprio cliente (`use(params)`/`useParams()` sobre a
- * prop) — não é o contrato suportado pelo App Router. `page.tsx` agora
- * é um Server Component mínimo que faz `await params` e repassa só o
- * valor final (`string`) por prop pro Client Component correspondente.
+ * reproduzido em rotas dinâmicas do App Router (`/rotas/[id]`,
+ * `/veiculos/[id]` — e, até ser eliminada, `/convite/[codigo]`, a pior
+ * das três: todo código de convite é único, então todo acesso era
+ * necessariamente "primeiro render deste segmento exato"), pública e
+ * autenticada, nunca em rota estática. Causa apontada: `page.tsx` era
+ * um Client Component (`"use client"`) que recebia `params:
+ * Promise<...>` e resolvia a Promise no próprio cliente
+ * (`use(params)`/`useParams()` sobre a prop) — não é o contrato
+ * suportado pelo App Router. `page.tsx` agora é um Server Component
+ * mínimo que faz `await params` e repassa só o valor final (`string`)
+ * por prop pro Client Component correspondente.
  *
- * Este teste verifica o CONTRATO estático de cada `page.tsx` (nunca
- * `"use client"`, nunca `use(` de `params`) — não substitui o teste
- * real em produção, só impede que o mesmo padrão volte por acidente
- * numa dessas três páginas.
+ * `/convite/[codigo]` foi removida de vez (não só corrigida): virou
+ * `/convite/page.tsx` estática, lendo `codigo` de `useSearchParams()`
+ * em vez de `params` — sem nenhum segmento `[dinâmico]` envolvido, o
+ * motor implicado no incidente nunca entra em jogo. Ver
+ * `next.config.mjs` (`redirects()`) para o link de compatibilidade
+ * com convites antigos.
+ *
+ * Este teste verifica o CONTRATO estático de cada `page.tsx` restante
+ * (nunca `"use client"`, nunca `use(` de `params`) — não substitui o
+ * teste real em produção, só impede que o mesmo padrão volte por
+ * acidente numa dessas páginas.
  */
 describe("contrato Server Component das rotas dinâmicas (regressão)", () => {
   const root = join(__dirname);
@@ -25,7 +35,6 @@ describe("contrato Server Component das rotas dinâmicas (regressão)", () => {
   const pages = [
     { name: "/rotas/[id]", path: join(root, "(dashboard)/rotas/[id]/page.tsx") },
     { name: "/veiculos/[id]", path: join(root, "(dashboard)/veiculos/[id]/page.tsx") },
-    { name: "/convite/[codigo]", path: join(root, "(auth)/convite/[codigo]/page.tsx") },
   ];
 
   for (const page of pages) {

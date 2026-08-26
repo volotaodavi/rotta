@@ -8,6 +8,7 @@ import type { Role } from "@rotta/api-client";
 
 import { useCreateInvite } from "@/features/team/hooks/use-invites";
 
+
 /**
  * Pedido do usuário: "a janela de 'equipe' deve ter a possibilidade de
  * adicionar outro motorista e adicionar um monitor (cadastro manual ou
@@ -35,8 +36,15 @@ export function InviteTeamMemberPanel({
   const [codigo, setCodigo] = useState<string | null>(null);
   const toast = useToast();
 
+  // Query string (`?codigo=`), não path (`/convite/${codigo}`) — o path
+  // dinâmico era exatamente a rota que reproduzia o "Server Components
+  // render" em produção (todo código de convite é único, então todo
+  // link gerado aqui seria "primeiro acesso a um segmento nunca visto",
+  // o gatilho do bug). Ver `/convite/page.tsx`.
   const link =
-    codigo && typeof window !== "undefined" ? `${window.location.origin}/convite/${codigo}` : null;
+    codigo && typeof window !== "undefined"
+      ? `${window.location.origin}/convite?codigo=${codigo}`
+      : null;
 
   async function handleGerar(): Promise<void> {
     try {
