@@ -107,6 +107,17 @@ export const envSchema = z.object({
   FIREBASE_CLIENT_EMAIL: z.string().optional(),
   FIREBASE_PRIVATE_KEY: z.string().optional(),
 
+  // Push real, mobile (Expo) + web (VAPID/RFC 8030) — decisão do
+  // usuário: "fazer tudo (móbile + web), porém pegando de forma
+  // gratuita". VAPID_* são geradas localmente (`web-push.
+  // generateVAPIDKeys()`, sem cadastro em lugar nenhum); sem elas,
+  // `WebPushService` recusa o envio com um erro claro. EXPO_ACCESS_TOKEN
+  // é só um bônus de rate-limit — o Expo aceita requisições anônimas.
+  VAPID_PUBLIC_KEY: z.string().optional(),
+  VAPID_PRIVATE_KEY: z.string().optional(),
+  VAPID_SUBJECT: z.string().optional(),
+  EXPO_ACCESS_TOKEN: z.string().optional(),
+
   // Canal WhatsApp (briefing — "arquitetura preparada... camada de
   // abstração para trocar de fornecedor futuramente"). Provedor ativo
   // hoje: Meta Cloud API (`WHATSAPP_PROVIDER` default). Ambas de

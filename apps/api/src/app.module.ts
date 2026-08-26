@@ -22,6 +22,7 @@ import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
 import lytexConfig from "@/config/lytex.config";
 import observabilityConfig from "@/config/observability.config";
+import pushConfig from "@/config/push.config";
 import qstashConfig from "@/config/qstash.config";
 import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
@@ -35,6 +36,7 @@ import { LoggerModule } from "@/infra/observability/logger.module";
 import { QueueModule } from "@/infra/queue/queue.module";
 import { AgendaModule } from "@/modules/agenda/agenda.module";
 import { AnalyticsModule } from "@/modules/analytics/analytics.module";
+import { AnnouncementsModule } from "@/modules/announcements/announcements.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { AuthModule } from "@/modules/auth/auth.module";
 import { AuthentiqueModule } from "@/modules/authentique/authentique.module";
@@ -62,7 +64,6 @@ import { SchoolsModule } from "@/modules/schools/schools.module";
 import { SettingsModule } from "@/modules/settings/settings.module";
 import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 import { StudentsModule } from "@/modules/students/students.module";
-import { AnnouncementsModule } from "@/modules/announcements/announcements.module";
 import { SupportModule } from "@/modules/support/support.module";
 import { TripsModule } from "@/modules/trips/trips.module";
 import { UsersModule } from "@/modules/users/users.module";
@@ -84,6 +85,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         storageConfig,
         geoConfig,
         fcmConfig,
+        pushConfig,
         whatsappConfig,
         smsConfig,
         emailConfig,

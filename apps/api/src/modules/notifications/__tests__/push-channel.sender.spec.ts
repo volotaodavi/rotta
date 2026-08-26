@@ -4,7 +4,8 @@ import { CommunicationChannel } from "@prisma/client";
 import { PushChannelSender } from "../channels/push-channel.sender";
 
 import type { DeviceTokenRepository } from "../repositories/device-token.repository";
-import type { FcmService } from "@/infra/push/fcm.service";
+import type { ExpoPushService } from "@/infra/push/expo-push.service";
+import type { WebPushService } from "@/infra/push/web-push.service";
 import type { DeviceToken, Notification } from "@prisma/client";
 
 function buildNotification(overrides: Partial<Notification> = {}): Notification {
@@ -32,7 +33,7 @@ function buildDeviceToken(overrides: Partial<DeviceToken> = {}): DeviceToken {
   return {
     id: "token-1",
     userId: "user-1",
-    token: "fcm-token-1",
+    token: "expo-token-1",
     plataforma: "ANDROID",
     ativo: true,
     createdAt: new Date(),
@@ -43,7 +44,8 @@ function buildDeviceToken(overrides: Partial<DeviceToken> = {}): DeviceToken {
 
 describe("PushChannelSender", () => {
   let deviceTokenRepository: jest.Mocked<DeviceTokenRepository>;
-  let fcmService: jest.Mocked<Pick<FcmService, "sendToTokens">>;
+  let expoPushService: jest.Mocked<Pick<ExpoPushService, "sendToTokens">>;
+  let webPushService: jest.Mocked<Pick<WebPushService, "sendToTokens">>;
   let sender: PushChannelSender;
 
   beforeEach(() => {
@@ -52,8 +54,13 @@ describe("PushChannelSender", () => {
       listActiveByUser: jest.fn(),
       deactivate: jest.fn(),
     };
-    fcmService = { sendToTokens: jest.fn() };
-    sender = new PushChannelSender(fcmService as unknown as FcmService, deviceTokenRepository);
+    expoPushService = { sendToTokens: jest.fn() };
+    webPushService = { sendToTokens: jest.fn() };
+    sender = new PushChannelSender(
+      expoPushService as unknown as ExpoPushService,
+      webPushService as unknown as WebPushService,
+      deviceTokenRepository,
+    );
   });
 
   it("canal é PUSH", () => {
@@ -65,28 +72,62 @@ describe("PushChannelSender", () => {
     await expect(sender.send({ notification: buildNotification() })).rejects.toThrow(
       NotFoundException,
     );
-    expect(fcmService.sendToTokens).not.toHaveBeenCalled();
+    expect(expoPushService.sendToTokens).not.toHaveBeenCalled();
+    expect(webPushService.sendToTokens).not.toHaveBeenCalled();
   });
 
-  it("envia para todos os tokens ativos e retorna provedor fcm em sucesso", async () => {
+  it("roteia tokens ANDROID/IOS pro ExpoPushService", async () => {
     deviceTokenRepository.listActiveByUser.mockResolvedValue([
-      buildDeviceToken({ token: "t1" }),
-      buildDeviceToken({ token: "t2" }),
+      buildDeviceToken({ token: "t1", plataforma: "ANDROID" }),
+      buildDeviceToken({ token: "t2", plataforma: "IOS" }),
     ]);
-    fcmService.sendToTokens.mockResolvedValue({ sucesso: ["t1", "t2"], invalidos: [] });
+    expoPushService.sendToTokens.mockResolvedValue({ sucesso: ["t1", "t2"], invalidos: [] });
 
     const resultado = await sender.send({ notification: buildNotification() });
 
-    expect(fcmService.sendToTokens).toHaveBeenCalledWith(["t1", "t2"], "Título", "Corpo", null);
-    expect(resultado).toEqual({ provedor: "fcm", entregueImediatamente: false });
+    expect(expoPushService.sendToTokens).toHaveBeenCalledWith(
+      ["t1", "t2"],
+      "Título",
+      "Corpo",
+      null,
+    );
+    expect(webPushService.sendToTokens).not.toHaveBeenCalled();
+    expect(resultado).toEqual({ provedor: "expo+webpush", entregueImediatamente: false });
   });
 
-  it("desativa tokens que o FCM reporta como inválidos", async () => {
+  it("roteia tokens WEB pro WebPushService", async () => {
+    deviceTokenRepository.listActiveByUser.mockResolvedValue([
+      buildDeviceToken({ token: "sub-1", plataforma: "WEB" }),
+    ]);
+    webPushService.sendToTokens.mockResolvedValue({ sucesso: ["sub-1"], invalidos: [] });
+
+    await sender.send({ notification: buildNotification() });
+
+    expect(webPushService.sendToTokens).toHaveBeenCalledWith(["sub-1"], "Título", "Corpo", null);
+    expect(expoPushService.sendToTokens).not.toHaveBeenCalled();
+  });
+
+  it("um usuário com dispositivos mistos (mobile + web) recebe pelos dois provedores", async () => {
+    deviceTokenRepository.listActiveByUser.mockResolvedValue([
+      buildDeviceToken({ token: "t1", plataforma: "ANDROID" }),
+      buildDeviceToken({ token: "sub-1", plataforma: "WEB" }),
+    ]);
+    expoPushService.sendToTokens.mockResolvedValue({ sucesso: ["t1"], invalidos: [] });
+    webPushService.sendToTokens.mockResolvedValue({ sucesso: ["sub-1"], invalidos: [] });
+
+    const resultado = await sender.send({ notification: buildNotification() });
+
+    expect(expoPushService.sendToTokens).toHaveBeenCalledWith(["t1"], "Título", "Corpo", null);
+    expect(webPushService.sendToTokens).toHaveBeenCalledWith(["sub-1"], "Título", "Corpo", null);
+    expect(resultado.provedor).toBe("expo+webpush");
+  });
+
+  it("desativa tokens que o provedor reporta como inválidos", async () => {
     deviceTokenRepository.listActiveByUser.mockResolvedValue([
       buildDeviceToken({ token: "t1" }),
       buildDeviceToken({ token: "t2" }),
     ]);
-    fcmService.sendToTokens.mockResolvedValue({ sucesso: ["t1"], invalidos: ["t2"] });
+    expoPushService.sendToTokens.mockResolvedValue({ sucesso: ["t1"], invalidos: ["t2"] });
 
     await sender.send({ notification: buildNotification() });
 
@@ -96,7 +137,7 @@ describe("PushChannelSender", () => {
 
   it("lança erro quando todos os tokens falham (nenhum sucesso)", async () => {
     deviceTokenRepository.listActiveByUser.mockResolvedValue([buildDeviceToken({ token: "t1" })]);
-    fcmService.sendToTokens.mockResolvedValue({ sucesso: [], invalidos: ["t1"] });
+    expoPushService.sendToTokens.mockResolvedValue({ sucesso: [], invalidos: ["t1"] });
 
     await expect(sender.send({ notification: buildNotification() })).rejects.toThrow(Error);
     expect(deviceTokenRepository.deactivate).toHaveBeenCalledWith("t1");
