@@ -12,6 +12,7 @@ import type { PrismaService } from "@/infra/database/prisma.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import type { StudentPreRegistrationsService } from "@/modules/student-pre-registrations/student-pre-registrations.service";
 import type { MembershipWithCompany } from "@/modules/users/repositories/membership.repository";
 import type { UsersService } from "@/modules/users/users.service";
 import type { ConfigService } from "@nestjs/config";
@@ -102,6 +103,7 @@ describe("AuthService", () => {
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let mfaService: MfaService;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let studentPreRegistrationsService: jest.Mocked<StudentPreRegistrationsService>;
 
   beforeEach(() => {
     usersService = {
@@ -191,6 +193,10 @@ describe("AuthService", () => {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AuditLogService>;
 
+    studentPreRegistrationsService = {
+      claim: jest.fn(),
+    } as unknown as jest.Mocked<StudentPreRegistrationsService>;
+
     service = new AuthService(
       usersService,
       companiesService,
@@ -205,6 +211,7 @@ describe("AuthService", () => {
       messagePersonalizationService,
       mfaService,
       auditLogService,
+      studentPreRegistrationsService,
     );
   });
 

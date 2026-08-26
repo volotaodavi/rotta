@@ -1,5 +1,13 @@
-import { ApiProperty } from "@nestjs/swagger";
-import { Equals, IsBoolean, IsEmail, IsNotEmpty, IsString, MaxLength } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import {
+  Equals,
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 
 import { IsBrazilianPhone, IsCpf, IsStrongPassword } from "@/common/validators";
 
@@ -41,4 +49,12 @@ export class RegisterPessoalDto {
   @IsBoolean()
   @Equals(true, { message: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
   aceiteTermos!: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Área pública de convite (pedido do usuário: 'código da transportadora' + celular já achou um pré-cadastro pendente) — reivindica esse pré-cadastro automaticamente logo após criar a conta. Best-effort: se não bater mais (já reclamado por outra pessoa, por exemplo), o cadastro segue normalmente sem travar.",
+  })
+  @IsOptional()
+  @IsString()
+  preRegistrationId?: string;
 }

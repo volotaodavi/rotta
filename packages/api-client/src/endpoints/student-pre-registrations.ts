@@ -36,6 +36,12 @@ export interface StudentPreRegistrationLookupResult {
   nomeResponsavel: string;
 }
 
+/** Prévia pública da transportadora pelo código, independente de haver pré-cadastro (área pública de convite). */
+export interface CompanyPreviewResult {
+  companyId: string;
+  companyName: string;
+}
+
 export interface ClaimStudentPreRegistrationResult extends StudentPreRegistrationLookupResult {
   companyId: string;
 }
@@ -71,7 +77,15 @@ export function createStudentPreRegistrationsEndpoints(apiClient: ApiClient) {
         )
       ).data,
 
-    /** Responsável — "código do transporte + celular"; `null` quando não bate nada (nunca um erro). */
+    /** Pública (área de convite) — prévia da transportadora pelo código, `null` quando o código não existe. */
+    previewCompany: async (codigoInterno: string): Promise<CompanyPreviewResult | null> =>
+      (
+        await apiClient.request<ApiEnvelope<CompanyPreviewResult | null>>(
+          `/student-pre-registrations/company-preview?codigoInterno=${encodeURIComponent(codigoInterno)}`,
+        )
+      ).data,
+
+    /** Pública (área de convite) — "código do transporte + celular"; `null` quando não bate nada (nunca um erro). */
     lookup: async (
       codigoInterno: string,
       celular: string,

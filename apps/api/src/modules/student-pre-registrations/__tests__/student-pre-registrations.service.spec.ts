@@ -145,6 +145,35 @@ describe("StudentPreRegistrationsService", () => {
     });
   });
 
+  describe("previewCompanyByCodigo", () => {
+    it("devolve a transportadora quando o código existe, mesmo sem nenhum pré-cadastro pendente", async () => {
+      companyRepository.findActiveByCodigoInterno.mockResolvedValue({
+        id: "company-1",
+        nomeFantasia: "Transportadora Exemplo",
+      } as Company);
+
+      const result = await service.previewCompanyByCodigo("trn-000001");
+
+      expect(companyRepository.findActiveByCodigoInterno).toHaveBeenCalledWith("TRN-000001");
+      expect(result).toEqual({ companyId: "company-1", companyName: "Transportadora Exemplo" });
+    });
+
+    it("devolve null (nunca um erro) quando o código não existe", async () => {
+      companyRepository.findActiveByCodigoInterno.mockResolvedValue(null);
+
+      const result = await service.previewCompanyByCodigo("NAOEXISTE");
+
+      expect(result).toBeNull();
+    });
+
+    it("devolve null sem consultar o repositório quando o código vem vazio", async () => {
+      const result = await service.previewCompanyByCodigo("   ");
+
+      expect(result).toBeNull();
+      expect(companyRepository.findActiveByCodigoInterno).not.toHaveBeenCalled();
+    });
+  });
+
   describe("lookup", () => {
     it("resolve o código da empresa e devolve null (não erro) quando não bate nada", async () => {
       companyRepository.findActiveByCodigoInterno.mockResolvedValue({

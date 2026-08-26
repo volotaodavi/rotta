@@ -128,6 +128,8 @@ export interface RegisterPessoalInput {
   cpf: string;
   senha: string;
   aceiteTermos: true;
+  /** Área pública de convite — reivindica automaticamente esse pré-cadastro (`StudentPreRegistration`) logo após criar a conta. */
+  preRegistrationId?: string;
 }
 
 /** Frente N (briefing item 9) — Motorista/Monitor autônomo, sem empresa ainda. */

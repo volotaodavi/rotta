@@ -56,6 +56,7 @@ import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService, type RequestMeta } from "@/modules/companies/companies.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { StudentPreRegistrationsService } from "@/modules/student-pre-registrations/student-pre-registrations.service";
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
 
@@ -109,6 +110,7 @@ export class AuthService {
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly mfaService: MfaService,
     private readonly auditLogService: AuditLogService,
+    private readonly studentPreRegistrationsService: StudentPreRegistrationsService,
   ) {}
 
   /**
@@ -192,6 +194,27 @@ export class AuthService {
     });
 
     await this.usersService.recordLgpdConsent(user.id);
+
+    // Área pública de convite (pedido do usuário: "o responsável recebe
+    // o código da transportadora... caso já tenha um pré-cadastro...
+    // vai ter lá confirmado") — reivindica o pré-cadastro que a tela já
+    // encontrou via `GET /student-pre-registrations/lookup` (pública)
+    // ANTES desta conta existir. Best-effort de propósito: se outra
+    // pessoa reivindicou no meio do caminho (corrida rara), a conta
+    // ainda assim é criada normalmente — o cadastro do aluno só segue
+    // pelo caminho "do zero" em vez do caminho prefilled.
+    if (dto.preRegistrationId) {
+      try {
+        await this.studentPreRegistrationsService.claim(
+          { sub: user.id, tenantId: null, role: Role.RESPONSAVEL, vinculoId: user.id },
+          dto.preRegistrationId,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Não foi possível reivindicar o pré-cadastro ${dto.preRegistrationId} para o novo responsável ${user.id}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
 
     const { titulo, corpo } = this.messagePersonalizationService.novoResponsavel(dto.nome);
     this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {

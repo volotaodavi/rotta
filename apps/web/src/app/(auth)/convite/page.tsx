@@ -99,6 +99,13 @@ function InserirCodigo(): JSX.Element {
           Confirmar
         </Button>
       </form>
+
+      <Typography variant="caption" color="muted" className="text-center">
+        É responsável e recebeu um código da transportadora (não um convite de equipe)?{" "}
+        <a href="/convite/transportadora" className="text-primary hover:underline">
+          Cadastre seu filho por aqui
+        </a>
+      </Typography>
     </div>
   );
 }

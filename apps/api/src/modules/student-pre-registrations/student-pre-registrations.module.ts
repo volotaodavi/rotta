@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { ThrottlerModule } from "@nestjs/throttler";
 
 import { PrismaStudentPreRegistrationRepository } from "./repositories/prisma-student-pre-registration.repository";
 import { STUDENT_PRE_REGISTRATION_REPOSITORY } from "./student-pre-registrations.constants";
@@ -11,13 +12,23 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
  * Módulo `StudentPreRegistrations` — importa `CompaniesModule` só por
  * `COMPANY_REPOSITORY` (resolver `Company.codigoInterno`, mesma
  * necessidade de `CompanyJoinRequestsModule`). Exporta o repository
- * (não o `Service`) porque quem precisa dele por fora é
- * `StudentsModule`, na hora de `markConcluded` — nunca o contrário
- * (mantém a mesma direção de dependência de `SchoolsModule` em
- * `StudentsModule`).
+ * (pra `StudentsModule`, na hora de `markConcluded`) E o `Service`
+ * agora também (pra `AuthModule` conseguir reivindicar um pré-cadastro
+ * dentro de `registerPessoal`, cadastro público via código da
+ * transportadora — ver `student-pre-registrations.controller.ts`).
+ *
+ * `ThrottlerModule.forRoot` próprio (mesmo padrão de `AuthModule`, cada
+ * módulo com seu próprio guard/storage) porque `lookup`/`company-preview`
+ * agora são `@Public()`.
  */
 @Module({
-  imports: [CompaniesModule],
+  imports: [
+    CompaniesModule,
+    ThrottlerModule.forRoot({
+      throttlers: [{ name: "default", ttl: 60_000, limit: 30 }],
+      skipIf: () => process.env.NODE_ENV === "test",
+    }),
+  ],
   controllers: [StudentPreRegistrationsController],
   providers: [
     StudentPreRegistrationsService,
@@ -26,6 +37,6 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
       useClass: PrismaStudentPreRegistrationRepository,
     },
   ],
-  exports: [STUDENT_PRE_REGISTRATION_REPOSITORY],
+  exports: [STUDENT_PRE_REGISTRATION_REPOSITORY, StudentPreRegistrationsService],
 })
 export class StudentPreRegistrationsModule {}

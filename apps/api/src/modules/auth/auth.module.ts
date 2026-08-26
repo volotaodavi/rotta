@@ -4,7 +4,6 @@ import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 import { ThrottlerModule } from "@nestjs/throttler";
 
-
 import {
   INVITE_REPOSITORY,
   PASSWORD_RESET_TOKEN_REPOSITORY,
@@ -27,6 +26,7 @@ import { SecurityModule } from "@/infra/security/security.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
+import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 import { UsersModule } from "@/modules/users/users.module";
 
 /**
@@ -82,6 +82,7 @@ import { UsersModule } from "@/modules/users/users.module";
     CompaniesModule,
     MessagePersonalizationModule,
     AuditModule,
+    StudentPreRegistrationsModule,
   ],
   controllers: [AuthController, InvitesController],
   providers: [

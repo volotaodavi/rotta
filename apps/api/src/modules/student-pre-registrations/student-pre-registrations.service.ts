@@ -13,6 +13,7 @@ import {
 } from "./mappers/student-pre-registration.mapper";
 import { STUDENT_PRE_REGISTRATION_REPOSITORY } from "./student-pre-registrations.constants";
 
+import type { CompanyPreviewResponseDto } from "./dto/company-preview-response.dto";
 import type { CreateStudentPreRegistrationDto } from "./dto/create-student-pre-registration.dto";
 import type { LookupStudentPreRegistrationQueryDto } from "./dto/lookup-student-pre-registration-query.dto";
 import type {
@@ -90,6 +91,22 @@ export class StudentPreRegistrationsService {
     }
     const cancelled = await this.repository.cancel(id);
     return toStudentPreRegistrationResponseDto(cancelled);
+  }
+
+  /**
+   * Prévia pública da transportadora, independente de haver ou não
+   * pré-cadastro pendente (pedido do usuário, área pública de convite:
+   * "vai aparecer a transportadora que ela está se credenciando").
+   * `null` quando o código não existe/não está ativo — nunca 404
+   * barulhento, mesma disciplina de `lookup`.
+   */
+  async previewCompanyByCodigo(
+    codigoInternoRaw: string,
+  ): Promise<CompanyPreviewResponseDto | null> {
+    const codigoInterno = codigoInternoRaw.trim().toUpperCase();
+    if (!codigoInterno) return null;
+    const company = await this.companyRepository.findActiveByCodigoInterno(codigoInterno);
+    return company ? { companyId: company.id, companyName: company.nomeFantasia } : null;
   }
 
   /**
