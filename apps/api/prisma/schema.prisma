@@ -2832,6 +2832,13 @@ model SupportTicket {
 /// snapshot do papel do ator no momento do envio (não deriva de um
 /// join com `User.isAdminRotta` em toda leitura) — usado só para estilo
 /// de UI (balão "Rotta" vs. balão do tenant).
+///
+/// `autorUserId`/`autor` são opcionais e `autorIsIA` existe (Frente 5,
+/// suporte com IA/Groq) pro único caso em que a mensagem não tem um
+/// `User` por trás: a resposta automática da Rotta AI a uma dúvida
+/// simples. Continua sendo uma `SupportMessage` normal (preserva o
+/// histórico como mensagem comum, RN de `SUP-02`) — só estilizada
+/// diferente no chat (balão "Rotta AI" em vez de "Rotta"/tenant).
 model SupportMessage {
   id       String        @id @default(uuid()) @db.Uuid
   ticketId String        @db.Uuid
@@ -2839,9 +2846,10 @@ model SupportMessage {
 
   companyId String @db.Uuid
 
-  autorUserId       String  @db.Uuid
-  autor             User    @relation("SupportMessageAutor", fields: [autorUserId], references: [id], onDelete: Restrict)
+  autorUserId       String? @db.Uuid
+  autor             User?   @relation("SupportMessageAutor", fields: [autorUserId], references: [id], onDelete: Restrict)
   autorIsAdminRotta Boolean @default(false)
+  autorIsIA         Boolean @default(false)
 
   mensagem String
   anexoUrl String?

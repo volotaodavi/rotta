@@ -11,8 +11,10 @@ export type SupportMessageWithRelations = Prisma.SupportMessageGetPayload<{
 export interface CreateSupportMessageData {
   ticketId: string;
   companyId: string;
-  autorUserId: string;
+  /** Ausente só na resposta automática da Rotta AI (`autorIsIA: true`). */
+  autorUserId?: string;
   autorIsAdminRotta: boolean;
+  autorIsIA?: boolean;
   mensagem: string;
   anexoUrl?: string;
 }

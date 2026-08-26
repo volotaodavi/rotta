@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
+import { PrismaService } from "@/infra/database/prisma.service";
+
 import { SUPPORT_MESSAGE_INCLUDE } from "./support-message.repository";
 
 import type {
@@ -7,8 +9,6 @@ import type {
   SupportMessageRepository,
   SupportMessageWithRelations,
 } from "./support-message.repository";
-
-import { PrismaService } from "@/infra/database/prisma.service";
 
 @Injectable()
 export class PrismaSupportMessageRepository implements SupportMessageRepository {

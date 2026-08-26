@@ -1,5 +1,6 @@
 "use client";
 
+import { Sparkles } from "@rotta/icons";
 import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
@@ -91,13 +92,21 @@ export default function SuporteDetalhePage(): JSX.Element {
               <div
                 key={message.id}
                 className={
-                  message.autorIsAdminRotta
-                    ? "ml-auto max-w-[80%] rounded-lg bg-primary/10 px-4 py-3"
-                    : "mr-auto max-w-[80%] rounded-lg bg-muted px-4 py-3"
+                  message.autorIsIA
+                    ? "mr-auto max-w-[80%] rounded-lg border border-primary/30 bg-primary/5 px-4 py-3"
+                    : message.autorIsAdminRotta
+                      ? "ml-auto max-w-[80%] rounded-lg bg-primary/10 px-4 py-3"
+                      : "mr-auto max-w-[80%] rounded-lg bg-muted px-4 py-3"
                 }
               >
-                <Typography variant="caption" color="muted">
-                  {message.autorNome} · {new Date(message.createdAt).toLocaleString("pt-BR")}
+                <Typography
+                  variant="caption"
+                  color="muted"
+                  className="flex items-center gap-1.5"
+                >
+                  {message.autorIsIA && <Sparkles className="h-3.5 w-3.5" />}
+                  {message.autorIsIA ? "Rotta AI" : message.autorNome} ·{" "}
+                  {new Date(message.createdAt).toLocaleString("pt-BR")}
                 </Typography>
                 <Typography variant="body">{message.mensagem}</Typography>
               </div>

@@ -1,5 +1,8 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { Role } from "@/shared/enums";
+
 import { SupportService } from "../support.service";
 
 import type { SupportMessageRepository } from "../repositories/support-message.repository";
@@ -9,13 +12,11 @@ import type {
 } from "../repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { EmailService } from "@/infra/email/email.service";
+import type { GroqService } from "@/infra/groq/groq.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
-
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { Role } from "@/shared/enums";
 
 function buildTicket(
   overrides: Partial<SupportTicketWithRelations> = {},
@@ -77,6 +78,7 @@ describe("SupportService", () => {
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let emailService: jest.Mocked<EmailService>;
+  let groqService: jest.Mocked<GroqService>;
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
@@ -104,6 +106,9 @@ describe("SupportService", () => {
     emailService = {
       sendEmail: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<EmailService>;
+    groqService = {
+      responderDuvida: jest.fn().mockRejectedValue(new Error("GROQ_API_KEY não configurada.")),
+    } as unknown as jest.Mocked<GroqService>;
 
     delete process.env.SUPPORT_INBOX_EMAIL;
     delete process.env.ADMIN_APP_URL;
@@ -116,6 +121,7 @@ describe("SupportService", () => {
       eventEmitter,
       messagePersonalizationService,
       emailService,
+      groqService,
     );
   });
 
@@ -238,6 +244,79 @@ describe("SupportService", () => {
     });
   });
 
+  describe("createTicket — Rotta AI (Frente 5, Groq)", () => {
+    it("categoria DUVIDA + Groq responde → grava SupportMessage com autorIsIA", async () => {
+      ticketRepository.create.mockResolvedValue(
+        buildTicket({
+          categoria: "DUVIDA",
+          assunto: "Como cadastro um aluno?",
+          descricao: "Não estou achando o botão de cadastrar aluno.",
+        }),
+      );
+      groqService.responderDuvida.mockResolvedValue("Você pode cadastrar o aluno em Alunos > Novo.");
+
+      await service.createTicket(
+        {
+          assunto: "Como cadastro um aluno?",
+          descricao: "Não estou achando o botão de cadastrar aluno.",
+          categoria: "DUVIDA",
+        },
+        empresaActor,
+        {},
+      );
+
+      expect(groqService.responderDuvida).toHaveBeenCalledWith(
+        "Como cadastro um aluno?",
+        "Não estou achando o botão de cadastrar aluno.",
+      );
+      expect(messageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ticketId: "ticket-1",
+          autorIsIA: true,
+          autorIsAdminRotta: false,
+          mensagem: "Você pode cadastrar o aluno em Alunos > Novo.",
+        }),
+      );
+      expect(messageRepository.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ autorUserId: expect.anything() }),
+      );
+    });
+
+    it("categoria DUVIDA sem GROQ_API_KEY (ou qualquer falha) → nunca deixa de criar o chamado, nem grava mensagem", async () => {
+      ticketRepository.create.mockResolvedValue(buildTicket({ categoria: "DUVIDA" }));
+      groqService.responderDuvida.mockRejectedValue(new Error("GROQ_API_KEY não configurada."));
+
+      const result = await service.createTicket(
+        {
+          assunto: "Como cadastro um aluno?",
+          descricao: "Não estou achando o botão de cadastrar aluno.",
+          categoria: "DUVIDA",
+        },
+        empresaActor,
+        {},
+      );
+
+      expect(result.status).toBe("ABERTO");
+      expect(messageRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("categoria PROBLEMA_TECNICO/COBRANCA/OUTRO nunca aciona a IA", async () => {
+      ticketRepository.create.mockResolvedValue(buildTicket({ categoria: "PROBLEMA_TECNICO" }));
+
+      await service.createTicket(
+        {
+          assunto: "Erro ao salvar",
+          descricao: "A tela trava ao salvar o cadastro.",
+          categoria: "PROBLEMA_TECNICO",
+        },
+        empresaActor,
+        {},
+      );
+
+      expect(groqService.responderDuvida).not.toHaveBeenCalled();
+    });
+  });
+
   describe("listTickets", () => {
     it("Empresa/Gestor só lista o próprio tenant, mesmo se tentar informar outro companyId", async () => {
       ticketRepository.list.mockResolvedValue({ items: [buildTicket()], total: 1 });
@@ -288,6 +367,7 @@ describe("SupportService", () => {
         companyId: "company-1",
         autorUserId: "gestor-1",
         autorIsAdminRotta: false,
+        autorIsIA: false,
         mensagem: "Ainda está acontecendo.",
         anexoUrl: null,
         createdAt: new Date(),
@@ -318,6 +398,7 @@ describe("SupportService", () => {
         companyId: "company-1",
         autorUserId: "admin-1",
         autorIsAdminRotta: true,
+        autorIsIA: false,
         mensagem: "Vamos verificar.",
         anexoUrl: null,
         createdAt: new Date(),
@@ -345,6 +426,7 @@ describe("SupportService", () => {
         companyId: "company-1",
         autorUserId: "gestor-1",
         autorIsAdminRotta: false,
+        autorIsIA: false,
         mensagem: "Complementando...",
         anexoUrl: null,
         createdAt: new Date(),
@@ -364,6 +446,7 @@ describe("SupportService", () => {
         companyId: "company-1",
         autorUserId: "admin-1",
         autorIsAdminRotta: true,
+        autorIsIA: false,
         mensagem: "Vamos verificar.",
         anexoUrl: null,
         createdAt: new Date(),
@@ -394,6 +477,7 @@ describe("SupportService", () => {
         companyId: "company-1",
         autorUserId: "gestor-1",
         autorIsAdminRotta: false,
+        autorIsIA: false,
         mensagem: "Complementando...",
         anexoUrl: null,
         createdAt: new Date(),

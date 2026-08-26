@@ -32,9 +32,12 @@ export interface SupportTicket {
 export interface SupportMessage {
   id: string;
   ticketId: string;
-  autorUserId: string;
+  /** Ausente na resposta automática da Rotta AI (`autorIsIA: true`). */
+  autorUserId?: string | null;
   autorNome: string;
   autorIsAdminRotta: boolean;
+  /** Resposta automática da IA (Groq/Llama, Frente 5) — nunca um humano. */
+  autorIsIA: boolean;
   mensagem: string;
   anexoUrl: string | null;
   createdAt: string;

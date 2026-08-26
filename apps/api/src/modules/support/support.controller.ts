@@ -11,16 +11,16 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
+import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import { Roles } from "@/common/decorators/roles.decorator";
+import { Role } from "@/shared/enums";
+
 import { CreateSupportMessageDto } from "./dto/create-support-message.dto";
 import { CreateSupportTicketDto } from "./dto/create-support-ticket.dto";
 import { ListSupportTicketsQueryDto } from "./dto/list-support-tickets-query.dto";
 import { SupportService, type RequestMeta } from "./support.service";
 
 import type { Request } from "express";
-
-import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import { Roles } from "@/common/decorators/roles.decorator";
-import { Role } from "@/shared/enums";
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };

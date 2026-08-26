@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
+import { PrismaService } from "@/infra/database/prisma.service";
+
 import { SUPPORT_TICKET_INCLUDE } from "./support-ticket.repository";
 
 import type {
@@ -11,8 +13,6 @@ import type {
   UpdateSupportTicketStatusData,
 } from "./support-ticket.repository";
 import type { Prisma } from "@prisma/client";
-
-import { PrismaService } from "@/infra/database/prisma.service";
 
 @Injectable()
 export class PrismaSupportTicketRepository implements SupportTicketRepository {

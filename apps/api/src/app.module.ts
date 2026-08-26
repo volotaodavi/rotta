@@ -20,6 +20,7 @@ import emailConfig from "@/config/email.config";
 import { validate } from "@/config/env.validation";
 import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
+import groqConfig from "@/config/groq.config";
 import lytexConfig from "@/config/lytex.config";
 import observabilityConfig from "@/config/observability.config";
 import pushConfig from "@/config/push.config";
@@ -86,6 +87,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         geoConfig,
         fcmConfig,
         pushConfig,
+        groqConfig,
         whatsappConfig,
         smsConfig,
         emailConfig,

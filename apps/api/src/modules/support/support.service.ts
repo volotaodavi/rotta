@@ -1,6 +1,15 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
+import { EmailService } from "@/infra/email/email.service";
+import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
+import { GroqService } from "@/infra/groq/groq.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { UsersService } from "@/modules/users/users.service";
+import { Role } from "@/shared/enums";
+
 import { toSupportMessageResponseDto } from "./mappers/support-message.mapper";
 import {
   toSupportTicketDetailResponseDto,
@@ -21,14 +30,6 @@ import type { SupportMessageRepository } from "./repositories/support-message.re
 import type { SupportTicketRepository } from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
-
-import { EmailService } from "@/infra/email/email.service";
-import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
-import { AuditLogService } from "@/modules/audit/audit-log.service";
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
-import { UsersService } from "@/modules/users/users.service";
-import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
   ip?: string;
@@ -71,6 +72,7 @@ export class SupportService {
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly emailService: EmailService,
+    private readonly groqService: GroqService,
   ) {}
 
   private async recordAudit(input: RecordAuditLogInput): Promise<void> {
@@ -209,6 +211,44 @@ export class SupportService {
     }
   }
 
+  /**
+   * IA de suporte (Frente 5, Groq/Llama) — só atua em dúvidas simples
+   * (`categoria === "DUVIDA"`; nunca `PROBLEMA_TECNICO`/`COBRANCA`/
+   * `OUTRO`, que já vão direto pro humano). Best-effort: sem
+   * `GROQ_API_KEY` configurada ou qualquer falha de rede, não faz
+   * nada — o chamado já foi criado normalmente antes desta chamada.
+   * A resposta vira uma `SupportMessage` comum (`autorIsIA: true`,
+   * sem `autorUserId`) — preserva o histórico como mensagem normal,
+   * só estilizada diferente no chat. Nenhum escalonamento dedicado:
+   * a próxima mensagem do tenant (se a IA não resolveu) já dispara a
+   * notificação normal pro Admin Rotta (`notifyAdminRottaENovoTicketOuMensagem`),
+   * então um humano sempre entra se necessário.
+   */
+  private async tentarResponderComIA(ticket: {
+    id: string;
+    companyId: string;
+    assunto: string;
+    descricao: string;
+    categoria: string;
+  }): Promise<void> {
+    if (ticket.categoria !== "DUVIDA") {
+      return;
+    }
+    try {
+      const resposta = await this.groqService.responderDuvida(ticket.assunto, ticket.descricao);
+      await this.messageRepository.create({
+        ticketId: ticket.id,
+        companyId: ticket.companyId,
+        autorIsAdminRotta: false,
+        autorIsIA: true,
+        mensagem: resposta,
+      });
+    } catch (error) {
+      this.logger.warn(`Rotta AI não respondeu o chamado ${ticket.id} (best-effort).`);
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async createTicket(
     dto: CreateSupportTicketDto,
     actor: AuthenticatedUser,
@@ -248,6 +288,14 @@ export class SupportService {
       assunto: ticket.assunto,
       autorNome: ticket.abertoPor.nome,
       tipo: "SUPORTE_TICKET_ABERTO",
+    });
+
+    await this.tentarResponderComIA({
+      id: ticket.id,
+      companyId: ticket.companyId,
+      assunto: ticket.assunto,
+      descricao: ticket.descricao,
+      categoria: ticket.categoria,
     });
 
     return toSupportTicketResponseDto(ticket);

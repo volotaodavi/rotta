@@ -156,6 +156,15 @@ export const envSchema = z.object({
   SUPPORT_INBOX_EMAIL: z.string().email().or(z.literal("")).optional(),
   ADMIN_APP_URL: z.string().url().or(z.literal("")).optional(),
 
+  // Groq (console.groq.com) — IA que responde dúvidas simples de
+  // suporte (Frente 5, decisão do usuário: "Groq (Llama, grátis)").
+  // Opcional: sem GROQ_API_KEY, `GroqService` recusa a chamada com um
+  // erro claro — o chamado continua sendo criado normalmente, só sem
+  // resposta automática (mesmo padrão de DIDIT_API_KEY acima).
+  GROQ_API_KEY: z.string().optional(),
+  GROQ_BASE_URL: z.string().url().optional(),
+  GROQ_MODEL: z.string().optional(),
+
   // Didit (didit.me) — verificação de identidade (OCR de CNH, Face
   // Match, Liveness) usada por `RottaAiService.validateDocument`
   // (Dossiê 15, tipos CNH/SELFIE/FACE_MATCH/OCR). Opcional: sem
