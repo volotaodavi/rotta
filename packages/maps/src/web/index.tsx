@@ -8,7 +8,7 @@ import {
   Popup,
   type GeoJSONSource,
 } from "maplibre-gl";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { vehicleIconMarkup } from "../vehicle-icon";
 
@@ -64,6 +64,21 @@ const ROUTE_SOURCE_ID = "rotta-route";
 const ROUTE_LAYER_ID = "rotta-route-line";
 const HEATMAP_SOURCE_ID = "rotta-heatmap";
 const HEATMAP_LAYER_ID = "rotta-heatmap-layer";
+
+/**
+ * Teto de espera pelo evento `load` do estilo antes de considerar o mapa
+ * travado — histórico real deste arquivo (ver `DEFAULT_STYLE_URL` acima):
+ * TRÊS incidentes de produção diferentes (CDN exigindo chave, hotlink
+ * bloqueado pela OSM Foundation, estilo composto à mão com domínio fora
+ * do ar) todos se manifestaram do MESMO jeito — nenhum erro visível,
+ * `map.on("error")` às vezes nem chega a disparar (a requisição trava
+ * sem responder, nem sucesso nem falha), e o usuário só via uma área
+ * branca sem explicação nenhuma. Cada vez foi preciso um print do
+ * usuário pra descobrir. Este timeout é a rede de segurança pra
+ * qualquer QUARTA causa ainda não vista: se nem sucesso nem erro
+ * chegou depois disso, mostra o estado de falha mesmo assim.
+ */
+const MAP_LOAD_TIMEOUT_MS = 15_000;
 
 /**
  * Abaixo disto, uma posição nova chegou rápido demais pra ser um poll
@@ -251,6 +266,21 @@ export function RottaMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
   const previousMarkerIdsRef = useRef<Set<string>>(new Set());
+  /**
+   * `"error"` cobre tanto uma falha explícita do MapLibre (evento
+   * `error` — estilo/tile inválido, WebGL2 indisponível no aparelho)
+   * quanto o silêncio total (nem `load` nem `error` em
+   * `MAP_LOAD_TIMEOUT_MS`, ver comentário acima). `retryToken` força o
+   * efeito de setup a recriar o `MapLibreMap` do zero quando o usuário
+   * toca "Tentar novamente" — o mesmo padrão já usado no resto do app
+   * pra estados de erro (nunca deixa o usuário preso sem saída).
+   */
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [retryToken, setRetryToken] = useState(0);
+  const handleRetry = useCallback(() => {
+    setStatus("loading");
+    setRetryToken((token) => token + 1);
+  }, []);
   // Refs para os callbacks: evita recriar o mapa a cada render quando o
   // app chamador passa uma arrow function inline (padrão comum em
   // `onPress`/`onChange` de tela React) — só a criação do mapa (estilo/
@@ -263,20 +293,46 @@ export function RottaMap({
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const map = new MapLibreMap({
-      container: containerRef.current,
-      style: styleUrl ?? DEFAULT_STYLE_URL,
-      center: initialCenter ? [initialCenter.longitude, initialCenter.latitude] : FALLBACK_CENTER,
-      zoom: initialZoom,
-    });
+    let map: MapLibreMap;
+    try {
+      map = new MapLibreMap({
+        container: containerRef.current,
+        style: styleUrl ?? DEFAULT_STYLE_URL,
+        center: initialCenter ? [initialCenter.longitude, initialCenter.latitude] : FALLBACK_CENTER,
+        zoom: initialZoom,
+      });
+    } catch (err) {
+      // Aparelho sem WebGL2 (exigido pelo MapLibre 6.x, sem fallback pra
+      // WebGL1) ou qualquer outra falha síncrona na criação — sem isso,
+      // a exceção sobe descoberta e pode derrubar a árvore React inteira
+      // ao redor do mapa, não só a área do mapa.
+      // eslint-disable-next-line no-console -- mesmo sinal de diagnóstico do catch abaixo.
+      console.error("[RottaMap] Falha ao inicializar o mapa:", err);
+      setStatus("error");
+      return;
+    }
+
+    let settled = false;
+    const timeoutId = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      setStatus("error");
+    }, MAP_LOAD_TIMEOUT_MS);
+
     map.addControl(new NavigationControl(), "top-right");
 
     // Sem isso, uma falha ao carregar o estilo (URL errada, tile server
-    // fora do ar) é silenciosa — o mapa fica com a tela preta padrão do
-    // WebGL e nenhum erro aparece em lugar nenhum, exceto o console.
+    // fora do ar, WebGL2 indisponível) é silenciosa — o mapa fica com a
+    // tela preta/branca padrão e nenhum erro aparece em lugar nenhum,
+    // exceto o console. `setStatus("error")` é o que torna esse mesmo
+    // sinal visível pro usuário (ver JSX de retorno abaixo).
     map.on("error", (event) => {
       // eslint-disable-next-line no-console -- único sinal visível de uma falha de estilo/tile.
       console.error("[RottaMap] Falha ao carregar o mapa:", event.error);
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      setStatus("error");
     });
 
     const emitBounds = (): void => {
@@ -290,10 +346,17 @@ export function RottaMap({
       });
     };
     map.on("moveend", emitBounds);
-    map.once("load", emitBounds);
+    map.once("load", () => {
+      emitBounds();
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeoutId);
+      setStatus("ready");
+    });
 
     mapRef.current = map;
     return () => {
+      window.clearTimeout(timeoutId);
       map.remove();
       mapRef.current = null;
       // O mapa antigo levou seus marcadores junto (`map.remove()`) —
@@ -308,8 +371,8 @@ export function RottaMap({
       markersRef.current.clear();
       previousMarkerIdsRef.current = new Set();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- setup roda só quando o estilo muda; ver refs acima para os callbacks.
-  }, [styleUrl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- setup roda só quando o estilo muda (ou "Tentar novamente" incrementa retryToken); ver refs acima para os callbacks.
+  }, [styleUrl, retryToken]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -415,5 +478,47 @@ export function RottaMap({
     }
   }, [heatmapPoints]);
 
-  return <div ref={containerRef} style={{ width: "100%", height: "100%" }} />;
+  return (
+    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+      <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
+      {status === "error" ? (
+        <div
+          role="alert"
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12,
+            padding: 24,
+            textAlign: "center",
+            background: "#f8fafc",
+            color: "#334155",
+          }}
+        >
+          <p style={{ margin: 0, fontSize: 14, maxWidth: 280 }}>
+            Não foi possível carregar o mapa agora. Verifique sua conexão e tente de novo.
+          </p>
+          <button
+            type="button"
+            onClick={handleRetry}
+            style={{
+              border: "none",
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#ffffff",
+              backgroundColor: MARKER_COLOR,
+              cursor: "pointer",
+            }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }

@@ -6,8 +6,8 @@ import {
   PointAnnotation,
   ShapeSource,
 } from "@maplibre/maplibre-react-native";
-import { useEffect, useRef, useState } from "react";
-import { Animated, Easing, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import type { RottaMapMarker, RottaMapProps } from "../types";
 import type { MapViewRef } from "@maplibre/maplibre-react-native";
@@ -32,6 +32,16 @@ const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
 const DEFAULT_ROUTE_COLOR = "#3b6ef6";
+/**
+ * Mesmo raciocínio do teto de espera da versão web (`../web/index.tsx`,
+ * `MAP_LOAD_TIMEOUT_MS`) — o histórico de 3 incidentes reais de "mapa
+ * não aparece, sem erro visível" (CDN exigindo chave, hotlink bloqueado,
+ * estilo composto à mão) se aplica igual aqui: `onDidFailLoadingMap` nem
+ * sempre dispara (a requisição pode só travar), então este timeout é a
+ * rede de segurança final antes de mostrar um estado de falha pro
+ * usuário em vez de deixar a tela em branco pra sempre.
+ */
+const MAP_LOAD_TIMEOUT_MS = 15_000;
 
 /**
  * Mesmo princípio de `@rotta/maps/web` (`animateMarkerTo`) — desliza o
@@ -204,6 +214,43 @@ export function RottaMap({
   const onBoundsChangeRef = useRef(onBoundsChange);
   onBoundsChangeRef.current = onBoundsChange;
 
+  /**
+   * Mesmo padrão de `../web/index.tsx`: `retryToken` força o `<MapView>`
+   * a remontar do zero (via `key` abaixo) quando o usuário toca "Tentar
+   * novamente" — nunca deixa a pessoa presa numa tela de mapa quebrada
+   * sem saída.
+   */
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [retryToken, setRetryToken] = useState(0);
+  const settledRef = useRef(false);
+  const handleRetry = useCallback(() => {
+    settledRef.current = false;
+    setStatus("loading");
+    setRetryToken((token) => token + 1);
+  }, []);
+
+  useEffect(() => {
+    settledRef.current = false;
+    setStatus("loading");
+    const timeoutId = setTimeout(() => {
+      if (settledRef.current) return;
+      settledRef.current = true;
+      setStatus("error");
+    }, MAP_LOAD_TIMEOUT_MS);
+    return () => clearTimeout(timeoutId);
+  }, [styleUrl, retryToken]);
+
+  const handleMapReady = useCallback(() => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    setStatus("ready");
+  }, []);
+  const handleMapFailed = useCallback(() => {
+    if (settledRef.current) return;
+    settledRef.current = true;
+    setStatus("error");
+  }, []);
+
   const center = initialCenter
     ? ([initialCenter.longitude, initialCenter.latitude] as [number, number])
     : markers.length > 0
@@ -221,9 +268,12 @@ export function RottaMap({
   return (
     <View style={styles.container}>
       <MapView
+        key={retryToken}
         ref={mapRef}
         style={styles.map}
         mapStyle={styleUrl ?? DEFAULT_STYLE_URL}
+        onDidFinishLoadingMap={handleMapReady}
+        onDidFailLoadingMap={handleMapFailed}
         onRegionDidChange={async () => {
           if (!onBoundsChangeRef.current || !mapRef.current) return;
           const [ne, sw] = await mapRef.current.getVisibleBounds();
@@ -264,6 +314,16 @@ export function RottaMap({
           ),
         )}
       </MapView>
+      {status === "error" ? (
+        <View style={styles.errorOverlay}>
+          <Text style={styles.errorText}>
+            Não foi possível carregar o mapa agora. Verifique sua conexão e tente de novo.
+          </Text>
+          <TouchableOpacity style={styles.errorButton} onPress={handleRetry}>
+            <Text style={styles.errorButtonText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -271,6 +331,35 @@ export function RottaMap({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   map: { flex: 1 },
+  errorOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+    paddingHorizontal: 24,
+    backgroundColor: "#f8fafc",
+  },
+  errorText: {
+    textAlign: "center",
+    fontSize: 14,
+    color: "#334155",
+    maxWidth: 280,
+  },
+  errorButton: {
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: "#2563eb",
+  },
+  errorButtonText: {
+    color: "#ffffff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
   marker: {
     width: 16,
     height: 16,
