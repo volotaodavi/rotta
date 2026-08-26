@@ -19,6 +19,7 @@ import type { StudentEventsHistoryRange, TripStudentEventType } from "@rotta/api
 
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
+import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import { useRoutePreview } from "@/features/students/hooks/use-route-preview";
 import { useStudent } from "@/features/students/hooks/use-students";
@@ -277,6 +278,22 @@ export default function AlunoMapaPage(): JSX.Element {
     ];
   }, [viagem]);
 
+  const proximaParada = proximasEtas?.[0];
+
+  // A linha azul de verdade (pedido do usuário: "a linha azul é igual GPS
+  // mesmo") — do transporte até a parada do próprio filho, seguindo as
+  // ruas de verdade (OSRM). Mesmo hook usado em Motorista/Monitor, com o
+  // veículo como origem — o Responsável enxerga exatamente o mesmo trajeto
+  // que o motorista está seguindo agora. Chamado incondicionalmente (regra
+  // dos hooks) — sem viagem/próxima parada ainda, os dois argumentos vêm
+  // `null` e o hook simplesmente não busca nada.
+  const tracedRoute = useNextStopTracedRoute(
+    viagem?.latitude && viagem.longitude
+      ? { latitude: viagem.latitude, longitude: viagem.longitude }
+      : null,
+    proximaParada ? { latitude: proximaParada.latitude, longitude: proximaParada.longitude } : null,
+  );
+
   if (isLoading) {
     return (
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
@@ -328,8 +345,6 @@ export default function AlunoMapaPage(): JSX.Element {
     );
   }
 
-  const proximaParada = proximasEtas?.[0];
-
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-4">
       <VoltarLink studentId={studentId} nome={student?.nome} />
@@ -345,6 +360,7 @@ export default function AlunoMapaPage(): JSX.Element {
             <RottaMap
               key={mapKey}
               markers={markers}
+              route={tracedRoute.route ?? undefined}
               initialCenter={{ latitude: viagem.latitude!, longitude: viagem.longitude! }}
               initialZoom={14}
             />

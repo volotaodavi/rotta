@@ -17,4 +17,7 @@ export class NextEtaResponseDto {
   @ApiProperty() etaSegundos!: number;
   /** ISO 8601 — `now() + etaSegundos`. */
   @ApiProperty() etaPrevista!: string;
+  /** Coordenada real do waypoint (pode ser um desvio de endereço do dia — ver `TripsService.listPendenciasPorAluno`) — alimenta a linha azul traçada até aqui no mapa do Responsável/Motorista/Monitor. */
+  @ApiProperty() latitude!: number;
+  @ApiProperty() longitude!: number;
 }

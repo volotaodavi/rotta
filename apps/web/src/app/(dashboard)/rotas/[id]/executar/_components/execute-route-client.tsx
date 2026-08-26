@@ -23,12 +23,16 @@ import {
 import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-reporting";
 import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
+import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useRoute, useRouteStops, useRouteStudents } from "@/features/routes/hooks/use-routes";
 import { ROUTE_STATUS_LABEL } from "@/features/routes/labels";
 import { useStudent } from "@/features/students/hooks/use-students";
-import { useStudentsAttendanceToday, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
+import {
+  useStudentsAttendanceToday,
+  useTripProximasEtas,
+  useTripStudentEvents,
+} from "@/features/trips/hooks/use-trips";
 import { useVehicle } from "@/features/vehicles/hooks/use-vehicles";
-
 
 /**
  * Extraído de `executar/page.tsx` pra aceitar `routeId`/`onVoltar` como
@@ -114,6 +118,20 @@ export function ExecuteRouteClient({
     : null;
   const mapMarkers = veiculoMarker ? [...markers, veiculoMarker] : markers;
 
+  // Linha azul de verdade até a próxima parada pendente (pedido do
+  // usuário: "a linha azul é igual GPS mesmo") — mesmo hook usado em
+  // `/minha-rota`; sem viagem ativa ou sem ETA ainda, cai pro traçado
+  // estático de todas as paradas (comportamento de sempre desta tela).
+  const { data: proximasEtas } = useTripProximasEtas(isActive && trip ? trip.id : undefined);
+  const proximaEta = proximasEtas?.[0];
+  const tracedRoute = useNextStopTracedRoute(
+    driverPosition,
+    proximaEta ? { latitude: proximaEta.latitude, longitude: proximaEta.longitude } : null,
+  );
+  const rotaTracada =
+    tracedRoute.route ??
+    paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
+
   const [mapKey, setMapKey] = useState(0);
 
   if (isLoadingRoute) {
@@ -157,15 +175,7 @@ export function ExecuteRouteClient({
       <Card className="overflow-hidden">
         <div className="relative h-64 w-full">
           {markers.length > 0 ? (
-            <RottaMap
-              key={mapKey}
-              markers={mapMarkers}
-              route={paradasOrdenadas.map((p) => ({
-                latitude: p.latitude,
-                longitude: p.longitude,
-              }))}
-              initialZoom={12}
-            />
+            <RottaMap key={mapKey} markers={mapMarkers} route={rotaTracada} initialZoom={12} />
           ) : (
             <div className="flex h-full items-center justify-center bg-card">
               <Typography variant="bodySmall" color="muted">

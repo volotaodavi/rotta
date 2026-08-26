@@ -1232,6 +1232,8 @@ export class TripsService {
         distanciaMetros: Math.round(acumuladoMetros),
         etaSegundos: Math.round(acumuladoSegundos),
         etaPrevista: new Date(agora + acumuladoSegundos * 1000).toISOString(),
+        latitude: stop.latitude,
+        longitude: stop.longitude,
       };
     });
   }

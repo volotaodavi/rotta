@@ -71,6 +71,7 @@ import { useTripGpsReporting } from "@/features/driver/hooks/use-trip-gps-report
 import { useWakeLock } from "@/features/driver/hooks/use-wake-lock";
 import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
+import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import { useStudent } from "@/features/students/hooks/use-students";
 import { useTripProximasEtas, useTripStudentEvents } from "@/features/trips/hooks/use-trips";
@@ -1310,31 +1311,37 @@ function ModoOperacionalFullScreen({
     alunosDaParadaAlvo.length > 0 &&
     alunosDaParadaAlvo.every((aluno) => aluno.paradaDesembarqueId === paradaAlvo?.id);
 
-  // "Próxima rota traçada" (pedido do usuário) — veículo → parada-alvo. De
-  // propósito mais simples que redesenhar o itinerário inteiro de novo: o
-  // traçado estático de todas as paradas já existe por baixo (`mapMarkers`
-  // + rota completa quando ainda não há alvo), isso aqui é só o "pra onde
-  // ir AGORA" ficar óbvio no mapa.
-  const rotaTracada =
-    paradaAlvo && driverPosition
-      ? [driverPosition, { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude }]
-      : paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude }));
-
-  const distanciaAteAlvo =
-    driverPosition && paradaAlvo
-      ? haversineDistanceMeters(driverPosition, {
-          latitude: paradaAlvo.latitude,
-          longitude: paradaAlvo.longitude,
-        })
+  // Coordenada real de "pra onde ir agora" — usa a do próprio `proximaEta`
+  // quando disponível (já vem certa mesmo quando o aluno tem um desvio de
+  // endereço ativo hoje, ver `TripsService.listPendenciasPorAluno`); cai
+  // pro endereço fixo da parada (`paradaAlvo`) só quando o ETA recalculado
+  // ainda não chegou (viagem recém-iniciada, sem GPS).
+  const destinoAlvo = proximaEta
+    ? { latitude: proximaEta.latitude, longitude: proximaEta.longitude }
+    : paradaAlvo
+      ? { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude }
       : null;
 
+  // "Próxima rota traçada" (pedido do usuário: "a linha azul é igual GPS
+  // mesmo") — veículo → destino-alvo, seguindo as ruas de verdade (OSRM via
+  // Rotta Geo Engine), não mais uma linha reta ligando os dois pontos.
+  // Enquanto o traçado real ainda não chegou (primeiro carregamento) ou o
+  // OSRM falha, cai pra linha reta como respaldo — nunca deixa o mapa sem
+  // nenhuma indicação de "pra onde ir agora".
+  const tracedRoute = useNextStopTracedRoute(driverPosition, destinoAlvo);
+  const rotaTracada =
+    tracedRoute.route ??
+    (destinoAlvo && driverPosition
+      ? [driverPosition, destinoAlvo]
+      : paradasOrdenadas.map((p) => ({ latitude: p.latitude, longitude: p.longitude })));
+
+  const distanciaAteAlvo =
+    driverPosition && destinoAlvo ? haversineDistanceMeters(driverPosition, destinoAlvo) : null;
+
   function handleNavegar(): void {
-    if (!paradaAlvo) return;
+    if (!destinoAlvo) return;
     const app = detectNavigationApp(navigator.userAgent);
-    const url = buildNavigationUrl(
-      { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude },
-      app,
-    );
+    const url = buildNavigationUrl(destinoAlvo, app);
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
@@ -1405,7 +1412,11 @@ function ModoOperacionalFullScreen({
                   {chegouNaEscola ? "Próximo destino · Escola" : "Próxima parada"}
                 </Typography>
                 <Typography variant="bodySmall" className="font-semibold leading-tight">
-                  {paradaAlvo.ordem}. {paradaAlvo.endereco}
+                  {/* `proximaEta.endereco` já vem certo mesmo num dia com desvio
+                      de endereço ativo (o texto formatado do próprio desvio,
+                      não o da parada física de sempre) — só cai pro endereço
+                      fixo da parada quando o ETA ainda não chegou. */}
+                  {proximaEta ? proximaEta.endereco : `${paradaAlvo.ordem}. ${paradaAlvo.endereco}`}
                 </Typography>
                 {proximaEta ? (
                   <Typography variant="caption" color="muted">

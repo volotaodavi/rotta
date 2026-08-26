@@ -113,6 +113,9 @@ export interface NextEta {
   distanciaMetros: number;
   etaSegundos: number;
   etaPrevista: string;
+  /** Coordenada real do waypoint (pode ser um desvio de endereço do dia) — alimenta a linha azul traçada no mapa. */
+  latitude: number;
+  longitude: number;
 }
 
 interface ApiEnvelope<T> {
