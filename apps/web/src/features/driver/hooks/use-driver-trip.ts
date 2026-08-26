@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { StartTripInput } from "@rotta/api-client";
+import type { CreateTripStudentEventInput, StartTripInput } from "@rotta/api-client";
 
 import { tripsApi } from "@/lib/api-client";
 
@@ -73,7 +73,7 @@ export function useFinishTrip(routeId: string | undefined) {
 export function useAddStudentEvent(tripId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { studentId: string; tipo: "EMBARCOU" | "AUSENTE" | "DESEMBARCOU" }) =>
+    mutationFn: (input: CreateTripStudentEventInput) =>
       tripsApi.addStudentEvent(tripId as string, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["trips", tripId, "student-events"] });

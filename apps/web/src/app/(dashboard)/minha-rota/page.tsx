@@ -1,5 +1,6 @@
 "use client";
 
+import { MOTIVO_AUSENCIA_PRESETS } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import {
   AlertTriangle,
@@ -28,6 +29,7 @@ import {
   Badge,
   Button,
   Card,
+  Input,
   Modal,
   PanelGreeting,
   Select,
@@ -1431,6 +1433,13 @@ function ModoOperacionalFullScreen({
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
+  // Pedido do usuário: "a lista de alunos deverá aparecer completa
+  // durante a viagem, não somente o da parada atual" — o cartão
+  // continua abrindo focado só na PRÓXIMA parada (é o que importa pra
+  // agir agora), mas esse botão revela a rota inteira, parada por
+  // parada, com todos os alunos e o status de cada um.
+  const [verTodosAlunos, setVerTodosAlunos] = useState(false);
+
   return (
     <div className="fixed inset-0 z-modal flex flex-col bg-background">
       <div className="relative flex-1">
@@ -1472,9 +1481,17 @@ function ModoOperacionalFullScreen({
 
       <DraggableFloatingCard>
         <div className="flex items-center justify-between gap-2 pb-3">
-          <Typography variant="caption" color="muted">
-            {alunosEmbarcados}/{totalAlunos} embarcados
-          </Typography>
+          <button
+            type="button"
+            onClick={() => setVerTodosAlunos((v) => !v)}
+            className="flex items-center gap-1.5 text-text-muted"
+          >
+            <Users size={14} />
+            <Typography variant="caption" color="muted">
+              {alunosEmbarcados}/{totalAlunos} embarcados ·{" "}
+              {verTodosAlunos ? "ocultar todos os alunos" : "ver todos os alunos"}
+            </Typography>
+          </button>
           <div className="flex shrink-0 items-center gap-2">
             {/* Pedido do usuário: "o botão de pausar rota deverá sair de
                 onde está, pois ele está muito difícil de ser clicado" —
@@ -1573,6 +1590,28 @@ function ModoOperacionalFullScreen({
             )}
           </div>
         )}
+
+        {verTodosAlunos ? (
+          <div className="flex flex-col gap-3 border-t border-border pt-3">
+            <Typography variant="caption" color="muted">
+              Todas as paradas da rota
+            </Typography>
+            {paradasOrdenadas.map((parada) => (
+              <ParadaCard
+                key={parada.id}
+                parada={parada}
+                alunos={routeStudents.filter(
+                  (aluno) =>
+                    aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
+                )}
+                eventos={studentEvents}
+                tripId={trip.id}
+                podeOperar={isActive}
+                driverPosition={driverPosition}
+              />
+            ))}
+          </div>
+        ) : null}
       </DraggableFloatingCard>
     </div>
   );
@@ -1728,7 +1767,8 @@ function AlunoParadaRow({
 }): JSX.Element {
   const { data: student } = useStudent(aluno.studentId);
   const addEvent = useAddStudentEvent(tripId);
-  const [confirmandoAusencia, setConfirmandoAusencia] = useState(false);
+  const [formularioAusenciaAberto, setFormularioAusenciaAberto] = useState(false);
+  const [motivoAusencia, setMotivoAusencia] = useState("");
 
   const isEmbarque = aluno.paradaEmbarqueId === parada.id;
   const tipo: TripStudentEventType = isEmbarque ? "EMBARCOU" : "DESEMBARCOU";
@@ -1756,6 +1796,22 @@ function AlunoParadaRow({
   const podeRegistrar = podeOperar && elegivel && perto;
   const longeDemais = podeOperar && elegivel && !perto;
 
+  function handleConfirmarAusencia(): void {
+    addEvent.mutate(
+      {
+        studentId: aluno.studentId,
+        tipo: "AUSENTE",
+        motivoAusencia: motivoAusencia.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setFormularioAusenciaAberto(false);
+          setMotivoAusencia("");
+        },
+      },
+    );
+  }
+
   return (
     <div className="flex flex-col gap-1.5 border-t border-border pt-3 first:border-t-0 first:pt-0">
       <div className="flex items-center justify-between gap-3">
@@ -1768,20 +1824,7 @@ function AlunoParadaRow({
           <Typography variant="caption" className="text-danger">
             Ausente
           </Typography>
-        ) : confirmandoAusencia && isEmbarque ? (
-          <button
-            type="button"
-            className="text-xs font-semibold text-danger hover:underline"
-            onClick={() =>
-              addEvent.mutate(
-                { studentId: aluno.studentId, tipo: "AUSENTE" },
-                { onSuccess: () => setConfirmandoAusencia(false) },
-              )
-            }
-          >
-            Confirmar ausência
-          </button>
-        ) : (
+        ) : !formularioAusenciaAberto ? (
           <div className="flex items-center gap-3">
             <Button
               type="button"
@@ -1799,15 +1842,72 @@ function AlunoParadaRow({
                 type="button"
                 aria-label="Marcar ausência"
                 disabled={!podeOperar}
-                onClick={() => setConfirmandoAusencia(true)}
+                onClick={() => setFormularioAusenciaAberto(true)}
                 className="text-danger disabled:opacity-40"
               >
                 <UserX size={20} />
               </button>
             ) : null}
           </div>
-        )}
+        ) : null}
       </div>
+
+      {/* Pedido do usuário: "abrindo um formulário simples e opcional
+          (motivo com opções ou comentário, ambos opcionais)" — nenhum
+          campo é obrigatório pra confirmar; as opções só preenchem o
+          mesmo campo de texto livre que o backend já aceita. */}
+      {formularioAusenciaAberto && isEmbarque ? (
+        <div className="flex flex-col gap-2 rounded-2xl bg-surface-muted p-3">
+          <Typography variant="caption" color="muted">
+            Motivo da ausência (opcional)
+          </Typography>
+          <div className="flex flex-wrap gap-1.5">
+            {MOTIVO_AUSENCIA_PRESETS.map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                onClick={() => setMotivoAusencia(preset)}
+                className={`rounded-full border px-2.5 py-1 text-xs transition-colors ${
+                  motivoAusencia === preset
+                    ? "border-danger bg-danger/10 text-danger"
+                    : "border-border text-text-muted"
+                }`}
+              >
+                {preset}
+              </button>
+            ))}
+          </div>
+          <Input
+            size="sm"
+            value={motivoAusencia}
+            onChange={(event) => setMotivoAusencia(event.target.value)}
+            placeholder="Ou escreva um comentário (opcional)"
+            maxLength={500}
+          />
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="danger"
+              size="sm"
+              isLoading={addEvent.isPending}
+              onClick={handleConfirmarAusencia}
+            >
+              Confirmar ausência
+            </Button>
+            <button
+              type="button"
+              className="text-xs text-text-muted hover:underline"
+              onClick={() => {
+                setFormularioAusenciaAberto(false);
+                setMotivoAusencia("");
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {longeDemais ? (
         <Typography variant="caption" color="muted">
           Aproxime-se até 1km do local para liberar o botão

@@ -1,9 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { StartTripInput } from "@rotta/api-client";
+import type { CreateTripStudentEventInput, StartTripInput } from "@rotta/api-client";
 
 import { tripsApi } from "@/lib/api-client";
-
 
 /**
  * Ciclo de vida da viagem do dia, do lado do Motorista/Monitor (Prompt
@@ -112,7 +111,7 @@ export function useTripPositions(tripId: string | undefined) {
 export function useAddStudentEvent(tripId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { studentId: string; tipo: "EMBARCOU" | "AUSENTE" | "DESEMBARCOU" }) =>
+    mutationFn: (input: CreateTripStudentEventInput) =>
       tripsApi.addStudentEvent(tripId as string, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({

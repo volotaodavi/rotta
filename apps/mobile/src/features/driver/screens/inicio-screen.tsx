@@ -1,3 +1,4 @@
+import { MOTIVO_AUSENCIA_PRESETS } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import {
   AlertTriangle,
@@ -88,6 +89,8 @@ import {
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
+
+
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -1305,6 +1308,11 @@ function ModoOperacionalFullScreen({
     });
   }
 
+  // Pedido do usuário: "a lista de alunos deverá aparecer completa
+  // durante a viagem, não somente o da parada atual" — paridade exata
+  // com o Painel Web (`verTodosAlunos` em `minha-rota/page.tsx`).
+  const [verTodosAlunos, setVerTodosAlunos] = useState(false);
+
   return (
     <View style={[styles.fsRoot, { backgroundColor: theme.colors.background }]}>
       <View style={styles.fsMapArea}>
@@ -1357,9 +1365,16 @@ function ModoOperacionalFullScreen({
 
       <DraggableFloatingCard>
         <View style={styles.mapCardBodyRow}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            {alunosEmbarcados}/{totalAlunos} embarcados
-          </Text>
+          <Pressable
+            onPress={() => setVerTodosAlunos((v) => !v)}
+            style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
+          >
+            <Users size={14} color={theme.colors.textMuted} />
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              {alunosEmbarcados}/{totalAlunos} embarcados ·{" "}
+              {verTodosAlunos ? "ocultar todos" : "ver todos"}
+            </Text>
+          </Pressable>
           {/* Pedido do usuário: "o botão de pausar rota deverá sair de
               onde está, pois ele está muito difícil de ser clicado" —
               antes era um círculo pequeno flutuando por cima do mapa
@@ -1454,6 +1469,28 @@ function ModoOperacionalFullScreen({
             )}
           </View>
         )}
+
+        {verTodosAlunos ? (
+          <View style={[styles.rosterCompleto, { borderTopColor: theme.colors.border }]}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+              Todas as paradas da rota
+            </Text>
+            {paradasOrdenadas.map((parada) => (
+              <ParadaCard
+                key={parada.id}
+                parada={parada}
+                alunos={routeStudents.filter(
+                  (aluno) =>
+                    aluno.paradaEmbarqueId === parada.id || aluno.paradaDesembarqueId === parada.id,
+                )}
+                eventos={studentEvents}
+                tripId={trip.id}
+                podeOperar={isActive}
+                driverPosition={driverPosition}
+              />
+            ))}
+          </View>
+        ) : null}
       </DraggableFloatingCard>
     </View>
   );
@@ -1555,7 +1592,8 @@ function AlunoParadaRow({
   const { theme } = useTheme();
   const { data: student } = useStudent(aluno.studentId);
   const addEvent = useAddStudentEvent(tripId);
-  const [motivoAusencia, setMotivoAusencia] = useState<string | null>(null);
+  const [formularioAusenciaAberto, setFormularioAusenciaAberto] = useState(false);
+  const [motivoAusencia, setMotivoAusencia] = useState("");
 
   const isEmbarque = aluno.paradaEmbarqueId === parada.id;
   const tipo = isEmbarque ? "EMBARCOU" : "DESEMBARCOU";
@@ -1580,6 +1618,22 @@ function AlunoParadaRow({
   const podeRegistrar = podeOperar && elegivel && perto;
   const longeDemais = podeOperar && elegivel && !perto;
 
+  function handleConfirmarAusencia(): void {
+    addEvent.mutate(
+      {
+        studentId: aluno.studentId,
+        tipo: "AUSENTE",
+        motivoAusencia: motivoAusencia.trim() || undefined,
+      },
+      {
+        onSuccess: () => {
+          setFormularioAusenciaAberto(false);
+          setMotivoAusencia("");
+        },
+      },
+    );
+  }
+
   return (
     <View style={styles.alunoRowContainer}>
       <View style={styles.alunoRow}>
@@ -1590,20 +1644,7 @@ function AlunoParadaRow({
           <Check size={18} color={theme.colors.success} />
         ) : jaAusente ? (
           <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Ausente</Text>
-        ) : motivoAusencia !== null && isEmbarque ? (
-          <View style={styles.ausenciaForm}>
-            <Pressable
-              onPress={() =>
-                addEvent.mutate(
-                  { studentId: aluno.studentId, tipo: "AUSENTE" },
-                  { onSuccess: () => setMotivoAusencia(null) },
-                )
-              }
-            >
-              <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Confirmar ausência</Text>
-            </Pressable>
-          </View>
-        ) : (
+        ) : !formularioAusenciaAberto ? (
           <View style={styles.alunoActions}>
             <Pressable
               accessibilityRole="button"
@@ -1636,15 +1677,88 @@ function AlunoParadaRow({
               <Pressable
                 accessibilityRole="button"
                 disabled={!podeOperar}
-                onPress={() => setMotivoAusencia("")}
+                onPress={() => setFormularioAusenciaAberto(true)}
                 style={{ opacity: podeOperar ? 1 : 0.4 }}
               >
                 <UserX size={20} color={theme.colors.danger} />
               </Pressable>
             ) : null}
           </View>
-        )}
+        ) : null}
       </View>
+
+      {/* Pedido do usuário: "um formulário simples e opcional (motivo
+          com opções ou comentário, ambos opcionais)" — nada aqui é
+          obrigatório pra confirmar a ausência. */}
+      {formularioAusenciaAberto && isEmbarque ? (
+        <View style={[styles.ausenciaForm, { backgroundColor: theme.colors.muted }]}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            Motivo da ausência (opcional)
+          </Text>
+          <View style={styles.ausenciaPresetsRow}>
+            {MOTIVO_AUSENCIA_PRESETS.map((preset) => (
+              <Pressable
+                key={preset}
+                onPress={() => setMotivoAusencia(preset)}
+                style={[
+                  styles.ausenciaPresetChip,
+                  {
+                    borderColor:
+                      motivoAusencia === preset ? theme.colors.danger : theme.colors.border,
+                    backgroundColor:
+                      motivoAusencia === preset ? `${theme.colors.danger}1a` : "transparent",
+                  },
+                ]}
+              >
+                <Text
+                  style={{
+                    fontSize: 12,
+                    color: motivoAusencia === preset ? theme.colors.danger : theme.colors.textMuted,
+                  }}
+                >
+                  {preset}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <TextInput
+            value={motivoAusencia}
+            onChangeText={setMotivoAusencia}
+            placeholder="Ou escreva um comentário (opcional)"
+            placeholderTextColor={theme.colors.textMuted}
+            maxLength={500}
+            style={[
+              styles.ausenciaInput,
+              { color: theme.colors.text, borderColor: theme.colors.border },
+            ]}
+          />
+          <View style={styles.ausenciaActionsRow}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={addEvent.isPending}
+              onPress={handleConfirmarAusencia}
+              style={styles.ausenciaConfirmButton}
+            >
+              {addEvent.isPending ? (
+                <ActivityIndicator size="small" color={theme.colors.danger} />
+              ) : (
+                <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: "600" }}>
+                  Confirmar ausência
+                </Text>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                setFormularioAusenciaAberto(false);
+                setMotivoAusencia("");
+              }}
+            >
+              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Cancelar</Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
+
       {longeDemais ? (
         <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Aproxime-se até 1km do local para liberar o botão
@@ -1688,7 +1802,23 @@ const styles = StyleSheet.create({
   },
   alunoRowContainer: { gap: 4, paddingVertical: 6 },
   alunosPreViagemList: { borderTopWidth: 1, gap: 8, paddingTop: 12 },
-  ausenciaForm: { alignItems: "center" },
+  ausenciaActionsRow: { alignItems: "center", flexDirection: "row", gap: 16, paddingTop: 2 },
+  ausenciaConfirmButton: { paddingVertical: 4 },
+  ausenciaForm: { borderRadius: 16, gap: 8, padding: 12 },
+  ausenciaInput: {
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 13,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  ausenciaPresetChip: {
+    borderRadius: 999,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  ausenciaPresetsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   avisoVeiculoCard: {
     borderRadius: 20,
     gap: 12,
@@ -1815,6 +1945,7 @@ const styles = StyleSheet.create({
   progressoBarra: { borderRadius: 999, height: "100%" },
   progressoTrilha: { borderRadius: 999, height: 6, overflow: "hidden", width: "100%" },
   proximaViagemCard: { marginHorizontal: 16 },
+  rosterCompleto: { borderTopWidth: 1, gap: 10, paddingTop: 12 },
   secao: { fontSize: 16, fontWeight: "700" },
   statsCard: { marginHorizontal: 16 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

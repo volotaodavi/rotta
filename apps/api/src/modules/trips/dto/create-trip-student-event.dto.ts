@@ -20,7 +20,13 @@ export class CreateTripStudentEventDto {
   @IsEnum(TripStudentEventType)
   tipo!: TripStudentEventType;
 
-  @ApiPropertyOptional({ description: "Obrigatório quando tipo = AUSENTE" })
+  /**
+   * Pedido do usuário: "um formulário simples e opcional (motivo com
+   * opções ou comentário, ambos opcionais)" — sempre opcional, mesmo
+   * quando tipo = AUSENTE; o motorista/monitor pode confirmar a
+   * ausência sem preencher nada.
+   */
+  @ApiPropertyOptional({ description: "Sempre opcional, mesmo quando tipo = AUSENTE." })
   @IsOptional()
   @IsString()
   @MaxLength(500)

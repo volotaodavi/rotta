@@ -483,15 +483,29 @@ describe("TripsService", () => {
       studentsService.findRawById.mockResolvedValue({ nome: "Pedro" } as never);
     });
 
-    it("exige motivoAusencia quando tipo = AUSENTE", async () => {
-      await expect(
-        service.addStudentEvent(
-          "trip-1",
-          { studentId: "student-1", tipo: "AUSENTE" },
-          motoristaActor,
-        ),
-      ).rejects.toThrow(BadRequestException);
-      expect(studentEventRepository.create).not.toHaveBeenCalled();
+    it("REGRESSÃO — permite AUSENTE sem motivoAusencia (pedido do usuário: formulário opcional)", async () => {
+      studentEventRepository.findByTripStudentAndTipo.mockResolvedValue(null);
+      studentEventRepository.create.mockResolvedValue({
+        id: "event-1",
+        tripId: "trip-1",
+        studentId: "student-1",
+        routeStopId: "stop-embarque",
+        tipo: "AUSENTE",
+        motivoAusencia: null,
+        processadoPorId: "motorista-1",
+        processadoEm: new Date(),
+      } as never);
+
+      const result = await service.addStudentEvent(
+        "trip-1",
+        { studentId: "student-1", tipo: "AUSENTE" },
+        motoristaActor,
+      );
+
+      expect(studentEventRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: "AUSENTE", motivoAusencia: undefined }),
+      );
+      expect(result.id).toBe("event-1");
     });
 
     it("rejeita DESEMBARCOU sem um EMBARCOU prévio na mesma viagem", async () => {

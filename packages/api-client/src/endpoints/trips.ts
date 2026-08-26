@@ -73,6 +73,21 @@ export interface CreateTripStudentEventInput {
   motivoAusencia?: string;
 }
 
+/**
+ * Opções rápidas pro formulário de ausência (pedido do usuário: "motivo
+ * com opções ou comentário, ambos opcionais") — só sugestões de texto
+ * pra tocar uma vez em vez de digitar; `motivoAusencia` continua sendo
+ * um texto livre no backend (nunca um enum), então uma opção daqui e um
+ * comentário livre digitado são a mesma coisa pro servidor. Compartilhado
+ * entre web e mobile pra nunca divergir a lista.
+ */
+export const MOTIVO_AUSENCIA_PRESETS = [
+  "Não estava no ponto",
+  "Aluno doente",
+  "Responsável avisou a falta",
+  "Não vai à escola hoje",
+] as const;
+
 export interface SubstituirMotoristaInput {
   motoristaId: string;
   motivo?: string;

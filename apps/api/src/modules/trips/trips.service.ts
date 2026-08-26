@@ -807,10 +807,6 @@ export class TripsService {
         "Só é possível registrar embarque/desembarque de uma viagem em andamento.",
       );
     }
-    if (dto.tipo === "AUSENTE" && !dto.motivoAusencia) {
-      throw new BadRequestException("motivoAusencia é obrigatório quando tipo = AUSENTE.");
-    }
-
     const vinculos = await this.routesService.listStudents(trip.routeId, actor);
     const vinculo = vinculos.find((v) => v.studentId === dto.studentId);
     if (!vinculo) {
