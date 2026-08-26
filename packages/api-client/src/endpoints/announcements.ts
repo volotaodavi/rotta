@@ -9,6 +9,13 @@ import type { ApiClient } from "../http";
 
 export type AnnouncementAudience = "TODOS" | "EMPRESAS" | "MOTORISTAS_MONITORES" | "RESPONSAVEIS";
 
+export const ANNOUNCEMENT_AUDIENCE_LABEL: Record<AnnouncementAudience, string> = {
+  TODOS: "Todos",
+  EMPRESAS: "Empresas/Gestores",
+  MOTORISTAS_MONITORES: "Motoristas/Monitores",
+  RESPONSAVEIS: "Responsáveis",
+};
+
 export interface Announcement {
   id: string;
   titulo: string;
