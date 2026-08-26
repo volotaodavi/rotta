@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { BookOpen, Bell, LogOut, Map, MessageCircle, ShieldCheck } from "@rotta/icons";
+import { BookOpen, Bell, Car, LogOut, Map, MessageCircle, ShieldCheck } from "@rotta/icons";
 import { Card, PanelGreeting, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -35,9 +35,19 @@ interface AtalhoPerfil {
  * ação também aparece essa opção") — único ponto de entrada do
  * motorista/monitor autônomo/MEI pra criar/gerenciar/executar rotas,
  * já que a barra inferior de 4 ícones não ganha um 5º item.
+ *
+ * "Meu Veículo" (Frente AP — pedido do usuário: "averiguação de
+ * veículos no modo ação") — corrige uma divergência real com o app
+ * mobile: `DriverPerfilScreen` (`apps/mobile/.../perfil-screen.tsx`)
+ * já tem esse atalho desde a Frente AO, com um comentário afirmando
+ * que ele "virou um atalho aqui, igual à versão web" — só que a versão
+ * web nunca ganhou de fato. `/veiculo` (Frente O) existia, só ficou sem
+ * nenhum caminho de acesso aqui desde que "Veículo" saiu da barra de 4
+ * ícones.
  */
 const ATALHOS_PERFIL_MOTORISTA: AtalhoPerfil[] = [
   { href: "/rotas", label: "Minhas rotas", icon: Map },
+  { href: "/veiculo", label: "Meu veículo", icon: Car },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/chamados", label: "Chamados", icon: MessageCircle },
   { href: "/verificacao-identidade", label: "Verificar identidade", icon: ShieldCheck },
