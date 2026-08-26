@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type {
   ActiveTripWithDetails,
   CreateTripData,
@@ -23,9 +22,30 @@ export class PrismaTripRepository implements TripRepository {
     return this.prisma.withTenant(this.prisma.trip.findUnique({ where: { id } }));
   }
 
-  findByRouteAndDate(routeId: string, data: Date): Promise<Trip | null> {
+  /**
+   * "A viagem que importa agora, pra esta rota, neste dia" — nunca mais
+   * um `findUnique` por chave composta (essa unicidade foi removida do
+   * banco de propósito, ver nota em `model Trip`, `schema.prisma`): uma
+   * rota pode ter mais de uma `Trip` no mesmo dia (ida/volta). Prioriza
+   * a viagem ATIVA (`EM_ANDAMENTO`/`PAUSADA`) se houver uma — é a única
+   * que pode existir por vez, então nunca há ambiguidade; sem nenhuma
+   * ativa, cai pra mais recente (mesmo já `FINALIZADA`/`CANCELADA`),
+   * que é o que a tela precisa mostrar ("a viagem de hoje já foi
+   * finalizada") até o motorista iniciar outra.
+   */
+  async findByRouteAndDate(routeId: string, data: Date): Promise<Trip | null> {
+    const ativa = await this.prisma.withTenant(
+      this.prisma.trip.findFirst({
+        where: { routeId, data, status: { in: ["EM_ANDAMENTO", "PAUSADA"] } },
+        orderBy: { createdAt: "desc" },
+      }),
+    );
+    if (ativa) return ativa;
     return this.prisma.withTenant(
-      this.prisma.trip.findUnique({ where: { routeId_data: { routeId, data } } }),
+      this.prisma.trip.findFirst({
+        where: { routeId, data },
+        orderBy: { createdAt: "desc" },
+      }),
     );
   }
 

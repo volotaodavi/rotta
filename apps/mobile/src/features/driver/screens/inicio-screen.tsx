@@ -1017,9 +1017,30 @@ function RotaOperacional({
               </Text>
             )
           ) : viagemEncerrada ? (
-            <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
-              A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
-            </Text>
+            isMotorista ? (
+              // Pedido do usuário: "rotas não são feitas para ser
+              // finalizadas concretamente... são finalizadas
+              // temporariamente até o transportador acionar de novo" —
+              // a rota continua disponível pra outra viagem no mesmo
+              // dia (ida de manhã, volta à tarde, por exemplo).
+              <View style={{ gap: 8 }}>
+                <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                  A viagem de hoje já foi{" "}
+                  {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}. A rota continua
+                  disponível — pode iniciar outra viagem quando precisar.
+                </Text>
+                <SlideToAction
+                  label="Deslize para iniciar outra viagem"
+                  theme={theme}
+                  onComplete={() => startTrip.mutate({ routeId: rota.id })}
+                  isLoading={startTrip.isPending}
+                />
+              </View>
+            ) : (
+              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
+              </Text>
+            )
           ) : isMotorista ? (
             <>
               {gpsAvisoTexto ? (

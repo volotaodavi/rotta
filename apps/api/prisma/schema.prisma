@@ -2133,9 +2133,10 @@ model RouteStudent {
 }
 
 /// Ciclo de vida da execução concreta de uma rota em um dia (briefing
-/// `GPS-01`/`GPS-02`). Só uma `Trip` `EM_ANDAMENTO` por rota por dia
-/// (`@@unique([routeId, data])`) — impede literalmente no banco o "não é
-/// possível iniciar duas vezes" de `GPS-01`.
+/// `GPS-01`/`GPS-02`). Só uma `Trip` ATIVA (`EM_ANDAMENTO`/`PAUSADA`) por
+/// rota por vez — garantido em `TripsService.start`, não mais por
+/// constraint de banco (ver nota em `model Trip`): mais de uma `Trip`
+/// FINALIZADA/CANCELADA por rota no mesmo dia é esperado (ida e volta).
 enum TripStatus {
   EM_ANDAMENTO
   PAUSADA
@@ -2149,6 +2150,18 @@ enum TripStatus {
 /// (`ROT-05`/`ROT-06`) sem alterar `Route.motoristaPadraoId` — é assim
 /// que o histórico preserva corretamente "quem dirigiu aquele dia
 /// específico" mesmo após trocas.
+///
+/// Mais de uma `Trip` por `routeId`/`data` é permitido de propósito
+/// (pedido do usuário: "rotas não são feitas para ser finalizadas
+/// concretamente... finalizar só encerra a viagem, não a rota — dá pra
+/// iniciar de novo quando quiser, mesmo dia" — ex.: ida de manhã e volta
+/// à tarde na mesma rota). Já existia um `@@unique([routeId, data])`
+/// aqui que impedia isso na prática (uma segunda `Trip` pra mesma rota
+/// no mesmo dia sempre falhava no banco, então bloqueava o retorno
+/// mesmo depois de finalizar a primeira) — removido; `TripsService.start`
+/// continua sendo quem garante a única regra que de fato importa:
+/// nunca duas viagens ATIVAS (`EM_ANDAMENTO`/`PAUSADA`) ao mesmo tempo
+/// pra mesma rota.
 model Trip {
   id        String  @id @default(uuid()) @db.Uuid
   companyId String  @db.Uuid
@@ -2214,7 +2227,7 @@ model Trip {
   /// Back-relation obrigatória do Prisma para `Vehicle.viagemAtualId` — nunca usada diretamente.
   veiculosComEstaAtual Vehicle[]          @relation("VehicleViagemAtual")
 
-  @@unique([routeId, data])
+  @@index([routeId, data])
   @@index([companyId, status])
   @@map("trips")
 }

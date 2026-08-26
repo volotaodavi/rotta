@@ -317,12 +317,14 @@ export class TripsService {
 
     const data = today();
     const existing = await this.tripRepository.findByRouteAndDate(dto.routeId, data);
-    if (existing) {
-      throw new ConflictException(
-        existing.status === "EM_ANDAMENTO"
-          ? "Já existe uma viagem em andamento para esta rota hoje."
-          : "Esta rota já teve uma viagem registrada hoje — não é possível iniciar uma segunda no mesmo dia.",
-      );
+    // Pedido do usuário: "rotas não são feitas para ser finalizadas
+    // concretamente... são finalizadas temporariamente até o
+    // transportador acionar de novo" — só bloqueia se já houver uma
+    // viagem ATIVA agora mesmo pra esta rota; uma já finalizada/
+    // cancelada nunca impede iniciar outra no mesmo dia (ida de manhã,
+    // volta à tarde, por exemplo).
+    if (existing && (existing.status === "EM_ANDAMENTO" || existing.status === "PAUSADA")) {
+      throw new ConflictException("Já existe uma viagem em andamento para esta rota hoje.");
     }
 
     const trip = await this.createTripWithUniqueCode({

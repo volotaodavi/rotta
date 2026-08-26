@@ -720,6 +720,23 @@ function RotaOperacional({
   const resumeTrip = useResumeTrip(rota.id);
   const finishTrip = useFinishTrip(rota.id);
 
+  /** Reaproveitado tanto pela primeira viagem do dia quanto por "iniciar outra viagem" depois de uma já finalizada/cancelada (ver `viagemEncerrada` abaixo). */
+  function handleIniciarViagem(): void {
+    startTrip.mutate(
+      { routeId: rota.id },
+      {
+        // Erro já cai sozinho no toast global (`MutationCache.onError`,
+        // `QueryProvider`) — aqui só o feedback positivo, pra ficar
+        // claro que a viagem começou de verdade (pedido do usuário:
+        // "não acontece a devida ação... fica na mesma tela").
+        onSuccess: () => {
+          toast.success("Viagem iniciada.");
+          void notifyRouteStarted(rota.nome);
+        },
+      },
+    );
+  }
+
   const isActive = trip?.status === "EM_ANDAMENTO";
   const { status: gpsStatus } = useTripGpsReporting(
     isMotorista && isActive && trip ? trip.id : null,
@@ -1151,22 +1168,7 @@ function RotaOperacional({
             ) : (
               <SlideToAction
                 label="Deslize para iniciar a viagem"
-                onComplete={() =>
-                  startTrip.mutate(
-                    { routeId: rota.id },
-                    {
-                      // Erro já cai sozinho no toast global
-                      // (`MutationCache.onError`, `QueryProvider`) — aqui só
-                      // o feedback positivo, pra ficar claro que a viagem
-                      // começou de verdade (pedido do usuário: "não
-                      // acontece a devida ação... fica na mesma tela").
-                      onSuccess: () => {
-                        toast.success("Viagem iniciada.");
-                        void notifyRouteStarted(rota.nome);
-                      },
-                    },
-                  )
-                }
+                onComplete={handleIniciarViagem}
                 isLoading={startTrip.isPending}
               />
             )
@@ -1176,9 +1178,34 @@ function RotaOperacional({
             </Typography>
           )
         ) : viagemEncerrada ? (
-          <Typography variant="bodySmall" color="muted" className="py-2 text-center">
-            A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
-          </Typography>
+          isMotorista ? (
+            /**
+             * Pedido do usuário: "rotas não são feitas para ser
+             * finalizadas concretamente... são finalizadas
+             * temporariamente até o transportador acionar de novo" —
+             * finalizar só encerra a VIAGEM de hoje, a rota continua
+             * disponível pra outra viagem no mesmo dia (ida de manhã,
+             * volta à tarde, por exemplo). Reaproveita a mesma
+             * `startTrip` de sempre — o backend já aceita uma segunda
+             * viagem pra mesma rota no mesmo dia contanto que a última
+             * não esteja mais em andamento/pausada.
+             */
+            <div className="flex flex-col gap-2">
+              <Typography variant="bodySmall" color="muted" className="text-center">
+                A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
+                A rota continua disponível — pode iniciar outra viagem quando precisar.
+              </Typography>
+              <SlideToAction
+                label="Deslize para iniciar outra viagem"
+                onComplete={handleIniciarViagem}
+                isLoading={startTrip.isPending}
+              />
+            </div>
+          ) : (
+            <Typography variant="bodySmall" color="muted" className="py-2 text-center">
+              A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
+            </Typography>
+          )
         ) : isMotorista ? (
           <>
             {gpsAvisoTexto ? (

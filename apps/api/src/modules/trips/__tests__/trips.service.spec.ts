@@ -210,7 +210,7 @@ describe("TripsService", () => {
       );
     });
 
-    it("rejeita quando já existe uma viagem hoje para a mesma rota", async () => {
+    it("rejeita quando já existe uma viagem EM_ANDAMENTO hoje para a mesma rota", async () => {
       routesService.findByIdOrThrow.mockResolvedValue({
         id: "route-1",
         companyId: "company-1",
@@ -221,12 +221,75 @@ describe("TripsService", () => {
         veiculoPadraoId: "vehicle-1",
       } as never);
       vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
-      tripRepository.findByRouteAndDate.mockResolvedValue(buildTrip());
+      tripRepository.findByRouteAndDate.mockResolvedValue(buildTrip({ status: "EM_ANDAMENTO" }));
 
       await expect(service.start({ routeId: "route-1" }, motoristaActor, {})).rejects.toThrow(
         ConflictException,
       );
       expect(tripRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("rejeita quando já existe uma viagem PAUSADA hoje para a mesma rota", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(buildTrip({ status: "PAUSADA" }));
+
+      await expect(service.start({ routeId: "route-1" }, motoristaActor, {})).rejects.toThrow(
+        ConflictException,
+      );
+      expect(tripRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("REGRESSÃO — permite iniciar outra viagem na mesma rota no mesmo dia quando a última já foi FINALIZADA (pedido do usuário: 'rota não é finalizada permanentemente')", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(
+        buildTrip({ id: "trip-anterior", status: "FINALIZADA" }),
+      );
+      tripRepository.create.mockResolvedValue(buildTrip({ id: "trip-2" }));
+
+      const result = await service.start({ routeId: "route-1" }, motoristaActor, {});
+
+      expect(tripRepository.create).toHaveBeenCalled();
+      expect(result.id).toBe("trip-2");
+    });
+
+    it("REGRESSÃO — permite iniciar outra viagem na mesma rota no mesmo dia quando a última já foi CANCELADA", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(
+        buildTrip({ id: "trip-anterior", status: "CANCELADA" }),
+      );
+      tripRepository.create.mockResolvedValue(buildTrip({ id: "trip-2" }));
+
+      const result = await service.start({ routeId: "route-1" }, motoristaActor, {});
+
+      expect(tripRepository.create).toHaveBeenCalled();
+      expect(result.id).toBe("trip-2");
     });
 
     it("inicia a viagem usando o próprio ator como motorista quando ele é Role.MOTORISTA", async () => {
