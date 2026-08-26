@@ -11,6 +11,7 @@ import { usePinLock } from "@/features/auth/hooks/use-pin-lock";
 import { PainelWebOnlyScreen, PinLockScreen } from "@/features/auth/screens";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
 import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
+import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -36,6 +37,10 @@ export function RootNavigator(): JSX.Element {
   const { status, user } = useAuth();
   const { theme } = useTheme();
   const { isLocked, unlock } = usePinLock({ userId: user?.id ?? null, status });
+  // Push real (Frente 0) — registra o token do Expo Push Service assim que
+  // a sessão fica autenticada; nunca bloqueia nem altera esta árvore de
+  // navegação (só efeito colateral, sem UI própria).
+  usePushRegistration({ status });
 
   // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor
   // — o único papel de gestão com telas reais neste app; Empresa/Gestor

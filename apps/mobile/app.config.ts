@@ -46,8 +46,28 @@ export default (): ExpoConfig => ({
   web: {
     favicon: "./assets/favicon.png",
   },
+  // `extra.eas.projectId` — só existe depois de rodar `eas init` uma vez
+  // (grátis, só exige login na conta Expo do projeto; nenhum cartão ou
+  // console pago). Sem ele, `usePushRegistration` (mobile) detecta a
+  // ausência e não tenta registrar nenhum token — mesmo "stub honesto"
+  // usado em `FcmService`/`WebPushService` (Frente 0 do push real).
+  extra: {
+    eas: {
+      projectId: process.env.EAS_PROJECT_ID || undefined,
+    },
+  },
   plugins: [
     "expo-secure-store",
+    [
+      "expo-notifications",
+      {
+        // Ícone/cor da notificação Android — mesmo token `success` (verde)
+        // do Design System (`packages/theme/src/tokens/colors.ts`), tema
+        // claro; nenhum som customizado, usa o padrão do sistema.
+        icon: "./assets/adaptive-icon.png",
+        color: "#16A34A",
+      },
+    ],
     // MapLibre Native é inteiramente open-source (Maven Central/
     // CocoaPods públicos) — ao contrário do plugin `@rnmapbox/maps` que
     // este app usava antes, nenhum token de download é necessário aqui.
