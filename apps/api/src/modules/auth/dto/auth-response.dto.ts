@@ -25,6 +25,16 @@ export class MeResponseDto {
       "MFA/TOTP ativado (Dossiê 43) — só relevante para Role.ADMIN_ROTTA, sempre false para os demais papéis.",
   })
   mfaEnabled?: boolean;
+  @ApiPropertyOptional({
+    description:
+      "Faturamento (Dossiê 26) — true quando a empresa está com trial vencido (+1 dia de graça), inadimplente, suspensa ou cancelada. Só relevante para Role.EMPRESA/GESTOR (sempre false pros demais papéis, que não têm Company/mensalidade). Front usa isto pra mostrar o cadeado na navegação sem duplicar a regra de datas no cliente — ver `TrialGuard`/`resolveTrialBloqueioMotivo`.",
+  })
+  billingBlocked?: boolean;
+  @ApiPropertyOptional({
+    description:
+      "Mensagem específica do motivo do bloqueio (null quando `billingBlocked` é false) — mesmo texto que o backend usa no popup de qualquer ação bloqueada.",
+  })
+  billingBlockedReason?: string | null;
   @ApiProperty({
     enum: ConsentType,
     isArray: true,

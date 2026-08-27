@@ -7,6 +7,7 @@ import { AllExceptionsFilter } from "@/common/filters/all-exceptions.filter";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 import { TenantGuard } from "@/common/guards/tenant.guard";
+import { TrialGuard } from "@/common/guards/trial.guard";
 import { LoggingInterceptor } from "@/common/interceptors/logging.interceptor";
 import { TenantContextInterceptor } from "@/common/interceptors/tenant-context.interceptor";
 import { TimeoutInterceptor } from "@/common/interceptors/timeout.interceptor";
@@ -154,6 +155,12 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Faturamento (Dossiê 26) — trial vencido/inadimplente/suspenso
+    // bloqueia escrita em toda a API, exceto `@SkipTrialGuard()`
+    // (Support, Billing). Roda por último: precisa do papel já
+    // resolvido pelo `RolesGuard` pra saber se vale a pena consultar o
+    // status da empresa.
+    { provide: APP_GUARD, useClass: TrialGuard },
 
     // --- Interceptors globais (Dossie 12, Secao 3) ---
     // Registrados aqui (nao via `app.useGlobalInterceptors` em main.ts)

@@ -18,3 +18,15 @@ export const DEFAULT_PLAN = {
   name: "Starter",
   priceCents: 3990,
 } as const;
+
+/**
+ * Duração do trial gratuito (pedido do usuário, faturamento: "1 mês
+ * grátis, sem cartão"). Usado por `CompaniesService.create()` para
+ * preencher `Company.trialExpiraEm` — campo que já existia no schema
+ * mas nunca era preenchido (achado da investigação: nenhuma empresa
+ * tinha prazo de trial de verdade até esta mudança). `TRIAL_GRACE_DAYS`
+ * é o "1º dia após o vencimento" citado pelo usuário — só depois desse
+ * dia extra é que `TrialGuard` passa a bloquear ações de escrita.
+ */
+export const TRIAL_DURATION_MONTHS = 1;
+export const TRIAL_GRACE_DAYS = 1;

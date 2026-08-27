@@ -6,6 +6,7 @@ import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
+import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { Role } from "@/shared/enums";
 
 /**
@@ -20,6 +21,7 @@ import { Role } from "@/shared/enums";
 @ApiTags("billing")
 @ApiBearerAuth()
 @Controller("billing")
+@SkipTrialGuard()
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 

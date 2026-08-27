@@ -49,6 +49,8 @@ import type { AuthConfig } from "@/config/auth.config";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 import type { ConsentType, User } from "@prisma/client";
 
+import { resolveTrialBloqueioMotivo } from "@/common/billing/resolve-trial-bloqueio.util";
+import { TRIAL_BLOQUEIO_MENSAGENS } from "@/common/exceptions/trial-expirado.exception";
 import { parseDurationToMs } from "@/common/utils/duration.util";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
@@ -943,6 +945,30 @@ export class AuthService {
     companyType: CompanyType | null,
   ): Promise<MeResponseDto> {
     const pendingConsents = await this.usersService.getPendingConsents(user.id);
+
+    // Faturamento (Dossiê 26) — só Role.EMPRESA/GESTOR tem Company/
+    // mensalidade (Responsável/Admin Rotta/Motorista/Monitor sempre
+    // `billingBlocked: false`). Consulta própria via `withBypass` (não
+    // reaproveita `companyName`/`companyType` já resolvidos acima
+    // porque nem toda chamada de `issueTokens` passa por uma busca de
+    // `Company` completa — ver `companyNameHint`) — mesma regra exata
+    // de `TrialGuard`/`resolveTrialBloqueioMotivo`, nunca duplicada.
+    let billingBlocked = false;
+    let billingBlockedReason: string | null = null;
+    if (tenantId && (role === Role.EMPRESA || role === Role.GESTOR)) {
+      const company = await this.prisma.withBypass(
+        this.prisma.company.findUnique({
+          where: { id: tenantId },
+          select: { status: true, trialExpiraEm: true },
+        }),
+      );
+      const motivo = company
+        ? resolveTrialBloqueioMotivo(company.status, company.trialExpiraEm)
+        : null;
+      billingBlocked = Boolean(motivo);
+      billingBlockedReason = motivo ? TRIAL_BLOQUEIO_MENSAGENS[motivo] : null;
+    }
+
     return {
       id: user.id,
       nome: user.nome,
@@ -955,6 +981,8 @@ export class AuthService {
       companyType,
       mfaEnabled: user.totpHabilitado,
       pendingConsents,
+      billingBlocked,
+      billingBlockedReason,
     };
   }
 }

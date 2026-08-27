@@ -14,6 +14,7 @@ import {
   COMPANY_SETTING_REPOSITORY,
   DEFAULT_PLAN,
   PLAN_REPOSITORY,
+  TRIAL_DURATION_MONTHS,
 } from "./companies.constants";
 import { toCompanyResponseDto } from "./mappers/company.mapper";
 
@@ -335,6 +336,15 @@ export class CompaniesService implements OnModuleInit {
     const plan = await this.resolvePlanOrThrow(dto.planCode ?? DEFAULT_PLAN.code);
     const codigoInterno = await this.generateCodigoInterno();
 
+    // Toda empresa criada por este método nasce em `TRIAL` (nenhum
+    // `status` é passado no payload abaixo — usa o default do schema),
+    // então sempre ganha um prazo real de trial (1 mês, pedido do
+    // usuário/faturamento). Antes desta mudança, `trialExpiraEm` nunca
+    // era preenchido em lugar nenhum (achado da investigação) — toda
+    // empresa ficava em TRIAL pra sempre, sem vencimento nenhum.
+    const trialExpiraEm = new Date();
+    trialExpiraEm.setMonth(trialExpiraEm.getMonth() + TRIAL_DURATION_MONTHS);
+
     // Company + User (administrador) + Membership são uma única unidade
     // de negócio (Dossiê 16: "motorista autônomo automaticamente vira
     // Administrador da empresa") — atômicos via uma única transação
@@ -372,6 +382,7 @@ export class CompaniesService implements OnModuleInit {
           idioma: dto.idioma,
           fusoHorario: dto.fusoHorario,
           planId: plan.id,
+          trialExpiraEm,
         },
         tx,
       );

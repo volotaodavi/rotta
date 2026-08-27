@@ -25,6 +25,8 @@ export interface CreateCompanyData {
   idioma?: string;
   fusoHorario?: string;
   planId: string;
+  /** Prazo do trial gratuito de 1 mês (ver `TRIAL_DURATION_MONTHS`) — só setado quando a empresa nasce em `TRIAL` (nunca em criação administrativa já `ATIVO`). */
+  trialExpiraEm?: Date;
 }
 
 export interface UpdateCompanyData {

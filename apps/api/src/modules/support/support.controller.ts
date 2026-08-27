@@ -11,16 +11,17 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import { Roles } from "@/common/decorators/roles.decorator";
-import { Role } from "@/shared/enums";
-
 import { CreateSupportMessageDto } from "./dto/create-support-message.dto";
 import { CreateSupportTicketDto } from "./dto/create-support-ticket.dto";
 import { ListSupportTicketsQueryDto } from "./dto/list-support-tickets-query.dto";
 import { SupportService, type RequestMeta } from "./support.service";
 
 import type { Request } from "express";
+
+import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import { Roles } from "@/common/decorators/roles.decorator";
+import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
+import { Role } from "@/shared/enums";
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
@@ -43,6 +44,7 @@ const SUPPORT_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA, Role.RESPONS
 @ApiTags("support")
 @ApiBearerAuth()
 @Controller("support/tickets")
+@SkipTrialGuard()
 export class SupportController {
   constructor(private readonly supportService: SupportService) {}
 

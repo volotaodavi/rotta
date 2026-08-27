@@ -148,6 +148,12 @@ describe("AuthService", () => {
 
     prisma = {
       runWithTenantContext: jest.fn((_ctx: unknown, fn: () => unknown) => fn()),
+      // `toMeResponse` consulta `status`/`trialExpiraEm` via `withBypass`
+      // pra calcular `billingBlocked` (Dossiê 26) — `null` aqui replica o
+      // comportamento anterior a essa mudança (nunca bloqueado) sem exigir
+      // que cada teste de login/refresh monte uma `Company` completa.
+      withBypass: jest.fn((op: unknown) => op),
+      company: { findUnique: jest.fn().mockResolvedValue(null) },
     } as unknown as jest.Mocked<PrismaService>;
 
     passwordResetNotifier = {
