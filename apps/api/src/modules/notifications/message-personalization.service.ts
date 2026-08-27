@@ -253,4 +253,29 @@ export class MessagePersonalizationService {
   avisoGeral(titulo: string, corpo: string): PersonalizedMessage {
     return { titulo, corpo };
   }
+
+  /**
+   * Epic A (Aprovação de veículos pelo Admin Rotta) — `observacao` já
+   * vem pronta do `ReviewVehicleDto` (o texto que o Admin Rotta
+   * escreveu, um pra transportadora e outro pros responsáveis; ver
+   * `VehiclesService.reviewVehicle`). Sem observação, um corpo padrão
+   * ainda avisa a decisão — nunca dispara notificação vazia.
+   */
+  veiculoRevisaoAprovada(placa: string, observacao?: string): PersonalizedMessage {
+    return {
+      titulo: "Veículo aprovado",
+      corpo:
+        observacao?.trim() ||
+        `O veículo placa ${placa} foi revisado e aprovado pela Rotta do Brasil.`,
+    };
+  }
+
+  veiculoRevisaoReprovada(placa: string, observacao?: string): PersonalizedMessage {
+    return {
+      titulo: "Veículo reprovado",
+      corpo:
+        observacao?.trim() ||
+        `O veículo placa ${placa} foi reprovado pela Rotta do Brasil e não pode mais ser credenciado numa rota.`,
+    };
+  }
 }

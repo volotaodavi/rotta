@@ -9,7 +9,6 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, type Route, type RouteStop } from "@prisma/client";
 
-
 import { toRouteStopResponseDto } from "./mappers/route-stop.mapper";
 import { toRouteStudentResponseDto } from "./mappers/route-student.mapper";
 import { toListRoutesResponseDto, toRouteResponseDto } from "./mappers/route.mapper";
@@ -257,6 +256,7 @@ export class RoutesService {
     routeId?: string,
   ): Promise<void> {
     const veiculo = await this.vehiclesService.findByIdOrThrow(veiculoId, actor);
+    this.vehiclesService.assertVeiculoOperavel(veiculo);
     const alunosAtivos = routeId
       ? (await this.routeStudentRepository.listByRoute(routeId)).length
       : 0;

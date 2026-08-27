@@ -116,4 +116,56 @@ export class PrismaVehicleRepository implements VehicleRepository {
 
     return { items, total };
   }
+
+  async listActiveResponsavelIds(vehicleId: string): Promise<string[]> {
+    const rows = await this.prisma.withBypass(
+      this.prisma.routeStudent.findMany({
+        where: { ativo: true, route: { veiculoPadraoId: vehicleId, deletedAt: null } },
+        select: { contract: { select: { responsavelId: true } } },
+      }),
+    );
+    return [...new Set(rows.map((row) => row.contract.responsavelId))];
+  }
+
+  listVehiclesForResponsavel(responsavelId: string): Promise<Vehicle[]> {
+    return this.prisma.withBypass(
+      this.prisma.vehicle.findMany({
+        where: {
+          deletedAt: null,
+          revisaoAdminStatus: { not: "PRE_APROVADO" },
+          rotasPadrao: {
+            some: {
+              deletedAt: null,
+              alunos: { some: { ativo: true, contract: { responsavelId } } },
+            },
+          },
+        },
+      }),
+    );
+  }
+
+  async existsAdminReviewAcknowledgement(
+    vehicleId: string,
+    responsavelId: string,
+    decisaoEm: Date,
+  ): Promise<boolean> {
+    const found = await this.prisma.withBypass(
+      this.prisma.vehicleAdminReviewAcknowledgement.findUnique({
+        where: { vehicleId_responsavelId_decisaoEm: { vehicleId, responsavelId, decisaoEm } },
+      }),
+    );
+    return found !== null;
+  }
+
+  async createAdminReviewAcknowledgement(
+    vehicleId: string,
+    responsavelId: string,
+    decisaoEm: Date,
+  ): Promise<void> {
+    await this.prisma.withBypass(
+      this.prisma.vehicleAdminReviewAcknowledgement.create({
+        data: { vehicleId, responsavelId, decisaoEm },
+      }),
+    );
+  }
 }

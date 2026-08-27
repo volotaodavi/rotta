@@ -304,7 +304,8 @@ export class TripsService {
     // Valida que o veículo pertence à empresa e é acessível ao ator
     // (para Motorista, restrito ao veículo atualmente vinculado a ele —
     // mesma regra de `VehiclesService.fetchOrThrow`).
-    await this.vehiclesService.findByIdOrThrow(veiculoId, actor);
+    const veiculo = await this.vehiclesService.findByIdOrThrow(veiculoId, actor);
+    this.vehiclesService.assertVeiculoOperavel(veiculo);
 
     const monitorId = dto.monitorId ?? route.monitorPadraoId ?? undefined;
     if (monitorId) {

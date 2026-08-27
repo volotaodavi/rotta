@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  VehicleAdminReviewStatus,
   VehicleCategory,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
@@ -41,6 +42,18 @@ export class VehicleResponseDto {
   @ApiPropertyOptional() observacoes?: string | null;
   @ApiPropertyOptional() fotoUrl?: string | null;
   @ApiProperty({ enum: VehicleStatus }) status!: VehicleStatus;
+  @ApiProperty({
+    enum: VehicleAdminReviewStatus,
+    description:
+      "Aprovação/reprovação do Admin Rotta (camada adicional — todo veículo nasce PRE_APROVADO)",
+  })
+  revisaoAdminStatus!: VehicleAdminReviewStatus;
+  @ApiPropertyOptional({ description: "Observação mostrada aos responsáveis (Li e concordo)" })
+  revisaoAdminObservacaoResponsaveis?: string | null;
+  @ApiPropertyOptional({ description: "Observação mostrada só à transportadora" })
+  revisaoAdminObservacaoTransportadora?: string | null;
+  @ApiPropertyOptional() revisaoAdminDecididoPorId?: string | null;
+  @ApiPropertyOptional() revisaoAdminDecididoEm?: Date | null;
   @ApiProperty() quilometragemAtual!: number;
   @ApiPropertyOptional() ultimaLatitude?: number | null;
   @ApiPropertyOptional() ultimaLongitude?: number | null;

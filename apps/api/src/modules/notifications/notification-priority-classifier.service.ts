@@ -48,6 +48,11 @@ export class NotificationPriorityClassifierService {
     SUPORTE_TICKET_ABERTO: IMPORTANTE,
     SUPORTE_NOVA_MENSAGEM: IMPORTANTE,
     AVISO_GERAL: IMPORTANTE,
+    // Aprovação é só informativa (observação de leitura, nunca bloqueia);
+    // reprovação é URGENTE — impede credenciamento numa rota daqui pra
+    // frente, mesmo nível de CNH_VENCENDO/PAGAMENTO_RECUSADO.
+    VEICULO_REVISAO_APROVADA: IMPORTANTE,
+    VEICULO_REVISAO_REPROVADA: URGENTE,
   };
 
   classify(tipo: NotificationEventType): NotificationPriority {

@@ -202,6 +202,25 @@ enum VehicleStatus {
   BLOQUEADO
 }
 
+/// Camada ADICIONAL de revisão do Admin Rotta sobre um veículo já
+/// cadastrado — nunca substitui o "pré-aprovado" de hoje (qualquer
+/// veículo roda normalmente assim que a identidade da transportadora é
+/// verificada; isso continua valendo). `PRE_APROVADO` é o padrão de
+/// TODO veículo novo, de TODA transportadora (inclusive Autônomo/MEI —
+/// o pedido do usuário é explícito: "vale pra toda empresa, de
+/// qualquer tipo"). `APROVADO`: Admin Rotta revisou e não achou
+/// problema (pode vir com uma observação simples, só de leitura, sem
+/// bloquear nada). `REPROVADO`: only status que efetivamente bloqueia —
+/// o veículo não pode mais ser credenciado numa rota daqui pra frente
+/// (`VehiclesService.assertVeiculoOperavel`), mas o que já está
+/// credenciado não é desvinculado automaticamente (ação mais
+/// destrutiva, fora do pedido).
+enum VehicleAdminReviewStatus {
+  PRE_APROVADO
+  APROVADO
+  REPROVADO
+}
+
 /// Tipo de documento anexável ao veículo (briefing "DOCUMENTAÇÃO").
 enum VehicleDocumentType {
   CRLV
@@ -773,15 +792,17 @@ model User {
   /// formas distintas (quem enviou o documento vs. quem foi o último
   /// motorista vs. quem registrou uma manutenção), daí os múltiplos
   /// relacionamentos nomeados, mesmo padrão de `InviteCriadoPor`/`InviteUsadoPor`.
-  veiculosUltimoMotorista       Vehicle[]            @relation("VehicleUltimoMotorista")
-  veiculosUltimoMonitor         Vehicle[]            @relation("VehicleUltimoMonitor")
-  veiculosCategoriaRevisada     Vehicle[]            @relation("VehicleCategoriaRevisadaPor")
-  documentosVeiculoEnviados     VehicleDocument[]    @relation("VehicleDocumentUploadedBy")
-  manutencoesVeiculoRegistradas VehicleMaintenance[] @relation("VehicleMaintenanceRegistradoPor")
-  vinculosVeiculo               VehicleAssignment[]  @relation("VehicleAssignmentUser")
-  vinculosVeiculoCriados        VehicleAssignment[]  @relation("VehicleAssignmentCriadoPor")
-  checklistsVeiculo             VehicleChecklist[]   @relation("VehicleChecklistMotorista")
-  ocorrenciasVeiculoReportadas  VehicleOccurrence[]  @relation("VehicleOccurrenceReportadoPor")
+  veiculosUltimoMotorista            Vehicle[]                           @relation("VehicleUltimoMotorista")
+  veiculosUltimoMonitor              Vehicle[]                           @relation("VehicleUltimoMonitor")
+  veiculosCategoriaRevisada          Vehicle[]                           @relation("VehicleCategoriaRevisadaPor")
+  veiculosRevisaoAdminDecidida       Vehicle[]                           @relation("VehicleRevisaoAdminDecididoPor")
+  reconhecimentosRevisaoAdminVeiculo VehicleAdminReviewAcknowledgement[]
+  documentosVeiculoEnviados          VehicleDocument[]                   @relation("VehicleDocumentUploadedBy")
+  manutencoesVeiculoRegistradas      VehicleMaintenance[]                @relation("VehicleMaintenanceRegistradoPor")
+  vinculosVeiculo                    VehicleAssignment[]                 @relation("VehicleAssignmentUser")
+  vinculosVeiculoCriados             VehicleAssignment[]                 @relation("VehicleAssignmentCriadoPor")
+  checklistsVeiculo                  VehicleChecklist[]                  @relation("VehicleChecklistMotorista")
+  ocorrenciasVeiculoReportadas       VehicleOccurrence[]                 @relation("VehicleOccurrenceReportadoPor")
 
   /// Documentos de habilitação/qualificação do motorista (Dossiê 28 —
   /// CNH/EAR/Cursos obrigatórios) — `documentosMotorista` é o dono do
@@ -803,13 +824,13 @@ model User {
   /// `User` pode também aparecer como `contratosMotorista`/
   /// `contratosMonitor` quando atua como Motorista/Monitor de uma
   /// Empresa (Dossiê 8 §2 — "múltiplos papéis simultâneos").
-  alunos                 Student[]          @relation("StudentResponsavel")
+  alunos                 Student[]                @relation("StudentResponsavel")
   desviosEnderecoCriados StudentAddressOverride[] @relation("StudentAddressOverrideCriadoPor")
-  solicitacoesTransporte TransportRequest[] @relation("TransportRequestResponsavel")
-  contratos              Contract[]         @relation("ContractResponsavel")
-  contratosMotorista     Contract[]         @relation("ContractMotorista")
-  contratosMonitor       Contract[]         @relation("ContractMonitor")
-  avaliacoesFeitas       Rating[]           @relation("RatingResponsavel")
+  solicitacoesTransporte TransportRequest[]       @relation("TransportRequestResponsavel")
+  contratos              Contract[]               @relation("ContractResponsavel")
+  contratosMotorista     Contract[]               @relation("ContractMotorista")
+  contratosMonitor       Contract[]               @relation("ContractMonitor")
+  avaliacoesFeitas       Rating[]                 @relation("RatingResponsavel")
 
   /// Relações do módulo Communication (briefing "ROTTA COMMUNICATION
   /// ENGINE") — inbox pessoal, dispositivos com Token FCM e preferências
@@ -1205,6 +1226,26 @@ model Vehicle {
   categoriaRevisadaPor   User?                       @relation("VehicleCategoriaRevisadaPor", fields: [categoriaRevisadaPorId], references: [id], onDelete: SetNull)
   categoriaRevisadaEm    DateTime?
 
+  /// Aprovação/reprovação do Admin Rotta (camada ADICIONAL sobre o
+  /// "pré-aprovado" de hoje — ver doc do enum `VehicleAdminReviewStatus`
+  /// acima). `revisaoAdminObservacaoResponsaveis` é mostrada aos
+  /// responsáveis (já credenciados E aos que ainda vão se credenciar);
+  /// `revisaoAdminObservacaoTransportadora` é mostrada só à empresa —
+  /// SEMPRE dois textos separados, nunca reaproveitados um pro outro,
+  /// porque o motivo explicado pro dono do veículo raramente é o mesmo
+  /// texto apropriado pra mostrar a uma família. `revisaoAdminDecididoEm`
+  /// funciona como o "carimbo de versão" da decisão mais recente —
+  /// `VehicleAdminReviewAcknowledgement.decisaoEm` guarda esse mesmo
+  /// valor no momento do "Li e concordo", então uma NOVA decisão futura
+  /// (mesmo aprovando de novo, com observação nova) sempre pede
+  /// reconhecimento de novo, nunca aproveita um "Li e concordo" antigo.
+  revisaoAdminStatus                   VehicleAdminReviewStatus @default(PRE_APROVADO)
+  revisaoAdminObservacaoResponsaveis   String?
+  revisaoAdminObservacaoTransportadora String?
+  revisaoAdminDecididoPorId            String?                  @db.Uuid
+  revisaoAdminDecididoPor              User?                    @relation("VehicleRevisaoAdminDecididoPor", fields: [revisaoAdminDecididoPorId], references: [id], onDelete: SetNull)
+  revisaoAdminDecididoEm               DateTime?
+
   status VehicleStatus @default(DISPONIVEL)
 
   quilometragemAtual Int @default(0)
@@ -1230,22 +1271,48 @@ model Vehicle {
   /// mesma convenção de `Company.deletedAt`.
   deletedAt DateTime?
 
-  documentos  VehicleDocument[]
-  manutencoes VehicleMaintenance[]
-  lembretes   VehicleReminder[]
-  vinculos    VehicleAssignment[]
-  checklists  VehicleChecklist[]
-  ocorrencias VehicleOccurrence[]
-  contratos   Contract[]
-  rotasPadrao Route[]
-  viagens     Trip[]               @relation("TripVeiculo")
+  documentos                  VehicleDocument[]
+  manutencoes                 VehicleMaintenance[]
+  lembretes                   VehicleReminder[]
+  vinculos                    VehicleAssignment[]
+  checklists                  VehicleChecklist[]
+  ocorrencias                 VehicleOccurrence[]
+  contratos                   Contract[]
+  rotasPadrao                 Route[]
+  viagens                     Trip[]                              @relation("TripVeiculo")
+  reconhecimentosRevisaoAdmin VehicleAdminReviewAcknowledgement[]
 
   @@unique([placa])
   @@index([companyId, status])
   @@index([companyId, tipo])
   @@index([companyId, deletedAt])
   @@index([companyId, categoriaRevisaoStatus])
+  @@index([companyId, revisaoAdminStatus])
   @@map("vehicles")
+}
+
+/// Registro append-only de "Li e concordo" do Responsável sobre uma
+/// observação de aprovação do Admin Rotta (mesmo desenho do
+/// `ConsentRecord` — nunca atualizado, uma linha nova a cada
+/// reconhecimento). `decisaoEm` é uma cópia do `Vehicle.revisaoAdminDecididoEm`
+/// no momento em que o responsável confirmou — é o que permite calcular
+/// "pendências" por diff (mesmo cálculo de `getPendingConsents`): se a
+/// decisão mais recente do veículo for MAIS NOVA que o último
+/// reconhecimento deste responsável para ele, a observação ainda está
+/// pendente. Nunca existe "recusar" aqui de propósito (pedido explícito
+/// do usuário) — só a confirmação de leitura.
+model VehicleAdminReviewAcknowledgement {
+  id            String   @id @default(uuid()) @db.Uuid
+  vehicleId     String   @db.Uuid
+  vehicle       Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  responsavelId String   @db.Uuid
+  responsavel   User     @relation(fields: [responsavelId], references: [id], onDelete: Cascade)
+  decisaoEm     DateTime
+  aceitoEm      DateTime @default(now())
+
+  @@unique([vehicleId, responsavelId, decisaoEm])
+  @@index([responsavelId])
+  @@map("vehicle_admin_review_acknowledgements")
 }
 
 /// Documento/foto anexado ao veículo (briefing "DOCUMENTAÇÃO"). `companyId`
@@ -1843,8 +1910,8 @@ model StudentAddressOverride {
   student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
 
   /// Dia em que o desvio vale (não timestamp — mesma convenção de `Trip.data`).
-  data    DateTime                      @db.Date
-  trecho  StudentAddressOverrideTrecho
+  data   DateTime                     @db.Date
+  trecho StudentAddressOverrideTrecho
 
   cep         String
   logradouro  String
@@ -2402,6 +2469,16 @@ enum NotificationEventType {
   /// pendente vira a de DESEMBARQUE de um aluno já embarcado ("está na
   /// rota para retornar ao endereço informado").
   ALUNO_VEZ_DESEMBARQUE
+  /// Admin Rotta aprovou um veículo em revisão — vai pra transportadora
+  /// (texto = `revisaoAdminObservacaoTransportadora`) e, se houver
+  /// observação, também pros responsáveis das rotas ativas desse
+  /// veículo (texto = `revisaoAdminObservacaoResponsaveis`, exige "Li e
+  /// concordo").
+  VEICULO_REVISAO_APROVADA
+  /// Admin Rotta reprovou um veículo — mesmo par de destinatários de
+  /// `VEICULO_REVISAO_APROVADA`; a partir de agora o veículo não pode
+  /// mais ser credenciado numa rota (`VehiclesService.assertVeiculoOperavel`).
+  VEICULO_REVISAO_REPROVADA
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —
@@ -2579,8 +2656,8 @@ enum AnnouncementAudience {
 model Announcement {
   id String @id @default(uuid()) @db.Uuid
 
-  titulo String
-  corpo  String
+  titulo  String
+  corpo   String
   publico AnnouncementAudience
 
   criadoPorUserId String @db.Uuid

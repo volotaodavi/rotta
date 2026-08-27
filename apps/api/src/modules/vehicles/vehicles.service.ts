@@ -8,11 +8,15 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
+  NotificationEventType,
+  VehicleAdminReviewStatus,
   VehicleAssignmentRole,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
   VehicleReminderType,
+  VehicleStatus,
   type VehicleCategory,
   type VehicleDocumentType,
   Vehicle,
@@ -65,10 +69,12 @@ import type { CreateVehicleDto } from "./dto/create-vehicle.dto";
 import type { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import type { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
 import type { ResolveVehicleCategoryReviewDto } from "./dto/resolve-vehicle-category-review.dto";
+import type { ReviewVehicleDto } from "./dto/review-vehicle.dto";
 import type { UpdateVehicleLocationDto } from "./dto/update-vehicle-location.dto";
 import type { UpdateVehicleReminderDto } from "./dto/update-vehicle-reminder.dto";
 import type { UpdateVehicleStatusDto } from "./dto/update-vehicle-status.dto";
 import type { UpdateVehicleDto } from "./dto/update-vehicle.dto";
+import type { VehicleAdminReviewPendingDto } from "./dto/vehicle-admin-review-pending.dto";
 import type { VehicleAssignmentResponseDto } from "./dto/vehicle-assignment-response.dto";
 import type {
   ListVehicleChecklistsResponseDto,
@@ -103,6 +109,8 @@ import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log
 
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
@@ -170,6 +178,8 @@ export class VehiclesService {
     private readonly rottaAiService: RottaAiService,
     private readonly plateLookupService: VehiclePlateLookupService,
     private readonly categoryClassifier: VehicleCategoryClassifierService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
   ) {}
 
   /**
@@ -1259,5 +1269,238 @@ export class VehiclesService {
     });
 
     return toVehicleResponseDto(updated);
+  }
+
+  // ---------------------------------------------------------------------
+  // Revisão do Admin Rotta (Epic A — camada ADICIONAL sobre o
+  // "pré-aprovado" que já existe hoje; vale pra toda empresa, de
+  // qualquer tipo, inclusive Autônomo/MEI)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Compartilhado por `RoutesService.assertVeiculoCapacidade` (credenciar
+   * numa rota — cobre também `TripsService.substituirVeiculo`, que chama
+   * aquele método antes de trocar) e `TripsService.start()` (iniciar
+   * viagem). Único ponto que hoje verifica `VehicleStatus`
+   * `BLOQUEADO`/`INATIVO` — achado da investigação: nada checava isso
+   * antes, mesmo já existindo no enum.
+   */
+  assertVeiculoOperavel(vehicle: {
+    placa: string;
+    status: VehicleStatus;
+    revisaoAdminStatus: VehicleAdminReviewStatus;
+  }): void {
+    if (vehicle.revisaoAdminStatus === VehicleAdminReviewStatus.REPROVADO) {
+      throw new BadRequestException(
+        `O veículo placa ${vehicle.placa} foi reprovado pela Rotta do Brasil e não pode ser credenciado numa rota ou iniciar viagem.`,
+      );
+    }
+    if (vehicle.status === VehicleStatus.BLOQUEADO || vehicle.status === VehicleStatus.INATIVO) {
+      throw new BadRequestException(
+        `O veículo placa ${vehicle.placa} está ${vehicle.status === VehicleStatus.BLOQUEADO ? "bloqueado" : "inativo"} e não pode ser credenciado numa rota ou iniciar viagem.`,
+      );
+    }
+  }
+
+  /**
+   * `PATCH /vehicles/:id/revisao-admin` — só Admin Rotta. `status` só
+   * aceita `APROVADO`/`REPROVADO` (`PRE_APROVADO` é automático, nunca uma
+   * decisão manual). Motivo obrigatório só ao reprovar (mesma regra de
+   * `IdentityVerificationService.decideForAdmin`). Notificação é
+   * best-effort — a decisão em si nunca falha por causa dela.
+   */
+  async reviewVehicle(
+    id: string,
+    dto: ReviewVehicleDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<VehicleResponseDto> {
+    if (dto.status === VehicleAdminReviewStatus.PRE_APROVADO) {
+      throw new BadRequestException(
+        "Só é possível aprovar ou reprovar — o estado pré-aprovado é automático.",
+      );
+    }
+    if (
+      dto.status === VehicleAdminReviewStatus.REPROVADO &&
+      !dto.observacaoTransportadora?.trim()
+    ) {
+      throw new BadRequestException(
+        "Informe o motivo da reprovação para a transportadora — ele é mostrado diretamente para ela.",
+      );
+    }
+
+    const existing = await this.fetchOrThrow(id, actor);
+    const updated = await this.vehicleRepository.update(id, {
+      revisaoAdminStatus: dto.status,
+      revisaoAdminObservacaoResponsaveis: dto.observacaoResponsaveis?.trim() || null,
+      revisaoAdminObservacaoTransportadora: dto.observacaoTransportadora?.trim() || null,
+      revisaoAdminDecididoPorId: actor.sub,
+      revisaoAdminDecididoEm: new Date(),
+    });
+
+    await this.recordAudit({
+      companyId: existing.companyId,
+      entidadeTipo: "Vehicle",
+      entidadeId: id,
+      acao:
+        dto.status === VehicleAdminReviewStatus.APROVADO
+          ? "ADMIN_REVIEW_APPROVED"
+          : "ADMIN_REVIEW_REJECTED",
+      atorUserId: actor.sub,
+      dadosAntes: { revisaoAdminStatus: existing.revisaoAdminStatus },
+      dadosDepois: {
+        revisaoAdminStatus: updated.revisaoAdminStatus,
+        observacaoTransportadora: updated.revisaoAdminObservacaoTransportadora,
+      },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    await this.notifyAdminReviewDecisionBestEffort(updated);
+
+    return toVehicleResponseDto(updated);
+  }
+
+  /**
+   * Dois destinatários, com o texto certo pra cada um (pedido explícito
+   * do usuário — nunca reaproveita um texto pro outro): a transportadora
+   * SEMPRE é avisada (membros `EMPRESA`/`GESTOR` da empresa dona do
+   * veículo); os responsáveis das rotas ativas deste veículo só quando
+   * há algo de fato pra eles saberem — reprovação sempre (muda a
+   * situação do transporte do filho), aprovação só quando vem com
+   * observação (senão não há nada pra "Li e concordo").
+   */
+  private async notifyAdminReviewDecisionBestEffort(vehicle: Vehicle): Promise<void> {
+    const aprovado = vehicle.revisaoAdminStatus === VehicleAdminReviewStatus.APROVADO;
+    const eventType = aprovado
+      ? NotificationEventType.VEICULO_REVISAO_APROVADA
+      : NotificationEventType.VEICULO_REVISAO_REPROVADA;
+
+    try {
+      const mensagemTransportadora = aprovado
+        ? this.messagePersonalizationService.veiculoRevisaoAprovada(
+            vehicle.placa,
+            vehicle.revisaoAdminObservacaoTransportadora ?? undefined,
+          )
+        : this.messagePersonalizationService.veiculoRevisaoReprovada(
+            vehicle.placa,
+            vehicle.revisaoAdminObservacaoTransportadora ?? undefined,
+          );
+      const memberships = await this.usersService.listMembershipsByCompany(vehicle.companyId);
+      for (const membership of memberships) {
+        if ((membership.role as Role) !== Role.EMPRESA && (membership.role as Role) !== Role.GESTOR)
+          continue;
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId: membership.userId,
+          companyId: vehicle.companyId,
+          tipo: eventType,
+          titulo: mensagemTransportadora.titulo,
+          corpo: mensagemTransportadora.corpo,
+          dadosContexto: { vehicleId: vehicle.id },
+        });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao notificar a transportadora sobre a revisão do veículo ${vehicle.id}.`,
+        error as Error,
+      );
+    }
+
+    if (aprovado && !vehicle.revisaoAdminObservacaoResponsaveis?.trim()) {
+      return;
+    }
+
+    try {
+      const mensagemResponsaveis = aprovado
+        ? this.messagePersonalizationService.veiculoRevisaoAprovada(
+            vehicle.placa,
+            vehicle.revisaoAdminObservacaoResponsaveis ?? undefined,
+          )
+        : this.messagePersonalizationService.veiculoRevisaoReprovada(
+            vehicle.placa,
+            vehicle.revisaoAdminObservacaoResponsaveis ?? undefined,
+          );
+      const responsavelIds = await this.vehicleRepository.listActiveResponsavelIds(vehicle.id);
+      for (const responsavelId of responsavelIds) {
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId: responsavelId,
+          companyId: vehicle.companyId,
+          tipo: eventType,
+          titulo: mensagemResponsaveis.titulo,
+          corpo: mensagemResponsaveis.corpo,
+          dadosContexto: { vehicleId: vehicle.id },
+        });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao notificar responsáveis sobre a revisão do veículo ${vehicle.id}.`,
+        error as Error,
+      );
+    }
+  }
+
+  /**
+   * `GET /vehicles/pendencias-revisao-admin` (Responsável) — mesmo
+   * cálculo de diff de `UsersService.getPendingConsents`: um veículo só
+   * aparece aqui se a decisão mais recente (`revisaoAdminDecididoEm`)
+   * ainda não tem um `VehicleAdminReviewAcknowledgement` correspondente
+   * deste responsável. Aprovação sem observação nunca aparece — não há
+   * nada pra "Li e concordo" confirmar.
+   */
+  async listPendingAdminReviewAcknowledgements(
+    actor: AuthenticatedUser,
+  ): Promise<VehicleAdminReviewPendingDto[]> {
+    const vehicles = await this.vehicleRepository.listVehiclesForResponsavel(actor.sub);
+    const pending: VehicleAdminReviewPendingDto[] = [];
+
+    for (const vehicle of vehicles) {
+      if (!vehicle.revisaoAdminDecididoEm) continue;
+      const reprovado = vehicle.revisaoAdminStatus === VehicleAdminReviewStatus.REPROVADO;
+      const temObservacao = Boolean(vehicle.revisaoAdminObservacaoResponsaveis?.trim());
+      if (!reprovado && !temObservacao) continue;
+
+      const jaReconhecido = await this.vehicleRepository.existsAdminReviewAcknowledgement(
+        vehicle.id,
+        actor.sub,
+        vehicle.revisaoAdminDecididoEm,
+      );
+      if (jaReconhecido) continue;
+
+      pending.push({
+        vehicleId: vehicle.id,
+        placa: vehicle.placa,
+        status: vehicle.revisaoAdminStatus,
+        observacao: vehicle.revisaoAdminObservacaoResponsaveis,
+        decisaoEm: vehicle.revisaoAdminDecididoEm,
+      });
+    }
+
+    return pending;
+  }
+
+  /**
+   * `POST /vehicles/:id/revisao-admin/reconhecer` — só "Li e concordo",
+   * de propósito NUNCA existe "recusar" aqui (pedido explícito do
+   * usuário). Append-only (mesmo desenho de `ConsentRecord`) — grava com
+   * o `revisaoAdminDecididoEm` ATUAL do veículo, então uma decisão nova
+   * no futuro (mesmo reaprovando) sempre pede reconhecimento de novo.
+   */
+  async acknowledgeAdminReview(id: string, actor: AuthenticatedUser): Promise<void> {
+    // Reaproveita `listVehiclesForResponsavel` (em vez de `findById`, que
+    // é tenant-scoped e este responsável não pertence ao tenant do
+    // veículo) — como bônus, já garante que o responsável só reconhece
+    // veículos de rotas onde ele de fato tem um aluno ativo.
+    const vehicles = await this.vehicleRepository.listVehiclesForResponsavel(actor.sub);
+    const vehicle = vehicles.find((candidate) => candidate.id === id);
+    if (!vehicle || !vehicle.revisaoAdminDecididoEm) {
+      throw new NotFoundException(
+        "Este veículo não tem nenhuma decisão do Admin Rotta pendente para você.",
+      );
+    }
+    await this.vehicleRepository.createAdminReviewAcknowledgement(
+      id,
+      actor.sub,
+      vehicle.revisaoAdminDecididoEm,
+    );
   }
 }

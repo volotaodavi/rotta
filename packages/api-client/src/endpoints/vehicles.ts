@@ -19,6 +19,14 @@ export type VehicleCategoryOrigin = "MANUAL" | "IA";
 export type VehicleCategoryReviewStatus = "NAO_REQUER" | "PENDENTE" | "CONFIRMADA" | "CORRIGIDA";
 export type VehicleStatus =
   "DISPONIVEL" | "EM_VIAGEM" | "MANUTENCAO" | "RESERVA" | "INATIVO" | "BLOQUEADO";
+/**
+ * Epic A — camada ADICIONAL de aprovação/reprovação do Admin Rotta sobre
+ * o "pré-aprovado" que já existe hoje (todo veículo, de toda empresa,
+ * roda normalmente assim que a identidade é verificada). `PRE_APROVADO`
+ * é o padrão automático; só `REPROVADO` bloqueia credenciar numa rota ou
+ * iniciar viagem daqui pra frente.
+ */
+export type VehicleAdminReviewStatus = "PRE_APROVADO" | "APROVADO" | "REPROVADO";
 export type VehicleDocumentType =
   "CRLV" | "LICENCIAMENTO" | "SEGURO" | "LAUDO" | "VISTORIA" | "FOTO" | "OUTRO";
 export type VehicleDocumentAiStatus = "PENDENTE" | "APROVADO" | "REPROVADO" | "INDISPONIVEL";
@@ -79,6 +87,12 @@ export interface Vehicle {
   observacoes: string | null;
   fotoUrl: string | null;
   status: VehicleStatus;
+  /** Epic A — aprovação/reprovação ADICIONAL do Admin Rotta. */
+  revisaoAdminStatus: VehicleAdminReviewStatus;
+  revisaoAdminObservacaoResponsaveis: string | null;
+  revisaoAdminObservacaoTransportadora: string | null;
+  revisaoAdminDecididoPorId: string | null;
+  revisaoAdminDecididoEm: string | null;
   quilometragemAtual: number;
   ultimaLatitude: number | null;
   ultimaLongitude: number | null;
@@ -289,6 +303,31 @@ export interface ResolveVehicleCategoryReviewInput {
   categoria?: VehicleCategory;
 }
 
+/**
+ * `PATCH /vehicles/:id/revisao-admin` (Epic A, Admin Rotta) — `status`
+ * só aceita `APROVADO`/`REPROVADO`. Motivo obrigatório em
+ * `observacaoTransportadora` só ao reprovar. Dois textos SEPARADOS,
+ * nunca reaproveitados um pro outro.
+ */
+export interface ReviewVehicleInput {
+  status: "APROVADO" | "REPROVADO";
+  observacaoResponsaveis?: string;
+  observacaoTransportadora?: string;
+}
+
+/**
+ * `GET /vehicles/pendencias-revisao-admin` (Responsável) — um item por
+ * veículo com decisão do Admin Rotta ainda não reconhecida. Nunca
+ * inclui aprovação sem observação (nada pra "Li e concordo" confirmar).
+ */
+export interface VehicleAdminReviewPending {
+  vehicleId: string;
+  placa: string;
+  status: VehicleAdminReviewStatus;
+  observacao: string | null;
+  decisaoEm: string;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -362,6 +401,18 @@ export function createVehiclesEndpoints(apiClient: ApiClient) {
         })
       ).data,
 
+    /**
+     * Epic A — pendências de "Li e concordo" do Responsável logado
+     * (veículos das rotas ativas dos filhos com decisão do Admin Rotta
+     * ainda não reconhecida). Rota literal, antes de `:id`.
+     */
+    listPendingAdminReviewAcknowledgements: async (): Promise<VehicleAdminReviewPending[]> =>
+      (
+        await apiClient.request<ApiEnvelope<VehicleAdminReviewPending[]>>(
+          "/vehicles/pendencias-revisao-admin",
+        )
+      ).data,
+
     getById: async (id: string): Promise<Vehicle> =>
       (await apiClient.request<ApiEnvelope<Vehicle>>(`/vehicles/${id}`)).data,
 
@@ -384,6 +435,20 @@ export function createVehiclesEndpoints(apiClient: ApiClient) {
           body: { status },
         })
       ).data,
+
+    /** Epic A (Admin Rotta) — aprova ou reprova um veículo já cadastrado. */
+    reviewVehicle: async (id: string, input: ReviewVehicleInput): Promise<Vehicle> =>
+      (
+        await apiClient.request<ApiEnvelope<Vehicle>>(`/vehicles/${id}/revisao-admin`, {
+          method: "PATCH",
+          body: input,
+        })
+      ).data,
+
+    /** "Li e concordo" (Responsável) — de propósito nunca existe "recusar". */
+    acknowledgeAdminReview: async (id: string): Promise<void> => {
+      await apiClient.request(`/vehicles/${id}/revisao-admin/reconhecer`, { method: "POST" });
+    },
 
     updateLocation: async (
       id: string,

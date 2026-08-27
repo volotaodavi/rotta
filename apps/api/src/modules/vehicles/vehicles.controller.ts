@@ -30,6 +30,7 @@ import { ExportVehiclesQueryDto } from "./dto/export-vehicles-query.dto";
 import { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
 import { ResolveVehicleCategoryReviewDto } from "./dto/resolve-vehicle-category-review.dto";
+import { ReviewVehicleDto } from "./dto/review-vehicle.dto";
 import { UpdateVehicleLocationDto } from "./dto/update-vehicle-location.dto";
 import { UpdateVehicleReminderDto } from "./dto/update-vehicle-reminder.dto";
 import { UpdateVehicleStatusDto } from "./dto/update-vehicle-status.dto";
@@ -142,6 +143,18 @@ export class VehiclesController {
     return this.vehiclesService.listCategoryReview(query);
   }
 
+  /**
+   * Epic A (Aprovação/reprovação de veículos) — rota literal, antes de
+   * `:id` pelo mesmo motivo das demais acima. Responsável enxerga aqui os
+   * veículos das rotas ativas dos próprios filhos com alguma observação
+   * ainda não reconhecida ("Li e concordo").
+   */
+  @Get("pendencias-revisao-admin")
+  @Roles(Role.RESPONSAVEL)
+  listPendingAdminReviewAcknowledgements(@CurrentUser() actor: AuthenticatedUser) {
+    return this.vehiclesService.listPendingAdminReviewAcknowledgements(actor);
+  }
+
   @Get(":id")
   @Roles(...READ_ROLES)
   findById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
@@ -190,6 +203,28 @@ export class VehiclesController {
     @Req() req: Request,
   ) {
     return this.vehiclesService.resolveCategoryReview(id, dto, actor, requestMeta(req));
+  }
+
+  @Patch(":id/revisao-admin")
+  @Roles(Role.ADMIN_ROTTA)
+  reviewVehicle(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: ReviewVehicleDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.vehiclesService.reviewVehicle(id, dto, actor, requestMeta(req));
+  }
+
+  /** "Li e concordo" — de propósito NUNCA existe "recusar" aqui (pedido explícito do usuário). */
+  @Post(":id/revisao-admin/reconhecer")
+  @Roles(Role.RESPONSAVEL)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  acknowledgeAdminReview(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.vehiclesService.acknowledgeAdminReview(id, actor);
   }
 
   @Patch(":id/location")

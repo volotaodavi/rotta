@@ -118,6 +118,7 @@ describe("TripsService", () => {
       findByIdOrThrow: jest.fn(),
       setCurrentTrip: jest.fn(),
       updateLocationFromTrip: jest.fn(),
+      assertVeiculoOperavel: jest.fn(),
     } as unknown as jest.Mocked<VehiclesService>;
     contractsService = {
       findRawByIdOrThrow: jest.fn(),

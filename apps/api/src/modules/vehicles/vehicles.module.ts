@@ -23,6 +23,7 @@ import { VehiclesService } from "./vehicles.service";
 
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { UsersModule } from "@/modules/users/users.module";
 
@@ -57,7 +58,7 @@ import { UsersModule } from "@/modules/users/users.module";
  * a nota completa no arquivo dele.
  */
 @Module({
-  imports: [UsersModule, AuditModule, StorageModule, RottaAiModule],
+  imports: [UsersModule, AuditModule, StorageModule, RottaAiModule, MessagePersonalizationModule],
   controllers: [VehiclesController],
   providers: [
     VehiclesService,

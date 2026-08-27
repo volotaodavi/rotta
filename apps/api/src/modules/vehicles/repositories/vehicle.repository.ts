@@ -1,5 +1,6 @@
 import type {
   Vehicle,
+  VehicleAdminReviewStatus,
   VehicleCategory,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
@@ -48,6 +49,12 @@ export interface UpdateVehicleData {
   observacoes?: string | null;
   fotoUrl?: string;
   status?: VehicleStatus;
+  /** Ver `VehiclesService.reviewVehicle` (Epic A). */
+  revisaoAdminStatus?: VehicleAdminReviewStatus;
+  revisaoAdminObservacaoResponsaveis?: string | null;
+  revisaoAdminObservacaoTransportadora?: string | null;
+  revisaoAdminDecididoPorId?: string | null;
+  revisaoAdminDecididoEm?: Date | null;
   quilometragemAtual?: number;
   ultimaLatitude?: number | null;
   ultimaLongitude?: number | null;
@@ -104,4 +111,30 @@ export interface VehicleRepository {
     page: number;
     pageSize: number;
   }): Promise<ListVehiclesResult>;
+
+  /**
+   * Epic A — fan-out de notificação da revisão do Admin Rotta pros
+   * responsáveis das rotas ativas deste veículo (`companyId` do
+   * `RouteStudent`, cross-tenant por natureza — bypass de RLS mesmo
+   * motivo de `findByPlaca`/`listPendingCategoryReview`).
+   */
+  listActiveResponsavelIds(vehicleId: string): Promise<string[]>;
+  /**
+   * `GET /vehicles/pendencias-revisao-admin` (Responsável) — todo
+   * veículo, de qualquer rota ativa deste responsável, com alguma
+   * decisão do Admin Rotta já tomada (`revisaoAdminStatus !==
+   * PRE_APROVADO`). O service filtra os já reconhecidos (ver
+   * `VehiclesService.listPendingAdminReviewAcknowledgements`).
+   */
+  listVehiclesForResponsavel(responsavelId: string): Promise<Vehicle[]>;
+  existsAdminReviewAcknowledgement(
+    vehicleId: string,
+    responsavelId: string,
+    decisaoEm: Date,
+  ): Promise<boolean>;
+  createAdminReviewAcknowledgement(
+    vehicleId: string,
+    responsavelId: string,
+    decisaoEm: Date,
+  ): Promise<void>;
 }

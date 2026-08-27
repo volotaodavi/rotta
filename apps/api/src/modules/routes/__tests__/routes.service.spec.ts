@@ -1,7 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import { RouteStatus, SchoolShift } from "@prisma/client";
 
-
 import { RoutesService } from "../routes.service";
 
 import type { RouteStopRepository } from "../repositories/route-stop.repository";
@@ -107,7 +106,9 @@ describe("RoutesService", () => {
   let contractsService: jest.Mocked<ContractsService>;
   let studentsService: jest.Mocked<StudentsService>;
   let usersService: jest.Mocked<UsersService>;
-  let vehiclesService: jest.Mocked<Pick<VehiclesService, "findByIdOrThrow">>;
+  let vehiclesService: jest.Mocked<
+    Pick<VehiclesService, "findByIdOrThrow" | "assertVeiculoOperavel">
+  >;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let schoolsService: jest.Mocked<Pick<SchoolsService, "findByIdOrThrow">>;
@@ -156,6 +157,7 @@ describe("RoutesService", () => {
     } as unknown as jest.Mocked<UsersService>;
     vehiclesService = {
       findByIdOrThrow: jest.fn(),
+      assertVeiculoOperavel: jest.fn(),
     };
     messagePersonalizationService = {
       motoristaAlterado: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),

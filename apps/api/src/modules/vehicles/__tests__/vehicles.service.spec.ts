@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import {
+  VehicleAdminReviewStatus,
   VehicleAssignmentRole,
   VehicleCategory,
   VehicleCategoryOrigin,
@@ -23,8 +24,10 @@ import type { VehiclePlateLookupService } from "../vehicle-plate-lookup.service"
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import type { UsersService } from "@/modules/users/users.service";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { Membership, Vehicle, VehicleDocument } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
@@ -52,6 +55,11 @@ function buildVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     observacoes: null,
     fotoUrl: null,
     status: VehicleStatus.DISPONIVEL,
+    revisaoAdminStatus: VehicleAdminReviewStatus.PRE_APROVADO,
+    revisaoAdminObservacaoResponsaveis: null,
+    revisaoAdminObservacaoTransportadora: null,
+    revisaoAdminDecididoPorId: null,
+    revisaoAdminDecididoEm: null,
     quilometragemAtual: 10_000,
     ultimaLatitude: null,
     ultimaLongitude: null,
@@ -138,6 +146,8 @@ describe("VehiclesService", () => {
   let storageService: jest.Mocked<SupabaseStorageService>;
   let rottaAiService: jest.Mocked<RottaAiService>;
   let plateLookupService: jest.Mocked<VehiclePlateLookupService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
+  let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
 
   beforeEach(() => {
     vehicleRepository = {
@@ -148,6 +158,10 @@ describe("VehiclesService", () => {
       list: jest.fn(),
       listAllActive: jest.fn(),
       listPendingCategoryReview: jest.fn(),
+      listActiveResponsavelIds: jest.fn(),
+      listVehiclesForResponsavel: jest.fn(),
+      existsAdminReviewAcknowledgement: jest.fn(),
+      createAdminReviewAcknowledgement: jest.fn(),
     };
     documentRepository = {
       create: jest.fn(),
@@ -177,6 +191,7 @@ describe("VehiclesService", () => {
     occurrenceRepository = { create: jest.fn(), list: jest.fn() };
     usersService = {
       findActiveMembership: jest.fn(),
+      listMembershipsByCompany: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
     auditLogService = {
       record: jest.fn(),
@@ -195,6 +210,11 @@ describe("VehiclesService", () => {
       isConfigured: jest.fn(),
       lookup: jest.fn(),
     } as unknown as jest.Mocked<VehiclePlateLookupService>;
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    messagePersonalizationService = {
+      veiculoRevisaoAprovada: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      veiculoRevisaoReprovada: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+    } as unknown as jest.Mocked<MessagePersonalizationService>;
 
     service = new VehiclesService(
       vehicleRepository,
@@ -210,6 +230,8 @@ describe("VehiclesService", () => {
       rottaAiService,
       plateLookupService,
       new VehicleCategoryClassifierService(),
+      eventEmitter,
+      messagePersonalizationService,
     );
 
     vehicleRepository.findByPlaca.mockResolvedValue(null);
@@ -907,6 +929,213 @@ describe("VehiclesService", () => {
       expect(dashboard.veiculosEmManutencao).toBe(1);
       expect(dashboard.capacidadeTotalPassageiros).toBe(86);
       expect(dashboard.quilometragemTotal).toBe(3500);
+    });
+  });
+
+  describe("assertVeiculoOperavel (Epic A)", () => {
+    it("bloqueia veículo REPROVADO pelo Admin Rotta", () => {
+      expect(() =>
+        service.assertVeiculoOperavel({
+          placa: "ABC1D23",
+          status: VehicleStatus.DISPONIVEL,
+          revisaoAdminStatus: VehicleAdminReviewStatus.REPROVADO,
+        }),
+      ).toThrow(BadRequestException);
+    });
+
+    it.each([VehicleStatus.BLOQUEADO, VehicleStatus.INATIVO])(
+      "bloqueia veículo com status %s",
+      (status) => {
+        expect(() =>
+          service.assertVeiculoOperavel({
+            placa: "ABC1D23",
+            status,
+            revisaoAdminStatus: VehicleAdminReviewStatus.PRE_APROVADO,
+          }),
+        ).toThrow(BadRequestException);
+      },
+    );
+
+    it("não bloqueia veículo pré-aprovado e disponível", () => {
+      expect(() =>
+        service.assertVeiculoOperavel({
+          placa: "ABC1D23",
+          status: VehicleStatus.DISPONIVEL,
+          revisaoAdminStatus: VehicleAdminReviewStatus.PRE_APROVADO,
+        }),
+      ).not.toThrow();
+    });
+
+    it("não bloqueia veículo APROVADO pelo Admin Rotta", () => {
+      expect(() =>
+        service.assertVeiculoOperavel({
+          placa: "ABC1D23",
+          status: VehicleStatus.DISPONIVEL,
+          revisaoAdminStatus: VehicleAdminReviewStatus.APROVADO,
+        }),
+      ).not.toThrow();
+    });
+  });
+
+  describe("reviewVehicle (Epic A)", () => {
+    beforeEach(() => {
+      vehicleRepository.findById.mockResolvedValue(buildVehicle());
+      vehicleRepository.update.mockImplementation((id, data) =>
+        Promise.resolve(buildVehicle({ id, ...(data as Partial<Vehicle>) })),
+      );
+      usersService.listMembershipsByCompany.mockResolvedValue([
+        { userId: "empresa-dona-1", role: Role.EMPRESA },
+        { userId: "motorista-1", role: Role.MOTORISTA },
+      ] as unknown as Membership[]);
+      vehicleRepository.listActiveResponsavelIds.mockResolvedValue(["responsavel-1"]);
+    });
+
+    it("rejeita status PRE_APROVADO (não é uma decisão manual válida)", async () => {
+      await expect(
+        service.reviewVehicle(
+          "vehicle-1",
+          { status: VehicleAdminReviewStatus.PRE_APROVADO },
+          adminActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("exige observacaoTransportadora ao reprovar", async () => {
+      await expect(
+        service.reviewVehicle(
+          "vehicle-1",
+          { status: VehicleAdminReviewStatus.REPROVADO },
+          adminActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("aprova, grava os campos de decisão e notifica só a transportadora quando não há observação aos responsáveis", async () => {
+      await service.reviewVehicle(
+        "vehicle-1",
+        { status: VehicleAdminReviewStatus.APROVADO },
+        adminActor,
+        {},
+      );
+
+      expect(vehicleRepository.update).toHaveBeenCalledWith(
+        "vehicle-1",
+        expect.objectContaining({
+          revisaoAdminStatus: VehicleAdminReviewStatus.APROVADO,
+          revisaoAdminDecididoPorId: adminActor.sub,
+        }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({ userId: "empresa-dona-1" }),
+      );
+      // Sem observação aos responsáveis + aprovado: nunca busca/notifica responsável nenhum.
+      expect(vehicleRepository.listActiveResponsavelIds).not.toHaveBeenCalled();
+    });
+
+    it("reprova, exige motivo e notifica responsáveis mesmo sem observação específica pra eles", async () => {
+      await service.reviewVehicle(
+        "vehicle-1",
+        {
+          status: VehicleAdminReviewStatus.REPROVADO,
+          observacaoTransportadora: "Documento vencido.",
+        },
+        adminActor,
+        {},
+      );
+
+      expect(vehicleRepository.update).toHaveBeenCalledWith(
+        "vehicle-1",
+        expect.objectContaining({ revisaoAdminStatus: VehicleAdminReviewStatus.REPROVADO }),
+      );
+      expect(vehicleRepository.listActiveResponsavelIds).toHaveBeenCalledWith("vehicle-1");
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({ userId: "responsavel-1" }),
+      );
+    });
+  });
+
+  describe("acknowledgeAdminReview / listPendingAdminReviewAcknowledgements (Epic A)", () => {
+    const responsavelActor: AuthenticatedUser = {
+      sub: "responsavel-1",
+      tenantId: null,
+      role: Role.RESPONSAVEL,
+      vinculoId: "vinculo-responsavel",
+    };
+
+    it("recusa reconhecer um veículo que não tem decisão pendente pra este responsável", async () => {
+      vehicleRepository.listVehiclesForResponsavel.mockResolvedValue([]);
+      await expect(service.acknowledgeAdminReview("vehicle-1", responsavelActor)).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("grava o reconhecimento com o carimbo de decisão atual do veículo", async () => {
+      const decisaoEm = new Date("2026-01-01T00:00:00Z");
+      vehicleRepository.listVehiclesForResponsavel.mockResolvedValue([
+        buildVehicle({
+          revisaoAdminStatus: VehicleAdminReviewStatus.REPROVADO,
+          revisaoAdminDecididoEm: decisaoEm,
+        }),
+      ]);
+
+      await service.acknowledgeAdminReview("vehicle-1", responsavelActor);
+
+      expect(vehicleRepository.createAdminReviewAcknowledgement).toHaveBeenCalledWith(
+        "vehicle-1",
+        "responsavel-1",
+        decisaoEm,
+      );
+    });
+
+    it("nunca lista aprovação sem observação (nada pra 'Li e concordo')", async () => {
+      vehicleRepository.listVehiclesForResponsavel.mockResolvedValue([
+        buildVehicle({
+          revisaoAdminStatus: VehicleAdminReviewStatus.APROVADO,
+          revisaoAdminObservacaoResponsaveis: null,
+          revisaoAdminDecididoEm: new Date(),
+        }),
+      ]);
+
+      const pending = await service.listPendingAdminReviewAcknowledgements(responsavelActor);
+      expect(pending).toEqual([]);
+    });
+
+    it("lista reprovação mesmo sem observação específica, se ainda não reconhecida", async () => {
+      const decisaoEm = new Date();
+      vehicleRepository.listVehiclesForResponsavel.mockResolvedValue([
+        buildVehicle({
+          id: "vehicle-2",
+          revisaoAdminStatus: VehicleAdminReviewStatus.REPROVADO,
+          revisaoAdminObservacaoResponsaveis: null,
+          revisaoAdminDecididoEm: decisaoEm,
+        }),
+      ]);
+      vehicleRepository.existsAdminReviewAcknowledgement.mockResolvedValue(false);
+
+      const pending = await service.listPendingAdminReviewAcknowledgements(responsavelActor);
+      expect(pending).toEqual([
+        expect.objectContaining({
+          vehicleId: "vehicle-2",
+          status: VehicleAdminReviewStatus.REPROVADO,
+        }),
+      ]);
+    });
+
+    it("não repete um veículo já reconhecido pra esta decisão exata", async () => {
+      vehicleRepository.listVehiclesForResponsavel.mockResolvedValue([
+        buildVehicle({
+          revisaoAdminStatus: VehicleAdminReviewStatus.REPROVADO,
+          revisaoAdminDecididoEm: new Date(),
+        }),
+      ]);
+      vehicleRepository.existsAdminReviewAcknowledgement.mockResolvedValue(true);
+
+      const pending = await service.listPendingAdminReviewAcknowledgements(responsavelActor);
+      expect(pending).toEqual([]);
     });
   });
 });

@@ -78,6 +78,11 @@ export class NotificationChannelSelectorService {
     // app") — só PUSH; o `IN_APP` (sino/Central) já é automático em
     // toda notificação, cobrindo o "aparecer no sino" sem duplicar.
     AVISO_GERAL: [PUSH],
+    // Aprovação/reprovação de veículo pelo Admin Rotta (Epic A) — mesmo
+    // canal de NOVO_CONTRATO/CONTRATO_ASSINADO: comunicado administrativo,
+    // não operacional de viagem do dia a dia.
+    VEICULO_REVISAO_APROVADA: [PUSH, EMAIL],
+    VEICULO_REVISAO_REPROVADA: [PUSH, EMAIL],
   };
 
   selectChannels(tipo: NotificationEventType): CommunicationChannel[] {
