@@ -549,13 +549,14 @@ model Company {
   planId String        @db.Uuid
   plan   Plan          @relation(fields: [planId], references: [id], onDelete: Restrict)
 
-  /// Quando o trial de 15 dias grátis vence — setado em
-  /// `CompaniesService.create()` como `createdAt + 15 dias` sempre que a
+  /// Quando o trial de 1 mês grátis vence — setado em
+  /// `CompaniesService.create()` como `createdAt + 1 mês`
+  /// (`TRIAL_DURATION_MONTHS`, `companies.constants.ts`) sempre que a
   /// empresa nasce em `TRIAL`. `null` pra empresas criadas já `ATIVO`
-  /// (fluxo administrativo). Antes deste campo, `TRIAL` era um status
-  /// sem prazo nenhum (nada no schema sabia dizer "vence quando"); é a
-  /// base pros avisos de vencimento (dias 12/13/14/15) e pro bloqueio
-  /// real do dia 16+ (`TrialGuard`, `apps/api/src/common/guards`).
+  /// (fluxo administrativo) e pras empresas que já existiam antes deste
+  /// campo passar a ser preenchido (nunca migradas — decisão do
+  /// usuário). Base do bloqueio real 1 dia após o vencimento
+  /// (`TRIAL_GRACE_DAYS`, `TrialGuard`, `apps/api/src/common/guards`).
   trialExpiraEm DateTime?
 
   /// ID da assinatura na AbacatePay (formato `subs_...`) — preenchido pelo
@@ -564,7 +565,24 @@ model Company {
   /// todo o período `TRIAL`). Correlação inicial do checkout usa
   /// `externalId: company.id` — este campo guarda o ID definitivo da
   /// assinatura ATIVA para as próximas ações (cancelar, trocar plano).
+  /// Cartão/débito/boleto migraram pra Asaas (`asaasSubscriptionId`
+  /// abaixo) — este campo continua existindo só pras assinaturas
+  /// antigas já criadas via AbacatePay antes desta mudança; Pix avulso
+  /// continua na AbacatePay e não usa nenhum dos dois (cobrança avulsa,
+  /// não assinatura).
   abacatepaySubscriptionId String? @db.VarChar(64)
+
+  /// ID do cliente na Asaas (formato `cus_...`) — criado no primeiro
+  /// checkout de cartão/débito/boleto (Dossiê 26, "checkout próprio da
+  /// Rotta"). Guardado pra nunca recriar o mesmo cliente em checkouts
+  /// seguintes (troca de cartão, nova tentativa após boleto vencido).
+  asaasCustomerId String? @db.VarChar(64)
+
+  /// ID da assinatura na Asaas (formato `sub_...`) — preenchido pelo
+  /// webhook de pagamento confirmado, mesmo papel de
+  /// `abacatepaySubscriptionId` só que pro provedor de cartão/débito/
+  /// boleto.
+  asaasSubscriptionId String? @db.VarChar(64)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

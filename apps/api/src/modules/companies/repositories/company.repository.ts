@@ -53,6 +53,10 @@ export interface UpdateCompanyData {
   planId?: string;
   /** ID da assinatura ativa na AbacatePay (`subs_...`) — ver nota no schema Prisma. */
   abacatepaySubscriptionId?: string | null;
+  /** ID do cliente na Asaas (`cus_...`) — ver nota no schema Prisma. */
+  asaasCustomerId?: string | null;
+  /** ID da assinatura ativa na Asaas (`sub_...`) — ver nota no schema Prisma. */
+  asaasSubscriptionId?: string | null;
   deletedAt?: Date | null;
 }
 

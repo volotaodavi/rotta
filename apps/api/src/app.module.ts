@@ -14,6 +14,7 @@ import { TimeoutInterceptor } from "@/common/interceptors/timeout.interceptor";
 import { TransformResponseInterceptor } from "@/common/interceptors/transform-response.interceptor";
 import abacatepayConfig from "@/config/abacatepay.config";
 import appConfig from "@/config/app.config";
+import asaasConfig from "@/config/asaas.config";
 import authConfig from "@/config/auth.config";
 import databaseConfig from "@/config/database.config";
 import diditConfig from "@/config/didit.config";
@@ -95,6 +96,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         diditConfig,
         lytexConfig,
         abacatepayConfig,
+        asaasConfig,
         observabilityConfig,
         vehiclePlateLookupConfig,
       ],

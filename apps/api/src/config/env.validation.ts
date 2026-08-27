@@ -212,6 +212,21 @@ export const envSchema = z.object({
   ABACATEPAY_BASE_URL: z.string().url().optional(),
   ABACATEPAY_WEBHOOK_SECRET: z.string().optional(),
 
+  // Asaas (asaas.com) — pedido do usuário: cartão de crédito, débito e
+  // boleto da mensalidade da Rotta (Pix continua na AbacatePay acima).
+  // Mesmo padrão "stub honesto" da AbacatePay: sem ASAAS_API_KEY,
+  // `AsaasClientService` recusa a chamada com um erro claro, nunca
+  // derruba o boot. `ASAAS_BASE_URL` tem default de sandbox — troca
+  // pra `https://api.asaas.com/v3` em produção (`ASAAS_BASE_URL` real
+  // no ambiente). `ASAAS_WEBHOOK_TOKEN` é escolhido por nós (não pela
+  // Asaas) e deve ser o mesmo valor colado no cabeçalho `asaas-access-
+  // token` configurado no webhook do dashboard — ver
+  // `asaas-webhook.guard.ts`. Contrato da API não testado ainda contra
+  // uma conta real nesta base de código (mesma ressalva da Lytex).
+  ASAAS_API_KEY: z.string().optional(),
+  ASAAS_BASE_URL: z.string().url().default("https://api-sandbox.asaas.com/v3"),
+  ASAAS_WEBHOOK_TOKEN: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 

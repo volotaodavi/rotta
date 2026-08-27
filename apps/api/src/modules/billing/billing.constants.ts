@@ -50,3 +50,17 @@ export const ABACATEPAY_PIX_EXPIRES_IN_SECONDS = 30 * 60;
 export const ABACATEPAY_FEE_PIX_CENTS = 80;
 export const ABACATEPAY_FEE_CARD_PERCENT = 0.035;
 export const ABACATEPAY_FEE_CARD_FIXED_CENTS = 60;
+
+/**
+ * Taxas públicas da Asaas (asaas.com/taxas, consultado em 2026-08 —
+ * Dossiê 26, cartão/débito/boleto) — mesmo raciocínio de
+ * `ABACATEPAY_FEE_PIX_CENTS` acima: calculado de forma determinística
+ * a partir do preço público, nunca dependendo de um campo `fee` da API
+ * (contrato não testado com uma chave real). CONFERIR contra o plano
+ * contratado antes de produção — a Asaas negocia taxa por volume/conta.
+ */
+export const ASAAS_FEE_CARD_PERCENT = 0.0349;
+export const ASAAS_FEE_CARD_FIXED_CENTS = 49;
+export const ASAAS_FEE_BOLETO_CENTS = 199;
+/** Cadência única do plano Starter — mesmo valor de `ROTTA_SUBSCRIPTION_PRICE_CENTS`, aqui só pra deixar explícito o `nextDueDate` inicial (hoje). */
+export const ASAAS_SUBSCRIPTION_CYCLE = "MONTHLY" as const;

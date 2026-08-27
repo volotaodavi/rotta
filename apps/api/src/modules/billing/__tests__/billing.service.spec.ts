@@ -5,6 +5,7 @@ import { ROTTA_SUBSCRIPTION_PRODUCT_EXTERNAL_ID } from "../billing.constants";
 import { BillingService } from "../billing.service";
 
 import type { AbacatePayClientService } from "../abacatepay-client.service";
+import type { AsaasClientService } from "../asaas-client.service";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { CompanyWithPlan } from "@/modules/companies/repositories/company.repository";
 
@@ -14,11 +15,14 @@ function buildCompany(): CompanyWithPlan {
     nomeFantasia: "Transportadora Exemplo",
     status: CompanyStatus.TRIAL,
     abacatepaySubscriptionId: null,
+    asaasCustomerId: null,
+    asaasSubscriptionId: null,
   } as CompanyWithPlan;
 }
 
 describe("BillingService", () => {
   let client: jest.Mocked<AbacatePayClientService>;
+  let asaasClient: jest.Mocked<AsaasClientService>;
   let companyRepository: { findById: jest.Mock; update: jest.Mock; list: jest.Mock };
   let prisma: { runWithTenantContext: jest.Mock };
   let service: BillingService;
@@ -34,6 +38,15 @@ describe("BillingService", () => {
       listBillings: jest.fn(),
     } as unknown as jest.Mocked<AbacatePayClientService>;
 
+    asaasClient = {
+      isConfigured: jest.fn().mockReturnValue(false),
+      createCustomer: jest.fn(),
+      createSubscription: jest.fn(),
+      cancelSubscription: jest.fn(),
+      getPayment: jest.fn(),
+      listPaymentsBySubscription: jest.fn(),
+    } as unknown as jest.Mocked<AsaasClientService>;
+
     companyRepository = { findById: jest.fn(), update: jest.fn(), list: jest.fn() };
 
     prisma = {
@@ -42,6 +55,7 @@ describe("BillingService", () => {
 
     service = new BillingService(
       client,
+      asaasClient,
       companyRepository as never,
       prisma as unknown as PrismaService,
     );
@@ -356,6 +370,162 @@ describe("BillingService", () => {
       const result = await service.getPixCheckoutStatus("pix_1");
       expect(result.status).toBe("PAID");
       expect(client.checkPixQrCodeStatus).toHaveBeenCalledWith("pix_1");
+    });
+  });
+
+  describe("createAsaasCheckoutForCompany", () => {
+    it("recusa quando a Asaas não está configurada", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+      await expect(
+        service.createAsaasCheckoutForCompany("company-1", { billingType: "BOLETO" }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("lança NotFoundException quando a empresa não existe", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      companyRepository.findById.mockResolvedValue(null);
+      await expect(
+        service.createAsaasCheckoutForCompany("company-1", { billingType: "BOLETO" }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("cria cliente+assinatura e devolve o primeiro pagamento (boleto)", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      companyRepository.findById.mockResolvedValue(buildCompany());
+      asaasClient.createCustomer.mockResolvedValue({
+        id: "cus_1",
+        name: "Transportadora Exemplo",
+        cpfCnpj: "12345678000199",
+      });
+      asaasClient.createSubscription.mockResolvedValue({
+        id: "sub_1",
+        customer: "cus_1",
+        status: "ACTIVE",
+        billingType: "BOLETO",
+        value: 39.9,
+        nextDueDate: "2026-08-27",
+      });
+      asaasClient.listPaymentsBySubscription.mockResolvedValue({
+        data: [
+          {
+            id: "pay_1",
+            customer: "cus_1",
+            subscription: "sub_1",
+            status: "PENDING",
+            billingType: "BOLETO",
+            value: 39.9,
+            identificationField: "00190.00009 03398.700000...",
+            bankSlipUrl: "https://asaas.com/b/pdf/pay_1",
+          },
+        ],
+      });
+
+      const result = await service.createAsaasCheckoutForCompany("company-1", {
+        billingType: "BOLETO",
+      });
+
+      expect(result.id).toBe("pay_1");
+      expect(asaasClient.createCustomer).toHaveBeenCalledWith(
+        expect.objectContaining({ externalReference: "company-1" }),
+      );
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ customer: "cus_1", value: 39.9, billingType: "BOLETO" }),
+      );
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ asaasCustomerId: "cus_1", asaasSubscriptionId: "sub_1" }),
+      );
+    });
+
+    it("reaproveita o asaasCustomerId já existente em vez de criar um cliente novo", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      companyRepository.findById.mockResolvedValue({
+        ...buildCompany(),
+        asaasCustomerId: "cus_existente",
+      });
+      asaasClient.createSubscription.mockResolvedValue({
+        id: "sub_1",
+        customer: "cus_existente",
+        status: "ACTIVE",
+        billingType: "BOLETO",
+        value: 39.9,
+        nextDueDate: "2026-08-27",
+      });
+      asaasClient.listPaymentsBySubscription.mockResolvedValue({
+        data: [
+          {
+            id: "pay_1",
+            customer: "cus_existente",
+            status: "PENDING",
+            billingType: "BOLETO",
+            value: 39.9,
+          },
+        ],
+      });
+
+      await service.createAsaasCheckoutForCompany("company-1", { billingType: "BOLETO" });
+
+      expect(asaasClient.createCustomer).not.toHaveBeenCalled();
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ customer: "cus_existente" }),
+      );
+    });
+  });
+
+  describe("handleAsaasWebhookEvent", () => {
+    it("ativa a empresa em PAYMENT_CONFIRMED", async () => {
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CONFIRMED",
+        payment: {
+          id: "pay_1",
+          customer: "cus_1",
+          subscription: "sub_1",
+          status: "CONFIRMED",
+          billingType: "BOLETO",
+          value: 39.9,
+          externalReference: "company-1",
+        },
+      });
+
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ status: CompanyStatus.ATIVO, asaasSubscriptionId: "sub_1" }),
+      );
+    });
+
+    it("marca INADIMPLENTE em PAYMENT_OVERDUE", async () => {
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_OVERDUE",
+        payment: {
+          id: "pay_1",
+          customer: "cus_1",
+          status: "OVERDUE",
+          billingType: "BOLETO",
+          value: 39.9,
+          externalReference: "company-1",
+        },
+      });
+
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ status: CompanyStatus.INADIMPLENTE }),
+      );
+    });
+
+    it("ignora evento sem payment.externalReference sem lançar erro", async () => {
+      await expect(
+        service.handleAsaasWebhookEvent({
+          event: "PAYMENT_CONFIRMED",
+          payment: {
+            id: "pay_1",
+            customer: "cus_1",
+            status: "CONFIRMED",
+            billingType: "BOLETO",
+            value: 39.9,
+          },
+        }),
+      ).resolves.toBeUndefined();
+      expect(companyRepository.update).not.toHaveBeenCalled();
     });
   });
 
