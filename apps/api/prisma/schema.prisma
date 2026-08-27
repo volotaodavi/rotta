@@ -584,6 +584,20 @@ model Company {
   /// boleto.
   asaasSubscriptionId String? @db.VarChar(64)
 
+  /// Próximo vencimento da mensalidade paga por Pix avulso (AbacatePay) —
+  /// setado pra `agora + 1 mês` sempre que um Pix é confirmado
+  /// (`BillingService.applyPixPayment`). `null` pra quem nunca pagou por
+  /// Pix (trial) ou paga via Asaas (cartão/débito/boleto — renovação
+  /// automática da própria assinatura Asaas, não precisa deste
+  /// controle). Base do reenvio automático de Pix (`BillingService.
+  /// processarVencimentosPix`, Dossiê 26).
+  pixProximoVencimento DateTime?
+
+  /// Último reenvio automático de Pix de renovação — evita reemitir um
+  /// novo QR Code todo dia enquanto a empresa não paga
+  /// (`PIX_REISSUE_REPEAT_DAYS`, `BillingService`).
+  pixUltimoAvisoEm DateTime?
+
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   /// Soft delete (Dossie 16, "Excluir Empresa") — nunca DELETE físico.

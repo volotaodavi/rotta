@@ -6,6 +6,8 @@ import { AbacatePayWebhookGuard } from "./abacatepay-webhook.guard";
 import { AsaasClientService } from "./asaas-client.service";
 import { AsaasWebhookController } from "./asaas-webhook.controller";
 import { AsaasWebhookGuard } from "./asaas-webhook.guard";
+import { BillingQueueController } from "./billing-queue.controller";
+import { BillingSchedulerService } from "./billing-scheduler.service";
 import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 
@@ -24,13 +26,19 @@ import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
  */
 @Module({
   imports: [CompaniesModule, PlanNoticesModule],
-  controllers: [BillingController, AbacatePayWebhookController, AsaasWebhookController],
+  controllers: [
+    BillingController,
+    AbacatePayWebhookController,
+    AsaasWebhookController,
+    BillingQueueController,
+  ],
   providers: [
     AbacatePayClientService,
     AsaasClientService,
     BillingService,
     AbacatePayWebhookGuard,
     AsaasWebhookGuard,
+    BillingSchedulerService,
   ],
 })
 export class BillingModule {}

@@ -64,3 +64,18 @@ export const ASAAS_FEE_CARD_FIXED_CENTS = 49;
 export const ASAAS_FEE_BOLETO_CENTS = 199;
 /** Cadência única do plano Starter — mesmo valor de `ROTTA_SUBSCRIPTION_PRICE_CENTS`, aqui só pra deixar explícito o `nextDueDate` inicial (hoje). */
 export const ASAAS_SUBSCRIPTION_CYCLE = "MONTHLY" as const;
+
+/**
+ * Renovação automática do Pix avulso (Dossiê 26 — "Pix recorrente"): a
+ * AbacatePay não tem assinatura recorrente de Pix de verdade (só cobrança
+ * avulsa), então a Rotta simula a recorrência reemitindo um novo Pix
+ * automaticamente a cada ciclo (`BillingService.processarVencimentosPix`,
+ * job diário via QStash — mesmo mecanismo do `InepSyncSchedulerService`).
+ */
+export const PIX_RECURRENCE_MONTHS = 1;
+/** Reemite um novo Pix a partir de N dias antes do vencimento — tempo generoso pra pagar sem atrasar. */
+export const PIX_REISSUE_WINDOW_DAYS = 5;
+/** Não reemite de novo antes de passar esse tanto de dias do último aviso — evita spam de QR Code novo todo dia enquanto a empresa não paga. */
+export const PIX_REISSUE_REPEAT_DAYS = 3;
+/** Mesma folga de `TRIAL_GRACE_DAYS` (Companies) — 1 dia de graça após o vencimento antes de marcar `INADIMPLENTE`. */
+export const PIX_OVERDUE_GRACE_DAYS = 1;

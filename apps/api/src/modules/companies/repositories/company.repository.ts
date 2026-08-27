@@ -57,6 +57,10 @@ export interface UpdateCompanyData {
   asaasCustomerId?: string | null;
   /** ID da assinatura ativa na Asaas (`sub_...`) — ver nota no schema Prisma. */
   asaasSubscriptionId?: string | null;
+  /** Próximo vencimento do Pix avulso — ver nota no schema Prisma. */
+  pixProximoVencimento?: Date | null;
+  /** Último reenvio automático do Pix de renovação — ver nota no schema Prisma. */
+  pixUltimoAvisoEm?: Date | null;
   deletedAt?: Date | null;
 }
 
@@ -119,4 +123,12 @@ export interface CompanyRepository {
    * transportadoras pagantes pra Responsável NOVO descobrir).
    */
   findActiveByCodigoInterno(codigoInterno: string): Promise<Company | null>;
+  /**
+   * Candidatas ao reenvio automático de Pix (Dossiê 26,
+   * `BillingService.processarVencimentosPix`) — toda empresa `ATIVO`
+   * que já pagou por Pix avulso pelo menos uma vez (`pixProximoVencimento`
+   * não nulo). A decisão de reenviar/marcar inadimplente é do serviço
+   * (regra de negócio), este método só traz os candidatos.
+   */
+  listComPixProximoVencimento(): Promise<CompanyWithPlan[]>;
 }
