@@ -27,6 +27,10 @@ export interface MeResponse {
   companyType?: CompanyType | null;
   /** MFA/TOTP ativado (Dossiê 43) — só relevante para role "admin_rotta". */
   mfaEnabled?: boolean;
+  /** Faturamento (Dossiê 26) — trial vencido (+1 dia de graça), inadimplente, suspenso ou cancelado. Só relevante para role "empresa"/"gestor" (sempre false pros demais). Front usa isto pro cadeado da navegação (`(dashboard)/layout.tsx`). */
+  billingBlocked?: boolean;
+  /** Mensagem do motivo do bloqueio (null quando `billingBlocked` é false). */
+  billingBlockedReason?: string | null;
   /** Tipos cuja versão vigente o usuário ainda não aceitou (Dossiê 45 FRENTE 5) — vazio quando está tudo em dia. Não-vazio deve disparar um reaceite bloqueante (ver `authApi.acceptConsent`). */
   pendingConsents: ConsentType[];
 }

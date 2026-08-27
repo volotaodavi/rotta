@@ -45,17 +45,18 @@ import type { LucideIcon } from "@rotta/icons";
 import type { Route } from "next";
 
 import { useAgendaEvents } from "@/features/agenda/hooks/use-agenda";
+import { PixCheckoutModal } from "@/features/billing/components/pix-checkout-modal";
 import {
   useCreateCheckout,
   useCreatePixCheckout,
   useMyCompany,
   useMyCompanyDashboard,
   useMyCompanySettings,
-  usePixCheckoutStatus,
   useUpdateMyCompany,
   useUpdateMyCompanySettings,
 } from "@/features/company/hooks/use-company";
 import { useGpsMap } from "@/features/gps/hooks/use-gps";
+
 
 /**
  * Banner de assinatura (briefing "PLANO" — Dossiê 26: cadastro
@@ -117,96 +118,6 @@ function TrialBanner({
         </div>
       </Card.Body>
     </Card>
-  );
-}
-
-/**
- * Checkout Pix 100% embutido (pedido do usuário: "para não precisar ir
- * em outro lugar") — ao contrário de `CheckoutModal` (iframe pra página
- * hospedada, que pode ficar em branco se a AbacatePay bloquear o
- * embed), aqui não existe NENHUMA página de terceiro envolvida: o QR
- * Code e o código copia-e-cola vêm prontos na resposta da API
- * (`createPixQrCode`) e são renderizados direto nesta tela.
- *
- * Fecha sozinho assim que `usePixCheckoutStatus` (polling a cada 4s)
- * deixa de reportar `PENDING` — o webhook `billing.paid` continua
- * sendo quem de fato ativa a empresa (`BillingService.applyPixPayment`);
- * este polling só decide a experiência do modal.
- */
-function PixCheckoutModal({
-  checkout,
-  onClose,
-}: {
-  checkout: PixCheckout;
-  onClose: () => void;
-}): JSX.Element {
-  const { data: status } = usePixCheckoutStatus(checkout.id, true);
-  const [copiado, setCopiado] = useState(false);
-  const atual = status ?? checkout;
-
-  useEffect(() => {
-    if (atual.status !== "PENDING") {
-      const timeout = setTimeout(onClose, 2500);
-      return () => clearTimeout(timeout);
-    }
-    return undefined;
-  }, [atual.status, onClose]);
-
-  async function copiarCodigo(): Promise<void> {
-    await navigator.clipboard.writeText(atual.brCode);
-    setCopiado(true);
-    setTimeout(() => setCopiado(false), 2000);
-  }
-
-  const imagemQrCode = atual.brCodeBase64.startsWith("data:")
-    ? atual.brCodeBase64
-    : `data:image/png;base64,${atual.brCodeBase64}`;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex w-full max-w-sm flex-col items-center gap-4 rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
-        <div className="flex w-full items-center justify-between">
-          <Typography variant="subtitle">Pagar com Pix</Typography>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Fechar"
-            className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
-
-        {atual.status === "PAID" ? (
-          <Typography variant="body" color="success" className="py-8 text-center">
-            Pagamento confirmado! Sua assinatura já está ativa.
-          </Typography>
-        ) : atual.status !== "PENDING" ? (
-          <Typography variant="body" color="danger" className="py-8 text-center">
-            Este Pix não está mais disponível ({atual.status.toLowerCase()}). Feche e tente
-            novamente.
-          </Typography>
-        ) : (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- imagem base64 dinâmica, sem otimização de asset estático aplicável */}
-            <img
-              src={imagemQrCode}
-              alt="QR Code Pix"
-              className="h-56 w-56 rounded-md border border-neutral-200 dark:border-neutral-700"
-            />
-            <Typography variant="bodySmall" color="muted" className="text-center">
-              Escaneie com o app do seu banco ou copie o código abaixo.
-            </Typography>
-            <Button variant="secondary" onClick={() => void copiarCodigo()} className="w-full">
-              {copiado ? "Código copiado!" : "Copiar código Pix"}
-            </Button>
-            <Typography variant="caption" color="muted">
-              Aguardando confirmação do pagamento…
-            </Typography>
-          </>
-        )}
-      </div>
-    </div>
   );
 }
 

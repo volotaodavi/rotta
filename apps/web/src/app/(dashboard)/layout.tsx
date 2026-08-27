@@ -1,8 +1,8 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { Menu, X } from "@rotta/icons";
-import { Button, Spinner, Typography } from "@rotta/ui/web";
+import { Lock, Menu, X } from "@rotta/icons";
+import { Button, Spinner, Typography, openTrialLockModalFromOutsideReact } from "@rotta/ui/web";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
@@ -14,6 +14,7 @@ import { LegalFooter } from "@/components/legal/legal-footer";
 import { NotificationBell } from "@/components/notification-bell";
 import { ResponsavelBottomNav } from "@/components/responsavel-bottom-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { BillingBlockScreen } from "@/features/billing/components/billing-block-screen";
 import { useAppMode } from "@/features/driver/hooks/use-app-mode";
 import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
@@ -22,6 +23,7 @@ import { useMyIdentityVerification } from "@/features/identity-verification/hook
 import { VehicleAdminReviewAcknowledgeModal } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-modal";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
+
 
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
@@ -49,6 +51,14 @@ const PROFISSIONAL_NAV: NavLink[] = [
 ];
 
 const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
+
+/**
+ * Faturamento (Dossiê 26) — únicas rotas que continuam 100% acessíveis
+ * quando `user.billingBlocked` (pedido do usuário: "exceto no suporte,
+ * que aí eles podem acionar o suporte"; `/assinatura` precisa ficar
+ * aberta, senão ninguém bloqueado conseguiria pagar pra se desbloquear).
+ */
+const BILLING_EXEMPT_PREFIXES = ["/chamados", "/assinatura"] as const;
 
 /**
  * Únicos destinos permitidos pra quem está com a barra de navegação em
@@ -212,6 +222,18 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   const isBlockedByIdentityVerification =
     identityVerification != null && identityVerification.status !== "APROVADA";
 
+  // Faturamento (Dossiê 26) — `billingBlocked` só existe pro papel
+  // Empresa/Gestor (backend nunca marca `true` pros demais, mas o `&&`
+  // abaixo é defesa em profundidade). Cadeado em cada item de nav
+  // (exceto Chamados, sempre liberado) + bloqueio de página inteira em
+  // qualquer rota fora de `BILLING_EXEMPT_PREFIXES` — mesmo padrão de
+  // `isBlockedByIdentityVerification`, mas sem esconder a navegação (o
+  // cadeado precisa aparecer visível ao lado de cada opção, não some).
+  const isBillingBlocked = Boolean(user?.billingBlocked) && !isResponsavel;
+  const isBillingBlockedHere =
+    isBillingBlocked &&
+    !BILLING_EXEMPT_PREFIXES.some((prefix) => (pathname ?? "").startsWith(prefix));
+
   // "Em viagem agora" (Frente G, "inove"; Frente H estende pro
   // funcionário): só busca quando faz sentido — elegível ao alternador
   // OU motorista/monitor funcionário, fora da própria "Minha Rota"
@@ -297,6 +319,41 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   const showBottomNav = showDriverNavBar || isResponsavel;
   recordCheckpoint("dashboard-layout:antes-do-jsx-final");
 
+  /**
+   * Um item de navegação — vira um cadeado (sem navegar, abre o mesmo
+   * pop-up de qualquer ação bloqueada) quando `isBillingBlocked` e o
+   * link não é "Chamados" (sempre liberado). Usado tanto no cabeçalho
+   * desktop quanto no painel mobile — evita duplicar a condicional nos
+   * dois lugares.
+   */
+  function renderNavLink(link: NavLink, onNavigate?: () => void): JSX.Element {
+    const isLocked = isBillingBlocked && link.href !== "/chamados";
+    if (isLocked) {
+      return (
+        <button
+          key={link.href}
+          type="button"
+          onClick={() => openTrialLockModalFromOutsideReact(user?.billingBlockedReason ?? "")}
+          className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-left text-sm text-text-muted transition-colors hover:bg-muted/40 hover:text-text md:px-0 md:py-0 md:hover:bg-transparent"
+        >
+          {link.label}
+          <Lock size={13} className="text-danger" aria-label="Requer assinatura" />
+        </button>
+      );
+    }
+    return (
+      <Link
+        key={link.href}
+        href={link.href}
+        prefetch={false}
+        onClick={onNavigate}
+        className="rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-muted/40 hover:text-text md:px-0 md:py-0 md:hover:bg-transparent"
+      >
+        {link.label}
+      </Link>
+    );
+  }
+
   return (
     // `min-h-dvh` em vez de `min-h-screen` (BUG corrigido — mapa em tela
     // cheia não ocupava a tela toda no Safari/iOS): `100vh` no Safari
@@ -319,16 +376,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           </Typography>
           {!isBlockedByIdentityVerification && navLinks.length > 0 && (
             <nav className="hidden items-center gap-4 md:flex">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  prefetch={false}
-                  className="text-sm text-text-muted transition-colors hover:text-text"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              {navLinks.map((link) => renderNavLink(link))}
             </nav>
           )}
         </div>
@@ -389,17 +437,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       </header>
       {!isBlockedByIdentityVerification && navLinks.length > 0 && isMobileNavOpen && (
         <nav className="flex flex-col gap-1 border-b border-border bg-surface px-4 py-3 md:hidden">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              prefetch={false}
-              onClick={() => setIsMobileNavOpen(false)}
-              className="rounded-lg px-3 py-2 text-sm text-text-muted transition-colors hover:bg-muted/40 hover:text-text"
-            >
-              {link.label}
-            </Link>
-          ))}
+          {navLinks.map((link) => renderNavLink(link, () => setIsMobileNavOpen(false)))}
         </nav>
       )}
       {activeTrip && !isBlockedByIdentityVerification && (
@@ -417,6 +455,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           status={identityVerification.status}
           motivo={identityVerification.motivo}
         />
+      ) : isBillingBlockedHere ? (
+        <BillingBlockScreen reason={user?.billingBlockedReason ?? null} />
       ) : (
         <>
           {/* Sidebar real (Dossie 10, Secao 11.2) entra aqui quando @rotta/ui tiver o componente */}

@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { pushToastFromOutsideReact } from "@rotta/ui/web";
+import { openTrialLockModalFromOutsideReact, pushToastFromOutsideReact } from "@rotta/ui/web";
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { useState, type ReactNode } from "react";
@@ -31,6 +31,15 @@ export function QueryProvider({ children }: { children: ReactNode }): JSX.Elemen
       new QueryClient({
         mutationCache: new MutationCache({
           onError: (error) => {
+            // Faturamento (Dossiê 26) — `TRIALEXPIRADO` (trial vencido,
+            // inadimplente, suspenso ou cancelado) mostra o cadeado, não
+            // o toast genérico de erro: cobre qualquer ação bloqueada em
+            // qualquer tela, mesmo as que o cadeado da navegação (Frente
+            // B, `layout.tsx`) não intercepta antes do clique chegar aqui.
+            if (error instanceof ApiError && error.code === "TRIALEXPIRADO") {
+              openTrialLockModalFromOutsideReact(error.message);
+              return;
+            }
             const message =
               error instanceof ApiError
                 ? error.message

@@ -11,7 +11,8 @@
  *   molecules/  FormField, Pagination, Tabs, PanelGreeting
  *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven),
  *               Modal (Compound: Modal.Header/Body/Footer, com portal/focus-trap),
- *               Toast (ToastProvider + useToast — feedback de sucesso/erro de mutações)
+ *               Toast (ToastProvider + useToast — feedback de sucesso/erro de mutações),
+ *               TrialLockModal (Dossiê 26 — pop-up de assinatura necessária)
  */
 
 export * from "./atoms/Badge";
@@ -33,3 +34,4 @@ export * from "./organisms/Card";
 export * from "./organisms/Modal";
 export * from "./organisms/Table";
 export * from "./organisms/Toast";
+export * from "./organisms/TrialLockModal";

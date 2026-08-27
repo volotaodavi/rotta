@@ -2,17 +2,18 @@
 
 import { AuthProvider } from "@rotta/auth/web";
 import { configureRottaMaps } from "@rotta/maps/web";
-import { ToastProvider } from "@rotta/ui/web";
+import { ToastProvider, TrialLockModal } from "@rotta/ui/web";
 import { useEffect } from "react";
-
-import { env } from "@/config/env";
-import { authApi } from "@/lib/api-client";
-import { initGlobalErrorCapture } from "@/lib/global-error-capture";
 
 import { QueryProvider } from "./query-provider";
 import { ThemeProvider } from "./theme-provider";
 
 import type { ReactNode } from "react";
+
+import { env } from "@/config/env";
+import { authApi } from "@/lib/api-client";
+import { initGlobalErrorCapture } from "@/lib/global-error-capture";
+
 
 
 /**
@@ -36,6 +37,12 @@ configureRottaMaps({ mapTilerApiKey: env.NEXT_PUBLIC_MAPTILER_API_KEY });
  * entrega: o componente já existia em `@rotta/ui` (Frente "não está
  * havendo ações nos botões"), mas só tinha sido ligado no Admin;
  * `apps/web` nunca teve `useToast()` disponível em lugar nenhum.
+ *
+ * `<TrialLockModal/>` (Dossiê 26, faturamento) montado uma única vez
+ * aqui — mesmo espírito do Toast: `openTrialLockModalFromOutsideReact`
+ * (chamado tanto pelo `MutationCache.onError` de `query-provider.tsx`
+ * quanto pelo cadeado da navegação em `(dashboard)/layout.tsx`) só
+ * encontra um listener ativo se este componente estiver montado.
  */
 export function AppProviders({ children }: { children: ReactNode }): JSX.Element {
   // Ver `@/lib/global-error-capture.ts` — captura, sem redação, qualquer
@@ -49,6 +56,7 @@ export function AppProviders({ children }: { children: ReactNode }): JSX.Element
   return (
     <ThemeProvider>
       <ToastProvider>
+        <TrialLockModal />
         <AuthProvider authApi={authApi}>
           <QueryProvider>{children}</QueryProvider>
         </AuthProvider>
