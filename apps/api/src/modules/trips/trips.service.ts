@@ -1110,8 +1110,12 @@ export class TripsService {
       // nada"). Sem parada válida, não há pendência geolocalizável —
       // melhor sumir da lista (`null`, filtrado abaixo) do que inventar
       // uma posição falsa que quebra o mapa E o geofencing de 1km de
-      // `listStudentPendingLocations`.
-      if (!stop) return null;
+      // `listStudentPendingLocations`. Segunda causa RAIZ encontrada na
+      // mesma auditoria: uma `RouteStop` de teste ("Rotta Teste 02")
+      // existe de verdade, mas foi cadastrada com endereço/coordenada
+      // placeholder ("0. D, 0" — latitude/longitude 0/0) — trata igual
+      // (nenhum lugar real do Brasil fica em 0°/0°).
+      if (!stop || (Number(stop.latitude) === 0 && Number(stop.longitude) === 0)) return null;
       return {
         vinculo,
         tipo,

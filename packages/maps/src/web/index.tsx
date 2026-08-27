@@ -10,6 +10,7 @@ import {
 } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { isCoordenadaValida } from "../types";
 import { vehicleIconMarkup } from "../vehicle-icon";
 
 import type { Coordenada, HeatmapPoint, RottaMapProps } from "../types";
@@ -24,6 +25,7 @@ export type {
   Coordenada,
   HeatmapPoint,
 } from "../types";
+export { isCoordenadaValida } from "../types";
 
 let globalMapTilerApiKey: string | undefined;
 
@@ -290,16 +292,22 @@ function applyHeatmap(map: MapLibreMap, points: HeatmapPoint[] | undefined): voi
  * trajeto de rota (`RouteStop[]` em ordem).
  */
 export function RottaMap({
-  markers,
+  markers: markersProp,
   route,
   routeColor = DEFAULT_ROUTE_COLOR,
   heatmapPoints,
-  initialCenter,
+  initialCenter: initialCenterProp,
   initialZoom = DEFAULT_ZOOM,
   onBoundsChange,
   onMarkerPress,
   styleUrl,
 }: RottaMapProps): JSX.Element {
+  // Rede de segurança final contra `(0, 0)`/"Null Island" (ver
+  // `isCoordenadaValida`) — nunca desenha um marcador nem centraliza a
+  // câmera numa coordenada que nenhum dado real do Brasil produziria.
+  const markers = markersProp.filter((marker) => isCoordenadaValida(marker));
+  const initialCenter =
+    initialCenterProp && isCoordenadaValida(initialCenterProp) ? initialCenterProp : undefined;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map());

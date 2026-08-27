@@ -9,11 +9,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import { isCoordenadaValida } from "../types";
+
 import type { RottaMapMarker, RottaMapProps } from "../types";
 import type { MapViewRef } from "@maplibre/maplibre-react-native";
 import type { Feature, LineString } from "geojson";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
+export { isCoordenadaValida } from "../types";
 
 let globalMapTilerApiKey: string | undefined;
 
@@ -222,15 +225,22 @@ function AnimatedVehicleAnnotation({
  * build-time (SDK distribuído via Maven Central/CocoaPods livremente).
  */
 export function RottaMap({
-  markers,
+  markers: markersProp,
   route,
   routeColor = DEFAULT_ROUTE_COLOR,
-  initialCenter,
+  initialCenter: initialCenterProp,
   initialZoom = DEFAULT_ZOOM,
   onBoundsChange,
   onMarkerPress,
   styleUrl,
 }: RottaMapProps): JSX.Element {
+  // Rede de segurança final contra `(0, 0)`/"Null Island" (ver
+  // `isCoordenadaValida`, mesmo motivo de `../web/index.tsx`) — nunca
+  // desenha um marcador nem centraliza a câmera numa coordenada que
+  // nenhum dado real do Brasil produziria.
+  const markers = markersProp.filter((marker) => isCoordenadaValida(marker));
+  const initialCenter =
+    initialCenterProp && isCoordenadaValida(initialCenterProp) ? initialCenterProp : undefined;
   const mapRef = useRef<MapViewRef>(null);
   const onBoundsChangeRef = useRef(onBoundsChange);
   onBoundsChangeRef.current = onBoundsChange;
