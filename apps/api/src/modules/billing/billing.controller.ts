@@ -3,7 +3,6 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { BillingService } from "./billing.service";
 import { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
-import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
@@ -26,12 +25,6 @@ import { Role } from "@/shared/enums";
 export class BillingController {
   constructor(private readonly billingService: BillingService) {}
 
-  @Post("checkout")
-  @Roles(Role.EMPRESA, Role.GESTOR)
-  createCheckout(@Body() dto: CreateCheckoutDto, @CurrentUser() actor: AuthenticatedUser) {
-    return this.billingService.createCheckoutForCompany(actor.tenantId as string, dto.returnUrl);
-  }
-
   /** Checkout Pix embutido (QR Code + copia-e-cola direto na resposta — sem redirecionar). */
   @Post("checkout/pix")
   @Roles(Role.EMPRESA, Role.GESTOR)
@@ -49,8 +42,7 @@ export class BillingController {
   /**
    * Checkout próprio da Rotta (Dossiê 26) pra cartão de crédito/débito
    * e boleto — processado pela Asaas por trás, sem redirecionar pra
-   * fora da Rotta (diferente do checkout de cartão da AbacatePay,
-   * `POST /checkout` acima).
+   * fora da Rotta.
    */
   @Post("asaas/checkout")
   @Roles(Role.EMPRESA, Role.GESTOR)

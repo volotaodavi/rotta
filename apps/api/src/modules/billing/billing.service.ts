@@ -16,7 +16,6 @@ import {
   ABACATEPAY_FEE_PIX_CENTS,
   ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
   ROTTA_SUBSCRIPTION_PRICE_CENTS,
-  ROTTA_SUBSCRIPTION_PRODUCT_EXTERNAL_ID,
   ROTTA_SUBSCRIPTION_PRODUCT_NAME,
 } from "./billing.constants";
 
@@ -24,15 +23,9 @@ import type { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
 import type { AbacatePayPixQrCode, AbacatePayWebhookEnvelope } from "./types/abacatepay.types";
 import type { AsaasPayment, AsaasWebhookEnvelope } from "./types/asaas.types";
 import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
-import type { OnModuleInit } from "@nestjs/common";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
-
-export interface CreateCheckoutResult {
-  url: string;
-  checkoutId: string;
-}
 
 export interface BillingAdminCompanySummary {
   id: string;
@@ -81,17 +74,17 @@ export interface BillingAdminOverview {
 }
 
 /**
- * Núcleo de negócio da cobrança de mensalidade da Rotta via AbacatePay
- * (Dossiê 26). Nunca cobra o Responsável — este service só é acionado
- * a partir de `Company` (empresa/transportadora/autônomo), que é quem
- * tem `Plan`/mensalidade no schema; `Role.RESPONSAVEL` não tem
- * `Company`/`tenantId` (ver `AuthenticatedUser`), então não há caminho
- * de código aqui que o alcance.
+ * Núcleo de negócio da cobrança de mensalidade da Rotta (Dossiê 26) —
+ * Pix via AbacatePay, cartão/débito/boleto via Asaas. Nunca cobra o
+ * Responsável — este service só é acionado a partir de `Company`
+ * (empresa/transportadora/autônomo), que é quem tem `Plan`/mensalidade
+ * no schema; `Role.RESPONSAVEL` não tem `Company`/`tenantId` (ver
+ * `AuthenticatedUser`), então não há caminho de código aqui que o
+ * alcance.
  */
 @Injectable()
-export class BillingService implements OnModuleInit {
+export class BillingService {
   private readonly logger = new Logger(BillingService.name);
-  private productId: string | null = null;
 
   constructor(
     private readonly client: AbacatePayClientService,
@@ -100,96 +93,6 @@ export class BillingService implements OnModuleInit {
     private readonly prisma: PrismaService,
   ) {}
 
-  async onModuleInit(): Promise<void> {
-    if (!this.client.isConfigured()) {
-      this.logger.warn(
-        "AbacatePay não configurada (ABACATEPAY_API_KEY ausente) — cobrança de mensalidade indisponível até configurar.",
-      );
-      return;
-    }
-    try {
-      await this.ensureProduct();
-    } catch (error) {
-      // Mesmo padrão de autoprovisionamento de `CompaniesService.onModuleInit`:
-      // nunca derruba o boot da aplicação por causa disto — só loga e
-      // tenta de novo, de forma preguiçosa, na próxima chamada real.
-      this.logger.error(
-        `Falha ao provisionar o produto de assinatura da Rotta na AbacatePay: ${(error as Error).message}`,
-      );
-    }
-  }
-
-  /**
-   * Garante que o produto de assinatura da Rotta existe na conta
-   * AbacatePay configurada — busca por `externalId` (nunca por nome,
-   * já que a conta fornecida tem produtos de outro negócio) antes de
-   * criar, para nunca duplicar em reinicializações sucessivas.
-   */
-  private async ensureProduct(): Promise<string> {
-    if (this.productId) return this.productId;
-
-    const products = await this.client.listProducts();
-    const existing = products.find(
-      (product) => product.externalId === ROTTA_SUBSCRIPTION_PRODUCT_EXTERNAL_ID,
-    );
-    if (existing) {
-      this.productId = existing.id;
-      return existing.id;
-    }
-
-    const created = await this.client.createProduct({
-      externalId: ROTTA_SUBSCRIPTION_PRODUCT_EXTERNAL_ID,
-      name: ROTTA_SUBSCRIPTION_PRODUCT_NAME,
-      price: ROTTA_SUBSCRIPTION_PRICE_CENTS,
-      currency: "BRL",
-      cycle: "MONTHLY",
-      description: "Assinatura mensal da plataforma Rotta — gestão de transporte escolar.",
-    });
-    this.productId = created.id;
-    return created.id;
-  }
-
-  /**
-   * Cria um checkout de assinatura para `companyId` — o pagamento real
-   * só existe quando o cliente completa o pagamento na página
-   * hospedada retornada em `url` (a AbacatePay não expõe uma forma de
-   * cobrar cartão sem sair para a página dela, ver nota em
-   * `TrialBanner`/`billing.controller.ts`). `externalId: companyId` é o
-   * que permite ao webhook (`abacatepay-webhook.controller.ts`)
-   * correlacionar de volta para esta empresa sem outra consulta.
-   */
-  async createCheckoutForCompany(
-    companyId: string,
-    returnUrl: string,
-  ): Promise<CreateCheckoutResult> {
-    if (!this.client.isConfigured()) {
-      throw new BadRequestException(
-        "Pagamento indisponível: a AbacatePay ainda não está configurada nesta implantação.",
-      );
-    }
-
-    const company = await this.prisma.runWithTenantContext(
-      { tenantId: companyId, bypass: false },
-      () => this.companyRepository.findById(companyId),
-    );
-    if (!company) {
-      throw new NotFoundException("Empresa não encontrada.");
-    }
-
-    const productId = await this.ensureProduct();
-    const completionUrl = `${returnUrl}${returnUrl.includes("?") ? "&" : "?"}billing=success`;
-
-    const checkout = await this.client.createSubscriptionCheckout({
-      items: [{ id: productId, quantity: 1 }],
-      externalId: company.id,
-      returnUrl,
-      completionUrl,
-      methods: ["CARD"],
-    });
-
-    return { url: checkout.url, checkoutId: checkout.id };
-  }
-
   /**
    * Checkout Pix embutido na própria Rotta (pedido do usuário: "para não
    * precisar ir em outro lugar") — devolve QR Code + copia-e-cola direto,
@@ -197,12 +100,13 @@ export class BillingService implements OnModuleInit {
    * mesmo mecanismo de correlação do checkout de assinatura, só que pro
    * evento `billing.paid` (ver `applyPixPayment`).
    *
-   * Diferença importante de `createCheckoutForCompany`: isto é uma
-   * cobrança AVULSA (não uma assinatura recorrente da AbacatePay) — o
-   * pagamento confirmado ativa a empresa por este ciclo, mas não cria
-   * renovação automática. Documentado explicitamente pro usuário: um
-   * agendador mensal pra reemitir o Pix automaticamente é um próximo
-   * passo, ainda não construído.
+   * Diferença importante do checkout de cartão/débito/boleto (Asaas,
+   * `createAsaasCheckoutForCompany`): isto é uma cobrança AVULSA (não
+   * uma assinatura recorrente da AbacatePay) — o pagamento confirmado
+   * ativa a empresa por este ciclo, mas não cria renovação automática.
+   * Documentado explicitamente pro usuário: um agendador mensal pra
+   * reemitir o Pix automaticamente é um próximo passo, ainda não
+   * construído.
    */
   async createPixCheckoutForCompany(companyId: string): Promise<AbacatePayPixQrCode> {
     if (!this.client.isConfigured()) {

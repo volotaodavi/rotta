@@ -6,14 +6,12 @@ import {
   Bell,
   CalendarDays,
   Car,
-  ExternalLink,
   GraduationCap,
   MessageCircle,
   ShieldCheck,
   Sparkles,
   Store,
   Users,
-  X,
 } from "@rotta/icons";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
 import {
@@ -31,24 +29,14 @@ import {
   buttonVariants,
 } from "@rotta/ui/web";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import type {
-  AgendaEventoTipo,
-  Company,
-  MapVehicle,
-  PixCheckout,
-  UpdateCompanyInput,
-} from "@rotta/api-client";
+import type { AgendaEventoTipo, Company, MapVehicle, UpdateCompanyInput } from "@rotta/api-client";
 import type { LucideIcon } from "@rotta/icons";
 import type { Route } from "next";
 
 import { useAgendaEvents } from "@/features/agenda/hooks/use-agenda";
-import { PixCheckoutModal } from "@/features/billing/components/pix-checkout-modal";
 import {
-  useCreateCheckout,
-  useCreatePixCheckout,
   useMyCompany,
   useMyCompanyDashboard,
   useMyCompanySettings,
@@ -57,32 +45,16 @@ import {
 } from "@/features/company/hooks/use-company";
 import { useGpsMap } from "@/features/gps/hooks/use-gps";
 
-
 /**
  * Banner de assinatura (briefing "PLANO" — Dossiê 26: cadastro
  * self-service SEMPRE é permitido; a cobrança acontece depois, aqui,
  * nunca bloqueando a criação da conta). Mostrado enquanto
- * `company.status === "TRIAL"` — nunca finge uma data de expiração
- * (não existe nenhum campo de prazo de trial no schema hoje, ver
- * `Company` no Prisma). "Assinar agora" abre um checkout REAL da
- * AbacatePay (`useCreateCheckout`/`CheckoutModal` abaixo) — só chamado
- * para Empresa/Gestor (esta página nunca é alcançada por Responsável,
- * que não tem `Company`/plano, ver `MinhaEmpresaPage`).
+ * `company.status === "TRIAL"`. "Assinar agora" leva pro checkout
+ * próprio da Rotta (`/assinatura`) — Pix (AbacatePay) e cartão/débito/
+ * boleto (Asaas) numa única tela, sem duplicar o fluxo aqui (mesmo
+ * link que `TrialLockModal` usa quando o trial vence de verdade).
  */
-function TrialBanner({
-  status,
-  onSubscribe,
-  isLoading,
-  onPayPix,
-  isPixLoading,
-}: {
-  status: Company["status"];
-  onSubscribe: () => void;
-  isLoading: boolean;
-  /** Pedido do usuário: "pagar sem sair do site" — o Pix não precisa de nenhuma página hospedada, ver `PixCheckoutModal`. */
-  onPayPix: () => void;
-  isPixLoading: boolean;
-}): JSX.Element | null {
+function TrialBanner({ status }: { status: Company["status"] }): JSX.Element | null {
   if (status !== "TRIAL") return null;
 
   return (
@@ -98,68 +70,16 @@ function TrialBanner({
               <Badge variant="info">Trial</Badge>
             </div>
             <Typography variant="bodySmall" color="muted">
-              Sua empresa está em período de teste gratuito. Assine o plano Rotta (R$ 39,90/mês)
+              Sua empresa está em período de teste gratuito. Assine o plano Starter (R$ 39,90/mês)
               para continuar usando a plataforma sem interrupções.
             </Typography>
           </div>
         </div>
-        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
-          <Button
-            variant="secondary"
-            onClick={onPayPix}
-            isLoading={isPixLoading}
-            title="Pague com Pix sem sair da Rotta"
-          >
-            Pagar com Pix
-          </Button>
-          <Button variant="primary" onClick={onSubscribe} isLoading={isLoading}>
-            Pagar com cartão (R$ 39,90/mês)
-          </Button>
-        </div>
+        <Link href="/assinatura" className={buttonVariants({ variant: "primary" }) + " shrink-0"}>
+          Assinar agora
+        </Link>
       </Card.Body>
     </Card>
-  );
-}
-
-/**
- * Checkout embutido (briefing "pagar sem sair do site") — abre a página
- * hospedada da AbacatePay dentro de um modal/iframe no próprio domínio
- * da Rotta. Honestidade sobre o limite real: a AbacatePay não documenta
- * `frame-ancestors`/`X-Frame-Options` da página de checkout, então o
- * iframe pode aparecer em branco se ela bloquear ser embutida — por
- * isso "Abrir em nova aba" fica sempre visível, nunca escondido atrás
- * de um erro que talvez nunca dispare (um bloqueio de frame não gera
- * evento de erro detectável em JS).
- */
-function CheckoutModal({ url, onClose }: { url: string; onClose: () => void }): JSX.Element {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="flex h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-lg bg-white shadow-xl dark:bg-neutral-900">
-        <div className="flex items-center justify-between border-b border-neutral-200 px-4 py-3 dark:border-neutral-700">
-          <Typography variant="subtitle">Assinar plano Rotta</Typography>
-          <div className="flex items-center gap-3">
-            <a
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm text-primary hover:underline"
-            >
-              <ExternalLink className="h-4 w-4" />
-              Abrir em nova aba
-            </a>
-            <button
-              type="button"
-              onClick={onClose}
-              aria-label="Fechar"
-              className="rounded p-1 text-neutral-500 hover:bg-neutral-100 dark:hover:bg-neutral-800"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-        <iframe src={url} title="Checkout AbacatePay" className="h-full w-full flex-1 border-0" />
-      </div>
-    </div>
   );
 }
 
@@ -346,53 +266,10 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
   const { data: fleet, isLoading: isFleetLoading } = useGpsMap();
   const updateCompany = useUpdateMyCompany(companyId);
   const updateSettings = useUpdateMyCompanySettings(companyId);
-  const createCheckout = useCreateCheckout();
-  const createPixCheckout = useCreatePixCheckout();
-  const router = useRouter();
-  const searchParams = useSearchParams();
 
   const [aba, setAba] = useState<"painel" | "configuracoes">("painel");
   const [form, setForm] = useState<UpdateCompanyInput | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-  const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [pixCheckout, setPixCheckout] = useState<PixCheckout | null>(null);
-
-  // Retorno do checkout hospedado (`completionUrl`/`returnUrl`, ver
-  // `BillingService.createCheckoutForCompany`) — o webhook da AbacatePay
-  // é a fonte de verdade do `status`, este `?billing=success` só limpa
-  // a URL e força um refetch para o usuário ver o novo status sem
-  // precisar recarregar a página manualmente.
-  useEffect(() => {
-    if (searchParams.get("billing") === "success") {
-      setCheckoutUrl(null);
-      router.replace("/empresa");
-    }
-  }, [searchParams, router]);
-
-  async function handleSubscribe(): Promise<void> {
-    setCheckoutError(null);
-    try {
-      const result = await createCheckout.mutateAsync({
-        returnUrl: `${window.location.origin}/empresa`,
-      });
-      setCheckoutUrl(result.url);
-    } catch (error) {
-      setCheckoutError(
-        error instanceof ApiError ? error.message : "Não foi possível iniciar o pagamento.",
-      );
-    }
-  }
-
-  async function handlePayPix(): Promise<void> {
-    setCheckoutError(null);
-    try {
-      const result = await createPixCheckout.mutateAsync();
-      setPixCheckout(result);
-    } catch (error) {
-      setCheckoutError(error instanceof ApiError ? error.message : "Não foi possível gerar o Pix.");
-    }
-  }
 
   useEffect(() => {
     if (company && !form) {
@@ -507,22 +384,7 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
             </Card.Body>
           </Card>
 
-          <TrialBanner
-            status={company.status}
-            onSubscribe={() => void handleSubscribe()}
-            isLoading={createCheckout.isPending}
-            onPayPix={() => void handlePayPix()}
-            isPixLoading={createPixCheckout.isPending}
-          />
-          {checkoutError && (
-            <Typography variant="bodySmall" color="danger">
-              {checkoutError}
-            </Typography>
-          )}
-          {checkoutUrl && <CheckoutModal url={checkoutUrl} onClose={() => setCheckoutUrl(null)} />}
-          {pixCheckout && (
-            <PixCheckoutModal checkout={pixCheckout} onClose={() => setPixCheckout(null)} />
-          )}
+          <TrialBanner status={company.status} />
 
           <PainelAtalhos />
 

@@ -3,8 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
+  AsaasPayment,
   CompanySettings,
-  CreateCheckoutResult,
+  CreateAsaasCheckoutInput,
   PixCheckout,
   UpdateCompanyInput,
 } from "@rotta/api-client";
@@ -51,18 +52,6 @@ export function useUpdateMyCompany(companyId: string) {
 }
 
 /**
- * Inicia um checkout de assinatura da mensalidade da Rotta (Dossiê 26,
- * R$ 39,90/mês) via AbacatePay — só chamado a partir de `TrialBanner`
- * (empresa/transportadora/autônomo). Nunca usado por Responsável, que
- * não tem `Company`/plano.
- */
-export function useCreateCheckout() {
-  return useMutation<CreateCheckoutResult, unknown, { returnUrl: string }>({
-    mutationFn: (input) => billingApi.createCheckout(input),
-  });
-}
-
-/**
  * Checkout Pix embutido (pedido do usuário: "pagar sem precisar ir em
  * outro lugar") — devolve QR Code + copia-e-cola direto, sem nenhuma
  * página hospedada envolvida (ver `PixCheckoutModal`).
@@ -83,6 +72,28 @@ export function usePixCheckoutStatus(id: string | undefined, enabled: boolean) {
   return useQuery({
     queryKey: ["billing", "pix-checkout", id],
     queryFn: () => billingApi.getPixCheckoutStatus(id as string),
+    enabled: Boolean(id) && enabled,
+    refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 4_000 : false),
+  });
+}
+
+/**
+ * Checkout próprio da Rotta pra cartão de crédito/débito e boleto
+ * (Dossiê 26 — "página própria para receber os pagamentos, porém
+ * utilizando a Asaas por trás"). Pix continua em `useCreatePixCheckout`
+ * (AbacatePay) — mesma tela (`/assinatura`), dois provedores por trás.
+ */
+export function useCreateAsaasCheckout() {
+  return useMutation<AsaasPayment, unknown, CreateAsaasCheckoutInput>({
+    mutationFn: (input) => billingApi.createAsaasCheckout(input),
+  });
+}
+
+/** Polling enquanto aguarda o boleto ser pago/o cartão confirmar — mesmo papel de `usePixCheckoutStatus`. */
+export function useAsaasCheckoutStatus(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["billing", "asaas-checkout", id],
+    queryFn: () => billingApi.getAsaasCheckoutStatus(id as string),
     enabled: Boolean(id) && enabled,
     refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 4_000 : false),
   });
