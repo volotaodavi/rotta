@@ -85,13 +85,17 @@ const ATALHOS_PERFIL_DONO: AtalhoPerfil[] = [
 /**
  * Frente AO — Responsável passou a usar esta mesma página (chegando
  * pela aba "Perfil" do novo `ResponsavelBottomNav`). Nada de Rotta Pay/
- * Verificar identidade (não se aplicam a este papel) nem Notificações/
- * Chamados (Notificações já é a própria aba ao lado na barra; Chamados
- * não existe no "Perfil" do Responsável no app mobile,
- * `parent/screens/perfil-screen.tsx` — só Documentação Rotta) —
- * mínimo necessário, mesmo catálogo do app nativo.
+ * Verificar identidade (não se aplicam a este papel) — Notificações já
+ * é a própria aba ao lado na barra.
+ *
+ * "Chamados" (Epic B — antes bloqueado, `SupportService.createTicket`
+ * só aceitava Empresa/Gestor): agora que o backend libera
+ * `Role.RESPONSAVEL`, este é o único ponto de entrada — a tela
+ * (`/chamados`) já é genérica o bastante pra funcionar sem nenhuma
+ * mudança, só precisava de um link.
  */
 const ATALHOS_PERFIL_RESPONSAVEL: AtalhoPerfil[] = [
+  { href: "/chamados", label: "Chamados", icon: MessageCircle },
   { href: "/legal", label: "Documentação Rotta", icon: BookOpen },
 ];
 

@@ -1,11 +1,12 @@
 import { useAuth } from "@rotta/auth/native";
 import { StyleSheet, Text } from "react-native";
 
+import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { useTheme } from "@/providers/theme-provider";
+
 import type { ParentPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
-import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<ParentPerfilStackParamList, "PerfilHome">;
 
@@ -33,6 +34,11 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
         ) : null}
       </VehicleCard>
 
+      <VehicleButton
+        label="Chamados"
+        variant="secondary"
+        onPress={() => navigation.navigate("Chamados")}
+      />
       <VehicleButton
         label="Documentação Rotta"
         variant="secondary"

@@ -1,9 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import type { ParentPerfilStackParamList } from "./types";
-
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
 import { ParentPerfilScreen } from "@/features/parent/screens";
+
+import { SupportNavigator } from "./SupportNavigator";
+
+import type { ParentPerfilStackParamList } from "./types";
+
 
 const Stack = createNativeStackNavigator<ParentPerfilStackParamList>();
 
@@ -28,6 +31,7 @@ export function ParentPerfilNavigator(): JSX.Element {
         component={LegalWebViewScreen}
         options={{ title: "Documentação Rotta" }}
       />
+      <Stack.Screen name="Chamados" component={SupportNavigator} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }

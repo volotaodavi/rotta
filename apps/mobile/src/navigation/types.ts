@@ -64,6 +64,8 @@ export type DriverPerfilStackParamList = {
   Documentacao: undefined;
   VerificacaoIdentidade: undefined;
   Veiculo: undefined;
+  /** Suporte (Epic B) — mesma decisão de aninhamento de `Veiculo`/`Documentacao` acima. */
+  Chamados: undefined;
 };
 
 /** Stack de "Meu Veículo" (briefing "APP MOBILE"), aberta a partir da aba `Veiculo` do Motorista/Monitor. */
@@ -117,6 +119,22 @@ export type ParentTabParamList = {
 export type ParentPerfilStackParamList = {
   PerfilHome: undefined;
   Documentacao: undefined;
+  /** Suporte (Epic B) — antes bloqueado pro Responsável no backend; agora liberado, mesma decisão de aninhamento de `Documentacao`. */
+  Chamados: undefined;
+};
+
+/**
+ * Stack de Suporte (Epic B) — montada dentro da aba "Perfil" de
+ * QUALQUER papel (Responsável, Motorista/Monitor/Autônomo, ver
+ * `ParentPerfilStackParamList`/`DriverPerfilStackParamList`), já que
+ * não existia NENHUMA tela de suporte no app nativo antes desta
+ * entrega (só no Painel Web). Espelha 1:1 as 3 rotas do Painel Web
+ * (`/chamados`, `/chamados/novo`, `/chamados/:id`).
+ */
+export type SupportStackParamList = {
+  Lista: undefined;
+  Novo: undefined;
+  Detalhes: { ticketId: string };
 };
 
 /**

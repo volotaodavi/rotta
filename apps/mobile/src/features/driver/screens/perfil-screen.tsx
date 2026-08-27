@@ -1,14 +1,15 @@
 import { useAuth } from "@rotta/auth/native";
 import { StyleSheet, Text } from "react-native";
 
+import { PinSetupCard } from "@/features/auth/components";
+import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { useTheme } from "@/providers/theme-provider";
+
 import { PanelGreeting } from "../components";
 
 import type { DriverPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import { PinSetupCard } from "@/features/auth/components";
-import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
-import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<DriverPerfilStackParamList, "PerfilHome">;
 
@@ -59,6 +60,11 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
         label="Verificar identidade"
         variant="secondary"
         onPress={() => navigation.navigate("VerificacaoIdentidade")}
+      />
+      <VehicleButton
+        label="Chamados"
+        variant="secondary"
+        onPress={() => navigation.navigate("Chamados")}
       />
       <VehicleButton
         label="Documentação Rotta"
