@@ -22,7 +22,10 @@ import type { SchoolShift, StudentSex, UpdateStudentInput } from "@rotta/api-cli
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import {
   useDeleteStudent,
+  useMarkStudentAbsentToday,
+  useRemoveStudentAbsentToday,
   useStudent,
+  useStudentDailyAbsence,
   useUpdateStudent,
 } from "@/features/students/hooks/use-students";
 import { STUDENT_SEX_LABEL } from "@/features/students/labels";
@@ -41,10 +44,36 @@ export default function AlunoDetalhePage(): JSX.Element {
   const { data: student, isLoading, isError, refetch, isFetching } = useStudent(studentId);
   const updateStudent = useUpdateStudent(studentId);
   const deleteStudent = useDeleteStudent();
+  const { data: ausenciaHoje } = useStudentDailyAbsence(studentId);
+  const markAbsentToday = useMarkStudentAbsentToday(studentId);
+  const removeAbsentToday = useRemoveStudentAbsentToday(studentId);
 
   const [form, setForm] = useState<UpdateStudentInput>({});
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [absenceErrorMessage, setAbsenceErrorMessage] = useState<string | null>(null);
+
+  async function handleMarkAbsentToday(): Promise<void> {
+    setAbsenceErrorMessage(null);
+    try {
+      await markAbsentToday.mutateAsync(undefined);
+    } catch (error) {
+      setAbsenceErrorMessage(
+        error instanceof ApiError ? error.message : "Erro inesperado ao marcar a ausência.",
+      );
+    }
+  }
+
+  async function handleRemoveAbsentToday(): Promise<void> {
+    setAbsenceErrorMessage(null);
+    try {
+      await removeAbsentToday.mutateAsync();
+    } catch (error) {
+      setAbsenceErrorMessage(
+        error instanceof ApiError ? error.message : "Erro inesperado ao desmarcar a ausência.",
+      );
+    }
+  }
 
   useEffect(() => {
     if (!student) return;
@@ -188,6 +217,47 @@ export default function AlunoDetalhePage(): JSX.Element {
             >
               Vai levar ou buscar num endereço diferente algum dia? Marque no calendário →
             </Link>
+          </Card.Body>
+        </Card>
+
+        <Card>
+          <Card.Header title="Ausência de hoje" />
+          <Card.Body className="flex flex-col gap-3">
+            {ausenciaHoje ? (
+              <>
+                <Typography variant="bodySmall" color="muted">
+                  {student.nome} está marcado como ausente hoje — o motorista vai pular a parada
+                  dele.
+                </Typography>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  isLoading={removeAbsentToday.isPending}
+                  onClick={() => void handleRemoveAbsentToday()}
+                >
+                  Desmarcar ausência
+                </Button>
+              </>
+            ) : (
+              <>
+                <Typography variant="bodySmall" color="muted">
+                  Se {student.nome} não vai ter transporte hoje, avise antes da viagem começar.
+                </Typography>
+                <Button
+                  variant="danger"
+                  size="sm"
+                  isLoading={markAbsentToday.isPending}
+                  onClick={() => void handleMarkAbsentToday()}
+                >
+                  Meu filho não vai hoje
+                </Button>
+              </>
+            )}
+            {absenceErrorMessage && (
+              <Typography variant="caption" color="danger">
+                {absenceErrorMessage}
+              </Typography>
+            )}
           </Card.Body>
         </Card>
 

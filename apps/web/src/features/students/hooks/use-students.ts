@@ -106,3 +106,37 @@ export function useRemoveStudentAddressOverride(studentId: string) {
     },
   });
 }
+
+/**
+ * "Meu filho não vai hoje" (Epic C) — botão na ficha do aluno. Marcado
+ * ANTES da viagem do dia começar (o backend rejeita depois, com
+ * mensagem clara — mesmo guard de `address-overrides`); nunca bloqueia
+ * o uso do app.
+ */
+export function useStudentDailyAbsence(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ["students", studentId, "ausencia-hoje"],
+    queryFn: () => studentsApi.getAbsentToday(studentId as string),
+    enabled: Boolean(studentId),
+  });
+}
+
+export function useMarkStudentAbsentToday(studentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (motivo?: string) => studentsApi.markAbsentToday(studentId, { motivo }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["students", studentId, "ausencia-hoje"] });
+    },
+  });
+}
+
+export function useRemoveStudentAbsentToday(studentId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => studentsApi.removeAbsentToday(studentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["students", studentId, "ausencia-hoje"] });
+    },
+  });
+}

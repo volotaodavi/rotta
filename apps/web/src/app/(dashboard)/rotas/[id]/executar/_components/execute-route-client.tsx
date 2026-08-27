@@ -363,7 +363,15 @@ function AlunoParadaExecRow({
   }
 
   return (
-    <div className="flex flex-col gap-1.5 border-t border-border pt-3 first:border-t-0 first:pt-0">
+    // Epic C (Responsável marcou "meu filho não vai hoje" — ou o
+    // motorista/monitor confirmou a ausência): pedido literal do usuário
+    // ("o aluno vai ficar meio opaco") — a linha INTEIRA fica esmaecida,
+    // não só o texto do botão trocado por "Ausente".
+    <div
+      className={`flex flex-col gap-1.5 border-t border-border pt-3 first:border-t-0 first:pt-0${
+        jaAusente ? " opacity-50" : ""
+      }`}
+    >
       <div className="flex items-center justify-between gap-3">
         <Typography variant="bodySmall">
           {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}

@@ -1647,7 +1647,11 @@ function AlunoParadaRow({
   }
 
   return (
-    <View style={styles.alunoRowContainer}>
+    // Epic C (Responsável marcou "meu filho não vai hoje" — ou o
+    // motorista/monitor confirmou a ausência): pedido literal do usuário
+    // ("o aluno vai ficar meio opaco") — a linha INTEIRA fica esmaecida,
+    // não só o texto do botão trocado por "Ausente".
+    <View style={[styles.alunoRowContainer, jaAusente && { opacity: 0.5 }]}>
       <View style={styles.alunoRow}>
         <Text style={{ color: theme.colors.text, flex: 1 }}>
           {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}

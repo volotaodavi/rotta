@@ -175,6 +175,21 @@ export interface UpsertStudentAddressOverrideInput {
   observacao?: string;
 }
 
+/**
+ * "Meu filho não vai hoje" (Epic C, Responsável) — resposta de
+ * `POST/DELETE .../ausencia-hoje`. Sempre o dia corrente — não existe
+ * marcar ausência de um dia futuro/passado nesta tela.
+ */
+export interface StudentDailyAbsence {
+  studentId: string;
+  data: string;
+  motivo: string | null;
+}
+
+export interface MarkStudentDailyAbsenceInput {
+  motivo?: string;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -282,6 +297,30 @@ export function createStudentsEndpoints(apiClient: ApiClient) {
       await apiClient.request(`/students/${id}/address-overrides/${overrideId}`, {
         method: "DELETE",
       });
+    },
+
+    /** "Meu filho não vai hoje" (Epic C) — `null` quando ainda não foi marcado hoje. */
+    getAbsentToday: async (id: string): Promise<StudentDailyAbsence | null> =>
+      (
+        await apiClient.request<ApiEnvelope<StudentDailyAbsence | null>>(
+          `/students/${id}/ausencia-hoje`,
+        )
+      ).data,
+
+    /** "Meu filho não vai hoje" (Epic C) — motivo sempre opcional. */
+    markAbsentToday: async (
+      id: string,
+      input: MarkStudentDailyAbsenceInput = {},
+    ): Promise<StudentDailyAbsence> =>
+      (
+        await apiClient.request<ApiEnvelope<StudentDailyAbsence>>(`/students/${id}/ausencia-hoje`, {
+          method: "POST",
+          body: input,
+        })
+      ).data,
+
+    removeAbsentToday: async (id: string): Promise<void> => {
+      await apiClient.request(`/students/${id}/ausencia-hoje`, { method: "DELETE" });
     },
   };
 }

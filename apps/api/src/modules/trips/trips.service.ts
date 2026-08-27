@@ -364,8 +364,42 @@ export class TripsService {
     );
 
     await this.notificarVezDoAlunoBestEffort(trip, actor);
+    await this.seedAusenciasDoDiaBestEffort(trip, actor);
 
     return toTripResponseDto(trip);
+  }
+
+  /**
+   * Epic C ("Meu filho não vai hoje") — semeia automaticamente um
+   * `TripStudentEvent` AUSENTE pra cada aluno da rota com
+   * `StudentDailyAbsence` de hoje, assim que a viagem começa. A partir
+   * daí, TODA tela (motorista, monitor, responsável) já lê o mesmo
+   * `TripStudentEvent` compartilhado — nenhuma delas precisa saber que
+   * esta semeadura existe. Best-effort (nunca derruba `start()`): uma
+   * falha num aluno específico não impede os demais nem a viagem.
+   */
+  private async seedAusenciasDoDiaBestEffort(trip: Trip, actor: AuthenticatedUser): Promise<void> {
+    try {
+      const vinculos = await this.routesService.listStudents(trip.routeId, actor);
+      if (vinculos.length === 0) return;
+
+      const ausentesHoje = await this.studentsService.listAbsentStudentIdsToday(
+        vinculos.map((v) => v.studentId),
+      );
+      for (const studentId of ausentesHoje) {
+        try {
+          await this.addStudentEvent(trip.id, { studentId, tipo: "AUSENTE" }, actor);
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao semear ausência do dia do aluno ${studentId} (viagem ${trip.id}).`,
+          );
+          this.logger.warn(error instanceof Error ? error.message : String(error));
+        }
+      }
+    } catch (error) {
+      this.logger.warn(`Falha ao verificar ausências do dia da viagem ${trip.id}.`);
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
   }
 
   async finish(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<TripResponseDto> {

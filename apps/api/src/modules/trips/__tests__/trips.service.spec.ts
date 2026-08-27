@@ -127,6 +127,7 @@ describe("TripsService", () => {
       findRawById: jest.fn(),
       findByIdOrThrow: jest.fn(),
       listAddressOverridesByStudentsAndDate: jest.fn().mockResolvedValue(new Map()),
+      listAbsentStudentIdsToday: jest.fn().mockResolvedValue(new Set()),
     } as unknown as jest.Mocked<StudentsService>;
     usersService = {
       findActiveMembership: jest.fn(),
@@ -456,6 +457,70 @@ describe("TripsService", () => {
 
       expect(companiesService.getNomeFantasia).toHaveBeenCalledWith("company-1");
       expect(messagePersonalizationService.viagemIniciada).toHaveBeenCalledWith("Gama Transportes");
+    });
+
+    it("Epic C — semeia um TripStudentEvent AUSENTE pra aluno com StudentDailyAbsence de hoje ao iniciar a viagem", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(null);
+      const trip = buildTrip();
+      tripRepository.create.mockResolvedValue(trip);
+      tripRepository.findById.mockResolvedValue(trip);
+      companiesService.getNomeFantasia.mockResolvedValue("Gama Transportes");
+      routesService.listStudents.mockResolvedValue([
+        {
+          id: "vinculo-1",
+          contractId: "contract-1",
+          studentId: "student-ausente",
+          paradaEmbarqueId: "stop-1",
+          paradaDesembarqueId: "stop-2",
+        },
+      ] as never);
+      studentsService.listAbsentStudentIdsToday.mockResolvedValue(new Set(["student-ausente"]));
+      studentEventRepository.findByTripStudentAndTipo.mockResolvedValue(null);
+      studentEventRepository.create.mockResolvedValue({ id: "event-1" } as never);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-1",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "Aluno Ausente" } as never);
+
+      await service.start({ routeId: "route-1" }, motoristaActor, {});
+
+      expect(studentsService.listAbsentStudentIdsToday).toHaveBeenCalledWith(["student-ausente"]);
+      expect(studentEventRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ studentId: "student-ausente", tipo: "AUSENTE" }),
+      );
+    });
+
+    it("Epic C — não falha o início da viagem quando semear a ausência do dia dá erro (best-effort)", async () => {
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: null,
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      vehiclesService.findByIdOrThrow.mockResolvedValue({} as never);
+      tripRepository.findByRouteAndDate.mockResolvedValue(null);
+      tripRepository.create.mockResolvedValue(buildTrip());
+      companiesService.getNomeFantasia.mockResolvedValue("Gama Transportes");
+      routesService.listStudents.mockResolvedValue([]);
+      studentsService.listAbsentStudentIdsToday.mockRejectedValue(new Error("indisponível"));
+
+      const result = await service.start({ routeId: "route-1" }, motoristaActor, {});
+
+      expect(result.id).toBe("trip-1");
     });
   });
 

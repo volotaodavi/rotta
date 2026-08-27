@@ -18,11 +18,11 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 
-
 import { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
 import { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
 import { CreateStudentDto } from "./dto/create-student.dto";
 import { ListStudentsQueryDto } from "./dto/list-students-query.dto";
+import { MarkStudentDailyAbsenceDto } from "./dto/mark-student-daily-absence.dto";
 import { UpdateStudentDto } from "./dto/update-student.dto";
 import { StudentsService, type RequestMeta } from "./students.service";
 
@@ -199,5 +199,38 @@ export class StudentsController {
     @Req() req: Request,
   ) {
     return this.studentsService.removeAddressOverride(id, overrideId, actor, requestMeta(req));
+  }
+
+  @Get(":id/ausencia-hoje")
+  @Roles(...OWNER_ROLES)
+  getAusenciaHoje(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
+    return this.studentsService.getAusenciaHoje(id, actor);
+  }
+
+  /**
+   * "Meu filho não vai hoje" (Epic C) — sempre o dia corrente; bloqueia
+   * (mesmo guard de `address-overrides`) se a viagem do dia já
+   * começou.
+   */
+  @Post(":id/ausencia-hoje")
+  @Roles(...OWNER_ROLES)
+  marcarAusenciaHoje(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: MarkStudentDailyAbsenceDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.marcarAusenciaHoje(id, dto, actor, requestMeta(req));
+  }
+
+  @Delete(":id/ausencia-hoje")
+  @Roles(...OWNER_ROLES)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removerAusenciaHoje(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.removerAusenciaHoje(id, actor, requestMeta(req));
   }
 }

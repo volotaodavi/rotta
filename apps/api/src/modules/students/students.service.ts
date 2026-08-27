@@ -23,8 +23,10 @@ import type { CreateStudentAddressOverrideDto } from "./dto/create-student-addre
 import type { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
 import type { CreateStudentDto } from "./dto/create-student.dto";
 import type { ListStudentsQueryDto } from "./dto/list-students-query.dto";
+import type { MarkStudentDailyAbsenceDto } from "./dto/mark-student-daily-absence.dto";
 import type { StudentAddressOverrideResponseDto } from "./dto/student-address-override-response.dto";
 import type { StudentAuthorizedPersonResponseDto } from "./dto/student-authorized-person-response.dto";
+import type { StudentDailyAbsenceResponseDto } from "./dto/student-daily-absence-response.dto";
 import type { ListStudentsResponseDto, StudentResponseDto } from "./dto/student-response.dto";
 import type { UpdateStudentDto } from "./dto/update-student.dto";
 import type { StudentAddressOverrideRepository } from "./repositories/student-address-override.repository";
@@ -606,5 +608,127 @@ export class StudentsService {
         toStudentAddressOverrideResponseDto(override),
       ]),
     );
+  }
+
+  // ---------------------------------------------------------------------
+  // "Meu filho não vai hoje" (Epic C, Responsável) — StudentDailyAbsence.
+  // Marcado ANTES da viagem do dia começar; o aluno aparece
+  // "ausente"/opaco pro motorista, que pula a parada dele (ver
+  // `TripsService.start()` — semeia um `TripStudentEvent` AUSENTE
+  // automaticamente a partir do que este bloco grava aqui).
+  // ---------------------------------------------------------------------
+
+  /** Início do dia corrente em UTC — mesma convenção de `Trip.data`/`StudentAddressOverride.data`. */
+  private today(): Date {
+    const now = new Date();
+    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  }
+
+  /**
+   * Reaproveita literalmente o guard `assertDiaAindaNaoIniciado` já
+   * usado por `StudentAddressOverride` (pedido do usuário: "isso pode
+   * ser feito até antes da van iniciar o novo serviço" — mesma regra,
+   * sem reinventar). Idempotente por dia (`@@unique([studentId,
+   * data])`) — reenviar no mesmo dia só atualiza o motivo, nunca
+   * duplica.
+   */
+  async marcarAusenciaHoje(
+    studentId: string,
+    dto: MarkStudentDailyAbsenceDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<StudentDailyAbsenceResponseDto> {
+    const student = await this.fetchOrThrow(studentId, actor);
+    this.assertOwnedByActor(student, actor);
+
+    const dia = this.today();
+    await this.assertDiaAindaNaoIniciado(studentId, dia);
+
+    await this.prisma.withBypass(
+      this.prisma.studentDailyAbsence.upsert({
+        where: { studentId_data: { studentId, data: dia } },
+        create: { studentId, data: dia, motivo: dto.motivo, criadoPorUserId: actor.sub },
+        update: { motivo: dto.motivo ?? null },
+      }),
+    );
+
+    await this.recordAudit({
+      entidadeId: studentId,
+      acao: "DAILY_ABSENCE_SET",
+      atorUserId: actor.sub,
+      dadosDepois: { data: dia.toISOString().slice(0, 10), motivo: dto.motivo ?? null },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return { studentId, data: dia.toISOString().slice(0, 10), motivo: dto.motivo ?? null };
+  }
+
+  async removerAusenciaHoje(
+    studentId: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<void> {
+    const student = await this.fetchOrThrow(studentId, actor);
+    this.assertOwnedByActor(student, actor);
+
+    const dia = this.today();
+    await this.assertDiaAindaNaoIniciado(studentId, dia);
+
+    const existing = await this.prisma.withBypass(
+      this.prisma.studentDailyAbsence.findUnique({
+        where: { studentId_data: { studentId, data: dia } },
+      }),
+    );
+    if (!existing) return;
+
+    await this.prisma.withBypass(
+      this.prisma.studentDailyAbsence.delete({ where: { id: existing.id } }),
+    );
+
+    await this.recordAudit({
+      entidadeId: studentId,
+      acao: "DAILY_ABSENCE_REMOVED",
+      atorUserId: actor.sub,
+      dadosAntes: { data: dia.toISOString().slice(0, 10) },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
+  /** Estado atual (dia corrente) — alimenta o botão "Meu filho não vai hoje" na ficha do aluno. */
+  async getAusenciaHoje(
+    studentId: string,
+    actor: AuthenticatedUser,
+  ): Promise<StudentDailyAbsenceResponseDto | null> {
+    const student = await this.fetchOrThrow(studentId, actor);
+    this.assertOwnedByActor(student, actor);
+
+    const dia = this.today();
+    const existing = await this.prisma.withBypass(
+      this.prisma.studentDailyAbsence.findUnique({
+        where: { studentId_data: { studentId, data: dia } },
+      }),
+    );
+    if (!existing) return null;
+    return { studentId, data: dia.toISOString().slice(0, 10), motivo: existing.motivo };
+  }
+
+  /**
+   * Leitura interna (sem RBAC de ator humano, mesmo padrão de
+   * `listAddressOverridesByStudentsAndDate`) usada por
+   * `TripsService.start()` pra saber quais alunos da rota marcaram
+   * ausência hoje e semear automaticamente o evento `AUSENTE`.
+   */
+  async listAbsentStudentIdsToday(studentIds: string[]): Promise<Set<string>> {
+    if (studentIds.length === 0) return new Set();
+    const dia = this.today();
+    const ausencias = await this.prisma.withBypass(
+      this.prisma.studentDailyAbsence.findMany({
+        where: { studentId: { in: studentIds }, data: dia },
+        select: { studentId: true },
+      }),
+    );
+    return new Set(ausencias.map((a) => a.studentId));
   }
 }

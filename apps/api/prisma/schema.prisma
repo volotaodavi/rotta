@@ -824,13 +824,14 @@ model User {
   /// `User` pode também aparecer como `contratosMotorista`/
   /// `contratosMonitor` quando atua como Motorista/Monitor de uma
   /// Empresa (Dossiê 8 §2 — "múltiplos papéis simultâneos").
-  alunos                 Student[]                @relation("StudentResponsavel")
-  desviosEnderecoCriados StudentAddressOverride[] @relation("StudentAddressOverrideCriadoPor")
-  solicitacoesTransporte TransportRequest[]       @relation("TransportRequestResponsavel")
-  contratos              Contract[]               @relation("ContractResponsavel")
-  contratosMotorista     Contract[]               @relation("ContractMotorista")
-  contratosMonitor       Contract[]               @relation("ContractMonitor")
-  avaliacoesFeitas       Rating[]                 @relation("RatingResponsavel")
+  alunos                  Student[]                @relation("StudentResponsavel")
+  desviosEnderecoCriados  StudentAddressOverride[] @relation("StudentAddressOverrideCriadoPor")
+  ausenciasDiariasCriadas StudentDailyAbsence[]    @relation("StudentDailyAbsenceCriadoPor")
+  solicitacoesTransporte  TransportRequest[]       @relation("TransportRequestResponsavel")
+  contratos               Contract[]               @relation("ContractResponsavel")
+  contratosMotorista      Contract[]               @relation("ContractMotorista")
+  contratosMonitor        Contract[]               @relation("ContractMonitor")
+  avaliacoesFeitas        Rating[]                 @relation("RatingResponsavel")
 
   /// Relações do módulo Communication (briefing "ROTTA COMMUNICATION
   /// ENGINE") — inbox pessoal, dispositivos com Token FCM e preferências
@@ -1855,6 +1856,7 @@ model Student {
   vinculosRota       RouteStudent[]
   eventosViagem      TripStudentEvent[]
   desviosEndereco    StudentAddressOverride[]
+  ausenciasDiarias   StudentDailyAbsence[]
 
   @@index([responsavelId, deletedAt])
   @@index([schoolId])
@@ -1934,6 +1936,33 @@ model StudentAddressOverride {
   @@unique([studentId, data])
   @@index([studentId, data])
   @@map("student_address_overrides")
+}
+
+/// "Meu filho não vai hoje" (Epic C, Responsável) — marcado ANTES da
+/// viagem do dia começar (mesmo guard `assertDiaAindaNaoIniciado` do
+/// `StudentAddressOverride`). `TripsService.start()` lê este registro
+/// pra semear automaticamente um `TripStudentEvent` do tipo `AUSENTE`
+/// pra cada aluno ausente hoje — dali em diante, tela de
+/// motorista/monitor/responsável já leem o mesmo evento compartilhado,
+/// sem precisar saber que esta tabela existe.
+model StudentDailyAbsence {
+  id        String  @id @default(uuid()) @db.Uuid
+  studentId String  @db.Uuid
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// Dia em que o aluno não vai — mesma convenção de `Trip.data`/`StudentAddressOverride.data`.
+  data DateTime @db.Date
+
+  motivo String?
+
+  criadoPorUserId String @db.Uuid
+  criadoPor       User   @relation("StudentDailyAbsenceCriadoPor", fields: [criadoPorUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, data])
+  @@index([studentId, data])
+  @@map("student_daily_absences")
 }
 
 // =============================================================================

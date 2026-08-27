@@ -159,6 +159,10 @@ describe("StudentsService", () => {
   // delegates) — handles próprios só pra estes dois usados nos testes.
   let routeStudentFindMany: jest.Mock;
   let tripFindFirst: jest.Mock;
+  let studentDailyAbsenceUpsert: jest.Mock;
+  let studentDailyAbsenceFindUnique: jest.Mock;
+  let studentDailyAbsenceDelete: jest.Mock;
+  let studentDailyAbsenceFindMany: jest.Mock;
 
   beforeEach(() => {
     studentRepository = {
@@ -222,10 +226,20 @@ describe("StudentsService", () => {
     };
     routeStudentFindMany = jest.fn().mockResolvedValue([]);
     tripFindFirst = jest.fn().mockResolvedValue(null);
+    studentDailyAbsenceUpsert = jest.fn();
+    studentDailyAbsenceFindUnique = jest.fn().mockResolvedValue(null);
+    studentDailyAbsenceDelete = jest.fn();
+    studentDailyAbsenceFindMany = jest.fn().mockResolvedValue([]);
     prisma = {
       withBypass: jest.fn((operation: unknown) => operation),
       routeStudent: { findMany: routeStudentFindMany },
       trip: { findFirst: tripFindFirst },
+      studentDailyAbsence: {
+        upsert: studentDailyAbsenceUpsert,
+        findUnique: studentDailyAbsenceFindUnique,
+        delete: studentDailyAbsenceDelete,
+        findMany: studentDailyAbsenceFindMany,
+      },
     } as unknown as jest.Mocked<PrismaService>;
 
     service = new StudentsService(
@@ -613,6 +627,115 @@ describe("StudentsService", () => {
       await expect(
         service.removeAddressOverride("student-1", "override-1", responsavelActor, {}),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("marcarAusenciaHoje / removerAusenciaHoje / getAusenciaHoje (Epic C)", () => {
+    it("cria a ausência de hoje quando nenhuma rota do aluno tem viagem hoje", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      routeStudentFindMany.mockResolvedValue([{ routeId: "route-1" }] as never);
+      tripFindFirst.mockResolvedValue(null);
+
+      const result = await service.marcarAusenciaHoje(
+        "student-1",
+        { motivo: "Consulta médica" },
+        responsavelActor,
+        {},
+      );
+
+      expect(studentDailyAbsenceUpsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { studentId_data: { studentId: "student-1", data: expect.any(Date) } },
+          create: expect.objectContaining({
+            studentId: "student-1",
+            motivo: "Consulta médica",
+            criadoPorUserId: "responsavel-1",
+          }),
+        }),
+      );
+      expect(result.studentId).toBe("student-1");
+      expect(result.motivo).toBe("Consulta médica");
+    });
+
+    it("rejeita marcar ausência quando a viagem do dia já começou", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      routeStudentFindMany.mockResolvedValue([{ routeId: "route-1" }] as never);
+      tripFindFirst.mockResolvedValue({ id: "trip-1" });
+
+      await expect(
+        service.marcarAusenciaHoje("student-1", {}, responsavelActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(studentDailyAbsenceUpsert).not.toHaveBeenCalled();
+    });
+
+    it("rejeita um Responsável que não é dono do aluno", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+
+      await expect(
+        service.marcarAusenciaHoje("student-1", {}, outroResponsavelActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("removerAusenciaHoje é um no-op quando não há nenhuma ausência marcada hoje", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      studentDailyAbsenceFindUnique.mockResolvedValue(null);
+
+      await service.removerAusenciaHoje("student-1", responsavelActor, {});
+
+      expect(studentDailyAbsenceDelete).not.toHaveBeenCalled();
+    });
+
+    it("removerAusenciaHoje remove o registro do dia quando existe", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      studentDailyAbsenceFindUnique.mockResolvedValue({ id: "absence-1" });
+
+      await service.removerAusenciaHoje("student-1", responsavelActor, {});
+
+      expect(studentDailyAbsenceDelete).toHaveBeenCalledWith({ where: { id: "absence-1" } });
+    });
+
+    it("getAusenciaHoje devolve null quando o aluno não está marcado ausente hoje", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      studentDailyAbsenceFindUnique.mockResolvedValue(null);
+
+      const result = await service.getAusenciaHoje("student-1", responsavelActor);
+
+      expect(result).toBeNull();
+    });
+
+    it("getAusenciaHoje devolve o motivo quando o aluno está marcado ausente hoje", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      studentDailyAbsenceFindUnique.mockResolvedValue({ motivo: "Viagem em família" });
+
+      const result = await service.getAusenciaHoje("student-1", responsavelActor);
+
+      expect(result).toEqual(
+        expect.objectContaining({ studentId: "student-1", motivo: "Viagem em família" }),
+      );
+    });
+
+    it("listAbsentStudentIdsToday devolve vazio sem consultar o banco quando a lista de alunos é vazia", async () => {
+      const result = await service.listAbsentStudentIdsToday([]);
+
+      expect(result.size).toBe(0);
+      expect(studentDailyAbsenceFindMany).not.toHaveBeenCalled();
+    });
+
+    it("listAbsentStudentIdsToday devolve o conjunto de alunos ausentes hoje", async () => {
+      studentDailyAbsenceFindMany.mockResolvedValue([
+        { studentId: "student-1" },
+        { studentId: "student-2" },
+      ] as never);
+
+      const result = await service.listAbsentStudentIdsToday([
+        "student-1",
+        "student-2",
+        "student-3",
+      ]);
+
+      expect(result.has("student-1")).toBe(true);
+      expect(result.has("student-2")).toBe(true);
+      expect(result.has("student-3")).toBe(false);
     });
   });
 
