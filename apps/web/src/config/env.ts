@@ -21,6 +21,11 @@ const envSchema = z.object({
   // Sem esta variável, `@rotta/maps/web` continua usando a OpenFreeMap
   // sem nenhuma chave (comportamento de sempre, stub honesto) — só
   // passa a usar a MapTiler quando esta chave existir de verdade.
+  //
+  // Ativada no dashboard da Vercel (projeto rotta-web) em 27/08/2026 —
+  // este comentário força um novo build (Next.js inlina `NEXT_PUBLIC_*`
+  // em tempo de build, não em runtime; só ADICIONAR a variável no
+  // dashboard não atualiza um deployment já existente).
   NEXT_PUBLIC_MAPTILER_API_KEY: z.string().optional(),
 });
 

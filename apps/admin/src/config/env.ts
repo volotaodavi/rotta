@@ -13,6 +13,8 @@ import { z } from "zod";
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url(),
   // Rotta Geo Platform — mesma chave/mesmo raciocínio de `apps/web`.
+  // Ativada no dashboard da Vercel (projeto rotta-admin) em 27/08/2026 —
+  // comentário força um novo build (ver `apps/web/src/config/env.ts`).
   NEXT_PUBLIC_MAPTILER_API_KEY: z.string().optional(),
 });
 
