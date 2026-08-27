@@ -32,7 +32,8 @@ const STATUS_ICON: Record<IntegrationStatusLevel, typeof CheckCircle2> = {
 };
 
 const INTEGRATION_LABEL: Record<string, string> = {
-  abacatepay: "AbacatePay (cobrança de assinaturas)",
+  abacatepay: "AbacatePay (assinatura via Pix)",
+  asaas: "Asaas (cartão de crédito, débito e boleto)",
   lytex: "Lytex (Rotta Pay: split/transferência PIX)",
   nominatim: "Nominatim (Rotta Geo Engine: geocodificação)",
   osrm: "OSRM (Rotta Geo Engine: rotas)",

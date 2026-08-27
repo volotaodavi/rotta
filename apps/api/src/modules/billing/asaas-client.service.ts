@@ -22,9 +22,16 @@ export const ASAAS_INTEGRATION_NAME = "asaas";
  * (Pix continua na AbacatePay, `abacatepay-client.service.ts`).
  *
  * Ao contrário de `AbacatePayClientService` (contrato já confirmado com
- * chamadas reais), este contrato ainda NÃO foi testado contra uma conta
- * real (mesma ressalva de `RottaPayProviderService`/Lytex) — não há
- * `ASAAS_API_KEY` neste ambiente de desenvolvimento.
+ * chamadas reais e autenticadas), este cliente NUNCA foi exercitado com
+ * uma `ASAAS_API_KEY` válida (mesma ressalva de `RottaPayProviderService`/
+ * Lytex) — o formato de payload de sucesso (`createSubscription`,
+ * `getPayment` etc.) segue a documentação pública, não uma resposta real.
+ * O mecanismo de autenticação e o envelope de erro, porém, já foram
+ * confirmados batendo direto em `api.asaas.com`/`api-sandbox.asaas.com`
+ * sem chave (nov/2026): header `access_token` (não `Bearer`) é o correto —
+ * `Authorization: Bearer` retorna `invalid_jwt`, um `access_token`
+ * inválido retorna exatamente `{"errors":[{"code":"invalid_access_token",
+ * "description":"..."}]}`, igual ao que este `request()` espera.
  *
  * `isConfigured()` segue o mesmo padrão "stub honesto" das demais
  * integrações opcionais: sem `ASAAS_API_KEY`, todo método público lança
