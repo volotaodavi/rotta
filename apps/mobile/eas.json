@@ -8,14 +8,16 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3333/v1"
+        "EXPO_PUBLIC_API_URL": "http://localhost:3333/v1",
+        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
       }
     },
     "preview": {
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rotta-vt7i.onrender.com/v1"
+        "EXPO_PUBLIC_API_URL": "https://rotta-vt7i.onrender.com/v1",
+        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
       },
       "android": { "buildType": "apk" }
     },
@@ -23,7 +25,8 @@
       "channel": "production",
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://rotta-vt7i.onrender.com/v1"
+        "EXPO_PUBLIC_API_URL": "https://rotta-vt7i.onrender.com/v1",
+        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
       }
     }
   },
