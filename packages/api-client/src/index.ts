@@ -25,6 +25,7 @@ export * from "./endpoints/identity-verification";
 export * from "./endpoints/legal-documents";
 export * from "./endpoints/marketplace";
 export * from "./endpoints/notifications";
+export * from "./endpoints/plan-notices";
 export * from "./endpoints/rotta-ai";
 export * from "./endpoints/routes";
 export * from "./endpoints/schools";

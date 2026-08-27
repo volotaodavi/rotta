@@ -34,6 +34,7 @@ export function toCompanyResponseDto(company: CompanyWithPlan): CompanyResponseD
       name: company.plan.name,
       priceCents: company.plan.priceCents,
     },
+    trialExpiraEm: company.trialExpiraEm,
     createdAt: company.createdAt,
     updatedAt: company.updatedAt,
   };

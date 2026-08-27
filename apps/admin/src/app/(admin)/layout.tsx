@@ -16,6 +16,7 @@ import {
   GraduationCap,
   HeartPulse,
   Home,
+  Layers,
   LogOut,
   Megaphone,
   MessageCircle,
@@ -39,7 +40,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffice";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { PrivacyProvider, usePrivacy } from "@/providers/privacy-provider";
-
 
 interface NavItem {
   href: Route;
@@ -80,6 +80,7 @@ const NAV_PRINCIPAL: NavItem[] = [
 const NAV_PLATAFORMA: NavItem[] = [
   { href: "/saude", label: "Saúde", icon: HeartPulse },
   { href: "/financeiro", label: "Financeiro", icon: DollarSign },
+  { href: "/planos", label: "Planos", icon: Layers },
   { href: "/documentos-legais", label: "Documentos legais", icon: FileText },
   { href: "/auditoria-legal", label: "Auditoria legal", icon: ScrollText },
   { href: "/erros-cliente", label: "Erros do cliente", icon: Bug },

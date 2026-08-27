@@ -60,6 +60,7 @@ import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
 import { MonitorsModule } from "@/modules/monitors/monitors.module";
 import { NotificationsModule } from "@/modules/notifications/notifications.module";
 import { ParentsModule } from "@/modules/parents/parents.module";
+import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
 import { ReportsModule } from "@/modules/reports/reports.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
@@ -143,6 +144,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     DocumentsModule,
     ReportsModule,
     SettingsModule,
+    PlanNoticesModule,
     AuditModule,
     LogsModule,
     AnalyticsModule,

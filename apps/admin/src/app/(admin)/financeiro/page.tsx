@@ -1,7 +1,9 @@
 "use client";
 
-import { Building2, DollarSign, ReceiptText, Wallet } from "@rotta/icons";
+import { Building2, DollarSign, ReceiptText, TrendingUp, Wallet } from "@rotta/icons";
 import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+
+import type { BillingProviderOverview } from "@rotta/api-client";
 
 import { useBillingAdminOverview } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
@@ -40,6 +42,72 @@ function ValorCard({
           </Typography>
           <Typography variant="title">
             {value === null ? "-" : hidden ? "R$ ••••••" : value}
+          </Typography>
+        </div>
+      </Card.Body>
+    </Card>
+  );
+}
+
+/**
+ * Bloco de valores de UM provedor (AbacatePay ou Asaas), lado a lado no
+ * painel (pedido do usuário: "taxas da Asaas, quanto as taxas da
+ * Abacatepay (pix)"). Quando `configured === false`, mostra o aviso em
+ * vez de valores fabricados.
+ */
+function ProviderCard({
+  titulo,
+  descricao,
+  overview,
+  hidden,
+}: {
+  titulo: string;
+  descricao: string;
+  overview: BillingProviderOverview;
+  hidden: boolean;
+}): JSX.Element {
+  return (
+    <Card>
+      <Card.Header
+        title={titulo}
+        action={!overview.configured && <Badge variant="warning">Não configurada</Badge>}
+      />
+      <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <Typography variant="caption" color="muted" className="sm:col-span-3">
+          {descricao}
+        </Typography>
+        <div>
+          <Typography variant="caption" color="muted">
+            Recebido
+          </Typography>
+          <Typography variant="subtitle">
+            {overview.totalRecebidoCentavos === null
+              ? "-"
+              : hidden
+                ? "R$ ••••••"
+                : centsToBRL(overview.totalRecebidoCentavos)}
+          </Typography>
+        </div>
+        <div>
+          <Typography variant="caption" color="muted">
+            Taxa retida
+          </Typography>
+          <Typography variant="subtitle">
+            {overview.totalTaxaRetidaCentavos === null
+              ? "-"
+              : hidden
+                ? "R$ ••••••"
+                : centsToBRL(overview.totalTaxaRetidaCentavos)}
+          </Typography>
+        </div>
+        <div>
+          <Typography variant="caption" color="muted">
+            Cobranças pagas
+          </Typography>
+          <Typography variant="subtitle">
+            {overview.quantidadeCobrancasPagas === null
+              ? "-"
+              : overview.quantidadeCobrancasPagas.toLocaleString("pt-BR")}
           </Typography>
         </div>
       </Card.Body>
@@ -88,18 +156,34 @@ export default function FinanceiroPage(): JSX.Element {
       <div>
         <Typography variant="display">Financeiro</Typography>
         <Typography variant="bodySmall" color="muted">
-          Mensalidade da plataforma (R$ 39,90/mês) cobrada via AbacatePay.
+          Mensalidade da plataforma (R$ 39,90/mês) — Pix via AbacatePay, cartão/débito/boleto via
+          Asaas.
         </Typography>
       </div>
 
-      {!data.abacatepayConfigured && (
+      {(!data.abacatepay.configured || !data.asaas.configured) && (
         <Card>
-          <Card.Body>
-            <Badge variant="warning">AbacatePay não configurada</Badge>
-            <Typography variant="bodySmall" color="muted" className="mt-2">
-              Esta implantação não tem <code>ABACATEPAY_API_KEY</code> configurada: valores
-              recebidos e taxa retida não podem ser consultados. Empresas e planos abaixo continuam
-              corretos (vêm do banco da Rotta, não da AbacatePay).
+          <Card.Body className="flex flex-col gap-2">
+            {!data.abacatepay.configured && (
+              <div className="flex items-center gap-2">
+                <Badge variant="warning">AbacatePay não configurada</Badge>
+                <Typography variant="bodySmall" color="muted">
+                  Sem <code>ABACATEPAY_API_KEY</code> — valores de Pix não podem ser consultados.
+                </Typography>
+              </div>
+            )}
+            {!data.asaas.configured && (
+              <div className="flex items-center gap-2">
+                <Badge variant="warning">Asaas não configurada</Badge>
+                <Typography variant="bodySmall" color="muted">
+                  Sem <code>ASAAS_API_KEY</code> — valores de cartão/boleto não podem ser
+                  consultados.
+                </Typography>
+              </div>
+            )}
+            <Typography variant="caption" color="muted">
+              Empresas e planos abaixo continuam corretos (vêm do banco da Rotta, não dos
+              provedores).
             </Typography>
           </Card.Body>
         </Card>
@@ -137,6 +221,27 @@ export default function FinanceiroPage(): JSX.Element {
           label="Empresas ativas no plano"
           value={data.quantidadeEmpresasAtivas.toLocaleString("pt-BR")}
           hidden={false}
+        />
+        <ValorCard
+          icon={TrendingUp}
+          label="Lucro líquido (recebido − taxas)"
+          value={data.lucroLiquidoCentavos === null ? null : centsToBRL(data.lucroLiquidoCentavos)}
+          hidden={hidden}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ProviderCard
+          titulo="AbacatePay (Pix)"
+          descricao="Assinatura via Pix — cobrança recorrente embutida na Rotta."
+          overview={data.abacatepay}
+          hidden={hidden}
+        />
+        <ProviderCard
+          titulo="Asaas (Cartão e Boleto)"
+          descricao="Checkout próprio da Rotta — cartão de crédito, débito e boleto processados pela Asaas."
+          overview={data.asaas}
+          hidden={hidden}
         />
       </div>
 
@@ -186,8 +291,14 @@ export default function FinanceiroPage(): JSX.Element {
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge variant="neutral">{empresa.planoNome}</Badge>
-                      {!empresa.abacatepaySubscriptionId && (
-                        <Badge variant="warning">Sem assinatura AbacatePay (via Pix)</Badge>
+                      {empresa.abacatepaySubscriptionId && (
+                        <Badge variant="info">Pix (AbacatePay)</Badge>
+                      )}
+                      {empresa.asaasSubscriptionId && (
+                        <Badge variant="info">Cartão/Boleto (Asaas)</Badge>
+                      )}
+                      {!empresa.abacatepaySubscriptionId && !empresa.asaasSubscriptionId && (
+                        <Badge variant="warning">Sem assinatura recorrente</Badge>
                       )}
                     </div>
                   </div>

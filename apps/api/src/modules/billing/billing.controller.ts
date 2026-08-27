@@ -7,6 +7,7 @@ import { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
+import { PlanNoticesService } from "@/modules/plan-notices/plan-notices.service";
 import { Role } from "@/shared/enums";
 
 /**
@@ -23,7 +24,10 @@ import { Role } from "@/shared/enums";
 @Controller("billing")
 @SkipTrialGuard()
 export class BillingController {
-  constructor(private readonly billingService: BillingService) {}
+  constructor(
+    private readonly billingService: BillingService,
+    private readonly planNoticesService: PlanNoticesService,
+  ) {}
 
   /** Checkout Pix embutido (QR Code + copia-e-cola direto na resposta — sem redirecionar). */
   @Post("checkout/pix")
@@ -65,5 +69,12 @@ export class BillingController {
   @Roles(Role.ADMIN_ROTTA)
   getAdminOverview() {
     return this.billingService.getAdminOverview();
+  }
+
+  /** Avisos de plano ativos (globais + os da própria empresa) — publicados pelo Admin Rotta em `/plan-notices` (painel "Controle de Planos"). */
+  @Get("notices")
+  @Roles(Role.EMPRESA, Role.GESTOR)
+  getMyNotices(@CurrentUser() actor: AuthenticatedUser) {
+    return this.planNoticesService.listActiveForCompany(actor.tenantId as string);
   }
 }

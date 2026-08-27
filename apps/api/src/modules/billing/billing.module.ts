@@ -10,6 +10,7 @@ import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
 
 /**
  * Módulo Billing (Dossiê 26) — a Rotta cobrando a mensalidade das
@@ -22,7 +23,7 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
  * exporta — este módulo nunca reimplementa acesso a `Prisma.company`.
  */
 @Module({
-  imports: [CompaniesModule],
+  imports: [CompaniesModule, PlanNoticesModule],
   controllers: [BillingController, AbacatePayWebhookController, AsaasWebhookController],
   providers: [
     AbacatePayClientService,

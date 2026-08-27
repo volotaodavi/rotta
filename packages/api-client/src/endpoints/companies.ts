@@ -101,6 +101,8 @@ export interface Company {
   fusoHorario: string;
   status: CompanyStatus;
   plan: CompanyPlan;
+  /** Quando o trial de 1 mês grátis vence (Dossiê 26) — `null` fora do trial ou em empresas criadas antes deste campo existir. */
+  trialExpiraEm: string | null;
   createdAt: string;
   updatedAt: string;
 }

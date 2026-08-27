@@ -14,6 +14,7 @@ import {
   createLegalDocumentsEndpoints,
   createMarketplaceEndpoints,
   createNotificationsEndpoints,
+  createPlanNoticesEndpoints,
   createRoutesEndpoints,
   createSchoolsEndpoints,
   createSupportEndpoints,
@@ -53,3 +54,4 @@ export const healthApi = createHealthEndpoints(apiClient);
 export const legalDocumentsApi = createLegalDocumentsEndpoints(apiClient);
 export const identityVerificationApi = createIdentityVerificationEndpoints(apiClient);
 export const billingApi = createBillingEndpoints(apiClient);
+export const planNoticesApi = createPlanNoticesEndpoints(apiClient);

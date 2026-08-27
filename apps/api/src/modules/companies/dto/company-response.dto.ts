@@ -39,6 +39,11 @@ export class CompanyResponseDto {
   @ApiProperty() fusoHorario!: string;
   @ApiProperty({ enum: CompanyStatus }) status!: CompanyStatus;
   @ApiProperty({ type: PlanResponseDto }) plan!: PlanResponseDto;
+  @ApiPropertyOptional({
+    description:
+      "Quando o trial de 1 mês grátis vence (Dossiê 26) — `null` em empresas já `ATIVO`/administrativas ou criadas antes deste campo existir. Base do painel de controle de planos do Admin (dias restantes/expirado há N dias).",
+  })
+  trialExpiraEm?: Date | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

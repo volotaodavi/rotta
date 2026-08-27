@@ -635,6 +635,12 @@ model Company {
   /// Erros de front-end reportados pelo próprio navegador do usuário
   /// (Frente client-error-reporting) — ver nota completa em `ClientErrorReport`.
   clientErrorReports     ClientErrorReport[]
+  /// Avisos de plano do Admin Rotta dirigidos especificamente a esta
+  /// empresa (Dossiê 26, painel "Controle de Planos") — ver nota
+  /// completa em `PlanNotice`. Nunca populado pelos avisos GLOBAIS
+  /// (`PlanNotice.companyId = null`), que não têm vínculo com nenhuma
+  /// `Company` específica.
+  avisosPlano            PlanNotice[]
 
   @@index([status])
   @@index([tipo])
@@ -893,6 +899,12 @@ model User {
 
   /// Avisos/comunicados publicados por este Admin Rotta (aba "Avisos").
   avisosCriados Announcement[] @relation("AnnouncementCriadoPor")
+
+  /// Avisos de plano publicados por este Admin Rotta (Dossiê 26, painel
+  /// "Controle de Planos" — distinto de `avisosCriados`/`Announcement`,
+  /// que é broadcast por papel; `PlanNotice` é sobre PLANO/faturamento,
+  /// global ou de uma empresa específica).
+  avisosPlanoCriados PlanNotice[] @relation("PlanNoticeCriadoPor")
 
   /// Consentimentos versionados (Dossiê 45 FRENTE 5) — ver `ConsentRecord`.
   consentRecords ConsentRecord[]
@@ -2719,6 +2731,41 @@ model Announcement {
 
   @@index([createdAt])
   @@map("announcements")
+}
+
+/// Aviso de PLANO/faturamento (Dossiê 26, painel Admin "Controle de
+/// Planos" — pedido do usuário: "os admins poderão... propor avisos de
+/// cada plano" — quem escreve é sempre o Admin Rotta, nunca a própria
+/// empresa). Deliberadamente uma tabela nova, não reaproveita
+/// `Announcement` (broadcast por PAPEL, sem `companyId`, sem estado de
+/// ativo/inativo) — este aviso é sobre o PLANO de uma empresa (ou de
+/// todas), sobre promoção ou qualquer assunto que o Admin quiser falar.
+/// `companyId = null` → aviso GLOBAL (toda empresa vê); `companyId`
+/// setado → só a empresa apontada vê. Sem estado de "lido" (não pedido
+/// — mantém simples).
+model PlanNotice {
+  id String @id @default(uuid()) @db.Uuid
+
+  titulo String
+  corpo  String
+
+  /// `null` = aviso global (todas as empresas); setado = só esta empresa.
+  companyId String?  @db.Uuid
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Permite ao Admin desativar um aviso sem apagar o histórico
+  /// (auditoria) — avisos inativos somem da leitura da empresa
+  /// (`GET /billing/notices`) mas continuam listados pro Admin.
+  ativo Boolean @default(true)
+
+  criadoPorUserId String @db.Uuid
+  criadoPor       User   @relation("PlanNoticeCriadoPor", fields: [criadoPorUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+  @@index([ativo])
+  @@map("plan_notices")
 }
 
 /// Preferências de comunicação de UM usuário (briefing
