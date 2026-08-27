@@ -22,6 +22,7 @@ export * from "./atoms/PhoneInput";
 export * from "./atoms/ProgressRing";
 export * from "./atoms/Select";
 export * from "./atoms/Spinner";
+export * from "./atoms/Textarea";
 export * from "./atoms/Typography";
 export * from "./molecules/ErrorState";
 export * from "./molecules/FormField";

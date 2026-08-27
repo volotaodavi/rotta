@@ -18,7 +18,6 @@ import type {
 
 import { vehiclesApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do módulo Veículos (Painel Web — Empresa/Gestor
  * gerenciando a própria frota), mesmo padrão de `use-companies.ts`.
@@ -50,6 +49,29 @@ export function useMyVehicle() {
   return useQuery({
     queryKey: ["vehicles", "me"],
     queryFn: () => vehiclesApi.getMyVehicle(),
+  });
+}
+
+/**
+ * Epic A (Responsável) — veículos com decisão do Admin Rotta ainda não
+ * reconhecida ("Li e concordo"). Só relevante pra quem tem `role`
+ * responsável; a página que monta o modal decide isso, não este hook.
+ */
+export function usePendingVehicleAdminReviewAcknowledgements() {
+  return useQuery({
+    queryKey: ["vehicles", "pendencias-revisao-admin"],
+    queryFn: () => vehiclesApi.listPendingAdminReviewAcknowledgements(),
+  });
+}
+
+/** "Li e concordo" — de propósito nunca existe "recusar" (pedido explícito do usuário). */
+export function useAcknowledgeVehicleAdminReview(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => vehiclesApi.acknowledgeAdminReview(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["vehicles", "pendencias-revisao-admin"] });
+    },
   });
 }
 

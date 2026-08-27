@@ -8,6 +8,7 @@ import {
   Input,
   Modal,
   Spinner,
+  Tabs,
   Typography,
   buttonVariants,
 } from "@rotta/ui/web";
@@ -22,6 +23,7 @@ import {
   useReactivateCompany,
   useSuspendCompany,
 } from "@/features/companies/hooks/use-companies";
+import { CompanyVehiclesTab } from "@/features/vehicles/components/company-vehicles-tab";
 
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -51,6 +53,7 @@ export default function EmpresaDetalhesPage({
   const [supportError, setSupportError] = useState("");
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [suspendMotivo, setSuspendMotivo] = useState(motivo);
+  const [activeTab, setActiveTab] = useState<"dados" | "veiculos">("dados");
 
   function handleConfirmarAcessoSuporte(): void {
     if (supportMotivo.trim().length < 10) {
@@ -217,33 +220,46 @@ export default function EmpresaDetalhesPage({
         </Card>
       )}
 
-      <Card>
-        <Card.Header
-          title="Dados da empresa"
-          action={<Badge variant="neutral">{company.plan.name}</Badge>}
-        />
-        <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <InfoItem label="Email" value={company.email} />
-          <InfoItem label="Telefone" value={company.telefone} />
-          <InfoItem label="WhatsApp" value={company.whatsapp ?? "Não informado"} />
-          <InfoItem label="Tipo" value={COMPANY_TYPE_LABEL[company.tipo]} />
-          <InfoItem
-            label="Endereço"
-            value={`${company.endereco}, ${company.numero}${company.complemento ? `, ${company.complemento}` : ""}`}
+      <Tabs
+        tabs={[
+          { id: "dados", label: "Dados da empresa" },
+          { id: "veiculos", label: "Veículos" },
+        ]}
+        activeId={activeTab}
+        onChange={(id) => setActiveTab(id as "dados" | "veiculos")}
+      />
+
+      {activeTab === "dados" ? (
+        <Card>
+          <Card.Header
+            title="Dados da empresa"
+            action={<Badge variant="neutral">{company.plan.name}</Badge>}
           />
-          <InfoItem
-            label="Bairro/Cidade"
-            value={`${company.bairro}, ${company.cidade}/${company.estado}`}
-          />
-          <InfoItem label="CEP" value={company.cep} />
-          {dashboard && (
+          <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <InfoItem label="Email" value={company.email} />
+            <InfoItem label="Telefone" value={company.telefone} />
+            <InfoItem label="WhatsApp" value={company.whatsapp ?? "Não informado"} />
+            <InfoItem label="Tipo" value={COMPANY_TYPE_LABEL[company.tipo]} />
             <InfoItem
-              label="Receita estimada"
-              value={centsToBRL(dashboard.receitaEstimadaCentavos)}
+              label="Endereço"
+              value={`${company.endereco}, ${company.numero}${company.complemento ? `, ${company.complemento}` : ""}`}
             />
-          )}
-        </Card.Body>
-      </Card>
+            <InfoItem
+              label="Bairro/Cidade"
+              value={`${company.bairro}, ${company.cidade}/${company.estado}`}
+            />
+            <InfoItem label="CEP" value={company.cep} />
+            {dashboard && (
+              <InfoItem
+                label="Receita estimada"
+                value={centsToBRL(dashboard.receitaEstimadaCentavos)}
+              />
+            )}
+          </Card.Body>
+        </Card>
+      ) : (
+        <CompanyVehiclesTab companyId={id} />
+      )}
     </div>
   );
 }

@@ -7,10 +7,12 @@ import type {
   ListVehicleCategoryReviewParams,
   ListVehiclesParams,
   ResolveVehicleCategoryReviewInput,
+  ReviewVehicleInput,
   VehicleStatus,
 } from "@rotta/api-client";
 
 import { vehiclesApi } from "@/lib/api-client";
+
 
 /** Mensagem de erro legível — mesmo padrão de `use-identity-verification-admin.ts`. */
 function errorMessage(error: unknown, fallback: string): string {
@@ -78,6 +80,26 @@ export function useResolveVehicleCategoryReview(id: string) {
     },
     onError: (error) => {
       toast.error(errorMessage(error, "Não foi possível registrar a revisão."), "Falha ao revisar");
+    },
+  });
+}
+
+/**
+ * Epic A — aprova/reprova um veículo (camada ADICIONAL sobre o
+ * "pré-aprovado" automático). Invalida tanto a lista da empresa quanto o
+ * veículo individual, já que os dois lugares mostram `revisaoAdminStatus`.
+ */
+export function useReviewVehicle(id: string) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (input: ReviewVehicleInput) => vehiclesApi.reviewVehicle(id, input),
+    onSuccess: (_data, variables) => {
+      void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast.success(variables.status === "APROVADO" ? "Veículo aprovado." : "Veículo reprovado.");
+    },
+    onError: (error) => {
+      toast.error(errorMessage(error, "Não foi possível registrar a decisão."), "Falha ao revisar");
     },
   });
 }

@@ -19,9 +19,9 @@ import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { PostSignupIdentityPopup } from "@/features/identity-verification/components/post-signup-identity-popup";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
+import { VehicleAdminReviewAcknowledgeModal } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-modal";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
-
 
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
@@ -311,6 +311,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
       {shouldCheckIdentity && user && identityVerification ? (
         <PostSignupIdentityPopup userId={user.id} status={identityVerification.status} />
       ) : null}
+      {isResponsavel && <VehicleAdminReviewAcknowledgeModal />}
       <header className="flex items-center justify-between border-b border-border px-4 py-4 sm:px-6">
         <div className="flex items-center gap-8">
           <Typography variant="subtitle">

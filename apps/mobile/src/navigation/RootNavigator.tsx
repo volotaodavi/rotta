@@ -12,6 +12,7 @@ import { PainelWebOnlyScreen, PinLockScreen } from "@/features/auth/screens";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
 import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
 import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
+import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-sheet";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -89,7 +90,10 @@ export function RootNavigator(): JSX.Element {
           <VinculoPendenteNavigator />
         )
       ) : user.role === "responsavel" ? (
-        <ParentNavigator />
+        <>
+          <ParentNavigator />
+          <VehicleAdminReviewAcknowledgeSheet />
+        </>
       ) : (
         <PainelWebOnlyScreen />
       )}
