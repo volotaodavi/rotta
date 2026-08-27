@@ -21,5 +21,7 @@ export interface CreateSupportMessageData {
 
 export interface SupportMessageRepository {
   create(data: CreateSupportMessageData): Promise<SupportMessageWithRelations>;
+  /** Mensagem de/para um chamado aberto por `Role.RESPONSAVEL` (Epic B) — bypass explícito, mesmo motivo de `SupportTicketRepository.createBypass`. */
+  createBypass(data: CreateSupportMessageData): Promise<SupportMessageWithRelations>;
   listByTicket(ticketId: string, companyId?: string): Promise<SupportMessageWithRelations[]>;
 }

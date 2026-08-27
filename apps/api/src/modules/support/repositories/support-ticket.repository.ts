@@ -28,6 +28,8 @@ export interface CreateSupportTicketData {
  */
 export interface ListSupportTicketsFilter {
   companyId?: string;
+  /** Escopo do Responsável (Epic B) — só os chamados que ELE abriu, nunca o tenant inteiro (ver `SupportService.resolveTicketScope`). */
+  abertoPorUserId?: string;
   status?: SupportTicketStatus;
   categoria?: SupportTicketCategoria;
   page: number;
@@ -47,9 +49,26 @@ export interface UpdateSupportTicketStatusData {
 
 export interface SupportTicketRepository {
   create(data: CreateSupportTicketData): Promise<SupportTicketWithRelations>;
-  findById(id: string, companyId?: string): Promise<SupportTicketWithRelations | null>;
+  /**
+   * Abertura por `Role.RESPONSAVEL` (Epic B) — bypass explícito de RLS
+   * (Responsável não pertence ao tenant da transportadora, mesmo motivo
+   * de `ContractRepository.updateAsResponsavel`; ver nota de
+   * `TenantGuard` sobre `bypass: false` do Responsável).
+   */
+  createBypass(data: CreateSupportTicketData): Promise<SupportTicketWithRelations>;
+  /** `abertoPorUserId` = escopo do Responsável (Epic B): só o próprio chamado, nunca o tenant inteiro. */
+  findById(
+    id: string,
+    companyId?: string,
+    abertoPorUserId?: string,
+  ): Promise<SupportTicketWithRelations | null>;
   list(filter: ListSupportTicketsFilter): Promise<ListSupportTicketsResult>;
   updateStatus(
+    id: string,
+    data: UpdateSupportTicketStatusData,
+  ): Promise<SupportTicketWithRelations>;
+  /** Resposta/reabertura/fechamento pelo Responsável — mesmo motivo de `createBypass`. */
+  updateStatusBypass(
     id: string,
     data: UpdateSupportTicketStatusData,
   ): Promise<SupportTicketWithRelations>;

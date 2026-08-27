@@ -26,14 +26,19 @@ function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
 }
 
-/** Abrir/listar/responder: Empresa/Gestor (próprio tenant, `SUP-01`) + Admin Rotta (cross-tenant, `ADM-04`). */
-const SUPPORT_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA] as const;
+/**
+ * Abrir/listar/responder: Empresa/Gestor (próprio tenant, `SUP-01`) +
+ * Admin Rotta (cross-tenant, `ADM-04`) + Responsável (Epic B — só os
+ * próprios chamados, nunca o tenant inteiro, ver
+ * `SupportService.resolveTicketScope`).
+ */
+const SUPPORT_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA, Role.RESPONSAVEL] as const;
 
 /**
  * API REST do módulo Suporte (Dossiê 20, `SUP-01` a `SUP-03`/`ADM-04`;
- * Dossiê 29). Abrir um chamado é exclusivo de Empresa/Gestor (`SUP-01`
- * — Motorista/Monitor/Responsável não têm acesso a este canal no MVP);
- * responder/listar/encerrar é comum às duas pontas.
+ * Dossiê 29). Abrir um chamado: Empresa/Gestor (próprio tenant) e
+ * Responsável (Epic B — Motorista/Monitor seguem fora de escopo);
+ * responder/listar/encerrar é comum a todas as partes envolvidas.
  */
 @ApiTags("support")
 @ApiBearerAuth()
@@ -42,7 +47,7 @@ export class SupportController {
   constructor(private readonly supportService: SupportService) {}
 
   @Post()
-  @Roles(Role.EMPRESA, Role.GESTOR)
+  @Roles(Role.EMPRESA, Role.GESTOR, Role.RESPONSAVEL)
   create(
     @Body() dto: CreateSupportTicketDto,
     @CurrentUser() actor: AuthenticatedUser,

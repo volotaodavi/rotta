@@ -1,10 +1,18 @@
-import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
 import { EmailService } from "@/infra/email/email.service";
 import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
 import { GroqService } from "@/infra/groq/groq.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { ContractsService } from "@/modules/marketplace/contracts.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
@@ -27,7 +35,10 @@ import type {
   SupportTicketResponseDto,
 } from "./dto/support-ticket-response.dto";
 import type { SupportMessageRepository } from "./repositories/support-message.repository";
-import type { SupportTicketRepository } from "./repositories/support-ticket.repository";
+import type {
+  SupportTicketRepository,
+  SupportTicketWithRelations,
+} from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 
@@ -73,6 +84,7 @@ export class SupportService {
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly emailService: EmailService,
     private readonly groqService: GroqService,
+    private readonly contractsService: ContractsService,
   ) {}
 
   private async recordAudit(input: RecordAuditLogInput): Promise<void> {
@@ -86,18 +98,55 @@ export class SupportService {
     }
   }
 
-  /** `undefined` = Admin Rotta sem filtro de empresa (cross-tenant); string = escopo obrigatório de Empresa/Gestor. */
-  private resolveCompanyScope(
+  /**
+   * Escopo de leitura/ação sobre um chamado (Epic B estendeu de "só
+   * `companyId`" para uma de duas dimensões, nunca as duas):
+   * - `companyId` — Empresa/Gestor (próprio tenant) e Admin Rotta
+   *   (filtro opcional, `undefined` = cross-tenant, `SUP-01`/`ADM-04`).
+   * - `abertoPorUserId` — `Role.RESPONSAVEL`: SEM `tenantId` (não é
+   *   membro de nenhuma empresa), por isso nunca listado por
+   *   `companyId` — escopado ao próprio chamado, nunca ao tenant
+   *   inteiro (só vê o que ele mesmo abriu, diferente de Empresa/Gestor
+   *   que veem todo o tenant).
+   */
+  private resolveTicketScope(
     actor: AuthenticatedUser,
     companyIdFilter?: string,
-  ): string | undefined {
+  ): { companyId?: string; abertoPorUserId?: string } {
     if (actor.role === Role.ADMIN_ROTTA) {
-      return companyIdFilter;
+      return { companyId: companyIdFilter };
+    }
+    if (actor.role === Role.RESPONSAVEL) {
+      return { abertoPorUserId: actor.sub };
     }
     if (!actor.tenantId) {
       throw new ForbiddenException("Usuário sem empresa vinculada.");
     }
-    return actor.tenantId;
+    return { companyId: actor.tenantId };
+  }
+
+  /**
+   * Resolve a transportadora "dona" de um chamado aberto por
+   * `Role.RESPONSAVEL` (Epic B) — o Responsável não tem `companyId`
+   * próprio (não é membro de nenhum tenant), então o chamado é
+   * registrado sob a transportadora do contrato ATIVO mais recente
+   * (reaproveita `ContractsService.list`, já escopado por
+   * `responsavelId` — ver `ContractsService.scopeForActor`). Sem
+   * nenhum contrato ativo, não há "a quem" endereçar o chamado — erro
+   * claro em vez de uma empresa arbitrária/vazia.
+   */
+  private async resolveResponsavelCompanyId(actor: AuthenticatedUser): Promise<string> {
+    const { items } = await this.contractsService.list({ page: 1, pageSize: 50 }, actor);
+    const ativo = items
+      .slice()
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      .find((contract) => contract.status === "ATIVO");
+    if (!ativo) {
+      throw new BadRequestException(
+        "Você precisa estar vinculado a uma transportadora com um contrato ativo para abrir um chamado.",
+      );
+    }
+    return ativo.companyId;
   }
 
   /** Link clicável pro painel Admin — omitido (o e-mail só descreve) sem `ADMIN_APP_URL` configurada. */
@@ -212,9 +261,11 @@ export class SupportService {
   }
 
   /**
-   * IA de suporte (Frente 5, Groq/Llama) — só atua em dúvidas simples
-   * (`categoria === "DUVIDA"`; nunca `PROBLEMA_TECNICO`/`COBRANCA`/
-   * `OUTRO`, que já vão direto pro humano). Best-effort: sem
+   * IA de suporte (Frente 5, Groq/Llama) — atua em dúvidas simples E
+   * bugs relatados (`categoria === "DUVIDA" || "PROBLEMA_TECNICO"`;
+   * nunca `COBRANCA`/`OUTRO`, que já vão direto pro humano — pedido do
+   * usuário: "dúvidas frequentes... ou bugs relacionados à
+   * plataforma... a IA deverá responder", Epic B). Best-effort: sem
    * `GROQ_API_KEY` configurada ou qualquer falha de rede, não faz
    * nada — o chamado já foi criado normalmente antes desta chamada.
    * A resposta vira uma `SupportMessage` comum (`autorIsIA: true`,
@@ -223,26 +274,35 @@ export class SupportService {
    * a próxima mensagem do tenant (se a IA não resolveu) já dispara a
    * notificação normal pro Admin Rotta (`notifyAdminRottaENovoTicketOuMensagem`),
    * então um humano sempre entra se necessário.
+   *
+   * `bypass`: chamado aberto por `Role.RESPONSAVEL` (Epic B) — a
+   * mensagem da IA precisa do mesmo bypass de RLS da criação do
+   * chamado (ver `createTicket`), já que o contexto de tenant da
+   * requisição corrente continua sendo o do Responsável.
    */
-  private async tentarResponderComIA(ticket: {
-    id: string;
-    companyId: string;
-    assunto: string;
-    descricao: string;
-    categoria: string;
-  }): Promise<void> {
-    if (ticket.categoria !== "DUVIDA") {
+  private async tentarResponderComIA(
+    ticket: {
+      id: string;
+      companyId: string;
+      assunto: string;
+      descricao: string;
+      categoria: string;
+    },
+    bypass = false,
+  ): Promise<void> {
+    if (ticket.categoria !== "DUVIDA" && ticket.categoria !== "PROBLEMA_TECNICO") {
       return;
     }
     try {
       const resposta = await this.groqService.responderDuvida(ticket.assunto, ticket.descricao);
-      await this.messageRepository.create({
+      const data = {
         ticketId: ticket.id,
         companyId: ticket.companyId,
         autorIsAdminRotta: false,
         autorIsIA: true,
         mensagem: resposta,
-      });
+      };
+      await (bypass ? this.messageRepository.createBypass(data) : this.messageRepository.create(data));
     } catch (error) {
       this.logger.warn(`Rotta AI não respondeu o chamado ${ticket.id} (best-effort).`);
       this.logger.warn(error instanceof Error ? error.message : String(error));
@@ -254,8 +314,21 @@ export class SupportService {
     actor: AuthenticatedUser,
     meta: RequestMeta,
   ): Promise<SupportTicketResponseDto> {
+    if (actor.role === Role.RESPONSAVEL) {
+      const companyId = await this.resolveResponsavelCompanyId(actor);
+      const ticket = await this.ticketRepository.createBypass({
+        companyId,
+        abertoPorUserId: actor.sub,
+        assunto: dto.assunto,
+        descricao: dto.descricao,
+        categoria: dto.categoria,
+        anexoUrl: dto.anexoUrl,
+      });
+      return this.finishCreateTicket(ticket, actor, meta, true);
+    }
+
     if (actor.role !== Role.EMPRESA && actor.role !== Role.GESTOR) {
-      throw new ForbiddenException("Apenas Empresa/Gestor podem abrir chamados de suporte.");
+      throw new ForbiddenException("Apenas Empresa/Gestor/Responsável podem abrir chamados de suporte.");
     }
     if (!actor.tenantId) {
       throw new ForbiddenException("Usuário sem empresa vinculada.");
@@ -270,8 +343,18 @@ export class SupportService {
       anexoUrl: dto.anexoUrl,
     });
 
+    return this.finishCreateTicket(ticket, actor, meta, false);
+  }
+
+  /** Auditoria + notificação Admin Rotta + tentativa de resposta da IA — comum aos dois caminhos de `createTicket` (Empresa/Gestor via `withTenant`, Responsável via `withBypass`, ver Epic B). */
+  private async finishCreateTicket(
+    ticket: SupportTicketWithRelations,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+    bypass: boolean,
+  ): Promise<SupportTicketResponseDto> {
     await this.recordAudit({
-      companyId: actor.tenantId,
+      companyId: ticket.companyId,
       entidadeTipo: ENTIDADE_TIPO,
       entidadeId: ticket.id,
       acao: "SUPPORT_TICKET_OPENED",
@@ -290,13 +373,16 @@ export class SupportService {
       tipo: "SUPORTE_TICKET_ABERTO",
     });
 
-    await this.tentarResponderComIA({
-      id: ticket.id,
-      companyId: ticket.companyId,
-      assunto: ticket.assunto,
-      descricao: ticket.descricao,
-      categoria: ticket.categoria,
-    });
+    await this.tentarResponderComIA(
+      {
+        id: ticket.id,
+        companyId: ticket.companyId,
+        assunto: ticket.assunto,
+        descricao: ticket.descricao,
+        categoria: ticket.categoria,
+      },
+      bypass,
+    );
 
     return toSupportTicketResponseDto(ticket);
   }
@@ -305,9 +391,10 @@ export class SupportService {
     query: ListSupportTicketsQueryDto,
     actor: AuthenticatedUser,
   ): Promise<ListSupportTicketsResponseDto> {
-    const companyId = this.resolveCompanyScope(actor, query.companyId);
+    const scope = this.resolveTicketScope(actor, query.companyId);
     const { items, total } = await this.ticketRepository.list({
-      companyId,
+      companyId: scope.companyId,
+      abertoPorUserId: scope.abertoPorUserId,
       status: query.status,
       categoria: query.categoria,
       page: query.page,
@@ -327,13 +414,17 @@ export class SupportService {
     actor: AuthenticatedUser,
     companyIdFilter?: string,
   ): Promise<SupportTicketDetailResponseDto> {
-    const companyId = this.resolveCompanyScope(actor, companyIdFilter);
-    const ticket = await this.ticketRepository.findById(ticketId, companyId);
+    const scope = this.resolveTicketScope(actor, companyIdFilter);
+    const ticket = await this.ticketRepository.findById(
+      ticketId,
+      scope.companyId,
+      scope.abertoPorUserId,
+    );
     if (!ticket) {
       throw new NotFoundException("Chamado não encontrado.");
     }
 
-    const messages = await this.messageRepository.listByTicket(ticketId, companyId);
+    const messages = await this.messageRepository.listByTicket(ticketId, scope.companyId);
     return toSupportTicketDetailResponseDto(ticket, messages);
   }
 
@@ -356,28 +447,37 @@ export class SupportService {
     meta: RequestMeta,
     companyIdFilter?: string,
   ): Promise<SupportMessageResponseDto> {
-    const companyId = this.resolveCompanyScope(actor, companyIdFilter);
-    const ticket = await this.ticketRepository.findById(ticketId, companyId);
+    const scope = this.resolveTicketScope(actor, companyIdFilter);
+    const ticket = await this.ticketRepository.findById(
+      ticketId,
+      scope.companyId,
+      scope.abertoPorUserId,
+    );
     if (!ticket) {
       throw new NotFoundException("Chamado não encontrado.");
     }
 
+    // Responsável não pertence ao tenant da transportadora — bypass
+    // explícito de RLS, mesmo motivo de `createTicket`/`tentarResponderComIA`.
+    const bypass = actor.role === Role.RESPONSAVEL;
     const isAdminRotta = actor.role === Role.ADMIN_ROTTA;
-    const message = await this.messageRepository.create({
+    const messageData = {
       ticketId,
       companyId: ticket.companyId,
       autorUserId: actor.sub,
       autorIsAdminRotta: isAdminRotta,
       mensagem: dto.mensagem,
       anexoUrl: dto.anexoUrl,
-    });
+    };
+    const message = await (bypass
+      ? this.messageRepository.createBypass(messageData)
+      : this.messageRepository.create(messageData));
 
     if (ticket.status === "ENCERRADO") {
-      await this.ticketRepository.updateStatus(ticketId, {
-        status: "EM_ANDAMENTO",
-        encerradoEm: null,
-        encerradoPorUserId: null,
-      });
+      const reopenData = { status: "EM_ANDAMENTO" as const, encerradoEm: null, encerradoPorUserId: null };
+      await (bypass
+        ? this.ticketRepository.updateStatusBypass(ticketId, reopenData)
+        : this.ticketRepository.updateStatus(ticketId, reopenData));
       await this.recordAudit({
         companyId: ticket.companyId,
         entidadeTipo: ENTIDADE_TIPO,
@@ -441,17 +541,25 @@ export class SupportService {
     meta: RequestMeta,
     companyIdFilter?: string,
   ): Promise<SupportTicketResponseDto> {
-    const companyId = this.resolveCompanyScope(actor, companyIdFilter);
-    const existing = await this.ticketRepository.findById(ticketId, companyId);
+    const scope = this.resolveTicketScope(actor, companyIdFilter);
+    const existing = await this.ticketRepository.findById(
+      ticketId,
+      scope.companyId,
+      scope.abertoPorUserId,
+    );
     if (!existing) {
       throw new NotFoundException("Chamado não encontrado.");
     }
 
-    const updated = await this.ticketRepository.updateStatus(ticketId, {
-      status: "ENCERRADO",
+    const closeData = {
+      status: "ENCERRADO" as const,
       encerradoEm: new Date(),
       encerradoPorUserId: actor.sub,
-    });
+    };
+    const updated =
+      actor.role === Role.RESPONSAVEL
+        ? await this.ticketRepository.updateStatusBypass(ticketId, closeData)
+        : await this.ticketRepository.updateStatus(ticketId, closeData);
 
     await this.recordAudit({
       companyId: existing.companyId,

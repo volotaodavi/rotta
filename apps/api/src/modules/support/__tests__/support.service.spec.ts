@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { Role } from "@/shared/enums";
@@ -14,6 +14,8 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { EmailService } from "@/infra/email/email.service";
 import type { GroqService } from "@/infra/groq/groq.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { ContractsService } from "@/modules/marketplace/contracts.service";
+import type { ContractResponseDto } from "@/modules/marketplace/dto/contract-response.dto";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
@@ -69,6 +71,42 @@ const motoristaActor: AuthenticatedUser = {
   vinculoId: "vinculo-4",
 };
 
+const responsavelActor: AuthenticatedUser = {
+  sub: "responsavel-1",
+  tenantId: null,
+  role: Role.RESPONSAVEL,
+  vinculoId: "vinculo-5",
+};
+
+function buildContract(overrides: Partial<ContractResponseDto> = {}): ContractResponseDto {
+  return {
+    id: "contract-1",
+    transportRequestId: "tr-1",
+    studentId: "student-1",
+    responsavelId: "responsavel-1",
+    companyId: "company-1",
+    schoolId: "school-1",
+    vehicleId: null,
+    motoristaId: null,
+    monitorId: null,
+    valorMensalidadeCentavos: 10000,
+    planoDescricao: "Plano mensal",
+    regras: "Regras",
+    vigenciaInicio: new Date("2026-01-01"),
+    vigenciaFim: null,
+    status: "ATIVO",
+    origem: "NEGOCIADO",
+    authentiqueDocumentId: null,
+    assinadoResponsavelEm: new Date("2026-01-01"),
+    assinadoEmpresaEm: new Date("2026-01-01"),
+    ativadoEm: new Date("2026-01-01"),
+    encerradoEm: null,
+    createdAt: new Date("2026-01-01"),
+    updatedAt: new Date("2026-01-01"),
+    ...overrides,
+  };
+}
+
 describe("SupportService", () => {
   let service: SupportService;
   let ticketRepository: jest.Mocked<SupportTicketRepository>;
@@ -79,16 +117,19 @@ describe("SupportService", () => {
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let emailService: jest.Mocked<EmailService>;
   let groqService: jest.Mocked<GroqService>;
+  let contractsService: jest.Mocked<ContractsService>;
   const originalEnv = { ...process.env };
 
   beforeEach(() => {
     ticketRepository = {
       create: jest.fn(),
+      createBypass: jest.fn(),
       findById: jest.fn(),
       list: jest.fn(),
       updateStatus: jest.fn(),
+      updateStatusBypass: jest.fn(),
     };
-    messageRepository = { create: jest.fn(), listByTicket: jest.fn() };
+    messageRepository = { create: jest.fn(), createBypass: jest.fn(), listByTicket: jest.fn() };
     auditLogService = { record: jest.fn() } as unknown as jest.Mocked<AuditLogService>;
     usersService = {
       findById: jest.fn().mockResolvedValue({ id: "admin-1", nome: "Suporte Rotta" }),
@@ -109,6 +150,9 @@ describe("SupportService", () => {
     groqService = {
       responderDuvida: jest.fn().mockRejectedValue(new Error("GROQ_API_KEY não configurada.")),
     } as unknown as jest.Mocked<GroqService>;
+    contractsService = {
+      list: jest.fn().mockResolvedValue({ items: [buildContract()], total: 1, page: 1, pageSize: 50 }),
+    } as unknown as jest.Mocked<ContractsService>;
 
     delete process.env.SUPPORT_INBOX_EMAIL;
     delete process.env.ADMIN_APP_URL;
@@ -122,6 +166,7 @@ describe("SupportService", () => {
       messagePersonalizationService,
       emailService,
       groqService,
+      contractsService,
     );
   });
 
@@ -300,8 +345,15 @@ describe("SupportService", () => {
       expect(messageRepository.create).not.toHaveBeenCalled();
     });
 
-    it("categoria PROBLEMA_TECNICO/COBRANCA/OUTRO nunca aciona a IA", async () => {
-      ticketRepository.create.mockResolvedValue(buildTicket({ categoria: "PROBLEMA_TECNICO" }));
+    it("categoria PROBLEMA_TECNICO também aciona a IA (Epic B: 'dúvidas... ou bugs')", async () => {
+      ticketRepository.create.mockResolvedValue(
+        buildTicket({
+          categoria: "PROBLEMA_TECNICO",
+          assunto: "Erro ao salvar",
+          descricao: "A tela trava ao salvar o cadastro.",
+        }),
+      );
+      groqService.responderDuvida.mockResolvedValue("Tente atualizar a página e salvar novamente.");
 
       await service.createTicket(
         {
@@ -313,7 +365,71 @@ describe("SupportService", () => {
         {},
       );
 
+      expect(groqService.responderDuvida).toHaveBeenCalledWith(
+        "Erro ao salvar",
+        "A tela trava ao salvar o cadastro.",
+      );
+      expect(messageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ autorIsIA: true, mensagem: "Tente atualizar a página e salvar novamente." }),
+      );
+    });
+
+    it("categoria COBRANCA/OUTRO nunca aciona a IA", async () => {
+      ticketRepository.create.mockResolvedValue(buildTicket({ categoria: "COBRANCA" }));
+
+      await service.createTicket(
+        {
+          assunto: "Dúvida na fatura",
+          descricao: "Não entendi um valor cobrado este mês.",
+          categoria: "COBRANCA",
+        },
+        empresaActor,
+        {},
+      );
+
       expect(groqService.responderDuvida).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("createTicket — Responsável (Epic B)", () => {
+    it("abre o chamado sob a transportadora do contrato ATIVO do Responsável, via bypass", async () => {
+      ticketRepository.createBypass.mockResolvedValue(
+        buildTicket({ abertoPorUserId: "responsavel-1", categoria: "DUVIDA" }),
+      );
+
+      const result = await service.createTicket(
+        { assunto: "Como funciona o transporte?", descricao: "Detalhe suficiente aqui.", categoria: "DUVIDA" },
+        responsavelActor,
+        {},
+      );
+
+      expect(contractsService.list).toHaveBeenCalledWith(
+        { page: 1, pageSize: 50 },
+        responsavelActor,
+      );
+      expect(ticketRepository.createBypass).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1", abertoPorUserId: "responsavel-1" }),
+      );
+      expect(ticketRepository.create).not.toHaveBeenCalled();
+      expect(result.status).toBe("ABERTO");
+    });
+
+    it("rejeita quando o Responsável não tem nenhum contrato ATIVO", async () => {
+      contractsService.list.mockResolvedValue({
+        items: [buildContract({ status: "AGUARDANDO_ASSINATURA" })],
+        total: 1,
+        page: 1,
+        pageSize: 50,
+      });
+
+      await expect(
+        service.createTicket(
+          { assunto: "Como funciona o transporte?", descricao: "Detalhe suficiente aqui.", categoria: "DUVIDA" },
+          responsavelActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(ticketRepository.createBypass).not.toHaveBeenCalled();
     });
   });
 
@@ -337,6 +453,16 @@ describe("SupportService", () => {
         expect.objectContaining({ companyId: undefined }),
       );
     });
+
+    it("Responsável só lista os próprios chamados (abertoPorUserId, nunca o tenant inteiro)", async () => {
+      ticketRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.listTickets({ page: 1, pageSize: 20 }, responsavelActor);
+
+      expect(ticketRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: undefined, abertoPorUserId: "responsavel-1" }),
+      );
+    });
   });
 
   describe("getTicketDetail", () => {
@@ -354,7 +480,7 @@ describe("SupportService", () => {
       await expect(service.getTicketDetail("ticket-1", outraEmpresaActor)).rejects.toThrow(
         NotFoundException,
       );
-      expect(ticketRepository.findById).toHaveBeenCalledWith("ticket-1", "company-2");
+      expect(ticketRepository.findById).toHaveBeenCalledWith("ticket-1", "company-2", undefined);
     });
   });
 
@@ -497,6 +623,37 @@ describe("SupportService", () => {
         expect.any(String),
       );
     });
+
+    it("Responsável responde no próprio chamado via bypass de RLS (Epic B)", async () => {
+      ticketRepository.findById.mockResolvedValue(
+        buildTicket({ status: "ABERTO", abertoPorUserId: "responsavel-1" }),
+      );
+      messageRepository.createBypass.mockResolvedValue({
+        id: "msg-4",
+        ticketId: "ticket-1",
+        companyId: "company-1",
+        autorUserId: "responsavel-1",
+        autorIsAdminRotta: false,
+        autorIsIA: false,
+        mensagem: "Ainda não recebi resposta.",
+        anexoUrl: null,
+        createdAt: new Date(),
+        autor: { id: "responsavel-1", nome: "João Responsável" },
+      });
+
+      await service.addMessage(
+        "ticket-1",
+        { mensagem: "Ainda não recebi resposta." },
+        responsavelActor,
+        {},
+      );
+
+      expect(ticketRepository.findById).toHaveBeenCalledWith("ticket-1", undefined, "responsavel-1");
+      expect(messageRepository.createBypass).toHaveBeenCalledWith(
+        expect.objectContaining({ ticketId: "ticket-1", autorUserId: "responsavel-1" }),
+      );
+      expect(messageRepository.create).not.toHaveBeenCalled();
+    });
   });
 
   describe("closeTicket", () => {
@@ -513,6 +670,25 @@ describe("SupportService", () => {
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ acao: "SUPPORT_TICKET_CLOSED" }),
       );
+      expect(result.status).toBe("ENCERRADO");
+    });
+
+    it("Responsável encerra o próprio chamado via bypass de RLS (Epic B)", async () => {
+      ticketRepository.findById.mockResolvedValue(
+        buildTicket({ abertoPorUserId: "responsavel-1" }),
+      );
+      ticketRepository.updateStatusBypass.mockResolvedValue(
+        buildTicket({ abertoPorUserId: "responsavel-1", status: "ENCERRADO" }),
+      );
+
+      const result = await service.closeTicket("ticket-1", responsavelActor, {});
+
+      expect(ticketRepository.findById).toHaveBeenCalledWith("ticket-1", undefined, "responsavel-1");
+      expect(ticketRepository.updateStatusBypass).toHaveBeenCalledWith(
+        "ticket-1",
+        expect.objectContaining({ status: "ENCERRADO", encerradoPorUserId: "responsavel-1" }),
+      );
+      expect(ticketRepository.updateStatus).not.toHaveBeenCalled();
       expect(result.status).toBe("ENCERRADO");
     });
   });

@@ -20,6 +20,12 @@ export class PrismaSupportMessageRepository implements SupportMessageRepository 
     );
   }
 
+  createBypass(data: CreateSupportMessageData): Promise<SupportMessageWithRelations> {
+    return this.prisma.withBypass(
+      this.prisma.supportMessage.create({ data, include: SUPPORT_MESSAGE_INCLUDE }),
+    );
+  }
+
   listByTicket(ticketId: string, companyId?: string): Promise<SupportMessageWithRelations[]> {
     const operation = this.prisma.supportMessage.findMany({
       where: { ticketId, ...(companyId ? { companyId } : {}) },
