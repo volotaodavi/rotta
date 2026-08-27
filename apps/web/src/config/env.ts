@@ -16,9 +16,16 @@ const envSchema = z.object({
   // (`WebPushService`); sem ela, `usePushRegistration` detecta a ausência
   // e não oferece a opção de ativar push no navegador (stub honesto).
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: z.string().optional(),
+  // Rotta Geo Platform — chave gratuita da MapTiler (maptiler.com),
+  // repassada a `configureRottaMaps` em `providers/app-providers.tsx`.
+  // Sem esta variável, `@rotta/maps/web` continua usando a OpenFreeMap
+  // sem nenhuma chave (comportamento de sempre, stub honesto) — só
+  // passa a usar a MapTiler quando esta chave existir de verdade.
+  NEXT_PUBLIC_MAPTILER_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || undefined,
+  NEXT_PUBLIC_MAPTILER_API_KEY: process.env.NEXT_PUBLIC_MAPTILER_API_KEY || undefined,
 });

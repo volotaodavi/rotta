@@ -12,8 +12,11 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url(),
+  // Rotta Geo Platform — mesma chave/mesmo raciocínio de `apps/web`.
+  NEXT_PUBLIC_MAPTILER_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
+  NEXT_PUBLIC_MAPTILER_API_KEY: process.env.NEXT_PUBLIC_MAPTILER_API_KEY || undefined,
 });

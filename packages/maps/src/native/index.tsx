@@ -15,6 +15,27 @@ import type { Feature, LineString } from "geojson";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 
+let globalMapTilerApiKey: string | undefined;
+
+/**
+ * Configura, uma única vez no bootstrap do app (chamado no CORPO de
+ * render de `AppProviders` — nunca dentro de um `useEffect`, mesmo
+ * motivo documentado em `../web/index.tsx`), qual provedor de tiles
+ * usar. Sem chamar (ou sem `mapTilerApiKey`), o comportamento é
+ * EXATAMENTE o mesmo de antes — OpenFreeMap, sem chave nenhuma.
+ */
+export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
+  globalMapTilerApiKey = options.mapTilerApiKey || undefined;
+}
+
+/** Ver `resolveDefaultStyleUrl` em `../web/index.tsx` — mesmo raciocínio. */
+function resolveDefaultStyleUrl(): string {
+  if (globalMapTilerApiKey) {
+    return `https://api.maptiler.com/maps/streets-v2/style.json?key=${globalMapTilerApiKey}`;
+  }
+  return DEFAULT_STYLE_URL;
+}
+
 /**
  * Estilo padrão do mapa — VETORIAL `liberty` da OpenFreeMap, sem
  * chave/token (ver o histórico completo em `../web/index.tsx`: a CARTO,
@@ -271,7 +292,7 @@ export function RottaMap({
         key={retryToken}
         ref={mapRef}
         style={styles.map}
-        mapStyle={styleUrl ?? DEFAULT_STYLE_URL}
+        mapStyle={styleUrl ?? resolveDefaultStyleUrl()}
         onDidFinishLoadingMap={handleMapReady}
         onDidFailLoadingMap={handleMapFailed}
         onRegionDidChange={async () => {

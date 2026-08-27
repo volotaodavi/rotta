@@ -25,6 +25,44 @@ export type {
   HeatmapPoint,
 } from "../types";
 
+let globalMapTilerApiKey: string | undefined;
+
+/**
+ * Configura, uma única vez no bootstrap de cada app (chamado no CORPO
+ * de render do provider raiz — `AppProviders` de `apps/web`/`apps/admin`
+ * — nunca dentro de um `useEffect`: efeitos de componentes filhos, como
+ * o de setup do `<RottaMap/>` logo abaixo, disparam ANTES do efeito do
+ * próprio provider raiz, então configurar aqui de dentro de um efeito
+ * arriscaria o primeiro mapa da tela montar antes da chave estar
+ * disponível), qual provedor de tiles usar.
+ *
+ * Pedido do usuário (auditoria do mapa em produção, 27/08/2026): "pelo
+ * menos aquele [com aviso de API key] o mapa aparecia" — o histórico
+ * completo (ver comentário logo abaixo) mostra que provedores públicos
+ * sem chave (OSM direto, depois OpenFreeMap) têm ficado instáveis em
+ * produção sem nenhum erro visível. Chamado sem `mapTilerApiKey` (ou
+ * nunca chamado), o comportamento é EXATAMENTE o mesmo de antes —
+ * OpenFreeMap, sem chave nenhuma (stub honesto, nunca quebra o app de
+ * quem não configurou nada).
+ */
+export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
+  globalMapTilerApiKey = options.mapTilerApiKey || undefined;
+}
+
+/**
+ * Resolve a URL de estilo padrão — MapTiler (com a chave configurada via
+ * `configureRottaMaps`), quando disponível, senão a OpenFreeMap `liberty`
+ * de sempre. `streets-v2` é o estilo mais próximo, visualmente, do
+ * `liberty` (ruas/labels/água), mantendo a mesma identidade visual do
+ * mapa em toda a plataforma independente do provedor por trás.
+ */
+function resolveDefaultStyleUrl(): string {
+  if (globalMapTilerApiKey) {
+    return `https://api.maptiler.com/maps/streets-v2/style.json?key=${globalMapTilerApiKey}`;
+  }
+  return DEFAULT_STYLE_URL;
+}
+
 /**
  * Estilo padrão do mapa — VETORIAL `liberty`, servido pela OpenFreeMap
  * (`tiles.openfreemap.org`), sem token/chave nenhuma.
@@ -297,7 +335,7 @@ export function RottaMap({
     try {
       map = new MapLibreMap({
         container: containerRef.current,
-        style: styleUrl ?? DEFAULT_STYLE_URL,
+        style: styleUrl ?? resolveDefaultStyleUrl(),
         center: initialCenter ? [initialCenter.longitude, initialCenter.latitude] : FALLBACK_CENTER,
         zoom: initialZoom,
       });

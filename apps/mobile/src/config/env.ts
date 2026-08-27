@@ -12,9 +12,12 @@ const envSchema = z.object({
    * real. Usada para abrir "Criar Empresa" em WebView integrada.
    */
   EXPO_PUBLIC_WEB_URL: z.string().url(),
+  // Rotta Geo Platform — mesma chave/mesmo raciocínio de `apps/web`.
+  EXPO_PUBLIC_MAPTILER_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse({
   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
   EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
+  EXPO_PUBLIC_MAPTILER_API_KEY: process.env.EXPO_PUBLIC_MAPTILER_API_KEY || undefined,
 });
