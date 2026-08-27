@@ -7,6 +7,7 @@ import {
   NavigationControl,
   Popup,
   type GeoJSONSource,
+  type StyleSpecification,
 } from "maplibre-gl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -32,69 +33,78 @@ let globalMapTilerApiKey: string | undefined;
 /**
  * Configura, uma única vez no bootstrap de cada app (chamado no CORPO
  * de render do provider raiz — `AppProviders` de `apps/web`/`apps/admin`
- * — nunca dentro de um `useEffect`: efeitos de componentes filhos, como
- * o de setup do `<RottaMap/>` logo abaixo, disparam ANTES do efeito do
- * próprio provider raiz, então configurar aqui de dentro de um efeito
- * arriscaria o primeiro mapa da tela montar antes da chave estar
- * disponível), qual provedor de tiles usar.
+ * — nunca dentro de um `useEffect`), qual provedor de tiles usar.
  *
- * Pedido do usuário (auditoria do mapa em produção, 27/08/2026): "pelo
- * menos aquele [com aviso de API key] o mapa aparecia" — o histórico
- * completo (ver comentário logo abaixo) mostra que provedores públicos
- * sem chave (OSM direto, depois OpenFreeMap) têm ficado instáveis em
- * produção sem nenhum erro visível. Chamado sem `mapTilerApiKey` (ou
- * nunca chamado), o comportamento é EXATAMENTE o mesmo de antes —
- * OpenFreeMap, sem chave nenhuma (stub honesto, nunca quebra o app de
- * quem não configurou nada).
+ * Estado atual (27/08/2026): `mapTilerApiKey` fica aceito (não quebra
+ * quem já chama `configureRottaMaps`) mas NÃO É USADO — ver
+ * `resolveDefaultStyleUrl` logo abaixo pro motivo real, confirmado pelo
+ * usuário em produção.
  */
 export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
   globalMapTilerApiKey = options.mapTilerApiKey || undefined;
 }
 
 /**
- * Resolve a URL de estilo padrão — MapTiler (com a chave configurada via
- * `configureRottaMaps`), quando disponível, senão a OpenFreeMap `liberty`
- * de sempre. `streets-v2` é o estilo mais próximo, visualmente, do
- * `liberty` (ruas/labels/água), mantendo a mesma identidade visual do
- * mapa em toda a plataforma independente do provedor por trás.
+ * Resolve o estilo padrão do mapa. Sempre CARTO raster (ver
+ * `CARTO_RASTER_STYLE` abaixo) — histórico completo de PRODUÇÃO
+ * (27/08/2026, todo confirmado com print real do usuário, não achismo):
+ *
+ * 1. `tile.openstreetmap.org` direto — bloqueado pela OSM Foundation
+ *    (hotlink), sem erro visível.
+ * 2. CARTO raster (`basemaps.cartocdn.com`) — funcionava.
+ * 3. OpenFreeMap `liberty` (vetorial) — trocado achando que resolvia o
+ *    "carimbo de API key" que a CARTO passou a exigir; na prática o
+ *    usuário reportou o mapa em branco de novo.
+ * 4. MapTiler `streets-v2` (vetorial, com chave) — troca de hoje mais
+ *    cedo; o usuário confirmou que "no OpenStreetMap [item 2] estava
+ *    funcionando normalmente, foi só trocar pra outro que não aparece
+ *    mais" — ou seja, TANTO a OpenFreeMap quanto a MapTiler (os dois
+ *    estilos VETORIAIS) renderizam vazios em produção pra este app,
+ *    mesmo com o `style.json`/tiles conferidos via `curl` retornando
+ *    dado real. Causa exata não isolada (não é chave, não é CORS, não
+ *    é o dado — todos testados). O denominador comum dos dois que
+ *    funcionaram (item 2 aqui, e o item 1 antes de ser bloqueado) é
+ *    serem RASTER, não vetorial — um estilo raster só depende de UM
+ *    tipo de requisição (a imagem do tile em si), nunca de
+ *    `style.json`/sprite/glyphs à parte, então é estrutural, não
+ *    coincidência.
+ *
+ * O item 2 (CARTO) hoje exige chave e carimba "API KEY REQUIRED" sobre
+ * o tile — mas mostra rua/água/nome de bairro de verdade por baixo do
+ * carimbo (confirmado via `curl` + inspeção do PNG), o que já é
+ * estritamente melhor que os dois estilos vetoriais atuais (nenhum
+ * dado visível). Pedido explícito do usuário: "aquele que tem o
+ * carimbo no mapa" — não o item 3.
  */
-function resolveDefaultStyleUrl(): string {
-  if (globalMapTilerApiKey) {
-    return `https://api.maptiler.com/maps/streets-v2/style.json?key=${globalMapTilerApiKey}`;
-  }
-  return DEFAULT_STYLE_URL;
+function resolveDefaultStyleUrl(): string | StyleSpecification {
+  void globalMapTilerApiKey; // ver comentário acima — aceito, não usado.
+  return CARTO_RASTER_STYLE;
 }
 
 /**
- * Estilo padrão do mapa — VETORIAL `liberty`, servido pela OpenFreeMap
- * (`tiles.openfreemap.org`), sem token/chave nenhuma.
- *
- * Histórico (pra quem for mexer aqui de novo): usávamos tiles RASTER da
- * CARTO (`basemaps.cartocdn.com/rastertiles/voyager`), achando que era
- * uma CDN gratuita sem autenticação — só que a CARTO passou a EXIGIR
- * chave de API pra qualquer requisição (confirmado com `curl`: toda
- * imagem devolvida, mesmo com HTTP 200, vem com a marca d'água "API KEY
- * REQUIRED" carimbada em cima do próprio tile — não é um erro nosso de
- * configuração, é a régua nova deles). Reproduzido pelo usuário direto
- * no app publicado ("aparece um aviso dentro do mapa pedindo API key"),
- * com print confirmando a marca d'água. Antes disso, também abandonamos
- * `tile.openstreetmap.org` direto (hotlinking de produção viola a Tile
- * Usage Policy da OSM Foundation e passou a ser bloqueado por lá, sem
- * erro visível — o mapa só ficava em branco).
- *
- * A tentativa anterior de usar a própria OpenFreeMap tinha ficado com a
- * tela branca — mas o problema não era o provedor, era o antigo hábito
- * de compor um estilo à mão puxando tiles/sprite/glyphs de domínios
- * diferentes (qualquer um fora do ar e nada desenha, sem erro visível).
- * Usando a URL do estilo pronto da própria OpenFreeMap (abaixo), tiles,
- * sprite e glyphs vêm todos do MESMO domínio — testado com `curl`
- * confirmando as três respostas (`/styles/liberty`, `/planet` tilejson,
- * tiles `.pbf`) antes de trocar aqui. Documentação e termos de uso em
- * openfreemap.org — hospedagem própria, sem limite de requisição
- * documentado para uso razoável, pensada exatamente pra evitar esse
- * tipo de exigência de chave.
+ * Estilo RASTER com tiles do OpenStreetMap, servidos pela CDN da CARTO
+ * (`basemaps.cartocdn.com`, estilo "Voyager"). A CARTO passou a exigir
+ * chave de API (sem uma, toda imagem devolvida vem com "API KEY
+ * REQUIRED" carimbado por cima — não é erro de configuração nosso, é a
+ * régua deles) — mas o carimbo fica por cima de um mapa real (rua,
+ * água, nome de bairro), nunca substitui o tile inteiro por uma tela
+ * em branco. Nenhuma chave configurada aqui de propósito: sem ela, o
+ * pior caso é o carimbo (feio, mas o mapa aparece); com uma chave
+ * (quando o usuário decidir assinar um plano da CARTO), bastaria trocar
+ * a URL abaixo por uma com `?api_key=...`.
  */
-const DEFAULT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const CARTO_RASTER_STYLE: StyleSpecification = {
+  version: 8,
+  sources: {
+    "carto-raster": {
+      type: "raster",
+      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+    },
+  },
+  layers: [{ id: "carto-raster-layer", type: "raster", source: "carto-raster" }],
+};
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
