@@ -2,6 +2,7 @@ export * from "./area-pessoal-screen";
 export * from "./area-profissional-screen";
 export * from "./convite-codigo-screen";
 export * from "./convite-preview-screen";
+export * from "./convite-transportadora-screen";
 export * from "./criar-conta-autonomo-screen";
 export * from "./criar-conta-pessoal-screen";
 export * from "./criar-conta-screen";
