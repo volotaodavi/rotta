@@ -1102,25 +1102,36 @@ export class TripsService {
           horarioPrevisto: stop?.horarioPrevisto ?? "",
         };
       }
+      // `stop` pode não existir mais (parada removida/recriada da rota
+      // depois que o aluno foi vinculado a ela) — NUNCA cai pra `0`/`0`
+      // aqui: isso já causou um marcador fantasma no meio do Golfo da
+      // Guiné (Null Island) no mapa de produção (auditoria 27/08/2026,
+      // usuário: "o mapa não está aparecendo... só um pino no meio do
+      // nada"). Sem parada válida, não há pendência geolocalizável —
+      // melhor sumir da lista (`null`, filtrado abaixo) do que inventar
+      // uma posição falsa que quebra o mapa E o geofencing de 1km de
+      // `listStudentPendingLocations`.
+      if (!stop) return null;
       return {
         vinculo,
         tipo,
         routeStopId,
         waypointId: routeStopId,
-        latitude: stop?.latitude ?? 0,
-        longitude: stop?.longitude ?? 0,
-        endereco: stop?.endereco ?? "",
-        horarioPrevisto: stop?.horarioPrevisto ?? "",
+        latitude: stop.latitude,
+        longitude: stop.longitude,
+        endereco: stop.endereco,
+        horarioPrevisto: stop.horarioPrevisto,
       };
     };
 
-    const pendencias: Array<ReturnType<typeof resolverPendencia>> = [];
+    const pendencias: Array<NonNullable<ReturnType<typeof resolverPendencia>>> = [];
     for (const vinculo of vinculos) {
       const embarqueOuAusente = eventos.find(
         (e) => e.studentId === vinculo.studentId && (e.tipo === "EMBARCOU" || e.tipo === "AUSENTE"),
       );
       if (!embarqueOuAusente) {
-        pendencias.push(resolverPendencia(vinculo, "EMBARQUE", vinculo.paradaEmbarqueId));
+        const pendencia = resolverPendencia(vinculo, "EMBARQUE", vinculo.paradaEmbarqueId);
+        if (pendencia) pendencias.push(pendencia);
         continue;
       }
       if (embarqueOuAusente.tipo === "EMBARCOU") {
@@ -1128,7 +1139,8 @@ export class TripsService {
           (e) => e.studentId === vinculo.studentId && e.tipo === "DESEMBARCOU",
         );
         if (!jaDesembarcou) {
-          pendencias.push(resolverPendencia(vinculo, "DESEMBARQUE", vinculo.paradaDesembarqueId));
+          const pendencia = resolverPendencia(vinculo, "DESEMBARQUE", vinculo.paradaDesembarqueId);
+          if (pendencia) pendencias.push(pendencia);
         }
       }
     }
