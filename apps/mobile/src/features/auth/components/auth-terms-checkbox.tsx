@@ -1,5 +1,8 @@
-import { Check } from "@rotta/icons/native";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Check, X } from "@rotta/icons/native";
+import { useState } from "react";
+import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { WebView } from "react-native-webview";
 
 import { env } from "@/config/env";
 import { useTheme } from "@/providers/theme-provider";
@@ -14,11 +17,11 @@ import { useTheme } from "@/providers/theme-provider";
  * completo (esse existe do lado web, `@rotta/ui/web`, Dossiê 34 §2.5 —
  * portá-lo para nativo é trabalho futuro, não bloqueia este fix).
  *
- * Os Termos/Política em si vivem só no site (`apps/web` —
- * `/legal/termos`, `/legal/privacidade` — Dossiê 45); aqui abrem no
- * navegador do sistema (`Linking`), não numa WebView interna, porque é
- * conteúdo de leitura simples, sem nenhuma interação que precise ficar
- * dentro do app.
+ * Termos/Política abrem numa WebView interna sobre a própria tela de
+ * cadastro (`Modal` + `react-native-webview`, mesmo padrão de
+ * `CriarEmpresaWebViewScreen`/`LegalWebViewScreen`) — pedido explícito
+ * do usuário: nenhum passo do fluxo de criar conta deve tirar a pessoa
+ * do app pro navegador do sistema. Antes usava `Linking.openURL`.
  */
 export function AuthTermsCheckbox({
   checked,
@@ -28,6 +31,8 @@ export function AuthTermsCheckbox({
   onChange: (checked: boolean) => void;
 }): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [documento, setDocumento] = useState<"termos" | "privacidade" | null>(null);
 
   return (
     <View style={styles.row}>
@@ -49,19 +54,55 @@ export function AuthTermsCheckbox({
         Li e aceito os{" "}
         <Text
           style={{ color: theme.colors.primary, fontWeight: "600" }}
-          onPress={() => void Linking.openURL(`${env.EXPO_PUBLIC_WEB_URL}/legal/termos`)}
+          onPress={() => setDocumento("termos")}
         >
           Termos de Uso
         </Text>{" "}
         e a{" "}
         <Text
           style={{ color: theme.colors.primary, fontWeight: "600" }}
-          onPress={() => void Linking.openURL(`${env.EXPO_PUBLIC_WEB_URL}/legal/privacidade`)}
+          onPress={() => setDocumento("privacidade")}
         >
           Política de Privacidade
         </Text>{" "}
         da Rotta.
       </Text>
+
+      <Modal
+        visible={documento !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setDocumento(null)}
+      >
+        <View style={[styles.webviewRoot, { backgroundColor: theme.colors.background }]}>
+          <View
+            style={[
+              styles.webviewHeader,
+              { borderBottomColor: theme.colors.border, paddingTop: insets.top + 8 },
+            ]}
+          >
+            <Text style={[styles.webviewTitle, { color: theme.colors.text }]}>
+              {documento === "termos" ? "Termos de Uso" : "Política de Privacidade"}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Fechar"
+              onPress={() => setDocumento(null)}
+              hitSlop={8}
+            >
+              <X size={22} color={theme.colors.textMuted} />
+            </Pressable>
+          </View>
+          {documento ? (
+            <WebView
+              source={{
+                uri: `${env.EXPO_PUBLIC_WEB_URL}/legal/${documento === "termos" ? "termos" : "privacidade"}`,
+              }}
+              style={styles.flex}
+            />
+          ) : null}
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -76,6 +117,17 @@ const styles = StyleSheet.create({
     marginTop: 2,
     width: 20,
   },
+  flex: { flex: 1 },
   label: { flex: 1, fontSize: 13, lineHeight: 18 },
   row: { flexDirection: "row", gap: 8 },
+  webviewHeader: {
+    alignItems: "center",
+    borderBottomWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+  },
+  webviewRoot: { flex: 1 },
+  webviewTitle: { fontSize: 16, fontWeight: "700" },
 });
