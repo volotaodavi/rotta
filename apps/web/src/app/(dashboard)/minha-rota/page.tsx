@@ -126,10 +126,10 @@ interface RoleAccent {
 }
 
 const MOTORISTA_ACCENT: RoleAccent = {
-  text: "text-primary",
-  bg: "bg-primary",
-  muted: "bg-primary-muted",
-  border: "border-primary/40",
+  text: "text-driverPrimary",
+  bg: "bg-driverPrimary",
+  muted: "bg-driverPrimary-muted",
+  border: "border-driverPrimary/40",
 };
 
 const MONITOR_ACCENT: RoleAccent = {
