@@ -9,7 +9,7 @@ import {
   Navigation,
   UserX,
 } from "@rotta/icons";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -17,6 +17,7 @@ import { useMemo, useState } from "react";
 
 import type { StudentEventsHistoryRange, TripStudentEventType } from "@rotta/api-client";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
 import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";

@@ -2,7 +2,7 @@
 
 import { ApiError } from "@rotta/api-client";
 import { Check, MapPin, Sparkles } from "@rotta/icons";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Button, Card, FormField, Input, Select, Typography } from "@rotta/ui/web";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
@@ -16,6 +16,7 @@ import type {
   StudentSex,
 } from "@rotta/api-client";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useQuickRegisterSchool, useSuggestSchools } from "@/features/schools/hooks/use-schools";
 import {
   SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL,

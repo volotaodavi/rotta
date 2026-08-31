@@ -1,13 +1,14 @@
 "use client";
 
 import { KeyRound, MapPin, Plus, Radio } from "@rotta/icons";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Card, Input, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import type { Student } from "@rotta/api-client";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useGpsForStudent, useGpsForStudents } from "@/features/gps/hooks/use-gps";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useStudentsList } from "@/features/students/hooks/use-students";

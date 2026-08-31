@@ -24,7 +24,7 @@ import {
   type DistanceCoordenada,
 } from "@rotta/maps/distance";
 import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
-import { RottaMap, isCoordenadaValida, type RottaMapMarker } from "@rotta/maps/web";
+import { isCoordenadaValida, type RottaMapMarker } from "@rotta/maps/types";
 import {
   Badge,
   Button,
@@ -53,6 +53,7 @@ import type {
 import type { Route as NextRoute } from "next";
 import type { ReactNode } from "react";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
 import { useBeforeUnloadWarning } from "@/features/driver/hooks/use-before-unload-warning";

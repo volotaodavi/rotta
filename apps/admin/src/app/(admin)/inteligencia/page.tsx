@@ -1,10 +1,11 @@
 "use client";
 
 import { AlertTriangle } from "@rotta/icons";
-import { RottaMap, type HeatmapPoint } from "@rotta/maps/web";
+import { type HeatmapPoint } from "@rotta/maps/types";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { useMemo, useState } from "react";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useNationalHeatmap, useNationalKpis } from "@/features/analytics/hooks/use-analytics";
 import { analyticsApi } from "@/lib/api-client";
 

@@ -1,14 +1,14 @@
 "use client";
 
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Card, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import type { BoundingBoxInput } from "@rotta/api-client";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useSchoolMarkers } from "@/features/schools/hooks/use-school-markers";
-
 
 /**
  * "Mapa Nacional de Escolas" — visão CROSS-TENANT do Admin Rotta sobre

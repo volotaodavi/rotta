@@ -230,31 +230,40 @@ export class TripsService {
     build: (nomeResponsavel: string, nomeAluno: string) => { titulo: string; corpo: string },
   ): Promise<void> {
     const vinculos = await this.routesService.listStudents(routeId, actor);
-    for (const vinculo of vinculos) {
-      try {
-        const [contract, student] = await Promise.all([
-          this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
-          this.studentsService.findRawById(vinculo.studentId),
-        ]);
-        if (!student) continue;
-        const responsavel = await this.usersService.findById(contract.responsavelId);
-        if (!responsavel) continue;
-        const message = build(responsavel.nome, student.nome);
-        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
-          userId: contract.responsavelId,
-          companyId: contract.companyId,
-          tipo: eventType,
-          titulo: message.titulo,
-          corpo: message.corpo,
-          dadosContexto: { routeId, studentId: vinculo.studentId },
-        });
-      } catch (error) {
-        this.logger.warn(
-          `Falha ao notificar responsável do vínculo ${vinculo.id} sobre ${eventType}.`,
-        );
-        this.logger.warn(error instanceof Error ? error.message : String(error));
-      }
-    }
+    // Antes disparava um `vinculo` de cada vez (N idas-e-voltas sequenciais
+    // ao banco, uma esperando a outra) — auditoria de performance
+    // 31/08/2026 (pedido do usuário: "o tempo de resposta está demorando
+    // muito"). `Promise.all` dispara todos os vínculos em paralelo; o
+    // try/catch continua por item (nunca rethrows), então um vínculo com
+    // erro não derruba nem atrasa os demais — mesmo comportamento de
+    // isolamento de antes, só que concorrente em vez de sequencial.
+    await Promise.all(
+      vinculos.map(async (vinculo) => {
+        try {
+          const [contract, student] = await Promise.all([
+            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+            this.studentsService.findRawById(vinculo.studentId),
+          ]);
+          if (!student) return;
+          const responsavel = await this.usersService.findById(contract.responsavelId);
+          if (!responsavel) return;
+          const message = build(responsavel.nome, student.nome);
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: contract.responsavelId,
+            companyId: contract.companyId,
+            tipo: eventType,
+            titulo: message.titulo,
+            corpo: message.corpo,
+            dadosContexto: { routeId, studentId: vinculo.studentId },
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao notificar responsável do vínculo ${vinculo.id} sobre ${eventType}.`,
+          );
+          this.logger.warn(error instanceof Error ? error.message : String(error));
+        }
+      }),
+    );
   }
 
   // ---------------------------------------------------------------------
@@ -1337,31 +1346,39 @@ export class TripsService {
       const horario = proxima.etaPrevista.slice(11, 16);
       const pendencias = await this.listPendenciasPorAluno(trip, actor);
 
-      for (const pendencia of pendencias) {
-        if (pendencia.waypointId !== proxima.routeStopId) continue;
-        const vinculo = pendencia.vinculo;
-        try {
-          const [contract, student] = await Promise.all([
-            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
-            this.studentsService.findRawById(vinculo.studentId),
-          ]);
-          if (!student) continue;
-          const message = this.messagePersonalizationService.veiculoProximo(student.nome, horario);
-          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
-            userId: contract.responsavelId,
-            companyId: contract.companyId,
-            tipo: NotificationEventType.VEICULO_PROXIMO,
-            titulo: message.titulo,
-            corpo: message.corpo,
-            dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
-          });
-        } catch (error) {
-          this.logger.warn(
-            `Falha ao notificar responsável do vínculo ${vinculo.id} sobre novo ETA (rota ${trip.routeId}).`,
-          );
-          this.logger.warn(error instanceof Error ? error.message : String(error));
-        }
-      }
+      // Mesma correção de performance de `notifyActiveStudentsOfRoute`
+      // (auditoria 31/08/2026) — paralelo em vez de sequencial.
+      await Promise.all(
+        pendencias
+          .filter((pendencia) => pendencia.waypointId === proxima.routeStopId)
+          .map(async (pendencia) => {
+            const vinculo = pendencia.vinculo;
+            try {
+              const [contract, student] = await Promise.all([
+                this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+                this.studentsService.findRawById(vinculo.studentId),
+              ]);
+              if (!student) return;
+              const message = this.messagePersonalizationService.veiculoProximo(
+                student.nome,
+                horario,
+              );
+              this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+                userId: contract.responsavelId,
+                companyId: contract.companyId,
+                tipo: NotificationEventType.VEICULO_PROXIMO,
+                titulo: message.titulo,
+                corpo: message.corpo,
+                dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
+              });
+            } catch (error) {
+              this.logger.warn(
+                `Falha ao notificar responsável do vínculo ${vinculo.id} sobre novo ETA (rota ${trip.routeId}).`,
+              );
+              this.logger.warn(error instanceof Error ? error.message : String(error));
+            }
+          }),
+      );
     } catch (error) {
       this.logger.warn(`Falha ao recalcular próximas ETAs da viagem ${trip.id} após ausência.`);
       this.logger.warn(error instanceof Error ? error.message : String(error));
@@ -1412,34 +1429,39 @@ export class TripsService {
       if (distanciaMetros > GEOFENCE_APPROACHING_METERS) return;
 
       const pendencias = await this.listPendenciasPorAluno(trip, actor);
-      for (const pendencia of pendencias) {
-        if (pendencia.waypointId !== proxima.id) continue;
-        const vinculo = pendencia.vinculo;
-        try {
-          const [contract, student] = await Promise.all([
-            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
-            this.studentsService.findRawById(vinculo.studentId),
-          ]);
-          if (!student) continue;
-          const message = this.messagePersonalizationService.veiculoProximo(
-            student.nome,
-            proxima.horarioPrevisto,
-          );
-          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
-            userId: contract.responsavelId,
-            companyId: contract.companyId,
-            tipo: NotificationEventType.VEICULO_PROXIMO,
-            titulo: message.titulo,
-            corpo: message.corpo,
-            dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
-          });
-        } catch (error) {
-          this.logger.warn(
-            `Falha ao notificar responsável do vínculo ${vinculo.id} sobre aproximação do veículo (rota ${trip.routeId}).`,
-          );
-          this.logger.warn(error instanceof Error ? error.message : String(error));
-        }
-      }
+      // Mesma correção de performance de `notifyActiveStudentsOfRoute`
+      // (auditoria 31/08/2026) — paralelo em vez de sequencial.
+      await Promise.all(
+        pendencias
+          .filter((pendencia) => pendencia.waypointId === proxima.id)
+          .map(async (pendencia) => {
+            const vinculo = pendencia.vinculo;
+            try {
+              const [contract, student] = await Promise.all([
+                this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+                this.studentsService.findRawById(vinculo.studentId),
+              ]);
+              if (!student) return;
+              const message = this.messagePersonalizationService.veiculoProximo(
+                student.nome,
+                proxima.horarioPrevisto,
+              );
+              this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+                userId: contract.responsavelId,
+                companyId: contract.companyId,
+                tipo: NotificationEventType.VEICULO_PROXIMO,
+                titulo: message.titulo,
+                corpo: message.corpo,
+                dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
+              });
+            } catch (error) {
+              this.logger.warn(
+                `Falha ao notificar responsável do vínculo ${vinculo.id} sobre aproximação do veículo (rota ${trip.routeId}).`,
+              );
+              this.logger.warn(error instanceof Error ? error.message : String(error));
+            }
+          }),
+      );
 
       await this.tripRepository.update(trip.id, { ultimaParadaProximaNotificadaId: proxima.id });
     } catch (error) {
@@ -1494,38 +1516,43 @@ export class TripsService {
       if (trip.ultimaParadaEmVezNotificadaId === proxima.id) return;
 
       const pendencias = await this.listPendenciasPorAluno(trip, actor);
-      for (const pendencia of pendencias) {
-        if (pendencia.waypointId !== proxima.id) continue;
-        const vinculo = pendencia.vinculo;
-        try {
-          const [contract, student] = await Promise.all([
-            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
-            this.studentsService.findRawById(vinculo.studentId),
-          ]);
-          if (!student) continue;
-          const message =
-            pendencia.tipo === "EMBARQUE"
-              ? this.messagePersonalizationService.alunoVezEmbarque(student.nome)
-              : this.messagePersonalizationService.alunoVezDesembarque(student.nome);
-          const eventType =
-            pendencia.tipo === "EMBARQUE"
-              ? NotificationEventType.ALUNO_VEZ_EMBARQUE
-              : NotificationEventType.ALUNO_VEZ_DESEMBARQUE;
-          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
-            userId: contract.responsavelId,
-            companyId: contract.companyId,
-            tipo: eventType,
-            titulo: message.titulo,
-            corpo: message.corpo,
-            dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
-          });
-        } catch (error) {
-          this.logger.warn(
-            `Falha ao notificar responsável do vínculo ${vinculo.id} sobre a vez do aluno (rota ${trip.routeId}).`,
-          );
-          this.logger.warn(error instanceof Error ? error.message : String(error));
-        }
-      }
+      // Mesma correção de performance de `notifyActiveStudentsOfRoute`
+      // (auditoria 31/08/2026) — paralelo em vez de sequencial.
+      await Promise.all(
+        pendencias
+          .filter((pendencia) => pendencia.waypointId === proxima.id)
+          .map(async (pendencia) => {
+            const vinculo = pendencia.vinculo;
+            try {
+              const [contract, student] = await Promise.all([
+                this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+                this.studentsService.findRawById(vinculo.studentId),
+              ]);
+              if (!student) return;
+              const message =
+                pendencia.tipo === "EMBARQUE"
+                  ? this.messagePersonalizationService.alunoVezEmbarque(student.nome)
+                  : this.messagePersonalizationService.alunoVezDesembarque(student.nome);
+              const eventType =
+                pendencia.tipo === "EMBARQUE"
+                  ? NotificationEventType.ALUNO_VEZ_EMBARQUE
+                  : NotificationEventType.ALUNO_VEZ_DESEMBARQUE;
+              this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+                userId: contract.responsavelId,
+                companyId: contract.companyId,
+                tipo: eventType,
+                titulo: message.titulo,
+                corpo: message.corpo,
+                dadosContexto: { routeId: trip.routeId, studentId: vinculo.studentId },
+              });
+            } catch (error) {
+              this.logger.warn(
+                `Falha ao notificar responsável do vínculo ${vinculo.id} sobre a vez do aluno (rota ${trip.routeId}).`,
+              );
+              this.logger.warn(error instanceof Error ? error.message : String(error));
+            }
+          }),
+      );
 
       await this.tripRepository.update(trip.id, { ultimaParadaEmVezNotificadaId: proxima.id });
     } catch (error) {

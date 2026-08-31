@@ -3,7 +3,7 @@
 import { useAuth } from "@rotta/auth/web";
 import { Navigation } from "@rotta/icons";
 import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { Suspense, useState } from "react";
 
@@ -12,6 +12,7 @@ import { getStopDirection, STOP_DIRECTION_LABEL } from "./stop-direction";
 import { StopsSection } from "./stops-section";
 import { StudentsSection } from "./students-section";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import {
@@ -29,7 +30,6 @@ import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useMyLocation } from "@/hooks/use-my-location";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
-
 
 interface RouteDetailClientProps {
   routeId: string;

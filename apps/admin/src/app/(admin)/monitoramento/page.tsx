@@ -1,12 +1,13 @@
 "use client";
 
 import { Clock, MapPin, Search } from "@rotta/icons";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useGpsMapNationwide } from "@/features/gps/hooks/use-gps";
 import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { searchMonitoringCandidates } from "@/features/gps/monitoring-search.util";

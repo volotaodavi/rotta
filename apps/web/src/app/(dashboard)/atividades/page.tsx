@@ -2,10 +2,11 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Calendar, Clock } from "@rotta/icons";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Card, PanelGreeting, Spinner, Tabs, Typography } from "@rotta/ui/web";
 import { useMemo, useState } from "react";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useMinhasRotas } from "@/features/driver/hooks/use-driver-routes";
 import { useTripPositions } from "@/features/driver/hooks/use-driver-trip";
 import { useTripHistory, type TripHistoryEntry } from "@/features/driver/hooks/use-trip-history";

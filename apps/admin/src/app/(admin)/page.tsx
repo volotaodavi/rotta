@@ -15,7 +15,7 @@ import {
   TrendingDown,
   TrendingUp,
 } from "@rotta/icons";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import {
   Badge,
   Card,
@@ -32,6 +32,7 @@ import type { ApprovalQueue, MapVehicle } from "@rotta/api-client";
 import type { LucideIcon } from "@rotta/icons";
 import type { Route } from "next";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useNationalKpis } from "@/features/analytics/hooks/use-analytics";
 import {
   useApprovalQueue,

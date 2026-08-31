@@ -6,12 +6,13 @@ import {
   haversineDistanceMeters,
   type DistanceCoordenada,
 } from "@rotta/maps/distance";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { RouteStop, RouteStudent, TripStudentEventType } from "@rotta/api-client";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { RecenterButton, RouteFromToCard } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
 import {

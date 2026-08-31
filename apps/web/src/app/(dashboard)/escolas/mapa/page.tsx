@@ -1,15 +1,15 @@
 "use client";
 
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Card, Select, Spinner, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import type { School, SchoolShift, SchoolType } from "@rotta/api-client";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useSchoolsList } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL, SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
-
 
 /**
  * "Mapa" (briefing "MAPA" — "exibir todas as escolas, permitir

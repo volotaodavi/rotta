@@ -141,30 +141,37 @@ export class RoutesService {
     actor: AuthenticatedUser,
   ): Promise<void> {
     const vinculos = await this.routeStudentRepository.listByRoute(routeId);
-    for (const vinculo of vinculos) {
-      try {
-        const [contract, student] = await Promise.all([
-          this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
-          this.studentsService.findRawById(vinculo.studentId),
-        ]);
-        if (!student) continue;
-        const message = build(student.nome);
-        if (!message) continue;
-        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
-          userId: contract.responsavelId,
-          companyId: contract.companyId,
-          tipo: eventType,
-          titulo: message.titulo,
-          corpo: message.corpo,
-          dadosContexto: { routeId, studentId: vinculo.studentId },
-        });
-      } catch (error) {
-        this.logger.warn(
-          `Falha ao notificar responsável do vínculo ${vinculo.id} (rota ${routeId}) sobre ${eventType}.`,
-        );
-        this.logger.warn(error instanceof Error ? error.message : String(error));
-      }
-    }
+    // Antes disparava um `vinculo` de cada vez (N idas-e-voltas sequenciais
+    // ao banco) — auditoria de performance 31/08/2026 (pedido do usuário:
+    // "o tempo de resposta está demorando muito"). `Promise.all` dispara
+    // todos em paralelo; o try/catch continua por item (nunca rethrows),
+    // então um vínculo com erro não derruba nem atrasa os demais.
+    await Promise.all(
+      vinculos.map(async (vinculo) => {
+        try {
+          const [contract, student] = await Promise.all([
+            this.contractsService.findRawByIdOrThrow(vinculo.contractId, actor),
+            this.studentsService.findRawById(vinculo.studentId),
+          ]);
+          if (!student) return;
+          const message = build(student.nome);
+          if (!message) return;
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: contract.responsavelId,
+            companyId: contract.companyId,
+            tipo: eventType,
+            titulo: message.titulo,
+            corpo: message.corpo,
+            dadosContexto: { routeId, studentId: vinculo.studentId },
+          });
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao notificar responsável do vínculo ${vinculo.id} (rota ${routeId}) sobre ${eventType}.`,
+          );
+          this.logger.warn(error instanceof Error ? error.message : String(error));
+        }
+      }),
+    );
   }
 
   // ---------------------------------------------------------------------

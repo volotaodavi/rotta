@@ -1,11 +1,12 @@
 "use client";
 
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
 import { useMemo, useState } from "react";
 
 import type { MapVehicle } from "@rotta/api-client";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useGpsMap } from "@/features/gps/hooks/use-gps";
 
 /**

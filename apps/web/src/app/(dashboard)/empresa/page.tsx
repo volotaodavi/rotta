@@ -13,7 +13,7 @@ import {
   Store,
   Users,
 } from "@rotta/icons";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { type RottaMapMarker } from "@rotta/maps/types";
 import {
   Badge,
   Button,
@@ -35,6 +35,7 @@ import type { AgendaEventoTipo, Company, MapVehicle, UpdateCompanyInput } from "
 import type { LucideIcon } from "@rotta/icons";
 import type { Route } from "next";
 
+import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useAgendaEvents } from "@/features/agenda/hooks/use-agenda";
 import {
   useMyCompany,
