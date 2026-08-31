@@ -28,8 +28,11 @@ import {
   View,
 } from "react-native";
 
+
+import { AusenciaHojeCard } from "../components/ausencia-hoje-card";
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
+import { useStudent } from "../hooks/use-students";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
 import { useTransporterDetail } from "../hooks/use-transporters";
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "../labels";
@@ -479,52 +482,58 @@ function DetalhesContrato({ contrato }: { contrato: Contract }): JSX.Element {
 export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX.Element {
   const { theme } = useTheme();
   const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
+  const { data: aluno } = useStudent(contrato.studentId);
 
   return (
-    <VehicleCard>
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Acompanhamento</Text>
+    <>
+      <VehicleCard>
+        <Text style={[styles.secao, { color: theme.colors.text }]}>Acompanhamento</Text>
 
-      {isLoading ? (
-        <ActivityIndicator color={theme.colors.primary} />
-      ) : !viagem ? (
-        <Text style={{ color: theme.colors.textMuted }}>
-          Nenhum transporte em andamento no momento. O mapa aparece aqui assim que a viagem começar.
-        </Text>
-      ) : (
-        <>
-          {viagem.latitude && viagem.longitude ? (
-            <View style={styles.mapa}>
-              <RottaMap
-                markers={[
-                  {
-                    id: viagem.tripId,
-                    titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
-                    latitude: viagem.latitude,
-                    longitude: viagem.longitude,
-                    // Viagem em andamento agora — sempre um veículo em movimento.
-                    emMovimento: true,
-                  },
-                ]}
-                initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
-                initialZoom={14}
-                // "Mapa em modo GPS" (Frente 4) — mesma paridade da tela
-                // acima.
-                followMode
-              />
-            </View>
-          ) : null}
-          <Text style={{ color: theme.colors.text }}>
-            {viagem.routeNome}, motorista {viagem.motoristaNome}
-            {viagem.monitorNome ? `, monitor ${viagem.monitorNome}` : ""}
-          </Text>
+        {isLoading ? (
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : !viagem ? (
           <Text style={{ color: theme.colors.textMuted }}>
-            {viagem.ultimaPosicaoEm
-              ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
-              : "Aguardando a primeira posição do motorista"}
+            Nenhum transporte em andamento no momento. O mapa aparece aqui assim que a viagem
+            começar.
           </Text>
-        </>
-      )}
-    </VehicleCard>
+        ) : (
+          <>
+            {viagem.latitude && viagem.longitude ? (
+              <View style={styles.mapa}>
+                <RottaMap
+                  markers={[
+                    {
+                      id: viagem.tripId,
+                      titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
+                      latitude: viagem.latitude,
+                      longitude: viagem.longitude,
+                      // Viagem em andamento agora — sempre um veículo em movimento.
+                      emMovimento: true,
+                    },
+                  ]}
+                  initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
+                  initialZoom={14}
+                  // "Mapa em modo GPS" (Frente 4) — mesma paridade da tela
+                  // acima.
+                  followMode
+                />
+              </View>
+            ) : null}
+            <Text style={{ color: theme.colors.text }}>
+              {viagem.routeNome}, motorista {viagem.motoristaNome}
+              {viagem.monitorNome ? `, monitor ${viagem.monitorNome}` : ""}
+            </Text>
+            <Text style={{ color: theme.colors.textMuted }}>
+              {viagem.ultimaPosicaoEm
+                ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
+                : "Aguardando a primeira posição do motorista"}
+            </Text>
+          </>
+        )}
+      </VehicleCard>
+
+      {aluno ? <AusenciaHojeCard studentId={contrato.studentId} nomeAluno={aluno.nome} /> : null}
+    </>
   );
 }
 
