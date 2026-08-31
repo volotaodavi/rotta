@@ -4,6 +4,9 @@ import Link from "next/link";
 
 import type { Metadata } from "next";
 
+import { AsaasSecurityBadge } from "@/components/asaas-security-badge";
+
+
 export const metadata: Metadata = {
   title: "Planos e preços",
   description:
@@ -64,6 +67,8 @@ export default function PlanosPage(): JSX.Element {
           </Link>
         </Card.Footer>
       </Card>
+
+      <AsaasSecurityBadge className="w-full max-w-sm justify-center" />
     </div>
   );
 }

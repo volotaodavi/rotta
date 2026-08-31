@@ -6,12 +6,14 @@ import { useState } from "react";
 
 import type { AsaasBillingType, AsaasPayment, PixCheckout } from "@rotta/api-client";
 
+import { AsaasSecurityBadge } from "@/components/asaas-security-badge";
 import { PixCheckoutModal } from "@/features/billing/components/pix-checkout-modal";
 import {
   useAsaasCheckoutStatus,
   useCreateAsaasCheckout,
   useCreatePixCheckout,
 } from "@/features/company/hooks/use-company";
+
 
 type Metodo = "PIX" | AsaasBillingType;
 
@@ -144,6 +146,11 @@ export default function AssinaturaPage(): JSX.Element {
           </Card.Body>
         </Card>
       )}
+
+      {/* Só nos métodos que passam pela Asaas de verdade (Pix continua
+          na AbacatePay, ver nota acima) — nunca atribuir o provedor
+          errado. */}
+      {metodo !== "PIX" ? <AsaasSecurityBadge /> : null}
 
       {(metodo === "CREDIT_CARD" || metodo === "DEBIT_CARD") &&
         (pagamentoAtual ? (
