@@ -641,6 +641,7 @@ function RotaOperacional({
   const { theme } = useTheme();
   const { user } = useAuth();
   const isMotorista = user?.role === "motorista";
+  const isMonitor = user?.role === "monitor";
   // Cor de papel (Frente 304 — 3 imagens de referência anexadas pelo
   // usuário, pedido explícito "quero o mesmo design, idêntico"):
   // Motorista reaproveita `primary` (já azul); Monitor usa o novo
@@ -663,24 +664,31 @@ function RotaOperacional({
   const finishTrip = useFinishTrip(rota.id);
 
   const isActive = trip?.status === "EM_ANDAMENTO";
+  // Correção 31/08/2026 (pedido do usuário: "Monitor e Motorista
+  // integrados? Ações integradas?") — só o Motorista reportava GPS,
+  // apesar do backend (`TripsService.assertCanOperateTrip`) já liberar
+  // o Monitor pra `ingestPosition` desde a Frente AA. Mesma paridade do
+  // Painel Web (`minha-rota/page.tsx`).
+  const podeReportarGps = isMotorista || isMonitor;
   const { status: gpsStatus } = useTripGpsReporting(
-    isMotorista && isActive && trip ? trip.id : null,
+    podeReportarGps && isActive && trip ? trip.id : null,
   );
 
   // Mantém a tela acesa durante a viagem (pedido do usuário: "manter a
   // tela do motorista ligada... tanto no app quanto na web") — paridade
   // com `useWakeLock` já usado no Painel Web (`minha-rota/page.tsx`),
-  // mesmo escopo: só o Motorista, só enquanto a viagem está
-  // `EM_ANDAMENTO`. `expo-keep-awake` já era uma dependência instalada,
-  // mas nunca chamada em lugar nenhum — sem isso, o celular apaga a tela
-  // sozinho e o app para de reportar GPS/mostrar o checklist até alguém
-  // desbloquear de novo (mesmo problema que motivou o hook web).
+  // mesmo escopo do reporte de GPS acima (Motorista OU Monitor), só
+  // enquanto a viagem está `EM_ANDAMENTO`. `expo-keep-awake` já era uma
+  // dependência instalada, mas nunca chamada em lugar nenhum — sem isso,
+  // o celular apaga a tela sozinho e o app para de reportar GPS/mostrar
+  // o checklist até alguém desbloquear de novo (mesmo problema que
+  // motivou o hook web).
   useEffect(() => {
-    if (!isMotorista || !isActive) return;
+    if (!podeReportarGps || !isActive) return;
     const tag = "rotta-viagem-ativa";
     void activateKeepAwakeAsync(tag);
     return () => void deactivateKeepAwake(tag);
-  }, [isMotorista, isActive]);
+  }, [podeReportarGps, isActive]);
 
   const paradasOrdenadas = [...(stops ?? [])].sort((a, b) => a.ordem - b.ordem);
   const markers: RottaMapMarker[] = paradasOrdenadas.map((parada) => ({

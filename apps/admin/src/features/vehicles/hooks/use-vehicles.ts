@@ -13,7 +13,6 @@ import type {
 
 import { vehiclesApi } from "@/lib/api-client";
 
-
 /** Mensagem de erro legível — mesmo padrão de `use-identity-verification-admin.ts`. */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;
@@ -44,6 +43,23 @@ export function useVehicleAuditLogs(id: string, page = 1, pageSize = 20) {
     queryKey: ["vehicles", id, "audit-logs", page, pageSize],
     queryFn: () => vehiclesApi.listAuditLogs(id, page, pageSize),
     enabled: Boolean(id),
+  });
+}
+
+/**
+ * Ocorrências do veículo (auditoria 31/08/2026, pedido do usuário: "as
+ * ações do motorista/monitor refletindo?") — antes não existia NENHUMA
+ * tela do Admin pra ver `VehicleOccurrence`, apesar do endpoint
+ * (`GET /vehicles/:id/occurrences`) já liberar `ADMIN_ROTTA` em
+ * `READ_ROLES`. `refetchInterval` (mesmo valor de `apps/web`) pra uma
+ * ocorrência nova aparecer aqui sem precisar recarregar a página.
+ */
+export function useVehicleOccurrences(id: string, page = 1, pageSize = 20) {
+  return useQuery({
+    queryKey: ["vehicles", id, "occurrences", page, pageSize],
+    queryFn: () => vehiclesApi.listOccurrences(id, page, pageSize),
+    enabled: Boolean(id),
+    refetchInterval: 30_000,
   });
 }
 

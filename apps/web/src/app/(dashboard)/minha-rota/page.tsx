@@ -720,6 +720,7 @@ function RotaOperacional({
   const isAutonomoOuMei =
     user?.role === "empresa" && (user.companyType === "AUTONOMO" || user.companyType === "MEI");
   const isMotorista = user?.role === "motorista" || isAutonomoOuMei;
+  const isMonitor = user?.role === "monitor";
   const accent = isMotorista ? MOTORISTA_ACCENT : MONITOR_ACCENT;
   const toast = useToast();
 
@@ -759,12 +760,20 @@ function RotaOperacional({
   }
 
   const isActive = trip?.status === "EM_ANDAMENTO";
+  // Correção 31/08/2026 (pedido do usuário: "Monitor e Motorista
+  // integrados? Ações integradas?") — só o Motorista reportava GPS,
+  // apesar do backend (`TripsService.assertCanOperateTrip`) já liberar
+  // o Monitor pra `ingestPosition` desde a Frente AA. Sem isso, uma
+  // viagem operada só pelo Monitor (motorista dirigindo, sem o painel
+  // aberto) nunca reportava posição nenhuma — o mapa do responsável e o
+  // próprio veículo-no-mapa desta tela ficavam sem dado.
+  const podeReportarGps = isMotorista || isMonitor;
   const { status: gpsStatus } = useTripGpsReporting(
-    isMotorista && isActive && trip ? trip.id : null,
+    podeReportarGps && isActive && trip ? trip.id : null,
   );
-  // Tela acesa + aviso antes de fechar a aba enquanto a viagem está rolando — só o Motorista, mesmo escopo do GPS acima.
-  useWakeLock(isMotorista && isActive);
-  useBeforeUnloadWarning(isMotorista && isActive);
+  // Tela acesa + aviso antes de fechar a aba enquanto a viagem está rolando — Motorista OU Monitor, mesmo escopo do GPS acima.
+  useWakeLock(podeReportarGps && isActive);
+  useBeforeUnloadWarning(podeReportarGps && isActive);
 
   const paradasOrdenadas = [...(stops ?? [])].sort((a, b) => a.ordem - b.ordem);
   const markers: RottaMapMarker[] = paradasOrdenadas.map((parada) => ({

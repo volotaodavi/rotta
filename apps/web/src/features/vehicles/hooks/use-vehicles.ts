@@ -271,6 +271,13 @@ export function useVehicleOccurrences(id: string, page = 1, pageSize = 20) {
     queryKey: ["vehicles", id, "occurrences", page, pageSize],
     queryFn: () => vehiclesApi.listOccurrences(id, page, pageSize),
     enabled: Boolean(id),
+    // Reflexo quase em tempo real entre Motorista/Monitor (auditoria
+    // 31/08/2026, pedido do usuário: "ações integradas? Refletindo nas
+    // decisões?") — antes só atualizava ao sair e voltar pra tela; uma
+    // ocorrência criada pelo Monitor não aparecia pro Motorista (ou
+    // vice-versa) sem um refresh manual. Mesmo intervalo de
+    // `useTripStudentEvents`.
+    refetchInterval: 30_000,
   });
 }
 

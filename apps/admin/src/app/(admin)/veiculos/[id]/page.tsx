@@ -3,13 +3,19 @@
 import { Badge, Card, Select, Spinner, Table, Typography } from "@rotta/ui/web";
 import { use } from "react";
 
-import type { VehicleAuditLog, VehicleStatus } from "@rotta/api-client";
+import type {
+  VehicleAuditLog,
+  VehicleOccurrence,
+  VehicleOccurrenceSeverity,
+  VehicleStatus,
+} from "@rotta/api-client";
 
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import {
   useUpdateVehicleStatus,
   useVehicle,
   useVehicleAuditLogs,
+  useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_CATEGORY_LABEL, VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 
@@ -22,14 +28,33 @@ const STATUS_OPTIONS: VehicleStatus[] = [
   "BLOQUEADO",
 ];
 
+/** Mesmos rótulos/cores de `apps/web/src/app/(dashboard)/ocorrencia/page.tsx`. */
+const OCORRENCIA_SEVERIDADE_LABEL: Record<VehicleOccurrenceSeverity, string> = {
+  BAIXA: "Baixa",
+  MEDIA: "Média",
+  ALTA: "Alta",
+};
+const OCORRENCIA_SEVERIDADE_BADGE: Record<
+  VehicleOccurrenceSeverity,
+  "neutral" | "warning" | "danger"
+> = {
+  BAIXA: "neutral",
+  MEDIA: "warning",
+  ALTA: "danger",
+};
+
 /**
  * Detalhes de um veículo — visão de FISCALIZAÇÃO do Admin Rotta (suporte
  * multi-tenant/auditoria), não a tela de gestão operacional completa que
  * já existe em `apps/web` (aquela tem abas de Documentos/Manutenções/
- * Lembretes/Vínculos/Checklist/Ocorrências — operação do dia a dia da
- * própria Empresa/Gestor). Aqui: dados básicos, troca de status
- * (intervenção pontual de suporte) e o log de auditoria — sem cadastro,
- * já que Admin Rotta não tem tenant próprio.
+ * Lembretes/Vínculos/Checklist — operação do dia a dia da própria
+ * Empresa/Gestor). Aqui: dados básicos, troca de status (intervenção
+ * pontual de suporte), o log de auditoria e — desde a auditoria
+ * 31/08/2026 — as Ocorrências registradas pelo Motorista/Monitor
+ * (LEITURA apenas: o endpoint já liberava `ADMIN_ROTTA`, mas nenhuma
+ * tela do Admin consumia; registrar uma ocorrência nova continua
+ * exclusivo de quem está na viagem). Sem cadastro, já que Admin Rotta
+ * não tem tenant próprio.
  */
 export default function VeiculoAdminDetalhesPage({
   params,
@@ -39,6 +64,7 @@ export default function VeiculoAdminDetalhesPage({
   const { id } = use(params);
   const { data: vehicle, isLoading, isError } = useVehicle(id);
   const { data: auditLogs } = useVehicleAuditLogs(id);
+  const { data: occurrences } = useVehicleOccurrences(id);
   const updateStatus = useUpdateVehicleStatus(id);
 
   if (isLoading) {
@@ -161,6 +187,52 @@ export default function VeiculoAdminDetalhesPage({
             rows={auditLogs?.items ?? []}
             keyExtractor={(log) => log.id}
             emptyMessage="Nenhum registro de auditoria para este veículo."
+          />
+        </Card.Body>
+      </Card>
+
+      <Card>
+        <Card.Header title="Ocorrências" />
+        <Card.Body>
+          <Table<VehicleOccurrence>
+            columns={[
+              {
+                key: "severidade",
+                header: "Severidade",
+                render: (occurrence) => (
+                  <Badge variant={OCORRENCIA_SEVERIDADE_BADGE[occurrence.severidade]}>
+                    {OCORRENCIA_SEVERIDADE_LABEL[occurrence.severidade]}
+                  </Badge>
+                ),
+              },
+              {
+                key: "titulo",
+                header: "Título",
+                render: (occurrence) => occurrence.titulo,
+              },
+              {
+                key: "descricao",
+                header: "Descrição",
+                render: (occurrence) => (
+                  <span className="line-clamp-2 max-w-xs">{occurrence.descricao}</span>
+                ),
+              },
+              {
+                key: "reportadoPor",
+                header: "Reportado por (ID)",
+                render: (occurrence) => (
+                  <span className="font-mono text-xs">{occurrence.reportadoPorId}</span>
+                ),
+              },
+              {
+                key: "data",
+                header: "Data",
+                render: (occurrence) => new Date(occurrence.createdAt).toLocaleString("pt-BR"),
+              },
+            ]}
+            rows={occurrences?.items ?? []}
+            keyExtractor={(occurrence) => occurrence.id}
+            emptyMessage="Nenhuma ocorrência registrada para este veículo."
           />
         </Card.Body>
       </Card>
