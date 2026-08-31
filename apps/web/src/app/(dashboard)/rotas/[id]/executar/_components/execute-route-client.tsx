@@ -223,7 +223,7 @@ export function ExecuteRouteClient({
             label="Deslize para finalizar"
             onComplete={() => finishTrip.mutate(trip.id)}
             isLoading={finishTrip.isPending}
-            thumbColorClassName="bg-danger"
+            danger
           />
         )}
       </div>

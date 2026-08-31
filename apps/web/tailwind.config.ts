@@ -51,6 +51,21 @@ const config: Config = {
           DEFAULT: withOpacity("--color-monitor-accent"),
           muted: withOpacity("--color-monitor-accent-muted"),
         },
+        /** Identidade visual exclusiva das telas do Motorista/Monitor — ver `driverPrimary` em `packages/theme/src/tokens/colors.ts`. */
+        driverPrimary: {
+          DEFAULT: withOpacity("--color-driver-primary"),
+          hover: withOpacity("--color-driver-primary-hover"),
+          muted: withOpacity("--color-driver-primary-muted"),
+        },
+        driverBackground: withOpacity("--color-driver-background"),
+        driverSuccess: {
+          DEFAULT: withOpacity("--color-driver-success"),
+          muted: withOpacity("--color-driver-success-muted"),
+        },
+        driverDanger: {
+          DEFAULT: withOpacity("--color-driver-danger"),
+          muted: withOpacity("--color-driver-danger-muted"),
+        },
         card: withOpacity("--color-card"),
         muted: withOpacity("--color-muted"),
         placeholder: withOpacity("--color-placeholder"),
@@ -100,6 +115,8 @@ const config: Config = {
         card: elevation.card.web,
         dropdown: elevation.dropdown.web,
         modal: elevation.modal.web,
+        /** Sombra discreta exclusiva das telas do Motorista/Monitor — ver `driverShadow` em `packages/theme/src/tokens/colors.ts`. Via var CSS (não `elevation`) porque muda de valor entre claro/escuro. */
+        driver: "var(--shadow-driver)",
       },
     },
   },

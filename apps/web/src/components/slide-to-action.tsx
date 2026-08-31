@@ -15,27 +15,38 @@ import { useRef, useState } from "react";
  * polyfill.
  *
  * Não dispara `onComplete` durante o arrasto — só ao soltar com o polegar
- * tendo passado de ~80% do percurso (evita disparo acidental por um
- * toque de leve) — e sempre volta ao início se soltar antes disso.
+ * tendo passado de ~82% do percurso (spec do Motorista, 31/08/2026 —
+ * evita disparo acidental por um toque de leve) — e sempre volta ao
+ * início se soltar antes disso. `direction="left"` inverte o sentido do
+ * arrasto (útil pra ações "voltar"/RTL futuro) sem duplicar o
+ * componente.
  */
 export interface SlideToActionProps {
   label: string;
   onComplete: () => void;
+  /** Texto mostrado no lugar de `label` assim que o arrasto ultrapassa o limiar de confirmação — feedback imediato antes de `isLoading` chegar (ex. "Iniciando viagem..."). */
+  completedLabel?: string;
   isLoading?: boolean;
   disabled?: boolean;
-  /** Classe Tailwind `bg-*` do polegar — `bg-primary` (iniciar/retomar) ou `bg-danger` (finalizar), por exemplo. */
+  direction?: "left" | "right";
+  /** Atalho pra `thumbColorClassName="bg-driverDanger"` (ex. finalizar viagem). */
+  danger?: boolean;
+  /** Classe Tailwind `bg-*` do polegar — `bg-driverPrimary` (iniciar/retomar) por padrão; ignorada se `danger` for `true`. */
   thumbColorClassName?: string;
 }
 
 const THUMB_SIZE = 56;
-const COMPLETE_THRESHOLD = 0.8;
+const COMPLETE_THRESHOLD = 0.82;
 
 export function SlideToAction({
   label,
   onComplete,
+  completedLabel,
   isLoading = false,
   disabled = false,
-  thumbColorClassName = "bg-primary",
+  direction = "right",
+  danger = false,
+  thumbColorClassName = "bg-driverPrimary",
 }: SlideToActionProps): JSX.Element {
   const trackRef = useRef<HTMLDivElement>(null);
   const [dragX, setDragX] = useState(0);
@@ -55,8 +66,12 @@ export function SlideToAction({
   function handlePointerMove(event: React.PointerEvent<HTMLDivElement>): void {
     if (!isDragging || !trackRef.current) return;
     const trackLeft = trackRef.current.getBoundingClientRect().left;
-    const x = event.clientX - trackLeft - THUMB_SIZE / 2;
-    setDragX(Math.min(Math.max(x, 0), maxDrag()));
+    const trackWidth = trackRef.current.clientWidth;
+    const rawX =
+      direction === "left"
+        ? trackLeft + trackWidth - THUMB_SIZE / 2 - event.clientX
+        : event.clientX - trackLeft - THUMB_SIZE / 2;
+    setDragX(Math.min(Math.max(rawX, 0), maxDrag()));
   }
 
   function handlePointerUp(): void {
@@ -69,6 +84,11 @@ export function SlideToAction({
     setDragX(0);
   }
 
+  const max = maxDrag();
+  const currentProgress = max > 0 ? dragX / max : 0;
+  const showCompletedLabel = completedLabel && currentProgress >= COMPLETE_THRESHOLD;
+  const thumbClassName = danger ? "bg-driverDanger" : thumbColorClassName;
+
   return (
     <div
       ref={trackRef}
@@ -80,7 +100,7 @@ export function SlideToAction({
         <span
           className={`text-sm font-semibold ${isInteractive ? "text-text-muted" : "text-disabled-text"}`}
         >
-          {label}
+          {showCompletedLabel ? completedLabel : label}
         </span>
       </div>
       <div
@@ -91,14 +111,19 @@ export function SlideToAction({
         style={{
           width: THUMB_SIZE,
           height: THUMB_SIZE,
-          transform: `translateX(${dragX}px)`,
+          transform: direction === "left" ? `translateX(-${dragX}px)` : `translateX(${dragX}px)`,
           transition: isDragging ? "none" : "transform 200ms ease-out",
+          [direction === "left" ? "right" : "left"]: 0,
         }}
-        className={`absolute left-0 top-0 flex items-center justify-center rounded-full text-white ${thumbColorClassName} ${
+        className={`absolute top-0 flex items-center justify-center rounded-full text-white ${thumbClassName} ${
           isInteractive ? "cursor-grab touch-none active:cursor-grabbing" : "opacity-60"
         }`}
       >
-        {isLoading ? <Spinner size="sm" /> : <ChevronsRight size={22} />}
+        {isLoading ? (
+          <Spinner size="sm" />
+        ) : (
+          <ChevronsRight size={22} className={direction === "left" ? "rotate-180" : undefined} />
+        )}
       </div>
     </div>
   );

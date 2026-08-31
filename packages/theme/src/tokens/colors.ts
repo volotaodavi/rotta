@@ -59,6 +59,28 @@ export interface ColorTokens {
    */
   monitorAccent: string;
   monitorAccentMuted: string;
+  /**
+   * Identidade visual EXCLUSIVA das telas do Motorista/Monitor (spec do
+   * usuário, 31/08/2026 — "cores/raios/sombra... só do Motorista",
+   * mesma decisão de escopo de `monitorAccent` acima: token isolado,
+   * nunca substitui `primary`/`success`/`danger` compartilhados por
+   * Responsável/Empresa/Admin/Landing em todo o resto do produto).
+   * `driverPrimary`/`driverSuccess`/`driverDanger` só existem porque o
+   * usuário deu hex exatos ("IDENTIDADE") — nas poucas telas onde eles
+   * coincidem com um token já existente (fundo de cartão branco,
+   * texto secundário), a tela reaproveita o token comum em vez de
+   * duplicar aqui.
+   */
+  driverPrimary: string;
+  driverPrimaryHover: string;
+  driverPrimaryMuted: string;
+  driverBackground: string;
+  driverSuccess: string;
+  driverSuccessMuted: string;
+  driverDanger: string;
+  driverDangerMuted: string;
+  /** Sombra discreta única do cartão de mapa/listas do Motorista (spec: "sombras discretas") — nunca o `elevation` genérico do resto do produto, que deliberadamente NÃO usa sombra em cards no estado padrão (ver `elevation.ts`). */
+  driverShadow: string;
 }
 
 /** Tema escuro — padrao da plataforma (Dossie 24, Secao 5). */
@@ -94,6 +116,18 @@ export const darkColors: ColorTokens = {
   muted: "#161B24",
   monitorAccent: "#8B5CF6",
   monitorAccentMuted: "#241B47",
+  // Escuro adaptado a partir do spec claro do usuário (que não cobre
+  // tema escuro) — mesmo matiz de marca em tom mais claro pra contraste
+  // sobre fundo escuro (mesmo raciocínio de `primary` acima).
+  driverPrimary: "#4C86FF",
+  driverPrimaryHover: "#6B9CFF",
+  driverPrimaryMuted: "#132A52",
+  driverBackground: "#0B0F14",
+  driverSuccess: "#22C55E",
+  driverSuccessMuted: "#123321",
+  driverDanger: "#EF4444",
+  driverDangerMuted: "#3A1614",
+  driverShadow: "0 8px 30px rgba(0, 0, 0, 0.4)",
 };
 
 /** Tema claro — oferecido como preferencia explicita do usuario (Dossie 24, Secao 5). */
@@ -129,4 +163,14 @@ export const lightColors: ColorTokens = {
   muted: "#F1F2F4",
   monitorAccent: "#7C3AED",
   monitorAccentMuted: "#EFE9FE",
+  // Valores exatos do spec do usuário ("IDENTIDADE") — nunca arredondar/aproximar.
+  driverPrimary: "#1769FF",
+  driverPrimaryHover: "#0954DC",
+  driverPrimaryMuted: "#EDF4FF",
+  driverBackground: "#F6F8FB",
+  driverSuccess: "#18A957",
+  driverSuccessMuted: "#EAF8F0",
+  driverDanger: "#E53935",
+  driverDangerMuted: "#FFF0EF",
+  driverShadow: "0 8px 30px rgba(16, 24, 40, 0.07)",
 };

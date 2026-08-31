@@ -1101,7 +1101,7 @@ function RotaOperacional({
                       theme={theme}
                       onComplete={() => finishTrip.mutate(trip.id)}
                       isLoading={finishTrip.isPending}
-                      thumbColor={theme.colors.danger}
+                      danger
                     />
                   </View>
                 </View>
@@ -1120,7 +1120,7 @@ function RotaOperacional({
                       theme={theme}
                       onComplete={() => finishTrip.mutate(trip.id)}
                       isLoading={finishTrip.isPending}
-                      thumbColor={theme.colors.danger}
+                      danger
                     />
                   </View>
                 </View>
@@ -1505,7 +1505,7 @@ function ModoOperacionalFullScreen({
                   theme={theme}
                   onComplete={() => finishTrip.mutate(trip.id)}
                   isLoading={finishTrip.isPending}
-                  thumbColor={theme.colors.danger}
+                  danger
                 />
               </View>
             ) : (

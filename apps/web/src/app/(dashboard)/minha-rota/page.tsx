@@ -1280,7 +1280,7 @@ function RotaOperacional({
                     label="Deslize para encerrar"
                     onComplete={() => finishTrip.mutate(trip.id)}
                     isLoading={finishTrip.isPending}
-                    thumbColorClassName="bg-danger"
+                    danger
                   />
                 </div>
               </div>
@@ -1299,7 +1299,7 @@ function RotaOperacional({
                     label="Deslize para finalizar"
                     onComplete={() => finishTrip.mutate(trip.id)}
                     isLoading={finishTrip.isPending}
-                    thumbColorClassName="bg-danger"
+                    danger
                   />
                 </div>
               </div>
@@ -1657,7 +1657,7 @@ function ModoOperacionalFullScreen({
                   label="Deslize para finalizar"
                   onComplete={() => finishTrip.mutate(trip.id)}
                   isLoading={finishTrip.isPending}
-                  thumbColorClassName="bg-danger"
+                  danger
                 />
               </div>
             ) : (
