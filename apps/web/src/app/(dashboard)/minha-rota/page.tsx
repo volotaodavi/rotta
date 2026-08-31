@@ -93,6 +93,15 @@ import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/u
 import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
 
+/**
+ * Altura reservada acima do `PortalBottomNav`/`DriverBottomNav`
+ * (`fixed bottom-0`, ~64px de conteúdo + `env(safe-area-inset-bottom)`)
+ * — usada por `DraggableFloatingCard` (auditoria 27/08/2026) pra nunca
+ * ficar por trás da barra de navegação, nem na posição padrão nem
+ * arrastado manualmente até o fim da tela.
+ */
+const BOTTOM_NAV_RESERVE_PX = 80;
+
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
   TARDE: "Tarde",
@@ -1480,7 +1489,17 @@ function ModoOperacionalFullScreen({
   const [verTodosAlunos, setVerTodosAlunos] = useState(false);
 
   return (
-    <div className="fixed inset-0 z-modal flex flex-col bg-background">
+    // `z-10` (não `z-modal`) — auditoria 27/08/2026, pedido do usuário:
+    // "mesmo a rota ativa, o usuário poderá navegar pelo app/web, ficar
+    // fixado no mapa não é eficaz". Antes usava `z-modal` (1300), muito
+    // acima do `z-20` do `PortalBottomNav`/`DriverBottomNav` — cobria
+    // literalmente a barra de navegação inferior (fixa, mesma
+    // `position: fixed`) durante toda viagem ativa, tornando os 4 ícones
+    // (Início/Viagens/Notificações/Perfil) invisíveis E inclicáveis. A
+    // experiência de mapa em tela cheia continua idêntica (`inset-0`
+    // preenche a viewport inteira) — só a ORDEM de empilhamento muda,
+    // pra a barra sempre pintar por cima e continuar tocável.
+    <div className="fixed inset-0 z-10 flex flex-col bg-background">
       <div className="relative flex-1">
         {mapMarkers.length > 0 ? (
           <RottaMap key={mapKey} markers={mapMarkers} route={rotaTracada} initialZoom={13} />
@@ -1697,7 +1716,13 @@ function DraggableFloatingCard({ children }: { children: ReactNode }): JSX.Eleme
     const nextY = dragRef.current.origY + (event.clientY - dragRef.current.startY);
     setPos({
       x: Math.min(Math.max(nextX, margem), window.innerWidth - width - margem),
-      y: Math.min(Math.max(nextY, margem), window.innerHeight - height - margem),
+      // Reserva `BOTTOM_NAV_RESERVE_PX` embaixo (não só `margem`) — sem
+      // isso, arrastar o cartão até o fim da tela o deixava por trás da
+      // barra de navegação (mesma correção do z-index acima).
+      y: Math.min(
+        Math.max(nextY, margem),
+        window.innerHeight - height - margem - BOTTOM_NAV_RESERVE_PX,
+      ),
     });
   }
 
@@ -1712,8 +1737,13 @@ function DraggableFloatingCard({ children }: { children: ReactNode }): JSX.Eleme
     <div
       ref={cardRef}
       style={pos ? { left: pos.x, top: pos.y } : undefined}
-      className={`fixed z-modal flex max-h-[65vh] w-[min(92vw,400px)] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-modal ${
-        pos ? "" : "inset-x-0 bottom-4 mx-auto"
+      // `z-10` (não `z-modal`) e posição padrão `bottom-20` (não
+      // `bottom-4`) — mesma correção do wrapper acima: o cartão é um
+      // elemento `fixed` PRÓPRIO (z-index independente do wrapper), sem
+      // isso continuaria cobrindo a barra de navegação mesmo com o mapa
+      // já corrigido.
+      className={`fixed z-10 flex max-h-[65vh] w-[min(92vw,400px)] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-modal ${
+        pos ? "" : "inset-x-0 bottom-20 mx-auto"
       }`}
     >
       <div
