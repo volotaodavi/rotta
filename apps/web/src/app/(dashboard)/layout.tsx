@@ -20,10 +20,10 @@ import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
 import { PostSignupIdentityPopup } from "@/features/identity-verification/components/post-signup-identity-popup";
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
+import { VinculoPendenteBlockScreen } from "@/features/team/components/vinculo-pendente-block-screen";
 import { VehicleAdminReviewAcknowledgeModal } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-modal";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
-
 
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
@@ -222,6 +222,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   const isBlockedByIdentityVerification =
     identityVerification != null && identityVerification.status !== "APROVADA";
 
+  // Frente 9 (auditoria 31/08/2026) — Motorista/Monitor autônomo
+  // (`registerAutonomo`) nasce SEM `companyId` até um
+  // `CompanyJoinRequest` ser aprovado pela transportadora. O app nativo
+  // já tinha esse gate (`VinculoPendenteNavigator`, `RootNavigator.tsx`
+  // — mostrado no lugar do app real toda vez que `!user.companyId`, não
+  // só logo após o cadastro); o Painel Web nunca teve o equivalente —
+  // essa conta via o painel vazio/quebrado (nenhuma rota, nenhuma
+  // explicação) até agora. Mesmo tratamento de
+  // `isBlockedByIdentityVerification`: esconde toda a navegação e troca
+  // `{children}` por uma tela de status.
+  const isPendingVinculo = isEmployeeDriver && !user?.companyId;
+  const hideDashboardChrome = isBlockedByIdentityVerification || isPendingVinculo;
+
   // Faturamento (Dossiê 26) — `billingBlocked` só existe pro papel
   // Empresa/Gestor (backend nunca marca `true` pros demais, mas o `&&`
   // abaixo é defesa em profundidade). Cadeado em cada item de nav
@@ -374,14 +387,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           <Typography variant="subtitle">
             {isResponsavel ? (user?.nome ?? "Rotta") : (user?.companyName ?? "Rotta")}
           </Typography>
-          {!isBlockedByIdentityVerification && navLinks.length > 0 && (
+          {!hideDashboardChrome && navLinks.length > 0 && (
             <nav className="hidden items-center gap-4 md:flex">
               {navLinks.map((link) => renderNavLink(link))}
             </nav>
           )}
         </div>
         <div className="flex items-center gap-2">
-          {canToggle && !isBlockedByIdentityVerification && (
+          {canToggle && !hideDashboardChrome && (
             <div
               role="tablist"
               aria-label="Alternar entre visão completa e modo ação"
@@ -411,7 +424,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
               </button>
             </div>
           )}
-          {!showBottomNav && !isBlockedByIdentityVerification && <NotificationBell />}
+          {!showBottomNav && !hideDashboardChrome && <NotificationBell />}
           <ThemeToggle />
           <Button
             variant="ghost"
@@ -422,7 +435,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           >
             Sair
           </Button>
-          {!isBlockedByIdentityVerification && navLinks.length > 0 && (
+          {!hideDashboardChrome && navLinks.length > 0 && (
             <button
               type="button"
               aria-label={isMobileNavOpen ? "Fechar menu" : "Abrir menu"}
@@ -435,12 +448,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           )}
         </div>
       </header>
-      {!isBlockedByIdentityVerification && navLinks.length > 0 && isMobileNavOpen && (
+      {!hideDashboardChrome && navLinks.length > 0 && isMobileNavOpen && (
         <nav className="flex flex-col gap-1 border-b border-border bg-surface px-4 py-3 md:hidden">
           {navLinks.map((link) => renderNavLink(link, () => setIsMobileNavOpen(false)))}
         </nav>
       )}
-      {activeTrip && !isBlockedByIdentityVerification && (
+      {activeTrip && !hideDashboardChrome && (
         <Link
           href="/minha-rota"
           prefetch={false}
@@ -455,6 +468,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
           status={identityVerification.status}
           motivo={identityVerification.motivo}
         />
+      ) : isPendingVinculo ? (
+        <VinculoPendenteBlockScreen />
       ) : isBillingBlockedHere ? (
         <BillingBlockScreen reason={user?.billingBlockedReason ?? null} />
       ) : (

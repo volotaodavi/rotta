@@ -16,14 +16,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { ConviteAutonomoForm } from "./_components/convite-autonomo-form";
 import { ConviteTransportadoraForm } from "./_components/convite-transportadora-form";
 
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
 import { authApi } from "@/lib/api-client";
 import { defaultRouteForRole } from "@/lib/default-route";
 
-
-type SegmentoConvite = "equipe" | "transportadora";
+type SegmentoConvite = "equipe" | "transportadora" | "autonomo";
 
 const ROLE_LABEL: Record<string, string> = {
   gestor: "Gestor",
@@ -78,14 +78,17 @@ export default function ConvitePage(): JSX.Element {
         tabs={[
           { id: "equipe", label: "Convite de equipe" },
           { id: "transportadora", label: "Sou responsável" },
+          { id: "autonomo", label: "Motorista/Monitor autônomo" },
         ]}
         activeId={segmento}
         onChange={(id) => setSegmento(id as SegmentoConvite)}
       />
       {segmento === "equipe" ? (
         <InserirCodigo onIrParaTransportadora={() => setSegmento("transportadora")} />
-      ) : (
+      ) : segmento === "transportadora" ? (
         <ConviteTransportadoraForm />
+      ) : (
+        <ConviteAutonomoForm />
       )}
     </div>
   );

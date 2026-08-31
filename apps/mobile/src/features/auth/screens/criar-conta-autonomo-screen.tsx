@@ -8,6 +8,7 @@ import { AuthButton, AuthScreen, AuthTermsCheckbox, AuthTextField } from "../com
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { studentPreRegistrationsApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "CriarContaAutonomo">;
@@ -16,17 +17,39 @@ type PapelAutonomo = RegisterAutonomoInput["role"];
 
 /**
  * Cadastro self-service de Motorista/Monitor autônomo (Frente N,
- * briefing item 9 — "criar conta, Didit, informar o número [código
- * único da transportadora] e se integrar como monitor"), SEM
- * `Company`/`Membership` ainda (`AuthProvider.registerAutonomo`,
- * `POST /auth/register/autonomo`). Depois de entrar, `RootNavigator`
- * mostra `VinculoPendenteNavigator` em vez de `DriverNavigator` até um
- * pedido de vínculo (`CompanyJoinRequest`) ser aprovado pela empresa —
- * é lá que a Didit e o código são pedidos, um passo de cada vez.
+ * briefing item 9), SEM `Company`/`Membership` ainda
+ * (`AuthProvider.registerAutonomo`, `POST /auth/register/autonomo`).
+ *
+ * REORDENADO (Frente 9, auditoria 31/08/2026 — pedido do usuário: "o
+ * fluxo deverá garantir isso": código da transportadora primeiro,
+ * depois dados, depois a conta nasce como continuação de um único
+ * fluxo — igual ao que o Responsável já tinha via `codigoInterno`/
+ * `preRegistrationId` em `ConviteTransportadoraScreen`, mesmo padrão de
+ * 2 etapas espelhado aqui). Antes, o código só era pedido DEPOIS da
+ * conta já existir, um passo separado e autenticado
+ * (`InformarCodigoVinculoScreen`, dentro de `VinculoPendenteNavigator`)
+ * — essa tela continua existindo (ainda é o caminho pra quem pulou o
+ * código aqui, ou trocar de transportadora depois), só deixou de ser o
+ * ÚNICO caminho.
+ *
+ * O código continua OPCIONAL nesta etapa (o "Pular" abaixo) — quem
+ * prefere criar a conta solta e vincular depois continua podendo.
+ * Quando informado, `GET /student-pre-registrations/company-preview`
+ * (endpoint público e genérico, mesmo usado pelo Responsável) já
+ * confirma a transportadora ANTES de coletar os dados pessoais; o
+ * `CompanyJoinRequest` PENDENTE nasce na mesma chamada de
+ * `registerAutonomo` (backend, `AuthService`) — a aprovação da empresa
+ * continua manual, só a ORDEM do fluxo mudou.
  */
 export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { registerAutonomo } = useAuth();
+
+  const [etapa, setEtapa] = useState<"codigo" | "dados">("codigo");
+  const [codigoInterno, setCodigoInterno] = useState("");
+  const [companyName, setCompanyName] = useState<string | null>(null);
+  const [isBuscando, setIsBuscando] = useState(false);
+  const [erroBusca, setErroBusca] = useState<string | null>(null);
 
   const [papel, setPapel] = useState<PapelAutonomo>("motorista");
   const [nome, setNome] = useState("");
@@ -37,6 +60,39 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
+
+  async function handleContinuarComCodigo(): Promise<void> {
+    setErroBusca(null);
+    const codigo = codigoInterno.trim().toUpperCase();
+    if (!codigo) {
+      // Código vazio: segue pro passo de dados sem vínculo nenhum — mesmo resultado de "Pular".
+      setCompanyName(null);
+      setEtapa("dados");
+      return;
+    }
+
+    setIsBuscando(true);
+    try {
+      const company = await studentPreRegistrationsApi.previewCompany(codigo);
+      if (!company) {
+        setErroBusca("Código não encontrado. Confira o código com a transportadora.");
+        return;
+      }
+      setCompanyName(company.companyName);
+      setEtapa("dados");
+    } catch {
+      setErroBusca("Não foi possível verificar esse código agora. Tente novamente.");
+    } finally {
+      setIsBuscando(false);
+    }
+  }
+
+  function handlePular(): void {
+    setErroBusca(null);
+    setCodigoInterno("");
+    setCompanyName(null);
+    setEtapa("dados");
+  }
 
   async function handleSubmit(): Promise<void> {
     setErrorMessage(null);
@@ -50,6 +106,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
         senha,
         role: papel,
         aceiteTermos: true,
+        codigoInterno: codigoInterno.trim() ? codigoInterno.trim().toUpperCase() : undefined,
       });
       // RootNavigator troca para VinculoPendenteNavigator sozinho assim que `status` vira "authenticated".
     } catch (error) {
@@ -61,6 +118,45 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
     }
   }
 
+  if (etapa === "codigo") {
+    return (
+      <AuthScreen>
+        <Text
+          style={[
+            styles.title,
+            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
+          ]}
+        >
+          Motorista ou monitor autônomo
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+          Se já tem o código da transportadora, informe aqui pra pedir vínculo assim que sua conta
+          for criada. Sem o código agora? Sem problema — dá pra informar depois.
+        </Text>
+
+        <AuthTextField
+          label="Código da transportadora (opcional)"
+          autoCapitalize="characters"
+          autoCorrect={false}
+          placeholder="Ex.: TRN-000001"
+          value={codigoInterno}
+          onChangeText={setCodigoInterno}
+        />
+
+        {erroBusca ? (
+          <Text style={[styles.error, { color: theme.colors.danger }]}>{erroBusca}</Text>
+        ) : null}
+
+        <AuthButton
+          label="Continuar"
+          isLoading={isBuscando}
+          onPress={() => void handleContinuarComCodigo()}
+        />
+        <AuthButton label="Pular por enquanto" variant="secondary" onPress={handlePular} />
+      </AuthScreen>
+    );
+  }
+
   return (
     <AuthScreen>
       <Text
@@ -69,11 +165,12 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
-        Motorista ou monitor autônomo
+        Complete seu cadastro
       </Text>
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        Crie sua conta, complete a verificação de identidade e informe o código da transportadora
-        pra pedir vínculo, sem precisar de um convite dela.
+        {companyName
+          ? `Transportadora ${companyName} · complete seus dados pra pedir o vínculo.`
+          : 'Crie sua conta e complete a verificação de identidade — o código da transportadora pode ser informado depois, em "Meu pedido".'}
       </Text>
 
       <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Você é</Text>
@@ -129,6 +226,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
         isLoading={isSubmitting}
         disabled={!aceitouTermos}
       />
+      <AuthButton label="Voltar" variant="secondary" onPress={() => setEtapa("codigo")} />
     </AuthScreen>
   );
 }

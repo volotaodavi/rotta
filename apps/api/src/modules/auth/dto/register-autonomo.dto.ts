@@ -1,5 +1,14 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { Equals, IsBoolean, IsEmail, IsIn, IsNotEmpty, IsString, MaxLength } from "class-validator";
+import {
+  Equals,
+  IsBoolean,
+  IsEmail,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from "class-validator";
 
 import { IsBrazilianPhone, IsCpf, IsStrongPassword } from "@/common/validators";
 import { Role } from "@/shared/enums";
@@ -12,8 +21,15 @@ const AUTONOMOUS_ROLES = [Role.MOTORISTA, Role.MONITOR] as const;
  * item 9 — "criar conta, Didit, informar o número [código único da
  * transportadora] e se integrar como monitor"), SEM `Company`/`Membership`
  * ainda — mesmo mecanismo de `RegisterPessoalDto` (identidade global via
- * `User.autonomoRole`, ver nota em `schema.prisma`). Depois de completar a
- * Didit, o vínculo em si acontece via `CompanyJoinRequestsService.create`.
+ * `User.autonomoRole`, ver nota em `schema.prisma`).
+ *
+ * `codigoInterno` (Frente 9, auditoria 31/08/2026) — opcional; quando
+ * presente, `AuthService.registerAutonomo` já cria o `CompanyJoinRequest`
+ * PENDENTE na mesma chamada (mesma unificação "código → dados → conta"
+ * que o Responsável já tinha via `RegisterPessoalDto.preRegistrationId`).
+ * Sem ele, o vínculo continua um passo separado depois de autenticado
+ * (`CompanyJoinRequestsService.create`, tela "Meu pedido") — nenhum
+ * comportamento antigo quebra.
  */
 export class RegisterAutonomoDto {
   @ApiProperty({ example: "João Motorista" })
@@ -41,6 +57,17 @@ export class RegisterAutonomoDto {
   @ApiProperty({ enum: AUTONOMOUS_ROLES, example: Role.MOTORISTA })
   @IsIn(AUTONOMOUS_ROLES)
   role!: Role;
+
+  @ApiProperty({
+    example: "TRN-000001",
+    required: false,
+    description:
+      "Código da transportadora (Frente 9, auditoria 31/08/2026 — pedido do usuário: 'código primeiro, depois dados, depois conta, como continuação de um único fluxo'). Opcional: sem ele, a conta nasce solta (comportamento de sempre — quem quiser vincular depois, usa 'Meu pedido'). Com ele, um `CompanyJoinRequest` PENDENTE é criado na mesma chamada — a aprovação da empresa continua manual, só a ORDEM do fluxo muda (antes: conta → código, num passo separado depois de autenticado).",
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  codigoInterno?: string;
 
   @ApiProperty({
     example: true,

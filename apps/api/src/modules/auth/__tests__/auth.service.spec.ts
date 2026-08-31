@@ -11,6 +11,7 @@ import type { SessionRepository } from "../repositories/session.repository";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
+import type { CompanyJoinRequestsService } from "@/modules/company-join-requests/company-join-requests.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { StudentPreRegistrationsService } from "@/modules/student-pre-registrations/student-pre-registrations.service";
 import type { MembershipWithCompany } from "@/modules/users/repositories/membership.repository";
@@ -104,6 +105,7 @@ describe("AuthService", () => {
   let mfaService: MfaService;
   let auditLogService: jest.Mocked<AuditLogService>;
   let studentPreRegistrationsService: jest.Mocked<StudentPreRegistrationsService>;
+  let companyJoinRequestsService: jest.Mocked<CompanyJoinRequestsService>;
 
   beforeEach(() => {
     usersService = {
@@ -117,6 +119,8 @@ describe("AuthService", () => {
       updatePassword: jest.fn(),
       recordLgpdConsent: jest.fn(),
       recordConsent: jest.fn(),
+      createUserWithPassword: jest.fn(),
+      assertNoDuplicateIdentity: jest.fn().mockResolvedValue(undefined),
       getPendingConsents: jest.fn().mockResolvedValue([]),
       savePendingMfaSecret: jest.fn(),
       confirmMfaEnabled: jest.fn(),
@@ -203,6 +207,10 @@ describe("AuthService", () => {
       claim: jest.fn(),
     } as unknown as jest.Mocked<StudentPreRegistrationsService>;
 
+    companyJoinRequestsService = {
+      create: jest.fn(),
+    } as unknown as jest.Mocked<CompanyJoinRequestsService>;
+
     service = new AuthService(
       usersService,
       companiesService,
@@ -218,6 +226,7 @@ describe("AuthService", () => {
       mfaService,
       auditLogService,
       studentPreRegistrationsService,
+      companyJoinRequestsService,
     );
   });
 
@@ -804,6 +813,61 @@ describe("AuthService", () => {
           { code: "123456" },
         ),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // Frente 9, auditoria 31/08/2026 (pedido do usuário: "o fluxo deverá
+  // garantir isso" — código da transportadora primeiro, dados depois,
+  // conta como continuação de um único fluxo, igual ao Responsável).
+  describe("registerAutonomo", () => {
+    const dto = {
+      nome: "João Motorista",
+      email: "joao@rotta.com.br",
+      telefone: "11987654321",
+      cpf: "52998224725",
+      senha: "SenhaForte123",
+      role: Role.MOTORISTA,
+      aceiteTermos: true,
+    };
+
+    it("sem codigoInterno: cria a conta normalmente, nunca chama CompanyJoinRequestsService", async () => {
+      usersService.createUserWithPassword.mockResolvedValue(buildUser({ id: "user-2" }));
+
+      const result = await service.registerAutonomo(dto, {});
+
+      expect(companyJoinRequestsService.create).not.toHaveBeenCalled();
+      expect(result.accessToken).toBe("signed.jwt.token");
+    });
+
+    it("com codigoInterno válido: cria o pedido de vínculo PENDENTE na mesma chamada", async () => {
+      usersService.createUserWithPassword.mockResolvedValue(buildUser({ id: "user-2" }));
+      companyJoinRequestsService.create.mockResolvedValue({
+        id: "join-1",
+        companyId: "company-9",
+        role: Role.MOTORISTA,
+        status: "PENDENTE",
+        motivoRecusa: null,
+        createdAt: new Date(),
+        decidedAt: null,
+      });
+
+      await service.registerAutonomo({ ...dto, codigoInterno: "TRN-000001" }, {});
+
+      expect(companyJoinRequestsService.create).toHaveBeenCalledWith(
+        { sub: "user-2", tenantId: null, role: Role.MOTORISTA, vinculoId: "user-2" },
+        { codigoInterno: "TRN-000001" },
+      );
+    });
+
+    it("REGRESSÃO — código inválido/corrida rara nunca impede a conta de ser criada (best-effort)", async () => {
+      usersService.createUserWithPassword.mockResolvedValue(buildUser({ id: "user-2" }));
+      companyJoinRequestsService.create.mockRejectedValue(
+        new Error("Nenhuma transportadora encontrada com esse código."),
+      );
+
+      const result = await service.registerAutonomo({ ...dto, codigoInterno: "TRN-999999" }, {});
+
+      expect(result.accessToken).toBe("signed.jwt.token");
     });
   });
 });

@@ -25,6 +25,7 @@ import type { AuthConfig } from "@/config/auth.config";
 import { SecurityModule } from "@/infra/security/security.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 import { UsersModule } from "@/modules/users/users.module";
@@ -83,6 +84,7 @@ import { UsersModule } from "@/modules/users/users.module";
     MessagePersonalizationModule,
     AuditModule,
     StudentPreRegistrationsModule,
+    CompanyJoinRequestsModule,
   ],
   controllers: [AuthController, InvitesController],
   providers: [

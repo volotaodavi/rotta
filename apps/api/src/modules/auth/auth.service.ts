@@ -56,6 +56,7 @@ import { PrismaService } from "@/infra/database/prisma.service";
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService, type RequestMeta } from "@/modules/companies/companies.service";
+import { CompanyJoinRequestsService } from "@/modules/company-join-requests/company-join-requests.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { StudentPreRegistrationsService } from "@/modules/student-pre-registrations/student-pre-registrations.service";
@@ -113,6 +114,7 @@ export class AuthService {
     private readonly mfaService: MfaService,
     private readonly auditLogService: AuditLogService,
     private readonly studentPreRegistrationsService: StudentPreRegistrationsService,
+    private readonly companyJoinRequestsService: CompanyJoinRequestsService,
   ) {}
 
   /**
@@ -257,6 +259,31 @@ export class AuthService {
     });
 
     await this.usersService.recordLgpdConsent(user.id);
+
+    // Frente 9 (auditoria 31/08/2026, pedido do usuário: "o fluxo deverá
+    // garantir isso" — código da transportadora primeiro, dados depois,
+    // conta como continuação de um único fluxo, igual ao que o
+    // Responsável já tinha via `preRegistrationId`). O cliente já validou
+    // o código publicamente (`GET /student-pre-registrations/
+    // company-preview`) ANTES de coletar os dados pessoais — best-effort
+    // aqui, mesmo princípio do `claim` de `registerPessoal` logo acima:
+    // numa corrida rara (código desativado nesse meio-tempo), a conta
+    // ainda é criada normalmente, só sem o pedido de vínculo automático
+    // (a pessoa pode tentar de novo depois, autenticada, na tela "Meu
+    // pedido" — nada se perde). A aprovação da empresa continua manual;
+    // só a ORDEM do fluxo muda.
+    if (dto.codigoInterno) {
+      try {
+        await this.companyJoinRequestsService.create(
+          { sub: user.id, tenantId: null, role: dto.role, vinculoId: user.id },
+          { codigoInterno: dto.codigoInterno },
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Não foi possível criar o pedido de vínculo automático para ${user.id} (código ${dto.codigoInterno}): ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
 
     return this.issueTokens(user, null, dto.role, user.id, meta);
   }

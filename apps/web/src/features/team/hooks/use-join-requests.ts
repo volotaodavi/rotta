@@ -40,3 +40,30 @@ export function useRejectJoinRequest() {
     },
   });
 }
+
+const MY_JOIN_REQUEST_QUERY_KEY = ["company-join-requests", "me"];
+
+/**
+ * Lado do CANDIDATO (não da empresa) — último pedido de vínculo do
+ * próprio Motorista/Monitor autônomo (Frente 9, `VinculoPendenteBlockScreen`),
+ * `null` se nunca pediu nenhum. Mesmo endpoint/hook que o app nativo já
+ * tinha (`useMyJoinRequest`, `apps/mobile/.../use-join-request.ts`) —
+ * paridade web.
+ */
+export function useMyJoinRequest() {
+  return useQuery({
+    queryKey: MY_JOIN_REQUEST_QUERY_KEY,
+    queryFn: () => companyJoinRequestsApi.findMine(),
+  });
+}
+
+/** Envia um novo pedido de vínculo com o código público de uma transportadora — mesmo lado de `useMyJoinRequest`. */
+export function useCreateJoinRequest() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (codigoInterno: string) => companyJoinRequestsApi.create(codigoInterno),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: MY_JOIN_REQUEST_QUERY_KEY });
+    },
+  });
+}

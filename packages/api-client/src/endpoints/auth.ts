@@ -145,6 +145,13 @@ export interface RegisterAutonomoInput {
   senha: string;
   role: "motorista" | "monitor";
   aceiteTermos: true;
+  /**
+   * Código da transportadora (Frente 9, auditoria 31/08/2026) — opcional;
+   * quando presente, o backend já cria o `CompanyJoinRequest` PENDENTE
+   * na mesma chamada, unificando "código → dados → conta" (mesma
+   * continuação que o Responsável já tinha via `preRegistrationId`).
+   */
+  codigoInterno?: string;
 }
 
 export interface SessionInfo {
