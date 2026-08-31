@@ -9,7 +9,8 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AuthButton, AuthScreen, AuthTextField } from "../components";
+
+import { AuthButton, AuthScreen, AuthTextField, PasswordInput } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -128,7 +129,7 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
         value={identificador}
         onChangeText={setIdentificador}
       />
-      <AuthTextField label="Senha" secureTextEntry value={senha} onChangeText={setSenha} />
+      <PasswordInput label="Senha" value={senha} onChangeText={setSenha} />
 
       {errorMessage ? (
         <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>

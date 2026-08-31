@@ -4,7 +4,13 @@ import { useState } from "react";
 import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
 
-import { AuthButton, AuthScreen, AuthTermsCheckbox, AuthTextField } from "../components";
+import {
+  AuthButton,
+  AuthScreen,
+  AuthTermsCheckbox,
+  AuthTextField,
+  PasswordInput,
+} from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -188,9 +194,8 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
         onChangeText={setEmail}
       />
       <AuthTextField label="CPF" keyboardType="number-pad" value={cpf} onChangeText={setCpf} />
-      <AuthTextField
+      <PasswordInput
         label="Crie uma senha"
-        secureTextEntry
         helperText="Você vai usar essa senha pra acessar tanto o site quanto o app."
         value={senha}
         onChangeText={setSenha}

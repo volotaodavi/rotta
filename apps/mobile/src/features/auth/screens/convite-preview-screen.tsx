@@ -5,7 +5,13 @@ import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 
-import { AuthButton, AuthScreen, AuthTermsCheckbox, AuthTextField } from "../components";
+import {
+  AuthButton,
+  AuthScreen,
+  AuthTermsCheckbox,
+  AuthTextField,
+  PasswordInput,
+} from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -123,9 +129,8 @@ export function ConvitePreviewScreen({ route }: Props): JSX.Element {
         onChangeText={setTelefone}
       />
       <AuthTextField label="CPF" keyboardType="number-pad" value={cpf} onChangeText={setCpf} />
-      <AuthTextField
+      <PasswordInput
         label="Senha"
-        secureTextEntry
         helperText="Se você já tem uma conta Rotta, informe a senha dela para vincular este convite."
         value={senha}
         onChangeText={setSenha}

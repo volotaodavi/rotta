@@ -4,7 +4,13 @@ import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
 
-import { AuthButton, AuthScreen, AuthTermsCheckbox, AuthTextField } from "../components";
+import {
+  AuthButton,
+  AuthScreen,
+  AuthTermsCheckbox,
+  AuthTextField,
+  PasswordInput,
+} from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -77,9 +83,8 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
         onChangeText={setTelefone}
       />
       <AuthTextField label="CPF" keyboardType="number-pad" value={cpf} onChangeText={setCpf} />
-      <AuthTextField
+      <PasswordInput
         label="Senha"
-        secureTextEntry
         helperText="Mínimo 8 caracteres, com ao menos 1 letra e 1 número."
         value={senha}
         onChangeText={setSenha}
