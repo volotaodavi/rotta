@@ -8,6 +8,7 @@ export * from "./criar-conta-pessoal-screen";
 export * from "./criar-conta-screen";
 export * from "./criar-empresa-webview-screen";
 export * from "./entrada-screen";
+export * from "./esqueci-senha-screen";
 export * from "./login-screen";
 export * from "./painel-web-only-screen";
 export * from "./pin-lock-screen";

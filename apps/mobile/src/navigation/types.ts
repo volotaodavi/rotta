@@ -11,6 +11,8 @@ export type AuthStackParamList = {
   SelecionarPerfil: undefined;
   Entrada: undefined;
   Login: undefined;
+  /** "Esqueci minha senha" (Dossiê 15, `AUTH-03`) — só pede o e-mail; a troca em si acontece pelo link enviado (abre no navegador do celular, `WEB_APP_URL/redefinir-senha`). */
+  EsqueciSenha: undefined;
   CriarConta: undefined;
   AreaProfissional: undefined;
   AreaPessoal: undefined;

@@ -190,6 +190,10 @@ export default function EntrarPage(): JSX.Element {
           />
         </FormField>
 
+        <Link href="/esqueci-senha" className="self-end text-sm font-medium text-primary">
+          Esqueceu sua senha?
+        </Link>
+
         {errorMessage && (
           <Typography variant="bodySmall" color="danger">
             {errorMessage}

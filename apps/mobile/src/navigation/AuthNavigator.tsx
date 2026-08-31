@@ -13,10 +13,10 @@ import {
   CriarContaScreen,
   CriarEmpresaWebViewScreen,
   EntradaScreen,
+  EsqueciSenhaScreen,
   LoginScreen,
 } from "@/features/auth/screens";
 import { OnboardingScreen, RoleSelectionScreen } from "@/features/intro/screens";
-
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -42,6 +42,7 @@ export function AuthNavigator({
       <Stack.Screen name="SelecionarPerfil" component={RoleSelectionScreen} />
       <Stack.Screen name="Entrada" component={EntradaScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="EsqueciSenha" component={EsqueciSenhaScreen} />
       <Stack.Screen name="CriarConta" component={CriarContaScreen} />
       <Stack.Screen name="AreaProfissional" component={AreaProfissionalScreen} />
       <Stack.Screen name="AreaPessoal" component={AreaPessoalScreen} />

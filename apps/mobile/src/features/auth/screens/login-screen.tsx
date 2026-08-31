@@ -9,7 +9,6 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
 import { AuthButton, AuthScreen, AuthTextField, PasswordInput } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
@@ -136,6 +135,11 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
       ) : null}
 
       <AuthButton label="Entrar" onPress={() => void handleLogin()} isLoading={isSubmitting} />
+      <AuthButton
+        label="Esqueci minha senha"
+        variant="ghost"
+        onPress={() => navigation.navigate("EsqueciSenha")}
+      />
       <AuthButton
         label="Criar conta"
         variant="ghost"

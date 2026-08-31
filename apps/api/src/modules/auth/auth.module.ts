@@ -22,6 +22,7 @@ import { JwtStrategy } from "./strategies/jwt.strategy";
 
 import type { AuthConfig } from "@/config/auth.config";
 
+import { EmailModule } from "@/infra/email/email.module";
 import { SecurityModule } from "@/infra/security/security.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
@@ -85,6 +86,7 @@ import { UsersModule } from "@/modules/users/users.module";
     AuditModule,
     StudentPreRegistrationsModule,
     CompanyJoinRequestsModule,
+    EmailModule,
   ],
   controllers: [AuthController, InvitesController],
   providers: [

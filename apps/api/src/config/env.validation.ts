@@ -156,6 +156,12 @@ export const envSchema = z.object({
   SUPPORT_INBOX_EMAIL: z.string().email().or(z.literal("")).optional(),
   ADMIN_APP_URL: z.string().url().or(z.literal("")).optional(),
 
+  // `WEB_APP_URL` — mesmo raciocínio de `ADMIN_APP_URL` acima, só que
+  // pro Painel Web (apps/web): sem ela, `PasswordResetNotifierService`
+  // ainda tenta enviar o e-mail de redefinição de senha, mas sem um
+  // link clicável (só o token, pra digitar manualmente).
+  WEB_APP_URL: z.string().url().or(z.literal("")).optional(),
+
   // Groq (console.groq.com) — IA que responde dúvidas simples de
   // suporte (Frente 5, decisão do usuário: "Groq (Llama, grátis)").
   // Opcional: sem GROQ_API_KEY, `GroqService` recusa a chamada com um
