@@ -1243,6 +1243,39 @@ describe("TripsService", () => {
       });
     });
 
+    it("REGRESSÃO — nunca inventa coordenada (0,0) quando a parada referenciada pelo vínculo não existe mais na rota (marcador fantasma em Null Island, auditoria 27/08/2026)", async () => {
+      const vinculoComPendenciaOrfa = {
+        id: "vinculo-3",
+        routeId: "route-1",
+        contractId: "contract-3",
+        studentId: "student-3",
+        // "stop-removida" nunca aparece no `routesService.listStops` mockado
+        // acima (só `stopCompartilhada` existe) — simula uma parada
+        // excluída/recriada depois do aluno já ter sido vinculado a ela.
+        paradaEmbarqueId: "stop-removida",
+        paradaDesembarqueId: "stop-2",
+        ativo: true,
+      };
+      routesService.listStudents.mockResolvedValue([
+        vinculoComDesvio,
+        vinculoSemDesvio,
+        vinculoComPendenciaOrfa,
+      ] as never);
+      studentsService.listAddressOverridesByStudentsAndDate.mockResolvedValue(
+        new Map([["student-1", override]]) as never,
+      );
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+
+      const result = await service.listStudentPendingLocations("trip-1", empresaActor);
+
+      // Os 2 alunos com parada válida continuam aparecendo; o 3º (parada
+      // órfã) simplesmente some da lista — nunca aparece com latitude/
+      // longitude 0 (Golfo da Guiné).
+      expect(result).toHaveLength(2);
+      expect(result.some((item) => item.studentId === "student-3")).toBe(false);
+      expect(result.some((item) => item.latitude === 0 && item.longitude === 0)).toBe(false);
+    });
+
     it("ao iniciar a rota, notifica 'vez do aluno' usando o waypoint sintético do desvio (não o routeStopId real) na dedup", async () => {
       routesService.findByIdOrThrow.mockResolvedValue({
         id: "route-1",

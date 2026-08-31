@@ -91,3 +91,25 @@ export interface RottaMapProps {
   /** URL de um estilo MapLibre (vetor, https://maplibre.org/maplibre-style-spec/) — padrão: estilo `liberty` da OpenFreeMap (`tiles.openfreemap.org`), sem token (ver nota em `./web/index.tsx`). */
   styleUrl?: string;
 }
+
+/**
+ * Auditoria de produção (27/08/2026, usuário: "o mapa não está
+ * aparecendo... só um pino no meio do nada") — a causa era uma
+ * coordenada `(0, 0)` ("Null Island", Golfo da Guiné) chegando como
+ * `initialCenter`/marcador por causa de um dado ruim rio acima (parada
+ * cadastrada sem geocodificação real, endereço placeholder). Corrigido
+ * na origem (`TripsService`), mas o mapa em si NUNCA deveria confiar
+ * cegamente numa coordenada vinda de fora: nenhum lugar real do Brasil
+ * fica em 0°/0°, então tratar isso como "sem coordenada" (em vez de
+ * literalmente centralizar/desenhar um pino no oceano) é a rede de
+ * segurança final — usada tanto em `./web` quanto `./native` pra
+ * filtrar `markers`/`initialCenter` ANTES de qualquer chamada ao
+ * MapLibre, protegendo contra essa classe de bug inteira, não só a
+ * instância já corrigida.
+ */
+export function isCoordenadaValida(coordenada: Coordenada | null | undefined): boolean {
+  if (!coordenada) return false;
+  const { latitude, longitude } = coordenada;
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+  return Math.abs(latitude) > 0.0001 || Math.abs(longitude) > 0.0001;
+}

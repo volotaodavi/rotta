@@ -14,6 +14,8 @@ export type AuthStackParamList = {
   CriarEmpresaWebView: undefined;
   ConviteCodigo: undefined;
   ConvitePreview: { codigo: string };
+  /** Dossiê 26 — cadastro direto do Responsável via "código da transportadora". */
+  ConviteTransportadora: undefined;
   /** Frente N (briefing item 9) — Motorista/Monitor autônomo, sem empresa ainda. */
   CriarContaAutonomo: undefined;
 };

@@ -9,11 +9,14 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
+import { isCoordenadaValida } from "../types";
+
 import type { RottaMapMarker, RottaMapProps } from "../types";
 import type { MapViewRef } from "@maplibre/maplibre-react-native";
 import type { Feature, LineString } from "geojson";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
+export { isCoordenadaValida } from "../types";
 
 let globalMapTilerApiKey: string | undefined;
 
@@ -28,27 +31,39 @@ export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
   globalMapTilerApiKey = options.mapTilerApiKey || undefined;
 }
 
-/** Ver `resolveDefaultStyleUrl` em `../web/index.tsx` — mesmo raciocínio. */
-function resolveDefaultStyleUrl(): string {
-  if (globalMapTilerApiKey) {
-    return `https://api.maptiler.com/maps/streets-v2/style.json?key=${globalMapTilerApiKey}`;
-  }
-  return DEFAULT_STYLE_URL;
+/**
+ * Ver `resolveDefaultStyleUrl` em `../web/index.tsx` — mesmo raciocínio,
+ * mesmo histórico de produção (27/08/2026, confirmado pelo usuário):
+ * os dois estilos VETORIAIS (OpenFreeMap `liberty`, depois MapTiler
+ * `streets-v2`) renderizam em branco em produção; o raster CARTO é o
+ * único confirmado funcionando de verdade, mesmo com o carimbo "API KEY
+ * REQUIRED" por cima (mapa real por baixo, nunca uma tela vazia).
+ */
+function resolveDefaultStyleUrl(): object {
+  void globalMapTilerApiKey; // aceito (não quebra configureRottaMaps), não usado — ver acima.
+  return CARTO_RASTER_STYLE;
 }
 
 /**
- * Estilo padrão do mapa — VETORIAL `liberty` da OpenFreeMap, sem
- * chave/token (ver o histórico completo em `../web/index.tsx`: a CARTO,
- * que era usada antes aqui, passou a exigir chave de API pra qualquer
- * tile — confirmado com `curl`, a imagem devolvida vem com "API KEY
- * REQUIRED" carimbado em cima, reproduzido pelo usuário direto no app
- * publicado). `mapStyle` aceita `string | object` (`MapView` do
- * `@maplibre/maplibre-react-native`), então passar só a URL do estilo
- * funciona igual à web — o próprio MapLibre resolve tiles/sprite/glyphs
- * (todos do mesmo domínio `tiles.openfreemap.org`, sem dependência
- * cruzada de outro provedor).
+ * Estilo RASTER com tiles do OpenStreetMap via CDN da CARTO — mesmo
+ * objeto de `../web/index.tsx` (`CARTO_RASTER_STYLE`), aqui como
+ * `object` puro (sem o tipo `StyleSpecification` do `maplibre-gl`, que
+ * não é dependência deste arquivo — `@maplibre/maplibre-react-native`
+ * aceita o mesmo formato de estilo JSON, só a prop se chama `mapStyle`
+ * em vez de `style`).
  */
-const DEFAULT_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
+const CARTO_RASTER_STYLE = {
+  version: 8,
+  sources: {
+    "carto-raster": {
+      type: "raster",
+      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+    },
+  },
+  layers: [{ id: "carto-raster-layer", type: "raster", source: "carto-raster" }],
+};
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];
@@ -222,15 +237,22 @@ function AnimatedVehicleAnnotation({
  * build-time (SDK distribuído via Maven Central/CocoaPods livremente).
  */
 export function RottaMap({
-  markers,
+  markers: markersProp,
   route,
   routeColor = DEFAULT_ROUTE_COLOR,
-  initialCenter,
+  initialCenter: initialCenterProp,
   initialZoom = DEFAULT_ZOOM,
   onBoundsChange,
   onMarkerPress,
   styleUrl,
 }: RottaMapProps): JSX.Element {
+  // Rede de segurança final contra `(0, 0)`/"Null Island" (ver
+  // `isCoordenadaValida`, mesmo motivo de `../web/index.tsx`) — nunca
+  // desenha um marcador nem centraliza a câmera numa coordenada que
+  // nenhum dado real do Brasil produziria.
+  const markers = markersProp.filter((marker) => isCoordenadaValida(marker));
+  const initialCenter =
+    initialCenterProp && isCoordenadaValida(initialCenterProp) ? initialCenterProp : undefined;
   const mapRef = useRef<MapViewRef>(null);
   const onBoundsChangeRef = useRef(onBoundsChange);
   onBoundsChangeRef.current = onBoundsChange;

@@ -54,8 +54,37 @@ import { useGpsMap } from "@/features/gps/hooks/use-gps";
  * boleto (Asaas) numa única tela, sem duplicar o fluxo aqui (mesmo
  * link que `TrialLockModal` usa quando o trial vence de verdade).
  */
-function TrialBanner({ status }: { status: Company["status"] }): JSX.Element | null {
+const MS_DIA = 24 * 60 * 60 * 1000;
+
+/** "Expira em N dias"/"Expirado há N dias" a partir de `trialExpiraEm` — mesmo cálculo do painel Admin (`/planos`), aqui pra própria empresa ver o prazo antes de o cadeado cair. */
+function contagemTrial(trialExpiraEm: string | null): { texto: string; urgente: boolean } | null {
+  if (!trialExpiraEm) return null;
+  const diasRestantes = Math.ceil((new Date(trialExpiraEm).getTime() - Date.now()) / MS_DIA);
+  if (diasRestantes > 0) {
+    return {
+      texto: `Expira em ${diasRestantes} dia${diasRestantes === 1 ? "" : "s"}`,
+      urgente: diasRestantes <= 3,
+    };
+  }
+  const diasVencido = Math.abs(diasRestantes);
+  return {
+    texto:
+      diasVencido === 0
+        ? "Vence hoje"
+        : `Expirado há ${diasVencido} dia${diasVencido === 1 ? "" : "s"}`,
+    urgente: true,
+  };
+}
+
+function TrialBanner({
+  status,
+  trialExpiraEm,
+}: {
+  status: Company["status"];
+  trialExpiraEm: string | null;
+}): JSX.Element | null {
   if (status !== "TRIAL") return null;
+  const contagem = contagemTrial(trialExpiraEm);
 
   return (
     <Card className="border-primary/30 bg-primary/5">
@@ -68,6 +97,9 @@ function TrialBanner({ status }: { status: Company["status"] }): JSX.Element | n
             <div className="flex items-center gap-2">
               <Typography variant="subtitle">Período de teste</Typography>
               <Badge variant="info">Trial</Badge>
+              {contagem && (
+                <Badge variant={contagem.urgente ? "danger" : "neutral"}>{contagem.texto}</Badge>
+              )}
             </div>
             <Typography variant="bodySmall" color="muted">
               Sua empresa está em período de teste gratuito. Assine o plano Starter (R$ 39,90/mês)
@@ -384,7 +416,7 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
             </Card.Body>
           </Card>
 
-          <TrialBanner status={company.status} />
+          <TrialBanner status={company.status} trialExpiraEm={company.trialExpiraEm} />
 
           <PainelAtalhos />
 

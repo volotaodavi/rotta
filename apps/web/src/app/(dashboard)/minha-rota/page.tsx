@@ -24,7 +24,7 @@ import {
   type DistanceCoordenada,
 } from "@rotta/maps/distance";
 import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
-import { RottaMap, type RottaMapMarker } from "@rotta/maps/web";
+import { RottaMap, isCoordenadaValida, type RottaMapMarker } from "@rotta/maps/web";
 import {
   Badge,
   Button,
@@ -1434,12 +1434,19 @@ function ModoOperacionalFullScreen({
   // quando disponível (já vem certa mesmo quando o aluno tem um desvio de
   // endereço ativo hoje, ver `TripsService.listPendenciasPorAluno`); cai
   // pro endereço fixo da parada (`paradaAlvo`) só quando o ETA recalculado
-  // ainda não chegou (viagem recém-iniciada, sem GPS).
-  const destinoAlvo = proximaEta
+  // ainda não chegou (viagem recém-iniciada, sem GPS). `isCoordenadaValida`
+  // é a mesma rede de segurança do `RottaMap` (`@rotta/maps`) contra dado
+  // de parada mal geocodificado (endereço "0. D, 0", latitude/longitude
+  // 0/0 — "Null Island" — auditoria 27/08/2026): sem isso, `destinoAlvo`
+  // levava a coordenada crua da parada direto pro mapa, pro cálculo de
+  // distância E pro botão "Navegar", ignorando o `resolverPendencia` que
+  // já filtra isso no backend quando `proximaEta` existe.
+  const destinoBruto = proximaEta
     ? { latitude: proximaEta.latitude, longitude: proximaEta.longitude }
     : paradaAlvo
       ? { latitude: paradaAlvo.latitude, longitude: paradaAlvo.longitude }
       : null;
+  const destinoAlvo = destinoBruto && isCoordenadaValida(destinoBruto) ? destinoBruto : null;
 
   // "Próxima rota traçada" (pedido do usuário: "a linha azul é igual GPS
   // mesmo") — veículo → destino-alvo, seguindo as ruas de verdade (OSRM via

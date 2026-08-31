@@ -22,7 +22,12 @@ function buildCompany(): CompanyWithPlan {
 describe("BillingService", () => {
   let client: jest.Mocked<AbacatePayClientService>;
   let asaasClient: jest.Mocked<AsaasClientService>;
-  let companyRepository: { findById: jest.Mock; update: jest.Mock; list: jest.Mock };
+  let companyRepository: {
+    findById: jest.Mock;
+    update: jest.Mock;
+    list: jest.Mock;
+    listComPixProximoVencimento: jest.Mock;
+  };
   let prisma: { runWithTenantContext: jest.Mock };
   let service: BillingService;
 
@@ -46,7 +51,12 @@ describe("BillingService", () => {
       listPaymentsBySubscription: jest.fn(),
     } as unknown as jest.Mocked<AsaasClientService>;
 
-    companyRepository = { findById: jest.fn(), update: jest.fn(), list: jest.fn() };
+    companyRepository = {
+      findById: jest.fn(),
+      update: jest.fn(),
+      list: jest.fn(),
+      listComPixProximoVencimento: jest.fn(),
+    };
 
     prisma = {
       runWithTenantContext: jest.fn((_ctx: unknown, fn: () => unknown) => fn()),
@@ -175,9 +185,10 @@ describe("BillingService", () => {
         devMode: false,
         data: { billing: { id: "bil_1", status: "PAID", metadata: { externalId: "company-1" } } },
       });
-      expect(companyRepository.update).toHaveBeenCalledWith("company-1", {
-        status: CompanyStatus.ATIVO,
-      });
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ status: CompanyStatus.ATIVO, pixUltimoAvisoEm: null }),
+      );
     });
 
     it("ativa a empresa em billing.paid usando data.pixQrCode.metadata.externalId (formato alternativo)", async () => {
@@ -488,6 +499,89 @@ describe("BillingService", () => {
       expect(overview.totalRecebidoCentavos).toBeNull();
       expect(overview.totalTaxaRetidaCentavos).toBeNull();
       expect(overview.quantidadeCobrancasPagas).toBeNull();
+    });
+  });
+
+  describe("processarVencimentosPix", () => {
+    function buildDueCompany(
+      overrides: Partial<{ pixProximoVencimento: Date | null; pixUltimoAvisoEm: Date | null }> = {},
+    ): CompanyWithPlan {
+      return {
+        ...buildCompany(),
+        status: CompanyStatus.ATIVO,
+        pixProximoVencimento: overrides.pixProximoVencimento ?? null,
+        pixUltimoAvisoEm: overrides.pixUltimoAvisoEm ?? null,
+      };
+    }
+
+    it("não faz nada e não quebra quando a AbacatePay não está configurada", async () => {
+      client.isConfigured.mockReturnValue(false);
+
+      const resultado = await service.processarVencimentosPix();
+
+      expect(resultado).toEqual({ reenviados: 0, marcadosInadimplentes: 0 });
+      expect(companyRepository.listComPixProximoVencimento).not.toHaveBeenCalled();
+    });
+
+    it("reemite o Pix pra empresa dentro da janela de reenvio sem aviso recente", async () => {
+      const daquiA3Dias = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      companyRepository.listComPixProximoVencimento.mockResolvedValue([
+        buildDueCompany({ pixProximoVencimento: daquiA3Dias }),
+      ]);
+      client.createPixQrCode.mockResolvedValue({} as never);
+
+      const resultado = await service.processarVencimentosPix();
+
+      expect(client.createPixQrCode).toHaveBeenCalledWith(
+        expect.objectContaining({ metadata: { externalId: "company-1" } }),
+      );
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ pixUltimoAvisoEm: expect.any(Date) }),
+      );
+      expect(resultado).toEqual({ reenviados: 1, marcadosInadimplentes: 0 });
+    });
+
+    it("não reemite de novo antes de PIX_REISSUE_REPEAT_DAYS do último aviso", async () => {
+      const daquiA3Dias = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      const avisadoOntem = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
+      companyRepository.listComPixProximoVencimento.mockResolvedValue([
+        buildDueCompany({ pixProximoVencimento: daquiA3Dias, pixUltimoAvisoEm: avisadoOntem }),
+      ]);
+
+      const resultado = await service.processarVencimentosPix();
+
+      expect(client.createPixQrCode).not.toHaveBeenCalled();
+      expect(resultado).toEqual({ reenviados: 0, marcadosInadimplentes: 0 });
+    });
+
+    it("marca INADIMPLENTE quem passou da folga de vencimento sem pagar", async () => {
+      const venceuFaz3Dias = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+      companyRepository.listComPixProximoVencimento.mockResolvedValue([
+        buildDueCompany({ pixProximoVencimento: venceuFaz3Dias }),
+      ]);
+
+      const resultado = await service.processarVencimentosPix();
+
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ status: CompanyStatus.INADIMPLENTE }),
+      );
+      expect(client.createPixQrCode).not.toHaveBeenCalled();
+      expect(resultado).toEqual({ reenviados: 0, marcadosInadimplentes: 1 });
+    });
+
+    it("não mexe em quem ainda está longe do vencimento", async () => {
+      const daquiA20Dias = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+      companyRepository.listComPixProximoVencimento.mockResolvedValue([
+        buildDueCompany({ pixProximoVencimento: daquiA20Dias }),
+      ]);
+
+      const resultado = await service.processarVencimentosPix();
+
+      expect(client.createPixQrCode).not.toHaveBeenCalled();
+      expect(companyRepository.update).not.toHaveBeenCalled();
+      expect(resultado).toEqual({ reenviados: 0, marcadosInadimplentes: 0 });
     });
   });
 });

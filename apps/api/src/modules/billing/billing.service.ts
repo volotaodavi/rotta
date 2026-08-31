@@ -15,6 +15,10 @@ import {
   ABACATEPAY_FEE_CARD_PERCENT,
   ABACATEPAY_FEE_PIX_CENTS,
   ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
+  PIX_OVERDUE_GRACE_DAYS,
+  PIX_RECURRENCE_MONTHS,
+  PIX_REISSUE_REPEAT_DAYS,
+  PIX_REISSUE_WINDOW_DAYS,
   ROTTA_SUBSCRIPTION_PRICE_CENTS,
   ROTTA_SUBSCRIPTION_PRODUCT_NAME,
 } from "./billing.constants";
@@ -22,7 +26,10 @@ import {
 import type { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
 import type { AbacatePayPixQrCode, AbacatePayWebhookEnvelope } from "./types/abacatepay.types";
 import type { AsaasPayment, AsaasWebhookEnvelope } from "./types/asaas.types";
-import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
+import type {
+  CompanyRepository,
+  UpdateCompanyData,
+} from "@/modules/companies/repositories/company.repository";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
@@ -103,10 +110,11 @@ export class BillingService {
    * Diferença importante do checkout de cartão/débito/boleto (Asaas,
    * `createAsaasCheckoutForCompany`): isto é uma cobrança AVULSA (não
    * uma assinatura recorrente da AbacatePay) — o pagamento confirmado
-   * ativa a empresa por este ciclo, mas não cria renovação automática.
-   * Documentado explicitamente pro usuário: um agendador mensal pra
-   * reemitir o Pix automaticamente é um próximo passo, ainda não
-   * construído.
+   * ativa a empresa por este ciclo e agenda `pixProximoVencimento`
+   * (`applyPixPayment`), que o job diário (`processarVencimentosPix`)
+   * usa pra reemitir um novo Pix automaticamente perto do vencimento —
+   * a "renovação automática" do Pix é simulada por esse agendador, já
+   * que a AbacatePay em si não tem assinatura recorrente de Pix.
    */
   async createPixCheckoutForCompany(companyId: string): Promise<AbacatePayPixQrCode> {
     if (!this.client.isConfigured()) {
@@ -353,7 +361,16 @@ export class BillingService {
       return;
     }
 
-    await this.applyStatus("billing.paid", companyId, CompanyStatus.ATIVO, undefined);
+    // Agenda o próximo vencimento (Pix "recorrente" simulado — ver nota
+    // em `createPixCheckoutForCompany`) e limpa o controle de reenvio,
+    // pra o próximo ciclo poder reemitir de novo perto do vencimento.
+    const proximoVencimento = new Date();
+    proximoVencimento.setMonth(proximoVencimento.getMonth() + PIX_RECURRENCE_MONTHS);
+
+    await this.applyStatus("billing.paid", companyId, CompanyStatus.ATIVO, undefined, {
+      pixProximoVencimento: proximoVencimento,
+      pixUltimoAvisoEm: null,
+    });
   }
 
   private async applyStatus(
@@ -361,6 +378,7 @@ export class BillingService {
     companyId: string | undefined,
     status: CompanyStatus,
     subscriptionId: string | undefined,
+    extra: Partial<UpdateCompanyData> = {},
   ): Promise<void> {
     if (!companyId) {
       this.logger.warn(
@@ -380,6 +398,7 @@ export class BillingService {
         this.companyRepository.update(companyId, {
           status,
           ...(subscriptionId ? { abacatepaySubscriptionId: subscriptionId } : {}),
+          ...extra,
         }),
       );
       this.logger.log(
@@ -390,6 +409,77 @@ export class BillingService {
         `Não foi possível atualizar a empresa ${companyId} a partir do webhook AbacatePay "${eventName}": ${(error as Error).message}`,
       );
     }
+  }
+
+  /**
+   * Job diário (`internal/queue/billing/reissue-pix`, registrado por
+   * `BillingSchedulerService` via QStash — mesmo mecanismo do
+   * `InepSyncSchedulerService`) que simula a "assinatura recorrente" que
+   * a AbacatePay não tem pra Pix avulso (Dossiê 26): reemite um novo Pix
+   * perto do vencimento e marca `INADIMPLENTE` quem não pagou depois da
+   * folga (`PIX_OVERDUE_GRACE_DAYS`, mesma folga do trial). Nunca mexe
+   * em quem paga por Asaas (cartão/débito/boleto) — a renovação desses é
+   * da própria assinatura Asaas.
+   */
+  async processarVencimentosPix(): Promise<{ reenviados: number; marcadosInadimplentes: number }> {
+    if (!this.client.isConfigured()) {
+      this.logger.log("AbacatePay não configurada — reenvio automático de Pix pulado.");
+      return { reenviados: 0, marcadosInadimplentes: 0 };
+    }
+
+    const candidatas = await this.companyRepository.listComPixProximoVencimento();
+    const agora = new Date();
+    let reenviados = 0;
+    let marcadosInadimplentes = 0;
+
+    for (const empresa of candidatas) {
+      const vencimento = empresa.pixProximoVencimento;
+      if (!vencimento) continue;
+
+      const diasParaVencer = (vencimento.getTime() - agora.getTime()) / (24 * 60 * 60 * 1000);
+
+      if (diasParaVencer < -PIX_OVERDUE_GRACE_DAYS) {
+        await this.applyStatus(
+          "pix.vencido-sem-pagamento",
+          empresa.id,
+          CompanyStatus.INADIMPLENTE,
+          undefined,
+        );
+        marcadosInadimplentes += 1;
+        continue;
+      }
+
+      const diasDesdeUltimoAviso = empresa.pixUltimoAvisoEm
+        ? (agora.getTime() - empresa.pixUltimoAvisoEm.getTime()) / (24 * 60 * 60 * 1000)
+        : Number.POSITIVE_INFINITY;
+
+      if (
+        diasParaVencer <= PIX_REISSUE_WINDOW_DAYS &&
+        diasDesdeUltimoAviso >= PIX_REISSUE_REPEAT_DAYS
+      ) {
+        try {
+          await this.client.createPixQrCode({
+            amount: ROTTA_SUBSCRIPTION_PRICE_CENTS,
+            expiresIn: ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
+            description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${empresa.nomeFantasia} (renovação)`,
+            metadata: { externalId: empresa.id },
+          });
+          await this.prisma.runWithTenantContext({ tenantId: null, bypass: true }, () =>
+            this.companyRepository.update(empresa.id, { pixUltimoAvisoEm: agora }),
+          );
+          reenviados += 1;
+        } catch (error) {
+          this.logger.warn(
+            `Falha ao reemitir Pix de renovação da empresa ${empresa.id}: ${(error as Error).message}`,
+          );
+        }
+      }
+    }
+
+    this.logger.log(
+      `Processamento de vencimentos Pix: ${reenviados} reenvio(s), ${marcadosInadimplentes} empresa(s) marcada(s) INADIMPLENTE.`,
+    );
+    return { reenviados, marcadosInadimplentes };
   }
 
   /**

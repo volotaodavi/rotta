@@ -1,6 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { CompanyJoinRequestsService } from "../company-join-requests.service";
 
 import type {
@@ -67,6 +66,7 @@ describe("CompanyJoinRequestsService", () => {
       list: jest.fn(),
       nextCodigoInternoSequence: jest.fn(),
       findActiveByCodigoInterno: jest.fn(),
+      listComPixProximoVencimento: jest.fn(),
     };
     usersService = {
       createMembership: jest.fn(),

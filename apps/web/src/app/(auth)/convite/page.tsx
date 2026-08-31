@@ -8,6 +8,7 @@ import {
   Input,
   PhoneInput,
   Spinner,
+  Tabs,
   Typography,
   isCompleteBrazilianCellphone,
 } from "@rotta/ui/web";
@@ -15,9 +16,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { ConviteTransportadoraForm } from "./_components/convite-transportadora-form";
+
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
 import { authApi } from "@/lib/api-client";
 import { defaultRouteForRole } from "@/lib/default-route";
+
+
+type SegmentoConvite = "equipe" | "transportadora";
 
 const ROLE_LABEL: Record<string, string> = {
   gestor: "Gestor",
@@ -59,12 +65,44 @@ const ROLE_LABEL: Record<string, string> = {
 export default function ConvitePage(): JSX.Element {
   const searchParams = useSearchParams();
   const codigo = searchParams.get("codigo")?.trim().toUpperCase() ?? "";
+  const [segmento, setSegmento] = useState<SegmentoConvite>("equipe");
 
-  return codigo ? <ResgatarConvite codigo={codigo} /> : <InserirCodigo />;
+  // Um `?codigo=` na URL só faz sentido pro convite de equipe (o
+  // "código da transportadora" nunca vem por essa query string) —
+  // pula direto pro resgate, sem mostrar as abas.
+  if (codigo) return <ResgatarConvite codigo={codigo} />;
+
+  return (
+    <div className="mx-auto flex w-full max-w-md flex-col gap-6">
+      <Tabs
+        tabs={[
+          { id: "equipe", label: "Convite de equipe" },
+          { id: "transportadora", label: "Sou responsável" },
+        ]}
+        activeId={segmento}
+        onChange={(id) => setSegmento(id as SegmentoConvite)}
+      />
+      {segmento === "equipe" ? (
+        <InserirCodigo onIrParaTransportadora={() => setSegmento("transportadora")} />
+      ) : (
+        <ConviteTransportadoraForm />
+      )}
+    </div>
+  );
 }
 
-/** Sem `?codigo=` na URL — quem foi convidado mas só tem o código em mãos (não o link) digita aqui. */
-function InserirCodigo(): JSX.Element {
+/**
+ * Sem `?codigo=` na URL — quem foi convidado mas só tem o código em
+ * mãos (não o link) digita aqui. Segmento "Convite de equipe" da
+ * aba unificada de `/convite` (Dossiê 26) — distinto do "código da
+ * transportadora" (`ConviteTransportadoraForm`), que é outro conceito
+ * (`Company.codigoInterno`, não um `Invite`).
+ */
+function InserirCodigo({
+  onIrParaTransportadora,
+}: {
+  onIrParaTransportadora: () => void;
+}): JSX.Element {
   const router = useRouter();
   const [codigo, setCodigo] = useState("");
 
@@ -78,7 +116,7 @@ function InserirCodigo(): JSX.Element {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
+    <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1 text-center">
         <Typography variant="title">Inserir código de convite</Typography>
         <Typography variant="bodySmall" color="muted">
@@ -102,9 +140,13 @@ function InserirCodigo(): JSX.Element {
 
       <Typography variant="caption" color="muted" className="text-center">
         É responsável e recebeu um código da transportadora (não um convite de equipe)?{" "}
-        <a href="/convite/transportadora" className="text-primary hover:underline">
+        <button
+          type="button"
+          onClick={onIrParaTransportadora}
+          className="text-primary hover:underline"
+        >
           Cadastre seu filho por aqui
-        </a>
+        </button>
       </Typography>
     </div>
   );

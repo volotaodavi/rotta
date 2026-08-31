@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-
 import { AuthButton, AuthScreen, AuthTextField } from "../components";
+
+import { ConviteTransportadoraLink } from "./convite-transportadora-screen";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -15,6 +16,13 @@ type Props = NativeStackScreenProps<AuthStackParamList, "ConviteCodigo">;
  * Entrada do código de convite (Dossiê 15, `AUTH-01-A1`) — ex.: "M586PO",
  * "RTA-8F29KQ". A validação real (código existe/expirou/já usado)
  * acontece na tela seguinte, consultando a API.
+ *
+ * "mesma aba, segmentos diferentes" (Dossiê 26, pedido do usuário) — o
+ * link de rodapé abaixo leva pra `ConviteTransportadoraScreen`, que
+ * cadastra o Responsável a partir do "código da transportadora"
+ * (`Company.codigoInterno`), um conceito bem diferente deste código de
+ * convite de equipe (`Invite`, uso único). Equivalente móvel da aba "Sou
+ * responsável" já unificada em `apps/web` `(auth)/convite`.
  */
 export function ConviteCodigoScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -50,6 +58,8 @@ export function ConviteCodigoScreen({ navigation }: Props): JSX.Element {
           navigation.navigate("ConvitePreview", { codigo: codigo.trim().toUpperCase() })
         }
       />
+
+      <ConviteTransportadoraLink onPress={() => navigation.navigate("ConviteTransportadora")} />
     </AuthScreen>
   );
 }
