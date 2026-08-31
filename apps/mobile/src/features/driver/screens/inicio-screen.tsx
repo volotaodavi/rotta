@@ -3,6 +3,8 @@ import { useAuth } from "@rotta/auth/native";
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock,
   LogIn,
   LogOut,
@@ -23,15 +25,15 @@ import {
 } from "@rotta/maps/distance";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { buildNavigationUrl } from "@rotta/maps/navigation";
+import { driverShadow } from "@rotta/theme";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Dimensions,
+  LayoutAnimation,
   Linking,
   Modal,
-  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -91,6 +93,8 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
 
+
+
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
  * ("visualizar escala/rota/paradas, iniciar/pausar/finalizar viagem")
@@ -126,7 +130,7 @@ export function DriverInicioScreen(): JSX.Element {
   if (isLoading) {
     return (
       <VehicleScreen>
-        <ActivityIndicator color={theme.colors.primary} />
+        <ActivityIndicator color={theme.colors.driverPrimary} />
       </VehicleScreen>
     );
   }
@@ -204,7 +208,7 @@ function MeuMapa({
       >
         {status === "requesting" || status === "idle" ? (
           <>
-            <ActivityIndicator color={theme.colors.primary} />
+            <ActivityIndicator color={theme.colors.driverPrimary} />
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               Buscando sua localização…
             </Text>
@@ -348,7 +352,7 @@ function ProximaParadaEtaCard({
           onPress={handleNavegar}
           style={[styles.navegarButton, { backgroundColor: theme.colors.primaryMuted }]}
         >
-          <Navigation size={16} color={theme.colors.primary} />
+          <Navigation size={16} color={theme.colors.driverPrimary} />
         </Pressable>
       ) : null}
     </VehicleCard>
@@ -507,7 +511,7 @@ function AlunoABordoRow({ studentId }: { studentId: string }): JSX.Element {
   const { data: student } = useStudent(studentId);
   return (
     <View style={styles.alunoABordoRow}>
-      <View style={[styles.alunoABordoDot, { backgroundColor: theme.colors.success }]} />
+      <View style={[styles.alunoABordoDot, { backgroundColor: theme.colors.driverSuccess }]} />
       <Text style={{ color: theme.colors.text }}>{student?.nome ?? "Carregando…"}</Text>
     </View>
   );
@@ -644,9 +648,11 @@ function RotaOperacional({
   const isMonitor = user?.role === "monitor";
   // Cor de papel (Frente 304 — 3 imagens de referência anexadas pelo
   // usuário, pedido explícito "quero o mesmo design, idêntico"):
-  // Motorista reaproveita `primary` (já azul); Monitor usa o novo
-  // `monitorAccent` (roxo, ver `packages/theme/src/tokens/colors.ts`).
-  const accentColor = isMotorista ? theme.colors.primary : theme.colors.monitorAccent;
+  // Motorista usa `driverPrimary` (azul da identidade nova do
+  // Motorista, spec 31/08/2026); Monitor mantém o `monitorAccent`
+  // (roxo, ver `packages/theme/src/tokens/colors.ts`) — cor exclusiva
+  // já existente, não substituída pela nova identidade.
+  const accentColor = isMotorista ? theme.colors.driverPrimary : theme.colors.monitorAccent;
 
   const { data: trip, isLoading: isLoadingTrip } = useTodayTrip(rota.id);
   const { data: stops } = useRouteStops(rota.id);
@@ -1230,10 +1236,7 @@ function ParadaCard({
   );
 }
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
-const FLOATING_CARD_WIDTH = Math.min(SCREEN_WIDTH - 32, 400);
-const FLOATING_CARD_MARGIN = 12;
-const FLOATING_CARD_DEFAULT_HEIGHT = 280;
+const { height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 /**
  * Frente AP (mobile) — tela cheia do Modo Ação depois que a viagem
@@ -1347,11 +1350,19 @@ function ModoOperacionalFullScreen({
 
   // Pedido do usuário: "a lista de alunos deverá aparecer completa
   // durante a viagem, não somente o da parada atual" — paridade exata
-  // com o Painel Web (`verTodosAlunos` em `minha-rota/page.tsx`).
+  // com o Painel Web (`verTodosAlunos` em `minha-rota/page.tsx`). Dobra
+  // também de "está expandido?" pro bottom sheet (spec do Motorista,
+  // 31/08/2026): o mesmo botão que mostra o roster inteiro é o que
+  // deixa o cartão mais alto — não são dois controles independentes.
   const [verTodosAlunos, setVerTodosAlunos] = useState(false);
 
+  function handleToggleExpanded(): void {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setVerTodosAlunos((v) => !v);
+  }
+
   return (
-    <View style={[styles.fsRoot, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.fsRoot, { backgroundColor: theme.colors.driverBackground }]}>
       <View style={styles.fsMapArea}>
         {mapMarkers.length > 0 ? (
           <RottaMap
@@ -1366,12 +1377,18 @@ function ModoOperacionalFullScreen({
           />
         ) : (
           <View style={styles.fsMapLoading}>
-            <ActivityIndicator color={theme.colors.primary} />
+            <ActivityIndicator color={accentColor} />
           </View>
         )}
 
         <View style={[styles.fsTopBar, { top: insets.top + 8 }]}>
-          <View style={[styles.fsTopPill, { backgroundColor: theme.colors.surfaceElevated }]}>
+          <View
+            style={[
+              styles.fsTopPill,
+              { backgroundColor: theme.colors.surfaceElevated },
+              driverShadow[theme.name].native,
+            ]}
+          >
             <View
               style={[
                 styles.fsStatusDot,
@@ -1409,10 +1426,10 @@ function ModoOperacionalFullScreen({
         ) : null}
       </View>
 
-      <DraggableFloatingCard>
+      <OperationalBottomSheet expanded={verTodosAlunos} onToggleExpanded={handleToggleExpanded}>
         <View style={styles.mapCardBodyRow}>
           <Pressable
-            onPress={() => setVerTodosAlunos((v) => !v)}
+            onPress={handleToggleExpanded}
             style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
           >
             <Users size={14} color={theme.colors.textMuted} />
@@ -1476,7 +1493,7 @@ function ModoOperacionalFullScreen({
                 onPress={handleNavegar}
                 style={[styles.navegarButton, { backgroundColor: theme.colors.primaryMuted }]}
               >
-                <Navigation size={16} color={theme.colors.primary} />
+                <Navigation size={16} color={theme.colors.driverPrimary} />
               </Pressable>
             </View>
 
@@ -1494,7 +1511,7 @@ function ModoOperacionalFullScreen({
           </View>
         ) : (
           <View style={[styles.fsConcluido, { borderTopColor: theme.colors.border }]}>
-            <Check size={28} color={theme.colors.success} />
+            <Check size={28} color={theme.colors.driverSuccess} />
             <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
               Todos os alunos foram desembarcados.
             </Text>
@@ -1537,80 +1554,66 @@ function ModoOperacionalFullScreen({
             ))}
           </View>
         ) : null}
-      </DraggableFloatingCard>
+      </OperationalBottomSheet>
     </View>
   );
 }
 
 /**
- * Cartão flutuante ARRASTÁVEL por cima do mapa em tela cheia (pedido do
- * usuário: "um retângulo com borda redonda flutuante, onde clicando ele
- * se arrasta e fica suspenso na tela, porém com maior visibilidade") —
- * `PanResponder` + `Animated` (mesma dupla já usada por `SlideToAction`
- * nativo, sem `react-native-gesture-handler`/Reanimated só pra isto).
- * Diferente do slide (travado num eixo, sempre volta ao início), aqui o
- * arrasto é livre nas duas direções e o cartão FICA onde foi solto — só
- * nunca sai da área visível da tela (clampado a cada movimento, nunca só
- * no fim do gesto). Só a ALÇA no topo inicia o arrasto — os botões de
- * embarque/desembarque dentro do cartão continuam tocáveis normalmente.
+ * Bottom sheet ANCORADO na base do mapa em tela cheia (spec do
+ * Motorista, 31/08/2026 — substitui o cartão flutuante arrastável
+ * anterior). Dois estados de altura (compacto ~63% / expandido ~88% da
+ * tela), acionados pelo botão de seta OU pelo link "ver todos" — o
+ * mesmo `expanded` controla os dois, igual à referência do usuário
+ * (`view-all-button onClick={() => setExpanded(true)}`).
+ * `LayoutAnimation` (chamado pelo pai antes de trocar `expanded`) anima
+ * a transição de altura sem precisar de `Animated`/gesture-handler
+ * novo — mesma decisão de não adicionar dependência só pra isto.
+ * Nunca cobre a barra de navegação inferior: como as demais telas do
+ * Motorista, isto é conteúdo normal da aba "Início" (React Navigation
+ * já reserva a altura da tab bar por fora), não um modal/overlay
+ * absoluto por cima de tudo.
  */
-function DraggableFloatingCard({ children }: { children: ReactNode }): JSX.Element {
+function OperationalBottomSheet({
+  expanded,
+  onToggleExpanded,
+  children,
+}: {
+  expanded: boolean;
+  onToggleExpanded: () => void;
+  children: ReactNode;
+}): JSX.Element {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
-  const [cardHeight, setCardHeight] = useState(FLOATING_CARD_DEFAULT_HEIGHT);
-  const initialLeft = (SCREEN_WIDTH - FLOATING_CARD_WIDTH) / 2;
-  const initialTop = SCREEN_HEIGHT - cardHeight - insets.bottom - 16;
-
-  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
-  const dragStartRef = useRef({ x: 0, y: 0 });
-  const offsetRef = useRef({ x: 0, y: 0 });
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_event, gesture) =>
-        Math.abs(gesture.dx) > 2 || Math.abs(gesture.dy) > 2,
-      onPanResponderGrant: () => {
-        dragStartRef.current = { x: offsetRef.current.x, y: offsetRef.current.y };
-      },
-      onPanResponderMove: (_event, gesture) => {
-        const minX = FLOATING_CARD_MARGIN - initialLeft;
-        const maxX = SCREEN_WIDTH - FLOATING_CARD_WIDTH - FLOATING_CARD_MARGIN - initialLeft;
-        const minY = insets.top + FLOATING_CARD_MARGIN - initialTop;
-        const maxY = SCREEN_HEIGHT - cardHeight - insets.bottom - FLOATING_CARD_MARGIN - initialTop;
-        const nextX = Math.min(Math.max(dragStartRef.current.x + gesture.dx, minX), maxX);
-        const nextY = Math.min(Math.max(dragStartRef.current.y + gesture.dy, minY), maxY);
-        offsetRef.current = { x: nextX, y: nextY };
-        pan.setValue({ x: nextX, y: nextY });
-      },
-    }),
-  ).current;
+  const ChevronIcon = expanded ? ChevronDown : ChevronUp;
 
   return (
-    <Animated.View
-      onLayout={(event) => setCardHeight(event.nativeEvent.layout.height)}
+    <View
       style={[
-        styles.floatingCard,
+        styles.opSheet,
         {
-          left: initialLeft,
-          top: initialTop,
-          width: FLOATING_CARD_WIDTH,
+          maxHeight: SCREEN_HEIGHT * (expanded ? 0.88 : 0.63),
+          paddingBottom: insets.bottom + 12,
           backgroundColor: theme.colors.surfaceElevated,
-          borderColor: theme.colors.border,
-          transform: pan.getTranslateTransform(),
         },
+        driverShadow[theme.name].native,
       ]}
     >
-      <View {...panResponder.panHandlers} style={styles.floatingCardHandle}>
-        <View style={[styles.floatingCardHandleBar, { backgroundColor: theme.colors.border }]} />
+      <View style={styles.opSheetHandleRow}>
+        <View style={[styles.opSheetHandle, { backgroundColor: theme.colors.border }]} />
       </View>
-      <ScrollView
-        style={styles.floatingCardScroll}
-        contentContainerStyle={styles.floatingCardContent}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={expanded ? "Recolher" : "Expandir"}
+        onPress={onToggleExpanded}
+        style={[styles.opSheetExpandButton, { backgroundColor: theme.colors.muted }]}
       >
+        <ChevronIcon size={18} color={theme.colors.textMuted} />
+      </Pressable>
+      <ScrollView style={styles.opSheetScroll} contentContainerStyle={styles.opSheetContent}>
         {children}
       </ScrollView>
-    </Animated.View>
+    </View>
   );
 }
 
@@ -1702,9 +1705,9 @@ function AlunoParadaRow({
           {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}
         </Text>
         {jaOcorreu ? (
-          <Check size={18} color={theme.colors.success} />
+          <Check size={18} color={theme.colors.driverSuccess} />
         ) : jaAusente ? (
-          <Text style={{ color: theme.colors.danger, fontSize: 12 }}>Ausente</Text>
+          <Text style={{ color: theme.colors.driverDanger, fontSize: 12 }}>Ausente</Text>
         ) : !formularioAusenciaAberto ? (
           <View style={styles.alunoActions}>
             <Pressable
@@ -1714,7 +1717,9 @@ function AlunoParadaRow({
               style={[
                 styles.alunoActionButton,
                 {
-                  backgroundColor: isEmbarque ? theme.colors.primary : theme.colors.danger,
+                  backgroundColor: isEmbarque
+                    ? theme.colors.driverPrimary
+                    : theme.colors.driverDanger,
                   opacity: podeRegistrar ? 1 : 0.4,
                 },
               ]}
@@ -1741,7 +1746,7 @@ function AlunoParadaRow({
                 onPress={() => setFormularioAusenciaAberto(true)}
                 style={{ opacity: podeOperar ? 1 : 0.4 }}
               >
-                <UserX size={20} color={theme.colors.danger} />
+                <UserX size={20} color={theme.colors.driverDanger} />
               </Pressable>
             ) : null}
           </View>
@@ -1765,16 +1770,19 @@ function AlunoParadaRow({
                   styles.ausenciaPresetChip,
                   {
                     borderColor:
-                      motivoAusencia === preset ? theme.colors.danger : theme.colors.border,
+                      motivoAusencia === preset ? theme.colors.driverDanger : theme.colors.border,
                     backgroundColor:
-                      motivoAusencia === preset ? `${theme.colors.danger}1a` : "transparent",
+                      motivoAusencia === preset ? `${theme.colors.driverDanger}1a` : "transparent",
                   },
                 ]}
               >
                 <Text
                   style={{
                     fontSize: 12,
-                    color: motivoAusencia === preset ? theme.colors.danger : theme.colors.textMuted,
+                    color:
+                      motivoAusencia === preset
+                        ? theme.colors.driverDanger
+                        : theme.colors.textMuted,
                   }}
                 >
                   {preset}
@@ -1801,9 +1809,9 @@ function AlunoParadaRow({
               style={styles.ausenciaConfirmButton}
             >
               {addEvent.isPending ? (
-                <ActivityIndicator size="small" color={theme.colors.danger} />
+                <ActivityIndicator size="small" color={theme.colors.driverDanger} />
               ) : (
-                <Text style={{ color: theme.colors.danger, fontSize: 13, fontWeight: "600" }}>
+                <Text style={{ color: theme.colors.driverDanger, fontSize: 13, fontWeight: "600" }}>
                   Confirmar ausência
                 </Text>
               )}
@@ -1905,21 +1913,6 @@ const styles = StyleSheet.create({
   controlsSection: { gap: 8, paddingHorizontal: 16 },
   etaCard: { alignItems: "center", flexDirection: "row", gap: 12 },
   etaHorario: { alignItems: "center", flexDirection: "row", gap: 4 },
-  floatingCard: {
-    borderRadius: 24,
-    borderWidth: 1,
-    elevation: 8,
-    maxHeight: "65%",
-    position: "absolute",
-    shadowColor: "#000",
-    shadowOffset: { height: 4, width: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-  },
-  floatingCardContent: { gap: 4, padding: 16, paddingTop: 4 },
-  floatingCardHandle: { alignItems: "center", paddingVertical: 8 },
-  floatingCardHandleBar: { borderRadius: 999, height: 5, width: 40 },
-  floatingCardScroll: { flexGrow: 0 },
   fsAlvoHeader: {
     alignItems: "flex-start",
     borderTopWidth: 1,
@@ -2000,6 +1993,25 @@ const styles = StyleSheet.create({
   ocorrenciaScreen: { flex: 1 },
   opScreen: { flex: 1 },
   opScrollContent: { flexGrow: 1, paddingBottom: 24 },
+  opSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+  },
+  opSheetContent: { gap: 4, paddingBottom: 4, paddingHorizontal: 16 },
+  opSheetExpandButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 32,
+    justifyContent: "center",
+    position: "absolute",
+    right: 16,
+    top: 8,
+    width: 32,
+  },
+  opSheetHandle: { borderRadius: 999, height: 4, width: 40 },
+  opSheetHandleRow: { alignItems: "center", paddingBottom: 8 },
+  opSheetScroll: { flexGrow: 0 },
   painelTexto: { paddingVertical: 8, textAlign: "center" },
   paradaHeader: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   paradasSection: { gap: 16, paddingHorizontal: 16 },

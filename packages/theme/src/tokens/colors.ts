@@ -79,9 +79,52 @@ export interface ColorTokens {
   driverSuccessMuted: string;
   driverDanger: string;
   driverDangerMuted: string;
-  /** Sombra discreta única do cartão de mapa/listas do Motorista (spec: "sombras discretas") — nunca o `elevation` genérico do resto do produto, que deliberadamente NÃO usa sombra em cards no estado padrão (ver `elevation.ts`). */
-  driverShadow: string;
 }
+
+/**
+ * Sombra discreta única do cartão de mapa/bottom sheet do Motorista
+ * (spec do usuário: "sombras discretas") — nunca o `elevation`
+ * genérico do resto do produto, que deliberadamente NÃO usa sombra em
+ * cards no estado padrão (ver `elevation.ts`). Fica FORA de
+ * `ColorTokens` (que só guarda cores) porque native precisa de um
+ * objeto de sombra (`shadowColor`/`shadowOffset`/...), não de uma
+ * string CSS — mesmo formato de `ElevationLevel` — enquanto web
+ * consome a própria string via `--shadow-driver` em `globals.css`
+ * (que não depende deste export).
+ */
+export interface DriverShadow {
+  web: string;
+  native: {
+    shadowColor: string;
+    shadowOffset: { width: number; height: number };
+    shadowOpacity: number;
+    shadowRadius: number;
+    elevation: number;
+  };
+}
+
+export const driverShadow: Record<"light" | "dark", DriverShadow> = {
+  light: {
+    web: "0 8px 30px rgba(16, 24, 40, 0.07)",
+    native: {
+      shadowColor: "#101828",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.12,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+  },
+  dark: {
+    web: "0 8px 30px rgba(0, 0, 0, 0.4)",
+    native: {
+      shadowColor: "#000000",
+      shadowOffset: { width: 0, height: 8 },
+      shadowOpacity: 0.4,
+      shadowRadius: 20,
+      elevation: 8,
+    },
+  },
+};
 
 /** Tema escuro — padrao da plataforma (Dossie 24, Secao 5). */
 export const darkColors: ColorTokens = {
@@ -127,7 +170,6 @@ export const darkColors: ColorTokens = {
   driverSuccessMuted: "#123321",
   driverDanger: "#EF4444",
   driverDangerMuted: "#3A1614",
-  driverShadow: "0 8px 30px rgba(0, 0, 0, 0.4)",
 };
 
 /** Tema claro — oferecido como preferencia explicita do usuario (Dossie 24, Secao 5). */
@@ -172,5 +214,4 @@ export const lightColors: ColorTokens = {
   driverSuccessMuted: "#EAF8F0",
   driverDanger: "#E53935",
   driverDangerMuted: "#FFF0EF",
-  driverShadow: "0 8px 30px rgba(16, 24, 40, 0.07)",
 };
