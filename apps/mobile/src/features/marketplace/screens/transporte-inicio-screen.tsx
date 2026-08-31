@@ -29,7 +29,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
 import { AusenciaHojeCard } from "../components/ausencia-hoje-card";
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
@@ -44,6 +43,7 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
+import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import {
   StatusPill,
@@ -359,6 +359,19 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
   const { theme } = useTheme();
   const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
   const { data: aluno } = useStudent(contrato.studentId);
+  const { data: proximasEtas } = useProximasEtasResponsavel(viagem?.tripId);
+  const proximaParada = proximasEtas?.[0];
+
+  // A linha azul de verdade (pedido do usuário: "a linha azul é igual GPS
+  // mesmo... para os responsáveis... isso deve ser para web e app") —
+  // mesmo hook/trajeto que a versão web já usava (`useNextStopTracedRoute`,
+  // porta direta, ver o arquivo do hook).
+  const tracedRoute = useNextStopTracedRoute(
+    viagem?.latitude && viagem.longitude
+      ? { latitude: viagem.latitude, longitude: viagem.longitude }
+      : null,
+    proximaParada ? { latitude: proximaParada.latitude, longitude: proximaParada.longitude } : null,
+  );
 
   return (
     <>
@@ -387,6 +400,7 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                       emMovimento: true,
                     },
                   ]}
+                  route={tracedRoute.route ?? undefined}
                   initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
                   initialZoom={14}
                   // "Mapa em modo GPS" (Frente 4) — mesma paridade da tela
@@ -446,6 +460,15 @@ export function TripTrackingOverlay({
   const [mapKey, setMapKey] = useState(0);
   const proximaParada = proximasEtas?.[0];
 
+  // Mesma linha azul de `AcompanhamentoSection` — aqui é a versão tela
+  // cheia, mas o trajeto é o mesmo trecho (veículo -> próxima parada).
+  const tracedRoute = useNextStopTracedRoute(
+    viagem?.latitude && viagem.longitude
+      ? { latitude: viagem.latitude, longitude: viagem.longitude }
+      : null,
+    proximaParada ? { latitude: proximaParada.latitude, longitude: proximaParada.longitude } : null,
+  );
+
   return (
     <View
       style={[
@@ -467,6 +490,7 @@ export function TripTrackingOverlay({
                 emMovimento: true,
               },
             ]}
+            route={tracedRoute.route ?? undefined}
             initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
             initialZoom={14}
             followMode
