@@ -14,7 +14,7 @@ import {
   Typography,
 } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Suspense, useEffect, useState, type FormEvent, type ReactNode } from "react";
 
 import type {
   UpdateVehicleInput,
@@ -25,6 +25,7 @@ import type {
   VehicleStatus,
 } from "@rotta/api-client";
 
+import { SectionErrorBoundary } from "@/components/section-error-boundary";
 import { VehicleCategoryReviewBadges } from "@/features/vehicles/components/vehicle-category-review-badges";
 import { VehicleDocumentAiStatusBadge } from "@/features/vehicles/components/vehicle-document-ai-status-badge";
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
@@ -57,6 +58,7 @@ import {
   VEHICLE_TYPE_LABEL,
 } from "@/features/vehicles/labels";
 
+
 const TABS = [
   { id: "dados", label: "Dados" },
   { id: "documentos", label: "Documentos" },
@@ -83,8 +85,31 @@ const TABS = [
  * App Router (nunca reproduzido em rota estática): `use()` de uma
  * Promise recebida via prop de um Client Component não é o contrato
  * suportado pelo Next.js App Router (Next 15.5.22 + React 18.3.1).
+ *
+ * `SectionErrorBoundary` + `Suspense` (mesmo par de `/rotas/[id]`,
+ * `route-detail-client.tsx` — ver a investigação completa lá: React
+ * error #460, um `use()` do próprio roteador do Next perdendo o sinal
+ * de Suspense por faltar um `<Suspense>` de verdade por perto). Mesmo
+ * sintoma relatado nesta rota (`/veiculos/[id]`) — aplicado aqui por
+ * consistência, mesmo sem uma reprodução própria já confirmada.
  */
 export function VehicleDetailClient({ vehicleId }: { vehicleId: string }): JSX.Element {
+  return (
+    <SectionErrorBoundary label="pagina-veiculo-detalhe">
+      <Suspense
+        fallback={
+          <div className="flex justify-center py-12">
+            <Spinner size="lg" />
+          </div>
+        }
+      >
+        <VehicleDetailContent vehicleId={vehicleId} />
+      </Suspense>
+    </SectionErrorBoundary>
+  );
+}
+
+function VehicleDetailContent({ vehicleId }: { vehicleId: string }): JSX.Element {
   const router = useRouter();
   const { data: vehicle, isLoading, isError, refetch, isFetching } = useVehicle(vehicleId);
   const [activeTab, setActiveTab] = useState("dados");
