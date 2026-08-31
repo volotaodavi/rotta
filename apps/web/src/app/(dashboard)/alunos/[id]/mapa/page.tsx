@@ -364,6 +364,10 @@ export default function AlunoMapaPage(): JSX.Element {
               route={tracedRoute.route ?? undefined}
               initialCenter={{ latitude: viagem.latitude!, longitude: viagem.longitude! }}
               initialZoom={14}
+              // "Mapa em modo GPS" (Frente 4) — o Responsável acompanha o
+              // veículo do próprio filho se movendo de verdade, sem
+              // precisar tocar em "Recentralizar" a cada atualização.
+              followMode
             />
           ) : (
             <div className="flex h-full items-center justify-center bg-card">

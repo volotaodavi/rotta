@@ -1502,7 +1502,17 @@ function ModoOperacionalFullScreen({
     <div className="fixed inset-0 z-10 flex flex-col bg-background">
       <div className="relative flex-1">
         {mapMarkers.length > 0 ? (
-          <RottaMap key={mapKey} markers={mapMarkers} route={rotaTracada} initialZoom={13} />
+          <RottaMap
+            key={mapKey}
+            markers={mapMarkers}
+            route={rotaTracada}
+            initialZoom={13}
+            // "Mapa em modo GPS" (Frente 4, pedido do usuário: "deverá
+            // também ficar de olho... podendo centralizar o mapa de
+            // acordo com a rota do veículo") — a câmera acompanha o
+            // próprio veículo enquanto o motorista/monitor dirige.
+            followMode
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <Spinner size="lg" />

@@ -1346,7 +1346,16 @@ function ModoOperacionalFullScreen({
     <View style={[styles.fsRoot, { backgroundColor: theme.colors.background }]}>
       <View style={styles.fsMapArea}>
         {mapMarkers.length > 0 ? (
-          <RottaMap key={mapKey} markers={mapMarkers} route={rotaTracada} initialZoom={13} />
+          <RottaMap
+            key={mapKey}
+            markers={mapMarkers}
+            route={rotaTracada}
+            initialZoom={13}
+            // "Mapa em modo GPS" (Frente 4, mesma paridade do Painel Web
+            // — pedido do usuário: "podendo centralizar o mapa de acordo
+            // com a rota do veículo").
+            followMode
+          />
         ) : (
           <View style={styles.fsMapLoading}>
             <ActivityIndicator color={theme.colors.primary} />

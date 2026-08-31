@@ -90,6 +90,20 @@ export interface RottaMapProps {
   onMarkerPress?: (marker: RottaMapMarker) => void;
   /** URL de um estilo MapLibre (vetor, https://maplibre.org/maplibre-style-spec/) — padrão: estilo `liberty` da OpenFreeMap (`tiles.openfreemap.org`), sem token (ver nota em `./web/index.tsx`). */
   styleUrl?: string;
+  /**
+   * "Mapa em modo GPS" (auditoria 31/08/2026, pedido do usuário: "o mapa
+   * deverá ser igual GPS mesmo... podendo centralizar o mapa de acordo
+   * com a rota do veículo"). Quando `true`, a câmera acompanha
+   * suavemente o marcador `emMovimento` a cada nova posição, em vez de
+   * só mover o marcador com a câmera parada. Desliga sozinho no
+   * primeiro gesto manual do usuário (arrastar/dar zoom) — mesmo
+   * comportamento de qualquer app de navegação — e volta a ligar na
+   * próxima montagem do componente (o botão "Recentralizar" já existente
+   * remonta o mapa, então também religa o follow). Padrão `false`
+   * (mudança de comportamento opt-in, nunca automática em telas que não
+   * pediram).
+   */
+  followMode?: boolean;
 }
 
 /**

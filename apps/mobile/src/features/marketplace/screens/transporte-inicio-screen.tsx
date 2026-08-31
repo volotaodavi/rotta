@@ -358,6 +358,9 @@ function TransporteEmAndamentoScreen({
                 ]}
                 initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
                 initialZoom={14}
+                // "Mapa em modo GPS" (Frente 4) — o Responsável acompanha
+                // o veículo do próprio filho se movendo de verdade.
+                followMode
               />
             ) : (
               <View style={[styles.mapaVazioFill, { backgroundColor: theme.colors.card }]}>
@@ -504,6 +507,9 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                 ]}
                 initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
                 initialZoom={14}
+                // "Mapa em modo GPS" (Frente 4) — mesma paridade da tela
+                // acima.
+                followMode
               />
             </View>
           ) : null}

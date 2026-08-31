@@ -12,7 +12,7 @@ import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "reac
 import { isCoordenadaValida } from "../types";
 
 import type { RottaMapMarker, RottaMapProps } from "../types";
-import type { MapViewRef } from "@maplibre/maplibre-react-native";
+import type { CameraRef, MapViewRef } from "@maplibre/maplibre-react-native";
 import type { Feature, LineString } from "geojson";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
@@ -114,11 +114,22 @@ const MAX_VEHICLE_MOVE_ANIMATION_MS = 3000;
  * então a interpolação vira estado que o `PointAnnotation` recebe via
  * `coordinate`).
  */
-function useAnimatedVehicleCoordinate(target: [number, number]): [number, number] {
+function useAnimatedVehicleCoordinate(
+  target: [number, number],
+  // Câmera "modo GPS" (Frente 4, auditoria 31/08/2026) — chamado com a
+  // MESMA duração usada pra deslizar o próprio marcador, então quem
+  // segura a referência da câmera (`RottaMap`) consegue acompanhar em
+  // sincronia. Guardado num ref (não em deps do efeito abaixo) — mesmo
+  // padrão de `onBoundsChangeRef` em `../web/index.tsx`: aceita uma
+  // função nova a cada render do chamador sem reiniciar a animação.
+  onFollow?: (target: [number, number], durationMs: number) => void,
+): [number, number] {
   const currentRef = useRef<[number, number]>(target);
   const lastUpdatedAtRef = useRef<number | undefined>(undefined);
   const rafRef = useRef<number | null>(null);
   const [, forceRender] = useState(0);
+  const onFollowRef = useRef(onFollow);
+  onFollowRef.current = onFollow;
 
   useEffect(() => {
     const now = Date.now();
@@ -138,10 +149,14 @@ function useAnimatedVehicleCoordinate(target: [number, number]): [number, number
     ) {
       currentRef.current = to;
       forceRender((n) => n + 1);
+      // Mesmo salto instantâneo do marcador, sem animação de câmera (ver
+      // motivo equivalente em `../web/index.tsx`, `animateMarkerTo`).
+      onFollowRef.current?.(to, 0);
       return;
     }
 
     const durationMs = Math.min(elapsedSinceLastUpdate, MAX_VEHICLE_MOVE_ANIMATION_MS);
+    onFollowRef.current?.(to, durationMs);
     const startedAt = now;
     const step = (): void => {
       const t = Math.min((Date.now() - startedAt) / durationMs, 1);
@@ -154,7 +169,7 @@ function useAnimatedVehicleCoordinate(target: [number, number]): [number, number
     return () => {
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- reage só à mudança real de coordenada; `currentRef`/`lastUpdatedAtRef` são lidos via ref, nunca disparam o efeito de novo sozinhos.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reage só à mudança real de coordenada; `currentRef`/`lastUpdatedAtRef`/`onFollowRef` são lidos via ref, nunca disparam o efeito de novo sozinhos.
   }, [target[0], target[1]]);
 
   return currentRef.current;
@@ -213,11 +228,16 @@ function VehiclePulseRing(): JSX.Element {
 function AnimatedVehicleAnnotation({
   marker,
   onPress,
+  onFollow,
 }: {
   marker: RottaMapMarker;
   onPress: () => void;
+  onFollow?: (target: [number, number], durationMs: number) => void;
 }): JSX.Element {
-  const [longitude, latitude] = useAnimatedVehicleCoordinate([marker.longitude, marker.latitude]);
+  const [longitude, latitude] = useAnimatedVehicleCoordinate(
+    [marker.longitude, marker.latitude],
+    onFollow,
+  );
   return (
     <PointAnnotation id={marker.id} coordinate={[longitude, latitude]} onSelected={onPress}>
       <View style={styles.vehicleMarkerWrap}>
@@ -259,7 +279,24 @@ export function RottaMap({
   onBoundsChange,
   onMarkerPress,
   styleUrl,
+  followMode = false,
 }: RottaMapProps): JSX.Element {
+  // "Mapa em modo GPS" (Frente 4, mesma lógica de `../web/index.tsx`) —
+  // `cameraRef` é o que permite mover a câmera imperativamente
+  // (`moveTo`) sem recriar o `<Camera defaultSettings/>`, que só se
+  // aplica UMA vez no mount. `followSuspendedRef` desliga sozinho no
+  // primeiro gesto manual do usuário (`onRegionWillChange` com
+  // `isUserInteraction: true`) e volta a ligar na próxima montagem —
+  // mesmo comportamento do `./web`.
+  const cameraRef = useRef<CameraRef>(null);
+  const followSuspendedRef = useRef(false);
+  const handleFollow = useCallback(
+    (target: [number, number], durationMs: number) => {
+      if (!followMode || followSuspendedRef.current) return;
+      cameraRef.current?.moveTo(target, durationMs);
+    },
+    [followMode],
+  );
   // Rede de segurança final contra `(0, 0)`/"Null Island" (ver
   // `isCoordenadaValida`, mesmo motivo de `../web/index.tsx`) — nunca
   // desenha um marcador nem centraliza a câmera numa coordenada que
@@ -341,8 +378,18 @@ export function RottaMap({
             neLng: ne[0]!,
           });
         }}
+        // Desliga o follow no primeiro gesto manual (Frente 4) —
+        // `isUserInteraction` só vem `true` quando a mudança de região
+        // partiu de um toque/arrasto real, nunca de `cameraRef.moveTo`
+        // (chamado por este próprio arquivo).
+        onRegionWillChange={(feature) => {
+          if (feature.properties?.isUserInteraction) followSuspendedRef.current = true;
+        }}
       >
-        <Camera defaultSettings={{ centerCoordinate: center, zoomLevel: initialZoom }} />
+        <Camera
+          ref={cameraRef}
+          defaultSettings={{ centerCoordinate: center, zoomLevel: initialZoom }}
+        />
         {routeShape ? (
           <ShapeSource id="rotta-route" shape={routeShape}>
             <LineLayer
@@ -365,6 +412,7 @@ export function RottaMap({
               key={marker.id}
               marker={marker}
               onPress={() => onMarkerPress?.(marker)}
+              onFollow={handleFollow}
             />
           ) : (
             <PointAnnotation

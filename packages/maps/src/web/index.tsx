@@ -199,7 +199,11 @@ function buildVehicleMarkerElement(): HTMLDivElement {
  * animação em andamento cancela a anterior e recomeça a partir de
  * onde o marcador está agora (nunca "pula" pra trás).
  */
-function animateMarkerTo(entry: MarkerEntry, target: [number, number]): void {
+function animateMarkerTo(
+  entry: MarkerEntry,
+  target: [number, number],
+  follow: { map: MapLibreMap } | null,
+): void {
   const now = performance.now();
   const elapsedSinceLastUpdate =
     entry.lastUpdatedAt === undefined ? undefined : now - entry.lastUpdatedAt;
@@ -216,10 +220,21 @@ function animateMarkerTo(entry: MarkerEntry, target: [number, number]): void {
     elapsedSinceLastUpdate < HIGH_FREQUENCY_UPDATE_THRESHOLD_MS
   ) {
     entry.marker.setLngLat(target);
+    // Mesmo salto instantâneo do pino, sem animação de câmera — deslizar
+    // a câmera a 60x/s (carrossel da hero) seria tão ruim quanto deslizar
+    // o próprio pino nessa frequência (ver comentário acima).
+    if (follow) follow.map.setCenter(target);
     return;
   }
 
   const durationMs = Math.min(elapsedSinceLastUpdate, MAX_VEHICLE_MOVE_ANIMATION_MS);
+  // Câmera acompanha com a MESMA duração do deslizamento do pino (Frente
+  // 4, "mapa em modo GPS" — pedido do usuário: "deverá também ficar de
+  // olho... podendo centralizar o mapa de acordo com a rota do veículo").
+  // `panTo` usa a animação NATIVA do MapLibre (não mais um segundo loop
+  // de `requestAnimationFrame` concorrendo com o do pino) — sincroniza
+  // visualmente sem duplicar o custo de CPU.
+  if (follow) follow.map.panTo(target, { duration: durationMs });
   const step = (frameNow: number): void => {
     const t = Math.min((frameNow - now) / durationMs, 1);
     entry.marker.setLngLat([
@@ -336,6 +351,7 @@ export function RottaMap({
   onBoundsChange,
   onMarkerPress,
   styleUrl,
+  followMode = false,
 }: RottaMapProps): JSX.Element {
   // Rede de segurança final contra `(0, 0)`/"Null Island" (ver
   // `isCoordenadaValida`) — nunca desenha um marcador nem centraliza a
@@ -347,6 +363,19 @@ export function RottaMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Map<string, MarkerEntry>>(new Map());
   const previousMarkerIdsRef = useRef<Set<string>>(new Set());
+  /**
+   * "Mapa em modo GPS" (Frente 4, pedido do usuário: "o mapa deverá ser
+   * igual GPS mesmo... podendo centralizar o mapa de acordo com a rota
+   * do veículo"). `followMode` liga o acompanhamento automático da
+   * câmera atrás do marcador `emMovimento` — este ref é o que DESLIGA
+   * isso quando o usuário arrasta/dá zoom manual (mesmo comportamento de
+   * qualquer app de navegação: um gesto manual assume o controle da
+   * câmera até o usuário pedir pra voltar a seguir). Reseta sozinho a
+   * cada remontagem do componente — que é exatamente o que o botão
+   * "Recentralizar" já faz (`mapKey` novo em quem chama), então tocar
+   * nele também religa o follow, sem precisar de uma API imperativa nova.
+   */
+  const followSuspendedRef = useRef(false);
   /**
    * `"error"` cobre tanto uma falha explícita do MapLibre (evento
    * `error` — estilo/tile inválido, WebGL2 indisponível no aparelho)
@@ -401,6 +430,19 @@ export function RottaMap({
     }, MAP_LOAD_TIMEOUT_MS);
 
     map.addControl(new NavigationControl(), "top-right");
+
+    // Desliga o follow ao primeiro gesto manual do usuário (Frente 4) —
+    // `originalEvent` só existe em eventos DISPARADOS por interação real
+    // (mouse/toque/roda do mouse); chamadas programáticas deste próprio
+    // arquivo (`panTo`/`easeTo`/`fitBounds`) nunca o preenchem, então
+    // nunca se autodesligam. `dragstart` cobre arrastar o mapa;
+    // `zoomstart`, dar zoom (pinça, roda do mouse, duplo toque).
+    map.on("dragstart", (event) => {
+      if (event.originalEvent) followSuspendedRef.current = true;
+    });
+    map.on("zoomstart", (event) => {
+      if (event.originalEvent) followSuspendedRef.current = true;
+    });
 
     // Sem isso, uma falha ao carregar o estilo (URL errada, tile server
     // fora do ar, WebGL2 indisponível) é silenciosa — o mapa fica com a
@@ -491,7 +533,8 @@ export function RottaMap({
         // `animateMarkerTo`); um marcador estático (parada, escola)
         // não precisa disso — pula direto, sem custo de animação.
         if (emMovimento) {
-          animateMarkerTo(existing, [marker.longitude, marker.latitude]);
+          const follow = followMode && !followSuspendedRef.current ? { map } : null;
+          animateMarkerTo(existing, [marker.longitude, marker.latitude], follow);
         } else {
           existing.marker.setLngLat([marker.longitude, marker.latitude]);
         }
@@ -531,7 +574,7 @@ export function RottaMap({
       );
       map.fitBounds(bounds, { padding: 48, maxZoom: 15, duration: 0 });
     }
-  }, [markers, initialCenter]);
+  }, [markers, initialCenter, followMode]);
 
   useEffect(() => {
     const map = mapRef.current;
