@@ -5,6 +5,10 @@
  */
 
 export type AuthStackParamList = {
+  /** Onboarding de 3 telas (Dossiê 24 — primeira experiência), mostrado só quando `getHasSeenOnboarding()` ainda não está marcado. */
+  Onboarding: undefined;
+  /** "Como você utiliza a Rotta?" — decide entre `AreaPessoal`/`AreaProfissional` no cadastro; login continua único, independente de papel. */
+  SelecionarPerfil: undefined;
   Entrada: undefined;
   Login: undefined;
   CriarConta: undefined;

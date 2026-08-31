@@ -15,18 +15,31 @@ import {
   EntradaScreen,
   LoginScreen,
 } from "@/features/auth/screens";
+import { OnboardingScreen, RoleSelectionScreen } from "@/features/intro/screens";
 
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 /**
- * Navigator de autenticação (Dossiê 15, `AUTH-01`) — Tela Inicial, Entrar,
- * Criar Conta (Área Profissional/Pessoal), convite e WebView de Criar
- * Empresa. Exibido pelo `RootNavigator` quando não há sessão ativa.
+ * Navigator de autenticação (Dossiê 15, `AUTH-01`) — Onboarding, Seleção
+ * de Perfil, Tela Inicial, Entrar, Criar Conta (Área Profissional/
+ * Pessoal), convite e WebView de Criar Empresa. Exibido pelo
+ * `RootNavigator` quando não há sessão ativa.
+ *
+ * `initialRouteName` (Dossiê 24 — primeira experiência) — o
+ * `RootNavigator` decide entre `Onboarding` (usuário nunca viu) e
+ * `Entrada` (recorrente, `getHasSeenOnboarding()` já marcado) antes de
+ * montar este navigator; nenhuma tela aqui precisa saber desse cálculo.
  */
-export function AuthNavigator(): JSX.Element {
+export function AuthNavigator({
+  initialRouteName = "Entrada",
+}: {
+  initialRouteName?: keyof AuthStackParamList;
+}): JSX.Element {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+      <Stack.Screen name="SelecionarPerfil" component={RoleSelectionScreen} />
       <Stack.Screen name="Entrada" component={EntradaScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="CriarConta" component={CriarContaScreen} />

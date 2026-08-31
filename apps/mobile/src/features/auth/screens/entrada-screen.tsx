@@ -6,14 +6,19 @@ import { AuthButton, AuthScreen } from "../components";
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { RottaLogo } from "@/components/rotta-logo";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Entrada">;
 
 /**
- * Tela inicial do app (Dossiê 15, `AUTH-01`) — "Logo Rotta, Entrar, Criar
- * Conta". Ponto de entrada único: nenhuma escolha de papel acontece aqui,
- * apenas Entrar (conta existente) ou Criar Conta (nova conta).
+ * Tela inicial do app (Dossiê 15/24, `AUTH-01`) — símbolo + wordmark
+ * Rotta, Entrar, Criar Conta. Ponto de entrada de quem já viu o
+ * onboarding (usuário recorrente, Dossiê 24 — Fluxo Inicial): "Criar
+ * conta" segue o fluxo já existente (`CriarConta` → Área Profissional/
+ * Pessoal); "Escolher meu perfil" é o atalho pra `SelecionarPerfil`
+ * (mesma tela nova que o onboarding leva na primeira vez), pra quem
+ * prefere aquele fluxo mais visual — nenhum caminho substitui o outro.
  */
 export function EntradaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -21,16 +26,9 @@ export function EntradaScreen({ navigation }: Props): JSX.Element {
   return (
     <AuthScreen>
       <View style={styles.brand}>
-        <Text
-          style={[
-            styles.logo,
-            { color: theme.colors.text, fontSize: theme.typography.displayMobile.fontSize },
-          ]}
-        >
-          Rotta
-        </Text>
+        <RottaLogo size={72} variant="full" />
         <Text style={[styles.tagline, { color: theme.colors.textMuted }]}>
-          Transporte escolar sob controle.
+          Conecta. Protege. Tranquiliza.
         </Text>
       </View>
 
@@ -41,6 +39,11 @@ export function EntradaScreen({ navigation }: Props): JSX.Element {
           variant="secondary"
           onPress={() => navigation.navigate("CriarConta")}
         />
+        <AuthButton
+          label="Escolher meu perfil"
+          variant="ghost"
+          onPress={() => navigation.navigate("SelecionarPerfil")}
+        />
       </View>
     </AuthScreen>
   );
@@ -49,6 +52,5 @@ export function EntradaScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   actions: { gap: 12 },
   brand: { alignItems: "center", gap: 8, marginBottom: 48 },
-  logo: { fontWeight: "700" },
   tagline: { fontSize: 14 },
 });

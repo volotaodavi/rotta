@@ -1,19 +1,21 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { useEffect, useState } from "react";
 
 import { AuthNavigator } from "./AuthNavigator";
 import { DriverNavigator } from "./DriverNavigator";
 import { ParentNavigator } from "./ParentNavigator";
 import { VinculoPendenteNavigator } from "./VinculoPendenteNavigator";
 
+import { AppSplashScreen } from "@/components/app-splash-screen";
 import { usePinLock } from "@/features/auth/hooks/use-pin-lock";
 import { PainelWebOnlyScreen, PinLockScreen } from "@/features/auth/screens";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
 import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
 import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
 import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-sheet";
-import { useTheme } from "@/providers/theme-provider";
+import { getHasSeenOnboarding } from "@/lib/onboarding-store";
+
 
 /**
  * Navigator raiz — decide entre `AuthNavigator` e o navigator do papel
@@ -36,12 +38,32 @@ import { useTheme } from "@/providers/theme-provider";
  */
 export function RootNavigator(): JSX.Element {
   const { status, user } = useAuth();
-  const { theme } = useTheme();
   const { isLocked, unlock } = usePinLock({ userId: user?.id ?? null, status });
   // Push real (Frente 0) — registra o token do Expo Push Service assim que
   // a sessão fica autenticada; nunca bloqueia nem altera esta árvore de
   // navegação (só efeito colateral, sem UI própria).
   usePushRegistration({ status });
+
+  // Flag "onboarding já visto" (Dossiê 24 — primeira experiência):
+  // resolvido em paralelo à sessão, nunca depois — sem isso a splash
+  // trocaria de tela duas vezes (primeiro a sessão resolve, DEPOIS o
+  // flag), um "pulo" visível que a Seção 1 pede pra evitar ("não
+  // bloquear o usuário desnecessariamente" também vale pra não mostrar
+  // dois estados de carregamento em sequência).
+  const [hasSeenOnboarding, setHasSeenOnboardingState] = useState<boolean | null>(null);
+  useEffect(() => {
+    let mounted = true;
+    getHasSeenOnboarding()
+      .then((seen) => {
+        if (mounted) setHasSeenOnboardingState(seen);
+      })
+      .catch(() => {
+        if (mounted) setHasSeenOnboardingState(true);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor
   // — o único papel de gestão com telas reais neste app; Empresa/Gestor
@@ -54,12 +76,12 @@ export function RootNavigator(): JSX.Element {
     enabled: isMotoristaOuMonitor,
   });
 
-  if (status === "loading" || (isMotoristaOuMonitor && isIdentityLoading)) {
-    return (
-      <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator color={theme.colors.primary} />
-      </View>
-    );
+  if (
+    status === "loading" ||
+    hasSeenOnboarding === null ||
+    (isMotoristaOuMonitor && isIdentityLoading)
+  ) {
+    return <AppSplashScreen />;
   }
 
   if (status === "authenticated" && user && isLocked) {
@@ -80,7 +102,7 @@ export function RootNavigator(): JSX.Element {
   return (
     <NavigationContainer>
       {status === "unauthenticated" || !user ? (
-        <AuthNavigator />
+        <AuthNavigator initialRouteName={hasSeenOnboarding ? "Entrada" : "Onboarding"} />
       ) : user.role === "motorista" || user.role === "monitor" ? (
         // Frente N — cadastro autônomo (`registerAutonomo`) ainda não tem
         // `companyId` até um `CompanyJoinRequest` ser aprovado.
@@ -100,7 +122,3 @@ export function RootNavigator(): JSX.Element {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  center: { alignItems: "center", flex: 1, justifyContent: "center" },
-});
