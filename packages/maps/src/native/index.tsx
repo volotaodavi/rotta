@@ -311,7 +311,15 @@ export function RottaMap({
           <ShapeSource id="rotta-route" shape={routeShape}>
             <LineLayer
               id="rotta-route-line"
-              style={{ lineColor: routeColor, lineWidth: 4, lineCap: "round", lineJoin: "round" }}
+              // Tracejada (pedido do usuário, auditoria 27/08/2026: "lembre-se
+              // da linha tracejada para a rota") — mesma regra do `./web`.
+              style={{
+                lineColor: routeColor,
+                lineWidth: 4,
+                lineCap: "round",
+                lineJoin: "round",
+                lineDasharray: [2, 2],
+              }}
             />
           </ShapeSource>
         ) : null}

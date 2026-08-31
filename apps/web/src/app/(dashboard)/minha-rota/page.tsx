@@ -322,6 +322,11 @@ function MeuMapa({
             titulo: "Você está aqui",
             latitude: location.latitude,
             longitude: location.longitude,
+            // Mesmo ícone de veículo do mapa em operação (auditoria
+            // 27/08/2026) — este mapa também é visto por
+            // motorista/monitor/autônomo/MEI, nunca por Responsável, então
+            // "Você está aqui" É o veículo, não um pino genérico.
+            emMovimento: true,
           },
         ]}
         initialCenter={location}
@@ -759,48 +764,70 @@ function RotaOperacional({
     longitude: parada.longitude,
   }));
 
+  // Respaldo (Frente I): sem paradas cadastradas ainda pra essa rota
+  // (ou enquanto `stops` carrega), mostra pelo menos onde o telefone
+  // está — nunca deixa a tela sem mapa nenhum. Também alimenta o
+  // marcador do veículo abaixo (auditoria 27/08/2026, pedido do
+  // usuário: "o motorista e monitor deverão saber onde estão. Cadê o
+  // 'veículo' no mapa dos motoristas e monitores?") — por isso agora
+  // fica sempre ligado nesta tela, não só quando faltam paradas.
+  const minhaLocalizacao = useMyLocation(true);
+
   // Marcador do próprio veículo em movimento (Frente 2, pedido do
-  // usuário — "todos deverão ter mapa, cada um na sua função") — só as
-  // paradas estáticas apareciam aqui até agora. `GET
-  // /gps/trips/:tripId/track` é o único endpoint de GPS que
-  // Motorista/Monitor podem chamar sobre a própria viagem (`getMap`/
-  // `getForStudent` são restritos a Empresa/Gestor/Admin/Responsável);
-  // pega a posição mais recente da trilha retornada. Só busca enquanto a
-  // viagem de hoje ainda não terminou — sem trilha nenhuma pra viagem já
-  // finalizada/cancelada.
+  // usuário — "todos deverão ter mapa, cada um na sua função"; reforçado
+  // na auditoria 27/08/2026 — "motorista e monitor deverão saber onde
+  // estão"). `GET /gps/trips/:tripId/track` é o único endpoint de GPS
+  // que Motorista/Monitor podem chamar sobre a própria viagem (`getMap`/
+  // `getForStudent` são restritos a Empresa/Gestor/Admin/Responsável) —
+  // mas essa trilha só existe DEPOIS que o backend já recebeu pelo menos
+  // 1 relatório de `useTripGpsReporting` (viagem `EM_ANDAMENTO`), então
+  // o próprio motorista/monitor ficava sem se ver no mapa antes disso (e
+  // sempre, se a viagem ainda nem começou). O marcador agora prioriza a
+  // posição do PRÓPRIO telefone (`minhaLocalizacao`, instantânea, watch
+  // contínuo, nunca depende de a viagem estar rodando) — a trilha do
+  // backend só entra como respaldo se a localização do telefone ainda
+  // não estiver disponível (permissão sendo solicitada/negada).
   const gpsTrackTripId =
     trip && trip.status !== "FINALIZADA" && trip.status !== "CANCELADA" ? trip.id : undefined;
   const { data: gpsTrack } = useGpsTrack(gpsTrackTripId);
   const ultimaPosicao = gpsTrack && gpsTrack.length > 0 ? gpsTrack[gpsTrack.length - 1] : undefined;
+  const veiculoPosicao = minhaLocalizacao.location
+    ? {
+        latitude: minhaLocalizacao.location.latitude,
+        longitude: minhaLocalizacao.location.longitude,
+      }
+    : ultimaPosicao
+      ? { latitude: ultimaPosicao.latitude, longitude: ultimaPosicao.longitude }
+      : null;
+  // Deps em primitivos (não o objeto `veiculoPosicao`, recriado a cada
+  // render) — senão o `useMemo` recalcula sempre, mesmo sem mudança real.
+  const veiculoLatitude = veiculoPosicao?.latitude;
+  const veiculoLongitude = veiculoPosicao?.longitude;
   const veiculoMarker: RottaMapMarker | null = useMemo(() => {
-    if (!ultimaPosicao) return null;
+    if (veiculoLatitude === undefined || veiculoLongitude === undefined) return null;
     return {
       id: "veiculo-em-movimento",
       titulo: veiculoPadrao ? `${veiculoPadrao.modelo} · ${veiculoPadrao.placa}` : "Seu veículo",
-      latitude: ultimaPosicao.latitude,
-      longitude: ultimaPosicao.longitude,
+      latitude: veiculoLatitude,
+      longitude: veiculoLongitude,
       emMovimento: true,
     };
-  }, [ultimaPosicao, veiculoPadrao]);
+  }, [veiculoLatitude, veiculoLongitude, veiculoPadrao]);
   const mapMarkers: RottaMapMarker[] = veiculoMarker ? [...markers, veiculoMarker] : markers;
 
   // Posição do veículo, pro gate de proximidade (Frente 2, pedido do
   // usuário: "ao chegar próximo — raio de até 1km — poderá embarcar o
-  // aluno") — mesma trilha de GPS já usada pro marcador acima, nunca uma
-  // segunda leitura de geolocalização: é a posição do VEÍCULO que importa
-  // aqui, não a do aparelho de quem está olhando a tela (Motorista OU
-  // Monitor podem estar com o painel aberto). `null` sem posição
-  // conhecida ainda — `estaProximo` nunca bloqueia nesse caso (ver
-  // `@rotta/maps/distance`), então o motorista não fica travado só por o
-  // GPS ainda não ter reportado a primeira posição.
+  // aluno") — sempre a trilha VERIFICADA pelo backend (nunca a leitura
+  // crua do telefone de quem está olhando a tela agora — pode ser o
+  // Monitor, num aparelho diferente do que de fato reporta GPS pra
+  // viagem): é a posição do VEÍCULO que importa aqui pro gate, não a do
+  // aparelho de quem está olhando. `null` sem posição conhecida ainda —
+  // `estaProximo` nunca bloqueia nesse caso (ver `@rotta/maps/distance`),
+  // então o motorista não fica travado só por o GPS ainda não ter
+  // reportado a primeira posição.
   const driverPosition: DistanceCoordenada | null = ultimaPosicao
     ? { latitude: ultimaPosicao.latitude, longitude: ultimaPosicao.longitude }
     : null;
-
-  // Respaldo (Frente I): sem paradas cadastradas ainda pra essa rota
-  // (ou enquanto `stops` carrega), mostra pelo menos onde o telefone
-  // está — nunca deixa a tela sem mapa nenhum.
-  const minhaLocalizacao = useMyLocation(markers.length === 0);
 
   // Próxima parada com ETA (Frente K — inspirado no cartão de
   // acompanhamento "Track Rider" da imagem de referência enviada pelo

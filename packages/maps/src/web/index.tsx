@@ -225,7 +225,12 @@ function applyRoute(map: MapLibreMap, route: Coordenada[] | undefined, color: st
     type: "line",
     source: ROUTE_SOURCE_ID,
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": color, "line-width": 4, "line-opacity": 0.9 },
+    // Tracejada (pedido do usuário, auditoria 27/08/2026: "lembre-se da
+    // linha tracejada para a rota") — vale tanto pro trajeto estático
+    // (sequência de paradas de uma rota) quanto pra linha azul traçada
+    // via OSRM até a próxima parada (`useNextStopTracedRoute`), já que
+    // as duas usam esta mesma camada/prop `route`.
+    paint: { "line-color": color, "line-width": 4, "line-opacity": 0.9, "line-dasharray": [2, 2] },
   });
 }
 
