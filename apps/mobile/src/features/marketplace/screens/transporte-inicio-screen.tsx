@@ -1,7 +1,6 @@
 import {
   ApiError,
   type Contract,
-  type MapVehicle,
   type RatingTargetType,
   type StudentEventsHistoryRange,
   type TripStudentEventType,
@@ -9,6 +8,7 @@ import {
 import {
   ArrowDownCircle,
   ArrowUpCircle,
+  ChevronLeft,
   Clock,
   MapPin,
   Navigation,
@@ -21,12 +21,13 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  ScrollView,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
 import { AusenciaHojeCard } from "../components/ausencia-hoje-card";
@@ -279,161 +280,36 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
 }
 
 /**
- * Aba "Transporte" com transporte ativo — decide entre o acompanhamento
- * em tela cheia (quando há viagem em curso agora) e o layout compacto de
- * sempre (contrato + acompanhamento + avaliações, sem nada de real pra
- * preencher a tela toda). `AcompanhamentoSection` continua existindo
- * intacta pra Home adaptativa da aba "Mapa" (Estado 2) reusar — só esta
- * tela dedicada ganha o tratamento em tela cheia.
+ * Aba "Transporte" com transporte ativo (spec de UX/UI do Responsável,
+ * 31/08/2026 — "TripHistoryPage"/"Meu transporte": cartões compactos,
+ * nunca um cartão gigante). Reaproveita a MESMA `AcompanhamentoSection`
+ * compacta que a Home adaptativa da aba "Mapa" já usa (nunca duas
+ * fontes de verdade divergentes sobre a viagem de agora) — "Acompanhar
+ * no mapa" abre `TripTrackingOverlay` (tela cheia) só quando há viagem
+ * em curso.
  */
 function TransporteAtivoScreen({ contrato }: { contrato: Contract }): JSX.Element {
   const { theme } = useTheme();
-  const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
+  const { data: viagem } = useGpsForStudent(contrato.studentId);
+  const [trackingOpen, setTrackingOpen] = useState(false);
 
-  if (isLoading || !viagem) {
-    return (
+  return (
+    <>
       <VehicleScreen>
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Text>
         <DetalhesContrato contrato={contrato} />
         <AcompanhamentoSection contrato={contrato} />
+        {viagem ? (
+          <VehicleButton label="Acompanhar no mapa" onPress={() => setTrackingOpen(true)} />
+        ) : null}
         <HistoricoEventosCard studentId={contrato.studentId} />
         <AvaliacoesSection contrato={contrato} />
       </VehicleScreen>
-    );
-  }
 
-  return <TransporteEmAndamentoScreen contrato={contrato} viagem={viagem} />;
-}
-
-/**
- * Acompanhamento com viagem em curso (3 imagens de referência
- * anexadas pelo usuário, tela do Responsável — "Viagem em andamento":
- * mapa em CARTÃO compacto no topo de uma tela que rola, nunca em tela
- * cheia) — Frente 301, reverte o padrão anterior (Frente P5/Q) que
- * usava mapa em tela cheia com cartões flutuando por cima. Cor de
- * papel verde (`success`, já existente na paleta — Responsável) nos
- * acentos desta tela.
- *
- * Sem chat com o motorista aqui: a Rotta não tem canal de chat ao vivo
- * no app nativo (só Chamados no Painel Web) — nenhum botão fingindo uma
- * função que não existe.
- */
-function TransporteEmAndamentoScreen({
-  contrato,
-  viagem,
-}: {
-  contrato: Contract;
-  viagem: MapVehicle;
-}): JSX.Element {
-  const { theme } = useTheme();
-  const { data: proximasEtas } = useProximasEtasResponsavel(viagem.tripId);
-  const proximaParada = proximasEtas?.[0];
-  // Botão "centralizar no meu GPS" (Frente Q) — o mapa nativo, igual o
-  // web, só lê `initialCenter` na montagem; remontar com uma nova `key`
-  // é como recentraliza de verdade.
-  const [mapKey, setMapKey] = useState(0);
-
-  return (
-    <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
-      <ScrollView contentContainerStyle={styles.opScrollContent}>
-        <Text style={[styles.titulo, { color: theme.colors.text, margin: 16 }]}>
-          Meu Transporte
-        </Text>
-
-        <View
-          style={[
-            styles.mapCard,
-            { backgroundColor: theme.colors.card, borderColor: theme.colors.border },
-          ]}
-        >
-          <View style={styles.mapCardMap}>
-            {viagem.latitude && viagem.longitude ? (
-              <RottaMap
-                key={mapKey}
-                markers={[
-                  {
-                    id: viagem.tripId,
-                    titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
-                    latitude: viagem.latitude,
-                    longitude: viagem.longitude,
-                    emMovimento: true,
-                  },
-                ]}
-                initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
-                initialZoom={14}
-                // "Mapa em modo GPS" (Frente 4) — o Responsável acompanha
-                // o veículo do próprio filho se movendo de verdade.
-                followMode
-              />
-            ) : (
-              <View style={[styles.mapaVazioFill, { backgroundColor: theme.colors.card }]}>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  Aguardando a primeira posição do motorista…
-                </Text>
-              </View>
-            )}
-            <RecenterButton
-              onPress={() => setMapKey((k) => k + 1)}
-              style={{ position: "absolute", right: 8, bottom: 8 }}
-            />
-          </View>
-
-          <View style={styles.mapCardBody}>
-            <View style={styles.mapCardBodyRow}>
-              <StatusPill label="Em viagem agora" tone="success" />
-              {proximaParada ? (
-                <View style={styles.etaRow}>
-                  <Clock size={14} color={theme.colors.success} />
-                  <Text style={{ color: theme.colors.success, fontWeight: "600", fontSize: 13 }}>
-                    Chegando às {formatarHora(proximaParada.etaPrevista)}
-                  </Text>
-                </View>
-              ) : null}
-            </View>
-
-            <View style={[styles.veiculoRow, { borderColor: theme.colors.border, borderWidth: 1 }]}>
-              <View style={[styles.veiculoIcone, { backgroundColor: theme.colors.primaryMuted }]}>
-                <Navigation size={20} color={theme.colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
-                  {viagem.placa}: {viagem.routeNome}
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  Motorista: {viagem.motoristaNome}
-                  {viagem.monitorNome ? ` · Monitor: ${viagem.monitorNome}` : ""}
-                </Text>
-              </View>
-            </View>
-
-            {proximasEtas && proximasEtas.length > 0 ? (
-              <View style={{ gap: 6 }}>
-                {proximasEtas.slice(0, 2).map((eta) => (
-                  <View key={eta.routeStopId} style={styles.paradaRow}>
-                    <MapPin size={14} color={theme.colors.textMuted} />
-                    <Text
-                      style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}
-                      numberOfLines={1}
-                    >
-                      {eta.endereco}
-                    </Text>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                      {formatarHora(eta.etaPrevista)}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={styles.abaixoDoMapa}>
-          <DetalhesContrato contrato={contrato} />
-          <HistoricoEventosCard studentId={contrato.studentId} />
-          <AvaliacoesSection contrato={contrato} />
-        </View>
-      </ScrollView>
-    </View>
+      {trackingOpen ? (
+        <TripTrackingOverlay contrato={contrato} onClose={() => setTrackingOpen(false)} />
+      ) : null}
+    </>
   );
 }
 
@@ -534,6 +410,182 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
 
       {aluno ? <AusenciaHojeCard studentId={contrato.studentId} nomeAluno={aluno.nome} /> : null}
     </>
+  );
+}
+
+/**
+ * Acompanhamento em TELA CHEIA (pedido do usuário, spec de UX/UI do
+ * Responsável, 31/08/2026 — "TripTrackingPage": mapa ocupando a maior
+ * parte da tela, header com voltar, bottom nav some pra dar foco).
+ * Componente local (não uma rota de navigator nova): `AcompanhamentoSection`
+ * já é renderizado em dois contextos de navegação que não compartilham
+ * um ancestral comum navegável (a Home adaptativa da aba "Mapa" e a
+ * aba "Transporte" — ver nota em `MarketplaceStackParamList`) — abrir
+ * isto como `useState` local em cada chamador evita reintroduzir esse
+ * problema, mesmo padrão já usado pelo Modo Operacional do Motorista
+ * (`inicio-screen.tsx`).
+ *
+ * Só EXIBE informação — nenhum botão de ação operacional aqui (pedido
+ * do usuário: "o responsável NÃO deve ter botão de iniciar/pausar/
+ * finalizar viagem, controle de embarque/desembarque, checklist,
+ * ocorrência"). Sem chat com o motorista (Rotta ainda não tem canal ao
+ * vivo no app nativo, só Chamados no Painel Web) — nenhum botão
+ * fingindo uma função que não existe.
+ */
+export function TripTrackingOverlay({
+  contrato,
+  onClose,
+}: {
+  contrato: Contract;
+  onClose: () => void;
+}): JSX.Element {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
+  const { data: proximasEtas } = useProximasEtasResponsavel(viagem?.tripId);
+  const [mapKey, setMapKey] = useState(0);
+  const proximaParada = proximasEtas?.[0];
+
+  return (
+    <View
+      style={[
+        StyleSheet.absoluteFillObject,
+        styles.trackRoot,
+        { backgroundColor: theme.colors.background },
+      ]}
+    >
+      <View style={styles.trackMapArea}>
+        {viagem?.latitude && viagem.longitude ? (
+          <RottaMap
+            key={mapKey}
+            markers={[
+              {
+                id: viagem.tripId,
+                titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
+                latitude: viagem.latitude,
+                longitude: viagem.longitude,
+                emMovimento: true,
+              },
+            ]}
+            initialCenter={{ latitude: viagem.latitude, longitude: viagem.longitude }}
+            initialZoom={14}
+            followMode
+          />
+        ) : (
+          <View style={[styles.mapaVazioFill, { backgroundColor: theme.colors.background }]}>
+            {isLoading ? (
+              <ActivityIndicator color={theme.colors.success} />
+            ) : (
+              <Text style={{ color: theme.colors.textMuted, textAlign: "center" }}>
+                Localização temporariamente indisponível.{"\n"}O mapa aparece assim que o motorista
+                reportar a posição.
+              </Text>
+            )}
+          </View>
+        )}
+
+        <View style={[styles.trackTopBar, { top: insets.top + 8 }]}>
+          <Pressable
+            onPress={onClose}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+            style={[styles.trackBackButton, { backgroundColor: theme.colors.surfaceElevated }]}
+          >
+            <ChevronLeft size={20} color={theme.colors.text} />
+          </Pressable>
+          <View style={[styles.trackTitlePill, { backgroundColor: theme.colors.surfaceElevated }]}>
+            <Text
+              style={{ color: theme.colors.text, fontWeight: "700", fontSize: 13 }}
+              numberOfLines={1}
+            >
+              Viagem em andamento
+            </Text>
+            {viagem ? (
+              <Text style={{ color: theme.colors.textMuted, fontSize: 11 }} numberOfLines={1}>
+                {viagem.placa} · {viagem.routeNome}
+              </Text>
+            ) : null}
+          </View>
+        </View>
+
+        <RecenterButton
+          onPress={() => setMapKey((k) => k + 1)}
+          style={{ bottom: 16, position: "absolute", right: 16 }}
+        />
+      </View>
+
+      <View
+        style={[
+          styles.trackSheet,
+          { backgroundColor: theme.colors.surfaceElevated, paddingBottom: insets.bottom + 16 },
+        ]}
+      >
+        <View style={[styles.trackHandle, { backgroundColor: theme.colors.border }]} />
+
+        {!viagem ? (
+          <Text style={{ color: theme.colors.textMuted, textAlign: "center", paddingVertical: 8 }}>
+            Nenhum transporte em andamento no momento.
+          </Text>
+        ) : (
+          <>
+            <View style={styles.trackStatusRow}>
+              <StatusPill label="Em viagem agora" tone="success" />
+              {proximaParada ? (
+                <View style={styles.etaRow}>
+                  <Clock size={14} color={theme.colors.success} />
+                  <Text style={{ color: theme.colors.success, fontWeight: "600", fontSize: 13 }}>
+                    Chegando às {formatarHora(proximaParada.etaPrevista)}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            <View style={[styles.veiculoRow, { borderColor: theme.colors.border, borderWidth: 1 }]}>
+              <View style={[styles.veiculoIcone, { backgroundColor: theme.colors.primaryMuted }]}>
+                <Navigation size={20} color={theme.colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+                  Motorista: {viagem.motoristaNome}
+                </Text>
+                {viagem.monitorNome ? (
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    Monitor: {viagem.monitorNome}
+                  </Text>
+                ) : null}
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  {viagem.ultimaPosicaoEm
+                    ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
+                    : "Aguardando a primeira posição do motorista"}
+                </Text>
+              </View>
+            </View>
+
+            {proximasEtas && proximasEtas.length > 0 ? (
+              <View style={{ gap: 6 }}>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                  Próximas paradas
+                </Text>
+                {proximasEtas.slice(0, 4).map((eta) => (
+                  <View key={eta.routeStopId} style={styles.paradaRow}>
+                    <MapPin size={14} color={theme.colors.textMuted} />
+                    <Text
+                      style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}
+                      numberOfLines={1}
+                    >
+                      {eta.endereco}
+                    </Text>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                      {formatarHora(eta.etaPrevista)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -667,21 +719,11 @@ function RatingForm({
 }
 
 const styles = StyleSheet.create({
-  abaixoDoMapa: { gap: 16, padding: 24 },
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },
   etaRow: { alignItems: "center", flexDirection: "row", gap: 4 },
   eventoRow: { alignItems: "center", flexDirection: "row", gap: 10 },
   header: { flexDirection: "row" },
-  mapCard: { borderRadius: 16, borderWidth: 1, marginHorizontal: 16, overflow: "hidden" },
-  mapCardBody: { gap: 12, padding: 12 },
-  mapCardBodyRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    justifyContent: "space-between",
-  },
-  mapCardMap: { height: 208, position: "relative", width: "100%" },
   mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
   mapaVazioFill: {
     ...StyleSheet.absoluteFillObject,
@@ -691,12 +733,42 @@ const styles = StyleSheet.create({
   },
   mensalidade: { fontWeight: "600" },
   notas: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  opScreen: { flex: 1 },
-  opScrollContent: { flexGrow: 1, paddingBottom: 24 },
   paradaRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   rotuloAvaliacao: { fontWeight: "600" },
   secao: { fontSize: 16, fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
+  trackBackButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
+  },
+  trackHandle: { alignSelf: "center", borderRadius: 999, height: 4, marginBottom: 12, width: 40 },
+  trackMapArea: { flex: 1, position: "relative" },
+  trackRoot: { flexDirection: "column", zIndex: 50 },
+  trackSheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    gap: 12,
+    maxHeight: "48%",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+  },
+  trackStatusRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+  },
+  trackTitlePill: { borderRadius: 16, maxWidth: 220, paddingHorizontal: 14, paddingVertical: 8 },
+  trackTopBar: {
+    flexDirection: "row",
+    gap: 8,
+    left: 12,
+    position: "absolute",
+    right: 12,
+  },
   veiculoIcone: {
     alignItems: "center",
     borderRadius: 999,
