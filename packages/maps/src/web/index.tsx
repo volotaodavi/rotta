@@ -29,24 +29,33 @@ export type {
 export { isCoordenadaValida } from "../types";
 
 let globalMapTilerApiKey: string | undefined;
+let globalCartoApiKey: string | undefined;
 
 /**
  * Configura, uma única vez no bootstrap de cada app (chamado no CORPO
  * de render do provider raiz — `AppProviders` de `apps/web`/`apps/admin`
  * — nunca dentro de um `useEffect`), qual provedor de tiles usar.
  *
- * Estado atual (27/08/2026): `mapTilerApiKey` fica aceito (não quebra
+ * Estado atual (31/08/2026): `mapTilerApiKey` fica aceito (não quebra
  * quem já chama `configureRottaMaps`) mas NÃO É USADO — ver
  * `resolveDefaultStyleUrl` logo abaixo pro motivo real, confirmado pelo
- * usuário em produção.
+ * usuário em produção. `cartoApiKey` (novo) É usado: some com o carimbo
+ * "API KEY REQUIRED" da CARTO sem trocar de provedor — a CARTO emite uma
+ * chave GRATUITA (sem cartão, só e-mail + domínio, aprovação automática
+ * em https://carto.com/basemaps/apikey, limite de 5 milhões de
+ * requisições/mês) exatamente pra isso.
  */
-export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
+export function configureRottaMaps(options: {
+  mapTilerApiKey?: string;
+  cartoApiKey?: string;
+}): void {
   globalMapTilerApiKey = options.mapTilerApiKey || undefined;
+  globalCartoApiKey = options.cartoApiKey || undefined;
 }
 
 /**
  * Resolve o estilo padrão do mapa. Sempre CARTO raster (ver
- * `CARTO_RASTER_STYLE` abaixo) — histórico completo de PRODUÇÃO
+ * `buildCartoRasterStyle` abaixo) — histórico completo de PRODUÇÃO
  * (27/08/2026, todo confirmado com print real do usuário, não achismo):
  *
  * 1. `tile.openstreetmap.org` direto — bloqueado pela OSM Foundation
@@ -78,7 +87,7 @@ export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
  */
 function resolveDefaultStyleUrl(): string | StyleSpecification {
   void globalMapTilerApiKey; // ver comentário acima — aceito, não usado.
-  return CARTO_RASTER_STYLE;
+  return buildCartoRasterStyle(globalCartoApiKey);
 }
 
 /**
@@ -88,23 +97,34 @@ function resolveDefaultStyleUrl(): string | StyleSpecification {
  * REQUIRED" carimbado por cima — não é erro de configuração nosso, é a
  * régua deles) — mas o carimbo fica por cima de um mapa real (rua,
  * água, nome de bairro), nunca substitui o tile inteiro por uma tela
- * em branco. Nenhuma chave configurada aqui de propósito: sem ela, o
- * pior caso é o carimbo (feio, mas o mapa aparece); com uma chave
- * (quando o usuário decidir assinar um plano da CARTO), bastaria trocar
- * a URL abaixo por uma com `?api_key=...`.
+ * em branco.
+ *
+ * Com `apiKey` (via `configureRottaMaps({ cartoApiKey })`,
+ * `NEXT_PUBLIC_CARTO_API_KEY`/`EXPO_PUBLIC_CARTO_API_KEY`), o carimbo
+ * some — a chave é GRATUITA (sem cartão): basta pedir em
+ * https://carto.com/basemaps/apikey com um e-mail e o(s) domínio(s) do
+ * app (ex. `rotta-web.vercel.app`), aprovação automática, sem fila.
+ * Limite de uso justo de 5 milhões de requisições/mês. Sem `apiKey`
+ * (padrão), o pior caso continua sendo só o carimbo — nunca uma tela em
+ * branco.
  */
-const CARTO_RASTER_STYLE: StyleSpecification = {
-  version: 8,
-  sources: {
-    "carto-raster": {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+function buildCartoRasterStyle(apiKey: string | undefined): StyleSpecification {
+  const tileUrl = apiKey
+    ? `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?api_key=${encodeURIComponent(apiKey)}`
+    : "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png";
+  return {
+    version: 8,
+    sources: {
+      "carto-raster": {
+        type: "raster",
+        tiles: [tileUrl],
+        tileSize: 256,
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      },
     },
-  },
-  layers: [{ id: "carto-raster-layer", type: "raster", source: "carto-raster" }],
-};
+    layers: [{ id: "carto-raster-layer", type: "raster", source: "carto-raster" }],
+  };
+}
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];

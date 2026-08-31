@@ -19,16 +19,21 @@ export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../
 export { isCoordenadaValida } from "../types";
 
 let globalMapTilerApiKey: string | undefined;
+let globalCartoApiKey: string | undefined;
 
 /**
  * Configura, uma única vez no bootstrap do app (chamado no CORPO de
  * render de `AppProviders` — nunca dentro de um `useEffect`, mesmo
  * motivo documentado em `../web/index.tsx`), qual provedor de tiles
- * usar. Sem chamar (ou sem `mapTilerApiKey`), o comportamento é
- * EXATAMENTE o mesmo de antes — OpenFreeMap, sem chave nenhuma.
+ * usar. `cartoApiKey` some com o carimbo "API KEY REQUIRED" da CARTO —
+ * ver `buildCartoRasterStyle` abaixo.
  */
-export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
+export function configureRottaMaps(options: {
+  mapTilerApiKey?: string;
+  cartoApiKey?: string;
+}): void {
   globalMapTilerApiKey = options.mapTilerApiKey || undefined;
+  globalCartoApiKey = options.cartoApiKey || undefined;
 }
 
 /**
@@ -41,29 +46,38 @@ export function configureRottaMaps(options: { mapTilerApiKey?: string }): void {
  */
 function resolveDefaultStyleUrl(): object {
   void globalMapTilerApiKey; // aceito (não quebra configureRottaMaps), não usado — ver acima.
-  return CARTO_RASTER_STYLE;
+  return buildCartoRasterStyle(globalCartoApiKey);
 }
 
 /**
- * Estilo RASTER com tiles do OpenStreetMap via CDN da CARTO — mesmo
- * objeto de `../web/index.tsx` (`CARTO_RASTER_STYLE`), aqui como
- * `object` puro (sem o tipo `StyleSpecification` do `maplibre-gl`, que
- * não é dependência deste arquivo — `@maplibre/maplibre-react-native`
- * aceita o mesmo formato de estilo JSON, só a prop se chama `mapStyle`
- * em vez de `style`).
+ * Estilo RASTER com tiles do OpenStreetMap via CDN da CARTO — mesma
+ * lógica de `../web/index.tsx` (`buildCartoRasterStyle`), aqui
+ * retornando `object` puro (sem o tipo `StyleSpecification` do
+ * `maplibre-gl`, que não é dependência deste arquivo —
+ * `@maplibre/maplibre-react-native` aceita o mesmo formato de estilo
+ * JSON, só a prop se chama `mapStyle` em vez de `style`).
+ *
+ * Com `apiKey` (`configureRottaMaps({ cartoApiKey })`,
+ * `EXPO_PUBLIC_CARTO_API_KEY`), o carimbo some — chave GRATUITA (sem
+ * cartão) em https://carto.com/basemaps/apikey.
  */
-const CARTO_RASTER_STYLE = {
-  version: 8,
-  sources: {
-    "carto-raster": {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"],
-      tileSize: 256,
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+function buildCartoRasterStyle(apiKey: string | undefined): object {
+  const tileUrl = apiKey
+    ? `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?api_key=${encodeURIComponent(apiKey)}`
+    : "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png";
+  return {
+    version: 8,
+    sources: {
+      "carto-raster": {
+        type: "raster",
+        tiles: [tileUrl],
+        tileSize: 256,
+        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+      },
     },
-  },
-  layers: [{ id: "carto-raster-layer", type: "raster", source: "carto-raster" }],
-};
+    layers: [{ id: "carto-raster-layer", type: "raster", source: "carto-raster" }],
+  };
+}
 const DEFAULT_ZOOM = 12;
 /** São Paulo — só usado quando não há `initialCenter` nem `markers` (mapa vazio). */
 const FALLBACK_CENTER: [number, number] = [-46.633309, -23.55052];

@@ -14,8 +14,6 @@ import { env } from "@/config/env";
 import { authApi } from "@/lib/api-client";
 import { initGlobalErrorCapture } from "@/lib/global-error-capture";
 
-
-
 /**
  * Chamado no CORPO de render (nunca dentro de um `useEffect`) — ver a
  * nota completa em `configureRottaMaps` (`@rotta/maps/web`): efeitos de
@@ -24,7 +22,10 @@ import { initGlobalErrorCapture } from "@/lib/global-error-capture";
  * configurar aqui de dentro de um efeito arriscaria o primeiro mapa
  * montar antes da chave estar disponível.
  */
-configureRottaMaps({ mapTilerApiKey: env.NEXT_PUBLIC_MAPTILER_API_KEY });
+configureRottaMaps({
+  mapTilerApiKey: env.NEXT_PUBLIC_MAPTILER_API_KEY,
+  cartoApiKey: env.NEXT_PUBLIC_CARTO_API_KEY,
+});
 
 /**
  * Composicao unica de todos os providers de nivel de aplicacao (Dossie 23,

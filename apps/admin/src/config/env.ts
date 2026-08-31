@@ -12,13 +12,17 @@ import { z } from "zod";
  */
 const envSchema = z.object({
   NEXT_PUBLIC_API_URL: z.string().url(),
-  // Rotta Geo Platform — mesma chave/mesmo raciocínio de `apps/web`.
-  // Ativada no dashboard da Vercel (projeto rotta-admin) em 27/08/2026 —
-  // comentário força um novo build (ver `apps/web/src/config/env.ts`).
+  // Rotta Geo Platform — mesma chave/mesmo raciocínio de `apps/web`
+  // (aceita, mas não usada pra resolver o estilo do mapa — ver
+  // comentário completo em `apps/web/src/config/env.ts`).
   NEXT_PUBLIC_MAPTILER_API_KEY: z.string().optional(),
+  // Chave GRATUITA da CARTO que remove o carimbo "API KEY REQUIRED" —
+  // mesma chave/mesmo raciocínio de `apps/web/src/config/env.ts`.
+  NEXT_PUBLIC_CARTO_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse({
   NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL,
   NEXT_PUBLIC_MAPTILER_API_KEY: process.env.NEXT_PUBLIC_MAPTILER_API_KEY || undefined,
+  NEXT_PUBLIC_CARTO_API_KEY: process.env.NEXT_PUBLIC_CARTO_API_KEY || undefined,
 });

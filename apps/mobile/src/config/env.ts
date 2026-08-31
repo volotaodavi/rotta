@@ -12,12 +12,18 @@ const envSchema = z.object({
    * real. Usada para abrir "Criar Empresa" em WebView integrada.
    */
   EXPO_PUBLIC_WEB_URL: z.string().url(),
-  // Rotta Geo Platform — mesma chave/mesmo raciocínio de `apps/web`.
+  // Rotta Geo Platform — mesma chave/mesmo raciocínio de `apps/web`
+  // (aceita, mas não usada pra resolver o estilo do mapa — ver
+  // comentário completo em `apps/web/src/config/env.ts`).
   EXPO_PUBLIC_MAPTILER_API_KEY: z.string().optional(),
+  // Chave GRATUITA da CARTO que remove o carimbo "API KEY REQUIRED" —
+  // mesma chave/mesmo raciocínio de `apps/web/src/config/env.ts`.
+  EXPO_PUBLIC_CARTO_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse({
   EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
   EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
   EXPO_PUBLIC_MAPTILER_API_KEY: process.env.EXPO_PUBLIC_MAPTILER_API_KEY || undefined,
+  EXPO_PUBLIC_CARTO_API_KEY: process.env.EXPO_PUBLIC_CARTO_API_KEY || undefined,
 });
