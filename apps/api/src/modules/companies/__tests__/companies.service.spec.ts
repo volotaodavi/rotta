@@ -136,6 +136,11 @@ describe("CompaniesService", () => {
     storageService = { upload: jest.fn() } as unknown as jest.Mocked<SupabaseStorageService>;
     prisma = {
       runInTenantTransaction: jest.fn((fn: (tx: unknown) => unknown) => fn({})),
+      // `CompaniesService.findMatchingPendingSubscription` (Dossiê 26 —
+      // "assinar antes de ter conta") — `null` = nenhum pagamento
+      // pré-cadastro pendente, mesmo comportamento de sempre pros
+      // demais testes deste describe, que não testam esse fluxo.
+      pendingSubscription: { findFirst: jest.fn().mockResolvedValue(null) },
     } as unknown as jest.Mocked<PrismaService>;
     vehiclesService = { countActive: jest.fn() } as unknown as jest.Mocked<VehiclesService>;
     dashboardService = {

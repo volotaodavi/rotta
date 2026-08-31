@@ -136,6 +136,21 @@ export class AsaasClientService {
     return this.request<AsaasPayment>(`/payments/${encodeURIComponent(id)}`, { method: "GET" });
   }
 
+  /**
+   * `POST /payments/{id}/refund` — reembolso de um pagamento, usado só
+   * pelo job de `PendingSubscription` expirada (Dossiê 26, "Expira em
+   * 48h e reembolsa", decisão do usuário). Diferente de
+   * `createSubscription`/`getPayment` (contrato nunca testado com uma
+   * chave real), este endpoint É bem documentado publicamente
+   * (`docs.asaas.com/reference/estornar-cobranca`), mesmo sem ter sido
+   * exercitado aqui.
+   */
+  refundPayment(id: string): Promise<AsaasPayment> {
+    return this.request<AsaasPayment>(`/payments/${encodeURIComponent(id)}/refund`, {
+      method: "POST",
+    });
+  }
+
   /** Primeiro pagamento gerado por uma assinatura recém-criada — usado pra devolver linha digitável/link do boleto na resposta do checkout sem esperar o webhook. */
   listPaymentsBySubscription(subscriptionId: string): Promise<{ data: AsaasPayment[] }> {
     return this.request<{ data: AsaasPayment[] }>(

@@ -79,3 +79,17 @@ export const PIX_REISSUE_WINDOW_DAYS = 5;
 export const PIX_REISSUE_REPEAT_DAYS = 3;
 /** Mesma folga de `TRIAL_GRACE_DAYS` (Companies) — 1 dia de graça após o vencimento antes de marcar `INADIMPLENTE`. */
 export const PIX_OVERDUE_GRACE_DAYS = 1;
+
+/**
+ * Assinar o plano ANTES de ter conta (Dossiê 26, pedido do usuário
+ * 31/08/2026: "Assinar o plano e com uma integração criar a conta e daí
+ * ele validar"). Prefixo colocado no `metadata.externalId`
+ * (AbacatePay)/`externalReference` (Asaas) sempre que a correlação é
+ * com uma `PendingSubscription` — nunca com uma `Company` de verdade —
+ * pra `BillingService` saber, ao processar o webhook, qual dos dois
+ * caminhos seguir (`applyPixPayment`/`applyAsaasStatus`).
+ */
+export const PENDING_SUBSCRIPTION_ID_PREFIX = "pending:";
+
+/** 48h, decisão do usuário ("Expira em 48h e reembolsa") — pagamento feito antes do cadastro que ninguém veio reclamar expira e é devolvido automaticamente. */
+export const PRE_SIGNUP_EXPIRES_HOURS = 48;

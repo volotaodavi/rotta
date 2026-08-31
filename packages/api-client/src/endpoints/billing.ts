@@ -110,6 +110,47 @@ interface ApiEnvelope<T> {
   data: T;
 }
 
+/**
+ * Segunda forma de assinar (Dossiê 26, pedido do usuário 31/08/2026) —
+ * pagar ANTES de ter conta. `email`/`cpfCnpj`/`telefone` são opcionais
+ * entre si no Pix (pelo menos 1), mas SEMPRE obrigatórios no Asaas
+ * (`CreatePreSignupAsaasInput` abaixo) — restrição da própria Asaas, não
+ * da Rotta (ver `apps/api/.../create-pre-signup-checkout.dto.ts`).
+ */
+export interface CreatePreSignupPixInput {
+  nome: string;
+  email?: string;
+  cpfCnpj?: string;
+  telefone?: string;
+}
+
+export interface CreatePreSignupAsaasInput {
+  nome: string;
+  email: string;
+  cpfCnpj: string;
+  telefone?: string;
+  billingType: AsaasBillingType;
+  cartao?: CreateAsaasCheckoutInput["cartao"];
+  titular?: CreateAsaasCheckoutInput["titular"];
+}
+
+export interface PreSignupCheckoutResult<T> {
+  pendingId: string;
+  expiresAt: string;
+  checkout?: T;
+  payment?: T;
+}
+
+export type PendingSubscriptionStatus =
+  "PENDENTE" | "PAGO" | "VINCULADO" | "EXPIRADO" | "REEMBOLSADO";
+
+export interface PreSignupStatus {
+  status: PendingSubscriptionStatus;
+  paidAt: string | null;
+  expiresAt: string;
+  linkedCompanyId: string | null;
+}
+
 export function createBillingEndpoints(apiClient: ApiClient) {
   return {
     createPixCheckout: async (): Promise<PixCheckout> =>
@@ -138,6 +179,36 @@ export function createBillingEndpoints(apiClient: ApiClient) {
     getAsaasCheckoutStatus: async (id: string): Promise<AsaasPayment> =>
       (await apiClient.request<ApiEnvelope<AsaasPayment>>(`/billing/asaas/checkout/${id}/status`))
         .data,
+
+    /** Sem sessão nenhuma — endpoint público (`/planos/assinar`, pagar antes de ter conta). */
+    createPreSignupPixCheckout: async (
+      input: CreatePreSignupPixInput,
+    ): Promise<PreSignupCheckoutResult<PixCheckout>> =>
+      (
+        await apiClient.request<ApiEnvelope<PreSignupCheckoutResult<PixCheckout>>>(
+          "/billing/pre-signup/pix",
+          { method: "POST", body: input },
+        )
+      ).data,
+
+    /** Mesmo raciocínio de `createPreSignupPixCheckout`, cartão/débito/boleto via Asaas. */
+    createPreSignupAsaasCheckout: async (
+      input: CreatePreSignupAsaasInput,
+    ): Promise<PreSignupCheckoutResult<AsaasPayment>> =>
+      (
+        await apiClient.request<ApiEnvelope<PreSignupCheckoutResult<AsaasPayment>>>(
+          "/billing/pre-signup/asaas",
+          { method: "POST", body: input },
+        )
+      ).data,
+
+    /** Polling da tela pública enquanto aguarda o webhook confirmar. */
+    getPreSignupStatus: async (pendingId: string): Promise<PreSignupStatus> =>
+      (
+        await apiClient.request<ApiEnvelope<PreSignupStatus>>(
+          `/billing/pre-signup/${pendingId}/status`,
+        )
+      ).data,
   };
 }
 

@@ -6,7 +6,6 @@ import type { Metadata } from "next";
 
 import { AsaasSecurityBadge } from "@/components/asaas-security-badge";
 
-
 export const metadata: Metadata = {
   title: "Planos e preços",
   description:
@@ -58,12 +57,23 @@ export default function PlanosPage(): JSX.Element {
             ))}
           </ul>
         </Card.Body>
-        <Card.Footer>
+        <Card.Footer className="flex flex-col gap-2">
           <Link
             href="/criar-conta"
             className={buttonVariants({ variant: "primary", fullWidth: true })}
           >
             Começar agora
+          </Link>
+          {/* Segunda forma de assinar (Dossiê 26, pedido do usuário: "duas
+              opções... assinar o plano e com uma integração criar a conta e
+              daí ele validar") — quem já sabe que quer assinar pode pagar
+              antes de existir conta nenhuma; "Começar agora" continua sendo
+              o caminho padrão (trial de 1 mês, sem cartão). */}
+          <Link
+            href="/planos/assinar"
+            className={buttonVariants({ variant: "ghost", fullWidth: true })}
+          >
+            Já quero assinar (pagar agora)
           </Link>
         </Card.Footer>
       </Card>

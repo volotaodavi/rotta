@@ -153,6 +153,23 @@ export class AbacatePayClientService {
     });
   }
 
+  /**
+   * Reembolso de uma cobrança Pix avulsa — usado só pelo job de
+   * `PendingSubscription` expirada (Dossiê 26, "Expira em 48h e
+   * reembolsa", decisão do usuário). Endpoint documentado em
+   * `docs.abacatepay.com/api-reference/pix-qrcode/reembolsar` — mesmo
+   * grau de confiança de `createPixQrCode`/`checkPixQrCodeStatus`
+   * (contrato levantado só pela doc pública, nunca exercitado com uma
+   * conta real, ver nota no topo do arquivo de tipos).
+   */
+  refundPixQrCode(id: string): Promise<AbacatePayPixQrCode> {
+    return this.request<AbacatePayPixQrCode>("/pixQrCode/refund", {
+      method: "POST",
+      body: { id },
+      baseUrl: this.baseUrlV1,
+    });
+  }
+
   /** Histórico de cobranças da conta — só o painel financeiro do Admin Rotta usa isto. */
   listBillings(): Promise<AbacatePayBilling[]> {
     return this.request<AbacatePayBilling[]>("/billing/list", {

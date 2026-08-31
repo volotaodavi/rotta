@@ -6,7 +6,11 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { CompanyStatus } from "@prisma/client";
+import {
+  CompanyStatus,
+  PendingSubscriptionProvider,
+  PendingSubscriptionStatus,
+} from "@prisma/client";
 
 import { AbacatePayClientService } from "./abacatepay-client.service";
 import { AsaasClientService } from "./asaas-client.service";
@@ -15,15 +19,21 @@ import {
   ABACATEPAY_FEE_CARD_PERCENT,
   ABACATEPAY_FEE_PIX_CENTS,
   ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
+  PENDING_SUBSCRIPTION_ID_PREFIX,
   PIX_OVERDUE_GRACE_DAYS,
   PIX_RECURRENCE_MONTHS,
   PIX_REISSUE_REPEAT_DAYS,
   PIX_REISSUE_WINDOW_DAYS,
+  PRE_SIGNUP_EXPIRES_HOURS,
   ROTTA_SUBSCRIPTION_PRICE_CENTS,
   ROTTA_SUBSCRIPTION_PRODUCT_NAME,
 } from "./billing.constants";
 
 import type { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
+import type {
+  CreatePreSignupAsaasDto,
+  CreatePreSignupPixDto,
+} from "./dto/create-pre-signup-checkout.dto";
 import type { AbacatePayPixQrCode, AbacatePayWebhookEnvelope } from "./types/abacatepay.types";
 import type { AsaasPayment, AsaasWebhookEnvelope } from "./types/asaas.types";
 import type {
@@ -239,6 +249,297 @@ export class BillingService {
   }
 
   /**
+   * Checkout Pix ANTES de existir conta/empresa (Dossiê 26, pedido do
+   * usuário 31/08/2026 — "segunda forma de assinar", ao lado do fluxo
+   * autenticado `createPixCheckoutForCompany`). Sem `companyId`: a
+   * correlação com o webhook usa `pending:<PendingSubscription.id>` no
+   * lugar do `company.id` de sempre (`PENDING_SUBSCRIPTION_ID_PREFIX`)
+   * — é esse prefixo que `applyPixPayment` usa pra saber que deve
+   * marcar a `PendingSubscription` como `PAGO` em vez de tentar achar
+   * uma `Company`.
+   */
+  async createPreSignupPixCheckout(
+    dto: CreatePreSignupPixDto,
+  ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
+    if (!this.client.isConfigured()) {
+      throw new BadRequestException(
+        "Pagamento indisponível: a AbacatePay ainda não está configurada nesta implantação.",
+      );
+    }
+
+    const expiresAt = new Date(Date.now() + PRE_SIGNUP_EXPIRES_HOURS * 60 * 60 * 1000);
+    const pending = await this.prisma.pendingSubscription.create({
+      data: {
+        nome: dto.nome,
+        email: dto.email,
+        cpfCnpj: dto.cpfCnpj,
+        telefone: dto.telefone,
+        valorCentavos: ROTTA_SUBSCRIPTION_PRICE_CENTS,
+        provider: PendingSubscriptionProvider.ABACATEPAY,
+        providerCheckoutId: "",
+        expiresAt,
+      },
+    });
+
+    let checkout: AbacatePayPixQrCode;
+    try {
+      checkout = await this.client.createPixQrCode({
+        amount: ROTTA_SUBSCRIPTION_PRICE_CENTS,
+        expiresIn: ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
+        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${dto.nome}`,
+        metadata: { externalId: `${PENDING_SUBSCRIPTION_ID_PREFIX}${pending.id}` },
+      });
+    } catch (error) {
+      // Não deixa a `PendingSubscription` órfã (sem `providerCheckoutId`
+      // nenhum, presa em PENDENTE pra sempre) se a AbacatePay falhar —
+      // mesmo raciocínio da transação atômica de `CompaniesService.create`.
+      await this.prisma.pendingSubscription.delete({ where: { id: pending.id } });
+      throw error;
+    }
+
+    await this.prisma.pendingSubscription.update({
+      where: { id: pending.id },
+      data: { providerCheckoutId: checkout.id },
+    });
+
+    return { pendingId: pending.id, expiresAt: expiresAt.toISOString(), checkout };
+  }
+
+  /**
+   * Checkout cartão/débito/boleto ANTES de existir conta (mesmo
+   * raciocínio de `createPreSignupPixCheckout`, provedor Asaas). Cria
+   * o `customer` na Asaas já com `externalReference:
+   * pending:<PendingSubscription.id>` — mesma chave de correlação de
+   * `createAsaasCheckoutForCompany`, só que apontando pra um pagamento
+   * ainda sem `Company` dona.
+   */
+  async createPreSignupAsaasCheckout(
+    dto: CreatePreSignupAsaasDto,
+  ): Promise<{ pendingId: string; expiresAt: string; payment: AsaasPayment }> {
+    if (!this.asaasClient.isConfigured()) {
+      throw new BadRequestException(
+        "Pagamento indisponível: a Asaas ainda não está configurada nesta implantação.",
+      );
+    }
+
+    const expiresAt = new Date(Date.now() + PRE_SIGNUP_EXPIRES_HOURS * 60 * 60 * 1000);
+    const pending = await this.prisma.pendingSubscription.create({
+      data: {
+        nome: dto.nome,
+        email: dto.email,
+        cpfCnpj: dto.cpfCnpj,
+        telefone: dto.telefone,
+        valorCentavos: ROTTA_SUBSCRIPTION_PRICE_CENTS,
+        provider: PendingSubscriptionProvider.ASAAS,
+        providerCheckoutId: "",
+        expiresAt,
+      },
+    });
+
+    try {
+      const externalReference = `${PENDING_SUBSCRIPTION_ID_PREFIX}${pending.id}`;
+      const customer = await this.asaasClient.createCustomer({
+        name: dto.nome,
+        cpfCnpj: dto.cpfCnpj,
+        email: dto.email,
+        externalReference,
+      });
+
+      const hoje = new Date().toISOString().slice(0, 10);
+      const subscription = await this.asaasClient.createSubscription({
+        customer: customer.id,
+        billingType: dto.billingType,
+        value: ROTTA_SUBSCRIPTION_PRICE_CENTS / 100,
+        cycle: "MONTHLY",
+        nextDueDate: hoje,
+        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${dto.nome}`,
+        externalReference,
+        ...(dto.billingType !== "BOLETO" && dto.cartao && dto.titular
+          ? {
+              creditCard: dto.cartao,
+              creditCardHolderInfo: {
+                name: dto.titular.name,
+                email: dto.titular.email,
+                cpfCnpj: dto.titular.cpfCnpj,
+                postalCode: dto.titular.postalCode,
+                addressNumber: dto.titular.addressNumber,
+                phone: dto.titular.phone,
+              },
+            }
+          : {}),
+      });
+
+      const { data: pagamentos } = await this.asaasClient.listPaymentsBySubscription(
+        subscription.id,
+      );
+      const primeiroPagamento = pagamentos[0];
+      if (!primeiroPagamento) {
+        throw new InternalServerErrorException(
+          "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado — tente consultar novamente em instantes.",
+        );
+      }
+
+      await this.prisma.pendingSubscription.update({
+        where: { id: pending.id },
+        data: {
+          providerCheckoutId: primeiroPagamento.id,
+          providerCustomerId: customer.id,
+          providerSubscriptionId: subscription.id,
+        },
+      });
+
+      return {
+        pendingId: pending.id,
+        expiresAt: expiresAt.toISOString(),
+        payment: primeiroPagamento,
+      };
+    } catch (error) {
+      // Mesmo raciocínio de `createPreSignupPixCheckout`: nunca deixa
+      // um registro órfão preso em PENDENTE se a Asaas falhar no meio
+      // do caminho.
+      await this.prisma.pendingSubscription.delete({ where: { id: pending.id } });
+      throw error;
+    }
+  }
+
+  /**
+   * Consultado pelo front (mesmo papel de `getPixCheckoutStatus`/
+   * `getAsaasCheckoutStatus`) — mas aqui olha o STATUS PRÓPRIO da
+   * `PendingSubscription`, não o provedor direto, porque o "confirmado"
+   * que importa pro front é "o webhook já marcou `PAGO`", não só "o
+   * provedor recebeu o dinheiro" (o webhook é sempre a fonte de
+   * verdade, mesmo padrão do resto do módulo).
+   */
+  async getPreSignupStatus(pendingId: string): Promise<{
+    status: PendingSubscriptionStatus;
+    paidAt: Date | null;
+    expiresAt: Date;
+    linkedCompanyId: string | null;
+  }> {
+    const pending = await this.prisma.pendingSubscription.findUnique({
+      where: { id: pendingId },
+    });
+    if (!pending) {
+      throw new NotFoundException("Pagamento não encontrado.");
+    }
+    return {
+      status: pending.status,
+      paidAt: pending.paidAt,
+      expiresAt: pending.expiresAt,
+      linkedCompanyId: pending.linkedCompanyId,
+    };
+  }
+
+  /**
+   * Job diário (`internal/queue/billing/expire-pending-subscriptions`,
+   * mesmo mecanismo de `processarVencimentosPix`) que fecha o outro
+   * lado do fluxo "pagar antes de ter conta" (decisão do usuário:
+   * "Expira em 48h e reembolsa"): pagamentos `PAGO` que passaram do
+   * `expiresAt` sem ninguém completar o cadastro são reembolsados e
+   * marcados `REEMBOLSADO` — se o reembolso falhar (provedor fora do
+   * ar, chave ausente), marca `EXPIRADO` mesmo assim, pra nunca ficar
+   * preso em `PAGO` esperando um cadastro que não vai vir (o log
+   * registra a falha pra reconciliação manual).
+   */
+  async processarPendingSubscriptionsExpiradas(): Promise<{
+    reembolsados: number;
+    expirados: number;
+  }> {
+    const agora = new Date();
+    const candidatas = await this.prisma.pendingSubscription.findMany({
+      where: { status: PendingSubscriptionStatus.PAGO, expiresAt: { lt: agora } },
+    });
+
+    let reembolsados = 0;
+    let expirados = 0;
+
+    for (const pending of candidatas) {
+      try {
+        if (pending.provider === PendingSubscriptionProvider.ABACATEPAY) {
+          if (!this.client.isConfigured()) {
+            throw new Error("AbacatePay não configurada.");
+          }
+          await this.client.refundPixQrCode(pending.providerCheckoutId);
+        } else {
+          if (!this.asaasClient.isConfigured()) {
+            throw new Error("Asaas não configurada.");
+          }
+          if (pending.providerSubscriptionId) {
+            await this.asaasClient.cancelSubscription(pending.providerSubscriptionId);
+          }
+          await this.asaasClient.refundPayment(pending.providerCheckoutId);
+        }
+
+        await this.prisma.pendingSubscription.update({
+          where: { id: pending.id },
+          data: { status: PendingSubscriptionStatus.REEMBOLSADO, refundedAt: agora },
+        });
+        reembolsados += 1;
+      } catch (error) {
+        this.logger.warn(
+          `Falha ao reembolsar PendingSubscription ${pending.id} expirada (marcando EXPIRADO mesmo assim, pra reconciliação manual): ${(error as Error).message}`,
+        );
+        await this.prisma.pendingSubscription.update({
+          where: { id: pending.id },
+          data: { status: PendingSubscriptionStatus.EXPIRADO },
+        });
+        expirados += 1;
+      }
+    }
+
+    this.logger.log(
+      `Processamento de PendingSubscription expiradas: ${reembolsados} reembolsada(s), ${expirados} marcada(s) EXPIRADO (falha no reembolso).`,
+    );
+    return { reembolsados, expirados };
+  }
+
+  /**
+   * Aplica o resultado de um webhook (Pix `billing.paid` ou Asaas
+   * `PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`) que correlacionou com uma
+   * `PendingSubscription` em vez de uma `Company` (prefixo `pending:`,
+   * ver `PENDING_SUBSCRIPTION_ID_PREFIX`). Idempotente por design, mesmo
+   * raciocínio do resto do módulo: já `VINCULADO`/`REEMBOLSADO` é estado
+   * final — reaplicar o mesmo evento não regride nada.
+   */
+  private async markPendingSubscriptionPaid(eventName: string, pendingId: string): Promise<void> {
+    try {
+      const pending = await this.prisma.pendingSubscription.findUnique({
+        where: { id: pendingId },
+      });
+      if (!pending) {
+        this.logger.warn(
+          `Webhook "${eventName}" referencia PendingSubscription ${pendingId}, que não existe (mais).`,
+        );
+        return;
+      }
+      if (
+        pending.status === PendingSubscriptionStatus.VINCULADO ||
+        pending.status === PendingSubscriptionStatus.REEMBOLSADO
+      ) {
+        // Estado final já alcançado — reaplicar o webhook não regride nada.
+        return;
+      }
+
+      await this.prisma.pendingSubscription.update({
+        where: { id: pendingId },
+        data: { status: PendingSubscriptionStatus.PAGO, paidAt: pending.paidAt ?? new Date() },
+      });
+      this.logger.log(`PendingSubscription ${pendingId} -> PAGO (webhook "${eventName}").`);
+    } catch (error) {
+      this.logger.warn(
+        `Não foi possível marcar a PendingSubscription ${pendingId} como PAGO a partir do webhook "${eventName}": ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /** `pending:<uuid>` -> `<uuid>`, ou `null` se `correlationId` não usa o prefixo (é um `company.id` normal). */
+  private extractPendingSubscriptionId(correlationId: string): string | null {
+    return correlationId.startsWith(PENDING_SUBSCRIPTION_ID_PREFIX)
+      ? correlationId.slice(PENDING_SUBSCRIPTION_ID_PREFIX.length)
+      : null;
+  }
+
+  /**
    * Processa um evento de webhook da Asaas já autenticado (token do
    * header verificado pelo controller). Idempotente por design, mesmo
    * raciocínio de `handleWebhookEvent` (AbacatePay) — reaplicar o mesmo
@@ -290,6 +591,21 @@ export class BillingService {
       this.logger.warn(
         `Webhook Asaas "${eventName}" sem payment.externalReference — não é possível correlacionar com nenhuma Company.`,
       );
+      return;
+    }
+
+    const pendingId = this.extractPendingSubscriptionId(companyId);
+    if (pendingId) {
+      if (status === CompanyStatus.ATIVO) {
+        await this.markPendingSubscriptionPaid(eventName, pendingId);
+      } else {
+        // Sem Company ainda pra atualizar (INADIMPLENTE/CANCELADO só
+        // fazem sentido pra assinatura já vinculada) — ignora de
+        // propósito, nunca cria/atualiza nada a partir daqui.
+        this.logger.debug(
+          `Webhook Asaas "${eventName}" para PendingSubscription ${pendingId} com status ${status} — ignorado (só o evento de pagamento confirmado é aplicável antes do cadastro existir).`,
+        );
+      }
       return;
     }
 
@@ -351,15 +667,22 @@ export class BillingService {
    * ajustar isto assim que o primeiro evento real chegar em produção.
    */
   private async applyPixPayment(event: AbacatePayWebhookEnvelope): Promise<void> {
-    const companyId =
+    const correlationId =
       event.data.billing?.metadata?.externalId ?? event.data.pixQrCode?.metadata?.externalId;
 
-    if (!companyId) {
+    if (!correlationId) {
       this.logger.warn(
         `Webhook AbacatePay "billing.paid" sem metadata.externalId reconhecível — payload: ${JSON.stringify(event.data)}`,
       );
       return;
     }
+
+    const pendingId = this.extractPendingSubscriptionId(correlationId);
+    if (pendingId) {
+      await this.markPendingSubscriptionPaid("billing.paid", pendingId);
+      return;
+    }
+    const companyId = correlationId;
 
     // Agenda o próximo vencimento (Pix "recorrente" simulado — ver nota
     // em `createPixCheckoutForCompany`) e limpa o controle de reenvio,

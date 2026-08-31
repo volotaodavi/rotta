@@ -27,6 +27,20 @@ export interface CreateCompanyData {
   planId: string;
   /** Prazo do trial gratuito de 1 mês (ver `TRIAL_DURATION_MONTHS`) — só setado quando a empresa nasce em `TRIAL` (nunca em criação administrativa já `ATIVO`). */
   trialExpiraEm?: Date;
+  /**
+   * `ATIVO` de nascença — só quando `CompaniesService.create` encontra
+   * uma `PendingSubscription` `PAGO` que bate com o cadastro (Dossiê
+   * 26, "assinar o plano e com uma integração criar a conta e daí ele
+   * validar"). Omitido = usa o default do schema (`TRIAL`), mesmo
+   * comportamento de sempre.
+   */
+  status?: CompanyStatus;
+  /** Copiado da `PendingSubscription` vinculada quando o provedor é Asaas — ver nota acima. */
+  asaasCustomerId?: string;
+  /** Copiado da `PendingSubscription` vinculada quando o provedor é Asaas — ver nota acima. */
+  asaasSubscriptionId?: string;
+  /** Agendado (hoje + 1 ciclo) quando a `PendingSubscription` vinculada é da AbacatePay (Pix) — mesmo cálculo de `BillingService.applyPixPayment`. */
+  pixProximoVencimento?: Date;
 }
 
 export interface UpdateCompanyData {

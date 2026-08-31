@@ -7,7 +7,14 @@ import {
   NotFoundException,
   type OnModuleInit,
 } from "@nestjs/common";
-import { CompanyStatus, CompanyType, MembershipStatus } from "@prisma/client";
+import {
+  CompanyStatus,
+  CompanyType,
+  MembershipStatus,
+  PendingSubscriptionProvider,
+  PendingSubscriptionStatus,
+  type PendingSubscription,
+} from "@prisma/client";
 
 import {
   COMPANY_REPOSITORY,
@@ -46,6 +53,7 @@ import {
 } from "@/infra/receita-federal/receita-federal.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { PIX_RECURRENCE_MONTHS } from "@/modules/billing/billing.constants";
 import { DashboardService } from "@/modules/dashboard/dashboard.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
@@ -206,6 +214,37 @@ export class CompaniesService implements OnModuleInit {
     return plan;
   }
 
+  /**
+   * Segunda forma de assinar (Dossiê 26, pedido do usuário 31/08/2026:
+   * "Assinar o plano e com uma integração criar a conta e daí ele
+   * validar") — procura um pagamento `PAGO` e ainda não vinculado que
+   * bata com QUALQUER UM dos dados do cadastro (e-mail/CPF-CNPJ/
+   * telefone DA EMPRESA ou DO ADMINISTRADOR — pedido do usuário: "se
+   * digitar qualquer um desses, ele poderá conferir se bate"). Nunca
+   * cria/atualiza nada aqui — só lê; `create()` decide o que fazer com
+   * o resultado.
+   */
+  private async findMatchingPendingSubscription(candidatos: {
+    emails: Array<string | undefined>;
+    cpfCnpjs: Array<string | undefined>;
+    telefones: Array<string | undefined>;
+  }): Promise<PendingSubscription | null> {
+    const unicos = (valores: Array<string | undefined>) => [
+      ...new Set(valores.filter((valor): valor is string => Boolean(valor?.trim()))),
+    ];
+    const condicoes = [
+      ...unicos(candidatos.emails).map((email) => ({ email })),
+      ...unicos(candidatos.cpfCnpjs).map((cpfCnpj) => ({ cpfCnpj })),
+      ...unicos(candidatos.telefones).map((telefone) => ({ telefone })),
+    ];
+    if (condicoes.length === 0) return null;
+
+    return this.prisma.pendingSubscription.findFirst({
+      where: { status: PendingSubscriptionStatus.PAGO, OR: condicoes },
+      orderBy: { paidAt: "asc" },
+    });
+  }
+
   /** Frente M — mesmo padrão de `SchoolsService.generateCodigoInterno`, prefixo `TRN` (transportadora). */
   private async generateCodigoInterno(): Promise<string> {
     const sequence = await this.companyRepository.nextCodigoInternoSequence();
@@ -345,6 +384,18 @@ export class CompaniesService implements OnModuleInit {
     const trialExpiraEm = new Date();
     trialExpiraEm.setMonth(trialExpiraEm.getMonth() + TRIAL_DURATION_MONTHS);
 
+    // Segunda forma de assinar (Dossiê 26, pedido do usuário
+    // 31/08/2026) — "já pagou antes de ter conta"? Se achar um
+    // pagamento `PAGO` batendo com QUALQUER dado deste cadastro, a
+    // empresa pula o trial inteiro e já nasce `ATIVO` (ver o bloco
+    // dentro da transação, abaixo).
+    const companyEmail = dto.email.trim().toLowerCase();
+    const pendingSubscriptionPago = await this.findMatchingPendingSubscription({
+      emails: [companyEmail, adminEmail],
+      cpfCnpjs: [cpfCnpjDigits, adminCpfDigits],
+      telefones: [onlyDigits(dto.telefone), adminTelefoneDigits],
+    });
+
     // Company + User (administrador) + Membership são uma única unidade
     // de negócio (Dossiê 16: "motorista autônomo automaticamente vira
     // Administrador da empresa") — atômicos via uma única transação
@@ -366,7 +417,7 @@ export class CompaniesService implements OnModuleInit {
           nomeFantasia: dto.nomeFantasia,
           cpfCnpj: cpfCnpjDigits,
           tipo: dto.tipo,
-          email: dto.email.trim().toLowerCase(),
+          email: companyEmail,
           telefone: onlyDigits(dto.telefone),
           whatsapp: dto.whatsapp ? onlyDigits(dto.whatsapp) : undefined,
           cep: onlyDigits(dadosCadastrais.cep),
@@ -383,6 +434,30 @@ export class CompaniesService implements OnModuleInit {
           fusoHorario: dto.fusoHorario,
           planId: plan.id,
           trialExpiraEm,
+          // Pula o trial e nasce ATIVO só quando achou um pagamento
+          // `PAGO` batendo (ver `pendingSubscriptionPago` acima) — do
+          // contrário, omitido de propósito, mesmo comportamento de
+          // sempre (default `TRIAL` do schema).
+          ...(pendingSubscriptionPago
+            ? {
+                status: CompanyStatus.ATIVO,
+                ...(pendingSubscriptionPago.provider === PendingSubscriptionProvider.ABACATEPAY
+                  ? {
+                      pixProximoVencimento: (() => {
+                        const proximoVencimento = new Date();
+                        proximoVencimento.setMonth(
+                          proximoVencimento.getMonth() + PIX_RECURRENCE_MONTHS,
+                        );
+                        return proximoVencimento;
+                      })(),
+                    }
+                  : {
+                      asaasCustomerId: pendingSubscriptionPago.providerCustomerId ?? undefined,
+                      asaasSubscriptionId:
+                        pendingSubscriptionPago.providerSubscriptionId ?? undefined,
+                    }),
+              }
+            : {}),
         },
         tx,
       );
@@ -402,6 +477,21 @@ export class CompaniesService implements OnModuleInit {
         { userId: createdAdminUser.id, companyId: createdCompany.id, role: Role.EMPRESA },
         tx,
       );
+
+      // Fecha o ciclo do pagamento pré-cadastro NA MESMA transação que
+      // cria a Company — nunca existe uma janela onde a Company já
+      // existe mas o pagamento ainda aparenta "solto" pra outro
+      // cadastro concorrente reivindicar (mesmo raciocínio do resto
+      // desta transação, ver comentário acima).
+      if (pendingSubscriptionPago) {
+        await tx.pendingSubscription.update({
+          where: { id: pendingSubscriptionPago.id },
+          data: {
+            status: PendingSubscriptionStatus.VINCULADO,
+            linkedCompanyId: createdCompany.id,
+          },
+        });
+      }
 
       return { company: createdCompany, adminUser: createdAdminUser };
     });

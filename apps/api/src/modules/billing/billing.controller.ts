@@ -3,8 +3,13 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { BillingService } from "./billing.service";
 import { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
+import {
+  CreatePreSignupAsaasDto,
+  CreatePreSignupPixDto,
+} from "./dto/create-pre-signup-checkout.dto";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { PlanNoticesService } from "@/modules/plan-notices/plan-notices.service";
@@ -76,5 +81,30 @@ export class BillingController {
   @Roles(Role.EMPRESA, Role.GESTOR)
   getMyNotices(@CurrentUser() actor: AuthenticatedUser) {
     return this.planNoticesService.listActiveForCompany(actor.tenantId as string);
+  }
+
+  /**
+   * Segunda forma de assinar (Dossiê 26, pedido do usuário 31/08/2026)
+   * — pagar ANTES de ter conta. `@Public()`: quem chama isto não tem
+   * sessão nenhuma ainda (é literalmente o objetivo do endpoint).
+   */
+  @Post("pre-signup/pix")
+  @Public()
+  createPreSignupPixCheckout(@Body() dto: CreatePreSignupPixDto) {
+    return this.billingService.createPreSignupPixCheckout(dto);
+  }
+
+  /** Mesmo raciocínio de `pre-signup/pix`, cartão/débito/boleto via Asaas. */
+  @Post("pre-signup/asaas")
+  @Public()
+  createPreSignupAsaasCheckout(@Body() dto: CreatePreSignupAsaasDto) {
+    return this.billingService.createPreSignupAsaasCheckout(dto);
+  }
+
+  /** Polling do front (tela pública) enquanto aguarda o webhook confirmar o pagamento pré-cadastro. */
+  @Get("pre-signup/:id/status")
+  @Public()
+  getPreSignupStatus(@Param("id") id: string) {
+    return this.billingService.getPreSignupStatus(id);
   }
 }

@@ -44,18 +44,35 @@ const COMPANY_TYPE_OPTIONS: { value: RegisterEmpresaInput["tipo"]; label: string
 
 const VALID_TIPOS = new Set(COMPANY_TYPE_OPTIONS.map((option) => option.value));
 
-function initialState(tipoFromUrl: string | null): RegisterEmpresaInput {
+/**
+ * Vindo de `/planos/assinar` (Dossiê 26 — "assinar o plano e com uma
+ * integração criar a conta e daí ele validar"): quem já pagou antes de
+ * ter conta chega aqui com `?nome=&email=&cpfCnpj=&telefone=` na URL —
+ * pré-preenche pra reduzir a chance de digitar diferente do que foi
+ * pago (a correspondência no backend é exata, `CompaniesService.
+ * findMatchingPendingSubscription`) e poupa o administrador de
+ * retype nos mesmos dados duas vezes.
+ */
+function initialState(
+  tipoFromUrl: string | null,
+  prefill: {
+    nome: string | null;
+    email: string | null;
+    cpfCnpj: string | null;
+    telefone: string | null;
+  },
+): RegisterEmpresaInput {
   const tipo =
     tipoFromUrl && VALID_TIPOS.has(tipoFromUrl as RegisterEmpresaInput["tipo"])
       ? (tipoFromUrl as RegisterEmpresaInput["tipo"])
       : "LTDA";
   return {
     razaoSocial: "",
-    nomeFantasia: "",
-    cpfCnpj: "",
+    nomeFantasia: prefill.nome ?? "",
+    cpfCnpj: prefill.cpfCnpj ?? "",
     tipo,
-    email: "",
-    telefone: "",
+    email: prefill.email ?? "",
+    telefone: prefill.telefone ?? "",
     whatsapp: "",
     cep: "",
     endereco: "",
@@ -65,7 +82,14 @@ function initialState(tipoFromUrl: string | null): RegisterEmpresaInput {
     cidade: "",
     estado: "",
     aceiteTermos: true,
-    administrador: { nome: "", email: "", telefone: "", cpf: "", senha: "" },
+    administrador: {
+      nome: prefill.nome ?? "",
+      email: prefill.email ?? "",
+      telefone: prefill.telefone ?? "",
+      cpf:
+        prefill.cpfCnpj && prefill.cpfCnpj.replace(/\D/g, "").length === 11 ? prefill.cpfCnpj : "",
+      senha: "",
+    },
   };
 }
 
@@ -87,7 +111,12 @@ export default function CriarEmpresaPage(): JSX.Element {
   const searchParams = useSearchParams();
   const { registerEmpresa } = useAuth();
   const [form, setForm] = useState<RegisterEmpresaInput>(() =>
-    initialState(searchParams.get("tipo")),
+    initialState(searchParams.get("tipo"), {
+      nome: searchParams.get("nome"),
+      email: searchParams.get("email"),
+      cpfCnpj: searchParams.get("cpfCnpj"),
+      telefone: searchParams.get("telefone"),
+    }),
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);

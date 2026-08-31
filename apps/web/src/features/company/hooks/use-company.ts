@@ -6,7 +6,11 @@ import type {
   AsaasPayment,
   CompanySettings,
   CreateAsaasCheckoutInput,
+  CreatePreSignupAsaasInput,
+  CreatePreSignupPixInput,
   PixCheckout,
+  PreSignupCheckoutResult,
+  PreSignupStatus,
   UpdateCompanyInput,
 } from "@rotta/api-client";
 
@@ -96,6 +100,36 @@ export function useAsaasCheckoutStatus(id: string | undefined, enabled: boolean)
     queryFn: () => billingApi.getAsaasCheckoutStatus(id as string),
     enabled: Boolean(id) && enabled,
     refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 4_000 : false),
+  });
+}
+
+/**
+ * Segunda forma de assinar (Dossiê 26, pedido do usuário 31/08/2026) —
+ * pagar ANTES de ter conta (`/planos/assinar`, tela pública, sem
+ * sessão). Mesmo par create+status dos hooks autenticados acima, só que
+ * o "status" aqui olha a `PendingSubscription` (`useMatch`
+ * `getPreSignupStatus`), não o provedor direto — é o webhook quem marca
+ * `PAGO`, nunca o polling sozinho.
+ */
+export function useCreatePreSignupPixCheckout() {
+  return useMutation<PreSignupCheckoutResult<PixCheckout>, unknown, CreatePreSignupPixInput>({
+    mutationFn: (input) => billingApi.createPreSignupPixCheckout(input),
+  });
+}
+
+export function useCreatePreSignupAsaasCheckout() {
+  return useMutation<PreSignupCheckoutResult<AsaasPayment>, unknown, CreatePreSignupAsaasInput>({
+    mutationFn: (input) => billingApi.createPreSignupAsaasCheckout(input),
+  });
+}
+
+/** Poll a cada 4s enquanto `PENDENTE` — mesmo ritmo de `usePixCheckoutStatus`/`useAsaasCheckoutStatus`, para assim que sair desse estado (`PAGO`/`EXPIRADO`/etc.). */
+export function usePreSignupStatus(pendingId: string | undefined, enabled: boolean) {
+  return useQuery<PreSignupStatus>({
+    queryKey: ["billing", "pre-signup", pendingId],
+    queryFn: () => billingApi.getPreSignupStatus(pendingId as string),
+    enabled: Boolean(pendingId) && enabled,
+    refetchInterval: (query) => (query.state.data?.status === "PENDENTE" ? 4_000 : false),
   });
 }
 

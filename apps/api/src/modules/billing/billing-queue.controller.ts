@@ -27,4 +27,16 @@ export class BillingQueueController {
     const resultado = await this.billingService.processarVencimentosPix();
     return { ok: true, ...resultado };
   }
+
+  /** Sem payload — reembolsa/expira `PendingSubscription` pagas há mais de 48h sem cadastro vinculado (`processarPendingSubscriptionsExpiradas`). */
+  @Post("expire-pending-subscriptions")
+  @HttpCode(HttpStatus.OK)
+  async expirePendingSubscriptions(): Promise<{
+    ok: true;
+    reembolsados: number;
+    expirados: number;
+  }> {
+    const resultado = await this.billingService.processarPendingSubscriptionsExpiradas();
+    return { ok: true, ...resultado };
+  }
 }

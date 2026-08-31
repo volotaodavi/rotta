@@ -487,6 +487,93 @@ model Plan {
   @@map("plans")
 }
 
+/// Estado do pagamento feito ANTES de existir Company/User (Dossiê 26,
+/// pedido do usuário 31/08/2026: "assinar o plano e com uma integração
+/// criar a conta e daí ele validar"). Ver `PendingSubscription` abaixo.
+enum PendingSubscriptionStatus {
+  /// Checkout criado, aguardando confirmação do provedor (webhook).
+  PENDENTE
+  /// Provedor confirmou o pagamento; aguardando alguém completar o
+  /// cadastro com um dado que bata (email/cpfCnpj/telefone).
+  PAGO
+  /// Já vinculado a uma `Company` recém-criada (`AuthService.register`)
+  /// — estado final "feliz".
+  VINCULADO
+  /// `expiresAt` passou sem ninguém completar o cadastro — o job
+  /// `processarPendingSubscriptionsExpiradas` tenta reembolsar e marca
+  /// este status (mesmo se o reembolso falhar: nunca fica preso em
+  /// `PAGO` indefinidamente).
+  EXPIRADO
+  /// Reembolso confirmado pelo provedor.
+  REEMBOLSADO
+}
+
+enum PendingSubscriptionProvider {
+  ABACATEPAY
+  ASAAS
+}
+
+/// Pagamento da mensalidade feito ANTES do cadastro de Company/User
+/// existir (Dossiê 26 — segunda forma de assinar, ao lado do fluxo já
+/// existente "logar → `/assinatura`"). Nasce em `BillingService.
+/// createPreSignup{Pix,Asaas}Checkout` (chamado por uma tela pública,
+/// sem sessão), é marcado `PAGO` pelo mesmo webhook que já confirma
+/// pagamento de `Company` (`applyPixPayment`/`applyAsaasStatus`, agora
+/// também reconhecem o prefixo `pending:` no `externalId`/
+/// `externalReference`) e é consumido (`VINCULADO`) por `AuthService.
+/// register` no momento em que alguém completa o cadastro com um
+/// email/cpfCnpj/telefone que bate com um destes já pagos — nunca o
+/// contrário (a Company nunca é criada a partir daqui sozinha; quem cria
+/// a Company continua sendo sempre o cadastro normal, só que pulando o
+/// trial porque já tem um pagamento à espera).
+///
+/// `email`/`cpfCnpj`/`telefone` são todos opcionais (pedido do usuário:
+/// "pode ser qualquer um desses... se digitar qualquer um, ele poderá
+/// conferir se bate") — a aplicação exige pelo menos 1 preenchido
+/// (`CreatePreSignupCheckoutDto`), nunca os 3 juntos. Exceção real: a
+/// Asaas (cartão/débito/boleto) exige `cpfCnpj` pra criar o `customer`
+/// (restrição da própria API, não uma escolha de produto) — só o Pix
+/// (AbacatePay) aceita qualquer um dos 3 sozinho.
+model PendingSubscription {
+  id String @id @default(uuid()) @db.Uuid
+
+  nome     String
+  email    String?
+  cpfCnpj  String?
+  telefone String?
+
+  planCode      String @default("STARTER")
+  valorCentavos Int
+
+  provider            PendingSubscriptionProvider
+  /// `AbacatePayPixQrCode.id` ou `AsaasPayment.id`, conforme `provider`.
+  providerCheckoutId  String
+  /// Só preenchido pra Asaas (`AsaasCustomer.id`) — precisa pra poder cancelar a assinatura num reembolso.
+  providerCustomerId  String?
+  /// Só preenchido pra Asaas (`AsaasSubscription.id`) — mesma razão do campo acima.
+  providerSubscriptionId String?
+
+  status PendingSubscriptionStatus @default(PENDENTE)
+
+  paidAt     DateTime?
+  /// `createdAt + PRE_SIGNUP_EXPIRES_HOURS` (48h, decisão do usuário) — base do job de expiração/reembolso.
+  expiresAt  DateTime
+  refundedAt DateTime?
+  /// `Company.id` depois de vinculado — sem relação FK de propósito: a
+  /// Company pode, em teoria, ser excluída depois (soft delete) sem que
+  /// este registro histórico de pagamento precise sumir junto.
+  linkedCompanyId String? @db.Uuid
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+  @@index([cpfCnpj])
+  @@index([telefone])
+  @@index([status])
+  @@map("pending_subscriptions")
+}
+
 // =============================================================================
 // Company — o Tenant (Dossie 8, Secao 3 e Dossie 16)
 // =============================================================================

@@ -11,6 +11,16 @@ const SCHEDULE_ID = "billing-reissue-pix";
  */
 const REISSUE_PIX_CRON = "0 9 * * *";
 
+const EXPIRE_PENDING_SUBSCRIPTIONS_SCHEDULE_ID = "billing-expire-pending-subscriptions";
+
+/**
+ * De hora em hora — a janela é de 48h (`PRE_SIGNUP_EXPIRES_HOURS`,
+ * decisão do usuário), então checar a cada hora já reembolsa qualquer
+ * pagamento não-reclamado bem perto do prazo, sem precisar de nada mais
+ * granular do que isso.
+ */
+const EXPIRE_PENDING_SUBSCRIPTIONS_CRON = "0 * * * *";
+
 /**
  * Automatiza `BillingService.processarVencimentosPix` (Dossiê 26 —
  * "Pix recorrente") registrando um QStash Schedule, mesmo padrão de
@@ -42,5 +52,15 @@ export class BillingSchedulerService implements OnModuleInit {
       {},
     );
     this.logger.log(`Reenvio automático de Pix registrado: cron "${REISSUE_PIX_CRON}".`);
+
+    await this.qstashSchedule.upsertSchedule(
+      EXPIRE_PENDING_SUBSCRIPTIONS_SCHEDULE_ID,
+      "billing/expire-pending-subscriptions",
+      EXPIRE_PENDING_SUBSCRIPTIONS_CRON,
+      {},
+    );
+    this.logger.log(
+      `Expiração/reembolso de PendingSubscription registrado: cron "${EXPIRE_PENDING_SUBSCRIPTIONS_CRON}".`,
+    );
   }
 }
