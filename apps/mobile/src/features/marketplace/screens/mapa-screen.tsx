@@ -1,3 +1,4 @@
+import { useAuth } from "@rotta/auth/native";
 import { Check, MapPin, Search, X } from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { BottomSheet, Timeline } from "@rotta/ui/native";
@@ -13,15 +14,17 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+
 import { TransporterCard } from "../components/transporter-card";
 import { useLocation } from "../hooks/use-location";
 import { useSchoolsSearch } from "../hooks/use-school-picker";
+import { useStudent } from "../hooks/use-students";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
 import { useTransportersSearch } from "../hooks/use-transporters";
 import { buildContratoSteps, buildSolicitacaoSteps } from "../timeline-steps";
 
 import { EnderecoManualScreen } from "./endereco-manual-screen";
-import { AcompanhamentoSection } from "./transporte-inicio-screen";
+import { AcompanhamentoSection, TripTrackingOverlay } from "./transporte-inicio-screen";
 
 import type { ParentTabParamList, MarketplaceStackParamList } from "@/navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -354,6 +357,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
  */
 function MapaEstadoOperacional({ navigation }: { navigation: Props["navigation"] }): JSX.Element {
   const { theme } = useTheme();
+  const { user } = useAuth();
   const {
     state,
     contratoAtivo,
@@ -361,42 +365,62 @@ function MapaEstadoOperacional({ navigation }: { navigation: Props["navigation"]
     solicitacoesPendentes,
     solicitacaoAprovadaSemContrato,
   } = useResponsavelTransportState();
+  const { data: aluno } = useStudent(contratoAtivo?.studentId ?? ultimoContrato?.studentId);
+  const [trackingOpen, setTrackingOpen] = useState(false);
+
+  const primeiroNome = user?.nome?.split(" ")[0];
 
   function handleVerDetalhes(): void {
     navigation.getParent<BottomTabNavigationProp<ParentTabParamList>>()?.navigate("Transporte");
   }
 
   return (
-    <VehicleScreen>
-      <Text style={[styles.tituloEstado, { color: theme.colors.text }]}>
-        {state === "TRANSPORTE_ATIVO" ? "Transporte a caminho" : "Seu transporte"}
-      </Text>
+    <>
+      <VehicleScreen>
+        <Text style={[styles.saudacao, { color: theme.colors.textMuted }]}>
+          {primeiroNome ? `Olá, ${primeiroNome}` : "Olá"}
+        </Text>
+        <Text style={[styles.tituloEstado, { color: theme.colors.text }]}>
+          {state === "TRANSPORTE_ATIVO"
+            ? "Transporte a caminho"
+            : aluno
+              ? `Transporte de ${aluno.nome.split(" ")[0]}`
+              : "Seu transporte"}
+        </Text>
 
-      {state === "SOLICITACAO_PENDENTE"
-        ? solicitacoesPendentes.map((request) => (
-            <VehicleCard key={request.id}>
-              <Timeline steps={buildSolicitacaoSteps(request)} theme={theme} />
-            </VehicleCard>
-          ))
-        : null}
+        {state === "SOLICITACAO_PENDENTE"
+          ? solicitacoesPendentes.map((request) => (
+              <VehicleCard key={request.id}>
+                <Timeline steps={buildSolicitacaoSteps(request)} theme={theme} />
+              </VehicleCard>
+            ))
+          : null}
 
-      {state === "AGUARDANDO_CONTRATO" ? (
-        <VehicleCard>
-          <Timeline steps={buildContratoSteps(ultimoContrato ?? null)} theme={theme} />
-          {solicitacaoAprovadaSemContrato ? (
-            <Text style={{ color: theme.colors.textMuted, marginTop: theme.spacing[2] }}>
-              Sua solicitação foi aprovada. O transportador vai gerar o contrato em breve.
-            </Text>
-          ) : null}
-        </VehicleCard>
+        {state === "AGUARDANDO_CONTRATO" ? (
+          <VehicleCard>
+            <Timeline steps={buildContratoSteps(ultimoContrato ?? null)} theme={theme} />
+            {solicitacaoAprovadaSemContrato ? (
+              <Text style={{ color: theme.colors.textMuted, marginTop: theme.spacing[2] }}>
+                Sua solicitação foi aprovada. O transportador vai gerar o contrato em breve.
+              </Text>
+            ) : null}
+          </VehicleCard>
+        ) : null}
+
+        {state === "TRANSPORTE_ATIVO" && contratoAtivo ? (
+          <>
+            <AcompanhamentoSection contrato={contratoAtivo} />
+            <VehicleButton label="Acompanhar no mapa" onPress={() => setTrackingOpen(true)} />
+          </>
+        ) : null}
+
+        <VehicleButton label="Ver detalhes completos" onPress={handleVerDetalhes} />
+      </VehicleScreen>
+
+      {trackingOpen && contratoAtivo ? (
+        <TripTrackingOverlay contrato={contratoAtivo} onClose={() => setTrackingOpen(false)} />
       ) : null}
-
-      {state === "TRANSPORTE_ATIVO" && contratoAtivo ? (
-        <AcompanhamentoSection contrato={contratoAtivo} />
-      ) : null}
-
-      <VehicleButton label="Ver detalhes completos" onPress={handleVerDetalhes} />
-    </VehicleScreen>
+    </>
   );
 }
 
@@ -425,6 +449,7 @@ const styles = StyleSheet.create({
   resultsCard: { marginTop: 8, maxHeight: 260, padding: 8 },
   resultsEmpty: { padding: 12, textAlign: "center" },
   resultsList: {},
+  saudacao: { fontSize: 14, marginBottom: 2 },
   searchBar: {
     alignItems: "center",
     flexDirection: "row",
