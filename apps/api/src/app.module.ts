@@ -48,6 +48,7 @@ import { BillingModule } from "@/modules/billing/billing.module";
 import { ClientErrorsModule } from "@/modules/client-errors/client-errors.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
+import { ConversationsModule } from "@/modules/conversations/conversations.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
@@ -140,6 +141,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     AgendaModule,
     DashboardModule,
     SupportModule,
+    ConversationsModule,
     AnnouncementsModule,
     DocumentsModule,
     ReportsModule,

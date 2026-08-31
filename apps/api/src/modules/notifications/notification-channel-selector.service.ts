@@ -83,6 +83,10 @@ export class NotificationChannelSelectorService {
     // não operacional de viagem do dia a dia.
     VEICULO_REVISAO_APROVADA: [PUSH, EMAIL],
     VEICULO_REVISAO_REPROVADA: [PUSH, EMAIL],
+    // Chat Responsável↔Motorista/Monitor (Frente 10(d)) — mesmo canal
+    // de SUPORTE_NOVA_MENSAGEM (PUSH pra avisar na hora, sem WHATSAPP/SMS
+    // pra não vazar conteúdo da conversa fora do app).
+    CONVERSA_NOVA_MENSAGEM: [PUSH],
   };
 
   selectChannels(tipo: NotificationEventType): CommunicationChannel[] {

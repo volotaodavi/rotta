@@ -912,6 +912,9 @@ model User {
   chamadosSuporteEncerrados SupportTicket[]  @relation("SupportTicketEncerradoPor")
   mensagensSuporte          SupportMessage[] @relation("SupportMessageAutor")
 
+  /// Frente 10(d) — mensagens enviadas pelo Responsável/Motorista/Monitor no chat do Contrato.
+  mensagensConversa ConversationMessage[] @relation("ConversationMessageAutor")
+
   /// Avisos/comunicados publicados por este Admin Rotta (aba "Avisos").
   avisosCriados Announcement[] @relation("AnnouncementCriadoPor")
 
@@ -2207,6 +2210,8 @@ model Contract {
   /// partir deste contrato (Dossiê 26, Seção 6) — normalmente 1 (na
   /// ativação), mas o modelo permite mais de um (ex. reajuste futuro).
   transacoesCarteira WalletTransaction[]
+  /// Frente 10(d) — chat Responsável↔Motorista/Monitor deste contrato (no máximo 1, ver doc do model).
+  conversation       Conversation?
 
   @@index([companyId, status])
   @@index([responsavelId])
@@ -2631,6 +2636,11 @@ enum NotificationEventType {
   /// `VEICULO_REVISAO_APROVADA`; a partir de agora o veículo não pode
   /// mais ser credenciado numa rota (`VehiclesService.assertVeiculoOperavel`).
   VEICULO_REVISAO_REPROVADA
+  /// Frente 10(d) — chat direto Responsável ↔ Motorista/Monitor
+  /// (pedido do usuário: "suporte entre os responsáveis e
+  /// motoristas/monitores"). Reaproveitado nos dois sentidos, mesma
+  /// mecânica de `SUPORTE_NOVA_MENSAGEM` (`ConversationsService.sendMessage`).
+  CONVERSA_NOVA_MENSAGEM
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —
@@ -3212,6 +3222,62 @@ model SupportMessage {
 
   @@index([ticketId, createdAt])
   @@map("support_messages")
+}
+
+/// Frente 10(d) — chat direto Responsável ↔ Motorista/Monitor (pedido
+/// do usuário: "suporte entre os responsáveis e motoristas/monitores").
+/// NÃO reaproveita `SupportTicket` (aquele é explicitamente só
+/// Empresa↔Rotta, ver doc da classe `SupportService`) — módulo novo,
+/// escopado por `Contract` (não por viagem: a conversa persiste entre
+/// viagens do mesmo vínculo Responsável↔Transportadora, mesmo raciocínio
+/// de "quem está pilotando esse contrato agora" de `motoristaId`/
+/// `monitorId`, que podem ser substituídos ao longo do contrato —
+/// `ConversationsService` sempre valida o vínculo ATUAL do `Contract`,
+/// nunca um snapshot). `@@unique([contractId])`: no máximo UMA conversa
+/// por contrato, criada sob demanda (`getOrCreateForContract`) — nunca
+/// pelo Responsável/Empresa diretamente. Sem RLS (mesma razão de
+/// `StudentAddressOverride`/`Student`: acesso trava por
+/// responsavelId/motoristaId/monitorId do próprio `Contract`, nunca por
+/// `companyId` sozinho, já que o Responsável não pertence a nenhuma
+/// empresa).
+model Conversation {
+  id         String   @id @default(uuid()) @db.Uuid
+  contractId String   @unique @db.Uuid
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mensagens ConversationMessage[]
+
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  autorUserId String @db.Uuid
+  autor       User   @relation("ConversationMessageAutor", fields: [autorUserId], references: [id], onDelete: Restrict)
+  /// Snapshot do papel do autor no envio (mesma razão de
+  /// `SupportMessage.autorIsAdminRotta`) — nunca usado pra RBAC (que
+  /// sempre relê o `Contract` atual), só para estilizar o balão no chat
+  /// (Responsável de um lado, Motorista/Monitor do outro).
+  autorRole   String @db.VarChar(20)
+
+  mensagem String
+
+  /// `null` = ainda não lida pelo outro lado. Marcada em bloco
+  /// (`markAsRead`) quando o destinatário abre a conversa — mesmo
+  /// espírito de "vez do aluno" em `TripStudentEvent`: nunca por
+  /// mensagem individual clicada, o chat inteiro fica lido de uma vez.
+  lidaEm DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([conversationId, createdAt])
+  @@map("conversation_messages")
 }
 
 /// Consentimento versionado (Dossiê 45 FRENTE 5; lacuna já registrada no

@@ -243,6 +243,21 @@ export class MessagePersonalizationService {
   }
 
   /**
+   * Frente 10(d) — chat direto Responsável ↔ Motorista/Monitor (pedido
+   * do usuário: "suporte entre os responsáveis e motoristas/monitores").
+   * Mesmo espírito de `suporteNovaMensagem` (reaproveitado nos dois
+   * sentidos), mas o título nunca cita o conteúdo — só quem escreveu —
+   * pra manter a prévia curta e não vazar dado sensível numa notificação
+   * push que pode aparecer na tela bloqueada do celular.
+   */
+  novaMensagemConversa(autorNome: string, previa: string): PersonalizedMessage {
+    return {
+      titulo: `Nova mensagem de ${autorNome}`,
+      corpo: previa,
+    };
+  }
+
+  /**
    * Aviso/comunicado geral publicado pelo Admin Rotta (pedido do
    * usuário: "aba de criação de avisos, comunicados e notificações
    * gerais"). Título/corpo já vêm prontos do `CreateAnnouncementDto` —

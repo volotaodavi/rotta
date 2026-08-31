@@ -53,6 +53,7 @@ export class NotificationPriorityClassifierService {
     // frente, mesmo nível de CNH_VENCENDO/PAGAMENTO_RECUSADO.
     VEICULO_REVISAO_APROVADA: IMPORTANTE,
     VEICULO_REVISAO_REPROVADA: URGENTE,
+    CONVERSA_NOVA_MENSAGEM: IMPORTANTE,
   };
 
   classify(tipo: NotificationEventType): NotificationPriority {
