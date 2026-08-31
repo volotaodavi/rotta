@@ -1,5 +1,6 @@
 import { useAuth } from "@rotta/auth/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
+import { driverShadow } from "@rotta/theme";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -106,7 +107,7 @@ export function DriverHistoricoScreen(): JSX.Element {
 
   if (isLoading) {
     return (
-      <VehicleScreen>
+      <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <ActivityIndicator color={accentColor} />
       </VehicleScreen>
     );
@@ -114,7 +115,7 @@ export function DriverHistoricoScreen(): JSX.Element {
 
   if (rotas.length === 0) {
     return (
-      <VehicleScreen>
+      <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <PanelGreeting nome={user?.nome ?? ""} />
         <Text style={{ color: theme.colors.textMuted }}>
           Nenhuma rota atribuída a você ainda: sem histórico para mostrar.
@@ -124,7 +125,7 @@ export function DriverHistoricoScreen(): JSX.Element {
   }
 
   return (
-    <VehicleScreen>
+    <VehicleScreen backgroundColor={theme.colors.driverBackground}>
       <PanelGreeting nome={user?.nome ?? ""} />
       <FiltroTabs filtro={filtro} onChange={setFiltro} />
       {rotas.map((rota) => (
@@ -170,7 +171,13 @@ function TripHistoryCard({ trip }: { trip: Trip }): JSX.Element {
   const rotaPercorrida = positions && positions.length >= 2 ? positions : null;
 
   return (
-    <VehicleCard>
+    <VehicleCard
+      style={[
+        styles.driverCard,
+        { backgroundColor: theme.colors.surfaceElevated },
+        driverShadow[theme.name].native,
+      ]}
+    >
       <View style={styles.header}>
         <Text style={{ color: theme.colors.text }}>
           {new Date(trip.data).toLocaleDateString("pt-BR")}
@@ -217,6 +224,10 @@ function RotaPercorridaPreview({
 }
 
 const styles = StyleSheet.create({
+  // Identidade do Motorista/Monitor (spec 31/08/2026: "sombras discretas
+  // em vez de bordas") — sobrescreve a `borderWidth: 1` padrão de
+  // `VehicleCard` (`style` é aplicado por último no array de estilos dele).
+  driverCard: { borderRadius: 24, borderWidth: 0 },
   filtroRow: { flexDirection: "row", gap: 16 },
   filtroTab: { borderBottomWidth: 2, paddingBottom: 6 },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },

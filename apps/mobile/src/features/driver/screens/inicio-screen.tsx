@@ -129,7 +129,7 @@ export function DriverInicioScreen(): JSX.Element {
 
   if (isLoading) {
     return (
-      <VehicleScreen>
+      <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <ActivityIndicator color={theme.colors.driverPrimary} />
       </VehicleScreen>
     );
@@ -137,7 +137,7 @@ export function DriverInicioScreen(): JSX.Element {
 
   if (rotas.length === 0) {
     return (
-      <VehicleScreen>
+      <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <PanelGreeting nome={user?.nome ?? ""} />
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Nenhuma rota atribuída</Text>
         <Text style={{ color: theme.colors.textMuted }}>
@@ -150,12 +150,18 @@ export function DriverInicioScreen(): JSX.Element {
 
   if (!rotaAtiva) {
     return (
-      <VehicleScreen>
+      <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <PanelGreeting nome={user?.nome ?? ""} />
         <Text style={[styles.titulo, { color: theme.colors.text }]}>Suas rotas</Text>
         {rotas.map((rota) => (
           <Pressable key={rota.id} onPress={() => setSelectedRouteId(rota.id)}>
-            <VehicleCard>
+            <VehicleCard
+              style={[
+                styles.driverCard,
+                { backgroundColor: theme.colors.surfaceElevated },
+                driverShadow[theme.name].native,
+              ]}
+            >
               <Text style={{ color: theme.colors.text }}>{rota.nome}</Text>
               <Text style={{ color: theme.colors.textMuted }}>{TURNO_LABEL[rota.turno]}</Text>
             </VehicleCard>
@@ -330,7 +336,14 @@ function ProximaParadaEtaCard({
   }
 
   return (
-    <VehicleCard style={styles.etaCard}>
+    <VehicleCard
+      style={[
+        styles.etaCard,
+        styles.driverCard,
+        { backgroundColor: theme.colors.surfaceElevated },
+        driverShadow[theme.name].native,
+      ]}
+    >
       <Navigation size={20} color={accentColor} />
       <View style={{ flex: 1 }}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Próxima parada</Text>
@@ -859,7 +872,7 @@ function RotaOperacional({
   }
 
   return (
-    <View style={[styles.opScreen, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.opScreen, { backgroundColor: theme.colors.driverBackground }]}>
       <Modal
         visible={avisoSemVeiculoAberto}
         transparent
@@ -974,7 +987,14 @@ function RotaOperacional({
           confirmados ANTES de apertar "Iniciar viagem".
         */}
         {!trip ? (
-          <VehicleCard style={styles.proximaViagemCard}>
+          <VehicleCard
+            style={[
+              styles.proximaViagemCard,
+              styles.driverCard,
+              { backgroundColor: theme.colors.surfaceElevated },
+              driverShadow[theme.name].native,
+            ]}
+          >
             <Text style={{ color: theme.colors.text, fontWeight: "700" }}>Próxima viagem</Text>
             <View style={styles.mapCardBodyRow}>
               <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
@@ -1004,7 +1024,14 @@ function RotaOperacional({
           resumo de 4 números só com a viagem já rodando ou pausada.
         */}
         {trip && (trip.status === "EM_ANDAMENTO" || trip.status === "PAUSADA") ? (
-          <VehicleCard style={styles.statsCard}>
+          <VehicleCard
+            style={[
+              styles.statsCard,
+              styles.driverCard,
+              { backgroundColor: theme.colors.surfaceElevated },
+              driverShadow[theme.name].native,
+            ]}
+          >
             <TripElapsedTimer
               iniciadaEm={trip.iniciadaEm}
               isRunning={isActive}
@@ -1911,6 +1938,10 @@ const styles = StyleSheet.create({
   },
   controlsRow: { flexDirection: "row", gap: 8 },
   controlsSection: { gap: 8, paddingHorizontal: 16 },
+  // Identidade do Motorista/Monitor (spec 31/08/2026: "sombras discretas
+  // em vez de bordas") — sobrescreve a `borderWidth: 1` padrão de
+  // `VehicleCard` (`style` é aplicado por último no array de estilos dele).
+  driverCard: { borderRadius: 24, borderWidth: 0 },
   etaCard: { alignItems: "center", flexDirection: "row", gap: 12 },
   etaHorario: { alignItems: "center", flexDirection: "row", gap: 4 },
   fsAlvoHeader: {

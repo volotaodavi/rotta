@@ -1,4 +1,5 @@
 import { useAuth } from "@rotta/auth/native";
+import { driverShadow } from "@rotta/theme";
 import { StyleSheet, Text, View } from "react-native";
 
 import { PanelGreeting } from "../components";
@@ -47,10 +48,16 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
   const accentMuted = isMonitor ? theme.colors.monitorAccentMuted : theme.colors.driverPrimaryMuted;
 
   return (
-    <VehicleScreen>
+    <VehicleScreen backgroundColor={theme.colors.driverBackground}>
       <PanelGreeting nome={user?.nome ?? ""} />
 
-      <VehicleCard>
+      <VehicleCard
+        style={[
+          styles.driverCard,
+          { backgroundColor: theme.colors.surfaceElevated },
+          driverShadow[theme.name].native,
+        ]}
+      >
         <View style={styles.header}>
           <View style={[styles.avatar, { backgroundColor: accentMuted }]}>
             <Text style={[styles.avatarLabel, { color: accentColor }]}>{iniciais(user?.nome)}</Text>
@@ -107,6 +114,7 @@ const styles = StyleSheet.create({
     width: 52,
   },
   avatarLabel: { fontSize: 18, fontWeight: "700" },
+  driverCard: { borderRadius: 24, borderWidth: 0 },
   header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
   headerInfo: { flex: 1 },
   nome: { fontSize: 16, fontWeight: "700" },
