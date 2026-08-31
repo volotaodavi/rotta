@@ -11,8 +11,10 @@
  * a Vercel usa `<projectName>.vercel.app` como domínio padrão de
  * produção quando nenhum domínio próprio foi configurado ainda).
  * `NEXT_PUBLIC_WEB_URL` é o escape hatch: dev local (`apps/web` sobe em
- * `:3000`) e o dia em que `rotta.com.br`/`app.rotta.com.br` existir
- * (Dossiê 33 §4) só exigem essa env var, nunca uma mudança de código.
+ * `:3000`) e o dia em que `rottabr.com.br` (domínio oficial confirmado
+ * pelo usuário 31/08/2026, DNS ainda a configurar — Dossiê 33 §4) tiver
+ * o painel apontado nele só exige essa env var, nunca uma mudança de
+ * código.
  */
 export function getWebUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_WEB_URL;

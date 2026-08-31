@@ -2,8 +2,14 @@ import { registerAs } from "@nestjs/config";
 
 const DEFAULT_NOMINATIM_BASE_URL = "https://nominatim.openstreetmap.org";
 const DEFAULT_OSRM_BASE_URL = "https://router.project-osrm.org";
-/** Exigido pela politica de uso do Nominatim publico (identifica a aplicacao que faz a chamada) — sobrescrevivel, nunca lido de `process.env` fora deste arquivo. */
-const DEFAULT_NOMINATIM_USER_AGENT = "RottaGeoPlatform/1.0 (+https://rotta.com.br)";
+/**
+ * Exigido pela politica de uso do Nominatim publico (identifica a
+ * aplicacao que faz a chamada) — sobrescrevivel via `NOMINATIM_USER_AGENT`,
+ * nunca lido de `process.env` fora deste arquivo. `rottabr.com.br` é o
+ * dominio oficial da Rotta (confirmado pelo usuario 31/08/2026); antes
+ * apontava para `rotta.com.br`, que nunca pertenceu a Rotta.
+ */
+const DEFAULT_NOMINATIM_USER_AGENT = "RottaGeoPlatform/1.0 (+https://rottabr.com.br)";
 
 export interface GeoConfig {
   /** Instancia Nominatim usada para geocodificacao — publica por padrao, self-hosted em producao de escala nacional (ver comentario em `GeoEngineService`). */

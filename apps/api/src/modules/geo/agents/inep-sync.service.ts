@@ -24,7 +24,7 @@ const CENSO_ZIP_URL = (ano: number): string =>
  */
 const INEP_DOWNLOAD_HEADERS: Record<string, string> = {
   "User-Agent":
-    "Mozilla/5.0 (compatible; RottaGeoPlatform/1.0; +https://rotta.com.br) EducationSyncAgent",
+    "Mozilla/5.0 (compatible; RottaGeoPlatform/1.0; +https://rottabr.com.br) EducationSyncAgent",
   Accept: "application/zip, application/octet-stream, */*",
 };
 

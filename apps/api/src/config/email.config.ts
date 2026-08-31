@@ -9,7 +9,17 @@ export interface EmailConfig {
 }
 
 const DEFAULT_PROVIDER = "resend";
-const DEFAULT_FROM_ADDRESS = "notificacoes@rotta.com.br";
+/**
+ * `rottabr.com.br` é o domínio oficial da Rotta (confirmado pelo
+ * usuário 31/08/2026) — antes disso o default apontava para
+ * `rotta.com.br`, um domínio que nunca pertenceu à Rotta (página de
+ * revenda de terceiro). Sobrescrevível por `EMAIL_FROM_ADDRESS`, mas só
+ * funciona de verdade depois que este domínio for verificado no
+ * provedor de e-mail ativo (Resend → Domains → adicionar
+ * `rottabr.com.br` → configurar os registros SPF/DKIM/DMARC que a
+ * Resend fornece) — sem essa verificação, a Resend rejeita o envio.
+ */
+const DEFAULT_FROM_ADDRESS = "notificacoes@rottabr.com.br";
 const DEFAULT_FROM_NAME = "Rotta";
 
 /**

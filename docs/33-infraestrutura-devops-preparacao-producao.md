@@ -121,7 +121,7 @@ cabe a uma mudança de código isolada:
 | Backups automáticos                                                                       | Neon e Supabase (Dossiê 31) já fazem backup automático gerenciado do Postgres — não é responsabilidade de código da Rotta reimplementar isso                                                                                                                                                                                                                                                                                                  | Confirmar no painel do provedor escolhido (Neon hoje, Supabase após a migração) a janela de retenção contratada e documentar aqui                                                                                                     |
 | Gestão de segredos além de variável de ambiente                                           | .env + variáveis no painel do Render/Vercel é adequado no estágio atual (poucas pessoas com acesso, sem exigência de compliance formal ainda)                                                                                                                                                                                                                                                                                                 | Migrar para Doppler/Vault/AWS Secrets Manager quando houver exigência de auditoria de acesso a segredo por pessoa                                                                                                                     |
 | Múltiplos ambientes (staging)                                                             | Seria um segundo projeto Render+Vercel+Neon inteiro — decisão de custo recorrente, não só código                                                                                                                                                                                                                                                                                                                                              | Provisionar quando o volume de deploys arriscados justificar o custo extra; `eas.json` já está pronto para receber a URL de staging assim que existir                                                                                 |
-| Subdomínios próprios (`app`/`api`/`admin`/`status`/`blog`/`docs`.rotta.com.br)            | Exige comprar/configurar DNS do domínio `rotta.com.br` — acesso de registrador que este código não tem                                                                                                                                                                                                                                                                                                                                        | Runbook: criar registro CNAME de cada subdomínio apontando pro respectivo serviço (Vercel para web/admin/docs, Render para api), seguido de configurar "Custom Domain" no painel de cada provedor                                     |
+| Subdomínios próprios (`www`/`api`/`admin`.rottabr.com.br)                                 | Domínio oficial confirmado pelo usuário (31/08/2026): `rottabr.com.br` — mas o DNS ainda não está configurado (acesso de registrador que este código não tem)                                                                                                                                                                                                                                                                                 | Runbook completo na §6 abaixo                                                                                                                                                                                                         |
 | LGPD — direito ao esquecimento (exclusão)                                                 | Diferente da exportação (§2.2, seguro de automatizar — é só leitura), excluir de verdade precisa de julgamento de negócio: um `User` com `Contract` ativo, `AuditLog` (retenção legal), ou registro financeiro (`WalletTransaction`, obrigação fiscal) não pode simplesmente sumir — automatizar isso sem essa decisão de produto/jurídica é o tipo de mudança arriscada que a instrução do próprio usuário ("sem dar erros") pede pra evitar | Desenho proposto: `POST /auth/me/deletion-requests` grava um pedido revisável por Admin Rotta (mesma fila de Aprovações do Backoffice, Dossiê 29) — implementar quando o produto decidir a política de retenção por categoria de dado |
 | Conteúdo de listagem de loja (descrições, screenshots, política de privacidade publicada) | Escopo do Prompt 25 (Go-Live), não do 23 (infra) — `eas.json` (infra de build) está pronto, falta o conteúdo de marketing da ficha da loja                                                                                                                                                                                                                                                                                                    | Ver Dossiê a ser escrito quando o Prompt 25 for a vez na sequência                                                                                                                                                                    |
 | Planejamento de escala para 5M responsáveis/500K empresas/1M motoristas/50M viagens       | Ver análise abaixo — não é uma tarefa de código isolada, é uma leitura da arquitetura atual contra os alvos                                                                                                                                                                                                                                                                                                                                   | Análise qualitativa a seguir                                                                                                                                                                                                          |
@@ -150,3 +150,124 @@ inventado — não afirmado aqui.
 | Ambiente de staging                                     | Volume de deploys arriscados justificar o custo                 | Alto — segundo projeto Render+Vercel+Neon completo                                                                                 |
 | Sentry com tracing de performance                       | Sentry (erro) já em produção e sob controle                     | Baixo — subir `tracesSampleRate`                                                                                                   |
 | Status page em infraestrutura independente              | Página atual (`/status`) provar insuficiente num incidente real | Baixo — trocar por embed de um provedor externo                                                                                    |
+
+## 6. Domínio oficial confirmado — `rottabr.com.br` (31/08/2026)
+
+O usuário confirmou `rottabr.com.br` como domínio oficial da Rotta.
+Todo o código já era escrito de propósito para não hardcodar nenhum
+domínio de produção (`getSiteUrl()`/`getWebUrl()`/`getAdminUrl()`
+resolvem por variável de ambiente, com o `<projeto>.vercel.app`/
+`<serviço>.onrender.com` atual como fallback) — então nenhuma mudança
+de código é necessária pra "ativar" o domínio além dos 3 defaults
+abaixo, que apontavam para `rotta.com.br` (nunca pertenceu à Rotta —
+era página de revenda de terceiro) e foram corrigidos nesta entrada:
+`EMAIL_FROM_ADDRESS` default (`email.config.ts`), User-Agent do
+Nominatim (`geo.config.ts`) e User-Agent do Education Sync Agent
+(`inep-sync.service.ts`).
+
+Tudo o que falta é infraestrutura (DNS, painéis de provedor, variáveis
+de ambiente) — nenhuma exige acesso que este código tenha. Mapeamento
+de subdomínio proposto (mesmo padrão já usado: `apps/web` serve
+marketing E painel do cliente num único domínio; `apps/admin` e
+`apps/api` isolados por subdomínio):
+
+| Subdomínio                 | App          | Provedor                                       |
+| -------------------------- | ------------ | ---------------------------------------------- |
+| `rottabr.com.br` (+ `www`) | `apps/web`   | Vercel (`rotta-web`)                           |
+| `admin.rottabr.com.br`     | `apps/admin` | Vercel (`rotta-admin`)                         |
+| `api.rottabr.com.br`       | `apps/api`   | Render (`rotta-vt7i`, nome interno do serviço) |
+
+### 6.1 — No registrador do domínio (DNS)
+
+1. Confirmar a compra/propriedade de `rottabr.com.br` (se ainda não
+   concluída) e ter acesso ao painel de DNS do registrador.
+2. Os registros exatos (CNAME/A) só são conhecidos depois do passo 6.2
+   — a Vercel e o Render mostram o valor certo ao adicionar cada
+   domínio customizado no painel deles. Tipicamente: `www`/`admin` →
+   CNAME para o alvo que a Vercel indicar; raiz (`rottabr.com.br`) →
+   registro `A`/`ALIAS` que a Vercel indicar (domínio raiz não aceita
+   CNAME puro no DNS); `api` → CNAME para o alvo que o Render indicar.
+3. Depois de configurar o e-mail (§6.3), adicionar também os registros
+   TXT (SPF/DMARC) e CNAME (DKIM) que a Resend fornecer — sem eles a
+   Resend rejeita o envio a partir de `@rottabr.com.br`.
+
+### 6.2 — Nos provedores de hospedagem
+
+- **Vercel, projeto `rotta-web`**: Settings → Domains → adicionar
+  `rottabr.com.br` e `www.rottabr.com.br` (redirecionar um pro outro).
+- **Vercel, projeto `rotta-admin`**: Settings → Domains → adicionar
+  `admin.rottabr.com.br`.
+- **Render, serviço da API**: Settings → Custom Domain → adicionar
+  `api.rottabr.com.br`.
+
+### 6.3 — E-mail (Resend)
+
+Sem isso, `EMAIL_FROM_ADDRESS` (default já atualizado pra
+`notificacoes@rottabr.com.br`, ver `email.config.ts`) continua sendo
+recusado pela Resend — a Rotta já manda e-mail de verdade hoje (Dossiê
+34: contratos, suporte, e agora recuperação de senha), só que a partir
+de um domínio que a Resend ainda não verificou.
+
+1. Resend → Domains → Add Domain → `rottabr.com.br`.
+2. Adicionar os registros DNS que a Resend mostrar (SPF/DKIM, e
+   idealmente DMARC) no registrador (§6.1).
+3. Aguardar a verificação (a Resend confirma no próprio painel).
+4. Só depois disso `EMAIL_FROM_ADDRESS=notificacoes@rottabr.com.br`
+   funciona de verdade em produção.
+5. Receber e-mail em `contato@`/`suporte@rottabr.com.br` (não é a
+   mesma coisa que ENVIAR, acima) exige provisionar uma caixa real
+   (ex. Google Workspace) — até isso existir, `CONTACT_EMAIL`/
+   `SUPPORT_EMAIL` (`apps/web/src/lib/site-config.ts`) continuam
+   apontando pra `rottadobrasil@gmail.com` de propósito (endereço real
+   já monitorado hoje).
+
+### 6.4 — Variáveis de ambiente a atualizar (depois de 6.1-6.3 no ar)
+
+| Variável                | Onde                  | Novo valor                                                                                                |
+| ----------------------- | --------------------- | --------------------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_SITE_URL`  | Vercel, `rotta-web`   | `https://rottabr.com.br`                                                                                  |
+| `NEXT_PUBLIC_ADMIN_URL` | Vercel, `rotta-web`   | `https://admin.rottabr.com.br`                                                                            |
+| `NEXT_PUBLIC_WEB_URL`   | Vercel, `rotta-admin` | `https://rottabr.com.br`                                                                                  |
+| `WEB_APP_URL`           | Render, API           | `https://rottabr.com.br`                                                                                  |
+| `ADMIN_APP_URL`         | Render, API           | `https://admin.rottabr.com.br`                                                                            |
+| `API_PUBLIC_URL`        | Render, API           | `https://api.rottabr.com.br`                                                                              |
+| `CORS_ORIGINS`          | Render, API           | acrescentar `https://rottabr.com.br,https://www.rottabr.com.br,https://admin.rottabr.com.br`              |
+| `EMAIL_FROM_ADDRESS`    | Render, API           | `notificacoes@rottabr.com.br` (já é o default — só precisa setar se a env var já existir com outro valor) |
+
+`API_PUBLIC_URL` merece atenção: `DiditWebhookProvisioningService`
+re-registra o destino do webhook da Didit AUTOMATICAMENTE toda vez que
+a API sobe, usando essa variável — trocar `API_PUBLIC_URL` pro domínio
+novo já corrige o destino sozinho, sem precisar mexer no painel da
+Didit manualmente. QStash (`QstashPublisherService`/
+`QstashScheduleService`) também lê a mesma variável pros jobs
+internos — nenhuma ação manual extra aí.
+
+Asaas/AbacatePay: se algum webhook estiver cadastrado manualmente no
+painel deles apontando pro host antigo (`rotta-vt7i.onrender.com`),
+precisa ser atualizado manualmente lá pro domínio novo — nenhum dos
+dois clientes deste código re-registra webhook sozinho (diferente da
+Didit).
+
+### 6.5 — App mobile (Expo/EAS)
+
+`apps/mobile/eas.json` (`build.preview`/`build.production.env`) e
+`apps/mobile/.env.example` apontam pra
+`https://rotta-vt7i.onrender.com/v1` hoje — trocar pra
+`https://api.rottabr.com.br/v1` (`EXPO_PUBLIC_API_URL`) e
+`https://rottabr.com.br` (`EXPO_PUBLIC_WEB_URL`, usado pela WebView de
+Termos/Privacidade — Frente 12) depois que 6.1-6.2 estiverem
+funcionando, e antes do próximo build de produção (`eas build`). O
+identificador do app nas lojas (`br.com.rotta.app`, `app.config.ts`)
+NÃO precisa bater com o domínio — não é um requisito técnico das lojas
+— e não deve ser trocado de qualquer forma depois do primeiro envio à
+Play Store (o `package`/`bundleIdentifier` é permanente).
+
+### 6.6 — Itens opcionais (SEO/verificação)
+
+- Google Search Console: adicionar `rottabr.com.br` como nova
+  propriedade (o token antigo, se existir, não transfere sozinho).
+- Google Analytics: o `NEXT_PUBLIC_GA_MEASUREMENT_ID` continua
+  funcionando no domínio novo sem mudança — GA não amarra o ID a um
+  domínio específico.
+- Nada disso bloqueia o lançamento — são itens de indexação/atribuição,
+  não de funcionamento.

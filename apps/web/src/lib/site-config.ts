@@ -50,9 +50,9 @@ export function getSiteUrl(): string {
  * `<projectName>.vercel.app` como domínio padrão de produção quando
  * nenhum domínio próprio foi configurado ainda). `NEXT_PUBLIC_ADMIN_URL`
  * é o escape hatch: dev local (`pnpm dev:admin` sobe em `:3001`) e o dia
- * em que `admin.rotta.com.br` existir (Dossiê 33 §4 — depende de acesso
- * ao registrador que este código não tem) só exigem essa env var, nunca
- * uma mudança de código.
+ * em que `admin.rottabr.com.br` existir (Dossiê 33 §4 — domínio oficial
+ * confirmado pelo usuário 31/08/2026, DNS ainda a configurar) só exigem
+ * essa env var, nunca uma mudança de código.
  */
 export function getAdminUrl(): string {
   const explicit = process.env.NEXT_PUBLIC_ADMIN_URL;
@@ -121,14 +121,16 @@ export function getGoogleAnalyticsId(): string | undefined {
  * `(marketing)/layout.tsx`). Não existe (e não deve ser inventado)
  * endereço físico, telefone ou DPO nomeado.
  *
- * `rotta.com.br` **não pertence à Rotta hoje** (confirmado ao vivo:
- * hoje é uma página de domínio à venda de terceiro) — os antigos
+ * `rotta.com.br` **nunca pertenceu à Rotta** (confirmado ao vivo: era
+ * uma página de domínio à venda de terceiro) — os antigos
  * `contato@`/`suporte@rotta.com.br` eram endereços que ninguém
- * consegue receber. Pedido explícito do usuário: até o domínio ser
- * comprado, toda comunicação (contato, suporte, segurança e o funil
- * `/governo`) usa a MESMA caixa real, `rottadobrasil@gmail.com` — um
- * único ponto de origem, trocar só aqui no dia em que existirem
- * endereços dedicados em domínio próprio.
+ * conseguia receber. O domínio oficial agora é `rottabr.com.br`
+ * (confirmado pelo usuário 31/08/2026), mas o DNS/e-mail dele ainda não
+ * está configurado (Dossiê 33 §4) — até existir uma caixa real em
+ * `@rottabr.com.br` (ex. Google Workspace), toda comunicação (contato,
+ * suporte, segurança e o funil `/governo`) continua usando a MESMA
+ * caixa real de hoje, `rottadobrasil@gmail.com` — um único ponto de
+ * origem, trocar só aqui no dia em que existir a caixa dedicada.
  */
 export const COMPANY_LEGAL_NAME = "Rotta do Brasil Tecnologia e Soluções de Transportes";
 export const COMPANY_CNPJ = "54.623.584/0001-80";
