@@ -177,19 +177,44 @@ marketing E painel do cliente num único domínio; `apps/admin` e
 | `admin.rottabr.com.br`     | `apps/admin` | Vercel (`rotta-admin`)                         |
 | `api.rottabr.com.br`       | `apps/api`   | Render (`rotta-vt7i`, nome interno do serviço) |
 
-### 6.1 — No registrador do domínio (DNS)
+### 6.1 — No Registro.br (confirmado 31/08/2026: comprado lá)
 
-1. Confirmar a compra/propriedade de `rottabr.com.br` (se ainda não
-   concluída) e ter acesso ao painel de DNS do registrador.
-2. Os registros exatos (CNAME/A) só são conhecidos depois do passo 6.2
-   — a Vercel e o Render mostram o valor certo ao adicionar cada
-   domínio customizado no painel deles. Tipicamente: `www`/`admin` →
-   CNAME para o alvo que a Vercel indicar; raiz (`rottabr.com.br`) →
-   registro `A`/`ALIAS` que a Vercel indicar (domínio raiz não aceita
-   CNAME puro no DNS); `api` → CNAME para o alvo que o Render indicar.
-3. Depois de configurar o e-mail (§6.3), adicionar também os registros
-   TXT (SPF/DMARC) e CNAME (DKIM) que a Resend fornecer — sem eles a
-   Resend rejeita o envio a partir de `@rottabr.com.br`.
+O Registro.br é o próprio registrador oficial de domínios `.br`
+(NIC.br) — diferente de um registrador genérico (GoDaddy/Namecheap),
+ele já vem com um servidor DNS próprio incluso, então normalmente **não
+é necessário delegar pra outro provedor de DNS** (ex. Cloudflare) só
+pra este setup.
+
+1. Login em `registro.br` → menu do usuário → domínio `rottabr.com.br`.
+2. Aba **"DNS"** do domínio. Duas opções aparecem lá:
+   - **"DNS do Registro.br"** — hospeda a zona no próprio Registro.br e
+     deixa editar os registros (A/CNAME/TXT/MX) direto no painel deles.
+     **Esta é a opção certa aqui** — mais simples, nenhuma conta extra.
+   - **"Meus servidores DNS"** — delega a zona inteira pra outro
+     provedor (trocando os nameservers). Só necessário se decidirem
+     usar Cloudflare (proxy/CDN) ou outro DNS gerenciado no futuro —
+     não é preciso pra simplesmente apontar pra Vercel/Render/Resend.
+3. Com "DNS do Registro.br" selecionado, entrar em **"Editar Zona"**
+   (às vezes chamado "Editor de Zona avançado") — é lá que os registros
+   individuais abaixo são criados um a um.
+4. Os valores exatos (CNAME/A/TXT) só são conhecidos depois do passo
+   6.2/6.3 — a Vercel, o Render e a Resend mostram o valor certo ao
+   adicionar cada domínio/verificação no painel deles; **copiar o valor
+   exibido ali, nunca reutilizar um valor de outro projeto/tutorial**.
+   Padrão típico (confirmar contra o que cada painel mostrar):
+   - `rottabr.com.br` (raiz, nome `@`) → registro **A** pro IP que a
+     Vercel indicar (domínio raiz não aceita CNAME puro em DNS).
+   - `www` → **CNAME** pro alvo que a Vercel indicar.
+   - `admin` → **CNAME** pro alvo que a Vercel indicar (projeto
+     `rotta-admin`).
+   - `api` → **CNAME** pro host que o Render indicar.
+   - Registros de e-mail (SPF/DKIM da Resend, §6.3) → **TXT**/**CNAME**
+     conforme a Resend especificar.
+5. Propagação: o Registro.br costuma propagar rápido (minutos a
+   poucas horas), mas o TTL pode levar até 24-48h pra atualizar em
+   todo lugar do mundo — os painéis da Vercel/Render/Resend mostram um
+   selo "Verificado"/"Válido" assim que enxergarem o registro certo,
+   sem precisar ficar recarregando.
 
 ### 6.2 — Nos provedores de hospedagem
 
