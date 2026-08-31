@@ -862,14 +862,15 @@ model User {
   /// `User` pode também aparecer como `contratosMotorista`/
   /// `contratosMonitor` quando atua como Motorista/Monitor de uma
   /// Empresa (Dossiê 8 §2 — "múltiplos papéis simultâneos").
-  alunos                  Student[]                @relation("StudentResponsavel")
-  desviosEnderecoCriados  StudentAddressOverride[] @relation("StudentAddressOverrideCriadoPor")
-  ausenciasDiariasCriadas StudentDailyAbsence[]    @relation("StudentDailyAbsenceCriadoPor")
-  solicitacoesTransporte  TransportRequest[]       @relation("TransportRequestResponsavel")
-  contratos               Contract[]               @relation("ContractResponsavel")
-  contratosMotorista      Contract[]               @relation("ContractMotorista")
-  contratosMonitor        Contract[]               @relation("ContractMonitor")
-  avaliacoesFeitas        Rating[]                 @relation("RatingResponsavel")
+  alunos                            Student[]                          @relation("StudentResponsavel")
+  desviosEnderecoCriados            StudentAddressOverride[]           @relation("StudentAddressOverrideCriadoPor")
+  desviosEnderecoRecorrentesCriados StudentAddressOverrideRecurrence[] @relation("StudentAddressOverrideRecurrenceCriadoPor")
+  ausenciasDiariasCriadas           StudentDailyAbsence[]              @relation("StudentDailyAbsenceCriadoPor")
+  solicitacoesTransporte            TransportRequest[]                 @relation("TransportRequestResponsavel")
+  contratos                         Contract[]                         @relation("ContractResponsavel")
+  contratosMotorista                Contract[]                         @relation("ContractMotorista")
+  contratosMonitor                  Contract[]                         @relation("ContractMonitor")
+  avaliacoesFeitas                  Rating[]                           @relation("RatingResponsavel")
 
   /// Relações do módulo Communication (briefing "ROTTA COMMUNICATION
   /// ENGINE") — inbox pessoal, dispositivos com Token FCM e preferências
@@ -1894,13 +1895,14 @@ model Student {
   /// Soft delete — mesma convenção de `School.deletedAt`.
   deletedAt DateTime?
 
-  pessoasAutorizadas StudentAuthorizedPerson[]
-  transportRequests  TransportRequest[]
-  contracts          Contract[]
-  vinculosRota       RouteStudent[]
-  eventosViagem      TripStudentEvent[]
-  desviosEndereco    StudentAddressOverride[]
-  ausenciasDiarias   StudentDailyAbsence[]
+  pessoasAutorizadas         StudentAuthorizedPerson[]
+  transportRequests          TransportRequest[]
+  contracts                  Contract[]
+  vinculosRota               RouteStudent[]
+  eventosViagem              TripStudentEvent[]
+  desviosEndereco            StudentAddressOverride[]
+  desviosEnderecoRecorrentes StudentAddressOverrideRecurrence[]
+  ausenciasDiarias           StudentDailyAbsence[]
 
   @@index([responsavelId, deletedAt])
   @@index([schoolId])
@@ -1936,6 +1938,19 @@ enum StudentAddressOverrideTrecho {
   AMBOS
 }
 
+/// Frente 10(c) — "embarque adiado" (pedido do usuário: "informar que o
+/// aluno não embarcará naquele momento, mas será embarcado em outro
+/// momento... se ele vai buscar na escola ou em outro local/residência").
+/// RESIDENCIA/ESCOLA resolvem pro endereço já cadastrado (do aluno ou da
+/// escola vinculada) sem exigir novo pino no mapa; OUTRO (padrão, mesmo
+/// comportamento de todo registro anterior a esta Frente) exige os
+/// campos de endereço abaixo preenchidos, igual sempre foi.
+enum StudentAddressOverrideLocalTipo {
+  RESIDENCIA
+  ESCOLA
+  OUTRO
+}
+
 /// Desvio de endereço agendado pelo Responsável para UM dia específico
 /// (calendário + painel — pedido do usuário: "informar se algum dia ele
 /// irá para outro endereço... até antes da van iniciar o novo
@@ -1959,6 +1974,71 @@ model StudentAddressOverride {
   data   DateTime                     @db.Date
   trecho StudentAddressOverrideTrecho
 
+  /// Frente 10(c) — ver doc do enum. `OUTRO` é o valor implícito de todo
+  /// registro criado antes desta Frente (mesmo comportamento: endereço
+  /// novo obrigatório abaixo).
+  localTipo StudentAddressOverrideLocalTipo @default(OUTRO)
+
+  /// Obrigatórios só quando `localTipo = OUTRO` (validado no DTO,
+  /// `CreateStudentAddressOverrideDto`) — RESIDENCIA/ESCOLA resolvem o
+  /// endereço em tempo de leitura (`resolverPendencia`,
+  /// `TripsService`), sem precisar duplicar aqui.
+  cep         String?
+  logradouro  String?
+  numero      String?
+  complemento String?
+  bairro      String?
+  cidade      String?
+  estado      String?
+  latitude    Decimal? @db.Decimal(9, 6)
+  longitude   Decimal? @db.Decimal(9, 6)
+
+  /// Frente 10(c) — "embarque adiado" a outro horário no mesmo dia
+  /// (pedido do usuário: "o transportador deverá buscar em outro
+  /// momento - horário"), formato "HH:mm". Quando preenchido, substitui
+  /// o `horarioPrevisto` da parada só pra este aluno hoje (ver
+  /// `resolverPendencia` em `TripsService`); `null` mantém o horário
+  /// normal da parada (mesmo comportamento de sempre).
+  horarioAlternativo String? @db.VarChar(5)
+
+  observacao String?
+
+  criadoPorUserId String @db.Uuid
+  criadoPor       User   @relation("StudentAddressOverrideCriadoPor", fields: [criadoPorUserId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, data])
+  @@index([studentId, data])
+  @@map("student_address_overrides")
+}
+
+/// Frente 10(b) — endereço alternativo RECORRENTE (pedido do usuário:
+/// "mudança de endereço... na ocasionalidade ele pode escolher os dias
+/// que pode mudar"), ao lado de `StudentAddressOverride` (dia único
+/// avulso). Resolvida em `StudentsService.resolveEffectiveOverride`: um
+/// `StudentAddressOverride` explícito pro dia sempre vence uma regra
+/// recorrente que também bata nesse dia (mais específico ganha), então
+/// o Responsável pode sempre sobrescrever um dia específico sem apagar
+/// a regra recorrente inteira.
+model StudentAddressOverrideRecurrence {
+  id        String  @id @default(uuid()) @db.Uuid
+  studentId String  @db.Uuid
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  /// 0=domingo..6=sábado (convenção `Date#getUTCDay()`), sem duplicatas
+  /// — validado no DTO (`CreateStudentAddressOverrideRecurrenceDto`).
+  diasSemana Int[]
+
+  /// Intervalo de vigência da regra — mesma convenção `@db.Date` de
+  /// `StudentAddressOverride.data`. `vigenciaFim` nulo = por tempo
+  /// indeterminado, até o Responsável remover a regra.
+  vigenciaInicio DateTime  @db.Date
+  vigenciaFim    DateTime? @db.Date
+
+  trecho StudentAddressOverrideTrecho
+
   cep         String
   logradouro  String
   numero      String
@@ -1972,14 +2052,13 @@ model StudentAddressOverride {
   observacao String?
 
   criadoPorUserId String @db.Uuid
-  criadoPor       User   @relation("StudentAddressOverrideCriadoPor", fields: [criadoPorUserId], references: [id], onDelete: Restrict)
+  criadoPor       User   @relation("StudentAddressOverrideRecurrenceCriadoPor", fields: [criadoPorUserId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([studentId, data])
-  @@index([studentId, data])
-  @@map("student_address_overrides")
+  @@index([studentId])
+  @@map("student_address_override_recurrences")
 }
 
 /// "Meu filho não vai hoje" (Epic C, Responsável) — marcado ANTES da

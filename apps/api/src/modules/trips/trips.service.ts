@@ -1100,6 +1100,35 @@ export class TripsService {
       const override = overridesByStudent.get(vinculo.studentId);
       const trechoAplica = !!override && (override.trecho === "AMBOS" || override.trecho === tipo);
       if (override && trechoAplica) {
+        // Frente 10(c) — "embarque adiado": horário alternativo sempre
+        // sobrescreve o previsto da parada, independente de mudar
+        // endereço ou não.
+        const horarioPrevisto = override.horarioAlternativo ?? stop?.horarioPrevisto ?? "";
+        // `localTipo = RESIDENCIA` (pedido do usuário: "buscar em outro
+        // momento - horário... ou em outro local/residência") não muda
+        // NADA de endereço — é o mesmo pino de sempre, só horário
+        // diferente. `latitude`/`longitude` nulos no override (mesma
+        // convenção de `OUTRO` incompleto) caem aqui também, então
+        // reaproveita o `stop` normal em vez de inventar uma
+        // coordenada — mesma trava de Null Island do bloco abaixo.
+        // `waypointId` continua SINTÉTICO mesmo aqui (nunca `routeStopId`
+        // cru): `listParadasPendentes` devolve o `stop` original sem
+        // passar pelos campos desta pendência quando `waypointId ===
+        // stop.id` (otimização de "nada mudou aqui") — o que
+        // silenciosamente descartaria o `horarioPrevisto` sobrescrito.
+        if (override.latitude === null || override.longitude === null) {
+          if (!stop || (Number(stop.latitude) === 0 && Number(stop.longitude) === 0)) return null;
+          return {
+            vinculo,
+            tipo,
+            routeStopId,
+            waypointId: `override:${override.id}`,
+            latitude: stop.latitude,
+            longitude: stop.longitude,
+            endereco: stop.endereco,
+            horarioPrevisto,
+          };
+        }
         return {
           vinculo,
           tipo,
@@ -1108,7 +1137,7 @@ export class TripsService {
           latitude: override.latitude,
           longitude: override.longitude,
           endereco: `${override.logradouro}, ${override.numero} - ${override.bairro}, ${override.cidade}/${override.estado}`,
-          horarioPrevisto: stop?.horarioPrevisto ?? "",
+          horarioPrevisto,
         };
       }
       // `stop` pode não existir mais (parada removida/recriada da rota

@@ -1,9 +1,11 @@
 import { Module } from "@nestjs/common";
 
+import { PrismaStudentAddressOverrideRecurrenceRepository } from "./repositories/prisma-student-address-override-recurrence.repository";
 import { PrismaStudentAddressOverrideRepository } from "./repositories/prisma-student-address-override.repository";
 import { PrismaStudentAuthorizedPersonRepository } from "./repositories/prisma-student-authorized-person.repository";
 import { PrismaStudentRepository } from "./repositories/prisma-student.repository";
 import {
+  STUDENT_ADDRESS_OVERRIDE_RECURRENCE_REPOSITORY,
   STUDENT_ADDRESS_OVERRIDE_REPOSITORY,
   STUDENT_AUTHORIZED_PERSON_REPOSITORY,
   STUDENT_REPOSITORY,
@@ -72,6 +74,10 @@ import { StudentPreRegistrationsModule } from "@/modules/student-pre-registratio
     {
       provide: STUDENT_ADDRESS_OVERRIDE_REPOSITORY,
       useClass: PrismaStudentAddressOverrideRepository,
+    },
+    {
+      provide: STUDENT_ADDRESS_OVERRIDE_RECURRENCE_REPOSITORY,
+      useClass: PrismaStudentAddressOverrideRecurrenceRepository,
     },
   ],
   exports: [StudentsService],

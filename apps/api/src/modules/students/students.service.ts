@@ -7,28 +7,37 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { NotificationEventType, type Student } from "@prisma/client";
+import {
+  NotificationEventType,
+  StudentAddressOverrideLocalTipo,
+  type Student,
+} from "@prisma/client";
 
 import { STUDENT_CREDENTIALED_EVENT } from "./events/student-credentialed.event";
+import { toStudentAddressOverrideRecurrenceResponseDto } from "./mappers/student-address-override-recurrence.mapper";
 import { toStudentAddressOverrideResponseDto } from "./mappers/student-address-override.mapper";
 import { toStudentAuthorizedPersonResponseDto } from "./mappers/student-authorized-person.mapper";
 import { toStudentResponseDto } from "./mappers/student.mapper";
 import {
+  STUDENT_ADDRESS_OVERRIDE_RECURRENCE_REPOSITORY,
   STUDENT_ADDRESS_OVERRIDE_REPOSITORY,
   STUDENT_AUTHORIZED_PERSON_REPOSITORY,
   STUDENT_REPOSITORY,
 } from "./students.constants";
 
+import type { CreateStudentAddressOverrideRecurrenceDto } from "./dto/create-student-address-override-recurrence.dto";
 import type { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
 import type { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
 import type { CreateStudentDto } from "./dto/create-student.dto";
 import type { ListStudentsQueryDto } from "./dto/list-students-query.dto";
 import type { MarkStudentDailyAbsenceDto } from "./dto/mark-student-daily-absence.dto";
+import type { StudentAddressOverrideRecurrenceResponseDto } from "./dto/student-address-override-recurrence-response.dto";
 import type { StudentAddressOverrideResponseDto } from "./dto/student-address-override-response.dto";
 import type { StudentAuthorizedPersonResponseDto } from "./dto/student-authorized-person-response.dto";
 import type { StudentDailyAbsenceResponseDto } from "./dto/student-daily-absence-response.dto";
 import type { ListStudentsResponseDto, StudentResponseDto } from "./dto/student-response.dto";
 import type { UpdateStudentDto } from "./dto/update-student.dto";
+import type { StudentAddressOverrideRecurrenceRepository } from "./repositories/student-address-override-recurrence.repository";
 import type { StudentAddressOverrideRepository } from "./repositories/student-address-override.repository";
 import type { StudentAuthorizedPersonRepository } from "./repositories/student-authorized-person.repository";
 import type { StudentAccessScope, StudentRepository } from "./repositories/student.repository";
@@ -80,6 +89,8 @@ export class StudentsService {
     private readonly preRegistrationRepository: StudentPreRegistrationRepository,
     @Inject(STUDENT_ADDRESS_OVERRIDE_REPOSITORY)
     private readonly addressOverrideRepository: StudentAddressOverrideRepository,
+    @Inject(STUDENT_ADDRESS_OVERRIDE_RECURRENCE_REPOSITORY)
+    private readonly addressOverrideRecurrenceRepository: StudentAddressOverrideRecurrenceRepository,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -511,19 +522,26 @@ export class StudentsService {
     const dia = this.parseDataOnly(dto.data);
     await this.assertDiaAindaNaoIniciado(studentId, dia);
 
+    const localTipo = dto.localTipo ?? StudentAddressOverrideLocalTipo.OUTRO;
     const override = await this.addressOverrideRepository.upsert({
       studentId,
       data: dia,
       trecho: dto.trecho,
-      cep: dto.cep,
-      logradouro: dto.logradouro,
-      numero: dto.numero,
-      complemento: dto.complemento,
-      bairro: dto.bairro,
-      cidade: dto.cidade,
-      estado: dto.estado,
-      latitude: dto.latitude,
-      longitude: dto.longitude,
+      localTipo,
+      // RESIDENCIA/ESCOLA resolvem o endereço em tempo de leitura
+      // (`resolverPendencia`, `TripsService`) — nunca gravar o endereço
+      // enviado nesses casos, mesmo que o cliente tenha mandado algo.
+      cep: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.cep : undefined,
+      logradouro: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.logradouro : undefined,
+      numero: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.numero : undefined,
+      complemento:
+        localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.complemento : undefined,
+      bairro: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.bairro : undefined,
+      cidade: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.cidade : undefined,
+      estado: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.estado : undefined,
+      latitude: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.latitude : undefined,
+      longitude: localTipo === StudentAddressOverrideLocalTipo.OUTRO ? dto.longitude : undefined,
+      horarioAlternativo: dto.horarioAlternativo,
       observacao: dto.observacao,
       criadoPorUserId: actor.sub,
     });
@@ -532,7 +550,12 @@ export class StudentsService {
       entidadeId: studentId,
       acao: "ADDRESS_OVERRIDE_SET",
       atorUserId: actor.sub,
-      dadosDepois: { data: dto.data, trecho: dto.trecho },
+      dadosDepois: {
+        data: dto.data,
+        trecho: dto.trecho,
+        localTipo,
+        horario: dto.horarioAlternativo,
+      },
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
@@ -583,6 +606,93 @@ export class StudentsService {
     });
   }
 
+  // ---------------------------------------------------------------------
+  // Frente 10(b) — endereço alternativo RECORRENTE (pedido do usuário:
+  // "mudança de endereço... na ocasionalidade ele pode escolher os dias
+  // que pode mudar"), ao lado do desvio de dia único acima.
+  // ---------------------------------------------------------------------
+
+  async createAddressOverrideRecurrence(
+    studentId: string,
+    dto: CreateStudentAddressOverrideRecurrenceDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<StudentAddressOverrideRecurrenceResponseDto> {
+    const student = await this.fetchOrThrow(studentId, actor);
+    this.assertOwnedByActor(student, actor);
+
+    const vigenciaInicio = this.parseDataOnly(dto.vigenciaInicio);
+    const vigenciaFim = dto.vigenciaFim ? this.parseDataOnly(dto.vigenciaFim) : undefined;
+    if (vigenciaFim && vigenciaFim < vigenciaInicio) {
+      throw new BadRequestException("vigenciaFim não pode ser anterior a vigenciaInicio.");
+    }
+
+    const regra = await this.addressOverrideRecurrenceRepository.create({
+      studentId,
+      diasSemana: dto.diasSemana,
+      vigenciaInicio,
+      vigenciaFim,
+      trecho: dto.trecho,
+      cep: dto.cep,
+      logradouro: dto.logradouro,
+      numero: dto.numero,
+      complemento: dto.complemento,
+      bairro: dto.bairro,
+      cidade: dto.cidade,
+      estado: dto.estado,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      observacao: dto.observacao,
+      criadoPorUserId: actor.sub,
+    });
+
+    await this.recordAudit({
+      entidadeId: studentId,
+      acao: "ADDRESS_OVERRIDE_RECURRENCE_CREATED",
+      atorUserId: actor.sub,
+      dadosDepois: { diasSemana: dto.diasSemana, vigenciaInicio: dto.vigenciaInicio },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toStudentAddressOverrideRecurrenceResponseDto(regra);
+  }
+
+  async listAddressOverrideRecurrences(
+    studentId: string,
+    actor: AuthenticatedUser,
+  ): Promise<StudentAddressOverrideRecurrenceResponseDto[]> {
+    await this.fetchOrThrow(studentId, actor);
+    const regras = await this.addressOverrideRecurrenceRepository.listByStudent(studentId);
+    return regras.map(toStudentAddressOverrideRecurrenceResponseDto);
+  }
+
+  async removeAddressOverrideRecurrence(
+    studentId: string,
+    recurrenceId: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<void> {
+    const student = await this.fetchOrThrow(studentId, actor);
+    this.assertOwnedByActor(student, actor);
+
+    const regra = await this.addressOverrideRecurrenceRepository.findById(recurrenceId);
+    if (!regra || regra.studentId !== studentId) {
+      throw new NotFoundException("Regra de endereço recorrente não encontrada.");
+    }
+
+    await this.addressOverrideRecurrenceRepository.remove(recurrenceId);
+
+    await this.recordAudit({
+      entidadeId: studentId,
+      acao: "ADDRESS_OVERRIDE_RECURRENCE_REMOVED",
+      atorUserId: actor.sub,
+      dadosAntes: { diasSemana: regra.diasSemana },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+  }
+
   /**
    * Leitura interna (sem RBAC de ator humano, mesmo padrão de
    * `CompaniesService.getNomeFantasia`) usada por `TripsService` pra
@@ -602,12 +712,119 @@ export class StudentsService {
         where: { studentId: { in: studentIds }, data },
       }),
     );
-    return new Map(
+    const resolved = new Map(
       overrides.map((override) => [
         override.studentId,
         toStudentAddressOverrideResponseDto(override),
       ]),
     );
+
+    // Frente 10(b) — regra recorrente só entra em jogo pra quem NÃO tem
+    // um desvio explícito pro dia exato (mais específico sempre vence,
+    // ver doc do model no schema).
+    const restantes = studentIds.filter((id) => !resolved.has(id));
+    if (restantes.length > 0) {
+      await this.resolveRecurrencesInto(resolved, restantes, data);
+    }
+
+    await this.resolveEscolaOverridesInto(resolved);
+
+    return resolved;
+  }
+
+  /**
+   * Preenche `resolved` com a regra recorrente (`StudentAddressOverrideRecurrence`)
+   * que bater pro dia da semana de `data`, dentro da vigência — só pros
+   * `studentIds` que ainda não têm entrada (desvio de dia único tem
+   * prioridade, ver chamador). Duas regras recorrentes do mesmo aluno
+   * cobrindo o mesmo dia da semana é uma condição de borda que o
+   * Responsável não deveria conseguir criar pela API (mas nada impede
+   * hoje) — resolve pela mais recente (`createdAt`), mesma convenção de
+   * "o registro mais novo vence" já usada em `upsert`.
+   */
+  private async resolveRecurrencesInto(
+    resolved: Map<string, StudentAddressOverrideResponseDto>,
+    studentIds: string[],
+    data: Date,
+  ): Promise<void> {
+    const diaSemana = data.getUTCDay();
+    const regras = await this.prisma.withBypass(
+      this.prisma.studentAddressOverrideRecurrence.findMany({
+        where: {
+          studentId: { in: studentIds },
+          diasSemana: { has: diaSemana },
+          vigenciaInicio: { lte: data },
+          OR: [{ vigenciaFim: null }, { vigenciaFim: { gte: data } }],
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    );
+    for (const regra of regras) {
+      if (resolved.has(regra.studentId)) continue; // já resolvido por uma regra mais recente
+      resolved.set(regra.studentId, {
+        id: regra.id,
+        studentId: regra.studentId,
+        data: data.toISOString().slice(0, 10),
+        trecho: regra.trecho,
+        localTipo: StudentAddressOverrideLocalTipo.OUTRO,
+        cep: regra.cep,
+        logradouro: regra.logradouro,
+        numero: regra.numero,
+        complemento: regra.complemento,
+        bairro: regra.bairro,
+        cidade: regra.cidade,
+        estado: regra.estado,
+        latitude: Number(regra.latitude),
+        longitude: Number(regra.longitude),
+        horarioAlternativo: null,
+        observacao: regra.observacao,
+        createdAt: regra.createdAt,
+        updatedAt: regra.updatedAt,
+      });
+    }
+  }
+
+  /**
+   * Frente 10(c) — `localTipo = ESCOLA` ("vai buscar... na escola")
+   * não guarda endereço próprio (ver schema) — resolve aqui pro
+   * endereço já cadastrado da escola vinculada ao aluno. Escola sem
+   * coordenada própria (`latitude`/`longitude` nulos, condição de
+   * negócio válida — nem toda escola foi geocodificada ainda) deixa o
+   * override sem endereço, igual RESIDENCIA: `TripsService` cai pro
+   * `stop` normal e só aplica o horário alternativo.
+   */
+  private async resolveEscolaOverridesInto(
+    resolved: Map<string, StudentAddressOverrideResponseDto>,
+  ): Promise<void> {
+    const idsEscola = [...resolved.entries()]
+      .filter(([, override]) => override.localTipo === StudentAddressOverrideLocalTipo.ESCOLA)
+      .map(([studentId]) => studentId);
+    if (idsEscola.length === 0) return;
+
+    const alunos = await this.prisma.withBypass(
+      this.prisma.student.findMany({
+        where: { id: { in: idsEscola } },
+        select: { id: true, school: true },
+      }),
+    );
+    for (const aluno of alunos) {
+      const override = resolved.get(aluno.id);
+      if (!override) continue;
+      const { school } = aluno;
+      if (school.latitude === null || school.longitude === null) continue;
+      resolved.set(aluno.id, {
+        ...override,
+        cep: school.cep,
+        logradouro: school.logradouro,
+        numero: school.numero,
+        complemento: school.complemento,
+        bairro: school.bairro,
+        cidade: school.cidade,
+        estado: school.estado,
+        latitude: Number(school.latitude),
+        longitude: Number(school.longitude),
+      });
+    }
   }
 
   // ---------------------------------------------------------------------

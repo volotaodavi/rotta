@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from "@nes
 
 import { StudentsService } from "../students.service";
 
+import type { StudentAddressOverrideRecurrenceRepository } from "../repositories/student-address-override-recurrence.repository";
 import type { StudentAddressOverrideRepository } from "../repositories/student-address-override.repository";
 import type { StudentAuthorizedPersonRepository } from "../repositories/student-authorized-person.repository";
 import type { StudentRepository } from "../repositories/student.repository";
@@ -153,6 +154,7 @@ describe("StudentsService", () => {
   let schoolRepository: jest.Mocked<SchoolRepository>;
   let preRegistrationRepository: jest.Mocked<StudentPreRegistrationRepository>;
   let addressOverrideRepository: jest.Mocked<StudentAddressOverrideRepository>;
+  let addressOverrideRecurrenceRepository: jest.Mocked<StudentAddressOverrideRecurrenceRepository>;
   let prisma: jest.Mocked<PrismaService>;
   // Métodos genéricos do Prisma Client não tipam bem com `jest.Mocked<T>`
   // (TS não consegue inferir `MockedFunction` pra métodos genéricos dos
@@ -163,6 +165,9 @@ describe("StudentsService", () => {
   let studentDailyAbsenceFindUnique: jest.Mock;
   let studentDailyAbsenceDelete: jest.Mock;
   let studentDailyAbsenceFindMany: jest.Mock;
+  let studentAddressOverrideFindMany: jest.Mock;
+  let studentAddressOverrideRecurrenceFindMany: jest.Mock;
+  let studentFindMany: jest.Mock;
 
   beforeEach(() => {
     studentRepository = {
@@ -224,12 +229,21 @@ describe("StudentsService", () => {
       listByStudent: jest.fn(),
       remove: jest.fn(),
     };
+    addressOverrideRecurrenceRepository = {
+      create: jest.fn(),
+      findById: jest.fn(),
+      listByStudent: jest.fn(),
+      remove: jest.fn(),
+    };
     routeStudentFindMany = jest.fn().mockResolvedValue([]);
     tripFindFirst = jest.fn().mockResolvedValue(null);
     studentDailyAbsenceUpsert = jest.fn();
     studentDailyAbsenceFindUnique = jest.fn().mockResolvedValue(null);
     studentDailyAbsenceDelete = jest.fn();
     studentDailyAbsenceFindMany = jest.fn().mockResolvedValue([]);
+    studentAddressOverrideFindMany = jest.fn().mockResolvedValue([]);
+    studentAddressOverrideRecurrenceFindMany = jest.fn().mockResolvedValue([]);
+    studentFindMany = jest.fn().mockResolvedValue([]);
     prisma = {
       withBypass: jest.fn((operation: unknown) => operation),
       routeStudent: { findMany: routeStudentFindMany },
@@ -240,6 +254,9 @@ describe("StudentsService", () => {
         delete: studentDailyAbsenceDelete,
         findMany: studentDailyAbsenceFindMany,
       },
+      studentAddressOverride: { findMany: studentAddressOverrideFindMany },
+      studentAddressOverrideRecurrence: { findMany: studentAddressOverrideRecurrenceFindMany },
+      student: { findMany: studentFindMany },
     } as unknown as jest.Mocked<PrismaService>;
 
     service = new StudentsService(
@@ -252,6 +269,7 @@ describe("StudentsService", () => {
       schoolRepository,
       preRegistrationRepository,
       addressOverrideRepository,
+      addressOverrideRecurrenceRepository,
       prisma,
     );
   });
@@ -627,6 +645,241 @@ describe("StudentsService", () => {
       await expect(
         service.removeAddressOverride("student-1", "override-1", responsavelActor, {}),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("Frente 10(b) — endereço alternativo RECORRENTE", () => {
+    const recurrenceDto = {
+      diasSemana: [2, 4],
+      vigenciaInicio: "2026-09-01",
+      trecho: "AMBOS",
+      cep: "20000000",
+      logradouro: "Rua do Pai",
+      numero: "10",
+      bairro: "Centro",
+      cidade: "Rio de Janeiro",
+      estado: "RJ",
+      latitude: -22.9,
+      longitude: -43.2,
+    };
+
+    it("cria a regra recorrente pro dono do aluno", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      addressOverrideRecurrenceRepository.create.mockResolvedValue({
+        id: "recorrencia-1",
+        studentId: "student-1",
+        diasSemana: [2, 4],
+        vigenciaInicio: new Date("2026-09-01T00:00:00.000Z"),
+        vigenciaFim: null,
+        trecho: "AMBOS",
+        cep: "20000000",
+        logradouro: "Rua do Pai",
+        numero: "10",
+        complemento: null,
+        bairro: "Centro",
+        cidade: "Rio de Janeiro",
+        estado: "RJ",
+        latitude: -22.9,
+        longitude: -43.2,
+        observacao: null,
+        criadoPorUserId: "responsavel-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as never);
+
+      const result = await service.createAddressOverrideRecurrence(
+        "student-1",
+        recurrenceDto as never,
+        responsavelActor,
+        {},
+      );
+
+      expect(result.diasSemana).toEqual([2, 4]);
+      expect(addressOverrideRecurrenceRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ studentId: "student-1", criadoPorUserId: "responsavel-1" }),
+      );
+    });
+
+    it("rejeita vigenciaFim anterior a vigenciaInicio", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+
+      await expect(
+        service.createAddressOverrideRecurrence(
+          "student-1",
+          { ...recurrenceDto, vigenciaFim: "2026-08-01" } as never,
+          responsavelActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(addressOverrideRecurrenceRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("rejeita um Responsável que não é dono do aluno", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+
+      await expect(
+        service.createAddressOverrideRecurrence(
+          "student-1",
+          recurrenceDto as never,
+          outroResponsavelActor,
+          {},
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("rejeita remover uma regra de outro aluno (id não bate)", async () => {
+      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
+      addressOverrideRecurrenceRepository.findById.mockResolvedValue({
+        id: "recorrencia-1",
+        studentId: "student-outro",
+      } as never);
+
+      await expect(
+        service.removeAddressOverrideRecurrence("student-1", "recorrencia-1", responsavelActor, {}),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe("listAddressOverridesByStudentsAndDate (resolução usada por TripsService)", () => {
+    // Terça-feira, mesma convenção de `Date#getUTCDay()` (2) usada pela
+    // regra recorrente.
+    const terca = new Date("2026-09-01T00:00:00.000Z");
+
+    it("um desvio de dia único explícito sempre vence uma regra recorrente que também bata no mesmo dia", async () => {
+      studentAddressOverrideFindMany.mockResolvedValue([
+        {
+          id: "override-1",
+          studentId: "student-1",
+          data: terca,
+          trecho: "AMBOS",
+          localTipo: "OUTRO",
+          cep: "20000000",
+          logradouro: "Rua Explícita",
+          numero: "1",
+          complemento: null,
+          bairro: "Centro",
+          cidade: "Rio de Janeiro",
+          estado: "RJ",
+          latitude: -22.9,
+          longitude: -43.2,
+          horarioAlternativo: null,
+          observacao: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ] as never);
+
+      const result = await service.listAddressOverridesByStudentsAndDate(["student-1"], terca);
+
+      expect(studentAddressOverrideRecurrenceFindMany).not.toHaveBeenCalled();
+      expect(result.get("student-1")).toMatchObject({ logradouro: "Rua Explícita" });
+    });
+
+    it("cai pra regra recorrente quando não há desvio de dia único pro dia exato", async () => {
+      studentAddressOverrideFindMany.mockResolvedValue([]);
+      studentAddressOverrideRecurrenceFindMany.mockResolvedValue([
+        {
+          id: "recorrencia-1",
+          studentId: "student-1",
+          diasSemana: [2, 4],
+          vigenciaInicio: new Date("2026-08-01T00:00:00.000Z"),
+          vigenciaFim: null,
+          trecho: "AMBOS",
+          cep: "20000000",
+          logradouro: "Rua da Recorrência",
+          numero: "9",
+          complemento: null,
+          bairro: "Centro",
+          cidade: "Rio de Janeiro",
+          estado: "RJ",
+          latitude: -22.9,
+          longitude: -43.2,
+          observacao: null,
+          criadoPorUserId: "responsavel-1",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ] as never);
+
+      const result = await service.listAddressOverridesByStudentsAndDate(["student-1"], terca);
+
+      expect(result.get("student-1")).toMatchObject({
+        logradouro: "Rua da Recorrência",
+        localTipo: "OUTRO",
+      });
+    });
+
+    it("localTipo ESCOLA resolve pro endereço da escola vinculada ao aluno", async () => {
+      studentAddressOverrideFindMany.mockResolvedValue([
+        {
+          id: "override-1",
+          studentId: "student-1",
+          data: terca,
+          trecho: "AMBOS",
+          localTipo: "ESCOLA",
+          cep: null,
+          logradouro: null,
+          numero: null,
+          complemento: null,
+          bairro: null,
+          cidade: null,
+          estado: null,
+          latitude: null,
+          longitude: null,
+          horarioAlternativo: "15:00",
+          observacao: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ] as never);
+      studentFindMany.mockResolvedValue([
+        {
+          id: "student-1",
+          school: buildSchool({ latitude: -23.5 as never, longitude: -46.6 as never }),
+        },
+      ] as never);
+
+      const result = await service.listAddressOverridesByStudentsAndDate(["student-1"], terca);
+
+      expect(result.get("student-1")).toMatchObject({
+        latitude: -23.5,
+        longitude: -46.6,
+        logradouro: "Avenida Paulista",
+        horarioAlternativo: "15:00",
+      });
+    });
+
+    it("localTipo RESIDENCIA fica sem endereço (TripsService reaproveita a parada normal) — só o horário viaja", async () => {
+      studentAddressOverrideFindMany.mockResolvedValue([
+        {
+          id: "override-1",
+          studentId: "student-1",
+          data: terca,
+          trecho: "AMBOS",
+          localTipo: "RESIDENCIA",
+          cep: null,
+          logradouro: null,
+          numero: null,
+          complemento: null,
+          bairro: null,
+          cidade: null,
+          estado: null,
+          latitude: null,
+          longitude: null,
+          horarioAlternativo: "16:30",
+          observacao: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ] as never);
+
+      const result = await service.listAddressOverridesByStudentsAndDate(["student-1"], terca);
+
+      expect(result.get("student-1")).toMatchObject({
+        latitude: null,
+        longitude: null,
+        horarioAlternativo: "16:30",
+      });
     });
   });
 

@@ -18,6 +18,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 
+import { CreateStudentAddressOverrideRecurrenceDto } from "./dto/create-student-address-override-recurrence.dto";
 import { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
 import { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
 import { CreateStudentDto } from "./dto/create-student.dto";
@@ -199,6 +200,50 @@ export class StudentsController {
     @Req() req: Request,
   ) {
     return this.studentsService.removeAddressOverride(id, overrideId, actor, requestMeta(req));
+  }
+
+  /**
+   * Frente 10(b) — endereço alternativo RECORRENTE (pedido do usuário:
+   * "mudança de endereço... na ocasionalidade ele pode escolher os
+   * dias que pode mudar"), ao lado de `POST` (não `PUT`, ao contrário
+   * do desvio de dia único): sem chave natural, o Responsável pode ter
+   * várias regras simultâneas.
+   */
+  @Post(":id/address-override-recurrences")
+  @Roles(...OWNER_ROLES)
+  createAddressOverrideRecurrence(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CreateStudentAddressOverrideRecurrenceDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.createAddressOverrideRecurrence(id, dto, actor, requestMeta(req));
+  }
+
+  @Get(":id/address-override-recurrences")
+  @Roles(...OWNER_ROLES)
+  listAddressOverrideRecurrences(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.studentsService.listAddressOverrideRecurrences(id, actor);
+  }
+
+  @Delete(":id/address-override-recurrences/:recurrenceId")
+  @Roles(...OWNER_ROLES)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeAddressOverrideRecurrence(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Param("recurrenceId", ParseUUIDPipe) recurrenceId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.removeAddressOverrideRecurrence(
+      id,
+      recurrenceId,
+      actor,
+      requestMeta(req),
+    );
   }
 
   @Get(":id/ausencia-hoje")

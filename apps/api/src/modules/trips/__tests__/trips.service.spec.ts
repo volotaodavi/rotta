@@ -1344,6 +1344,63 @@ describe("TripsService", () => {
       expect(result).toHaveLength(1);
       expect(result[0]).toMatchObject({ routeStopId: stopCompartilhada.id });
     });
+
+    it("Frente 10(c) — 'embarque adiado' com localTipo OUTRO: horarioAlternativo sobrescreve o horarioPrevisto da parada", async () => {
+      const overrideComHorario = { ...override, horarioAlternativo: "16:30" };
+      studentsService.listAddressOverridesByStudentsAndDate.mockResolvedValue(
+        new Map([["student-1", overrideComHorario]]) as never,
+      );
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+      geoEngineService.getRoute.mockResolvedValue({
+        distanciaMetros: 900,
+        duracaoSegundos: 100,
+        geometria: null,
+        pernas: [{ distanciaMetros: 400, duracaoSegundos: 40 }],
+      });
+
+      const result = await service.recalcularProximasEtas("trip-1", empresaActor);
+
+      const entradaComDesvio = result.find((item) => item.routeStopId === "override:override-1");
+      expect(entradaComDesvio).toMatchObject({ horarioPrevisto: "16:30" });
+    });
+
+    it("Frente 10(c) — localTipo RESIDENCIA (embarque adiado só de horário, sem trocar endereço): mantém a coordenada da parada normal, só o horário muda", async () => {
+      const overrideSoHorario = {
+        ...override,
+        latitude: null,
+        longitude: null,
+        horarioAlternativo: "16:30",
+      };
+      studentsService.listAddressOverridesByStudentsAndDate.mockResolvedValue(
+        new Map([["student-1", overrideSoHorario]]) as never,
+      );
+      positionRepository.findLatestByTrip.mockResolvedValue({
+        latitude: -23.0,
+        longitude: -46.0,
+      } as never);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+      geoEngineService.getRoute.mockResolvedValue({
+        distanciaMetros: 900,
+        duracaoSegundos: 100,
+        geometria: null,
+        pernas: [{ distanciaMetros: 400, duracaoSegundos: 40 }],
+      });
+
+      const result = await service.recalcularProximasEtas("trip-1", empresaActor);
+
+      // Continua virando uma entrada sintética separada (não colide com o
+      // aluno sem desvio na mesma parada física), mas com a MESMA
+      // coordenada/endereço da parada real — só o horário é diferente.
+      const entradaComDesvio = result.find((item) => item.routeStopId === "override:override-1");
+      expect(entradaComDesvio).toMatchObject({
+        endereco: stopCompartilhada.endereco,
+        horarioPrevisto: "16:30",
+      });
+    });
   });
 
   describe("ingestPosition — geofencing real (Prompt 'Rotta Geo Platform' §25/26)", () => {
