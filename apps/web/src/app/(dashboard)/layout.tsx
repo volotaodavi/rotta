@@ -12,6 +12,7 @@ import type { Route } from "next";
 import { DriverBottomNav } from "@/components/driver-bottom-nav";
 import { LegalFooter } from "@/components/legal/legal-footer";
 import { NotificationBell } from "@/components/notification-bell";
+import { PlanNoticesBanner } from "@/components/plan-notices-banner";
 import { ResponsavelBottomNav } from "@/components/responsavel-bottom-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BillingBlockScreen } from "@/features/billing/components/billing-block-screen";
@@ -173,6 +174,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
 
   const isResponsavel = user?.role === "responsavel";
   const isEmployeeDriver = user?.role === "motorista" || user?.role === "monitor";
+  // `GET /billing/notices` só libera EMPRESA/GESTOR (ver
+  // `BillingController`) — nunca chama pra outros papéis.
+  const podeVerAvisosDePlano = user?.role === "empresa" || user?.role === "gestor";
   const { mode, canToggle, setMode, isModeResolved } = useAppMode(user);
 
   // Quem roda a rota no dia a dia (Frente K/O) — dono autônomo/MEI em
@@ -515,6 +519,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
             único wrapper, variando só a classe CSS) — nunca mais alterna
             entre "filho direto" e "encapsulado".
           */}
+          {podeVerAvisosDePlano && (
+            <div className="px-6 pt-4">
+              <PlanNoticesBanner />
+            </div>
+          )}
           <main
             className={
               showBottomNav
