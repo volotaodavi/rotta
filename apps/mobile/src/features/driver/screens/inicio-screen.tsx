@@ -44,7 +44,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { PanelGreeting } from "../components";
+import { BackgroundLocationDisclosureModal, PanelGreeting } from "../components";
 import {
   useMinhasRotas,
   useRouteStops,
@@ -92,8 +92,6 @@ import {
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
-
-
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -689,7 +687,7 @@ function RotaOperacional({
   // o Monitor pra `ingestPosition` desde a Frente AA. Mesma paridade do
   // Painel Web (`minha-rota/page.tsx`).
   const podeReportarGps = isMotorista || isMonitor;
-  const { status: gpsStatus } = useTripGpsReporting(
+  const { status: gpsStatus, confirmarDivulgacao } = useTripGpsReporting(
     podeReportarGps && isActive && trip ? trip.id : null,
   );
 
@@ -847,27 +845,33 @@ function RotaOperacional({
   // não encerrada (inclusive `PAUSADA`) — pro Motorista E o Monitor.
   if (trip && !viagemEncerrada) {
     return (
-      <ModoOperacionalFullScreen
-        rota={rota}
-        trip={trip}
-        accentColor={accentColor}
-        isMotorista={isMotorista}
-        isActive={isActive}
-        mapMarkers={mapMarkers}
-        paradasOrdenadas={paradasOrdenadas}
-        driverPosition={driverPosition}
-        routeStudents={routeStudents ?? []}
-        studentEvents={studentEvents ?? []}
-        proximasEtas={proximasEtas ?? []}
-        alunosEmbarcados={alunosEmbarcados}
-        totalAlunos={totalAlunos}
-        gpsAvisoTexto={gpsAvisoTexto}
-        pauseTrip={pauseTrip}
-        resumeTrip={resumeTrip}
-        finishTrip={finishTrip}
-        mapKey={mapKey}
-        onRecenter={() => setMapKey((k) => k + 1)}
-      />
+      <>
+        <BackgroundLocationDisclosureModal
+          visible={gpsStatus === "aguardando-consentimento"}
+          onConfirmar={confirmarDivulgacao}
+        />
+        <ModoOperacionalFullScreen
+          rota={rota}
+          trip={trip}
+          accentColor={accentColor}
+          isMotorista={isMotorista}
+          isActive={isActive}
+          mapMarkers={mapMarkers}
+          paradasOrdenadas={paradasOrdenadas}
+          driverPosition={driverPosition}
+          routeStudents={routeStudents ?? []}
+          studentEvents={studentEvents ?? []}
+          proximasEtas={proximasEtas ?? []}
+          alunosEmbarcados={alunosEmbarcados}
+          totalAlunos={totalAlunos}
+          gpsAvisoTexto={gpsAvisoTexto}
+          pauseTrip={pauseTrip}
+          resumeTrip={resumeTrip}
+          finishTrip={finishTrip}
+          mapKey={mapKey}
+          onRecenter={() => setMapKey((k) => k + 1)}
+        />
+      </>
     );
   }
 

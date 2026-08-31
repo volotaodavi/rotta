@@ -6,7 +6,13 @@ import { BACKGROUND_TRIP_LOCATION_TASK, setActiveTripId } from "./background-tri
 import { tripsApi } from "@/lib/api-client";
 
 export type GpsReportingStatus =
-  "idle" | "requesting" | "reporting" | "reporting-foreground-only" | "denied" | "error";
+  | "idle"
+  | "aguardando-consentimento"
+  | "requesting"
+  | "reporting"
+  | "reporting-foreground-only"
+  | "denied"
+  | "error";
 
 /**
  * Envio de posição do Motorista durante a viagem (Prompt Mestre da
@@ -27,11 +33,27 @@ export type GpsReportingStatus =
  * comportamento de antes) quando a permissão "Always"/background é
  * negada — nunca deixa de reportar posição nenhuma, só perde a
  * cobertura em segundo plano nesse caso específico.
+ *
+ * Divulgação proeminente da localização em segundo plano (Google Play
+ * — "Prominent Disclosure & Consent Requirements", exigida sempre que
+ * o app pede `ACCESS_BACKGROUND_LOCATION`): antes de disparar o diálogo
+ * nativo do sistema pela primeira vez, o status vira
+ * `"aguardando-consentimento"` — a TELA precisa mostrar sua própria
+ * explicação (fora deste hook, que não sabe renderizar nada) e só
+ * chamar `confirmarDivulgacao()` depois que a pessoa concordar
+ * explicitamente. Já concedida antes (viagens seguintes) → pula direto
+ * pro rastreamento, sem repetir a tela.
  */
-export function useTripGpsReporting(tripId: string | null): { status: GpsReportingStatus } {
+export function useTripGpsReporting(tripId: string | null): {
+  status: GpsReportingStatus;
+  /** Chamado pela tela depois que a pessoa confirma a divulgação — só então o diálogo nativo de permissão é disparado. */
+  confirmarDivulgacao: () => void;
+} {
   const [status, setStatus] = useState<GpsReportingStatus>("idle");
   const foregroundSubscriptionRef = useRef<Location.LocationSubscription | null>(null);
   const backgroundStartedByThisRef = useRef(false);
+  const consentimentoDadoRef = useRef(false);
+  const [consentimentoVersao, setConsentimentoVersao] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,6 +115,18 @@ export function useTripGpsReporting(tripId: string | null): { status: GpsReporti
 
       setActiveTripId(tripId);
 
+      // Divulgação proeminente (ver comentário do arquivo) — só pula
+      // direto se a permissão "Always"/background JÁ estiver concedida
+      // (viagem anterior) ou se a pessoa já confirmou a divulgação
+      // nesta mesma sessão de rastreamento (`confirmarDivulgacao`
+      // rearma o efeito via `consentimentoVersao`).
+      const backgroundJaConcedida =
+        (await Location.getBackgroundPermissionsAsync().catch(() => null))?.status === "granted";
+      if (!backgroundJaConcedida && !consentimentoDadoRef.current) {
+        setStatus("aguardando-consentimento");
+        return;
+      }
+
       // "Always"/background — sem ela, o SO suspende qualquer rastreamento
       // assim que o app sai de primeiro plano; com ela, o serviço nativo
       // continua entregando posições pra `BACKGROUND_TRIP_LOCATION_TASK`
@@ -134,6 +168,7 @@ export function useTripGpsReporting(tripId: string | null): { status: GpsReporti
       void startTracking().catch(() => setStatus("error"));
     } else {
       setStatus("idle");
+      consentimentoDadoRef.current = false;
       void stopEverything();
     }
 
@@ -141,7 +176,13 @@ export function useTripGpsReporting(tripId: string | null): { status: GpsReporti
       cancelled = true;
       void stopEverything();
     };
-  }, [tripId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `consentimentoVersao` só existe pra rearmar este efeito depois de `confirmarDivulgacao()`, nunca lido diretamente aqui dentro.
+  }, [tripId, consentimentoVersao]);
 
-  return { status };
+  function confirmarDivulgacao(): void {
+    consentimentoDadoRef.current = true;
+    setConsentimentoVersao((atual) => atual + 1);
+  }
+
+  return { status, confirmarDivulgacao };
 }
