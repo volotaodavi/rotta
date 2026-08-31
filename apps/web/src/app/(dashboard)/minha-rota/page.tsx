@@ -5,6 +5,8 @@ import { useAuth } from "@rotta/auth/web";
 import {
   AlertTriangle,
   Check,
+  ChevronDown,
+  ChevronUp,
   Clock,
   LifeBuoy,
   LogIn,
@@ -39,7 +41,7 @@ import {
   useToast,
 } from "@rotta/ui/web";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type {
   NextEta,
@@ -93,14 +95,6 @@ import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/u
 import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
 
-/**
- * Altura reservada acima do `PortalBottomNav`/`DriverBottomNav`
- * (`fixed bottom-0`, ~64px de conteúdo + `env(safe-area-inset-bottom)`)
- * — usada por `DraggableFloatingCard` (auditoria 27/08/2026) pra nunca
- * ficar por trás da barra de navegação, nem na posição padrão nem
- * arrastado manualmente até o fim da tela.
- */
-const BOTTOM_NAV_RESERVE_PX = 80;
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -1556,7 +1550,7 @@ function ModoOperacionalFullScreen({
         ) : null}
       </div>
 
-      <DraggableFloatingCard>
+      <OperationalBottomSheet expanded={verTodosAlunos}>
         <div className="flex items-center justify-between gap-2 pb-3">
           <button
             type="button"
@@ -1568,6 +1562,7 @@ function ModoOperacionalFullScreen({
               {alunosEmbarcados}/{totalAlunos} embarcados ·{" "}
               {verTodosAlunos ? "ocultar todos os alunos" : "ver todos os alunos"}
             </Typography>
+            {verTodosAlunos ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
           </button>
           <div className="flex shrink-0 items-center gap-2">
             {/* Pedido do usuário: "o botão de pausar rota deverá sair de
@@ -1689,90 +1684,39 @@ function ModoOperacionalFullScreen({
             ))}
           </div>
         ) : null}
-      </DraggableFloatingCard>
+      </OperationalBottomSheet>
     </div>
   );
 }
 
 /**
- * Cartão flutuante ARRASTÁVEL por cima do mapa em tela cheia (pedido do
- * usuário: "um retângulo com borda redonda flutuante, onde clicando ele
- * se arrasta e fica suspenso na tela, porém com maior visibilidade").
- * Pointer Events puro — mesma técnica de `SlideToAction` (sem lib de
- * gesto nova), só que arrastando livremente nas duas direções em vez de
- * deslizar travado num eixo. Começa "docado" perto do fim da tela
- * (posição via CSS, sem `left`/`top` inline); depois do primeiro arrasto,
- * passa a ser posicionado por coordenada absoluta, sempre restrita à
- * área visível da tela (nunca pode sumir arrastado pra fora). Só a ALÇA
- * (a barrinha no topo) inicia o arrasto — os botões de embarque/
- * desembarque dentro do cartão continuam clicáveis normalmente.
+ * Cartão ANCORADO por cima do mapa em tela cheia — paridade com
+ * `OperationalBottomSheet` do app nativo (`inicio-screen.tsx`, mesma
+ * spec de identidade do Motorista/Monitor, 31/08/2026). Antes era um
+ * `DraggableFloatingCard` de arrasto livre nas duas direções; trocado
+ * por dois estados fixos de altura (colapsado/expandido, mesmos ~63%/
+ * 88% do nativo) alternados pelo botão "ver todos os alunos" — nunca
+ * mais "perdido" no meio da tela nem sobre a barra de navegação
+ * (`BOTTOM_NAV_RESERVE_PX` deixa de ser necessário: a folha fica sempre
+ * ancorada no rodapé, dentro da área reservada pelo `z-10` do wrapper).
+ * `bottom-20` (80px) reserva o mesmo espaço que o antigo
+ * `BOTTOM_NAV_RESERVE_PX` calculava em JS — aqui é só CSS, porque a
+ * folha não se move mais por coordenada arbitrária.
  */
-function DraggableFloatingCard({ children }: { children: ReactNode }): JSX.Element {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
-  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(
-    null,
-  );
-
-  function handlePointerDown(event: React.PointerEvent<HTMLDivElement>): void {
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const rect = cardRef.current?.getBoundingClientRect();
-    dragRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      origX: pos?.x ?? rect?.left ?? 16,
-      origY: pos?.y ?? rect?.top ?? 16,
-    };
-  }
-
-  function handlePointerMove(event: React.PointerEvent<HTMLDivElement>): void {
-    if (!dragRef.current) return;
-    const rect = cardRef.current?.getBoundingClientRect();
-    const width = rect?.width ?? 320;
-    const height = rect?.height ?? 200;
-    const margem = 12;
-    const nextX = dragRef.current.origX + (event.clientX - dragRef.current.startX);
-    const nextY = dragRef.current.origY + (event.clientY - dragRef.current.startY);
-    setPos({
-      x: Math.min(Math.max(nextX, margem), window.innerWidth - width - margem),
-      // Reserva `BOTTOM_NAV_RESERVE_PX` embaixo (não só `margem`) — sem
-      // isso, arrastar o cartão até o fim da tela o deixava por trás da
-      // barra de navegação (mesma correção do z-index acima).
-      y: Math.min(
-        Math.max(nextY, margem),
-        window.innerHeight - height - margem - BOTTOM_NAV_RESERVE_PX,
-      ),
-    });
-  }
-
-  function handlePointerUp(event: React.PointerEvent<HTMLDivElement>): void {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    dragRef.current = null;
-  }
-
+function OperationalBottomSheet({
+  children,
+  expanded,
+}: {
+  children: ReactNode;
+  expanded: boolean;
+}): JSX.Element {
   return (
     <div
-      ref={cardRef}
-      style={pos ? { left: pos.x, top: pos.y } : undefined}
-      // `z-10` (não `z-modal`) e posição padrão `bottom-20` (não
-      // `bottom-4`) — mesma correção do wrapper acima: o cartão é um
-      // elemento `fixed` PRÓPRIO (z-index independente do wrapper), sem
-      // isso continuaria cobrindo a barra de navegação mesmo com o mapa
-      // já corrigido.
-      className={`fixed z-10 flex max-h-[65vh] w-[min(92vw,400px)] flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-modal ${
-        pos ? "" : "inset-x-0 bottom-20 mx-auto"
+      className={`fixed inset-x-0 bottom-20 z-10 mx-auto flex w-full flex-col overflow-hidden rounded-3xl border border-border bg-surface shadow-driver transition-[max-height] duration-300 ease-in-out sm:inset-x-4 sm:mx-auto sm:max-w-md ${
+        expanded ? "max-h-[88vh]" : "max-h-[63vh]"
       }`}
     >
-      <div
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        aria-hidden="true"
-        className="flex shrink-0 cursor-grab touch-none items-center justify-center py-2 active:cursor-grabbing"
-      >
+      <div aria-hidden="true" className="flex shrink-0 items-center justify-center py-2">
         <div className="h-1.5 w-10 rounded-full bg-border" />
       </div>
       <div className="flex-1 overflow-y-auto px-4 pb-4">{children}</div>
