@@ -131,7 +131,7 @@ function AtividadeCard({ entrada }: { entrada: TripHistoryEntry }): JSX.Element 
   const rotaPercorrida = positions && positions.length >= 2 ? positions : null;
 
   return (
-    <Card>
+    <Card variant="driver">
       <Card.Body className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-start gap-3">

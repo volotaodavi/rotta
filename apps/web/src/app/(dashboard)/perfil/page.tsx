@@ -142,11 +142,17 @@ export default function PerfilPage(): JSX.Element {
         ? "bg-driverPrimary-muted text-driverPrimary"
         : "bg-primary-muted text-primary";
 
+  // Cartões com sombra/cantos da identidade do Motorista/Monitor em vez
+  // da borda padrão — mesma decisão condicional por papel do avatar
+  // acima; Empresa/Responsável continuam com `Card` no visual de sempre.
+  const isDriverRole = user?.role === "motorista" || user?.role === "monitor";
+  const cardVariant = isDriverRole ? "driver" : "default";
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PanelGreeting nome={user?.nome ?? ""} />
 
-      <Card>
+      <Card variant={cardVariant}>
         <Card.Body className="flex items-center gap-3">
           {avatarClassName ? (
             <div
@@ -175,7 +181,7 @@ export default function PerfilPage(): JSX.Element {
       <div className="flex flex-col gap-2">
         {atalhos.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href}>
-            <Card interactive>
+            <Card interactive variant={cardVariant}>
               <Card.Body className="flex items-center gap-3 py-4">
                 <Icon size={18} className="text-text-muted" />
                 <Typography variant="bodySmall" className="font-medium">
@@ -187,7 +193,11 @@ export default function PerfilPage(): JSX.Element {
         ))}
       </div>
 
-      <Card interactive onClick={() => void logout().then(() => router.replace("/entrar"))}>
+      <Card
+        interactive
+        variant={cardVariant}
+        onClick={() => void logout().then(() => router.replace("/entrar"))}
+      >
         <Card.Body className="flex items-center gap-3 py-4">
           <LogOut size={18} className="text-danger" />
           <Typography variant="bodySmall" className="font-medium text-danger">

@@ -9,13 +9,35 @@ import type { HTMLAttributes, ReactNode } from "react";
  */
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   interactive?: boolean;
+  /**
+   * `"driver"` (spec de identidade do Motorista/Monitor, 31/08/2026:
+   * "sombras discretas em vez de bordas") troca a base inteira —
+   * cantos de 24px, sem borda, sombra `shadow-driver` — em vez de só
+   * anexar classes via `className` (sem `tailwind-merge` neste `cn`,
+   * misturar `border`/`rounded-lg` com um override por `className`
+   * dependeria da ordem não determinística das classes no CSS
+   * compilado). Omitido: comportamento padrão de sempre, para todo
+   * outro consumidor do componente.
+   */
+  variant?: "default" | "driver";
 }
 
-function CardRoot({ interactive = false, className, children, ...rest }: CardProps) {
+const BASE_CLASSES: Record<NonNullable<CardProps["variant"]>, string> = {
+  default: "rounded-lg border border-border bg-card",
+  driver: "rounded-3xl border-none bg-card shadow-driver",
+};
+
+function CardRoot({
+  interactive = false,
+  variant = "default",
+  className,
+  children,
+  ...rest
+}: CardProps) {
   return (
     <div
       className={cn(
-        "rounded-lg border border-border bg-card",
+        BASE_CLASSES[variant],
         interactive && "cursor-pointer transition-colors duration-150 hover:border-border-strong",
         className,
       )}

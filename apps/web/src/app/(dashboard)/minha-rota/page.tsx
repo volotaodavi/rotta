@@ -221,7 +221,7 @@ export default function MinhaRotaPage(): JSX.Element {
             transportadora para vincular uma rota a você.
           </Typography>
         </div>
-        <Card className="overflow-hidden">
+        <Card variant="driver" className="overflow-hidden">
           <div className="h-52 w-full">
             <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} fill />
           </div>
@@ -236,7 +236,12 @@ export default function MinhaRotaPage(): JSX.Element {
         <PanelGreeting nome={user?.nome ?? ""} />
         <Typography variant="title">Suas rotas</Typography>
         {rotas.map((rota) => (
-          <Card key={rota.id} interactive onClick={() => setSelectedRouteId(rota.id)}>
+          <Card
+            key={rota.id}
+            variant="driver"
+            interactive
+            onClick={() => setSelectedRouteId(rota.id)}
+          >
             <Card.Body className="flex items-center justify-between">
               <Typography variant="subtitle">{rota.nome}</Typography>
               <Typography variant="bodySmall" color="muted">
@@ -245,7 +250,7 @@ export default function MinhaRotaPage(): JSX.Element {
             </Card.Body>
           </Card>
         ))}
-        <Card className="overflow-hidden">
+        <Card variant="driver" className="overflow-hidden">
           <div className="h-52 w-full">
             <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} fill />
           </div>
@@ -1059,7 +1064,7 @@ function RotaOperacional({
         tela inteira). Altura fixa e moderada, cantos arredondados pelo
         próprio `Card`.
       */}
-      <Card className="overflow-hidden">
+      <Card variant="driver" className="overflow-hidden">
         <div className="relative h-52 w-full">
           {markers.length > 0 ? (
             <RottaMap
