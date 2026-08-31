@@ -107,6 +107,15 @@ const ATALHOS_PERFIL_RESPONSAVEL: AtalhoPerfil[] = [
  * cabeçalho de texto. Sem isso, os atalhos que saíram do cabeçalho
  * ficariam sem nenhum caminho de acesso pra este público.
  */
+/** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */
+function iniciais(nome: string | undefined): string {
+  if (!nome) return "?";
+  const partes = nome.trim().split(/\s+/);
+  const primeira = partes[0]?.[0] ?? "";
+  const ultima = partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "";
+  return (primeira + ultima).toUpperCase();
+}
+
 export default function PerfilPage(): JSX.Element {
   const { user, logout } = useAuth();
   const router = useRouter();
@@ -121,24 +130,43 @@ export default function PerfilPage(): JSX.Element {
           ]
         : ATALHOS_PERFIL_MOTORISTA;
 
+  // Avatar de identidade só pro Motorista/Monitor (driverPrimary/
+  // monitorAccent, tokens isolados dessas duas telas) — Empresa/
+  // Responsável continuam sem avatar, mesmo cabeçalho de sempre.
+  const avatarClassName =
+    user?.role === "monitor"
+      ? "bg-monitorAccent-muted text-monitorAccent"
+      : user?.role === "motorista"
+        ? "bg-driverPrimary-muted text-driverPrimary"
+        : null;
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
       <PanelGreeting nome={user?.nome ?? ""} />
 
       <Card>
-        <Card.Body className="flex flex-col gap-1">
-          <Typography variant="subtitle">{user?.nome}</Typography>
-          <Typography variant="bodySmall" color="muted">
-            {user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
-          </Typography>
-          {user?.companyName ? (
-            <Typography variant="bodySmall" color="muted">
-              {user.companyName}
-            </Typography>
+        <Card.Body className="flex items-center gap-3">
+          {avatarClassName ? (
+            <div
+              className={`flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full text-lg font-bold ${avatarClassName}`}
+            >
+              {iniciais(user?.nome)}
+            </div>
           ) : null}
-          <Typography variant="bodySmall" color="muted">
-            {user?.email}
-          </Typography>
+          <div className="flex flex-col gap-1">
+            <Typography variant="subtitle">{user?.nome}</Typography>
+            <Typography variant="bodySmall" color="muted">
+              {user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
+            </Typography>
+            {user?.companyName ? (
+              <Typography variant="bodySmall" color="muted">
+                {user.companyName}
+              </Typography>
+            ) : null}
+            <Typography variant="bodySmall" color="muted">
+              {user?.email}
+            </Typography>
+          </div>
         </Card.Body>
       </Card>
 
