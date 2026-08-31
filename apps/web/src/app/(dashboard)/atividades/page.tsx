@@ -58,8 +58,17 @@ function formatarHora(iso: string | null): string | null {
  * plataforma (Empresa/Admin, Frente L; app nativo, Frente M), faltava
  * aqui.
  */
+/** Motorista usa `driverPrimary`, Monitor mantém `monitorAccent` — mesma decisão de escopo de "Minha Rota". */
+function useAccentClassName(): string {
+  const { user } = useAuth();
+  return user?.role === "monitor"
+    ? "border-monitorAccent text-monitorAccent"
+    : "border-driverPrimary text-driverPrimary";
+}
+
 export default function AtividadesPage(): JSX.Element {
   const { user } = useAuth();
+  const accentClassName = useAccentClassName();
   const [aba, setAba] = useState<FiltroAba>("todas");
   const { data: rotasResult, isLoading: isLoadingRotas } = useMinhasRotas();
   const rotas = useMemo(() => rotasResult?.items ?? [], [rotasResult]);
@@ -79,11 +88,16 @@ export default function AtividadesPage(): JSX.Element {
         </Typography>
       </div>
 
-      <Tabs tabs={TABS} activeId={aba} onChange={(id) => setAba(id as FiltroAba)} />
+      <Tabs
+        tabs={TABS}
+        activeId={aba}
+        onChange={(id) => setAba(id as FiltroAba)}
+        activeClassName={accentClassName}
+      />
 
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Spinner size="lg" />
+          <Spinner size="lg" className={accentClassName} />
         </div>
       ) : filtradas.length === 0 ? (
         <Typography variant="bodySmall" color="muted" className="py-8 text-center">

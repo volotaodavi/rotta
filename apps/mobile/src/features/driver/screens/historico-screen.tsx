@@ -3,6 +3,7 @@ import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
+
 import { PanelGreeting } from "../components";
 import { useRouteTripHistory } from "../hooks/use-driver-history";
 import { useMinhasRotas } from "../hooks/use-driver-routes";
@@ -44,6 +45,13 @@ function passaNoFiltro(status: TripStatus, filtro: FiltroStatus): boolean {
  * (mesma decisão de escopo de `vehicle-screen.tsx`) — controle simples
  * local, mesmo espírito visual (rótulo + sublinhado na aba ativa).
  */
+/** Motorista usa `driverPrimary`, Monitor mantém `monitorAccent` — mesma decisão de escopo de `inicio-screen.tsx`. */
+function useAccentColor(): string {
+  const { theme } = useTheme();
+  const { user } = useAuth();
+  return user?.role === "monitor" ? theme.colors.monitorAccent : theme.colors.driverPrimary;
+}
+
 function FiltroTabs({
   filtro,
   onChange,
@@ -52,6 +60,7 @@ function FiltroTabs({
   onChange: (filtro: FiltroStatus) => void;
 }): JSX.Element {
   const { theme } = useTheme();
+  const accentColor = useAccentColor();
 
   return (
     <View style={styles.filtroRow}>
@@ -62,14 +71,11 @@ function FiltroTabs({
             key={tab.id}
             accessibilityRole="button"
             onPress={() => onChange(tab.id)}
-            style={[
-              styles.filtroTab,
-              { borderBottomColor: ativa ? theme.colors.primary : "transparent" },
-            ]}
+            style={[styles.filtroTab, { borderBottomColor: ativa ? accentColor : "transparent" }]}
           >
             <Text
               style={{
-                color: ativa ? theme.colors.primary : theme.colors.textMuted,
+                color: ativa ? accentColor : theme.colors.textMuted,
                 fontWeight: ativa ? "700" : "500",
                 fontSize: 13,
               }}
@@ -93,6 +99,7 @@ function FiltroTabs({
 export function DriverHistoricoScreen(): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const accentColor = useAccentColor();
   const { data: rotasResult, isLoading } = useMinhasRotas();
   const rotas = rotasResult?.items ?? [];
   const [filtro, setFiltro] = useState<FiltroStatus>("todas");
@@ -100,7 +107,7 @@ export function DriverHistoricoScreen(): JSX.Element {
   if (isLoading) {
     return (
       <VehicleScreen>
-        <ActivityIndicator color={theme.colors.primary} />
+        <ActivityIndicator color={accentColor} />
       </VehicleScreen>
     );
   }
@@ -129,6 +136,7 @@ export function DriverHistoricoScreen(): JSX.Element {
 
 function RouteHistorySection({ rota, filtro }: { rota: Route; filtro: FiltroStatus }): JSX.Element {
   const { theme } = useTheme();
+  const accentColor = useAccentColor();
   const { data, isLoading } = useRouteTripHistory(rota.id);
   const viagens = (data?.items ?? []).filter((trip) => passaNoFiltro(trip.status, filtro));
 
@@ -136,7 +144,7 @@ function RouteHistorySection({ rota, filtro }: { rota: Route; filtro: FiltroStat
     <View style={styles.secao}>
       <Text style={[styles.tituloRota, { color: theme.colors.text }]}>{rota.nome}</Text>
       {isLoading ? (
-        <ActivityIndicator color={theme.colors.primary} />
+        <ActivityIndicator color={accentColor} />
       ) : viagens.length === 0 ? (
         <Text style={{ color: theme.colors.textMuted }}>Nenhuma viagem nesta aba.</Text>
       ) : (
