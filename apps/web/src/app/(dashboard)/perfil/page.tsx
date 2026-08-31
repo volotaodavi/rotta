@@ -130,15 +130,17 @@ export default function PerfilPage(): JSX.Element {
           ]
         : ATALHOS_PERFIL_MOTORISTA;
 
-  // Avatar de identidade só pro Motorista/Monitor (driverPrimary/
-  // monitorAccent, tokens isolados dessas duas telas) — Empresa/
-  // Responsável continuam sem avatar, mesmo cabeçalho de sempre.
+  // Avatar de identidade em todos os papéis — Motorista/Monitor usam os
+  // tokens isolados dessas telas (driverPrimary/monitorAccent);
+  // Empresa/Responsável usam o `primary` compartilhado de sempre (spec
+  // do Responsável: "não é obrigatório usar essas cores... utilize os
+  // tokens existentes" — nenhum token novo só pra isto).
   const avatarClassName =
     user?.role === "monitor"
       ? "bg-monitorAccent-muted text-monitorAccent"
       : user?.role === "motorista"
         ? "bg-driverPrimary-muted text-driverPrimary"
-        : null;
+        : "bg-primary-muted text-primary";
 
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
