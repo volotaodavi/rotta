@@ -12,6 +12,7 @@ import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
 import { ThemeToggle } from "@/components/theme-toggle";
 
+
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
   { href: "/beneficios", label: "Benefícios" },
@@ -74,7 +75,7 @@ const FOOTER_COLUNAS: FooterColumn[] = [
     titulo: "Conta",
     links: [
       { href: "/entrar", label: "Entrar" },
-      { href: "/criar-conta", label: "Criar conta" },
+      { href: "/selecionar-perfil", label: "Criar conta" },
     ],
   },
   {
@@ -144,7 +145,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             <Link href="/entrar" className={pillGhostSm}>
               Entrar
             </Link>
-            <Link href="/criar-conta" className={pillPrimarySm}>
+            <Link href="/selecionar-perfil" className={pillPrimarySm}>
               Criar conta
             </Link>
           </div>
@@ -203,7 +204,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               Entrar
             </Link>
             <Link
-              href="/criar-conta"
+              href="/selecionar-perfil"
               onClick={() => setMenuAberto(false)}
               className={`${pillPrimarySm} w-full`}
             >
