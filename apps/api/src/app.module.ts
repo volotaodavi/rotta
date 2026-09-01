@@ -38,6 +38,7 @@ import { RedisModule } from "@/infra/cache/redis.module";
 import { PrismaModule } from "@/infra/database/prisma.module";
 import { LoggerModule } from "@/infra/observability/logger.module";
 import { QueueModule } from "@/infra/queue/queue.module";
+import { AdminDigestModule } from "@/modules/admin-digest/admin-digest.module";
 import { AgendaModule } from "@/modules/agenda/agenda.module";
 import { AnalyticsModule } from "@/modules/analytics/analytics.module";
 import { AnnouncementsModule } from "@/modules/announcements/announcements.module";
@@ -125,6 +126,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     UsersModule,
     CompaniesModule,
     BillingModule,
+    AdminDigestModule,
     SchoolsModule,
     GeoModule,
     DriversModule,

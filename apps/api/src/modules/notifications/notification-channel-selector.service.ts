@@ -96,6 +96,16 @@ export class NotificationChannelSelectorService {
     // administrativa, o usuário precisa saber mesmo sem abrir o app).
     IDENTIDADE_APROVADA: [PUSH, EMAIL],
     IDENTIDADE_REPROVADA: [PUSH, EMAIL],
+    // Informativos operacionais pro Admin Rotta (pedido do usuário
+    // 01/09/2026: "quero como push notification também") — mesmo canal
+    // de SUPORTE_TICKET_ABERTO/NOVO_CONTRATO, sem WHATSAPP/SMS (avisos
+    // internos da própria equipe, não algo que precise interromper por
+    // esses canais).
+    NOVO_CLIENTE_CADASTRADO: [PUSH, EMAIL],
+    PLANO_NOVA_ASSINATURA: [PUSH, EMAIL],
+    SUPORTE_TICKET_ENCERRADO: [PUSH, EMAIL],
+    RELATORIO_SEMANAL: [PUSH, EMAIL],
+    RELATORIO_MENSAL: [PUSH, EMAIL],
   };
 
   selectChannels(tipo: NotificationEventType): CommunicationChannel[] {

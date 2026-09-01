@@ -8,15 +8,6 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
-import { EmailService } from "@/infra/email/email.service";
-import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
-import { GroqService } from "@/infra/groq/groq.service";
-import { AuditLogService } from "@/modules/audit/audit-log.service";
-import { ContractsService } from "@/modules/marketplace/contracts.service";
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
-import { UsersService } from "@/modules/users/users.service";
-import { Role } from "@/shared/enums";
 
 import { toSupportMessageResponseDto } from "./mappers/support-message.mapper";
 import {
@@ -41,6 +32,16 @@ import type {
 } from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
+
+import { EmailService } from "@/infra/email/email.service";
+import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
+import { GroqService } from "@/infra/groq/groq.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { ContractsService } from "@/modules/marketplace/contracts.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { UsersService } from "@/modules/users/users.service";
+import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
   ip?: string;
@@ -302,7 +303,9 @@ export class SupportService {
         autorIsIA: true,
         mensagem: resposta,
       };
-      await (bypass ? this.messageRepository.createBypass(data) : this.messageRepository.create(data));
+      await (bypass
+        ? this.messageRepository.createBypass(data)
+        : this.messageRepository.create(data));
     } catch (error) {
       this.logger.warn(`Rotta AI não respondeu o chamado ${ticket.id} (best-effort).`);
       this.logger.warn(error instanceof Error ? error.message : String(error));
@@ -328,7 +331,9 @@ export class SupportService {
     }
 
     if (actor.role !== Role.EMPRESA && actor.role !== Role.GESTOR) {
-      throw new ForbiddenException("Apenas Empresa/Gestor/Responsável podem abrir chamados de suporte.");
+      throw new ForbiddenException(
+        "Apenas Empresa/Gestor/Responsável podem abrir chamados de suporte.",
+      );
     }
     if (!actor.tenantId) {
       throw new ForbiddenException("Usuário sem empresa vinculada.");
@@ -474,7 +479,11 @@ export class SupportService {
       : this.messageRepository.create(messageData));
 
     if (ticket.status === "ENCERRADO") {
-      const reopenData = { status: "EM_ANDAMENTO" as const, encerradoEm: null, encerradoPorUserId: null };
+      const reopenData = {
+        status: "EM_ANDAMENTO" as const,
+        encerradoEm: null,
+        encerradoPorUserId: null,
+      };
       await (bypass
         ? this.ticketRepository.updateStatusBypass(ticketId, reopenData)
         : this.ticketRepository.updateStatus(ticketId, reopenData));
@@ -571,6 +580,39 @@ export class SupportService {
       userAgent: meta.userAgent,
     });
 
+    // Informativo pro Admin Rotta (pedido do usuário 01/09/2026:
+    // "finalização de chamados"). Best-effort, nunca impede o
+    // encerramento em si de ter sido aplicado acima.
+    this.notifyAdminRottaTicketEncerradoBestEffort(existing);
+
     return toSupportTicketResponseDto(updated);
+  }
+
+  /** Best-effort — ver nota no chamador. */
+  private notifyAdminRottaTicketEncerradoBestEffort(ticket: SupportTicketWithRelations): void {
+    this.usersService
+      .listAdminRottaUserIds()
+      .then((adminIds) => {
+        const mensagem = this.messagePersonalizationService.suporteTicketEncerrado(
+          ticket.assunto,
+          ticket.company.nomeFantasia,
+        );
+        for (const adminUserId of adminIds) {
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: adminUserId,
+            tipo: "SUPORTE_TICKET_ENCERRADO",
+            titulo: mensagem.titulo,
+            corpo: mensagem.corpo,
+            dadosContexto: { ticketId: ticket.id, companyId: ticket.companyId },
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Não foi possível notificar Admin Rotta sobre o encerramento do chamado ${ticket.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
   }
 }

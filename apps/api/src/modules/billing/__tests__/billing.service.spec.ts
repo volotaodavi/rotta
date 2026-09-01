@@ -7,6 +7,9 @@ import type { AbacatePayClientService } from "../abacatepay-client.service";
 import type { AsaasClientService } from "../asaas-client.service";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { CompanyWithPlan } from "@/modules/companies/repositories/company.repository";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import type { UsersService } from "@/modules/users/users.service";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 
 function buildCompany(): CompanyWithPlan {
   return {
@@ -62,11 +65,22 @@ describe("BillingService", () => {
       runWithTenantContext: jest.fn((_ctx: unknown, fn: () => unknown) => fn()),
     };
 
+    const usersService = {
+      listAdminRottaUserIds: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<UsersService>;
+    const messagePersonalizationService = {
+      planoNovaAssinatura: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+    } as unknown as jest.Mocked<MessagePersonalizationService>;
+    const eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+
     service = new BillingService(
       client,
       asaasClient,
       companyRepository as never,
       prisma as unknown as PrismaService,
+      usersService,
+      messagePersonalizationService,
+      eventEmitter,
     );
   });
 

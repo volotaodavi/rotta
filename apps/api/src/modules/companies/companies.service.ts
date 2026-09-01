@@ -531,7 +531,45 @@ export class CompaniesService implements OnModuleInit {
       corpo: boasVindas.corpo,
     });
 
+    // Informativo pro Admin Rotta (pedido do usuário 01/09/2026:
+    // "novo cliente cadastrado... quando empresas, MEI e autônomos
+    // vierem realizar o cadastro"). Best-effort, nunca impede o
+    // cadastro em si de ter sido concluído acima.
+    this.notifyAdminRottaNovoClienteBestEffort(company.id, company.nomeFantasia, company.tipo);
+
     return toCompanyResponseDto(company);
+  }
+
+  /** Best-effort — ver nota no chamador. */
+  private notifyAdminRottaNovoClienteBestEffort(
+    companyId: string,
+    nomeFantasia: string,
+    tipo: string,
+  ): void {
+    this.usersService
+      .listAdminRottaUserIds()
+      .then((adminIds) => {
+        const mensagem = this.messagePersonalizationService.novoClienteCadastrado(
+          nomeFantasia,
+          tipo,
+        );
+        for (const adminUserId of adminIds) {
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: adminUserId,
+            companyId,
+            tipo: NotificationEventType.NOVO_CLIENTE_CADASTRADO,
+            titulo: mensagem.titulo,
+            corpo: mensagem.corpo,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Não foi possível notificar Admin Rotta sobre o novo cliente ${companyId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
   }
 
   async findByIdOrThrow(id: string, actor: AuthenticatedUser): Promise<CompanyResponseDto> {

@@ -2742,6 +2742,29 @@ enum NotificationEventType {
   /// desconhecido" (pedido do usuário: "caso eu peça reenvio, eu posso
   /// dizer o motivo").
   IDENTIDADE_REPROVADA
+  /// Pedido do usuário (01/09/2026 — "informativos da Rotta (admins)"):
+  /// dispara pra todo Admin Rotta quando uma Company nova termina de
+  /// ser cadastrada (Empresa, Autônomo ou MEI — `CompaniesService.create`),
+  /// não confundir com `CADASTRO_CONCLUIDO` (esse é pro próprio dono da
+  /// conta, boas-vindas; este aqui é o aviso operacional pra Rotta).
+  NOVO_CLIENTE_CADASTRADO
+  /// Mesmo pedido — dispara quando uma Company sai de um status
+  /// não-ATIVO (TRIAL/INADIMPLENTE/CANCELADO) pra ATIVO via webhook de
+  /// pagamento (Asaas/AbacatePay) ou reemissão de Pix confirmada — ou
+  /// seja, uma assinatura nova ou reativada, nunca uma renovação
+  /// (empresa que já estava ATIVA continuando ATIVA não dispara de
+  /// novo). Ver `BillingService` — checagem de status ANTES de aplicar
+  /// a mudança, em todo caminho que pode levar a `CompanyStatus.ATIVO`.
+  PLANO_NOVA_ASSINATURA
+  /// Mesmo pedido — espelha `SUPORTE_TICKET_ABERTO`, mas pro fechamento
+  /// (`SupportService.closeTicket`).
+  SUPORTE_TICKET_ENCERRADO
+  /// Resumo semanal automático pro Admin Rotta (mesmo pedido, item
+  /// "faturamento semanal") — `AdminDigestSchedulerService`/
+  /// `AdminDigestService`.
+  RELATORIO_SEMANAL
+  /// Mesmo mecanismo, cadência mensal (item "faturamento mensal").
+  RELATORIO_MENSAL
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —

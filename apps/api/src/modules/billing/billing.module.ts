@@ -12,7 +12,9 @@ import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
+import { UsersModule } from "@/modules/users/users.module";
 
 /**
  * Módulo Billing (Dossiê 26) — a Rotta cobrando a mensalidade das
@@ -25,7 +27,7 @@ import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
  * exporta — este módulo nunca reimplementa acesso a `Prisma.company`.
  */
 @Module({
-  imports: [CompaniesModule, PlanNoticesModule],
+  imports: [CompaniesModule, PlanNoticesModule, UsersModule, MessagePersonalizationModule],
   controllers: [
     BillingController,
     AbacatePayWebhookController,
@@ -40,5 +42,9 @@ import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
     AsaasWebhookGuard,
     BillingSchedulerService,
   ],
+  // `AbacatePayClientService` exportado pra `AdminDigestModule`
+  // reaproveitar (resumo semanal/mensal do Admin Rotta) sem duplicar
+  // uma segunda instância do client.
+  exports: [AbacatePayClientService],
 })
 export class BillingModule {}

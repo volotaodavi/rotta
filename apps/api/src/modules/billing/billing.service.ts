@@ -6,8 +6,10 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   CompanyStatus,
+  NotificationEventType,
   PendingSubscriptionProvider,
   PendingSubscriptionStatus,
 } from "@prisma/client";
@@ -43,6 +45,9 @@ import type {
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { UsersService } from "@/modules/users/users.service";
 
 export interface BillingAdminCompanySummary {
   id: string;
@@ -108,7 +113,47 @@ export class BillingService {
     private readonly asaasClient: AsaasClientService,
     @Inject(COMPANY_REPOSITORY) private readonly companyRepository: CompanyRepository,
     private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
+
+  /**
+   * Informativo pro Admin Rotta (pedido do usuário 01/09/2026: "planos
+   * assinados... nova assinatura de plano"). Chamado só depois de
+   * confirmar que a empresa estava NÃO-ATIVA antes desta atualização —
+   * uma renovação (empresa que já estava ATIVA continuando ATIVA) nunca
+   * deve gerar este aviso. Best-effort, nunca impede a atualização de
+   * status em si (que já aconteceu antes desta chamada).
+   */
+  private notifyAdminRottaNovaAssinaturaBestEffort(companyId: string): void {
+    this.companyRepository
+      .findById(companyId)
+      .then((company) => {
+        if (!company) return;
+        const mensagem = this.messagePersonalizationService.planoNovaAssinatura(
+          company.nomeFantasia,
+        );
+        return this.usersService.listAdminRottaUserIds().then((adminIds) => {
+          for (const adminUserId of adminIds) {
+            this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+              userId: adminUserId,
+              companyId,
+              tipo: NotificationEventType.PLANO_NOVA_ASSINATURA,
+              titulo: mensagem.titulo,
+              corpo: mensagem.corpo,
+            });
+          }
+        });
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Não foi possível notificar Admin Rotta sobre a nova assinatura da empresa ${companyId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+  }
 
   /**
    * Checkout Pix embutido na própria Rotta (pedido do usuário: "para não
@@ -610,6 +655,11 @@ export class BillingService {
     }
 
     try {
+      // Lido ANTES do update só pra saber se é uma assinatura NOVA
+      // (pedido do usuário 01/09/2026 — nunca notifica renovação, só
+      // transição pra ATIVO vindo de um status não-ATIVO).
+      const antes = await this.companyRepository.findById(companyId);
+
       // Mesmo padrão de bypass explícito e já-validado de `applyStatus`
       // (AbacatePay) — fora do fluxo HTTP autenticado normal (webhook
       // público, sem JWT/TenantGuard).
@@ -620,6 +670,10 @@ export class BillingService {
         }),
       );
       this.logger.log(`Empresa ${companyId} -> status ${status} (webhook Asaas "${eventName}").`);
+
+      if (status === CompanyStatus.ATIVO && antes && antes.status !== CompanyStatus.ATIVO) {
+        this.notifyAdminRottaNovaAssinaturaBestEffort(companyId);
+      }
     } catch (error) {
       this.logger.warn(
         `Não foi possível atualizar a empresa ${companyId} a partir do webhook Asaas "${eventName}": ${(error as Error).message}`,
@@ -711,6 +765,12 @@ export class BillingService {
     }
 
     try {
+      // Lido ANTES do update — mesmo raciocínio de `applyAsaasStatus`
+      // (pedido do usuário 01/09/2026): só notifica assinatura NOVA,
+      // nunca uma renovação (a recorrência de Pix passa por aqui a
+      // cada ciclo, sempre com `status: ATIVO`).
+      const antes = await this.companyRepository.findById(companyId);
+
       // Fora do fluxo HTTP autenticado normal (webhook público, sem
       // JWT/TenantGuard) — mesmo padrão de bypass explícito e
       // já-validado do resgate de convite (`PrismaService.runInBypassTransaction`):
@@ -727,6 +787,10 @@ export class BillingService {
       this.logger.log(
         `Empresa ${companyId} -> status ${status} (webhook AbacatePay "${eventName}").`,
       );
+
+      if (status === CompanyStatus.ATIVO && antes && antes.status !== CompanyStatus.ATIVO) {
+        this.notifyAdminRottaNovaAssinaturaBestEffort(companyId);
+      }
     } catch (error) {
       this.logger.warn(
         `Não foi possível atualizar a empresa ${companyId} a partir do webhook AbacatePay "${eventName}": ${(error as Error).message}`,

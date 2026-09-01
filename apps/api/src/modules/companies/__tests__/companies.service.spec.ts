@@ -108,7 +108,7 @@ describe("CompaniesService", () => {
   let dashboardService: jest.Mocked<DashboardService>;
   let receitaFederalService: jest.Mocked<ReceitaFederalService>;
   let messagePersonalizationService: jest.Mocked<
-    Pick<MessagePersonalizationService, "cadastroConcluido">
+    Pick<MessagePersonalizationService, "cadastroConcluido" | "novoClienteCadastrado">
   >;
   let eventEmitter: jest.Mocked<Pick<EventEmitter2, "emit">>;
 
@@ -134,6 +134,7 @@ describe("CompaniesService", () => {
       createUserWithPassword: jest.fn(),
       createMembership: jest.fn(),
       listMembershipsByCompany: jest.fn(),
+      listAdminRottaUserIds: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<UsersService>;
     auditLogService = {
       record: jest.fn(),
@@ -158,6 +159,7 @@ describe("CompaniesService", () => {
     } as unknown as jest.Mocked<ReceitaFederalService>;
     messagePersonalizationService = {
       cadastroConcluido: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+      novoClienteCadastrado: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
     };
     eventEmitter = { emit: jest.fn() };
 

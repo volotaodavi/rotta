@@ -332,4 +332,63 @@ export class MessagePersonalizationService {
       corpo: `${this.saudacao(nome)} Sua verificação de identidade não foi aprovada. Motivo: ${motivo}. Você pode reenviar seus documentos a qualquer momento pelo app.`,
     };
   }
+
+  /** Informativo pro Admin Rotta (pedido do usuário 01/09/2026) — `CompaniesService.create`. */
+  novoClienteCadastrado(nomeFantasia: string, tipoLabel: string): PersonalizedMessage {
+    return {
+      titulo: "Novo cliente cadastrado",
+      corpo: `${nomeFantasia} (${tipoLabel}) acabou de se cadastrar na Rotta.`,
+    };
+  }
+
+  /** Informativo pro Admin Rotta — nova assinatura ativada/reativada (`BillingService`, ver nota no schema sobre a checagem de status). */
+  planoNovaAssinatura(nomeFantasia: string): PersonalizedMessage {
+    return {
+      titulo: "Novo plano assinado",
+      corpo: `${nomeFantasia} acabou de assinar (ou reativar) o plano da Rotta.`,
+    };
+  }
+
+  /** Informativo pro Admin Rotta — espelha `suporteTicketAberto`, mas pro fechamento (`SupportService.closeTicket`). */
+  suporteTicketEncerrado(assunto: string, empresaNome: string): PersonalizedMessage {
+    return {
+      titulo: "Chamado de suporte encerrado",
+      corpo: `O chamado "${assunto}" (${empresaNome}) foi encerrado.`,
+    };
+  }
+
+  /**
+   * Resumo semanal/mensal pro Admin Rotta (`AdminDigestService`) —
+   * `faturamentoAbacatePayCentavos`/`lucroLiquidoAbacatePayCentavos`
+   * chegam `null` quando a AbacatePay não está configurada, ou a
+   * consulta falhou — vira "indisponível", nunca "R$ 0,00" (stub
+   * honesto: dado ausente não é dado zero).
+   */
+  relatorioAdmin(resumo: {
+    label: string;
+    novasEmpresas: number;
+    novasAssinaturas: number;
+    planosAtivosAgora: number;
+    chamadosAbertos: number;
+    chamadosEncerrados: number;
+    faturamentoAbacatePayCentavos: number | null;
+    lucroLiquidoAbacatePayCentavos: number | null;
+  }): PersonalizedMessage {
+    const formatar = (centavos: number | null): string =>
+      centavos === null
+        ? "indisponível"
+        : (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+    return {
+      titulo: `Resumo ${resumo.label} da Rotta`,
+      corpo: [
+        `Novos clientes: ${resumo.novasEmpresas}.`,
+        `Novas assinaturas: ${resumo.novasAssinaturas} (${resumo.planosAtivosAgora} planos ativos no total).`,
+        `Chamados de suporte: ${resumo.chamadosAbertos} aberto(s), ${resumo.chamadosEncerrados} encerrado(s).`,
+        `Faturamento (AbacatePay/Pix): ${formatar(resumo.faturamentoAbacatePayCentavos)}.`,
+        `Lucro líquido (AbacatePay, após taxas): ${formatar(resumo.lucroLiquidoAbacatePayCentavos)}.`,
+        "Valores da Asaas (cartão/boleto) ainda não entram nesse cálculo — reconciliação pendente.",
+      ].join("\n"),
+    };
+  }
 }

@@ -61,6 +61,14 @@ export class NotificationPriorityClassifierService {
     CADASTRO_CONCLUIDO: INFORMATIVA,
     IDENTIDADE_APROVADA: INFORMATIVA,
     IDENTIDADE_REPROVADA: URGENTE,
+    // Informativos operacionais pro Admin Rotta — nenhum exige ação
+    // imediata (não é incidente nem bloqueio), mas nova assinatura é o
+    // mais "financeiro" dos três, um degrau acima dos outros dois.
+    NOVO_CLIENTE_CADASTRADO: INFORMATIVA,
+    PLANO_NOVA_ASSINATURA: IMPORTANTE,
+    SUPORTE_TICKET_ENCERRADO: INFORMATIVA,
+    RELATORIO_SEMANAL: INFORMATIVA,
+    RELATORIO_MENSAL: INFORMATIVA,
   };
 
   classify(tipo: NotificationEventType): NotificationPriority {
