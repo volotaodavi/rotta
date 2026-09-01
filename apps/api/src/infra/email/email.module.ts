@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+import { AdminInboxEmailService } from "./admin-inbox-email.service";
 import { EMAIL_PROVIDERS } from "./email.constants";
 import { EmailService } from "./email.service";
 import { ResendEmailProvider } from "./resend-email.provider";
@@ -16,12 +17,13 @@ import type { EmailProvider } from "./email-provider.interface";
   providers: [
     EmailService,
     ResendEmailProvider,
+    AdminInboxEmailService,
     {
       provide: EMAIL_PROVIDERS,
       useFactory: (resend: ResendEmailProvider): EmailProvider[] => [resend],
       inject: [ResendEmailProvider],
     },
   ],
-  exports: [EmailService],
+  exports: [EmailService, AdminInboxEmailService],
 })
 export class EmailModule {}

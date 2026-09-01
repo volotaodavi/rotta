@@ -11,6 +11,7 @@ import { PrismaCompanySettingRepository } from "./repositories/prisma-company-se
 import { PrismaCompanyRepository } from "./repositories/prisma-company.repository";
 import { PrismaPlanRepository } from "./repositories/prisma-plan.repository";
 
+import { EmailModule } from "@/infra/email/email.module";
 import { ReceitaFederalModule } from "@/infra/receita-federal/receita-federal.module";
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
@@ -55,6 +56,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     DashboardModule,
     ReceitaFederalModule,
     MessagePersonalizationModule,
+    EmailModule,
   ],
   controllers: [CompaniesController],
   providers: [

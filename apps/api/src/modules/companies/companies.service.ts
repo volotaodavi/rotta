@@ -49,6 +49,7 @@ import type {
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 
 import { PrismaService } from "@/infra/database/prisma.service";
+import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import {
   type ReceitaFederalCompanyData,
   ReceitaFederalService,
@@ -121,6 +122,7 @@ export class CompaniesService implements OnModuleInit {
     private readonly receitaFederalService: ReceitaFederalService,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly adminInboxEmailService: AdminInboxEmailService,
   ) {}
 
   /**
@@ -546,13 +548,17 @@ export class CompaniesService implements OnModuleInit {
     nomeFantasia: string,
     tipo: string,
   ): void {
+    const mensagem = this.messagePersonalizationService.novoClienteCadastrado(nomeFantasia, tipo);
+
+    // Caixa fixa da Rotta (pedido do usuário 01/09/2026: "o e-mail que
+    // está de admin na Rotta não existe... direcionar essas informações
+    // pra contato@.../rottadobrasil@...") — garante a entrega mesmo sem
+    // nenhuma conta Admin Rotta real configurada.
+    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+
     this.usersService
       .listAdminRottaUserIds()
       .then((adminIds) => {
-        const mensagem = this.messagePersonalizationService.novoClienteCadastrado(
-          nomeFantasia,
-          tipo,
-        );
         for (const adminUserId of adminIds) {
           this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
             userId: adminUserId,

@@ -3,6 +3,7 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { CompanyStatus, NotificationEventType, SupportTicketStatus } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
+import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import { AbacatePayClientService } from "@/modules/billing/abacatepay-client.service";
 import {
   ABACATEPAY_FEE_CARD_FIXED_CENTS,
@@ -68,6 +69,7 @@ export class AdminDigestService {
     private readonly usersService: UsersService,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly adminInboxEmailService: AdminInboxEmailService,
   ) {}
 
   async gerarResumo(periodo: DigestPeriod): Promise<AdminDigestSummary> {
@@ -193,6 +195,10 @@ export class AdminDigestService {
       faturamentoAbacatePayCentavos: resumo.faturamentoAbacatePayCentavos,
       lucroLiquidoAbacatePayCentavos: resumo.lucroLiquidoAbacatePayCentavos,
     });
+    // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
+    // entrega mesmo sem nenhuma conta Admin Rotta real configurada.
+    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+
     const adminIds = await this.usersService.listAdminRottaUserIds();
 
     for (const adminUserId of adminIds) {

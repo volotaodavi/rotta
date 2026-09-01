@@ -9,6 +9,7 @@ import type { CompanyRepository, CompanyWithPlan } from "../repositories/company
 import type { PlanRepository } from "../repositories/plan.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { PrismaService } from "@/infra/database/prisma.service";
+import type { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import type { ReceitaFederalService } from "@/infra/receita-federal/receita-federal.service";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -111,6 +112,7 @@ describe("CompaniesService", () => {
     Pick<MessagePersonalizationService, "cadastroConcluido" | "novoClienteCadastrado">
   >;
   let eventEmitter: jest.Mocked<Pick<EventEmitter2, "emit">>;
+  let adminInboxEmailService: jest.Mocked<Pick<AdminInboxEmailService, "send">>;
 
   beforeEach(() => {
     companyRepository = {
@@ -162,6 +164,7 @@ describe("CompaniesService", () => {
       novoClienteCadastrado: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
     };
     eventEmitter = { emit: jest.fn() };
+    adminInboxEmailService = { send: jest.fn().mockResolvedValue(undefined) };
 
     service = new CompaniesService(
       companyRepository,
@@ -176,6 +179,7 @@ describe("CompaniesService", () => {
       receitaFederalService,
       messagePersonalizationService as unknown as MessagePersonalizationService,
       eventEmitter as unknown as EventEmitter2,
+      adminInboxEmailService as unknown as AdminInboxEmailService,
     );
 
     planRepository.findByCode.mockResolvedValue(STARTER_PLAN);

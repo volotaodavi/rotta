@@ -11,6 +11,7 @@ import { BillingSchedulerService } from "./billing-scheduler.service";
 import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 
+import { EmailModule } from "@/infra/email/email.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
@@ -27,7 +28,13 @@ import { UsersModule } from "@/modules/users/users.module";
  * exporta — este módulo nunca reimplementa acesso a `Prisma.company`.
  */
 @Module({
-  imports: [CompaniesModule, PlanNoticesModule, UsersModule, MessagePersonalizationModule],
+  imports: [
+    CompaniesModule,
+    PlanNoticesModule,
+    UsersModule,
+    MessagePersonalizationModule,
+    EmailModule,
+  ],
   controllers: [
     BillingController,
     AbacatePayWebhookController,

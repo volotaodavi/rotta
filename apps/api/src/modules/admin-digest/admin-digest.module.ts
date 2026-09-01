@@ -4,6 +4,7 @@ import { AdminDigestQueueController } from "./admin-digest-queue.controller";
 import { AdminDigestSchedulerService } from "./admin-digest-scheduler.service";
 import { AdminDigestService } from "./admin-digest.service";
 
+import { EmailModule } from "@/infra/email/email.module";
 import { BillingModule } from "@/modules/billing/billing.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { UsersModule } from "@/modules/users/users.module";
@@ -19,7 +20,7 @@ import { UsersModule } from "@/modules/users/users.module";
  * aqui — mesmo padrão de `BillingModule`.
  */
 @Module({
-  imports: [BillingModule, UsersModule, MessagePersonalizationModule],
+  imports: [BillingModule, UsersModule, MessagePersonalizationModule, EmailModule],
   controllers: [AdminDigestQueueController],
   providers: [AdminDigestService, AdminDigestSchedulerService],
 })

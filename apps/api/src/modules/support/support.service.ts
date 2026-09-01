@@ -8,7 +8,6 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
-
 import { toSupportMessageResponseDto } from "./mappers/support-message.mapper";
 import {
   toSupportTicketDetailResponseDto,
@@ -33,6 +32,7 @@ import type {
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 
+import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import { EmailService } from "@/infra/email/email.service";
 import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
 import { GroqService } from "@/infra/groq/groq.service";
@@ -84,6 +84,7 @@ export class SupportService {
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly emailService: EmailService,
+    private readonly adminInboxEmailService: AdminInboxEmailService,
     private readonly groqService: GroqService,
     private readonly contractsService: ContractsService,
   ) {}
@@ -196,6 +197,15 @@ export class SupportService {
           corpo: mensagem.corpo,
           dadosContexto: { ticketId: input.ticketId, companyId: input.companyId },
         });
+      }
+
+      // Caixa fixa da Rotta (pedido do usuário 01/09/2026: "novos
+      // pedidos de suporte... abertura de chamados") — só na ABERTURA,
+      // nunca a cada mensagem trocada (`SUPORTE_NOVA_MENSAGEM` continua
+      // só pelo `SUPPORT_INBOX_EMAIL` opcional logo abaixo, senão viraria
+      // spam pras duas caixas a cada troca de mensagem da conversa).
+      if (input.tipo === "SUPORTE_TICKET_ABERTO") {
+        void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
       }
     } catch (error) {
       this.logger.warn(`Falha ao notificar Admin Rotta sobre o chamado ${input.ticketId}.`);
@@ -590,13 +600,18 @@ export class SupportService {
 
   /** Best-effort — ver nota no chamador. */
   private notifyAdminRottaTicketEncerradoBestEffort(ticket: SupportTicketWithRelations): void {
+    const mensagem = this.messagePersonalizationService.suporteTicketEncerrado(
+      ticket.assunto,
+      ticket.company.nomeFantasia,
+    );
+
+    // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
+    // entrega mesmo sem nenhuma conta Admin Rotta real configurada.
+    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+
     this.usersService
       .listAdminRottaUserIds()
       .then((adminIds) => {
-        const mensagem = this.messagePersonalizationService.suporteTicketEncerrado(
-          ticket.assunto,
-          ticket.company.nomeFantasia,
-        );
         for (const adminUserId of adminIds) {
           this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
             userId: adminUserId,

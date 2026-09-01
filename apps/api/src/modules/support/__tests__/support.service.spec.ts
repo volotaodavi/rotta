@@ -1,7 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { Role } from "@/shared/enums";
 
 import { SupportService } from "../support.service";
 
@@ -11,6 +9,7 @@ import type {
   SupportTicketWithRelations,
 } from "../repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import type { EmailService } from "@/infra/email/email.service";
 import type { GroqService } from "@/infra/groq/groq.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -19,6 +18,9 @@ import type { ContractResponseDto } from "@/modules/marketplace/dto/contract-res
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
+
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { Role } from "@/shared/enums";
 
 function buildTicket(
   overrides: Partial<SupportTicketWithRelations> = {},
@@ -116,6 +118,7 @@ describe("SupportService", () => {
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let emailService: jest.Mocked<EmailService>;
+  let adminInboxEmailService: jest.Mocked<AdminInboxEmailService>;
   let groqService: jest.Mocked<GroqService>;
   let contractsService: jest.Mocked<ContractsService>;
   const originalEnv = { ...process.env };
@@ -143,15 +146,26 @@ describe("SupportService", () => {
       suporteNovaMensagem: jest
         .fn()
         .mockReturnValue({ titulo: "Nova mensagem", corpo: "corpo da mensagem" }),
+      suporteTicketEncerrado: jest
+        .fn()
+        .mockReturnValue({
+          titulo: "Chamado de suporte encerrado",
+          corpo: "corpo do encerramento",
+        }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
     emailService = {
       sendEmail: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<EmailService>;
+    adminInboxEmailService = {
+      send: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<AdminInboxEmailService>;
     groqService = {
       responderDuvida: jest.fn().mockRejectedValue(new Error("GROQ_API_KEY não configurada.")),
     } as unknown as jest.Mocked<GroqService>;
     contractsService = {
-      list: jest.fn().mockResolvedValue({ items: [buildContract()], total: 1, page: 1, pageSize: 50 }),
+      list: jest
+        .fn()
+        .mockResolvedValue({ items: [buildContract()], total: 1, page: 1, pageSize: 50 }),
     } as unknown as jest.Mocked<ContractsService>;
 
     delete process.env.SUPPORT_INBOX_EMAIL;
@@ -165,6 +179,7 @@ describe("SupportService", () => {
       eventEmitter,
       messagePersonalizationService,
       emailService,
+      adminInboxEmailService,
       groqService,
       contractsService,
     );
@@ -298,7 +313,9 @@ describe("SupportService", () => {
           descricao: "Não estou achando o botão de cadastrar aluno.",
         }),
       );
-      groqService.responderDuvida.mockResolvedValue("Você pode cadastrar o aluno em Alunos > Novo.");
+      groqService.responderDuvida.mockResolvedValue(
+        "Você pode cadastrar o aluno em Alunos > Novo.",
+      );
 
       await service.createTicket(
         {
@@ -370,7 +387,10 @@ describe("SupportService", () => {
         "A tela trava ao salvar o cadastro.",
       );
       expect(messageRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ autorIsIA: true, mensagem: "Tente atualizar a página e salvar novamente." }),
+        expect.objectContaining({
+          autorIsIA: true,
+          mensagem: "Tente atualizar a página e salvar novamente.",
+        }),
       );
     });
 
@@ -398,7 +418,11 @@ describe("SupportService", () => {
       );
 
       const result = await service.createTicket(
-        { assunto: "Como funciona o transporte?", descricao: "Detalhe suficiente aqui.", categoria: "DUVIDA" },
+        {
+          assunto: "Como funciona o transporte?",
+          descricao: "Detalhe suficiente aqui.",
+          categoria: "DUVIDA",
+        },
         responsavelActor,
         {},
       );
@@ -424,7 +448,11 @@ describe("SupportService", () => {
 
       await expect(
         service.createTicket(
-          { assunto: "Como funciona o transporte?", descricao: "Detalhe suficiente aqui.", categoria: "DUVIDA" },
+          {
+            assunto: "Como funciona o transporte?",
+            descricao: "Detalhe suficiente aqui.",
+            categoria: "DUVIDA",
+          },
           responsavelActor,
           {},
         ),
@@ -648,7 +676,11 @@ describe("SupportService", () => {
         {},
       );
 
-      expect(ticketRepository.findById).toHaveBeenCalledWith("ticket-1", undefined, "responsavel-1");
+      expect(ticketRepository.findById).toHaveBeenCalledWith(
+        "ticket-1",
+        undefined,
+        "responsavel-1",
+      );
       expect(messageRepository.createBypass).toHaveBeenCalledWith(
         expect.objectContaining({ ticketId: "ticket-1", autorUserId: "responsavel-1" }),
       );
@@ -683,7 +715,11 @@ describe("SupportService", () => {
 
       const result = await service.closeTicket("ticket-1", responsavelActor, {});
 
-      expect(ticketRepository.findById).toHaveBeenCalledWith("ticket-1", undefined, "responsavel-1");
+      expect(ticketRepository.findById).toHaveBeenCalledWith(
+        "ticket-1",
+        undefined,
+        "responsavel-1",
+      );
       expect(ticketRepository.updateStatusBypass).toHaveBeenCalledWith(
         "ticket-1",
         expect.objectContaining({ status: "ENCERRADO", encerradoPorUserId: "responsavel-1" }),

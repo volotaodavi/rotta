@@ -44,6 +44,7 @@ import type {
 } from "@/modules/companies/repositories/company.repository";
 
 import { PrismaService } from "@/infra/database/prisma.service";
+import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -116,6 +117,7 @@ export class BillingService {
     private readonly usersService: UsersService,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly eventEmitter: EventEmitter2,
+    private readonly adminInboxEmailService: AdminInboxEmailService,
   ) {}
 
   /**
@@ -134,6 +136,11 @@ export class BillingService {
         const mensagem = this.messagePersonalizationService.planoNovaAssinatura(
           company.nomeFantasia,
         );
+
+        // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
+        // entrega mesmo sem nenhuma conta Admin Rotta real configurada.
+        void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+
         return this.usersService.listAdminRottaUserIds().then((adminIds) => {
           for (const adminUserId of adminIds) {
             this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {

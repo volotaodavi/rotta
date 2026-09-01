@@ -1,6 +1,7 @@
 import { AdminDigestService } from "../admin-digest.service";
 
 import type { PrismaService } from "@/infra/database/prisma.service";
+import type { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import type { AbacatePayClientService } from "@/modules/billing/abacatepay-client.service";
 import type { AbacatePayBilling } from "@/modules/billing/types/abacatepay.types";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -30,6 +31,7 @@ describe("AdminDigestService", () => {
     Pick<MessagePersonalizationService, "relatorioAdmin">
   >;
   let eventEmitter: jest.Mocked<Pick<EventEmitter2, "emit">>;
+  let adminInboxEmailService: jest.Mocked<Pick<AdminInboxEmailService, "send">>;
   let service: AdminDigestService;
 
   beforeEach(() => {
@@ -47,6 +49,7 @@ describe("AdminDigestService", () => {
       relatorioAdmin: jest.fn().mockReturnValue({ titulo: "Resumo", corpo: "..." }),
     };
     eventEmitter = { emit: jest.fn() };
+    adminInboxEmailService = { send: jest.fn().mockResolvedValue(undefined) };
 
     service = new AdminDigestService(
       prisma as unknown as PrismaService,
@@ -54,6 +57,7 @@ describe("AdminDigestService", () => {
       usersService as unknown as UsersService,
       messagePersonalizationService as unknown as MessagePersonalizationService,
       eventEmitter as unknown as EventEmitter2,
+      adminInboxEmailService as unknown as AdminInboxEmailService,
     );
   });
 

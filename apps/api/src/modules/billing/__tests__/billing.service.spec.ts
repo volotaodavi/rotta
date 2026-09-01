@@ -6,6 +6,7 @@ import { BillingService } from "../billing.service";
 import type { AbacatePayClientService } from "../abacatepay-client.service";
 import type { AsaasClientService } from "../asaas-client.service";
 import type { PrismaService } from "@/infra/database/prisma.service";
+import type { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import type { CompanyWithPlan } from "@/modules/companies/repositories/company.repository";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { UsersService } from "@/modules/users/users.service";
@@ -72,6 +73,9 @@ describe("BillingService", () => {
       planoNovaAssinatura: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
     const eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    const adminInboxEmailService = {
+      send: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<AdminInboxEmailService>;
 
     service = new BillingService(
       client,
@@ -81,6 +85,7 @@ describe("BillingService", () => {
       usersService,
       messagePersonalizationService,
       eventEmitter,
+      adminInboxEmailService,
     );
   });
 
