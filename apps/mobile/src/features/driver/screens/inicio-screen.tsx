@@ -58,6 +58,7 @@ import {
   usePauseTrip,
   useResumeTrip,
   useStartTrip,
+  useStudentsAttendanceToday,
   useTodayTrip,
   useTripProximasEtas,
   useTripStudentEvents,
@@ -1222,6 +1223,7 @@ function ParadaCard({
   tripId,
   podeOperar,
   driverPosition,
+  ausentesHojeIds,
 }: {
   parada: RouteStop;
   alunos: RouteStudent[];
@@ -1229,6 +1231,10 @@ function ParadaCard({
   tripId: string;
   podeOperar: boolean;
   driverPosition: DistanceCoordenada | null;
+  /** Ausente de propósito (default vazio): a listagem "trip encerrada"
+   * não precisa da sugestão de continuidade, já não há mais decisão a
+   * tomar. */
+  ausentesHojeIds?: Set<string>;
 }): JSX.Element {
   const { theme } = useTheme();
 
@@ -1260,6 +1266,7 @@ function ParadaCard({
             tripId={tripId}
             podeOperar={podeOperar}
             driverPosition={driverPosition}
+            ausenteNaIdaHoje={ausentesHojeIds?.has(aluno.studentId) ?? false}
           />
         ))
       )}
@@ -1321,6 +1328,20 @@ function ModoOperacionalFullScreen({
 }): JSX.Element {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // "IA de continuidade" ida→volta (pedido do usuário: "se o aluno ficou
+  // ausente na rota de ida, na volta aparecerá como ausente ou o
+  // transportador pode colocar que ele foi embarcado" — decisão
+  // confirmada: sugestão de 1 toque, NUNCA registra nada sozinho).
+  // Paridade exata com `minha-rota/page.tsx` no Painel Web.
+  const stopsById = new Map(paradasOrdenadas.map((parada) => [parada.id, parada]));
+  const alunosVoltaIds = routeStudents
+    .filter((aluno) => stopsById.get(aluno.paradaEmbarqueId)?.schoolId)
+    .map((aluno) => aluno.studentId);
+  const { data: attendanceToday } = useStudentsAttendanceToday(alunosVoltaIds);
+  const ausentesHojeIds = new Set(
+    (attendanceToday ?? []).filter((a) => a.ausenteHoje).map((a) => a.studentId),
+  );
 
   // Mesmo filtro de "falta o evento esperado" usado em `paradasRestantesCount`/`ParadaCard`.
   const paradasPendentes = paradasOrdenadas.filter((parada) => {
@@ -1537,6 +1558,7 @@ function ModoOperacionalFullScreen({
                 tripId={trip.id}
                 podeOperar={isActive}
                 driverPosition={driverPosition}
+                ausenteNaIdaHoje={ausentesHojeIds.has(aluno.studentId)}
               />
             ))}
           </View>
@@ -1581,6 +1603,7 @@ function ModoOperacionalFullScreen({
                 tripId={trip.id}
                 podeOperar={isActive}
                 driverPosition={driverPosition}
+                ausentesHojeIds={ausentesHojeIds}
               />
             ))}
           </View>
@@ -1661,6 +1684,7 @@ function AlunoParadaRow({
   tripId,
   podeOperar,
   driverPosition,
+  ausenteNaIdaHoje = false,
 }: {
   aluno: RouteStudent;
   parada: RouteStop;
@@ -1668,6 +1692,14 @@ function AlunoParadaRow({
   tripId: string;
   podeOperar: boolean;
   driverPosition: DistanceCoordenada | null;
+  /**
+   * "IA de continuidade" ida→volta — `true` quando este aluno já foi
+   * marcado AUSENTE hoje em OUTRA viagem (a ida). Decisão do usuário:
+   * "sugestão com 1 toque" — NUNCA marca ausência sozinho, só mostra o
+   * aviso com um atalho; o botão de Embarque normal continua ativo do
+   * lado, pro transportador decidir se o aluno voltou a aparecer.
+   */
+  ausenteNaIdaHoje?: boolean;
 }): JSX.Element {
   const { theme } = useTheme();
   const { data: student } = useStudent(aluno.studentId);
@@ -1783,6 +1815,32 @@ function AlunoParadaRow({
           </View>
         ) : null}
       </View>
+
+      {/* "IA de continuidade" ida→volta — só sugere, nunca registra
+          sozinho. Some assim que o motorista/monitor tomar QUALQUER
+          decisão sobre este aluno (embarque ou confirmar ausência). */}
+      {isEmbarque && ausenteNaIdaHoje && !jaOcorreu && !jaAusente ? (
+        <View style={[styles.continuidadeAviso, { backgroundColor: `${theme.colors.warning}1a` }]}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Text style={{ color: theme.colors.warning, fontSize: 11, fontWeight: "700" }}>
+              Ausente na ida
+            </Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              Continua ausente ou embarcou pra voltar?
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            disabled={!podeOperar || addEvent.isPending}
+            onPress={() => addEvent.mutate({ studentId: aluno.studentId, tipo: "AUSENTE" })}
+            style={{ opacity: podeOperar ? 1 : 0.4 }}
+          >
+            <Text style={{ color: theme.colors.driverDanger, fontSize: 12, fontWeight: "700" }}>
+              Confirmar ausência
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {/* Pedido do usuário: "um formulário simples e opcional (motivo
           com opções ou comentário, ambos opcionais)" — nada aqui é
@@ -1939,6 +1997,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 24,
+  },
+  continuidadeAviso: {
+    alignItems: "center",
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "space-between",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
   },
   controlsRow: { flexDirection: "row", gap: 8 },
   controlsSection: { gap: 8, paddingHorizontal: 16 },

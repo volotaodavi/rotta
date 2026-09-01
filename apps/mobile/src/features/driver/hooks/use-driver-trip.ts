@@ -94,6 +94,24 @@ export function useTripStudentEvents(tripId: string | undefined) {
 }
 
 /**
+ * "IA de continuidade" ida→volta (pedido do usuário: "se o aluno ficou
+ * ausente na rota de ida, na volta aparecerá como ausente") — presença
+ * de hoje de um lote de alunos, através de QUALQUER viagem/rota da
+ * MESMA empresa (backend já existente, `GET students-attendance-today`,
+ * mesmo endpoint que o Painel Web usa em `execute-route-client.tsx`).
+ * Paridade exata com `use-trips.ts#useStudentsAttendanceToday` no
+ * Painel Web.
+ */
+export function useStudentsAttendanceToday(studentIds: string[]) {
+  return useQuery({
+    queryKey: ["driver", "trips", "students-attendance-today", studentIds],
+    queryFn: () => tripsApi.getAttendanceToday(studentIds),
+    enabled: studentIds.length > 0,
+    refetchInterval: 15_000,
+  });
+}
+
+/**
  * Item 3 do pedido do usuário: "reconhecer o endereço alternativo do
  * responsável dentro do raio de embarque/desembarque" — coordenada
  * EFETIVA de cada aluno pendente hoje (já resolve `StudentAddressOverride`
