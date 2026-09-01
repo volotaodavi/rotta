@@ -68,9 +68,13 @@ describe("BillingService", () => {
 
     const usersService = {
       listAdminRottaUserIds: jest.fn().mockResolvedValue([]),
+      listMembershipsByCompany: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<UsersService>;
     const messagePersonalizationService = {
       planoNovaAssinatura: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+      pagamentoAprovado: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+      pagamentoRecusado: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+      pagamentoPendente: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
     const eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
     const adminInboxEmailService = {

@@ -49,6 +49,7 @@ import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
+import { Role } from "@/shared/enums";
 
 export interface BillingAdminCompanySummary {
   id: string;
@@ -160,6 +161,76 @@ export class BillingService {
           }`,
         );
       });
+  }
+
+  /**
+   * Avisa a própria Empresa/Gestor sobre o resultado de UM pagamento
+   * (pedido do usuário 01/09/2026: "pagamento aprovado/recusado/
+   * pendente"). Diferente de `notifyAdminRottaNovaAssinaturaBestEffort`
+   * (só a 1ª assinatura, só Admin Rotta): aqui é sempre o próprio
+   * cliente sendo avisado, em TODO webhook relevante — inclusive
+   * renovações, porque quem paga quer saber de cada cobrança, não só
+   * da primeira. Best-effort, nunca impede a atualização de status em
+   * si (que já aconteceu antes desta chamada).
+   */
+  private notifyPagamentoBestEffort(
+    companyId: string,
+    tipo:
+      | typeof NotificationEventType.PAGAMENTO_APROVADO
+      | typeof NotificationEventType.PAGAMENTO_RECUSADO
+      | typeof NotificationEventType.PAGAMENTO_PENDENTE,
+    valorFormatado: string,
+  ): void {
+    // Tudo dentro de `Promise.resolve().then(...)` de propósito — se
+    // `messagePersonalizationService` lançasse por qualquer motivo, o
+    // erro precisa cair no `.catch()` DESTE método (mensagem precisa),
+    // nunca escapar de volta pro `try/catch` de `applyAsaasStatus`/
+    // `applyStatus` (que reportaria "não foi possível ATUALIZAR a
+    // empresa", enganoso — a atualização já tinha acontecido).
+    Promise.resolve()
+      .then(() => {
+        const mensagem =
+          tipo === NotificationEventType.PAGAMENTO_APROVADO
+            ? this.messagePersonalizationService.pagamentoAprovado(valorFormatado)
+            : tipo === NotificationEventType.PAGAMENTO_RECUSADO
+              ? this.messagePersonalizationService.pagamentoRecusado(valorFormatado)
+              : this.messagePersonalizationService.pagamentoPendente(valorFormatado);
+        return { mensagem };
+      })
+      .then(async ({ mensagem }) => {
+        const memberships = await this.usersService.listMembershipsByCompany(companyId);
+        for (const membership of memberships) {
+          if (
+            (membership.role as Role) !== Role.EMPRESA &&
+            (membership.role as Role) !== Role.GESTOR
+          )
+            continue;
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: membership.userId,
+            companyId,
+            tipo,
+            titulo: mensagem.titulo,
+            corpo: mensagem.corpo,
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Não foi possível notificar a empresa ${companyId} sobre o pagamento (${tipo}): ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+  }
+
+  /** `value` em REAIS (contrato da Asaas, `AsaasPayment.value`) — nunca centavos. */
+  private formatarValorAsaasReais(value: number): string {
+    return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+
+  /** `centavos` no padrão interno da Rotta (AbacatePay/`billing.constants.ts`). */
+  private formatarValorCentavos(centavos: number): string {
+    return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
   /**
@@ -600,18 +671,43 @@ export class BillingService {
   async handleAsaasWebhookEvent(event: AsaasWebhookEnvelope): Promise<void> {
     const companyId = event.payment?.externalReference ?? undefined;
     const subscriptionId = event.payment?.subscription;
+    // `payment.value` é o único valor de pagamento que qualquer webhook
+    // desta integração de fato ecoa de volta (a AbacatePay não manda
+    // `amount` em nenhum evento de assinatura, ver `applyStatus`) —
+    // usado só pra compor o texto de PAGAMENTO_*, nunca pra lógica de
+    // negócio (o `status` já resolvido acima continua a única fonte de
+    // verdade).
+    const valorFormatado =
+      event.payment?.value !== undefined
+        ? this.formatarValorAsaasReais(event.payment.value)
+        : undefined;
 
     switch (event.event) {
       case "PAYMENT_CONFIRMED":
       case "PAYMENT_RECEIVED":
-        await this.applyAsaasStatus(event.event, companyId, CompanyStatus.ATIVO, subscriptionId);
+        await this.applyAsaasStatus(
+          event.event,
+          companyId,
+          CompanyStatus.ATIVO,
+          subscriptionId,
+          NotificationEventType.PAGAMENTO_APROVADO,
+          valorFormatado,
+        );
         return;
       case "PAYMENT_OVERDUE":
+        // Asaas não distingue "recusado" de "vencido sem pagamento" num
+        // evento próprio — `PAYMENT_OVERDUE` lê melhor como "ainda
+        // pendente" do ponto de vista de quem só quer saber se já
+        // pagou ou não (pedido do usuário: "pagamento... pendente").
+        // `PAGAMENTO_RECUSADO` fica reservado pro evento real de recusa
+        // da AbacatePay (`subscription.payment_failed`, ver `applyStatus`).
         await this.applyAsaasStatus(
           event.event,
           companyId,
           CompanyStatus.INADIMPLENTE,
           subscriptionId,
+          NotificationEventType.PAGAMENTO_PENDENTE,
+          valorFormatado,
         );
         return;
       case "SUBSCRIPTION_DELETED":
@@ -638,6 +734,11 @@ export class BillingService {
     companyId: string | undefined,
     status: CompanyStatus,
     subscriptionId: string | undefined,
+    pagamentoTipo?:
+      | typeof NotificationEventType.PAGAMENTO_APROVADO
+      | typeof NotificationEventType.PAGAMENTO_RECUSADO
+      | typeof NotificationEventType.PAGAMENTO_PENDENTE,
+    valorFormatado?: string,
   ): Promise<void> {
     if (!companyId) {
       this.logger.warn(
@@ -681,6 +782,9 @@ export class BillingService {
       if (status === CompanyStatus.ATIVO && antes && antes.status !== CompanyStatus.ATIVO) {
         this.notifyAdminRottaNovaAssinaturaBestEffort(companyId);
       }
+      if (pagamentoTipo && valorFormatado) {
+        this.notifyPagamentoBestEffort(companyId, pagamentoTipo, valorFormatado);
+      }
     } catch (error) {
       this.logger.warn(
         `Não foi possível atualizar a empresa ${companyId} a partir do webhook Asaas "${eventName}": ${(error as Error).message}`,
@@ -699,13 +803,38 @@ export class BillingService {
     const companyId = event.data.checkout?.externalId ?? undefined;
     const subscriptionId = event.data.subscription?.id;
 
+    // A AbacatePay não ecoa `amount` em NENHUM evento de assinatura (ver
+    // `AbacatePaySubscriptionWebhookData` — só `subscription`/`checkout`/
+    // `payment` com `id`+`status`) — diferente da Asaas, que manda
+    // `payment.value` de verdade. Como hoje só existe o plano Starter
+    // único, `ROTTA_SUBSCRIPTION_PRICE_CENTS` é o valor real cobrado,
+    // não uma invenção — stub-honesto seria esconder o valor por
+    // completo, o que piora a notificação sem necessidade.
+    const valorFormatado = this.formatarValorCentavos(ROTTA_SUBSCRIPTION_PRICE_CENTS);
+
     switch (event.event) {
       case "subscription.completed":
       case "subscription.renewed":
-        await this.applyStatus(event.event, companyId, CompanyStatus.ATIVO, subscriptionId);
+        await this.applyStatus(
+          event.event,
+          companyId,
+          CompanyStatus.ATIVO,
+          subscriptionId,
+          {},
+          NotificationEventType.PAGAMENTO_APROVADO,
+          valorFormatado,
+        );
         return;
       case "subscription.payment_failed":
-        await this.applyStatus(event.event, companyId, CompanyStatus.INADIMPLENTE, subscriptionId);
+        await this.applyStatus(
+          event.event,
+          companyId,
+          CompanyStatus.INADIMPLENTE,
+          subscriptionId,
+          {},
+          NotificationEventType.PAGAMENTO_RECUSADO,
+          valorFormatado,
+        );
         return;
       case "subscription.cancelled":
         await this.applyStatus(event.event, companyId, CompanyStatus.CANCELADO, subscriptionId);
@@ -751,10 +880,15 @@ export class BillingService {
     const proximoVencimento = new Date();
     proximoVencimento.setMonth(proximoVencimento.getMonth() + PIX_RECURRENCE_MONTHS);
 
-    await this.applyStatus("billing.paid", companyId, CompanyStatus.ATIVO, undefined, {
-      pixProximoVencimento: proximoVencimento,
-      pixUltimoAvisoEm: null,
-    });
+    await this.applyStatus(
+      "billing.paid",
+      companyId,
+      CompanyStatus.ATIVO,
+      undefined,
+      { pixProximoVencimento: proximoVencimento, pixUltimoAvisoEm: null },
+      NotificationEventType.PAGAMENTO_APROVADO,
+      this.formatarValorCentavos(ROTTA_SUBSCRIPTION_PRICE_CENTS),
+    );
   }
 
   private async applyStatus(
@@ -763,6 +897,11 @@ export class BillingService {
     status: CompanyStatus,
     subscriptionId: string | undefined,
     extra: Partial<UpdateCompanyData> = {},
+    pagamentoTipo?:
+      | typeof NotificationEventType.PAGAMENTO_APROVADO
+      | typeof NotificationEventType.PAGAMENTO_RECUSADO
+      | typeof NotificationEventType.PAGAMENTO_PENDENTE,
+    valorFormatado?: string,
   ): Promise<void> {
     if (!companyId) {
       this.logger.warn(
@@ -797,6 +936,9 @@ export class BillingService {
 
       if (status === CompanyStatus.ATIVO && antes && antes.status !== CompanyStatus.ATIVO) {
         this.notifyAdminRottaNovaAssinaturaBestEffort(companyId);
+      }
+      if (pagamentoTipo && valorFormatado) {
+        this.notifyPagamentoBestEffort(companyId, pagamentoTipo, valorFormatado);
       }
     } catch (error) {
       this.logger.warn(
