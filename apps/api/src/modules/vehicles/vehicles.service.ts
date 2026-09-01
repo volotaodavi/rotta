@@ -15,10 +15,12 @@ import {
   VehicleAssignmentRole,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
+  VehicleOccurrenceSeverity,
   VehicleReminderType,
   VehicleStatus,
   type VehicleCategory,
   type VehicleDocumentType,
+  type VehicleOccurrence,
   Vehicle,
   VehicleType,
 } from "@prisma/client";
@@ -1083,7 +1085,75 @@ export class VehiclesService {
       userAgent: meta.userAgent,
     });
 
+    this.notifyOccurrenceBestEffort(occurrence);
+
     return toVehicleOccurrenceResponseDto(occurrence);
+  }
+
+  /**
+   * Avisa os responsáveis das rotas ativas deste veículo sobre a
+   * ocorrência (pedido do usuário 01/09/2026: "ocorrência"/"emergência"
+   * — `OCORRENCIA`/`EMERGENCIA` já existiam configuradas no
+   * `NotificationChannelSelectorService`, mas nenhum código disparava).
+   *
+   * `EMERGENCIA` não tem um botão de pânico dedicado hoje — em vez de
+   * inventar uma feature nova fora do escopo pedido, reaproveitamos o
+   * sinal que já existe: severidade `ALTA` já é, na prática, como
+   * motorista/monitor comunicam algo grave (`VehicleOccurrenceSeverity`
+   * não tem um nível "crítico" à parte). `ALTA` dispara os DOIS eventos
+   * (`OCORRENCIA` normal + `EMERGENCIA`, canal com SMS) — nunca troca
+   * um pelo outro, cada aviso continua íntegro no histórico. `BAIXA`/
+   * `MEDIA` disparam só `OCORRENCIA`.
+   *
+   * Mesmo padrão de destinatário de `notifyAdminReviewDecisionBestEffort`
+   * (`vehicleRepository.listActiveResponsavelIds`) — sem nome de aluno
+   * específico aqui (ocorrência é reportada no nível do VEÍCULO, não de
+   * um aluno): `ocorrencia()`/`emergencia()` usam "seu filho" como
+   * referência genérica, mesmo texto que qualquer app de transporte
+   * escolar usaria pra um aviso que vale pra todos os alunos daquele
+   * veículo.
+   */
+  private notifyOccurrenceBestEffort(occurrence: VehicleOccurrence): void {
+    this.vehicleRepository
+      .listActiveResponsavelIds(occurrence.vehicleId)
+      .then((responsavelIds) => {
+        const isEmergencia = occurrence.severidade === VehicleOccurrenceSeverity.ALTA;
+        const mensagemOcorrencia = this.messagePersonalizationService.ocorrencia(
+          "seu filho",
+          occurrence.descricao,
+        );
+        const mensagemEmergencia = isEmergencia
+          ? this.messagePersonalizationService.emergencia(occurrence.descricao)
+          : null;
+
+        for (const responsavelId of responsavelIds) {
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: responsavelId,
+            companyId: occurrence.companyId,
+            tipo: NotificationEventType.OCORRENCIA,
+            titulo: mensagemOcorrencia.titulo,
+            corpo: mensagemOcorrencia.corpo,
+            dadosContexto: { vehicleId: occurrence.vehicleId, occurrenceId: occurrence.id },
+          });
+          if (mensagemEmergencia) {
+            this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+              userId: responsavelId,
+              companyId: occurrence.companyId,
+              tipo: NotificationEventType.EMERGENCIA,
+              titulo: mensagemEmergencia.titulo,
+              corpo: mensagemEmergencia.corpo,
+              dadosContexto: { vehicleId: occurrence.vehicleId, occurrenceId: occurrence.id },
+            });
+          }
+        }
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Falha ao notificar responsáveis sobre a ocorrência ${occurrence.id} do veículo ${occurrence.vehicleId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
   }
 
   async listOccurrences(

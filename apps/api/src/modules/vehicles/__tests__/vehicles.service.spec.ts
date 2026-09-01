@@ -1,10 +1,12 @@
 import { BadRequestException, ConflictException, NotFoundException } from "@nestjs/common";
 import {
+  NotificationEventType,
   VehicleAdminReviewStatus,
   VehicleAssignmentRole,
   VehicleCategory,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
+  VehicleOccurrenceSeverity,
   VehicleStatus,
   VehicleType,
 } from "@prisma/client";
@@ -158,7 +160,7 @@ describe("VehiclesService", () => {
       list: jest.fn(),
       listAllActive: jest.fn(),
       listPendingCategoryReview: jest.fn(),
-      listActiveResponsavelIds: jest.fn(),
+      listActiveResponsavelIds: jest.fn().mockResolvedValue([]),
       listVehiclesForResponsavel: jest.fn(),
       existsAdminReviewAcknowledgement: jest.fn(),
       createAdminReviewAcknowledgement: jest.fn(),
@@ -214,6 +216,8 @@ describe("VehiclesService", () => {
     messagePersonalizationService = {
       veiculoRevisaoAprovada: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
       veiculoRevisaoReprovada: jest.fn().mockReturnValue({ titulo: "t", corpo: "c" }),
+      ocorrencia: jest.fn().mockReturnValue({ titulo: "Ocorrência registrada", corpo: "c" }),
+      emergencia: jest.fn().mockReturnValue({ titulo: "Emergência", corpo: "c" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
 
     service = new VehiclesService(
@@ -1054,6 +1058,91 @@ describe("VehiclesService", () => {
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         "communication.requested",
         expect.objectContaining({ userId: "responsavel-1" }),
+      );
+    });
+  });
+
+  describe("createOccurrence", () => {
+    beforeEach(() => {
+      vehicleRepository.findById.mockResolvedValue(buildVehicle());
+      vehicleRepository.listActiveResponsavelIds.mockResolvedValue(["responsavel-1"]);
+    });
+
+    it("severidade BAIXA/MEDIA: só OCORRENCIA, nunca EMERGENCIA", async () => {
+      occurrenceRepository.create.mockResolvedValue({
+        id: "occ-1",
+        vehicleId: "vehicle-1",
+        companyId: "company-1",
+        reportadoPorId: empresaActor.sub,
+        titulo: "Pneu furado",
+        descricao: "Furou na rota da manhã.",
+        severidade: VehicleOccurrenceSeverity.MEDIA,
+        fotoUrls: [],
+        createdAt: new Date(),
+      });
+
+      await service.createOccurrence(
+        "vehicle-1",
+        { titulo: "Pneu furado", descricao: "Furou na rota da manhã." },
+        empresaActor,
+        {},
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(vehicleRepository.listActiveResponsavelIds).toHaveBeenCalledWith("vehicle-1");
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.OCORRENCIA,
+        }),
+      );
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({ tipo: NotificationEventType.EMERGENCIA }),
+      );
+    });
+
+    it("severidade ALTA: dispara OCORRENCIA E EMERGENCIA pros responsáveis", async () => {
+      occurrenceRepository.create.mockResolvedValue({
+        id: "occ-2",
+        vehicleId: "vehicle-1",
+        companyId: "company-1",
+        reportadoPorId: empresaActor.sub,
+        titulo: "Freio falhou",
+        descricao: "Freio não respondeu numa descida.",
+        severidade: VehicleOccurrenceSeverity.ALTA,
+        fotoUrls: [],
+        createdAt: new Date(),
+      });
+
+      await service.createOccurrence(
+        "vehicle-1",
+        {
+          titulo: "Freio falhou",
+          descricao: "Freio não respondeu numa descida.",
+          severidade: VehicleOccurrenceSeverity.ALTA,
+        },
+        empresaActor,
+        {},
+      );
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.OCORRENCIA,
+        }),
+      );
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({
+          userId: "responsavel-1",
+          tipo: NotificationEventType.EMERGENCIA,
+        }),
       );
     });
   });
