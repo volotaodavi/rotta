@@ -26,10 +26,12 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
  * Pessoal), convite e WebView de Criar Empresa. Exibido pelo
  * `RootNavigator` quando não há sessão ativa.
  *
- * `initialRouteName` (Dossiê 24 — primeira experiência) — o
- * `RootNavigator` decide entre `Onboarding` (usuário nunca viu) e
- * `Entrada` (recorrente, `getHasSeenOnboarding()` já marcado) antes de
- * montar este navigator; nenhuma tela aqui precisa saber desse cálculo.
+ * `initialRouteName` (pedido do usuário 01/09/2026) — `Entrada` é
+ * SEMPRE a primeira tela, primeira instalação ou recorrente (a arte de
+ * boas-vindas precisa aparecer pra todo mundo); é a própria
+ * `EntradaScreen` quem consulta `getHasSeenOnboarding()` ao tocar em
+ * "Começar agora", decidindo ali se passa pelo carrossel (`Onboarding`,
+ * Dossiê 24 — primeira experiência) antes de `SelecionarPerfil`.
  */
 export function AuthNavigator({
   initialRouteName = "Entrada",

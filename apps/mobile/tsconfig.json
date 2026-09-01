@@ -4,7 +4,14 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+    // `moduleResolution: "Bundler"` (herdado) exige esta flag (TS 5.0+)
+    // pra aceitar `import x from "./foo.png"` — e, mesmo com ela ligada,
+    // só resolve com um `foo.png.d.ts` ao lado do próprio arquivo (não
+    // com um `declare module "*.png"` coringa em `global.d.ts`, testado
+    // e confirmado que não se aplica a imports relativos neste modo).
+    // Ver `assets/welcome-hero.png.d.ts`.
+    "allowArbitraryExtensions": true
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]

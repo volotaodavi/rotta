@@ -1,56 +1,67 @@
-import { StyleSheet, Text, View } from "react-native";
+import { ImageBackground, StyleSheet, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
-import { AuthButton, AuthScreen } from "../components";
+import HERO_IMAGE from "../../../../assets/welcome-hero.png";
+import { AuthButton } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import { RottaLogo } from "@/components/rotta-logo";
+import { getHasSeenOnboarding } from "@/lib/onboarding-store";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Entrada">;
 
 /**
- * Tela inicial do app (Dossiê 15/24, `AUTH-01`) — símbolo + wordmark
- * Rotta, Entrar, Criar Conta. Ponto de entrada de quem já viu o
- * onboarding (usuário recorrente, Dossiê 24 — Fluxo Inicial): "Criar
- * conta" segue o fluxo já existente (`CriarConta` → Área Profissional/
- * Pessoal); "Escolher meu perfil" é o atalho pra `SelecionarPerfil`
- * (mesma tela nova que o onboarding leva na primeira vez), pra quem
- * prefere aquele fluxo mais visual — nenhum caminho substitui o outro.
+ * Tela inicial do app (Dossiê 15/24, `AUTH-01`) — pedido do usuário
+ * 01/09/2026: a arte de boas-vindas (van + rota + wordmark Rotta) é o
+ * PRIMEIRO que qualquer pessoa vê ao abrir o app, seja na primeira
+ * instalação ou numa visita recorrente (`RootNavigator` sempre usa
+ * `Entrada` como rota inicial, sem depender de `getHasSeenOnboarding()`
+ * pra decidir a tela — só o botão "Começar agora" consulta esse flag,
+ * ver `handleComecar` abaixo).
+ *
+ * Dois botões sobre a imagem, exatamente como pedido: "Começar agora"
+ * (quem nunca usou — primeiro passa pelo carrossel de 3 telas já
+ * existente, `OnboardingScreen`, só na primeira vez; depois vai direto
+ * pra `SelecionarPerfil`, a tela que reúne cadastro por papel E "Já
+ * tenho conta") e "Entrar" (quem já tem conta, direto pro login —
+ * login é único e independente de papel).
  */
 export function EntradaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+
+  async function handleComecar(): Promise<void> {
+    const jaViu = await getHasSeenOnboarding().catch(() => true);
+    navigation.navigate(jaViu ? "SelecionarPerfil" : "Onboarding");
+  }
 
   return (
-    <AuthScreen>
-      <View style={styles.brand}>
-        <RottaLogo size={72} variant="full" />
-        <Text style={[styles.tagline, { color: theme.colors.textMuted }]}>
-          Conecta. Protege. Tranquiliza.
-        </Text>
-      </View>
-
-      <View style={styles.actions}>
-        <AuthButton label="Entrar" onPress={() => navigation.navigate("Login")} />
+    <ImageBackground source={HERO_IMAGE} style={styles.flex} resizeMode="cover">
+      <View
+        style={[
+          styles.actions,
+          {
+            paddingBottom: insets.bottom + theme.spacing[8],
+            paddingHorizontal: theme.spacing[6],
+            gap: theme.spacing[3],
+          },
+        ]}
+      >
+        <AuthButton label="Começar agora" onPress={() => void handleComecar()} />
         <AuthButton
-          label="Criar conta"
+          label="Entrar"
           variant="secondary"
-          onPress={() => navigation.navigate("CriarConta")}
-        />
-        <AuthButton
-          label="Escolher meu perfil"
-          variant="ghost"
-          onPress={() => navigation.navigate("SelecionarPerfil")}
+          onPress={() => navigation.navigate("Login")}
         />
       </View>
-    </AuthScreen>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  actions: { gap: 12 },
-  brand: { alignItems: "center", gap: 8, marginBottom: 48 },
-  tagline: { fontSize: 14 },
+  actions: { flex: 1, justifyContent: "flex-end" },
+  flex: { flex: 1 },
 });

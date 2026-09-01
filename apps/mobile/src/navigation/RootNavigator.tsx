@@ -1,6 +1,5 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
-import { useEffect, useState } from "react";
 
 import { AuthNavigator } from "./AuthNavigator";
 import { DriverNavigator } from "./DriverNavigator";
@@ -14,8 +13,6 @@ import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-
 import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
 import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
 import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-sheet";
-import { getHasSeenOnboarding } from "@/lib/onboarding-store";
-
 
 /**
  * Navigator raiz — decide entre `AuthNavigator` e o navigator do papel
@@ -44,27 +41,6 @@ export function RootNavigator(): JSX.Element {
   // navegação (só efeito colateral, sem UI própria).
   usePushRegistration({ status });
 
-  // Flag "onboarding já visto" (Dossiê 24 — primeira experiência):
-  // resolvido em paralelo à sessão, nunca depois — sem isso a splash
-  // trocaria de tela duas vezes (primeiro a sessão resolve, DEPOIS o
-  // flag), um "pulo" visível que a Seção 1 pede pra evitar ("não
-  // bloquear o usuário desnecessariamente" também vale pra não mostrar
-  // dois estados de carregamento em sequência).
-  const [hasSeenOnboarding, setHasSeenOnboardingState] = useState<boolean | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    getHasSeenOnboarding()
-      .then((seen) => {
-        if (mounted) setHasSeenOnboardingState(seen);
-      })
-      .catch(() => {
-        if (mounted) setHasSeenOnboardingState(true);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
   // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor
   // — o único papel de gestão com telas reais neste app; Empresa/Gestor
   // já caem em `PainelWebOnlyScreen` antes de chegar aqui, e Responsável
@@ -76,11 +52,7 @@ export function RootNavigator(): JSX.Element {
     enabled: isMotoristaOuMonitor,
   });
 
-  if (
-    status === "loading" ||
-    hasSeenOnboarding === null ||
-    (isMotoristaOuMonitor && isIdentityLoading)
-  ) {
+  if (status === "loading" || (isMotoristaOuMonitor && isIdentityLoading)) {
     return <AppSplashScreen />;
   }
 
@@ -102,7 +74,7 @@ export function RootNavigator(): JSX.Element {
   return (
     <NavigationContainer>
       {status === "unauthenticated" || !user ? (
-        <AuthNavigator initialRouteName={hasSeenOnboarding ? "Entrada" : "Onboarding"} />
+        <AuthNavigator />
       ) : user.role === "motorista" || user.role === "monitor" ? (
         // Frente N — cadastro autônomo (`registerAutonomo`) ainda não tem
         // `companyId` até um `CompanyJoinRequest` ser aprovado.
