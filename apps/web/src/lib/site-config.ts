@@ -125,17 +125,17 @@ export function getGoogleAnalyticsId(): string | undefined {
  * uma página de domínio à venda de terceiro) — os antigos
  * `contato@`/`suporte@rotta.com.br` eram endereços que ninguém
  * conseguia receber. O domínio oficial agora é `rottabr.com.br`
- * (confirmado pelo usuário 31/08/2026), mas o DNS/e-mail dele ainda não
- * está configurado (Dossiê 33 §4) — até existir uma caixa real em
- * `@rottabr.com.br` (ex. Google Workspace), toda comunicação (contato,
- * suporte, segurança e o funil `/governo`) continua usando a MESMA
- * caixa real de hoje, `rottadobrasil@gmail.com` — um único ponto de
- * origem, trocar só aqui no dia em que existir a caixa dedicada.
+ * (confirmado pelo usuário 31/08/2026) e a caixa `contato@rottabr.com.br`
+ * já existe de verdade (Cloudflare Email Routing + Email Service,
+ * confirmado pelo usuário 01/09/2026 — Dossiê 33 §6) — é o e-mail
+ * oficial da Rotta usado em toda comunicação (contato, suporte,
+ * segurança e o funil `/governo`), um único ponto de origem, trocar só
+ * aqui no dia em que um endereço dedicado por finalidade existir.
  */
 export const COMPANY_LEGAL_NAME = "Rotta do Brasil Tecnologia e Soluções de Transportes";
 export const COMPANY_CNPJ = "54.623.584/0001-80";
 export const COMPANY_FORUM = "Maricá/RJ";
-export const CONTACT_EMAIL = "rottadobrasil@gmail.com";
+export const CONTACT_EMAIL = "contato@rottabr.com.br";
 export const SUPPORT_EMAIL = CONTACT_EMAIL;
 /**
  * Não existe um endereço de segurança dedicado hoje — o canal de

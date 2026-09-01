@@ -239,12 +239,17 @@ de um domínio que a Resend ainda não verificou.
 3. Aguardar a verificação (a Resend confirma no próprio painel).
 4. Só depois disso `EMAIL_FROM_ADDRESS=notificacoes@rottabr.com.br`
    funciona de verdade em produção.
-5. Receber e-mail em `contato@`/`suporte@rottabr.com.br` (não é a
-   mesma coisa que ENVIAR, acima) exige provisionar uma caixa real
-   (ex. Google Workspace) — até isso existir, `CONTACT_EMAIL`/
-   `SUPPORT_EMAIL` (`apps/web/src/lib/site-config.ts`) continuam
-   apontando pra `rottadobrasil@gmail.com` de propósito (endereço real
-   já monitorado hoje).
+5. Receber e-mail em `contato@rottabr.com.br` (não é a mesma coisa que
+   ENVIAR, acima) — resolvido em 01/09/2026 via Cloudflare (DNS do
+   domínio já migrado pra lá): Email Routing encaminha pra caixa
+   pessoal do usuário, e Email Service (SMTP autenticado,
+   `smtp.mx.cloudflare.net:465`) permite responder/enviar como
+   `contato@rottabr.com.br` de dentro do próprio Gmail ("Enviar e-mail
+   como"). `CONTACT_EMAIL`/`SUPPORT_EMAIL`
+   (`apps/web/src/lib/site-config.ts`) já apontam pra
+   `contato@rottabr.com.br` — confirmar também `SUPPORT_INBOX_EMAIL`
+   no Render (API), que hoje pode ainda estar com o valor antigo
+   (`rottadobrasil@gmail.com`).
 
 ### 6.4 — Variáveis de ambiente a atualizar (depois de 6.1-6.3 no ar)
 

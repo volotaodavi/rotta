@@ -23,6 +23,6 @@ export interface PushConfig {
 export default registerAs("push", (): PushConfig => ({
   vapidPublicKey: process.env.VAPID_PUBLIC_KEY || undefined,
   vapidPrivateKey: process.env.VAPID_PRIVATE_KEY || undefined,
-  vapidSubject: process.env.VAPID_SUBJECT || "mailto:rottadobrasil@gmail.com",
+  vapidSubject: process.env.VAPID_SUBJECT || "mailto:contato@rottabr.com.br",
   expoAccessToken: process.env.EXPO_ACCESS_TOKEN || undefined,
 }));
