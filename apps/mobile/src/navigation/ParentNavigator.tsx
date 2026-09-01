@@ -1,7 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Bell, History, Home, User } from "@rotta/icons/native";
 
-import { MarketplaceNavigator } from "./MarketplaceNavigator";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
 import { ParentPerfilNavigator } from "./ParentPerfilNavigator";
 
@@ -9,7 +8,10 @@ import type { ParentTabParamList } from "./types";
 
 import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-transport-state";
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
-import { TransporteInicioScreen } from "@/features/marketplace/screens";
+import {
+  MarketplaceComingSoonScreen,
+  TransporteInicioScreen,
+} from "@/features/marketplace/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
@@ -39,8 +41,10 @@ export function ParentNavigator(): JSX.Element {
     <Tab.Navigator initialRouteName="Mapa" screenOptions={{ headerShown: false }}>
       <Tab.Screen
         name="Mapa"
-        component={MarketplaceNavigator}
+        component={MarketplaceComingSoonScreen}
         options={{
+          headerShown: true,
+          title: "Início",
           tabBarLabel: "Início",
           tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
         }}
