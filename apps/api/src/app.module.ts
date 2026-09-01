@@ -30,6 +30,7 @@ import qstashConfig from "@/config/qstash.config";
 import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
 import storageConfig from "@/config/storage.config";
+import turnstileConfig from "@/config/turnstile.config";
 import vehiclePlateLookupConfig from "@/config/vehicle-plate-lookup.config";
 import whatsappConfig from "@/config/whatsapp.config";
 import { HealthModule } from "@/health/health.module";
@@ -101,6 +102,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         asaasConfig,
         observabilityConfig,
         vehiclePlateLookupConfig,
+        turnstileConfig,
       ],
     }),
 

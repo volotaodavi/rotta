@@ -36,7 +36,16 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Public } from "@/common/decorators/public.decorator";
 
 function requestMeta(req: Request, deviceName?: string): AuthRequestMeta {
-  return { ip: req.ip, userAgent: req.headers["user-agent"], deviceName };
+  return {
+    ip: req.ip,
+    userAgent: req.headers["user-agent"],
+    deviceName,
+    // `X-Rotta-Platform` (pedido do usuário 01/09/2026 — Cloudflare
+    // Turnstile) — auto-declarado pelo cliente (`createApiClient`,
+    // `packages/api-client/src/http.ts`), decide se `AuthService`
+    // exige o token do widget "não sou um robô" (só existe em web).
+    platform: req.headers["x-rotta-platform"] === "web" ? "web" : "mobile",
+  };
 }
 
 /**

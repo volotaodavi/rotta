@@ -39,6 +39,18 @@ export interface ApiClientConfig {
   baseUrl: string;
   /** Resolve o token de acesso atual — implementado por @rotta/auth. */
   getAccessToken?: () => string | null | Promise<string | null>;
+  /**
+   * Enviado em toda requisição via `X-Rotta-Platform` (pedido do usuário
+   * 01/09/2026 — Cloudflare Turnstile) — o backend só EXIGE o token do
+   * widget "não sou um robô" no cadastro (`AuthService.register*`)
+   * quando `platform === "web"`; Turnstile não roda em app nativo (não
+   * existe widget de navegador lá), então `"mobile"` sempre pula a
+   * verificação (`TurnstileService.assertHuman`), nunca bloqueia o
+   * app. Auto-declarado pelo cliente, não é uma prova criptográfica —
+   * mesma classe de limitação aceita em outros pontos do projeto
+   * (complementa `ThrottlerGuard`, não substitui).
+   */
+  platform: "web" | "mobile";
 }
 
 export interface RequestOptions extends Omit<RequestInit, "body"> {
@@ -73,6 +85,7 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
       headers: {
         ...(isFormData ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        "X-Rotta-Platform": config.platform,
         ...options.headers,
       },
       body:

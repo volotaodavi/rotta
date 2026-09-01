@@ -30,6 +30,7 @@ import { env } from "@/config/env";
 const apiClient = createApiClient({
   baseUrl: env.EXPO_PUBLIC_API_URL,
   getAccessToken: () => getAccessToken(),
+  platform: "mobile",
 });
 
 export const authApi = createAuthEndpoints(apiClient);

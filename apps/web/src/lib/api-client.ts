@@ -35,6 +35,7 @@ import { env } from "@/config/env";
 const apiClient = createApiClient({
   baseUrl: env.NEXT_PUBLIC_API_URL,
   getAccessToken: () => getAccessToken(),
+  platform: "web",
 });
 
 export const agendaApi = createAgendaEndpoints(apiClient);

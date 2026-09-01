@@ -20,6 +20,8 @@ import { useState, type FocusEvent, type FormEvent } from "react";
 import type { RegisterEmpresaInput } from "@rotta/api-client";
 
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
+import { TurnstileWidget } from "@/components/turnstile-widget";
+import { env } from "@/config/env";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useCnpjLookup } from "@/hooks/use-cnpj-lookup";
 
@@ -121,6 +123,8 @@ export default function CriarEmpresaPage(): JSX.Element {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileObrigatorio = Boolean(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
   // Depois de criar a conta, SEMPRE mostra uma tela de confirmação antes
   // de entrar no painel (pedido do usuário: "deverá aparecer uma tela
   // informando que a conta foi criada com sucesso... um botão para
@@ -221,7 +225,7 @@ export default function CriarEmpresaPage(): JSX.Element {
 
     setIsSubmitting(true);
     try {
-      await registerEmpresa(form);
+      await registerEmpresa({ ...form, turnstileToken: turnstileToken ?? undefined });
       // Pedido do usuário: "após criar uma conta, deverá aparecer uma
       // tela informando que a conta foi criada com sucesso... terá um
       // botão para 'entrar'." Antes desta mudança só quem exigia contato
@@ -523,6 +527,7 @@ export default function CriarEmpresaPage(): JSX.Element {
           </Card.Body>
           <Card.Body>
             <TermsAcceptanceCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
+            <TurnstileWidget onToken={setTurnstileToken} />
           </Card.Body>
           <Card.Footer>
             {errorMessage && (
@@ -534,7 +539,7 @@ export default function CriarEmpresaPage(): JSX.Element {
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
-              disabled={!aceitouTermos}
+              disabled={!aceitouTermos || (turnstileObrigatorio && !turnstileToken)}
             >
               Criar empresa
             </Button>

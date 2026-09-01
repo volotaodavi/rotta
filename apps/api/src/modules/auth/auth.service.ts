@@ -54,6 +54,7 @@ import { TRIAL_BLOQUEIO_MENSAGENS } from "@/common/exceptions/trial-expirado.exc
 import { parseDurationToMs } from "@/common/utils/duration.util";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
+import { TurnstileService } from "@/infra/turnstile/turnstile.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService, type RequestMeta } from "@/modules/companies/companies.service";
 import { CompanyJoinRequestsService } from "@/modules/company-join-requests/company-join-requests.service";
@@ -65,6 +66,8 @@ import { Role } from "@/shared/enums";
 
 export interface AuthRequestMeta extends RequestMeta {
   deviceName?: string;
+  /** "web" exige Turnstile no cadastro; qualquer outro valor (app nativo, cliente antigo sem o header) pula — ver `TurnstileService`. */
+  platform?: "web" | "mobile";
 }
 
 const GENERIC_LOGIN_ERROR = "Não foi possível entrar. Verifique os dados e tente novamente.";
@@ -115,6 +118,7 @@ export class AuthService {
     private readonly auditLogService: AuditLogService,
     private readonly studentPreRegistrationsService: StudentPreRegistrationsService,
     private readonly companyJoinRequestsService: CompanyJoinRequestsService,
+    private readonly turnstileService: TurnstileService,
   ) {}
 
   /**
@@ -127,6 +131,10 @@ export class AuthService {
    * forma de uma rota `@Public()` escrever em tabelas com RLS.
    */
   async register(dto: RegisterEmpresaDto, meta: AuthRequestMeta): Promise<AuthTokensResponseDto> {
+    // "Não sou um robô" (pedido do usuário 01/09/2026) — sempre primeiro,
+    // antes de qualquer escrita no banco.
+    await this.assertHumanIfWeb(dto, meta);
+
     const syntheticActor: AuthenticatedUser = {
       sub: "",
       tenantId: null,
@@ -185,6 +193,8 @@ export class AuthService {
     dto: RegisterPessoalDto,
     meta: AuthRequestMeta,
   ): Promise<AuthTokensResponseDto> {
+    await this.assertHumanIfWeb(dto, meta);
+
     const email = dto.email.trim().toLowerCase();
     await this.usersService.assertNoDuplicateIdentity(email, dto.telefone, dto.cpf);
 
@@ -257,6 +267,8 @@ export class AuthService {
     dto: RegisterAutonomoDto,
     meta: AuthRequestMeta,
   ): Promise<AuthTokensResponseDto> {
+    await this.assertHumanIfWeb(dto, meta);
+
     const email = dto.email.trim().toLowerCase();
     await this.usersService.assertNoDuplicateIdentity(email, dto.telefone, dto.cpf);
 
@@ -306,6 +318,22 @@ export class AuthService {
     });
 
     return this.issueTokens(user, null, dto.role, user.id, meta);
+  }
+
+  /**
+   * Cloudflare Turnstile ("não sou um robô", pedido do usuário
+   * 01/09/2026) — só EXIGE o token quando `meta.platform === "web"`: o
+   * widget é uma tecnologia de navegador, o app nativo não tem como
+   * rodar (ver `ApiClientConfig.platform`, `packages/api-client/src/
+   * http.ts`) — exigir ali travaria todo cadastro pelo app assim que
+   * `TURNSTILE_SECRET_KEY` fosse configurada em produção.
+   */
+  private async assertHumanIfWeb(
+    dto: { turnstileToken?: string },
+    meta: AuthRequestMeta,
+  ): Promise<void> {
+    if (meta.platform !== "web") return;
+    await this.turnstileService.assertHuman(dto.turnstileToken, meta.ip);
   }
 
   /**

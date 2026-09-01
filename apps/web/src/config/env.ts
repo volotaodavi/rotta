@@ -32,6 +32,12 @@ const envSchema = z.object({
   // variável, o mapa continua aparecendo normalmente (ruas/água/nomes de
   // lugar reais), só com o carimbo por cima — nunca uma tela em branco.
   NEXT_PUBLIC_CARTO_API_KEY: z.string().optional(),
+  // Cloudflare Turnstile ("não sou um robô", pedido do usuário
+  // 01/09/2026) — chave pública do widget (Cloudflare → Turnstile →
+  // Add site). Sem ela, `TurnstileWidget` não renderiza nada e o
+  // cadastro segue normalmente sem exigir verificação (stub honesto,
+  // mesmo padrão de `NEXT_PUBLIC_VAPID_PUBLIC_KEY`).
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -39,4 +45,5 @@ export const env = envSchema.parse({
   NEXT_PUBLIC_VAPID_PUBLIC_KEY: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || undefined,
   NEXT_PUBLIC_MAPTILER_API_KEY: process.env.NEXT_PUBLIC_MAPTILER_API_KEY || undefined,
   NEXT_PUBLIC_CARTO_API_KEY: process.env.NEXT_PUBLIC_CARTO_API_KEY || undefined,
+  NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined,
 });

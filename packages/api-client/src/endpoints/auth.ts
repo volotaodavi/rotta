@@ -123,6 +123,8 @@ export interface RegisterEmpresaInput {
     cpf: string;
     senha: string;
   };
+  /** Cloudflare Turnstile ("não sou um robô", pedido do usuário 01/09/2026) — só a web preenche; o app nativo não envia (não existe widget lá). */
+  turnstileToken?: string;
 }
 
 export interface RegisterPessoalInput {
@@ -134,6 +136,8 @@ export interface RegisterPessoalInput {
   aceiteTermos: true;
   /** Área pública de convite — reivindica automaticamente esse pré-cadastro (`StudentPreRegistration`) logo após criar a conta. */
   preRegistrationId?: string;
+  /** Cloudflare Turnstile ("não sou um robô", pedido do usuário 01/09/2026) — só a web preenche; o app nativo não envia (não existe widget lá). */
+  turnstileToken?: string;
 }
 
 /** Frente N (briefing item 9) — Motorista/Monitor autônomo, sem empresa ainda. */
@@ -152,6 +156,8 @@ export interface RegisterAutonomoInput {
    * continuação que o Responsável já tinha via `preRegistrationId`).
    */
   codigoInterno?: string;
+  /** Cloudflare Turnstile ("não sou um robô", pedido do usuário 01/09/2026) — só a web preenche; o app nativo não envia (não existe widget lá). */
+  turnstileToken?: string;
 }
 
 export interface SessionInfo {

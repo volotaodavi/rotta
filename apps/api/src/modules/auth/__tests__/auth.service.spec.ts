@@ -9,6 +9,7 @@ import type { PasswordResetNotifierService } from "../password-reset-notifier.se
 import type { PasswordResetTokenRepository } from "../repositories/password-reset-token.repository";
 import type { SessionRepository } from "../repositories/session.repository";
 import type { PrismaService } from "@/infra/database/prisma.service";
+import type { TurnstileService } from "@/infra/turnstile/turnstile.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { CompanyJoinRequestsService } from "@/modules/company-join-requests/company-join-requests.service";
@@ -106,6 +107,7 @@ describe("AuthService", () => {
   let auditLogService: jest.Mocked<AuditLogService>;
   let studentPreRegistrationsService: jest.Mocked<StudentPreRegistrationsService>;
   let companyJoinRequestsService: jest.Mocked<CompanyJoinRequestsService>;
+  let turnstileService: jest.Mocked<TurnstileService>;
 
   beforeEach(() => {
     usersService = {
@@ -212,6 +214,10 @@ describe("AuthService", () => {
       create: jest.fn(),
     } as unknown as jest.Mocked<CompanyJoinRequestsService>;
 
+    turnstileService = {
+      assertHuman: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<TurnstileService>;
+
     service = new AuthService(
       usersService,
       companiesService,
@@ -228,6 +234,7 @@ describe("AuthService", () => {
       auditLogService,
       studentPreRegistrationsService,
       companyJoinRequestsService,
+      turnstileService,
     );
   });
 

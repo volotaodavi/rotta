@@ -19,6 +19,8 @@ import { useState, type FormEvent } from "react";
 import type { RegisterPessoalInput } from "@rotta/api-client";
 
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
+import { TurnstileWidget } from "@/components/turnstile-widget";
+import { env } from "@/config/env";
 
 const INITIAL_STATE: RegisterPessoalInput = {
   nome: "",
@@ -45,6 +47,8 @@ export default function CriarContaPessoalPage(): JSX.Element {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileObrigatorio = Boolean(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
   function updateField<K extends keyof RegisterPessoalInput>(
     key: K,
@@ -64,7 +68,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
 
     setIsSubmitting(true);
     try {
-      await registerPessoal(form);
+      await registerPessoal({ ...form, turnstileToken: turnstileToken ?? undefined });
       setIsDone(true);
     } catch (error) {
       setErrorMessage(
@@ -163,6 +167,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
           </Card.Body>
           <Card.Body>
             <TermsAcceptanceCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
+            <TurnstileWidget onToken={setTurnstileToken} />
           </Card.Body>
           <Card.Footer>
             {errorMessage && (
@@ -174,7 +179,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
               type="submit"
               variant="primary"
               isLoading={isSubmitting}
-              disabled={!aceitouTermos}
+              disabled={!aceitouTermos || (turnstileObrigatorio && !turnstileToken)}
               fullWidth
             >
               Criar conta

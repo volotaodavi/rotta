@@ -118,6 +118,11 @@ export const envSchema = z.object({
   VAPID_SUBJECT: z.string().optional(),
   EXPO_ACCESS_TOKEN: z.string().optional(),
 
+  // Cloudflare Turnstile ("não sou um robô", pedido do usuário
+  // 01/09/2026) — gratuita. Sem ela, `TurnstileService.assertHuman`
+  // pula a verificação (stub honesto), nunca trava o cadastro.
+  TURNSTILE_SECRET_KEY: z.string().optional(),
+
   // Canal WhatsApp (briefing — "arquitetura preparada... camada de
   // abstração para trocar de fornecedor futuramente"). Provedor ativo
   // hoje: Meta Cloud API (`WHATSAPP_PROVIDER` default). Ambas de

@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   Equals,
   IsBoolean,
@@ -77,4 +77,12 @@ export class RegisterAutonomoDto {
   @IsBoolean()
   @Equals(true, { message: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
   aceiteTermos!: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      "Token do widget Cloudflare Turnstile ('não sou um robô', pedido do usuário 01/09/2026) — só exigido quando o cadastro vem da web (ver `AuthService.assertHumanIfWeb`); ausente no app nativo, que não tem widget de navegador.",
+  })
+  @IsOptional()
+  @IsString()
+  turnstileToken?: string;
 }
