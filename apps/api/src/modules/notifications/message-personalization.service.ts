@@ -333,6 +333,30 @@ export class MessagePersonalizationService {
     };
   }
 
+  /** Trial acabando (pedido do usuário 01/09/2026: "trial expirando") — 3 dias de antecedência (`TrialNotificationsService`). */
+  trialExpirando(diasRestantes: number): PersonalizedMessage {
+    return {
+      titulo: "Seu trial está acabando",
+      corpo: `Faltam ${diasRestantes} dia(s) pro fim do seu trial gratuito na Rotta. Assine um plano pra continuar usando sem interrupção.`,
+    };
+  }
+
+  /** Trial vence HOJE — mesmo scheduler, um dia depois de `trialExpirando`. */
+  trialVenceHoje(): PersonalizedMessage {
+    return {
+      titulo: "Seu trial vence hoje",
+      corpo: `Seu trial gratuito na Rotta vence hoje. Assine um plano agora pra nunca perder acesso à plataforma.`,
+    };
+  }
+
+  /** Trial vencido, ações de escrita já bloqueadas pelo `TrialGuard` (mesma regra de `resolveTrialBloqueioMotivo`). */
+  trialBloqueado(): PersonalizedMessage {
+    return {
+      titulo: "Trial vencido",
+      corpo: `Seu trial gratuito acabou e algumas ações estão bloqueadas até você assinar um plano. Assine agora pra voltar a usar a Rotta normalmente.`,
+    };
+  }
+
   /** Informativo pro Admin Rotta (pedido do usuário 01/09/2026) — `CompaniesService.create`. */
   novoClienteCadastrado(nomeFantasia: string, tipoLabel: string): PersonalizedMessage {
     return {

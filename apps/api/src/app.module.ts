@@ -52,6 +52,7 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
 import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
 import { ConversationsModule } from "@/modules/conversations/conversations.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
+import { DocumentExpiryModule } from "@/modules/document-expiry/document-expiry.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
 import { GeoModule } from "@/modules/geo/geo.module";
@@ -72,6 +73,7 @@ import { SettingsModule } from "@/modules/settings/settings.module";
 import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { SupportModule } from "@/modules/support/support.module";
+import { TrialNotificationsModule } from "@/modules/trial-notifications/trial-notifications.module";
 import { TripsModule } from "@/modules/trips/trips.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
@@ -127,6 +129,8 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     CompaniesModule,
     BillingModule,
     AdminDigestModule,
+    TrialNotificationsModule,
+    DocumentExpiryModule,
     SchoolsModule,
     GeoModule,
     DriversModule,
