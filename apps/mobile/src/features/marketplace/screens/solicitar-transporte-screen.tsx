@@ -7,15 +7,8 @@ import {
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-import {
-  StatusPill,
-  VehicleButton,
-  VehicleCard,
-  VehicleScreen,
-  VehicleTextField,
-} from "@/features/vehicles/components";
-import { useTheme } from "@/providers/theme-provider";
 
+import { useGeocodeAddress } from "../hooks/use-geocode-address";
 import { useLocation } from "../hooks/use-location";
 import { useSchoolsSearch } from "../hooks/use-school-picker";
 import { useStudentsList } from "../hooks/use-students";
@@ -24,6 +17,15 @@ import { useCreateTransportRequest } from "../hooks/use-transport-requests";
 import type { ParentTabParamList, MarketplaceStackParamList } from "@/navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+
+import {
+  StatusPill,
+  VehicleButton,
+  VehicleCard,
+  VehicleScreen,
+  VehicleTextField,
+} from "@/features/vehicles/components";
+import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<MarketplaceStackParamList, "SolicitarTransporte">;
 
@@ -122,6 +124,19 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
     endereco.cidade.trim().length > 0 &&
     endereco.estado.trim().length > 0;
 
+  // Geocodificação em segundo plano (gap corrigido: esta tela nunca
+  // preenchia embarqueLatitude/Longitude — só o cadastro pelo site
+  // fazia isso). `null` enquanto o endereço ainda não está completo
+  // desativa a busca, mesmo critério do Painel Web.
+  const embarqueEnderecoTexto = enderecoCompleto(embarque)
+    ? `${embarque.logradouro}, ${embarque.numero}, ${embarque.bairro}, ${embarque.cidade}, ${embarque.estado}, ${embarque.cep}`
+    : null;
+  const desembarqueEnderecoTexto = enderecoCompleto(desembarque)
+    ? `${desembarque.logradouro}, ${desembarque.numero}, ${desembarque.bairro}, ${desembarque.cidade}, ${desembarque.estado}, ${desembarque.cep}`
+    : null;
+  const embarqueGeocoded = useGeocodeAddress(embarqueEnderecoTexto);
+  const desembarqueGeocoded = useGeocodeAddress(desembarqueEnderecoTexto);
+
   const novoAlunoValido =
     nome.trim().length > 0 &&
     dataNascimento.trim().length > 0 &&
@@ -160,6 +175,21 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
           desembarqueBairro: desembarque.bairro,
           desembarqueCidade: desembarque.cidade,
           desembarqueEstado: desembarque.estado,
+          // Coordenada já geocodificada em segundo plano (`useGeocodeAddress`)
+          // — nunca bloqueia o envio se ainda não chegou ou falhou, os
+          // campos ficam `undefined` exatamente como antes desta correção.
+          ...(embarqueGeocoded.coordenada
+            ? {
+                embarqueLatitude: embarqueGeocoded.coordenada.latitude,
+                embarqueLongitude: embarqueGeocoded.coordenada.longitude,
+              }
+            : {}),
+          ...(desembarqueGeocoded.coordenada
+            ? {
+                desembarqueLatitude: desembarqueGeocoded.coordenada.latitude,
+                desembarqueLongitude: desembarqueGeocoded.coordenada.longitude,
+              }
+            : {}),
           necessidadesEspeciais: necessidadesEspeciais || undefined,
           medicamentos: medicamentos || undefined,
           observacoes: observacoes || undefined,
