@@ -82,6 +82,7 @@ import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-
 import { useUpdateRoute } from "@/features/routes/hooks/use-routes";
 import { useStudent } from "@/features/students/hooks/use-students";
 import {
+  useStudentsAttendanceToday,
   useTripProximasEtas,
   useTripStudentEvents,
   useTripStudentLocations,
@@ -94,7 +95,6 @@ import {
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "@/hooks/use-my-location";
 import { notifyRouteStarted } from "@/lib/browser-notifications";
 import { buildWhatsAppUrl } from "@/lib/site-config";
-
 
 const TURNO_LABEL: Record<string, string> = {
   MANHA: "Manhã",
@@ -1411,6 +1411,26 @@ function ModoOperacionalFullScreen({
   mapKey: number;
   onRecenter: () => void;
 }): JSX.Element {
+  // "IA de continuidade" ida→volta (pedido do usuário: "se o aluno ficou
+  // ausente na rota de ida, na volta aparecerá como ausente ou o
+  // transportador pode colocar que ele foi embarcado" — decisão
+  // confirmada: sugestão de 1 toque, NUNCA registra nada sozinho).
+  // Heurística de "isto é a volta": a parada de EMBARQUE deste aluno é a
+  // própria escola (`schoolId` presente) — mesmo critério já usado antes
+  // em `execute-route-client.tsx`, só que ali a linha inteira era
+  // escondida sem deixar o motorista embarcar mesmo assim. Aqui os dois
+  // botões continuam disponíveis; `ausentesHojeIds` só liga um AVISO em
+  // `AlunoParadaRow`. Backend já existente (`GET students-attendance-today`,
+  // cross-trip, mesmo dia, mesma empresa) — nenhuma mudança de API.
+  const stopsById = new Map(paradasOrdenadas.map((parada) => [parada.id, parada]));
+  const alunosVoltaIds = routeStudents
+    .filter((aluno) => stopsById.get(aluno.paradaEmbarqueId)?.schoolId)
+    .map((aluno) => aluno.studentId);
+  const { data: attendanceToday } = useStudentsAttendanceToday(alunosVoltaIds);
+  const ausentesHojeIds = new Set(
+    (attendanceToday ?? []).filter((a) => a.ausenteHoje).map((a) => a.studentId),
+  );
+
   // Mesmo filtro de "falta o evento esperado" usado em `paradasRestantesCount`
   // e em `ParadaCard` (duplicado de propósito — três lugares, uma regra só).
   const paradasPendentes = paradasOrdenadas.filter((parada) => {
@@ -1641,6 +1661,7 @@ function ModoOperacionalFullScreen({
                   tripId={trip.id}
                   podeOperar={isActive}
                   driverPosition={driverPosition}
+                  ausenteNaIdaHoje={ausentesHojeIds.has(aluno.studentId)}
                 />
               ))}
             </div>
@@ -1685,6 +1706,7 @@ function ModoOperacionalFullScreen({
                 tripId={trip.id}
                 podeOperar={isActive}
                 driverPosition={driverPosition}
+                ausentesHojeIds={ausentesHojeIds}
               />
             ))}
           </div>
@@ -1742,6 +1764,7 @@ function ParadaCard({
   tripId,
   podeOperar,
   driverPosition,
+  ausentesHojeIds,
 }: {
   parada: RouteStop;
   alunos: RouteStudent[];
@@ -1749,6 +1772,10 @@ function ParadaCard({
   tripId: string;
   podeOperar: boolean;
   driverPosition: DistanceCoordenada | null;
+  /** Ausente de propósito (default vazio): a listagem "trip encerrada"
+   * não precisa da sugestão de continuidade, já não há mais decisão a
+   * tomar. */
+  ausentesHojeIds?: Set<string>;
 }): JSX.Element {
   return (
     <Card>
@@ -1779,6 +1806,7 @@ function ParadaCard({
               tripId={tripId}
               podeOperar={podeOperar}
               driverPosition={driverPosition}
+              ausenteNaIdaHoje={ausentesHojeIds?.has(aluno.studentId) ?? false}
             />
           ))
         )}
@@ -1794,6 +1822,7 @@ function AlunoParadaRow({
   tripId,
   podeOperar,
   driverPosition,
+  ausenteNaIdaHoje = false,
 }: {
   aluno: RouteStudent;
   parada: RouteStop;
@@ -1801,6 +1830,14 @@ function AlunoParadaRow({
   tripId: string;
   podeOperar: boolean;
   driverPosition: DistanceCoordenada | null;
+  /**
+   * "IA de continuidade" ida→volta — `true` quando este aluno já foi
+   * marcado AUSENTE hoje em OUTRA viagem (a ida). Decisão do usuário:
+   * "sugestão com 1 toque" — NUNCA marca ausência sozinho, só mostra o
+   * aviso com um atalho; o botão de Embarque normal continua ativo do
+   * lado, pro transportador decidir se o aluno voltou a aparecer.
+   */
+  ausenteNaIdaHoje?: boolean;
 }): JSX.Element {
   const { data: student } = useStudent(aluno.studentId);
   const addEvent = useAddStudentEvent(tripId);
@@ -1908,6 +1945,28 @@ function AlunoParadaRow({
           </div>
         ) : null}
       </div>
+
+      {/* "IA de continuidade" ida→volta — só sugere, nunca registra
+          sozinho. Some assim que o motorista/monitor tomar QUALQUER
+          decisão sobre este aluno (embarque ou confirmar ausência). */}
+      {isEmbarque && ausenteNaIdaHoje && !jaOcorreu && !jaAusente ? (
+        <div className="flex items-center justify-between gap-2 rounded-2xl bg-warning/10 px-3 py-2">
+          <div className="flex items-center gap-2">
+            <Badge variant="warning">Ausente na ida</Badge>
+            <Typography variant="caption" color="muted">
+              Continua ausente ou embarcou pra voltar?
+            </Typography>
+          </div>
+          <button
+            type="button"
+            disabled={!podeOperar || addEvent.isPending}
+            onClick={() => addEvent.mutate({ studentId: aluno.studentId, tipo: "AUSENTE" })}
+            className="shrink-0 text-xs font-semibold text-danger underline-offset-2 hover:underline disabled:opacity-40"
+          >
+            Confirmar ausência
+          </button>
+        </div>
+      ) : null}
 
       {/* Pedido do usuário: "abrindo um formulário simples e opcional
           (motivo com opções ou comentário, ambos opcionais)" — nenhum
