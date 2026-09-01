@@ -1,6 +1,7 @@
 import { Body, Controller, HttpCode, HttpStatus, Logger, Post, UseGuards } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { ApiExcludeController } from "@nestjs/swagger";
-import { Prisma } from "@prisma/client";
+import { NotificationEventType, Prisma } from "@prisma/client";
 
 import {
   DEFAULT_REJECTION_REASON,
@@ -11,7 +12,8 @@ import { DiditWebhookGuard } from "./didit-webhook.guard";
 
 import { Public } from "@/common/decorators/public.decorator";
 import { PrismaService } from "@/infra/database/prisma.service";
-
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 
 /**
  * Envelope comum a todo webhook da Didit (Business Console → API &
@@ -63,7 +65,11 @@ interface DiditWebhookEnvelope {
 export class DiditWebhookController {
   private readonly logger = new Logger(DiditWebhookController.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   @Post()
   @HttpCode(HttpStatus.OK)
@@ -113,10 +119,56 @@ export class DiditWebhookController {
         this.logger.warn(
           `Webhook Didit ignorado: session_id=${event.session_id} não é a sessão atual do usuário ${event.vendor_data} (ou usuário não existe) — provável evento de uma sessão já substituída.`,
         );
+        return;
+      }
+
+      // Só avisa em decisão FINAL (pedido do usuário 31/08/2026: "quero
+      // todos" — aprovada e reprovada) — nunca em estado intermediário
+      // ("In Progress"/"In Review"), que ainda não é uma decisão de
+      // verdade pra comunicar.
+      if (status === "APROVADA" || status === "REPROVADA") {
+        await this.notifyDecisionBestEffort(event.vendor_data as string, status, motivo);
       }
     } catch (error) {
       this.logger.error(
         `Falha ao aplicar webhook Didit ao usuário ${event.vendor_data}: ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /** Best-effort (nunca derruba o webhook, sempre 2xx pra Didit): busca o nome pra personalizar e emite o evento de comunicação (`CADASTRO_CONCLUIDO`, ver `MessagePersonalizationService`). */
+  private async notifyDecisionBestEffort(
+    userId: string,
+    status: "APROVADA" | "REPROVADA",
+    motivo: string | null | undefined,
+  ): Promise<void> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { nome: true },
+      });
+      if (!user) return;
+
+      const mensagem =
+        status === "APROVADA"
+          ? this.messagePersonalizationService.identidadeAprovada(user.nome)
+          : this.messagePersonalizationService.identidadeReprovada(
+              user.nome,
+              motivo ?? DEFAULT_REJECTION_REASON,
+            );
+
+      this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+        userId,
+        tipo:
+          status === "APROVADA"
+            ? NotificationEventType.IDENTIDADE_APROVADA
+            : NotificationEventType.IDENTIDADE_REPROVADA,
+        titulo: mensagem.titulo,
+        corpo: mensagem.corpo,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Não foi possível notificar o usuário ${userId} sobre a decisão de verificação de identidade: ${(error as Error).message}`,
       );
     }
   }

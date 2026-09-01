@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
 
-
 import { IdentityVerificationController } from "./identity-verification.controller";
 import { IdentityVerificationService } from "./identity-verification.service";
 
 import { DiditModule } from "@/infra/didit/didit.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 
 /**
  * Verificação de identidade hospedada via Didit (Motorista/Empresa-
@@ -14,7 +14,7 @@ import { DiditModule } from "@/infra/didit/didit.module";
  * `PrismaModule`, `@Global()` — não precisa import explícito aqui.
  */
 @Module({
-  imports: [DiditModule],
+  imports: [DiditModule, MessagePersonalizationModule],
   controllers: [IdentityVerificationController],
   providers: [IdentityVerificationService],
 })

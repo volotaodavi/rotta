@@ -2728,6 +2728,20 @@ enum NotificationEventType {
   /// motoristas/monitores"). Reaproveitado nos dois sentidos, mesma
   /// mecânica de `SUPORTE_NOVA_MENSAGEM` (`ConversationsService.sendMessage`).
   CONVERSA_NOVA_MENSAGEM
+  /// Boas-vindas (pedido do usuário 31/08/2026: "quero todos") — dispara
+  /// pra QUALQUER papel assim que a conta termina de ser criada
+  /// (Empresa/Gestor, Motorista/Monitor autônomo, Responsável). Só
+  /// EMAIL: nenhum token de push ainda existe nesse instante exato — o
+  /// dispositivo só registra depois do primeiro login.
+  CADASTRO_CONCLUIDO
+  /// Verificação de identidade (Didit) aprovada —
+  /// `DiditWebhookController`/`IdentityVerificationService.applyDecisionToUser`.
+  IDENTIDADE_APROVADA
+  /// Verificação de identidade reprovada — corpo sempre inclui o motivo
+  /// real (`User.identityVerificationMotivo`), nunca "reprovado, motivo
+  /// desconhecido" (pedido do usuário: "caso eu peça reenvio, eu posso
+  /// dizer o motivo").
+  IDENTIDADE_REPROVADA
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —

@@ -87,6 +87,15 @@ export class NotificationChannelSelectorService {
     // de SUPORTE_NOVA_MENSAGEM (PUSH pra avisar na hora, sem WHATSAPP/SMS
     // pra não vazar conteúdo da conversa fora do app).
     CONVERSA_NOVA_MENSAGEM: [PUSH],
+    // Boas-vindas (pedido do usuário 31/08/2026: "quero todos") — só
+    // EMAIL, nenhum token de push ainda existe no instante exato em que
+    // a conta termina de ser criada.
+    CADASTRO_CONCLUIDO: [EMAIL],
+    // Verificação de identidade (Didit) — mesmo canal de
+    // VEICULO_REVISAO_APROVADA/REPROVADA (aprovação/reprovação
+    // administrativa, o usuário precisa saber mesmo sem abrir o app).
+    IDENTIDADE_APROVADA: [PUSH, EMAIL],
+    IDENTIDADE_REPROVADA: [PUSH, EMAIL],
   };
 
   selectChannels(tipo: NotificationEventType): CommunicationChannel[] {

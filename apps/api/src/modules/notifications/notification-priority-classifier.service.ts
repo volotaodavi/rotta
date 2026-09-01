@@ -54,6 +54,13 @@ export class NotificationPriorityClassifierService {
     VEICULO_REVISAO_APROVADA: IMPORTANTE,
     VEICULO_REVISAO_REPROVADA: URGENTE,
     CONVERSA_NOVA_MENSAGEM: IMPORTANTE,
+    // Boas-vindas é só informativa (não exige nenhuma ação do usuário).
+    // Decisão de identidade segue o mesmo raciocínio de
+    // VEICULO_REVISAO_*: aprovação é informativa, reprovação é URGENTE
+    // (impede o usuário de operar até reenviar os documentos).
+    CADASTRO_CONCLUIDO: INFORMATIVA,
+    IDENTIDADE_APROVADA: INFORMATIVA,
+    IDENTIDADE_REPROVADA: URGENTE,
   };
 
   classify(tipo: NotificationEventType): NotificationPriority {

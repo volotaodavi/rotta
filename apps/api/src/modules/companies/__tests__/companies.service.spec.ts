@@ -13,8 +13,10 @@ import type { ReceitaFederalService } from "@/infra/receita-federal/receita-fede
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { DashboardService } from "@/modules/dashboard/dashboard.service";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 
 import { Role } from "@/shared/enums";
 
@@ -105,6 +107,10 @@ describe("CompaniesService", () => {
   let vehiclesService: jest.Mocked<VehiclesService>;
   let dashboardService: jest.Mocked<DashboardService>;
   let receitaFederalService: jest.Mocked<ReceitaFederalService>;
+  let messagePersonalizationService: jest.Mocked<
+    Pick<MessagePersonalizationService, "cadastroConcluido">
+  >;
+  let eventEmitter: jest.Mocked<Pick<EventEmitter2, "emit">>;
 
   beforeEach(() => {
     companyRepository = {
@@ -150,6 +156,10 @@ describe("CompaniesService", () => {
       lookupCnpj: jest.fn(),
       isAtiva: jest.fn(),
     } as unknown as jest.Mocked<ReceitaFederalService>;
+    messagePersonalizationService = {
+      cadastroConcluido: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+    };
+    eventEmitter = { emit: jest.fn() };
 
     service = new CompaniesService(
       companyRepository,
@@ -162,6 +172,8 @@ describe("CompaniesService", () => {
       vehiclesService,
       dashboardService,
       receitaFederalService,
+      messagePersonalizationService as unknown as MessagePersonalizationService,
+      eventEmitter as unknown as EventEmitter2,
     );
 
     planRepository.findByCode.mockResolvedValue(STARTER_PLAN);

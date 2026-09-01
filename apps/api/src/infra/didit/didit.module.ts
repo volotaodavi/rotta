@@ -5,6 +5,8 @@ import { DiditWebhookController } from "./didit-webhook.controller";
 import { DiditWebhookGuard } from "./didit-webhook.guard";
 import { DiditService } from "./didit.service";
 
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
+
 /**
  * `DiditWebhookController` fica aqui (não em `RottaAiModule`) porque é
  * infraestrutura da própria integração com a Didit — mesmo raciocínio
@@ -18,6 +20,7 @@ import { DiditService } from "./didit.service";
  * processo, nunca duplicado.
  */
 @Module({
+  imports: [MessagePersonalizationModule],
   controllers: [DiditWebhookController],
   providers: [DiditService, DiditWebhookGuard, DiditWebhookProvisioningService],
   exports: [DiditService],

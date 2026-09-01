@@ -7,10 +7,12 @@ import {
   NotFoundException,
   type OnModuleInit,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import {
   CompanyStatus,
   CompanyType,
   MembershipStatus,
+  NotificationEventType,
   PendingSubscriptionProvider,
   PendingSubscriptionStatus,
   type PendingSubscription,
@@ -55,6 +57,8 @@ import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { PIX_RECURRENCE_MONTHS } from "@/modules/billing/billing.constants";
 import { DashboardService } from "@/modules/dashboard/dashboard.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
@@ -115,6 +119,8 @@ export class CompaniesService implements OnModuleInit {
     private readonly vehiclesService: VehiclesService,
     private readonly dashboardService: DashboardService,
     private readonly receitaFederalService: ReceitaFederalService,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -509,6 +515,20 @@ export class CompaniesService implements OnModuleInit {
       },
       ip: meta.ip,
       userAgent: meta.userAgent,
+    });
+
+    // Boas-vindas (pedido do usuário 31/08/2026: "quero todos") — cobre
+    // Empresa/Gestor E Motorista/Monitor autônomo (tipo AUTONOMO cria a
+    // própria Company aqui também, ver nota no schema). Dispara mesmo
+    // quando é o Admin Rotta quem cria a empresa (não só self-service):
+    // quem recebe é sempre `adminUser`, a conta que de fato vai logar.
+    const boasVindas = this.messagePersonalizationService.cadastroConcluido(dto.administrador.nome);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: adminUser.id,
+      companyId: company.id,
+      tipo: NotificationEventType.CADASTRO_CONCLUIDO,
+      titulo: boasVindas.titulo,
+      corpo: boasVindas.corpo,
     });
 
     return toCompanyResponseDto(company);

@@ -187,6 +187,7 @@ describe("AuthService", () => {
 
     messagePersonalizationService = {
       novoResponsavel: jest.fn().mockReturnValue({ titulo: "Novo responsável", corpo: "..." }),
+      cadastroConcluido: jest.fn().mockReturnValue({ titulo: "Bem-vindo à Rotta!", corpo: "..." }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
 
     // MfaService real (não mockado): TOTP/hash são deterministicos o

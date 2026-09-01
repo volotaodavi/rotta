@@ -228,6 +228,17 @@ export class AuthService {
       corpo,
     });
 
+    // Boas-vindas (pedido do usuário 31/08/2026: "quero todos") —
+    // dirigido a QUEM ACABOU DE CRIAR A CONTA, diferente do evento
+    // acima (que é administrativo, "fulano foi cadastrado").
+    const boasVindas = this.messagePersonalizationService.cadastroConcluido(dto.nome);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: user.id,
+      tipo: NotificationEventType.CADASTRO_CONCLUIDO,
+      titulo: boasVindas.titulo,
+      corpo: boasVindas.corpo,
+    });
+
     return this.issueTokens(user, null, Role.RESPONSAVEL, user.id, meta);
   }
 
@@ -284,6 +295,15 @@ export class AuthService {
         );
       }
     }
+
+    // Boas-vindas (pedido do usuário 31/08/2026: "quero todos").
+    const boasVindas = this.messagePersonalizationService.cadastroConcluido(dto.nome);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: user.id,
+      tipo: NotificationEventType.CADASTRO_CONCLUIDO,
+      titulo: boasVindas.titulo,
+      corpo: boasVindas.corpo,
+    });
 
     return this.issueTokens(user, null, dto.role, user.id, meta);
   }

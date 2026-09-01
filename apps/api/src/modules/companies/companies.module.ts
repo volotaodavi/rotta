@@ -15,6 +15,7 @@ import { ReceitaFederalModule } from "@/infra/receita-federal/receita-federal.mo
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
+import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
 
@@ -53,6 +54,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     VehiclesModule,
     DashboardModule,
     ReceitaFederalModule,
+    MessagePersonalizationModule,
   ],
   controllers: [CompaniesController],
   providers: [

@@ -293,4 +293,43 @@ export class MessagePersonalizationService {
         `O veículo placa ${placa} foi reprovado pela Rotta do Brasil e não pode mais ser credenciado numa rota.`,
     };
   }
+
+  /**
+   * Boas-vindas (pedido do usuário 31/08/2026: "quero todos") — dispara
+   * pra QUALQUER papel logo que a conta termina de ser criada
+   * (`AuthService.registerPessoal`/`registerAutonomo`,
+   * `CompaniesService.create`). Texto genérico de propósito: não
+   * distingue papel (Empresa/Motorista/Responsável) porque o "bem-vindo"
+   * é o mesmo pra todo mundo — o que muda depois é o resto da
+   * experiência dentro do app, não este e-mail.
+   */
+  cadastroConcluido(nome: string): PersonalizedMessage {
+    return {
+      titulo: "Bem-vindo à Rotta!",
+      corpo: `${this.saudacao(nome)} Sua conta na Rotta foi criada com sucesso — já pode acessar a plataforma a partir de agora.`,
+    };
+  }
+
+  /**
+   * Verificação de identidade (Didit) aprovada —
+   * `DiditWebhookController`/`IdentityVerificationService.applyDecisionToUser`.
+   */
+  identidadeAprovada(nome: string): PersonalizedMessage {
+    return {
+      titulo: "Identidade verificada",
+      corpo: `${this.saudacao(nome)} Sua verificação de identidade foi aprovada.`,
+    };
+  }
+
+  /**
+   * `motivo` é sempre o texto real (`User.identityVerificationMotivo`)
+   * — pedido do usuário: "caso eu peça reenvio, eu posso dizer o
+   * motivo". Nunca "reprovado, motivo desconhecido" por preguiça.
+   */
+  identidadeReprovada(nome: string, motivo: string): PersonalizedMessage {
+    return {
+      titulo: "Verificação de identidade não aprovada",
+      corpo: `${this.saudacao(nome)} Sua verificação de identidade não foi aprovada. Motivo: ${motivo}. Você pode reenviar seus documentos a qualquer momento pelo app.`,
+    };
+  }
 }

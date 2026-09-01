@@ -10,7 +10,9 @@ import {
 import type { DiditConfig } from "@/config/didit.config";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { DiditService } from "@/infra/didit/didit.service";
+import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { ConfigService } from "@nestjs/config";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 
 import { Role } from "@/shared/enums";
 
@@ -51,15 +53,34 @@ function buildConfigServiceMock(): ConfigService {
   return { get: jest.fn().mockReturnValue(DIDIT_CONFIG) } as unknown as ConfigService;
 }
 
+function buildMessagePersonalizationServiceMock(): jest.Mocked<
+  Pick<MessagePersonalizationService, "identidadeAprovada" | "identidadeReprovada">
+> {
+  return {
+    identidadeAprovada: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+    identidadeReprovada: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
+  };
+}
+
+function buildEventEmitterMock(): jest.Mocked<Pick<EventEmitter2, "emit">> {
+  return { emit: jest.fn() };
+}
+
 function buildService(
   prisma: ReturnType<typeof buildPrismaMock>,
   didit: ReturnType<typeof buildDiditMock>,
   configService: ConfigService = buildConfigServiceMock(),
+  messagePersonalizationService: ReturnType<
+    typeof buildMessagePersonalizationServiceMock
+  > = buildMessagePersonalizationServiceMock(),
+  eventEmitter: ReturnType<typeof buildEventEmitterMock> = buildEventEmitterMock(),
 ) {
   return new IdentityVerificationService(
     prisma as unknown as PrismaService,
     didit as unknown as DiditService,
     configService,
+    messagePersonalizationService as unknown as MessagePersonalizationService,
+    eventEmitter as unknown as EventEmitter2,
   );
 }
 

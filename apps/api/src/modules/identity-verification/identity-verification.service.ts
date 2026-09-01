@@ -1,6 +1,12 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { type CompanyType, type IdentityVerificationStatus, Prisma } from "@prisma/client";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import {
+  type CompanyType,
+  type IdentityVerificationStatus,
+  NotificationEventType,
+  Prisma,
+} from "@prisma/client";
 
 import type { DecideIdentityVerificationDto } from "./dto/decide-identity-verification.dto";
 import type { ListIdentityVerificationsQueryDto } from "./dto/list-identity-verifications-query.dto";
@@ -13,6 +19,8 @@ import {
   mapDiditStatus,
 } from "@/infra/didit/didit-decision.util";
 import { DiditService } from "@/infra/didit/didit.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { Role } from "@/shared/enums";
 
 /**
@@ -165,6 +173,8 @@ export class IdentityVerificationService {
     private readonly prisma: PrismaService,
     private readonly didit: DiditService,
     private readonly configService: ConfigService,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly eventEmitter: EventEmitter2,
   ) {}
 
   /**
@@ -380,7 +390,7 @@ export class IdentityVerificationService {
     const motivo =
       extractDiditDecisionReason(raw) ?? (status === "REPROVADA" ? DEFAULT_REJECTION_REASON : null);
 
-    await this.prisma.user.update({
+    const updated = await this.prisma.user.update({
       where: { id: userId },
       data: {
         identityVerificationStatus: status,
@@ -389,5 +399,32 @@ export class IdentityVerificationService {
         identityVerificationMotivo: motivo,
       },
     });
+
+    // Mesmo raciocínio de `DiditWebhookController.notifyDecisionBestEffort`
+    // (pedido do usuário 31/08/2026: "quero todos") — só decisão FINAL,
+    // nunca estado intermediário. Best-effort: uma falha aqui nunca
+    // deve impedir a decisão em si de ter sido aplicada acima.
+    if (status === "APROVADA" || status === "REPROVADA") {
+      try {
+        const mensagem =
+          status === "APROVADA"
+            ? this.messagePersonalizationService.identidadeAprovada(updated.nome)
+            : this.messagePersonalizationService.identidadeReprovada(
+                updated.nome,
+                motivo ?? DEFAULT_REJECTION_REASON,
+              );
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId,
+          tipo:
+            status === "APROVADA"
+              ? NotificationEventType.IDENTIDADE_APROVADA
+              : NotificationEventType.IDENTIDADE_REPROVADA,
+          titulo: mensagem.titulo,
+          corpo: mensagem.corpo,
+        });
+      } catch {
+        // Nunca propaga — a decisão em si já foi persistida acima.
+      }
+    }
   }
 }
