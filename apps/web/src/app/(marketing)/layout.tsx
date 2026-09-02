@@ -9,7 +9,6 @@ import type { ReactNode } from "react";
 
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
-import { RottaLogoLockup } from "@/components/rotta-logo-lockup";
 import { RouteWordmark } from "@/components/route-wordmark";
 
 /**
@@ -98,12 +97,21 @@ const FOOTER_LINKS: { href: Route; label: string }[] = [
  *    página que é sempre clara por decisão de marca.
  * 2. Cabeçalho deixou de ser a barra escura fixa (`.ink-scope`) e virou
  *    branco, ficando translúcido/com blur e sombra só depois de rolar
- *    (pedido explícito do usuário) — texto/logo em `text-text` (escuro
- *    sobre claro), por isso a troca de `RouteWordmark` (só funciona em
- *    fundo escuro) por `RottaLogoLockup` (mark real + texto, pensado
- *    pra fundo claro) no cabeçalho. O rodapé CONTINUA escuro
+ *    (pedido explícito do usuário). O rodapé CONTINUA escuro
  *    (`.ink-scope`) — é o "azul profundo institucional" pedido pelo
- *    usuário, e ali `RouteWordmark` continua correto.
+ *    usuário — e usa `RouteWordmark` na variante branca original.
+ *
+ * Revisão 02/09/2026 (pedido do usuário: "deixe a logo original, não um
+ * ícone da logo + texto... cadê aquela logo completa, a que está igual
+ * no rodapé?"): o cabeçalho usava um par ícone+texto (`RottaLogoLockup`,
+ * removido) porque o wordmark completo original é quase branco puro —
+ * literalmente invisível sobre o fundo branco do cabeçalho. Em vez de
+ * inventar outra composição, `RouteWordmark` ganhou uma segunda
+ * variante (`variant="dark"`, ver `route-wordmark.tsx`): o MESMO
+ * arquivo/desenho, só com a parte "otta" recolorida pra `--color-text`
+ * (o R + ponto azul em gradiente é idêntico ao do rodapé) — a mesma
+ * logo completa em toda a página, cada uma na cor que funciona no seu
+ * fundo.
  */
 export default function MarketingLayout({ children }: { children: ReactNode }): JSX.Element {
   const [menuAberto, setMenuAberto] = useState(false);
@@ -129,7 +137,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
       >
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
           <Link href="/" className="flex items-center" aria-label="Página inicial da Rotta">
-            <RottaLogoLockup />
+            <RouteWordmark variant="dark" className="h-7 w-auto" />
           </Link>
 
           <nav className="hidden items-center gap-7 lg:flex">

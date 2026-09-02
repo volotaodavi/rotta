@@ -1,24 +1,43 @@
 import Image from "next/image";
 
 /**
- * Logotipo completo da Rotta — wordmark branco + ponto azul em gradiente
- * (`public/brand/rotta-wordmark-light.png`, recortado do arquivo enviado
- * pelo usuário; "light" no nome é a convenção usual de branding pra "cor
- * clara do logotipo", não o tema claro da plataforma). Só funciona sobre
- * fundo escuro — o wordmark é quase branco puro, fica invisível num fundo
- * claro. Por isso `RouteWordmark` substitui o par `<RouteMark/> Rotta`
- * (ícone + texto) só nos pontos com fundo escuro GARANTIDO, independente
- * do tema claro/escuro escolhido pelo usuário: a barra `.ink-scope` da
- * Landing Page (header/rodapé, sempre escura por design — ver
- * `globals.css`) e a página `/governo` (header fixo `bg-slate-950`).
+ * Logotipo completo da Rotta — wordmark + ponto azul em gradiente, a
+ * mesma arte em dois acabamentos de cor:
+ *
+ * - `variant="light"` (padrão): `public/brand/rotta-wordmark-light.png`,
+ *   recortado do arquivo enviado pelo usuário; "light" é a convenção
+ *   usual de branding pra "cor clara do logotipo" (quase branco puro),
+ *   não o tema claro da plataforma. Só legível sobre fundo escuro
+ *   GARANTIDO — a barra `.ink-scope` da Landing Page (rodapé) e a
+ *   página `/governo` (header fixo `bg-slate-950`).
+ * - `variant="dark"`: `public/brand/rotta-wordmark-dark.png`, gerado a
+ *   partir do mesmo arquivo (pedido do usuário 02/09/2026: "deixe a
+ *   logo original... cadê aquela logo completa, a que está igual no
+ *   rodapé?", pro cabeçalho branco da Landing Page) — mesmíssimo
+ *   desenho/proporções, só a parte "otta" recolorida pra `--color-text`
+ *   (o R + ponto azul em gradiente é idêntico nos dois arquivos), do
+ *   mesmo jeito que qualquer logotipo ganha uma versão clara e uma
+ *   escura pra funcionar nos dois fundos — nunca um redesenho.
+ *
  * Em qualquer lugar com fundo dependente do tema (login, 404, Legal
- * Center) o ícone `RouteMark` continua sozinho — troca aqui quebraria a
- * visibilidade no tema claro.
+ * Center) nenhuma das duas variantes deve substituir o ícone
+ * `RouteMark` sozinho — a troca quebraria a visibilidade num dos temas.
  */
-export function RouteWordmark({ className }: { className?: string }): JSX.Element {
+const SOURCES = {
+  light: "/brand/rotta-wordmark-light.png",
+  dark: "/brand/rotta-wordmark-dark.png",
+} as const;
+
+export function RouteWordmark({
+  className,
+  variant = "light",
+}: {
+  className?: string;
+  variant?: keyof typeof SOURCES;
+}): JSX.Element {
   return (
     <Image
-      src="/brand/rotta-wordmark-light.png"
+      src={SOURCES[variant]}
       alt="Rotta"
       width={509}
       height={154}
