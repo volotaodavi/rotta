@@ -1,12 +1,13 @@
 "use client";
 
 import { Building2, DollarSign, ReceiptText, TrendingUp, Wallet } from "@rotta/icons";
-import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Card, ErrorState, Skeleton, StatTile, Typography } from "@rotta/ui/web";
 
 import type { BillingProviderOverview } from "@rotta/api-client";
 
 import { useBillingAdminOverview } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
+
 
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -16,11 +17,11 @@ function centsToBRL(cents: number): string {
  * Cartão de um valor financeiro agregado (recebido/taxa retida/cobranças
  * pagas). Quando a AbacatePay não está configurada nesta implantação
  * (`abacatepayConfigured === false`) ou a consulta a `billing/list`
- * falhou, o valor vem `null` — mostra "—", nunca um `0` fabricado (nunca
+ * falhou, o valor vem `null` — mostra "-", nunca um `0` fabricado (nunca
  * fingir um valor que não temos).
  */
-function ValorCard({
-  icon: Icon,
+function ValorTile({
+  icon,
   label,
   value,
   hidden,
@@ -31,21 +32,11 @@ function ValorCard({
   hidden: boolean;
 }): JSX.Element {
   return (
-    <Card>
-      <Card.Body className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Icon size={20} />
-        </span>
-        <div>
-          <Typography variant="caption" color="muted">
-            {label}
-          </Typography>
-          <Typography variant="title">
-            {value === null ? "-" : hidden ? "R$ ••••••" : value}
-          </Typography>
-        </div>
-      </Card.Body>
-    </Card>
+    <StatTile
+      icon={icon}
+      label={label}
+      value={value === null ? "-" : hidden ? "R$ ••••••" : value}
+    />
   );
 }
 
@@ -72,46 +63,59 @@ function ProviderCard({
         title={titulo}
         action={!overview.configured && <Badge variant="warning">Não configurada</Badge>}
       />
-      <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Typography variant="caption" color="muted" className="sm:col-span-3">
+      <Card.Body className="flex flex-col gap-4">
+        <Typography variant="caption" color="muted">
           {descricao}
         </Typography>
-        <div>
-          <Typography variant="caption" color="muted">
-            Recebido
-          </Typography>
-          <Typography variant="subtitle">
-            {overview.totalRecebidoCentavos === null
-              ? "-"
-              : hidden
-                ? "R$ ••••••"
-                : centsToBRL(overview.totalRecebidoCentavos)}
-          </Typography>
-        </div>
-        <div>
-          <Typography variant="caption" color="muted">
-            Taxa retida
-          </Typography>
-          <Typography variant="subtitle">
-            {overview.totalTaxaRetidaCentavos === null
-              ? "-"
-              : hidden
-                ? "R$ ••••••"
-                : centsToBRL(overview.totalTaxaRetidaCentavos)}
-          </Typography>
-        </div>
-        <div>
-          <Typography variant="caption" color="muted">
-            Cobranças pagas
-          </Typography>
-          <Typography variant="subtitle">
-            {overview.quantidadeCobrancasPagas === null
-              ? "-"
-              : overview.quantidadeCobrancasPagas.toLocaleString("pt-BR")}
-          </Typography>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatTile
+            label="Recebido"
+            value={
+              overview.totalRecebidoCentavos === null
+                ? "-"
+                : hidden
+                  ? "R$ ••••••"
+                  : centsToBRL(overview.totalRecebidoCentavos)
+            }
+          />
+          <StatTile
+            label="Taxa retida"
+            value={
+              overview.totalTaxaRetidaCentavos === null
+                ? "-"
+                : hidden
+                  ? "R$ ••••••"
+                  : centsToBRL(overview.totalTaxaRetidaCentavos)
+            }
+          />
+          <StatTile
+            label="Cobranças pagas"
+            value={
+              overview.quantidadeCobrancasPagas === null
+                ? "-"
+                : overview.quantidadeCobrancasPagas.toLocaleString("pt-BR")
+            }
+          />
         </div>
       </Card.Body>
     </Card>
+  );
+}
+
+/** Esqueleto do carregamento inicial — mesma disciplina de Home/Inteligência (pedido do usuário 02/09/2026: "trazer mais modernidade"). */
+function FinanceiroSkeleton(): JSX.Element {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Skeleton variant="text" width={140} height={32} />
+        <Skeleton variant="text" width={320} height={16} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} variant="rect" height={80} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -130,11 +134,7 @@ export default function FinanceiroPage(): JSX.Element {
   const { hidden } = usePrivacy();
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <FinanceiroSkeleton />;
   }
 
   if (isError || !data) {
@@ -190,7 +190,7 @@ export default function FinanceiroPage(): JSX.Element {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <ValorCard
+        <ValorTile
           icon={Wallet}
           label="Total recebido"
           value={
@@ -198,7 +198,7 @@ export default function FinanceiroPage(): JSX.Element {
           }
           hidden={hidden}
         />
-        <ValorCard
+        <ValorTile
           icon={ReceiptText}
           label="Taxa retida pela AbacatePay"
           value={
@@ -206,7 +206,7 @@ export default function FinanceiroPage(): JSX.Element {
           }
           hidden={hidden}
         />
-        <ValorCard
+        <ValorTile
           icon={DollarSign}
           label="Cobranças pagas"
           value={
@@ -216,13 +216,13 @@ export default function FinanceiroPage(): JSX.Element {
           }
           hidden={false}
         />
-        <ValorCard
+        <ValorTile
           icon={Building2}
           label="Empresas ativas no plano"
           value={data.quantidadeEmpresasAtivas.toLocaleString("pt-BR")}
           hidden={false}
         />
-        <ValorCard
+        <ValorTile
           icon={TrendingUp}
           label="Lucro líquido (recebido − taxas)"
           value={data.lucroLiquidoCentavos === null ? null : centsToBRL(data.lucroLiquidoCentavos)}
