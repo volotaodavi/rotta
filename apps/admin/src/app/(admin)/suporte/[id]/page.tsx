@@ -1,15 +1,17 @@
 "use client";
 
 import { Sparkles } from "@rotta/icons";
-import { Button, Card, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, Spinner, Typography } from "@rotta/ui/web";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { SupportTicketStatusBadge } from "@/features/support/components/support-ticket-status-badge";
 import {
   useAddSupportMessage,
+  useArchiveSupportTicket,
   useCloseSupportTicket,
   useSupportTicketDetail,
+  useUnarchiveSupportTicket,
 } from "@/features/support/hooks/use-support";
 
 /**
@@ -26,6 +28,8 @@ export default function SuporteDetalhePage(): JSX.Element {
   const { data: ticket, isLoading, isError } = useSupportTicketDetail(id, companyId);
   const addMessage = useAddSupportMessage(id, companyId);
   const closeTicket = useCloseSupportTicket(id, companyId);
+  const archiveTicket = useArchiveSupportTicket(id, companyId);
+  const unarchiveTicket = useUnarchiveSupportTicket(id, companyId);
 
   if (isLoading) {
     return (
@@ -54,9 +58,11 @@ export default function SuporteDetalhePage(): JSX.Element {
           <Typography variant="title">{ticket.assunto}</Typography>
           <Typography variant="caption" color="muted">
             {ticket.companyNome} · {ticket.abertoPorNome} ({ticket.abertoPorEmail})
+            {ticket.protocolo && <> · Protocolo {ticket.protocolo}</>}
           </Typography>
         </div>
         <div className="flex items-center gap-3">
+          {ticket.arquivado && <Badge variant="neutral">Arquivado</Badge>}
           <SupportTicketStatusBadge status={ticket.status} />
           {ticket.status !== "ENCERRADO" && (
             <Button
@@ -66,6 +72,25 @@ export default function SuporteDetalhePage(): JSX.Element {
               onClick={() => closeTicket.mutate()}
             >
               Encerrar chamado
+            </Button>
+          )}
+          {ticket.arquivado ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              isLoading={unarchiveTicket.isPending}
+              onClick={() => unarchiveTicket.mutate()}
+            >
+              Desarquivar
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              isLoading={archiveTicket.isPending}
+              onClick={() => archiveTicket.mutate()}
+            >
+              Arquivar
             </Button>
           )}
         </div>
@@ -79,6 +104,20 @@ export default function SuporteDetalhePage(): JSX.Element {
           <Typography variant="body">{ticket.descricao}</Typography>
         </Card.Body>
       </Card>
+
+      {ticket.resumoIA && (
+        <Card>
+          <Card.Header
+            title="Resumo da IA"
+            action={<Sparkles className="h-4 w-4 text-primary" />}
+          />
+          <Card.Body>
+            <Typography variant="bodySmall" color="muted">
+              {ticket.resumoIA}
+            </Typography>
+          </Card.Body>
+        </Card>
+      )}
 
       <Card>
         <Card.Header title="Conversa" />
@@ -99,11 +138,7 @@ export default function SuporteDetalhePage(): JSX.Element {
                       : "mr-auto max-w-[80%] rounded-lg bg-muted px-4 py-3"
                 }
               >
-                <Typography
-                  variant="caption"
-                  color="muted"
-                  className="flex items-center gap-1.5"
-                >
+                <Typography variant="caption" color="muted" className="flex items-center gap-1.5">
                   {message.autorIsIA && <Sparkles className="h-3.5 w-3.5" />}
                   {message.autorIsIA ? "Rotta AI" : message.autorNome} ·{" "}
                   {new Date(message.createdAt).toLocaleString("pt-BR")}

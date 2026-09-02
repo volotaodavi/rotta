@@ -18,10 +18,12 @@ import { useSupportTickets } from "@/features/support/hooks/use-support";
  */
 export default function SuportePage(): JSX.Element {
   const [status, setStatus] = useState<SupportTicketStatus | "">("");
+  const [arquivado, setArquivado] = useState(false);
   const { data, isLoading, isError, refetch, isFetching } = useSupportTickets({
     page: 1,
     pageSize: 50,
     status: status || undefined,
+    arquivado,
   });
 
   return (
@@ -30,16 +32,36 @@ export default function SuportePage(): JSX.Element {
         <Typography variant="title">Central de Atendimento</Typography>
       </div>
 
-      <Select
-        value={status}
-        onChange={(event) => setStatus(event.target.value as SupportTicketStatus | "")}
-        className="max-w-xs"
-      >
-        <option value="">Todos os status</option>
-        <option value="ABERTO">Aberto</option>
-        <option value="EM_ANDAMENTO">Em andamento</option>
-        <option value="ENCERRADO">Encerrado</option>
-      </Select>
+      <div className="flex flex-wrap items-center gap-3">
+        <Select
+          value={status}
+          onChange={(event) => setStatus(event.target.value as SupportTicketStatus | "")}
+          className="max-w-xs"
+        >
+          <option value="">Todos os status</option>
+          <option value="ABERTO">Aberto</option>
+          <option value="EM_ANDAMENTO">Em andamento</option>
+          <option value="ENCERRADO">Encerrado</option>
+        </Select>
+
+        {/* Arquivados ficam fora do caminho padrão (pedido do usuário 02/09/2026) — só aparecem aqui. */}
+        <div className="flex gap-1 rounded-lg border border-border p-1">
+          <button
+            type="button"
+            onClick={() => setArquivado(false)}
+            className={`rounded-md px-3 py-1.5 text-sm ${!arquivado ? "bg-primary text-white" : "text-text-muted"}`}
+          >
+            Ativos
+          </button>
+          <button
+            type="button"
+            onClick={() => setArquivado(true)}
+            className={`rounded-md px-3 py-1.5 text-sm ${arquivado ? "bg-primary text-white" : "text-text-muted"}`}
+          >
+            Arquivados
+          </button>
+        </div>
+      </div>
 
       <Card>
         {isLoading ? (
@@ -69,9 +91,16 @@ export default function SuportePage(): JSX.Element {
                 className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-muted"
               >
                 <div className="flex flex-col gap-0.5">
-                  <Typography variant="body" className="font-semibold">
-                    {ticket.assunto}
-                  </Typography>
+                  <div className="flex items-center gap-2">
+                    <Typography variant="body" className="font-semibold">
+                      {ticket.assunto}
+                    </Typography>
+                    {ticket.protocolo && (
+                      <Typography variant="caption" color="muted" className="font-mono">
+                        {ticket.protocolo}
+                      </Typography>
+                    )}
+                  </div>
                   <Typography variant="caption" color="muted">
                     {ticket.companyNome} · {ticket.abertoPorNome} ·{" "}
                     {new Date(ticket.createdAt).toLocaleDateString("pt-BR")}
