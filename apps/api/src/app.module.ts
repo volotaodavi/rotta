@@ -49,6 +49,7 @@ import { BackofficeModule } from "@/modules/backoffice/backoffice.module";
 import { BillingModule } from "@/modules/billing/billing.module";
 import { ClientErrorsModule } from "@/modules/client-errors/client-errors.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { CompanyJoinPreRegistrationsModule } from "@/modules/company-join-pre-registrations/company-join-pre-registrations.module";
 import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
 import { ConversationsModule } from "@/modules/conversations/conversations.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
@@ -136,6 +137,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     DriversModule,
     MonitorsModule,
     CompanyJoinRequestsModule,
+    CompanyJoinPreRegistrationsModule,
     ParentsModule,
     StudentPreRegistrationsModule,
     StudentsModule,

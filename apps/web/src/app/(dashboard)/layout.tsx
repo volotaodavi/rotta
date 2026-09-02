@@ -26,6 +26,7 @@ import { VehicleAdminReviewAcknowledgeModal } from "@/features/vehicles/componen
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
 
+
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
   href: Route;
@@ -42,6 +43,7 @@ interface NavLink {
 const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/empresa", label: "Minha Empresa" },
   { href: "/equipe", label: "Equipe" },
+  { href: "/convites", label: "Convites" },
   { href: "/alunos-pre-cadastro", label: "Alunos" },
   { href: "/veiculos", label: "Veículos" },
   { href: "/escolas", label: "Escolas" },

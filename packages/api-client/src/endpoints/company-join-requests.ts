@@ -20,6 +20,8 @@ export interface CompanyJoinRequest {
   motivoRecusa: string | null;
   createdAt: string;
   decidedAt: string | null;
+  /** `true` quando o vínculo foi aceito na hora por bater com um pré-cadastro em "Convites", sem decisão manual. */
+  automatico: boolean;
 }
 
 /** Linha de `GET /company-join-requests` (visão da empresa) — inclui quem é o solicitante. */

@@ -545,24 +545,24 @@ model PendingSubscription {
   planCode      String @default("STARTER")
   valorCentavos Int
 
-  provider            PendingSubscriptionProvider
+  provider               PendingSubscriptionProvider
   /// `AbacatePayPixQrCode.id` ou `AsaasPayment.id`, conforme `provider`.
-  providerCheckoutId  String
+  providerCheckoutId     String
   /// Só preenchido pra Asaas (`AsaasCustomer.id`) — precisa pra poder cancelar a assinatura num reembolso.
-  providerCustomerId  String?
+  providerCustomerId     String?
   /// Só preenchido pra Asaas (`AsaasSubscription.id`) — mesma razão do campo acima.
   providerSubscriptionId String?
 
   status PendingSubscriptionStatus @default(PENDENTE)
 
-  paidAt     DateTime?
+  paidAt          DateTime?
   /// `createdAt + PRE_SIGNUP_EXPIRES_HOURS` (48h, decisão do usuário) — base do job de expiração/reembolso.
-  expiresAt  DateTime
-  refundedAt DateTime?
+  expiresAt       DateTime
+  refundedAt      DateTime?
   /// `Company.id` depois de vinculado — sem relação FK de propósito: a
   /// Company pode, em teoria, ser excluída depois (soft delete) sem que
   /// este registro histórico de pagamento precise sumir junto.
-  linkedCompanyId String? @db.Uuid
+  linkedCompanyId String?   @db.Uuid
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -703,6 +703,11 @@ model Company {
   /// que se autocadastraram e informaram `codigoInterno` em vez de um
   /// `Invite` gerado pela empresa. Ver nota completa em `CompanyJoinRequest`.
   joinRequests           CompanyJoinRequest[]
+  /// Pré-cadastros de Motorista/Monitor (nome/celular esperados) que a
+  /// própria transportadora cria pra liberar o vínculo automaticamente
+  /// quando a pessoa certa informar o código. Ver nota completa em
+  /// `CompanyJoinPreRegistration`.
+  joinPreRegistrations   CompanyJoinPreRegistration[]
   /// Pedido do usuário: "no painel do admin deverá ter essa opção de
   /// cadastrar alunos por transporte + responsável" — pré-cadastros que
   /// a própria transportadora cria (nome do aluno + nome/celular do
@@ -905,6 +910,13 @@ model User {
   /// (`Decisor`). Ver nota completa em `CompanyJoinRequest`.
   joinRequestsFeitos    CompanyJoinRequest[] @relation("JoinRequestSolicitante")
   joinRequestsDecididos CompanyJoinRequest[] @relation("JoinRequestDecisor")
+
+  /// Pré-cadastros de Motorista/Monitor que este usuário criou (Empresa/
+  /// Gestor) e, quando o próprio celular/nome bate com um deles, o
+  /// vínculo automático que ele originou. Ver nota completa em
+  /// `CompanyJoinPreRegistration`.
+  joinPreRegistrationsCriadas  CompanyJoinPreRegistration[] @relation("CompanyJoinPreRegistrationCriadoPor")
+  joinPreRegistrationVinculada CompanyJoinPreRegistration[] @relation("CompanyJoinPreRegistrationVinculado")
 
   /// Pré-cadastros de aluno que este usuário criou (Empresa/Gestor) e,
   /// quando atua como Responsável, os que ele reivindicou pelo código da
@@ -1239,11 +1251,73 @@ model CompanyJoinRequest {
   decididoPor   User?     @relation("JoinRequestDecisor", fields: [decididoPorId], references: [id], onDelete: SetNull)
   decidedAt     DateTime?
 
+  /// Preenchido só quando o vínculo foi aceito automaticamente por bater
+  /// com um `CompanyJoinPreRegistration` (pedido do usuário 02/09/2026:
+  /// "caso o gestor já tenha pré-preenchido... ele será aceito
+  /// automaticamente") — nesse caso `decididoPorId` fica `null` (ninguém
+  /// clicou em "aprovar" naquele instante) e a UI usa a presença deste
+  /// campo pra rotular "aprovado automaticamente".
+  preRegistrationId String?                     @db.Uuid
+  preRegistration   CompanyJoinPreRegistration? @relation(fields: [preRegistrationId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   @@index([companyId, status])
   @@index([userId, status])
   @@map("company_join_requests")
+}
+
+/// Pré-cadastro de Motorista/Monitor feito pela TRANSPORTADORA (pedido
+/// do usuário 02/09/2026: "aparecerá no painel de gestão... o pedido de
+/// credenciamento (caso os dados dela já não estejam pré-preenchidos).
+/// Caso o gestor já tenha pré-preenchido (número de celular, nome ou
+/// alguma outra informação)... ele será aceito automaticamente"). Tela
+/// "Convites" (`apps/web/(dashboard)/convites`) — o gestor informa o
+/// celular e/ou o nome de quem espera contratar; quando essa pessoa
+/// informa `Company.codigoInterno` em `CompanyJoinRequestsService.create`,
+/// o celular OU o nome batendo (`findMatchingPending`) libera o
+/// `Membership` na hora, sem passar por `PENDENTE`. Sem match nenhum,
+/// cai no fluxo de sempre: `CompanyJoinRequest` pendente, aprovação
+/// manual em "Equipe". Pelo menos um de `nome`/`celular` é obrigatório
+/// (validado em `CompanyJoinPreRegistrationsService`) — não faria
+/// sentido um pré-cadastro sem nenhum dado pra comparar.
+model CompanyJoinPreRegistration {
+  id String @id @default(uuid()) @db.Uuid
+
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  criadoPorId String @db.Uuid
+  criadoPor   User   @relation("CompanyJoinPreRegistrationCriadoPor", fields: [criadoPorId], references: [id], onDelete: Restrict)
+
+  /// motorista ou monitor — mesma convenção de `CompanyJoinRequest.role`.
+  role String
+
+  nome    String?
+  /// Só dígitos (mesma normalização de `StudentPreRegistration.celularResponsavel`)
+  /// — "(11) 98888-7777" e "11988887777" precisam bater no mesmo registro.
+  celular String?
+
+  status CompanyJoinPreRegistrationStatus @default(PENDENTE)
+
+  vinculadoUserId String?   @db.Uuid
+  vinculadoUser   User?     @relation("CompanyJoinPreRegistrationVinculado", fields: [vinculadoUserId], references: [id], onDelete: SetNull)
+  vinculadoEm     DateTime?
+
+  joinRequests CompanyJoinRequest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([companyId, status])
+  @@index([celular])
+  @@map("company_join_pre_registrations")
+}
+
+enum CompanyJoinPreRegistrationStatus {
+  PENDENTE
+  VINCULADO
+  CANCELADO
 }
 
 /// Pré-cadastro de aluno + responsável feito pela TRANSPORTADORA (pedido

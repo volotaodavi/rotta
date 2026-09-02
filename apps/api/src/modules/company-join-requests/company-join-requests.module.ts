@@ -7,7 +7,9 @@ import { PrismaCompanyJoinRequestRepository } from "./repositories/prisma-compan
 
 import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { CompanyJoinPreRegistrationsModule } from "@/modules/company-join-pre-registrations/company-join-pre-registrations.module";
 import { UsersModule } from "@/modules/users/users.module";
+
 
 /**
  * Módulo `CompanyJoinRequests` (Frente N, briefing item 9) — importa
@@ -22,9 +24,14 @@ import { UsersModule } from "@/modules/users/users.module";
  * dentro de `registerAutonomo` quando o cadastro já vem com
  * `codigoInterno`, unificando "código -> dados -> conta" (mesmo padrão
  * que o Responsável já tinha).
+ *
+ * `CompanyJoinPreRegistrationsModule` (pedido do usuário 02/09/2026) —
+ * só pelo repository que ele exporta: `create()` usa pra checar se o
+ * celular/nome do candidato bate com um pré-cadastro da empresa antes
+ * de decidir entre aprovar na hora ou cair em `PENDENTE`.
  */
 @Module({
-  imports: [CompaniesModule, UsersModule, AuditModule],
+  imports: [CompaniesModule, UsersModule, AuditModule, CompanyJoinPreRegistrationsModule],
   controllers: [CompanyJoinRequestsController],
   providers: [
     CompanyJoinRequestsService,

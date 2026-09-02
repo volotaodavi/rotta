@@ -20,11 +20,17 @@ import type {
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
+import type { CompanyJoinPreRegistrationRepository } from "@/modules/company-join-pre-registrations/repositories/company-join-pre-registration.repository";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
+import { COMPANY_JOIN_PRE_REGISTRATION_REPOSITORY } from "@/modules/company-join-pre-registrations/company-join-pre-registrations.constants";
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
+
+function onlyDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
 
 export interface CompanyJoinRequestView {
   id: string;
@@ -35,6 +41,12 @@ export interface CompanyJoinRequestView {
   motivoRecusa: string | null;
   createdAt: Date;
   decidedAt: Date | null;
+  /**
+   * `true` quando o vínculo foi aceito na hora por bater com um
+   * pré-cadastro da empresa (pedido do usuário 02/09/2026), sem
+   * nenhuma decisão manual — ver `CompanyJoinRequest.preRegistrationId`.
+   */
+  automatico: boolean;
 }
 
 export interface CompanyJoinRequestListView extends CompanyJoinRequestView {
@@ -61,6 +73,8 @@ export class CompanyJoinRequestsService {
     @Inject(COMPANY_JOIN_REQUEST_REPOSITORY)
     private readonly joinRequestRepository: CompanyJoinRequestRepository,
     @Inject(COMPANY_REPOSITORY) private readonly companyRepository: CompanyRepository,
+    @Inject(COMPANY_JOIN_PRE_REGISTRATION_REPOSITORY)
+    private readonly preRegistrationRepository: CompanyJoinPreRegistrationRepository,
     private readonly usersService: UsersService,
     private readonly auditLogService: AuditLogService,
   ) {}
@@ -86,10 +100,79 @@ export class CompanyJoinRequestsService {
       throw new NotFoundException("Nenhuma transportadora encontrada com esse código.");
     }
 
+    const match = await this.findPreRegistrationMatch(actor, company.id);
+    if (match) {
+      return this.createAutoApproved(actor, company.id, match.id, match.criadoPorId);
+    }
+
     const created = await this.joinRequestRepository.create({
       companyId: company.id,
       userId: actor.sub,
       role: actor.role,
+    });
+
+    return this.toView(created);
+  }
+
+  /**
+   * Pedido do usuário 02/09/2026: "caso o gestor já tenha
+   * pré-preenchido (número de celular, nome ou alguma outra
+   * informação)... ele será aceito automaticamente" — celular OU nome
+   * do próprio candidato batendo com um pré-cadastro `PENDENTE` da
+   * empresa, no mesmo papel.
+   */
+  private async findPreRegistrationMatch(actor: AuthenticatedUser, companyId: string) {
+    const user = await this.usersService.findById(actor.sub);
+    if (!user) return null;
+
+    return this.preRegistrationRepository.findMatchingPending(companyId, actor.role, {
+      nome: user.nome?.trim() || null,
+      celular: user.telefone ? onlyDigits(user.telefone) : null,
+    });
+  }
+
+  /**
+   * Cria o vínculo já `APROVADO` — mesmo efeito final de `approve()`
+   * (cria o `Membership`, limpa `autonomoRole`), só que sem nenhum
+   * gestor clicando em "aprovar" nesse instante: quem decidiu foi o
+   * pré-cadastro (`preRegistrationId`), atribuído a quem o criou
+   * (`criadoPorId`) só na auditoria — `decididoPorId` fica `null`.
+   */
+  private async createAutoApproved(
+    actor: AuthenticatedUser,
+    companyId: string,
+    preRegistrationId: string,
+    preRegistrationCriadoPorId: string,
+  ): Promise<CompanyJoinRequestView> {
+    await this.usersService.createMembership({
+      userId: actor.sub,
+      companyId,
+      role: actor.role,
+      convidadoPorId: preRegistrationCriadoPorId,
+    });
+
+    const decidedAt = new Date();
+    const created = await this.joinRequestRepository.create({
+      companyId,
+      userId: actor.sub,
+      role: actor.role,
+      status: "APROVADO",
+      decidedAt,
+      preRegistrationId,
+    });
+
+    await this.preRegistrationRepository.markVinculado(preRegistrationId, {
+      vinculadoUserId: actor.sub,
+      vinculadoEm: decidedAt,
+    });
+    await this.usersService.clearAutonomoRole(actor.sub);
+    await this.recordAudit({
+      companyId,
+      entidadeTipo: "CompanyJoinRequest",
+      entidadeId: created.id,
+      acao: "JOIN_REQUEST_AUTO_APROVADO",
+      atorUserId: actor.sub,
+      dadosDepois: { userId: actor.sub, role: actor.role, preRegistrationId },
     });
 
     return this.toView(created);
@@ -204,6 +287,7 @@ export class CompanyJoinRequestsService {
       motivoRecusa: request.motivoRecusa,
       createdAt: request.createdAt,
       decidedAt: request.decidedAt,
+      automatico: request.preRegistrationId != null,
     };
   }
 

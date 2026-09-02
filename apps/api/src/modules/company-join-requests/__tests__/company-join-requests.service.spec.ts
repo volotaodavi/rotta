@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
+
 import { CompanyJoinRequestsService } from "../company-join-requests.service";
 
 import type {
@@ -9,8 +10,9 @@ import type {
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
+import type { CompanyJoinPreRegistrationRepository } from "@/modules/company-join-pre-registrations/repositories/company-join-pre-registration.repository";
 import type { UsersService } from "@/modules/users/users.service";
-import type { Company } from "@prisma/client";
+import type { Company, User } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -36,6 +38,7 @@ function buildRequest(
     motivoRecusa: null,
     decididoPorId: null,
     decidedAt: null,
+    preRegistrationId: null,
     createdAt: new Date(),
     company: { id: "company-1", nomeFantasia: "Gama Transportes" },
     user: { id: "user-1", nome: "João Motorista", email: "joao@x.com", telefone: "11999998888" },
@@ -47,6 +50,7 @@ describe("CompanyJoinRequestsService", () => {
   let service: CompanyJoinRequestsService;
   let joinRequestRepository: jest.Mocked<CompanyJoinRequestRepository>;
   let companyRepository: jest.Mocked<CompanyRepository>;
+  let preRegistrationRepository: jest.Mocked<CompanyJoinPreRegistrationRepository>;
   let usersService: jest.Mocked<UsersService>;
   let auditLogService: jest.Mocked<AuditLogService>;
 
@@ -68,15 +72,25 @@ describe("CompanyJoinRequestsService", () => {
       findActiveByCodigoInterno: jest.fn(),
       listComPixProximoVencimento: jest.fn(),
     };
+    preRegistrationRepository = {
+      create: jest.fn(),
+      listByCompany: jest.fn(),
+      findById: jest.fn(),
+      cancel: jest.fn(),
+      findMatchingPending: jest.fn().mockResolvedValue(null),
+      markVinculado: jest.fn(),
+    };
     usersService = {
       createMembership: jest.fn(),
       clearAutonomoRole: jest.fn().mockResolvedValue(undefined),
+      findById: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<UsersService>;
     auditLogService = { record: jest.fn() } as unknown as jest.Mocked<AuditLogService>;
 
     service = new CompanyJoinRequestsService(
       joinRequestRepository,
       companyRepository,
+      preRegistrationRepository,
       usersService,
       auditLogService,
     );
@@ -135,6 +149,78 @@ describe("CompanyJoinRequestsService", () => {
       await expect(
         service.create(buildActor(), { codigoInterno: "TRN-000001" }),
       ).resolves.toBeDefined();
+    });
+
+    it("aceita automaticamente quando o celular do candidato bate com um pré-cadastro PENDENTE", async () => {
+      joinRequestRepository.findLatestByUser.mockResolvedValue(null);
+      companyRepository.findActiveByCodigoInterno.mockResolvedValue({
+        id: "company-1",
+      } as Company);
+      usersService.findById.mockResolvedValue({
+        id: "user-1",
+        nome: "João Motorista",
+        telefone: "11999998888",
+      } as User);
+      preRegistrationRepository.findMatchingPending.mockResolvedValue({
+        id: "pre-1",
+        companyId: "company-1",
+        criadoPorId: "gestor-1",
+        role: Role.MOTORISTA,
+        nome: null,
+        celular: "11999998888",
+        status: "PENDENTE",
+        vinculadoUserId: null,
+        vinculadoEm: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      joinRequestRepository.create.mockResolvedValue(
+        buildRequest({ status: "APROVADO", preRegistrationId: "pre-1" }),
+      );
+
+      const result = await service.create(buildActor(), { codigoInterno: "TRN-000001" });
+
+      expect(preRegistrationRepository.findMatchingPending).toHaveBeenCalledWith(
+        "company-1",
+        Role.MOTORISTA,
+        { nome: "João Motorista", celular: "11999998888" },
+      );
+      expect(usersService.createMembership).toHaveBeenCalledWith({
+        userId: "user-1",
+        companyId: "company-1",
+        role: Role.MOTORISTA,
+        convidadoPorId: "gestor-1",
+      });
+      expect(joinRequestRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ status: "APROVADO", preRegistrationId: "pre-1" }),
+      );
+      expect(preRegistrationRepository.markVinculado).toHaveBeenCalledWith(
+        "pre-1",
+        expect.objectContaining({ vinculadoUserId: "user-1" }),
+      );
+      expect(usersService.clearAutonomoRole).toHaveBeenCalledWith("user-1");
+      expect(result.status).toBe("APROVADO");
+      expect(result.automatico).toBe(true);
+    });
+
+    it("sem pré-cadastro batendo, cria PENDENTE normalmente (automatico: false)", async () => {
+      joinRequestRepository.findLatestByUser.mockResolvedValue(null);
+      companyRepository.findActiveByCodigoInterno.mockResolvedValue({
+        id: "company-1",
+      } as Company);
+      usersService.findById.mockResolvedValue({
+        id: "user-1",
+        nome: "João Motorista",
+        telefone: "11999998888",
+      } as User);
+      preRegistrationRepository.findMatchingPending.mockResolvedValue(null);
+      joinRequestRepository.create.mockResolvedValue(buildRequest());
+
+      const result = await service.create(buildActor(), { codigoInterno: "TRN-000001" });
+
+      expect(usersService.createMembership).not.toHaveBeenCalled();
+      expect(result.status).toBe("PENDENTE");
+      expect(result.automatico).toBe(false);
     });
   });
 

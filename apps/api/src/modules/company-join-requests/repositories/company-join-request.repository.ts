@@ -13,6 +13,15 @@ export interface CreateCompanyJoinRequestData {
   companyId: string;
   userId: string;
   role: string;
+  /**
+   * Omitido = `PENDENTE` (default do schema, fluxo de sempre). Passado
+   * como `APROVADO` só quando `CompanyJoinRequestsService.create` acha
+   * um `CompanyJoinPreRegistration` batendo — junto com `decidedAt` e
+   * `preRegistrationId`, nunca um sozinho.
+   */
+  status?: CompanyJoinRequestStatus;
+  decidedAt?: Date;
+  preRegistrationId?: string;
 }
 
 export interface DecideCompanyJoinRequestData {

@@ -15,6 +15,7 @@ export * from "./endpoints/backoffice";
 export * from "./endpoints/billing";
 export * from "./endpoints/client-errors";
 export * from "./endpoints/companies";
+export * from "./endpoints/company-join-pre-registrations";
 export * from "./endpoints/company-join-requests";
 export * from "./endpoints/dashboard";
 export * from "./endpoints/drivers";

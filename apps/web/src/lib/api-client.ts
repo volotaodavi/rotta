@@ -5,6 +5,7 @@ import {
   createBillingEndpoints,
   createClientErrorsEndpoints,
   createCompaniesEndpoints,
+  createCompanyJoinPreRegistrationsEndpoints,
   createCompanyJoinRequestsEndpoints,
   createDriversEndpoints,
   createGeoEndpoints,
@@ -45,6 +46,7 @@ export const clientErrorsApi = createClientErrorsEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);
 export const driversApi = createDriversEndpoints(apiClient);
 export const companyJoinRequestsApi = createCompanyJoinRequestsEndpoints(apiClient);
+export const companyJoinPreRegistrationsApi = createCompanyJoinPreRegistrationsEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const studentsApi = createStudentsEndpoints(apiClient);
