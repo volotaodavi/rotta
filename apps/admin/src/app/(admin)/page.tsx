@@ -9,7 +9,6 @@ import {
   ClipboardCheck,
   Download,
   GraduationCap,
-  HeartPulse,
   MessageCircle,
   Store,
   TrendingDown,
@@ -21,7 +20,11 @@ import {
   Card,
   ErrorState,
   PanelGreeting,
+  ProgressRing,
+  Skeleton,
   Spinner,
+  StatTile,
+  TrendBarChart,
   Typography,
   buttonVariants,
 } from "@rotta/ui/web";
@@ -42,6 +45,7 @@ import { useGpsMapNationwide } from "@/features/gps/hooks/use-gps";
 import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-health";
 import { analyticsApi } from "@/lib/api-client";
 import { usePrivacy } from "@/providers/privacy-provider";
+
 
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -105,36 +109,26 @@ interface IndicadorItem {
 }
 
 /**
- * Lista "Contas" do painel (Frente Mercury — banner de referência:
- * Credit Card/Treasury/Ops-Payroll/AP/AR, cada linha com ícone + saldo).
- * Adaptação honesta: a Rotta não tem sub-contas bancárias no Admin, mas
- * tem exatamente essa mesma FORMA — uma lista de indicadores
- * operacionais reais, cada linha clicável levando pra tela de gestão
- * daquele indicador (`GET /backoffice/dashboard`, já existia).
+ * Grade de indicadores (Frente Mercury original: lista "Contas", cada
+ * linha com ícone + saldo — trocado por `StatTile` na modernização
+ * pedida pelo usuário 02/09/2026, mesma forma de card usada em
+ * qualquer dashboard "de verdade"). Cada tile continua um `<Link>`
+ * real (nunca um `onClick` sintético) pra `GET /backoffice/dashboard`
+ * já existente — `StatTile interactive` só liga o destaque visual de
+ * hover, a navegação em si é inteiramente do `<Link>`.
  */
-function IndicadoresList({ itens }: { itens: IndicadorItem[] }): JSX.Element {
+function IndicadoresGrid({ itens }: { itens: IndicadorItem[] }): JSX.Element {
   return (
-    <div className="flex flex-col divide-y divide-border">
+    <div className="grid grid-cols-2 gap-3">
       {itens.map((item) => (
-        <Link
-          key={item.label}
-          href={item.href}
-          className="flex items-center justify-between gap-3 py-3 transition-colors hover:bg-muted"
-        >
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <item.icon size={16} />
-            </span>
-            <Typography variant="bodySmall" className="font-medium">
-              {item.label}
-            </Typography>
-          </div>
-          <Typography
-            variant="subtitle"
-            className={item.highlight && item.value > 0 ? "text-warning" : undefined}
-          >
-            {item.value.toLocaleString("pt-BR")}
-          </Typography>
+        <Link key={item.label} href={item.href} className="block">
+          <StatTile
+            icon={item.icon}
+            tone={item.highlight && item.value > 0 ? "warning" : "primary"}
+            label={item.label}
+            value={item.value.toLocaleString("pt-BR")}
+            interactive
+          />
         </Link>
       ))}
     </div>
@@ -293,38 +287,35 @@ function SaudeIntegracoesCard(): JSX.Element {
       />
       <Card.Body className="flex flex-col gap-4">
         {isLoading || !data ? (
-          <div className="flex justify-center py-6">
-            <Spinner size="md" />
+          <div className="flex items-center gap-4">
+            <Skeleton variant="circle" width={72} height={72} />
+            <Skeleton variant="text" height={16} className="flex-1" />
           </div>
         ) : (
-          <>
-            <div className="flex items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                <HeartPulse size={20} />
-              </span>
-              <div className="flex-1">
-                <Typography variant="title">{Math.round(data.score.value)}%</Typography>
-                <Typography variant="caption" color="muted">
-                  {data.score.healthyComponents} de {data.score.consideredComponents} integrações
-                  saudáveis
-                </Typography>
-              </div>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className={`h-full rounded-full ${
-                  data.status === "ok"
-                    ? "bg-success"
-                    : data.status === "degraded"
-                      ? "bg-warning"
-                      : "bg-danger"
-                }`}
-                style={{
-                  width: `${data.score.consideredComponents > 0 ? (data.score.healthyComponents / data.score.consideredComponents) * 100 : 100}%`,
-                }}
-              />
-            </div>
-          </>
+          <div className="flex items-center gap-4">
+            <ProgressRing
+              value={
+                data.score.consideredComponents > 0
+                  ? data.score.healthyComponents / data.score.consideredComponents
+                  : 1
+              }
+              size={72}
+              strokeWidth={7}
+              progressClassName={
+                data.status === "ok"
+                  ? "stroke-success"
+                  : data.status === "degraded"
+                    ? "stroke-warning"
+                    : "stroke-danger"
+              }
+            >
+              <Typography variant="subtitle">{Math.round(data.score.value)}%</Typography>
+            </ProgressRing>
+            <Typography variant="bodySmall" className="flex-1 font-medium">
+              {data.score.healthyComponents} de {data.score.consideredComponents} integrações
+              saudáveis
+            </Typography>
+          </div>
         )}
         <Link
           href="/saude"
@@ -334,6 +325,60 @@ function SaudeIntegracoesCard(): JSX.Element {
         </Link>
       </Card.Body>
     </Card>
+  );
+}
+
+/**
+ * Esqueleto do carregamento inicial (pedido do usuário 02/09/2026:
+ * "trazer mais modernidade") — substitui o `Spinner` de página inteira
+ * que escondia toda a estrutura enquanto `useBackofficeDashboard`
+ * carregava. Mesmo grid da tela de verdade (saudação, ações, receita +
+ * indicadores, aprovações + saúde), só com blocos de `Skeleton` no
+ * lugar do conteúdo.
+ */
+function AdminHomeSkeleton(): JSX.Element {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Skeleton variant="text" width={220} height={28} />
+        <Skeleton variant="text" width={160} height={16} />
+      </div>
+      <div className="flex flex-wrap gap-3">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} variant="rect" width={128} height={36} className="rounded-md" />
+        ))}
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <Card.Body className="flex flex-col gap-4">
+            <Skeleton variant="text" width={100} height={14} />
+            <Skeleton variant="text" width={200} height={40} />
+            <Skeleton variant="rect" height={140} />
+          </Card.Body>
+        </Card>
+        <Card>
+          <Card.Body className="grid grid-cols-2 gap-3">
+            {Array.from({ length: 6 }).map((_, index) => (
+              <Skeleton key={index} variant="rect" height={96} />
+            ))}
+          </Card.Body>
+        </Card>
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <Card.Body className="flex flex-col gap-3">
+            <Skeleton variant="text" width={140} height={16} />
+            <Skeleton variant="rect" height={80} />
+          </Card.Body>
+        </Card>
+        <Card>
+          <Card.Body className="flex flex-col gap-3">
+            <Skeleton variant="text" width={160} height={16} />
+            <Skeleton variant="rect" height={80} />
+          </Card.Body>
+        </Card>
+      </div>
+    </div>
   );
 }
 
@@ -402,11 +447,7 @@ export default function AdminHomePage(): JSX.Element {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <AdminHomeSkeleton />;
   }
 
   if (isError || !data) {
@@ -457,11 +498,6 @@ export default function AdminHomePage(): JSX.Element {
   const negocio = kpis?.negocio;
   const periodo = kpis?.periodo;
   const periodoAnterior = kpis?.periodoAnterior;
-  const maiorViagens = Math.max(
-    periodo?.viagensRealizadas ?? 0,
-    periodoAnterior?.viagensRealizadas ?? 0,
-    1,
-  );
 
   return (
     <div className="flex flex-col gap-6">
@@ -543,36 +579,25 @@ export default function AdminHomePage(): JSX.Element {
                       <Typography variant="caption" color="muted">
                         Viagens realizadas: período atual vs. anterior
                       </Typography>
-                      <div className="flex items-end gap-4">
-                        <div className="flex flex-col items-center gap-1">
-                          <div
-                            className="w-10 rounded-t-md bg-primary"
-                            style={{
-                              height: `${Math.max((periodo.viagensRealizadas / maiorViagens) * 96, 4)}px`,
-                            }}
-                          />
-                          <Typography variant="caption" className="font-semibold">
-                            {periodo.viagensRealizadas}
-                          </Typography>
-                          <Typography variant="caption" color="muted">
-                            Atual
-                          </Typography>
-                        </div>
-                        <div className="flex flex-col items-center gap-1">
-                          <div
-                            className="w-10 rounded-t-md bg-secondary/40"
-                            style={{
-                              height: `${Math.max((periodoAnterior.viagensRealizadas / maiorViagens) * 96, 4)}px`,
-                            }}
-                          />
-                          <Typography variant="caption" className="font-semibold">
-                            {periodoAnterior.viagensRealizadas}
-                          </Typography>
-                          <Typography variant="caption" color="muted">
-                            Anterior
-                          </Typography>
-                        </div>
-                      </div>
+                      <TrendBarChart
+                        data={[
+                          {
+                            categoria: "Viagens",
+                            atual: periodo.viagensRealizadas,
+                            anterior: periodoAnterior.viagensRealizadas,
+                          },
+                        ]}
+                        categoryKey="categoria"
+                        series={[
+                          { key: "atual", label: "Atual" },
+                          {
+                            key: "anterior",
+                            label: "Anterior",
+                            color: "rgb(var(--color-secondary) / 0.5)",
+                          },
+                        ]}
+                        height={180}
+                      />
                     </div>
                   </div>
                 )}
@@ -594,7 +619,7 @@ export default function AdminHomePage(): JSX.Element {
             }
           />
           <Card.Body>
-            <IndicadoresList itens={indicadores} />
+            <IndicadoresGrid itens={indicadores} />
           </Card.Body>
         </Card>
       </div>

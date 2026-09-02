@@ -21,6 +21,15 @@ export interface StatTileProps {
   value: ReactNode;
   trend?: StatTileTrend;
   onClick?: () => void;
+  /**
+   * Mostra a mesma sinalização visual de "isso é clicável" (cursor,
+   * destaque de borda no hover) mesmo sem `onClick` — para quando o
+   * próprio consumidor envolve o tile num `<Link>` de verdade (âncora
+   * real, funciona com botão direito/abrir em nova aba), em vez de
+   * depender do `onClick` sintético daqui. Default: só quando `onClick`
+   * é passado.
+   */
+  interactive?: boolean;
   className?: string;
 }
 
@@ -52,6 +61,7 @@ export function StatTile({
   value,
   trend,
   onClick,
+  interactive = Boolean(onClick),
   className,
 }: StatTileProps) {
   const TrendIcon = trend?.direction === "down" ? TrendingDown : TrendingUp;
@@ -70,7 +80,7 @@ export function StatTile({
       }
       className={cn(
         "flex flex-col gap-3 rounded-lg border border-border bg-card p-4",
-        onClick &&
+        interactive &&
           "cursor-pointer text-left transition-colors duration-150 hover:border-border-strong",
         className,
       )}
