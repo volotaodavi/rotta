@@ -25,8 +25,14 @@ export interface SupportTicket {
   anexoUrl: string | null;
   /** Número de protocolo (RT-AAAAMMDD-XXXXXX) — null só em tickets anteriores a essa feature. */
   protocolo: string | null;
-  /** Resumo gerado pela IA de suporte — o "documento" do caso, visível só no Admin. */
-  resumoIA: string | null;
+  /**
+   * Resumo gerado pela IA de suporte — o "documento" do caso. Presente
+   * SÓ na resposta pra Admin Rotta (achado em auditoria de segurança
+   * 02/09/2026); pra Empresa/Gestor/Responsável a API nem manda esta
+   * chave — vem `undefined` aqui, nunca confie num truthy-check com
+   * `null` pra decidir se deve mostrar algo.
+   */
+  resumoIA?: string | null;
   arquivado: boolean;
   arquivadoEm: string | null;
   encerradoEm: string | null;

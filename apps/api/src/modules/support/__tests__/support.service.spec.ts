@@ -568,6 +568,19 @@ describe("SupportService", () => {
         expect.objectContaining({ arquivado: true }),
       );
     });
+
+    it("achado em auditoria de segurança: resumoIA some da listagem pra Empresa/Gestor/Responsável", async () => {
+      ticketRepository.list.mockResolvedValue({
+        items: [buildTicket({ resumoIA: "Detalhe interno." })],
+        total: 1,
+      });
+
+      const paraEmpresa = await service.listTickets({ page: 1, pageSize: 20 }, empresaActor);
+      expect(paraEmpresa.items[0]!.resumoIA).toBeUndefined();
+
+      const paraAdmin = await service.listTickets({ page: 1, pageSize: 20 }, adminActor);
+      expect(paraAdmin.items[0]!.resumoIA).toBe("Detalhe interno.");
+    });
   });
 
   describe("getTicketDetail", () => {
@@ -586,6 +599,19 @@ describe("SupportService", () => {
         NotFoundException,
       );
       expect(ticketRepository.findById).toHaveBeenCalledWith("ticket-1", "company-2", undefined);
+    });
+
+    it("achado em auditoria de segurança: resumoIA NUNCA vai pra Empresa/Gestor/Responsável, só Admin Rotta", async () => {
+      ticketRepository.findById.mockResolvedValue(
+        buildTicket({ resumoIA: "Detalhe interno sigiloso do caso." }),
+      );
+      messageRepository.listByTicket.mockResolvedValue([]);
+
+      const paraEmpresa = await service.getTicketDetail("ticket-1", empresaActor);
+      expect(paraEmpresa.resumoIA).toBeUndefined();
+
+      const paraAdmin = await service.getTicketDetail("ticket-1", adminActor);
+      expect(paraAdmin.resumoIA).toBe("Detalhe interno sigiloso do caso.");
     });
   });
 

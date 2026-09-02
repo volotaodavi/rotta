@@ -434,7 +434,7 @@ export class SupportService {
       bypass,
     );
 
-    return toSupportTicketResponseDto(ticket);
+    return toSupportTicketResponseDto(ticket, actor.role === Role.ADMIN_ROTTA);
   }
 
   async listTickets(
@@ -452,8 +452,9 @@ export class SupportService {
       pageSize: query.pageSize,
     });
 
+    const isAdmin = actor.role === Role.ADMIN_ROTTA;
     return {
-      items: items.map(toSupportTicketResponseDto),
+      items: items.map((ticket) => toSupportTicketResponseDto(ticket, isAdmin)),
       total,
       page: query.page,
       pageSize: query.pageSize,
@@ -476,7 +477,7 @@ export class SupportService {
     }
 
     const messages = await this.messageRepository.listByTicket(ticketId, scope.companyId);
-    return toSupportTicketDetailResponseDto(ticket, messages);
+    return toSupportTicketDetailResponseDto(ticket, messages, actor.role === Role.ADMIN_ROTTA);
   }
 
   /**
@@ -631,7 +632,7 @@ export class SupportService {
     // encerramento em si de ter sido aplicado acima.
     this.notifyAdminRottaTicketEncerradoBestEffort(existing);
 
-    return toSupportTicketResponseDto(updated);
+    return toSupportTicketResponseDto(updated, actor.role === Role.ADMIN_ROTTA);
   }
 
   /**
@@ -691,7 +692,7 @@ export class SupportService {
       userAgent: meta.userAgent,
     });
 
-    return toSupportTicketResponseDto(updated);
+    return toSupportTicketResponseDto(updated, actor.role === Role.ADMIN_ROTTA);
   }
 
   /** Best-effort — ver nota no chamador. */

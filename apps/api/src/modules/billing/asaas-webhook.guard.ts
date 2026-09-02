@@ -1,5 +1,8 @@
+import { timingSafeEqual } from "node:crypto";
+
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
+
 
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
 import type { Request } from "express";
@@ -18,6 +21,12 @@ import asaasConfig from "@/config/asaas.config";
  * A rota é `@Public()` (sem JWT de usuário — a Asaas não tem um token
  * de usuário Rotta para enviar), então este Guard é a ÚNICA defesa
  * real deste endpoint — mesmo papel de `AbacatePayWebhookGuard`.
+ *
+ * Comparação em tempo constante (achado em auditoria de segurança
+ * 02/09/2026) — `!==` normal em string vaza timing proporcional a
+ * quantos caracteres batem antes da primeira diferença; `timingSafeEqual`
+ * (mesmo padrão já usado em `AbacatePayWebhookGuard`/`DiditWebhookGuard`)
+ * fecha esse canal, mesmo sendo um token estático (não HMAC).
  */
 @Injectable()
 export class AsaasWebhookGuard implements CanActivate {
@@ -36,10 +45,19 @@ export class AsaasWebhookGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<Request>();
     const providedToken = request.headers["asaas-access-token"];
 
-    if (providedToken !== this.config.webhookToken) {
+    if (typeof providedToken !== "string" || !this.isValidToken(providedToken)) {
       throw new UnauthorizedException("Token de webhook da Asaas inválido.");
     }
 
     return true;
+  }
+
+  private isValidToken(providedToken: string): boolean {
+    const expectedBuffer = Buffer.from(this.config.webhookToken!);
+    const providedBuffer = Buffer.from(providedToken);
+    return (
+      expectedBuffer.length === providedBuffer.length &&
+      timingSafeEqual(expectedBuffer, providedBuffer)
+    );
   }
 }

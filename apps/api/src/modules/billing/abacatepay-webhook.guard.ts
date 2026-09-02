@@ -9,6 +9,7 @@ import {
 } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 
+
 import { ABACATEPAY_HMAC_PUBLIC_KEY } from "./billing.constants";
 
 import type { Request } from "express";
@@ -47,8 +48,12 @@ export class AbacatePayWebhookGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<Request & { rawBody?: Buffer }>();
 
+    // Comparação em tempo constante (achado em auditoria de segurança
+    // 02/09/2026, mesmo motivo de `AsaasWebhookGuard`) — defesa em
+    // profundidade: a assinatura HMAC abaixo é a defesa criptográfica
+    // real, mas não custa nada fechar o canal de timing aqui também.
     const providedSecret = request.query.webhookSecret;
-    if (providedSecret !== this.config.webhookSecret) {
+    if (typeof providedSecret !== "string" || !this.isValidSecret(providedSecret)) {
       throw new UnauthorizedException("Webhook secret inválido.");
     }
 
@@ -72,5 +77,14 @@ export class AbacatePayWebhookGuard implements CanActivate {
     }
 
     return true;
+  }
+
+  private isValidSecret(providedSecret: string): boolean {
+    const expectedBuffer = Buffer.from(this.config.webhookSecret!);
+    const providedBuffer = Buffer.from(providedSecret);
+    return (
+      expectedBuffer.length === providedBuffer.length &&
+      timingSafeEqual(expectedBuffer, providedBuffer)
+    );
   }
 }

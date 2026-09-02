@@ -7,8 +7,19 @@ import type {
 import type { SupportMessageWithRelations } from "../repositories/support-message.repository";
 import type { SupportTicketWithRelations } from "../repositories/support-ticket.repository";
 
+/**
+ * `isAdmin` (achado em auditoria de segurança 02/09/2026): `resumoIA` é
+ * documentado em todo o módulo como "visível só no Admin" — mas até
+ * aqui o mapper devolvia o campo pra QUALQUER ator com acesso ao
+ * ticket (Empresa/Gestor/Responsável incluídos), porque o mesmo DTO
+ * serve todos os papéis. Corrigido strippando o campo (`undefined`,
+ * nunca chega no JSON) quando quem chama não é `Role.ADMIN_ROTTA` —
+ * ver todos os call-sites em `SupportService`, que agora passam
+ * `actor.role === Role.ADMIN_ROTTA`.
+ */
 export function toSupportTicketResponseDto(
   ticket: SupportTicketWithRelations,
+  isAdmin: boolean,
 ): SupportTicketResponseDto {
   return {
     id: ticket.id,
@@ -23,7 +34,7 @@ export function toSupportTicketResponseDto(
     status: ticket.status,
     anexoUrl: ticket.anexoUrl,
     protocolo: ticket.protocolo,
-    resumoIA: ticket.resumoIA,
+    resumoIA: isAdmin ? ticket.resumoIA : undefined,
     arquivado: ticket.arquivado,
     arquivadoEm: ticket.arquivadoEm,
     encerradoEm: ticket.encerradoEm,
@@ -36,9 +47,10 @@ export function toSupportTicketResponseDto(
 export function toSupportTicketDetailResponseDto(
   ticket: SupportTicketWithRelations,
   messages: SupportMessageWithRelations[],
+  isAdmin: boolean,
 ): SupportTicketDetailResponseDto {
   return {
-    ...toSupportTicketResponseDto(ticket),
+    ...toSupportTicketResponseDto(ticket, isAdmin),
     mensagens: messages.map(toSupportMessageResponseDto),
   };
 }
