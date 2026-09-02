@@ -1,16 +1,21 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { VehicleButton, VehicleCard, VehicleScreen, VehicleTextField } from "@/features/vehicles/components";
+import {
+  VehicleButton,
+  VehicleCard,
+  VehicleScreen,
+  VehicleTextField,
+} from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 import { useCreateSupportTicket } from "../hooks/use-support";
 import { SUPPORT_TICKET_CATEGORIA_LABEL } from "../labels";
+import { SUPPORT_QUICK_REPLIES } from "../quick-replies";
 
 import type { SupportStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SupportTicketCategoria } from "@rotta/api-client";
-
 
 type Props = NativeStackScreenProps<SupportStackParamList, "Novo">;
 
@@ -52,6 +57,26 @@ export function NovoChamadoScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
+      <VehicleCard style={{ gap: 8 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+          Alguma dessas é a sua dúvida? Toque pra preencher.
+        </Text>
+        <View style={styles.chips}>
+          {SUPPORT_QUICK_REPLIES.map((quickReply) => (
+            <VehicleButton
+              key={quickReply.label}
+              label={quickReply.label}
+              variant="secondary"
+              onPress={() => {
+                setAssunto(quickReply.assunto);
+                setDescricao(quickReply.descricao);
+                setCategoria(quickReply.categoria);
+              }}
+            />
+          ))}
+        </View>
+      </VehicleCard>
+
       <VehicleTextField
         label="Assunto"
         value={assunto}

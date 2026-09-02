@@ -7,6 +7,8 @@ import { useState } from "react";
 import type { SupportTicketCategoria } from "@rotta/api-client";
 
 import { useCreateSupportTicket } from "@/features/support/hooks/use-support";
+import { SUPPORT_QUICK_REPLIES } from "@/features/support/quick-replies";
+
 
 /** Abertura de chamado (`SUP-01`) — "assunto e descrição obrigatórios". */
 export default function NovoChamadoPage(): JSX.Element {
@@ -20,6 +22,29 @@ export default function NovoChamadoPage(): JSX.Element {
   return (
     <div className="flex max-w-2xl flex-col gap-6">
       <Typography variant="title">Novo chamado</Typography>
+
+      <div className="flex flex-col gap-2">
+        <Typography variant="caption" color="muted">
+          Alguma dessas é a sua dúvida? Toque pra preencher — ainda dá pra editar tudo antes de
+          enviar.
+        </Typography>
+        <div className="flex flex-wrap gap-2">
+          {SUPPORT_QUICK_REPLIES.map((quickReply) => (
+            <button
+              key={quickReply.label}
+              type="button"
+              onClick={() => {
+                setAssunto(quickReply.assunto);
+                setDescricao(quickReply.descricao);
+                setCategoria(quickReply.categoria);
+              }}
+              className="rounded-full border border-border px-3 py-1.5 text-sm text-text transition-colors hover:border-primary hover:text-primary"
+            >
+              {quickReply.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <Card>
         <Card.Body className="flex flex-col gap-4">
