@@ -18,6 +18,8 @@ export interface CreateSupportTicketData {
   descricao: string;
   categoria: SupportTicketCategoria;
   anexoUrl?: string;
+  /** Gerado em `SupportService.gerarProtocolo()` antes do insert — ver doc do campo no schema. */
+  protocolo: string;
 }
 
 /**
@@ -32,6 +34,13 @@ export interface ListSupportTicketsFilter {
   abertoPorUserId?: string;
   status?: SupportTicketStatus;
   categoria?: SupportTicketCategoria;
+  /**
+   * `false` (padrão) esconde os arquivados — "nunca aparece na listagem
+   * padrão do Admin" (pedido do usuário 02/09/2026); `true` mostra só os
+   * arquivados (aba/filtro dedicado). Nunca `undefined` chegando aqui —
+   * `SupportService.listTickets` já resolve o padrão antes de repassar.
+   */
+  arquivado: boolean;
   page: number;
   pageSize: number;
 }
@@ -45,6 +54,11 @@ export interface UpdateSupportTicketStatusData {
   status: SupportTicketStatus;
   encerradoEm?: Date | null;
   encerradoPorUserId?: string | null;
+}
+
+export interface UpdateSupportTicketArquivadoData {
+  arquivado: boolean;
+  arquivadoEm: Date | null;
 }
 
 export interface SupportTicketRepository {
@@ -71,5 +85,18 @@ export interface SupportTicketRepository {
   updateStatusBypass(
     id: string,
     data: UpdateSupportTicketStatusData,
+  ): Promise<SupportTicketWithRelations>;
+  /** Resumo gerado pela IA de suporte (`SupportAiService.processarChamado`) — best-effort, ver `SupportService`. */
+  updateResumoIA(id: string, resumoIA: string): Promise<SupportTicketWithRelations>;
+  /** Mesmo motivo de `createBypass` — ticket aberto por `Role.RESPONSAVEL`. */
+  updateResumoIABypass(id: string, resumoIA: string): Promise<SupportTicketWithRelations>;
+  /**
+   * Arquivar/desarquivar (pedido do usuário 02/09/2026) — ação só de
+   * Empresa/Gestor/Admin Rotta (nunca Responsável), por isso sem
+   * variante bypass, mesmo padrão de `updateStatus`.
+   */
+  setArquivado(
+    id: string,
+    data: UpdateSupportTicketArquivadoData,
   ): Promise<SupportTicketWithRelations>;
 }

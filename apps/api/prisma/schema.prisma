@@ -3294,6 +3294,28 @@ model SupportTicket {
   /// `SupportMessage.anexoUrl` (`SUP-02`).
   anexoUrl  String?
 
+  /// Número de protocolo (pedido do usuário 02/09/2026: "criar
+  /// protocolo, armazenar os detalhes do chamado") — gerado em
+  /// `SupportService.gerarProtocolo()` ANTES do insert (formato
+  /// "RT-AAAAMMDD-XXXXXX"), nunca pelo banco. Opcional só pra não exigir
+  /// backfill de tickets já existentes; todo ticket novo sempre nasce
+  /// com um.
+  protocolo String? @unique
+
+  /// Resumo estruturado da IA de suporte (Gemini), gerado na abertura
+  /// pra TODA categoria — o "documento com os detalhes do chamado"
+  /// pedido pelo usuário, visível só no Admin. Best-effort: fica `null`
+  /// quando a IA não respondeu (sem `SUPPORT_AI_API_KEY`, falha de rede).
+  resumoIA String?
+
+  /// Arquivamento — ação "à parte" do ciclo aberto/andamento/encerrado
+  /// (pedido do usuário 02/09/2026: "arquivar" como um estado separado,
+  /// não substitui "encerrado"): um chamado `ENCERRADO` pode também
+  /// estar arquivado. Nunca aparece na listagem padrão do Admin (fica
+  /// fora do caminho), só quando o filtro pedir explicitamente.
+  arquivado   Boolean   @default(false)
+  arquivadoEm DateTime?
+
   /// `SUP-01`, fluxo alternativo: "reabertura de um ticket encerrado...
   /// preservando o histórico da conversa original" — reabrir é só voltar
   /// `status` para `ABERTO`/`EM_ANDAMENTO` e limpar estes dois campos;
@@ -3309,6 +3331,7 @@ model SupportTicket {
 
   @@index([companyId, status, createdAt])
   @@index([status, createdAt])
+  @@index([companyId, arquivado])
   @@map("support_tickets")
 }
 

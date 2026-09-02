@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
+
 import { CreateSupportMessageDto } from "./dto/create-support-message.dto";
 import { CreateSupportTicketDto } from "./dto/create-support-ticket.dto";
 import { ListSupportTicketsQueryDto } from "./dto/list-support-tickets-query.dto";
@@ -34,6 +35,9 @@ function requestMeta(req: Request): RequestMeta {
  * `SupportService.resolveTicketScope`).
  */
 const SUPPORT_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA, Role.RESPONSAVEL] as const;
+
+/** Arquivar/desarquivar (pedido do usuário 02/09/2026) — nunca pelo Responsável, ver `SupportService.setArquivado`. */
+const ARCHIVE_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA] as const;
 
 /**
  * API REST do módulo Suporte (Dossiê 20, `SUP-01` a `SUP-03`/`ADM-04`;
@@ -95,5 +99,27 @@ export class SupportController {
     @Query("companyId") companyId?: string,
   ) {
     return this.supportService.closeTicket(id, actor, requestMeta(req), companyId);
+  }
+
+  @Patch(":id/archive")
+  @Roles(...ARCHIVE_ROLES)
+  archive(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+    @Query("companyId") companyId?: string,
+  ) {
+    return this.supportService.archiveTicket(id, actor, requestMeta(req), companyId);
+  }
+
+  @Patch(":id/unarchive")
+  @Roles(...ARCHIVE_ROLES)
+  unarchive(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+    @Query("companyId") companyId?: string,
+  ) {
+    return this.supportService.unarchiveTicket(id, actor, requestMeta(req), companyId);
   }
 }

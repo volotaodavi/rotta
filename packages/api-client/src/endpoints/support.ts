@@ -23,6 +23,12 @@ export interface SupportTicket {
   categoria: SupportTicketCategoria;
   status: SupportTicketStatus;
   anexoUrl: string | null;
+  /** Número de protocolo (RT-AAAAMMDD-XXXXXX) — null só em tickets anteriores a essa feature. */
+  protocolo: string | null;
+  /** Resumo gerado pela IA de suporte — o "documento" do caso, visível só no Admin. */
+  resumoIA: string | null;
+  arquivado: boolean;
+  arquivadoEm: string | null;
   encerradoEm: string | null;
   encerradoPorNome: string | null;
   createdAt: string;
@@ -36,7 +42,7 @@ export interface SupportMessage {
   autorUserId?: string | null;
   autorNome: string;
   autorIsAdminRotta: boolean;
-  /** Resposta automática da IA (Groq/Llama, Frente 5) — nunca um humano. */
+  /** Resposta automática da IA de suporte (Gemini, Frente 5) — nunca um humano. */
   autorIsIA: boolean;
   mensagem: string;
   anexoUrl: string | null;
@@ -59,6 +65,8 @@ export interface ListSupportTicketsParams {
   categoria?: SupportTicketCategoria;
   /** Só tem efeito para Admin Rotta — Empresa/Gestor sempre veem o próprio tenant. */
   companyId?: string;
+  /** false (padrão) esconde arquivados; true mostra só os arquivados. */
+  arquivado?: boolean;
   page?: number;
   pageSize?: number;
 }
@@ -117,6 +125,22 @@ export function createSupportEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<SupportTicket>>(
           `/support/tickets/${ticketId}/close${buildQueryString({ companyId })}`,
+          { method: "PATCH" },
+        )
+      ).data,
+
+    archiveTicket: async (ticketId: string, companyId?: string): Promise<SupportTicket> =>
+      (
+        await apiClient.request<ApiEnvelope<SupportTicket>>(
+          `/support/tickets/${ticketId}/archive${buildQueryString({ companyId })}`,
+          { method: "PATCH" },
+        )
+      ).data,
+
+    unarchiveTicket: async (ticketId: string, companyId?: string): Promise<SupportTicket> =>
+      (
+        await apiClient.request<ApiEnvelope<SupportTicket>>(
+          `/support/tickets/${ticketId}/unarchive${buildQueryString({ companyId })}`,
           { method: "PATCH" },
         )
       ).data,

@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import {
   BadRequestException,
   ForbiddenException,
@@ -151,6 +153,20 @@ export class SupportService {
     return ativo.companyId;
   }
 
+  /**
+   * Número de protocolo (pedido do usuário 02/09/2026: "criar
+   * protocolo, armazenar os detalhes do chamado") — gerado ANTES do
+   * insert (não pelo banco), formato "RT-AAAAMMDD-XXXXXX" (6 hex
+   * maiúsculos, ~16M combinações/dia — colisão real é astronômica pra
+   * um volume de chamados de suporte; não vale um retry-loop).
+   */
+  private gerarProtocolo(): string {
+    const hoje = new Date();
+    const data = `${hoje.getUTCFullYear()}${String(hoje.getUTCMonth() + 1).padStart(2, "0")}${String(hoje.getUTCDate()).padStart(2, "0")}`;
+    const sufixo = randomBytes(3).toString("hex").toUpperCase();
+    return `RT-${data}-${sufixo}`;
+  }
+
   /** Link clicável pro painel Admin — omitido (o e-mail só descreve) sem `ADMIN_APP_URL` configurada. */
   private buildAdminTicketUrl(ticketId: string, companyId: string): string | null {
     const base = process.env.ADMIN_APP_URL?.replace(/\/$/, "");
@@ -273,26 +289,34 @@ export class SupportService {
 
   /**
    * IA de suporte (Frente 5, Gemini — trocado de Groq a pedido do
-   * usuário 02/09/2026: "Groq não está indo") — atua em dúvidas simples
-   * E bugs relatados (`categoria === "DUVIDA" || "PROBLEMA_TECNICO"`;
-   * nunca `COBRANCA`/`OUTRO`, que já vão direto pro humano — pedido do
-   * usuário: "dúvidas frequentes... ou bugs relacionados à
-   * plataforma... a IA deverá responder", Epic B). Best-effort: sem
-   * `SUPPORT_AI_API_KEY` configurada ou qualquer falha de rede, não faz
-   * nada — o chamado já foi criado normalmente antes desta chamada.
-   * A resposta vira uma `SupportMessage` comum (`autorIsIA: true`,
-   * sem `autorUserId`) — preserva o histórico como mensagem normal,
-   * só estilizada diferente no chat. Nenhum escalonamento dedicado:
-   * a próxima mensagem do tenant (se a IA não resolveu) já dispara a
-   * notificação normal pro Admin Rotta (`notifyAdminRottaENovoTicketOuMensagem`),
-   * então um humano sempre entra se necessário.
+   * usuário 02/09/2026: "Groq não está indo") — agora processa TODA
+   * categoria (pedido do usuário: os 3 graus de atendimento — Grau 1
+   * bug, Grau 2 dúvida, Grau 3 cobrança), não só `DUVIDA`/
+   * `PROBLEMA_TECNICO` como antes. `SupportAiService.processarChamado`
+   * já garante, no próprio prompt, que COBRANCA/OUTRO nunca recebem uma
+   * resposta financeira — só um reconhecimento curto + aviso de que um
+   * humano vai continuar (ver `SYSTEM_PROMPT`).
+   *
+   * Sempre grava DUAS coisas quando a IA responde:
+   * - `resumoIA` no próprio ticket — o "documento com os detalhes do
+   *   chamado"/protocolo pedido pelo usuário, visível só no Admin.
+   * - Uma `SupportMessage` comum (`autorIsIA: true`, sem `autorUserId`)
+   *   com a resposta visível ao tenant — preserva o histórico como
+   *   mensagem normal, só estilizada diferente no chat.
+   *
+   * Best-effort: sem `SUPPORT_AI_API_KEY` configurada ou qualquer falha
+   * de rede, não faz nada — o chamado já foi criado normalmente antes
+   * desta chamada. Nenhum escalonamento dedicado: a próxima mensagem do
+   * tenant (se a IA não resolveu) já dispara a notificação normal pro
+   * Admin Rotta (`notifyAdminRottaENovoTicketOuMensagem`), então um
+   * humano sempre entra se necessário.
    *
    * `bypass`: chamado aberto por `Role.RESPONSAVEL` (Epic B) — a
-   * mensagem da IA precisa do mesmo bypass de RLS da criação do
+   * mensagem/resumo da IA precisam do mesmo bypass de RLS da criação do
    * chamado (ver `createTicket`), já que o contexto de tenant da
    * requisição corrente continua sendo o do Responsável.
    */
-  private async tentarResponderComIA(
+  private async processarChamadoComIA(
     ticket: {
       id: string;
       companyId: string;
@@ -302,26 +326,31 @@ export class SupportService {
     },
     bypass = false,
   ): Promise<void> {
-    if (ticket.categoria !== "DUVIDA" && ticket.categoria !== "PROBLEMA_TECNICO") {
-      return;
-    }
     try {
-      const resposta = await this.supportAiService.responderDuvida(
+      const { resumoInterno, respostaTenant } = await this.supportAiService.processarChamado(
         ticket.assunto,
         ticket.descricao,
+        ticket.categoria,
       );
-      const data = {
-        ticketId: ticket.id,
-        companyId: ticket.companyId,
-        autorIsAdminRotta: false,
-        autorIsIA: true,
-        mensagem: resposta,
-      };
+
       await (bypass
-        ? this.messageRepository.createBypass(data)
-        : this.messageRepository.create(data));
+        ? this.ticketRepository.updateResumoIABypass(ticket.id, resumoInterno)
+        : this.ticketRepository.updateResumoIA(ticket.id, resumoInterno));
+
+      if (respostaTenant) {
+        const data = {
+          ticketId: ticket.id,
+          companyId: ticket.companyId,
+          autorIsAdminRotta: false,
+          autorIsIA: true,
+          mensagem: respostaTenant,
+        };
+        await (bypass
+          ? this.messageRepository.createBypass(data)
+          : this.messageRepository.create(data));
+      }
     } catch (error) {
-      this.logger.warn(`Rotta AI não respondeu o chamado ${ticket.id} (best-effort).`);
+      this.logger.warn(`Rotta AI não processou o chamado ${ticket.id} (best-effort).`);
       this.logger.warn(error instanceof Error ? error.message : String(error));
     }
   }
@@ -340,6 +369,7 @@ export class SupportService {
         descricao: dto.descricao,
         categoria: dto.categoria,
         anexoUrl: dto.anexoUrl,
+        protocolo: this.gerarProtocolo(),
       });
       return this.finishCreateTicket(ticket, actor, meta, true);
     }
@@ -360,6 +390,7 @@ export class SupportService {
       descricao: dto.descricao,
       categoria: dto.categoria,
       anexoUrl: dto.anexoUrl,
+      protocolo: this.gerarProtocolo(),
     });
 
     return this.finishCreateTicket(ticket, actor, meta, false);
@@ -392,7 +423,7 @@ export class SupportService {
       tipo: "SUPORTE_TICKET_ABERTO",
     });
 
-    await this.tentarResponderComIA(
+    await this.processarChamadoComIA(
       {
         id: ticket.id,
         companyId: ticket.companyId,
@@ -416,6 +447,7 @@ export class SupportService {
       abertoPorUserId: scope.abertoPorUserId,
       status: query.status,
       categoria: query.categoria,
+      arquivado: query.arquivado ?? false,
       page: query.page,
       pageSize: query.pageSize,
     });
@@ -598,6 +630,66 @@ export class SupportService {
     // "finalização de chamados"). Best-effort, nunca impede o
     // encerramento em si de ter sido aplicado acima.
     this.notifyAdminRottaTicketEncerradoBestEffort(existing);
+
+    return toSupportTicketResponseDto(updated);
+  }
+
+  /**
+   * Arquivar/desarquivar (pedido do usuário 02/09/2026: "arquivar"
+   * como estado "à parte" do ciclo aberto/andamento/encerrado — um
+   * ticket `ENCERRADO` pode também estar arquivado, os dois campos são
+   * independentes). Nunca pelo Responsável (a família não administra a
+   * fila de chamados) — mesmo motivo de `setArquivado` não ter
+   * variante `bypass` no repositório.
+   */
+  async archiveTicket(
+    ticketId: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+    companyIdFilter?: string,
+  ): Promise<SupportTicketResponseDto> {
+    return this.setArquivado(ticketId, true, actor, meta, companyIdFilter);
+  }
+
+  async unarchiveTicket(
+    ticketId: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+    companyIdFilter?: string,
+  ): Promise<SupportTicketResponseDto> {
+    return this.setArquivado(ticketId, false, actor, meta, companyIdFilter);
+  }
+
+  private async setArquivado(
+    ticketId: string,
+    arquivado: boolean,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+    companyIdFilter?: string,
+  ): Promise<SupportTicketResponseDto> {
+    if (actor.role === Role.RESPONSAVEL) {
+      throw new ForbiddenException("Responsável não administra a fila de chamados.");
+    }
+    const scope = this.resolveTicketScope(actor, companyIdFilter);
+    const existing = await this.ticketRepository.findById(ticketId, scope.companyId);
+    if (!existing) {
+      throw new NotFoundException("Chamado não encontrado.");
+    }
+
+    const updated = await this.ticketRepository.setArquivado(ticketId, {
+      arquivado,
+      arquivadoEm: arquivado ? new Date() : null,
+    });
+
+    await this.recordAudit({
+      companyId: existing.companyId,
+      entidadeTipo: ENTIDADE_TIPO,
+      entidadeId: ticketId,
+      acao: arquivado ? "SUPPORT_TICKET_ARCHIVED" : "SUPPORT_TICKET_UNARCHIVED",
+      atorUserId: actor.sub,
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
 
     return toSupportTicketResponseDto(updated);
   }

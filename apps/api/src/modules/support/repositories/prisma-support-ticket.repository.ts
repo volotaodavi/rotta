@@ -10,6 +10,7 @@ import type {
   ListSupportTicketsResult,
   SupportTicketRepository,
   SupportTicketWithRelations,
+  UpdateSupportTicketArquivadoData,
   UpdateSupportTicketStatusData,
 } from "./support-ticket.repository";
 import type { Prisma } from "@prisma/client";
@@ -56,6 +57,7 @@ export class PrismaSupportTicketRepository implements SupportTicketRepository {
       ...(filter.abertoPorUserId ? { abertoPorUserId: filter.abertoPorUserId } : {}),
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.categoria ? { categoria: filter.categoria } : {}),
+      arquivado: filter.arquivado,
     };
 
     const findManyOp = this.prisma.supportTicket.findMany({
@@ -91,6 +93,35 @@ export class PrismaSupportTicketRepository implements SupportTicketRepository {
     data: UpdateSupportTicketStatusData,
   ): Promise<SupportTicketWithRelations> {
     return this.prisma.withBypass(
+      this.prisma.supportTicket.update({ where: { id }, data, include: SUPPORT_TICKET_INCLUDE }),
+    );
+  }
+
+  updateResumoIA(id: string, resumoIA: string): Promise<SupportTicketWithRelations> {
+    return this.prisma.withTenant(
+      this.prisma.supportTicket.update({
+        where: { id },
+        data: { resumoIA },
+        include: SUPPORT_TICKET_INCLUDE,
+      }),
+    );
+  }
+
+  updateResumoIABypass(id: string, resumoIA: string): Promise<SupportTicketWithRelations> {
+    return this.prisma.withBypass(
+      this.prisma.supportTicket.update({
+        where: { id },
+        data: { resumoIA },
+        include: SUPPORT_TICKET_INCLUDE,
+      }),
+    );
+  }
+
+  setArquivado(
+    id: string,
+    data: UpdateSupportTicketArquivadoData,
+  ): Promise<SupportTicketWithRelations> {
+    return this.prisma.withTenant(
       this.prisma.supportTicket.update({ where: { id }, data, include: SUPPORT_TICKET_INCLUDE }),
     );
   }

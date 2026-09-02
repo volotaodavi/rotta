@@ -33,41 +33,70 @@ describe("SupportAiService", () => {
   it("recusa com erro claro quando SUPPORT_AI_API_KEY não está configurada", async () => {
     const service = new SupportAiService(buildConfigService(undefined));
 
-    await expect(service.responderDuvida("Assunto", "Descrição")).rejects.toThrow(
+    await expect(service.processarChamado("Assunto", "Descrição", "DUVIDA")).rejects.toThrow(
       ServiceUnavailableException,
     );
   });
 
-  it("responde com o conteúdo da IA quando a chave está configurada", async () => {
+  it("separa RESUMO e RESPOSTA quando a IA segue o formato pedido", async () => {
+    const service = new SupportAiService(buildConfigService("chave-secreta"));
+    global.fetch = jest.fn().mockResolvedValue(
+      jsonResponse({
+        choices: [
+          {
+            message: {
+              content:
+                "RESUMO: Usuário não sabe cadastrar um aluno.\nRESPOSTA: Vá em Alunos > Novo.",
+            },
+          },
+        ],
+      }),
+    );
+
+    const resultado = await service.processarChamado(
+      "Como cadastro um aluno?",
+      "Não acho o botão.",
+      "DUVIDA",
+    );
+
+    expect(resultado.resumoInterno).toBe("Usuário não sabe cadastrar um aluno.");
+    expect(resultado.respostaTenant).toBe("Vá em Alunos > Novo.");
+    const [url, options] = (global.fetch as jest.Mock).mock.calls[0]!;
+    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+    expect(options.headers.Authorization).toBe("Bearer chave-secreta");
+    const body = JSON.parse(options.body);
+    expect(body.messages[1].content).toContain("Categoria:");
+    expect(body.messages[1].content).toContain("Como cadastro um aluno?");
+  });
+
+  it("cai num fallback honesto quando a IA não segue o formato RESUMO/RESPOSTA", async () => {
     const service = new SupportAiService(buildConfigService("chave-secreta"));
     global.fetch = jest
       .fn()
       .mockResolvedValue(
-        jsonResponse({ choices: [{ message: { content: "Vá em Alunos > Novo." } }] }),
+        jsonResponse({ choices: [{ message: { content: "Só um texto solto, sem marcadores." } }] }),
       );
 
-    const resposta = await service.responderDuvida("Como cadastro um aluno?", "Não acho o botão.");
+    const resultado = await service.processarChamado("Assunto", "Descrição", "OUTRO");
 
-    expect(resposta).toBe("Vá em Alunos > Novo.");
-    const [url, options] = (global.fetch as jest.Mock).mock.calls[0]!;
-    expect(url).toBe("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
-    expect(options.headers.Authorization).toBe("Bearer chave-secreta");
+    expect(resultado.respostaTenant).toBe("Só um texto solto, sem marcadores.");
+    expect(resultado.resumoInterno).toBe("Só um texto solto, sem marcadores.");
   });
 
   it("nunca lança quando a IA responde HTTP não-ok — recusa com erro claro", async () => {
     const service = new SupportAiService(buildConfigService("chave-secreta"));
     global.fetch = jest.fn().mockResolvedValue(jsonResponse({}, false, 500));
 
-    await expect(service.responderDuvida("Assunto", "Descrição")).rejects.toThrow(
-      ServiceUnavailableException,
-    );
+    await expect(
+      service.processarChamado("Assunto", "Descrição", "PROBLEMA_TECNICO"),
+    ).rejects.toThrow(ServiceUnavailableException);
   });
 
   it("recusa quando a IA responde sem conteúdo (choices vazio)", async () => {
     const service = new SupportAiService(buildConfigService("chave-secreta"));
     global.fetch = jest.fn().mockResolvedValue(jsonResponse({ choices: [] }));
 
-    await expect(service.responderDuvida("Assunto", "Descrição")).rejects.toThrow(
+    await expect(service.processarChamado("Assunto", "Descrição", "COBRANCA")).rejects.toThrow(
       ServiceUnavailableException,
     );
   });
@@ -76,7 +105,7 @@ describe("SupportAiService", () => {
     const service = new SupportAiService(buildConfigService("chave-secreta"));
     global.fetch = jest.fn().mockRejectedValue(new Error("network down"));
 
-    await expect(service.responderDuvida("Assunto", "Descrição")).rejects.toThrow(
+    await expect(service.processarChamado("Assunto", "Descrição", "DUVIDA")).rejects.toThrow(
       ServiceUnavailableException,
     );
   });

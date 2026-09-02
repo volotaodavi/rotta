@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { SupportTicketCategoria, SupportTicketStatus } from "@prisma/client";
 import { Type } from "class-transformer";
-import { IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
 
 /** Listagem de chamados — `companyId` só é lido para `Role.ADMIN_ROTTA` (Empresa/Gestor sempre veem só o próprio tenant, ver `SupportService`). */
 export class ListSupportTicketsQueryDto {
@@ -21,6 +21,16 @@ export class ListSupportTicketsQueryDto {
   @IsOptional()
   @IsUUID()
   companyId?: string;
+
+  @ApiPropertyOptional({
+    default: false,
+    description:
+      "false (padrão) esconde arquivados; true mostra só os arquivados (pedido do usuário 02/09/2026).",
+  })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  arquivado?: boolean;
 
   @ApiPropertyOptional({ default: 1, minimum: 1 })
   @IsOptional()

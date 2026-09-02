@@ -15,6 +15,15 @@ export class SupportTicketResponseDto {
   @ApiProperty({ enum: SupportTicketCategoria }) categoria!: SupportTicketCategoria;
   @ApiProperty({ enum: SupportTicketStatus }) status!: SupportTicketStatus;
   @ApiPropertyOptional() anexoUrl?: string | null;
+  @ApiPropertyOptional({
+    description:
+      "Número de protocolo (RT-AAAAMMDD-XXXXXX) — null só em tickets anteriores a essa feature.",
+  })
+  protocolo?: string | null;
+  @ApiPropertyOptional({ description: "Resumo gerado pela IA de suporte — o 'documento' do caso." })
+  resumoIA?: string | null;
+  @ApiProperty() arquivado!: boolean;
+  @ApiPropertyOptional() arquivadoEm?: Date | null;
   @ApiPropertyOptional() encerradoEm?: Date | null;
   @ApiPropertyOptional() encerradoPorNome?: string | null;
   @ApiProperty() createdAt!: Date;

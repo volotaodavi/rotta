@@ -1,5 +1,7 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { Role } from "@/shared/enums";
 
 import { SupportService } from "../support.service";
 
@@ -19,9 +21,6 @@ import type { MessagePersonalizationService } from "@/modules/notifications/mess
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { Role } from "@/shared/enums";
-
 function buildTicket(
   overrides: Partial<SupportTicketWithRelations> = {},
 ): SupportTicketWithRelations {
@@ -34,6 +33,10 @@ function buildTicket(
     categoria: "PROBLEMA_TECNICO",
     status: "ABERTO",
     anexoUrl: null,
+    protocolo: "RT-20260902-ABCDEF",
+    resumoIA: null,
+    arquivado: false,
+    arquivadoEm: null,
     encerradoEm: null,
     encerradoPorUserId: null,
     createdAt: new Date(),
@@ -131,6 +134,9 @@ describe("SupportService", () => {
       list: jest.fn(),
       updateStatus: jest.fn(),
       updateStatusBypass: jest.fn(),
+      updateResumoIA: jest.fn(),
+      updateResumoIABypass: jest.fn(),
+      setArquivado: jest.fn(),
     };
     messageRepository = { create: jest.fn(), createBypass: jest.fn(), listByTicket: jest.fn() };
     auditLogService = { record: jest.fn() } as unknown as jest.Mocked<AuditLogService>;
@@ -158,7 +164,7 @@ describe("SupportService", () => {
       send: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AdminInboxEmailService>;
     supportAiService = {
-      responderDuvida: jest
+      processarChamado: jest
         .fn()
         .mockRejectedValue(new Error("SUPPORT_AI_API_KEY não configurada.")),
     } as unknown as jest.Mocked<SupportAiService>;
@@ -304,8 +310,8 @@ describe("SupportService", () => {
     });
   });
 
-  describe("createTicket — Rotta AI (Frente 5, Gemini)", () => {
-    it("categoria DUVIDA + IA responde → grava SupportMessage com autorIsIA", async () => {
+  describe("createTicket — Rotta AI (Frente 5, Gemini — processa todo grau)", () => {
+    it("categoria DUVIDA + IA responde → grava resumoIA e SupportMessage com autorIsIA", async () => {
       ticketRepository.create.mockResolvedValue(
         buildTicket({
           categoria: "DUVIDA",
@@ -313,9 +319,10 @@ describe("SupportService", () => {
           descricao: "Não estou achando o botão de cadastrar aluno.",
         }),
       );
-      supportAiService.responderDuvida.mockResolvedValue(
-        "Você pode cadastrar o aluno em Alunos > Novo.",
-      );
+      supportAiService.processarChamado.mockResolvedValue({
+        resumoInterno: "Usuário não acha o botão de cadastrar aluno.",
+        respostaTenant: "Você pode cadastrar o aluno em Alunos > Novo.",
+      });
 
       await service.createTicket(
         {
@@ -327,9 +334,14 @@ describe("SupportService", () => {
         {},
       );
 
-      expect(supportAiService.responderDuvida).toHaveBeenCalledWith(
+      expect(supportAiService.processarChamado).toHaveBeenCalledWith(
         "Como cadastro um aluno?",
         "Não estou achando o botão de cadastrar aluno.",
+        "DUVIDA",
+      );
+      expect(ticketRepository.updateResumoIA).toHaveBeenCalledWith(
+        "ticket-1",
+        "Usuário não acha o botão de cadastrar aluno.",
       );
       expect(messageRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -344,9 +356,9 @@ describe("SupportService", () => {
       );
     });
 
-    it("categoria DUVIDA sem SUPPORT_AI_API_KEY (ou qualquer falha) → nunca deixa de criar o chamado, nem grava mensagem", async () => {
+    it("sem SUPPORT_AI_API_KEY (ou qualquer falha) → nunca deixa de criar o chamado, nem grava resumo/mensagem", async () => {
       ticketRepository.create.mockResolvedValue(buildTicket({ categoria: "DUVIDA" }));
-      supportAiService.responderDuvida.mockRejectedValue(
+      supportAiService.processarChamado.mockRejectedValue(
         new Error("SUPPORT_AI_API_KEY não configurada."),
       );
 
@@ -362,9 +374,10 @@ describe("SupportService", () => {
 
       expect(result.status).toBe("ABERTO");
       expect(messageRepository.create).not.toHaveBeenCalled();
+      expect(ticketRepository.updateResumoIA).not.toHaveBeenCalled();
     });
 
-    it("categoria PROBLEMA_TECNICO também aciona a IA (Epic B: 'dúvidas... ou bugs')", async () => {
+    it("categoria PROBLEMA_TECNICO (Grau 1) também aciona a IA", async () => {
       ticketRepository.create.mockResolvedValue(
         buildTicket({
           categoria: "PROBLEMA_TECNICO",
@@ -372,9 +385,10 @@ describe("SupportService", () => {
           descricao: "A tela trava ao salvar o cadastro.",
         }),
       );
-      supportAiService.responderDuvida.mockResolvedValue(
-        "Tente atualizar a página e salvar novamente.",
-      );
+      supportAiService.processarChamado.mockResolvedValue({
+        resumoInterno: "Tela trava ao salvar cadastro.",
+        respostaTenant: "Tente atualizar a página e salvar novamente.",
+      });
 
       await service.createTicket(
         {
@@ -386,9 +400,10 @@ describe("SupportService", () => {
         {},
       );
 
-      expect(supportAiService.responderDuvida).toHaveBeenCalledWith(
+      expect(supportAiService.processarChamado).toHaveBeenCalledWith(
         "Erro ao salvar",
         "A tela trava ao salvar o cadastro.",
+        "PROBLEMA_TECNICO",
       );
       expect(messageRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -398,8 +413,18 @@ describe("SupportService", () => {
       );
     });
 
-    it("categoria COBRANCA/OUTRO nunca aciona a IA", async () => {
-      ticketRepository.create.mockResolvedValue(buildTicket({ categoria: "COBRANCA" }));
+    it("categoria COBRANCA (Grau 3) também aciona a IA — resumo + aviso de humano, nunca resposta financeira", async () => {
+      ticketRepository.create.mockResolvedValue(
+        buildTicket({
+          categoria: "COBRANCA",
+          assunto: "Dúvida na fatura",
+          descricao: "Não entendi um valor cobrado este mês.",
+        }),
+      );
+      supportAiService.processarChamado.mockResolvedValue({
+        resumoInterno: "Usuário questiona valor cobrado este mês.",
+        respostaTenant: "Entendi, é sobre cobrança — um atendente da Rotta vai continuar com você.",
+      });
 
       await service.createTicket(
         {
@@ -411,7 +436,35 @@ describe("SupportService", () => {
         {},
       );
 
-      expect(supportAiService.responderDuvida).not.toHaveBeenCalled();
+      expect(supportAiService.processarChamado).toHaveBeenCalledWith(
+        "Dúvida na fatura",
+        "Não entendi um valor cobrado este mês.",
+        "COBRANCA",
+      );
+      expect(ticketRepository.updateResumoIA).toHaveBeenCalledWith(
+        "ticket-1",
+        "Usuário questiona valor cobrado este mês.",
+      );
+      expect(messageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          autorIsIA: true,
+          mensagem: "Entendi, é sobre cobrança — um atendente da Rotta vai continuar com você.",
+        }),
+      );
+    });
+
+    it("gera um número de protocolo em todo chamado novo", async () => {
+      ticketRepository.create.mockResolvedValue(buildTicket());
+
+      await service.createTicket(
+        { assunto: "Assunto", descricao: "Descrição com detalhe suficiente.", categoria: "DUVIDA" },
+        empresaActor,
+        {},
+      );
+
+      expect(ticketRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ protocolo: expect.stringMatching(/^RT-\d{8}-[0-9A-F]{6}$/) }),
+      );
     });
   });
 
@@ -493,6 +546,26 @@ describe("SupportService", () => {
 
       expect(ticketRepository.list).toHaveBeenCalledWith(
         expect.objectContaining({ companyId: undefined, abertoPorUserId: "responsavel-1" }),
+      );
+    });
+
+    it("esconde arquivados por padrão", async () => {
+      ticketRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.listTickets({ page: 1, pageSize: 20 }, empresaActor);
+
+      expect(ticketRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ arquivado: false }),
+      );
+    });
+
+    it("mostra só os arquivados quando pedido explicitamente", async () => {
+      ticketRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.listTickets({ page: 1, pageSize: 20, arquivado: true }, empresaActor);
+
+      expect(ticketRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ arquivado: true }),
       );
     });
   });
@@ -730,6 +803,54 @@ describe("SupportService", () => {
       );
       expect(ticketRepository.updateStatus).not.toHaveBeenCalled();
       expect(result.status).toBe("ENCERRADO");
+    });
+  });
+
+  describe("archiveTicket / unarchiveTicket", () => {
+    it("arquiva o chamado e registra auditoria", async () => {
+      ticketRepository.findById.mockResolvedValue(buildTicket());
+      ticketRepository.setArquivado.mockResolvedValue(
+        buildTicket({ arquivado: true, arquivadoEm: new Date() }),
+      );
+
+      const result = await service.archiveTicket("ticket-1", empresaActor, {});
+
+      expect(ticketRepository.setArquivado).toHaveBeenCalledWith(
+        "ticket-1",
+        expect.objectContaining({ arquivado: true }),
+      );
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ acao: "SUPPORT_TICKET_ARCHIVED" }),
+      );
+      expect(result.arquivado).toBe(true);
+    });
+
+    it("desarquiva o chamado", async () => {
+      ticketRepository.findById.mockResolvedValue(buildTicket({ arquivado: true }));
+      ticketRepository.setArquivado.mockResolvedValue(buildTicket({ arquivado: false }));
+
+      const result = await service.unarchiveTicket("ticket-1", empresaActor, {});
+
+      expect(ticketRepository.setArquivado).toHaveBeenCalledWith(
+        "ticket-1",
+        expect.objectContaining({ arquivado: false, arquivadoEm: null }),
+      );
+      expect(result.arquivado).toBe(false);
+    });
+
+    it("Responsável nunca pode arquivar (não administra a fila de chamados)", async () => {
+      await expect(service.archiveTicket("ticket-1", responsavelActor, {})).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(ticketRepository.setArquivado).not.toHaveBeenCalled();
+    });
+
+    it("404 quando o chamado não existe no escopo do ator", async () => {
+      ticketRepository.findById.mockResolvedValue(null);
+
+      await expect(service.archiveTicket("ticket-1", empresaActor, {})).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
