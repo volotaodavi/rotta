@@ -1,8 +1,26 @@
 "use client";
 
-import { AlertTriangle } from "@rotta/icons";
+import {
+  AlertTriangle,
+  Car,
+  ClipboardCheck,
+  GraduationCap,
+  MessageCircle,
+  Route as RouteIcon,
+  ShieldCheck,
+  Users,
+} from "@rotta/icons";
 import { type HeatmapPoint } from "@rotta/maps/types";
-import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  Skeleton,
+  StatTile,
+  TrendBarChart,
+  Typography,
+} from "@rotta/ui/web";
 import { useMemo, useState } from "react";
 
 import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
@@ -54,11 +72,7 @@ export default function InteligenciaPage(): JSX.Element {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <InteligenciaSkeleton />;
   }
 
   if (isError || !data) {
@@ -127,16 +141,18 @@ export default function InteligenciaPage(): JSX.Element {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard label="MRR (assinaturas ativas)" value={centsToBRL(data.negocio.mrrCentavos)} />
-        <MetricCard label="ARR" value={centsToBRL(data.negocio.arrCentavos)} />
-        <MetricCard
+        <StatTile label="MRR (assinaturas ativas)" value={centsToBRL(data.negocio.mrrCentavos)} />
+        <StatTile label="ARR" value={centsToBRL(data.negocio.arrCentavos)} tone="info" />
+        <StatTile
           label="Empresas ativas pagantes"
-          value={String(data.negocio.empresasAtivasPagantes)}
+          value={data.negocio.empresasAtivasPagantes}
+          icon={Users}
+          tone="success"
         />
-        <MetricCard
+        <StatTile
           label="Churn aproximado (período)"
           value={formatPercent(data.periodo.churnRateAproximado)}
-          hint={`Período anterior: ${formatPercent(data.periodoAnterior.churnRateAproximado)}`}
+          tone="warning"
         />
       </div>
 
@@ -149,46 +165,65 @@ export default function InteligenciaPage(): JSX.Element {
         </Card.Body>
       </Card>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          label="Novas empresas no período"
-          value={String(data.periodo.novasEmpresas)}
-          hint={`Período anterior: ${data.periodoAnterior.novasEmpresas}`}
-        />
-        <MetricCard
-          label="Empresas canceladas no período"
-          value={String(data.periodo.empresasCanceladas)}
-          hint={`Período anterior: ${data.periodoAnterior.empresasCanceladas}`}
-        />
-        <MetricCard
-          label="Viagens realizadas no período"
-          value={String(data.periodo.viagensRealizadas)}
-          hint={`Período anterior: ${data.periodoAnterior.viagensRealizadas}`}
-        />
-        <MetricCard
-          label="Chamados abertos (hoje)"
-          value={String(data.operacional.chamadosAbertos)}
-        />
-      </div>
+      <Card>
+        <Card.Header title="Período atual vs. anterior" />
+        <Card.Body>
+          <TrendBarChart
+            data={[
+              {
+                categoria: "Novas empresas",
+                atual: data.periodo.novasEmpresas,
+                anterior: data.periodoAnterior.novasEmpresas,
+              },
+              {
+                categoria: "Empresas canceladas",
+                atual: data.periodo.empresasCanceladas,
+                anterior: data.periodoAnterior.empresasCanceladas,
+              },
+              {
+                categoria: "Viagens realizadas",
+                atual: data.periodo.viagensRealizadas,
+                anterior: data.periodoAnterior.viagensRealizadas,
+              },
+            ]}
+            categoryKey="categoria"
+            series={[
+              { key: "atual", label: "Atual" },
+              { key: "anterior", label: "Anterior", color: "rgb(var(--color-secondary) / 0.5)" },
+            ]}
+            height={280}
+          />
+        </Card.Body>
+      </Card>
 
       <Card>
         <Card.Header title="Operação nacional (hoje)" />
-        <Card.Body className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {[
-            { label: "Motoristas ativos", value: data.operacional.motoristasAtivos },
-            { label: "Monitores ativos", value: data.operacional.monitoresAtivos },
-            { label: "Veículos", value: data.operacional.veiculosTotal },
-            { label: "Alunos", value: data.operacional.alunosTotal },
-            { label: "Viagens hoje", value: data.operacional.viagensHoje },
-            { label: "Aprovações pendentes", value: data.operacional.aprovacoesPendentesTotal },
-          ].map((metric) => (
-            <div key={metric.label} className="flex flex-col gap-1">
-              <Typography variant="caption" color="muted">
-                {metric.label}
-              </Typography>
-              <Typography variant="subtitle">{metric.value}</Typography>
-            </div>
-          ))}
+        <Card.Body className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <StatTile
+            label="Motoristas ativos"
+            value={data.operacional.motoristasAtivos}
+            icon={Users}
+          />
+          <StatTile
+            label="Monitores ativos"
+            value={data.operacional.monitoresAtivos}
+            icon={ShieldCheck}
+          />
+          <StatTile label="Veículos" value={data.operacional.veiculosTotal} icon={Car} />
+          <StatTile label="Alunos" value={data.operacional.alunosTotal} icon={GraduationCap} />
+          <StatTile label="Viagens hoje" value={data.operacional.viagensHoje} icon={RouteIcon} />
+          <StatTile
+            label="Aprovações pendentes"
+            value={data.operacional.aprovacoesPendentesTotal}
+            icon={ClipboardCheck}
+            tone={data.operacional.aprovacoesPendentesTotal > 0 ? "warning" : "primary"}
+          />
+          <StatTile
+            label="Chamados abertos"
+            value={data.operacional.chamadosAbertos}
+            icon={MessageCircle}
+            tone={data.operacional.chamadosAbertos > 0 ? "warning" : "primary"}
+          />
         </Card.Body>
       </Card>
 
@@ -229,28 +264,24 @@ export default function InteligenciaPage(): JSX.Element {
   );
 }
 
-function MetricCard({
-  label,
-  value,
-  hint,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-}): JSX.Element {
+/** Esqueleto do carregamento inicial — mesmo grid da tela de verdade, mesma disciplina da Home (pedido do usuário 02/09/2026: "trazer mais modernidade"). */
+function InteligenciaSkeleton(): JSX.Element {
   return (
-    <Card>
-      <Card.Body className="flex flex-col gap-1">
-        <Typography variant="caption" color="muted">
-          {label}
-        </Typography>
-        <Typography variant="title">{value}</Typography>
-        {hint && (
-          <Typography variant="caption" color="muted">
-            {hint}
-          </Typography>
-        )}
-      </Card.Body>
-    </Card>
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Skeleton variant="text" width={260} height={24} />
+        <Skeleton variant="text" width={180} height={14} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <Skeleton key={index} variant="rect" height={96} />
+        ))}
+      </div>
+      <Card>
+        <Card.Body>
+          <Skeleton variant="rect" height={280} />
+        </Card.Body>
+      </Card>
+    </div>
   );
 }
