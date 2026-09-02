@@ -36,7 +36,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: "/", priority: 1, changeFrequency: "weekly" },
     { path: "/governo", priority: 0.7, changeFrequency: "monthly" },
     { path: "/planos", priority: 0.8, changeFrequency: "monthly" },
-    { path: "/beneficios", priority: 0.7, changeFrequency: "monthly" },
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" },
     { path: "/contato", priority: 0.4, changeFrequency: "yearly" },
     { path: "/suporte", priority: 0.4, changeFrequency: "yearly" },

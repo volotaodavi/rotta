@@ -11,18 +11,26 @@ import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
 
+
 /**
- * Navegação principal — âncoras da própria Landing Page (pedido do
- * usuário 02/09/2026: "os links... devem levar exatamente às seções
- * correspondentes"), nunca páginas separadas. `/#id` funciona a partir
- * de qualquer rota do site (Next.js navega pra `/` e rola até a
- * âncora), não só da própria home.
+ * Navegação principal — majoritariamente âncoras da própria Landing
+ * Page (pedido do usuário 02/09/2026: "os links... devem levar
+ * exatamente às seções correspondentes"). `/#id` funciona a partir de
+ * qualquer rota do site (Next.js navega pra `/` e rola até a âncora),
+ * não só da própria home. Exceção: "Planos" é página separada de
+ * verdade (`/planos`, preço + 1º mês grátis) — precisa de URL própria
+ * pra ser compartilhável e indexável sozinha, ao contrário de uma seção
+ * dentro da Home.
  */
 const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/#para-responsaveis", label: "Para responsáveis" },
   { href: "/#para-transportadores", label: "Para transportadores" },
   { href: "/#para-motoristas", label: "Para motoristas" },
   { href: "/#como-funciona", label: "Como funciona" },
+  // Pedido do usuário 02/09/2026 ("otimize para que fique harmônico"):
+  // `/planos` já existia (real, no `sitemap.ts`) mas não tinha link
+  // nenhum na navegação — só alcançável digitando a URL direto.
+  { href: "/planos", label: "Planos" },
   { href: "/#sobre", label: "Sobre a Rotta" },
 ];
 
@@ -70,6 +78,7 @@ const FOOTER_LINKS: { href: Route; label: string }[] = [
   { href: "/#para-responsaveis", label: "Para responsáveis" },
   { href: "/#para-transportadores", label: "Para transportadores" },
   { href: "/#para-motoristas", label: "Para motoristas" },
+  { href: "/planos", label: "Planos" },
   { href: "/sobre", label: "Empresa" },
   { href: "/suporte", label: "Suporte" },
   {

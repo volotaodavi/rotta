@@ -31,6 +31,8 @@ import {
 import { pillGhostLg, pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
 import { Reveal } from "@/components/reveal-on-scroll";
 
+
+
 /** Canonical/keywords reais do produto — título/descrição/OG herdam do root layout, já otimizados. */
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -213,6 +215,17 @@ export default function LandingPage(): JSX.Element {
               <Link href="#como-funciona" className={pillGhostLg}>
                 Como funciona
               </Link>
+            </div>
+            {/* Pedido do usuário 02/09/2026: "coloque que disponibilizamos 1
+                mês grátis, sem a necessidade de colocar dados para
+                pagamento" — o trial de verdade (1 mês, `TRIAL_DURATION_MONTHS`
+                em `companies.constants.ts`) até então só aparecia depois do
+                clique em "Começar agora", nunca aqui na hero. */}
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />
+              <Typography variant="bodySmall" className="font-medium">
+                1º mês grátis, sem necessidade de cartão de crédito
+              </Typography>
             </div>
             <Typography variant="bodySmall" color="muted">
               Tecnologia para conectar. Segurança para tranquilizar.

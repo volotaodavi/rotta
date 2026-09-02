@@ -1,10 +1,11 @@
-import { Check } from "@rotta/icons";
+import { Check, Sparkles } from "@rotta/icons";
 import { Card, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { Metadata } from "next";
 
 import { AsaasSecurityBadge } from "@/components/asaas-security-badge";
+
 
 export const metadata: Metadata = {
   title: "Planos e preços",
@@ -41,6 +42,17 @@ export default function PlanosPage(): JSX.Element {
             <Typography variant="bodySmall" color="muted">
               {" "}
               /mês
+            </Typography>
+          </div>
+          {/* Pedido do usuário 02/09/2026: "coloque que disponibilizamos 1
+              mês grátis, sem a necessidade de colocar dados para pagamento"
+              — o trial de 1 mês já é real (`TRIAL_DURATION_MONTHS`), mas
+              não aparecia na própria página de preço, o lugar mais óbvio
+              pra essa informação. */}
+          <div className="flex items-center gap-2 rounded-lg bg-primary/10 px-3 py-2.5">
+            <Sparkles className="h-4 w-4 shrink-0 text-primary" />
+            <Typography variant="bodySmall" className="font-semibold text-primary">
+              1º mês grátis, sem necessidade de cartão de crédito
             </Typography>
           </div>
           <ul className="flex flex-col gap-2.5">

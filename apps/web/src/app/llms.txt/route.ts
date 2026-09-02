@@ -22,16 +22,15 @@ Rotta do Brasil Tecnologia e Soluções de Transportes. Site institucional e pai
 
 Quatro perfis de conta, cada um com funcionalidades próprias:
 - **Responsável**: encontra uma transportadora, acompanha o transporte no mapa em tempo real e recebe notificação a cada embarque/desembarque. Gratuito, sem mensalidade.
-- **Transportadora**: painel com gestão de motoristas, veículos, rotas e alunos, além do Rotta Pay (acompanhamento de recebimentos). Plano Starter R$ 39,90/mês.
+- **Transportadora**: painel com gestão de motoristas, veículos, rotas e alunos, além do Rotta Pay (acompanhamento de recebimentos). Plano Starter R$ 39,90/mês, com 1º mês grátis (sem necessidade de cartão de crédito).
 - **Motorista**: autônomo/MEI (paga a mesma mensalidade de uma transportadora, pois é a própria transportadora) ou contratado por uma empresa via convite (gratuito). App com rota do dia, checklist do veículo e registro de embarque/desembarque.
 - **Monitor**: acompanha os alunos durante o trajeto e confirma embarque/desembarque, sem dirigir. Entra por convite de uma transportadora, gratuito.
 
 ## Páginas públicas
 
 - [Página inicial](${siteUrl}/): visão geral do produto e os 4 perfis de conta.
-- [Planos](${siteUrl}/planos): preço e o que está incluso no plano Starter.
-- [Benefícios](${siteUrl}/beneficios): o que a Rotta resolve para cada perfil.
-- [Perguntas frequentes](${siteUrl}/faq): dúvidas comuns sobre cadastro, convite e conta.
+- [Planos](${siteUrl}/planos): preço, o que está incluso no plano Starter e o 1º mês grátis.
+- [Perguntas frequentes](${siteUrl}/faq): dúvidas comuns sobre cadastro, convite, conta e teste grátis.
 - [Contato](${siteUrl}/contato): ${CONTACT_EMAIL}
 - [Suporte](${siteUrl}/suporte): canal para clientes e não clientes.
 - [Criar conta](${siteUrl}/criar-conta): ponto de entrada dos 4 fluxos de cadastro.

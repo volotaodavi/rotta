@@ -75,6 +75,12 @@ const nextConfig = {
       { source: "/termos", destination: "/legal/termos", permanent: true },
       { source: "/privacidade", destination: "/legal/privacidade", permanent: true },
       { source: "/convite/:codigo", destination: "/convite?codigo=:codigo", permanent: false },
+      // `/beneficios` foi removida (pedido do usuário 02/09/2026: "tem
+      // páginas repetidas e segmentos repetidos") — duplicava, com menos
+      // detalhe e sem link nenhum na navegação, a seção "Os três
+      // públicos" que já existe na própria Home (`/#para-responsaveis`
+      // etc.). Redirect permanente preserva o link já indexado no Google.
+      { source: "/beneficios", destination: "/", permanent: true },
     ];
   },
 };
