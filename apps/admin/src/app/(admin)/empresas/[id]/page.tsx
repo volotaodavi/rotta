@@ -23,6 +23,7 @@ import {
   useReactivateCompany,
   useSuspendCompany,
 } from "@/features/companies/hooks/use-companies";
+import { CompanyStudentsTab } from "@/features/students/components/company-students-tab";
 import { CompanyVehiclesTab } from "@/features/vehicles/components/company-vehicles-tab";
 
 function centsToBRL(cents: number): string {
@@ -53,7 +54,7 @@ export default function EmpresaDetalhesPage({
   const [supportError, setSupportError] = useState("");
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [suspendMotivo, setSuspendMotivo] = useState(motivo);
-  const [activeTab, setActiveTab] = useState<"dados" | "veiculos">("dados");
+  const [activeTab, setActiveTab] = useState<"dados" | "alunos" | "veiculos">("dados");
 
   function handleConfirmarAcessoSuporte(): void {
     if (supportMotivo.trim().length < 10) {
@@ -223,10 +224,11 @@ export default function EmpresaDetalhesPage({
       <Tabs
         tabs={[
           { id: "dados", label: "Dados da empresa" },
+          { id: "alunos", label: "Alunos" },
           { id: "veiculos", label: "Veículos" },
         ]}
         activeId={activeTab}
-        onChange={(id) => setActiveTab(id as "dados" | "veiculos")}
+        onChange={(id) => setActiveTab(id as "dados" | "alunos" | "veiculos")}
       />
 
       {activeTab === "dados" ? (
@@ -257,6 +259,8 @@ export default function EmpresaDetalhesPage({
             )}
           </Card.Body>
         </Card>
+      ) : activeTab === "alunos" ? (
+        <CompanyStudentsTab companyId={id} />
       ) : (
         <CompanyVehiclesTab companyId={id} />
       )}
