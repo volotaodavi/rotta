@@ -1,38 +1,39 @@
 import {
+  AlertTriangle,
   ArrowRight,
   Bell,
-  Check,
-  Gauge,
-  Headset,
+  Car,
+  CheckCircle2,
+  Compass,
+  History,
   LayoutGrid,
-  Link2,
   MapPin,
-  Repeat,
+  MessageCircle,
   Route as RouteIcon,
-  ScanFace,
   ShieldCheck,
-  UserCheck,
-  UserPlus,
+  Users,
 } from "@rotta/icons";
 import { Typography } from "@rotta/ui/web";
 import Image from "next/image";
 import Link from "next/link";
 
-import type { Metadata } from "next";
+import { ROTTA_APP_URL } from "./layout";
+
+import type { Metadata, Route } from "next";
 import type { ComponentType } from "react";
 
-import { AUDIENCIAS, TONE_BG, TONE_TEXT, type AudienceCard } from "@/components/audience-data";
-import { HeroAudienceSwitch } from "@/components/hero-audience-switch";
 import { HeroMapDemoLazy } from "@/components/hero-map-demo-lazy";
-import { pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
+import {
+  MotoristaMockup,
+  ResponsavelMockup,
+  TransportadoraMockup,
+} from "@/components/landing-product-mockups";
+import { pillGhostLg, pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
+import { Reveal } from "@/components/reveal-on-scroll";
 
-/**
- * Título/descrição herdam o padrão do root layout (já otimizados pra
- * home) — aqui só fixamos o `canonical` (Dossiê 12 §7.4: evita que o
- * Google trate `/` e `/?utm=...`/variações como páginas duplicadas) e
- * as palavras-chave reais do produto (nunca termos que a Rotta não
- * atende, tipo "ônibus urbano" ou "transporte de funcionários").
- */
+
+
+/** Canonical/keywords reais do produto — título/descrição/OG herdam do root layout, já otimizados. */
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
   keywords: [
@@ -44,731 +45,492 @@ export const metadata: Metadata = {
   ],
 };
 
-/**
- * Grade de 4 destaques logo abaixo do `HeroAudienceSwitch` — substitui
- * os antigos `TRUST_CHIPS` (badges de texto solto) por um bloco mais
- * denso visualmente (ícone + título + descrição curta), no mesmo
- * espírito do banner de referência que o usuário trouxe. Cada item
- * aqui é uma capacidade REAL já documentada em outras seções desta
- * mesma página (`SEGURANCA_ITENS`, `BENEFICIOS`, `COMO_FUNCIONA`) —
- * nunca uma promessa nova inventada só para preencher a grade.
- */
-const HERO_DESTAQUES: {
-  titulo: string;
-  descricao: string;
-  icon: ComponentType<{ className?: string }>;
-}[] = [
-  {
-    titulo: "Mais segurança",
-    descricao: "CNH, selfie e reconhecimento facial checados por IA.",
-    icon: ShieldCheck,
-  },
-  {
-    titulo: "Mais controle",
-    descricao: "Motoristas, veículos e rotas num painel só.",
-    icon: LayoutGrid,
-  },
-  {
-    titulo: "Mais comunicação",
-    descricao: "Notificação automática a cada embarque e desembarque.",
-    icon: Bell,
-  },
-  {
-    titulo: "Mais eficiência",
-    descricao: "Rota otimizada, recalculada sozinha se um aluno faltar.",
-    icon: Gauge,
-  },
+/** Faixa de prova de valor logo abaixo da hero — 3 capacidades reais, sem número inventado. */
+const FAIXA_VALOR: { titulo: string; icon: ComponentType<{ className?: string }> }[] = [
+  { titulo: "Acompanhamento em tempo real", icon: MapPin },
+  { titulo: "Rotas organizadas", icon: RouteIcon },
+  { titulo: "Mais tranquilidade para responsáveis", icon: ShieldCheck },
 ];
 
-/**
- * Mockup de celular flutuando sobre o `HeroMapDemo` (banner de
- * referência trazido pelo usuário: foto de van + celular na mão). A
- * Rotta não tem fotografia real de van/motorista ainda (Dossiê 24 —
- * nenhuma foto de estoque), então em vez de uma foto genérica de banco
- * de imagens (que pareceria falsa), este é um mockup ilustrado — moldura
- * de aparelho desenhada (não uma foto de mão) com uma prévia da MESMA
- * tela real do app (`TripsService`/embarque-desembarque, Dossiê 13):
- * viagem em andamento, mini-rota e os dois papéis que aparecem nela
- * (aluno a bordo, motorista). Nomes são de exemplo — mesma convenção já
- * usada no cartão "Chegada em X min" do `HeroMapDemo` (dado de
- * demonstração, nunca um cliente real).
- */
-function HeroTripPhoneMockup({ className }: { className?: string }): JSX.Element {
-  return (
-    <div className={`w-40 rotate-[4deg] sm:w-48 ${className ?? ""}`}>
-      <div className="rounded-[26px] border-[3px] border-text bg-card p-1.5">
-        <div className="overflow-hidden rounded-[18px] bg-background">
-          <div className="flex justify-center pt-2">
-            <div className="h-1 w-10 rounded-full bg-border" />
-          </div>
-          <div className="px-3 pb-3 pt-2">
-            <Typography variant="caption" color="muted">
-              Viagem em andamento
-            </Typography>
-            <Typography variant="caption" className="mt-0.5 block font-semibold">
-              Trajeto para a escola
-            </Typography>
-
-            <svg viewBox="0 0 140 60" className="mt-2 h-auto w-full" aria-hidden="true">
-              <path
-                d="M 12 48 C 40 40, 55 30, 70 22 S 110 8, 128 12"
-                className="stroke-primary"
-                strokeWidth={3}
-                strokeDasharray="1 8"
-                strokeLinecap="round"
-                fill="none"
-              />
-              <circle cx={12} cy={48} r={4} className="fill-secondary" />
-              <path
-                d="M128 4c-5 0-9 4-9 9 0 7 9 15 9 15s9-8 9-15c0-5-4-9-9-9z"
-                className="fill-primary"
-              />
-            </svg>
-
-            <div className="mt-2 flex flex-col gap-1.5">
-              <div className="flex items-center gap-1.5 rounded-lg bg-success/10 px-2 py-1.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-success text-[9px] font-bold text-white">
-                  ML
-                </span>
-                <Typography variant="caption" className="flex-1 truncate font-medium">
-                  Maria Laura
-                </Typography>
-                <Typography variant="caption" className="shrink-0 font-semibold text-success">
-                  A bordo
-                </Typography>
-              </div>
-              <div className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-2 py-1.5">
-                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-white">
-                  CA
-                </span>
-                <Typography variant="caption" className="flex-1 truncate font-medium">
-                  Carlos Alberto
-                </Typography>
-                <Typography variant="caption" className="shrink-0 font-semibold text-primary">
-                  Motorista
-                </Typography>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+interface PublicoBloco {
+  id: string;
+  titulo: string;
+  ideia: string;
+  recursos: string[];
+  foto: { src: string; alt: string };
+  ctaHref: Route;
 }
 
 /**
- * Cartão flutuante curto sobre o visual da hero (ex.: "Segurança —
- * Motorista verificado e viagem monitorada"). Cada instância descreve
- * uma capacidade REAL já implementada (`RottaAiService`/Didit para
- * verificação de motorista, GPS ao vivo do módulo Rotas) — nunca um
- * selo decorativo vazio.
+ * Os três públicos da Rotta (pedido do usuário 02/09/2026) — Motorista
+ * e Monitor combinados num único bloco ("Para motoristas e monitores"),
+ * diferente da grade de 4 audiências que a página tinha antes
+ * (`audience-data.ts`, mantido no repo mas não usado por esta versão
+ * da página). Fotos reais já existentes em `public/marketing/`.
  */
-function HeroFloatingBadge({
-  icon: Icon,
-  titulo,
-  descricao,
-  className,
-}: {
-  icon: ComponentType<{ className?: string }>;
-  titulo: string;
-  descricao: string;
-  className?: string;
-}): JSX.Element {
-  return (
-    <div
-      className={`flex w-56 items-start gap-3 rounded-[18px] border border-border bg-card p-3.5 ${className ?? ""}`}
-    >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary text-white">
-        <Icon className="h-4.5 w-4.5" />
-      </span>
-      <div>
-        <Typography variant="bodySmall" className="font-semibold">
-          {titulo}
-        </Typography>
-        <Typography variant="caption" color="muted">
-          {descricao}
-        </Typography>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Faixa de confiança logo abaixo da hero (briefing inDrive — bloco
- * curto e sólido reforçando os 3 diferenciais reais antes de qualquer
- * outra seção, sem números inventados: a Rotta não tem estatística de
- * uso pública pra citar aqui, então cada item é uma capacidade real do
- * produto, nunca uma métrica fabricada).
- */
-const FAIXA_CONFIANCA: {
-  titulo: string;
-  icon: ComponentType<{ className?: string }>;
-}[] = [
-  { titulo: "GPS funciona em qualquer cidade do Brasil", icon: MapPin },
-  { titulo: "CNH, selfie e reconhecimento facial checados por IA", icon: ScanFace },
-  { titulo: "Motorista faltou? A escala se ajusta sozinha", icon: Repeat },
-];
-
-/**
- * Um único ícone "preenchido" pra sequência inteira (pedido do
- * usuário: "deixe com as cores da Rotta, não invente" — antes cada um
- * dos 4 passos cycava por uma cor semântica diferente — primary/info/
- * success/warning — só pra decorar, sem nenhum estado real por trás,
- * violando a própria filosofia documentada da marca, Dossiê 10, Seção
- * 7: "azul, preto, branco e cinza... cor semântica nunca decoração").
- * O número (`numero`, "01"–"04") já comunica a sequência sozinho — o
- * ícone não precisa de uma cor por passo pra isso.
- */
-const TOM_ICONE = "bg-primary text-white";
-
-const COMO_FUNCIONA: {
-  numero: string;
-  titulo: string;
-  descricao: string;
-  icon: ComponentType<{ className?: string }>;
-}[] = [
+const PUBLICOS: PublicoBloco[] = [
   {
-    numero: "01",
-    titulo: "Cadastre-se",
-    descricao: "Crie sua conta em minutos, sem burocracia e sem contrato de fidelidade.",
-    icon: UserPlus,
+    id: "para-responsaveis",
+    titulo: "Para responsáveis",
+    ideia: "Acompanhe o transporte do seu filho em tempo real.",
+    recursos: [
+      "Localização da viagem",
+      "Notificações de embarque e desembarque",
+      "Histórico de viagens",
+    ],
+    foto: {
+      src: "/marketing/audiencia-responsavel.jpg",
+      alt: "Responsável acompanhando o transporte escolar em tempo real pelo celular",
+    },
+    ctaHref: "/criar-conta/pessoal",
   },
   {
-    numero: "02",
-    titulo: "Vincule sua rota",
-    descricao: "Conecte motoristas, veículos, escolas e alunos em poucos cliques.",
-    icon: Link2,
+    id: "para-transportadores",
+    titulo: "Para transportadores",
+    ideia: "Tenha sua operação organizada em um só lugar.",
+    recursos: [
+      "Gestão de rotas e viagens",
+      "Motoristas, monitores e alunos",
+      "Frota e documentos em dia",
+    ],
+    foto: {
+      src: "/marketing/audiencia-empresas.jpg",
+      alt: "Gestor de transportadora acompanhando a frota pelo painel da Rotta",
+    },
+    ctaHref: "/criar-conta/empresa",
   },
   {
-    numero: "03",
-    titulo: "Acompanhe em tempo real",
-    descricao: "Veja o transporte se mover no mapa, do embarque até a entrega.",
-    icon: MapPin,
-  },
-  {
-    numero: "04",
-    titulo: "Fique tranquilo",
-    descricao: "Notificações automáticas a cada etapa: chega de grupo de WhatsApp.",
-    icon: ShieldCheck,
+    id: "para-motoristas",
+    titulo: "Para motoristas e monitores",
+    ideia: "Mais clareza durante cada viagem.",
+    recursos: [
+      "Rota e mapa sempre à mão",
+      "Lista de alunos e ocorrências",
+      "Acompanhamento da viagem",
+    ],
+    foto: {
+      src: "/marketing/audiencia-motorista.jpg",
+      alt: "Motorista de transporte escolar visualizando a próxima viagem pelo aplicativo da Rotta",
+    },
+    ctaHref: "/criar-conta/motorista",
   },
 ];
 
-/**
- * Checklist da seção "Segurança" — só os 4 itens realmente
- * implementados hoje (`RottaAiService.validateDocument`, integração
- * Didit): CNH validada (OCR + autenticidade do documento), selfie com
- * prova de vida (Passive Liveness — confirma que é uma pessoa real, ao
- * vivo, não uma foto), reconhecimento facial (compara a selfie com o
- * documento) e rastreamento GPS ao vivo (módulo Rotas/GPS, já em
- * produção). Nenhum item aqui é aspiracional — cada um tem um serviço
- * real por trás no backend.
- */
-const SEGURANCA_ITENS: {
-  titulo: string;
-  descricao: string;
-  icon: ComponentType<{ className?: string }>;
-}[] = [
-  {
-    titulo: "CNH validada por IA",
-    descricao: "OCR confere a autenticidade do documento e a categoria de habilitação exigida.",
-    icon: ScanFace,
-  },
-  {
-    titulo: "Selfie com prova de vida",
-    descricao: "Confirma que é uma pessoa real, presente na hora, e não uma foto ou vídeo.",
-    icon: UserCheck,
-  },
-  {
-    titulo: "Reconhecimento facial",
-    descricao: "A selfie é comparada com o documento antes de o motorista rodar.",
-    icon: ShieldCheck,
-  },
-  {
-    titulo: "Rastreamento GPS ao vivo",
-    descricao: "Do embarque à entrega, com confirmação automática de cada parada.",
-    icon: MapPin,
-  },
+/** "Tudo começa com uma rota." — o fluxo real entre os 4 papéis, nesta ordem. */
+const FLUXO: { titulo: string; descricao: string; icon: ComponentType<{ className?: string }> }[] =
+  [
+    {
+      titulo: "Responsável acompanha",
+      descricao: "Vê o transporte no mapa e recebe notificação a cada embarque e desembarque.",
+      icon: MapPin,
+    },
+    {
+      titulo: "Motorista realiza a viagem",
+      descricao: "Segue a rota do dia com o mapa e a lista de alunos sempre à mão.",
+      icon: Car,
+    },
+    {
+      titulo: "Monitor acompanha os alunos",
+      descricao: "Confirma cada embarque e desembarque e registra ocorrências na hora.",
+      icon: Users,
+    },
+    {
+      titulo: "Transportador gerencia a operação",
+      descricao: "Vê rotas, viagens, motoristas e monitores organizados num só painel.",
+      icon: LayoutGrid,
+    },
+  ];
+
+/** "Feita para a rotina real do transporte escolar." — só capacidades já implementadas. */
+const ROTINA_REAL: { titulo: string; icon: ComponentType<{ className?: string }> }[] = [
+  { titulo: "Rotas organizadas", icon: RouteIcon },
+  { titulo: "Localização em tempo real", icon: MapPin },
+  { titulo: "Controle de embarque e desembarque", icon: CheckCircle2 },
+  { titulo: "Notificações", icon: Bell },
+  { titulo: "Gestão de motoristas e monitores", icon: Users },
+  { titulo: "Registro de ocorrências", icon: AlertTriangle },
+  { titulo: "Histórico de viagens", icon: History },
 ];
 
 /**
- * Deliberadamente só 4 itens (não 6): os dois cortados nesta revisão
- * ("Rastreamento em tempo real", "Comunicação automática") só repetiam,
- * com outras palavras, o que a hero e a seção "Como funciona" já
- * disseram — sintoma exato do "cara de IA" que o usuário reclamou
- * (parágrafos diferentes reafirmando a mesma frase). Os 4 que restam
- * são o que ainda não tinha sido dito na página.
- */
-const BENEFICIOS: {
-  titulo: string;
-  descricao: string;
-  icon: ComponentType<{ className?: string }>;
-}[] = [
-  {
-    titulo: "Um painel, ponto final",
-    descricao:
-      "Motorista, veículo, rota e aluno vivem no mesmo lugar, sem planilha paralela que só uma pessoa da equipe sabe atualizar.",
-    icon: LayoutGrid,
-  },
-  {
-    titulo: "Motorista faltou? Já tem substituto",
-    descricao:
-      "Motorista ou veículo ficou indisponível de última hora: a Rotta já mostra quem pode assumir a rota, sem telefonema desesperado.",
-    icon: Repeat,
-  },
-  {
-    titulo: "Menos quilômetro rodado à toa",
-    descricao:
-      "A ordem de embarque é calculada pra economizar tempo e combustível, e se um aluno faltar, a rota se refaz sozinha.",
-    icon: RouteIcon,
-  },
-  {
-    titulo: "Suporte que responde de verdade",
-    descricao: "Quando algo trava, tem gente do outro lado, não um bot lendo um script de FAQ.",
-    icon: Headset,
-  },
-];
-
-/**
- * Fotos reais por audiência (`public/marketing/audiencia-*.jpg`) — 3ª
- * rodada enviada pelo usuário: Motorista e Monitor agora têm cada um
- * seu próprio post/banner (antes reaproveitavam o mesmo arquivo, só
- * existia uma foto pros dois — Dossiê 13 já pedia telas distintas
- * porque motorista dirige e faz checklist do veículo, monitor acompanha
- * os alunos sem dirigir; agora as duas fotos também são distintas).
- * Título/descrição/ícone-círculo já vêm desenhados dentro dessas duas
- * imagens (mesmo padrão das fotos de Responsável/Empresas) — mantém a
- * harmonia visual entre os 4 cartões sem duplicar esse texto de novo em
- * HTML por cima. Chaveado por `titulo`, não por `tone`.
+ * Landing Page — reconstrução pedida pelo usuário 02/09/2026 ("Crie/
+ * reconstrua a landing page oficial da ROTTA... seguindo rigorosamente
+ * a identidade visual da marca e a direção de arte descrita"). Estrutura
+ * inteiramente nova em relação à versão anterior (histórico de decisões
+ * Uber/inDrive/Cittamobi arquivado no git — esta versão segue o
+ * briefing enviado pelo usuário, seção por seção, na ordem pedida).
  *
- * `ratio` = largura/altura REAL de cada arquivo (nunca forçado a
- * quadrado/cortado — mesmo cuidado da rodada anterior, que descobriu
- * que forçar `aspect-square` cortava conteúdo essencial): Responsável/
- * Empresas ~1,39, Motorista 1536×1024 (~1,5), Monitor 1254×1254
- * (quadrado perfeito, ~1,0) — cada card no grid assume a proporção da
- * própria foto via `AudienceVisual`.
- */
-const AUDIENCE_PHOTO: Record<string, { src: string; alt: string; ratio: number }> = {
-  "Sou responsável": {
-    src: "/marketing/audiencia-responsavel.jpg",
-    alt: "Responsável acompanhando o transporte escolar em tempo real pelo celular",
-    ratio: 695 / 501,
-  },
-  "Sou transportadora": {
-    src: "/marketing/audiencia-empresas.jpg",
-    alt: "Gestor de transportadora acompanhando a frota pelo painel da Rotta",
-    ratio: 699 / 501,
-  },
-  "Sou motorista": {
-    src: "/marketing/audiencia-motorista.jpg",
-    alt: "Motorista de transporte escolar visualizando a próxima viagem e os próximos pontos pelo aplicativo da Rotta",
-    ratio: 1536 / 1024,
-  },
-  "Sou monitor": {
-    src: "/marketing/audiencia-monitor.jpg",
-    alt: "Monitora de transporte escolar visualizando as rotas do dia pelo aplicativo da Rotta",
-    ratio: 1254 / 1254,
-  },
-};
-
-/**
- * Cartão de audiência (referência real trazida pelo usuário desta vez:
- * screenshots de indrive.com/pt-br, seção "Um app, muitos serviços" —
- * fileira de cartões com foto no topo, título, descrição curta e uma
- * lista curta de "para quem", em vez do bloco alternado foto/texto que
- * esta seção usava antes). Foto real de cada audiência (`AUDIENCE_PHOTO`,
- * sem trocar nenhuma imagem), só os 2 primeiros `bullets` (não os 3 —
- * versão condensada, pra não repetir o mesmo texto que a própria página
- * já criticava por "cara de IA": parágrafos diferentes reafirmando a
- * mesma frase). Cor 100% da paleta real da Rotta (`TONE_BG`/`TONE_TEXT`,
- * já existentes) — nenhuma cor nova, nenhum creme/lime da referência.
- */
-function AudienceServiceCard({ audiencia }: { audiencia: AudienceCard }): JSX.Element {
-  const photo = AUDIENCE_PHOTO[audiencia.titulo];
-  return (
-    <Link
-      href={audiencia.ctaHref}
-      className="group flex flex-col overflow-hidden rounded-[28px] border border-border bg-card transition-colors duration-200 hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-    >
-      <div className="relative w-full overflow-hidden" style={{ aspectRatio: photo?.ratio ?? 1 }}>
-        {photo && (
-          <Image
-            src={photo.src}
-            alt={photo.alt}
-            fill
-            sizes="(min-width: 1024px) 320px, 90vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-          />
-        )}
-      </div>
-      <div className="flex flex-1 flex-col gap-3 p-6">
-        <span
-          className={`flex h-10 w-10 items-center justify-center rounded-xl ${TONE_BG[audiencia.tone]}/15`}
-        >
-          <audiencia.icon className={`h-4.5 w-4.5 ${TONE_TEXT[audiencia.tone]}`} />
-        </span>
-        <Typography variant="subtitle">{audiencia.titulo}</Typography>
-        <Typography variant="bodySmall" color="muted">
-          {audiencia.descricao}
-        </Typography>
-        <ul className="flex flex-col gap-1.5">
-          {audiencia.bullets.slice(0, 2).map((bullet) => (
-            <li key={bullet} className="flex items-start gap-2">
-              <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-              <Typography variant="caption" color="muted">
-                {bullet}
-              </Typography>
-            </li>
-          ))}
-        </ul>
-        <span className="mt-auto flex items-center gap-1.5 pt-2 text-[13px] font-semibold text-primary">
-          {audiencia.ctaLabel}
-          <ArrowRight className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-1" />
-        </span>
-      </div>
-    </Link>
-  );
-}
-
-/**
- * Landing Page (Dossiê 11, Secao 1; revisitada no Dossiê 26 — desta vez
- * com acesso liberado a uber.com.br, 99app.com, indrive.com/pt-br e
- * cittamobi.com.br dentro da sessão, então a estrutura abaixo reflete
- * as páginas REAIS, não mais reconstrução por conhecimento geral):
+ * Sem foto de van escolar na hero: não existe esse asset no projeto
+ * (Dossiê 24 já registrava "a Rotta não tem fotografia real de van/
+ * motorista ainda") e a instrução explícita foi não usar banco de
+ * imagens genérico. Em vez disso, o mapa real da Rotta (`HeroMapDemo`,
+ * MapLibre + OpenStreetMap, rota azul + veículo em movimento + cartão
+ * flutuante) ocupa sozinho o lado direito da hero — cumpre o pedido de
+ * "interface de mapa da Rotta... parte do produto, não decoração" sem
+ * inventar uma fotografia que não existe.
  *
- * - Uber: a hero NÃO é um mapa passivo — é um formulário funcional
- *   (origem/destino/CTA). Traduzido pra realidade da Rotta (que não tem
- *   busca pública de transportador antes do cadastro — isso é uma tela
- *   autenticada do app mobile) como `HeroAudienceSwitch`: 3 pills que
- *   decidem o alvo do CTA principal, o mesmo papel que o nav
- *   "Viajar/Ganhe dinheiro" da Uber cumpre lá — sem fingir uma busca que
- *   não existe.
- * - Uber e inDrive: bloco de segurança GRANDE e dedicado (não um card
- *   pequeno perdido num grid) — nova seção "Segurança", só com os 4
- *   itens que a Rotta AI de fato verifica hoje via Didit
- *   (`RottaAiService`).
- * - Cittamobi (o mais parecido com a Rotta: também é "onde está meu
- *   transporte" em tempo real, não ride-hailing) confirma que a divisão
- *   por audiência (Passageiros/Operadores/Cidades lá; Responsável/
- *   Transportadora/Motorista aqui) é o padrão certo — mantida como
- *   blocos GRANDES alternados (texto de um lado, visual do outro).
- *
- * Identidade de cor 100% da Rotta (azul/preto/branco/cinza, Dossiê 24)
- * — nenhuma cor/copy/elemento de marca das referências foi reaproveitado;
- * nenhuma foto de estoque (`AudienceVisual` usa ícone, não fotografia de
- * pessoas) nem badge de app store (o app da Rotta não tem ficha pública
- * ainda).
- *
- * Camada "editorial" (canvas quente `bg-marketing-canvas`, faixas
- * `bg-marketing-wash`, barra de navegação/rodapé escuros fixos
- * `.ink-scope`, ver `globals.css`): pedido do usuário pra adaptar o
- * clima de uma referência de design de viagens (canvas quente em vez de
- * branco clínico, faixas alternadas, tipografia editorial). Recusado o
- * pedido de deixar "idêntico" (cores/fonte/marca exatas de um produto
- * real de terceiro) — as duas cores novas nascem da própria paleta da
- * Rotta (azul institucional bem diluído pro wash, nunca o verde da
- * referência), a fonte continua a mesma da Rotta (Inter, nunca a fonte
- * paga da referência), e a barra escura reaproveita literalmente o
- * `--color-background` do tema escuro que a Rotta já tinha.
- *
- * Revisão (usuário: "deverá ser igual a essa aqui" citando
- * indrive.com/pt-br de novo, com o aviso explícito "NÃO TIRE O MAPA DA
- * OPENSTREET") — `indrive.com` está bloqueado pelo proxy de rede deste
- * sandbox (`WebFetch` retorna `EGRESS_BLOCKED`), então esta passada usa
- * só o que já estava documentado acima (pesquisa real de uma sessão
- * anterior, com acesso de verdade ao domínio) mais a identidade pública
- * conhecida da marca — decisão confirmada com o usuário antes de mexer
- * em qualquer coisa. `HeroMapDemo` (mapa real OpenStreetMap/CARTO na
- * hero) confirmado intacto, não tocado nesta passada — só a escala/peso
- * da tipografia de maior impacto (H1 da hero e H2 da faixa de CTA
- * final) foi puxada mais pesada (`font-bold`, tracking mais apertado),
- * na direção da tipografia enorme e confiante que é a marca registrada
- * de referências do gênero como a inDrive — nunca a cor de marca delas.
- *
- * Revisão (usuário anexou 4 screenshots reais de indrive.com/pt-br
- * diretamente na mensagem — primeira vez com acesso visual de verdade à
- * referência, sem o bloqueio de proxy das rodadas anteriores; aviso
- * repetido "NÃO TIRE O MAPA DA OPENSTREET"): 3 mudanças cirúrgicas, o
- * resto da página (faixa de confiança, "Como funciona", benefícios, CTA
- * final) já estava alinhado e ficou como estava.
- * 1. H1 da hero: 1ª linha ganhou destaque tipo "marcador" (`bg-primary/
- *    15` + `-rotate-1`, nunca o lime da referência) — mesma ideia visual
- *    do highlighter da inDrive, cor 100% da marca da Rotta.
- * 2. "Escolha como você utiliza a plataforma": os blocos alternados
- *    foto/texto viraram uma fileira de cartões (`AudienceServiceCard`,
- *    substituindo `AudienceVisual`) — mesmo padrão da seção "Um app,
- *    muitos serviços" da referência, com fundo `bg-marketing-wash` full-
- *    bleed (nunca o creme da inDrive, já rejeitado antes — ver
- *    `globals.css` linha 96).
- * 3. Seção "Segurança": deixou de ser um card modesto dentro do
- *    container padrão e passou a um bloco full-bleed grande e dedicado
- *    (headline na escala da hero, os 4 itens como chips compactos em vez
- *    de cards com descrição própria, CTA real pra `/criar-conta`) — como
- *    o bloco de Segurança da referência, só que em `bg-marketing-wash`
- *    (nunca o mesmo azul saturado do bloco de CTA final, pra não
- *    duplicar visualmente a mesma solução duas vezes na rolagem).
- * Fora de escopo, decisão consciente: paleta cream/lime (já rejeitada),
- * foto de banco na hero (Rotta não tem — Dossiê 24), seção de "Impacto
- * social" (a Rotta não tem programa social real equivalente pra citar).
- * `HeroMapDemoLazy` (mapa OpenStreetMap real) inteiramente intocado.
+ * Cores: nenhuma variável nova — os tokens que o pedido chama de
+ * `--rotta-blue`/`--rotta-white`/etc. já existem em `packages/theme`
+ * como `--color-primary`/`--color-background`/`--color-text`/
+ * `--color-text-muted`/`--color-border` (extraídos, nunca reinventados
+ * — ver `(marketing)/layout.tsx`, que força o tema claro nesta seção
+ * do site). "Azul profundo institucional" = `.ink-scope` (cabeçalho
+ * antes de rolar/rodapé); "azul vibrante" = `--color-primary`.
  */
 export default function LandingPage(): JSX.Element {
   return (
     <div className="flex flex-col overflow-x-hidden">
-      {/*
-        Hero sem glow/blur decorativo (pedido do usuário — adaptação do
-        sistema de referência "Perk": zero elevação/atmosfera, as
-        camadas se separam por contraste tonal — branco → cinza claro →
-        azul — nunca por sombra ou desfoque). Tipografia editorial: uma
-        família só (Inter, já era a regra da Rotta — Dossiê 24 §4.4),
-        headline enorme com tracking apertado (-0.03em), corpo de texto
-        com tracking normal.
-      */}
+      {/* ===== Hero ===== */}
       <section className="relative isolate overflow-hidden">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-28 pt-16 sm:pt-24 lg:grid-cols-2">
+        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-24 pt-14 sm:pt-20 lg:grid-cols-2 lg:gap-16">
           <div className="flex flex-col items-start gap-6 text-left">
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-medium uppercase tracking-[0.1em] text-primary">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden="true" />
-              Tecnologia que conecta
+            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
+              Transporte escolar inteligente
             </span>
-            {/*
-              Peso e escala mais pesados (pedido do usuário: "igual a
-              essa aqui" citando indrive.com/pt-br — não consigo abrir o
-              domínio neste sandbox, o proxy de rede bloqueia; ajuste
-              feito a partir do que já estava documentado nesta página
-              (Dossiê 26) + identidade pública conhecida da inDrive:
-              tipografia enorme, bem pesada, tracking bem apertado —
-              nunca a cor de marca deles, só a ousadia da escala,
-              aplicada ao azul real da Rotta). `font-bold` (700) em vez
-              de `font-semibold` (600); `-0.03em` em vez de `-0.01em`
-              (mesmo tracking já usado no H2 da faixa de CTA final,
-              linha ~724 — unifica o peso "editorial" nos dois pontos de
-              maior impacto da página em vez de só um).
-
-              Destaque "marcador" na 1ª linha (rodada com screenshots
-              reais de indrive.com/pt-br finalmente disponíveis — a
-              referência usa um retângulo sólido levemente rotacionado
-              atrás da frase, tipo highlighter): `bg-primary/15` +
-              `-rotate-1`, nunca o lime da referência — é a MESMA cor
-              azul que já aparece em toda a marca, só usada como fundo em
-              vez de texto. A 2ª linha continua só com `text-primary`
-              (contraste entre "pergunta marcada" e "resposta cheia").
-            */}
-            <h1 className="text-[48px] font-bold leading-[0.92] tracking-[-0.03em] text-text sm:text-[72px] lg:text-[88px]">
-              <span className="inline-block -rotate-1 rounded-md bg-primary/15 px-2">
-                Cadê o transporte?
-              </span>
-              <br />
-              {/* Destaque no MESMO azul do CTA/marca (pedido do usuário: "deixe com as cores da Rotta, não invente") — antes usava `text-warning` (dourado) só como decoração, sem nenhum estado de aviso real por trás; `--color-warning` é reservado pra estado semântico de verdade (Dossiê 10 §7). */}
-              <span className="text-primary">A Rotta mostra.</span>
+            <h1 className="text-[42px] font-bold leading-[1.03] tracking-[-0.02em] text-text sm:text-[56px] lg:text-[64px]">
+              Uma nova rota para o transporte escolar.
             </h1>
             <Typography variant="body" color="muted" className="max-w-lg">
-              Você vê o transporte se mexer no mapa, sabe na hora em que seu filho embarcou e
-              desembarcou, e encontra uma transportadora de confiança perto de você, sem precisar
-              perguntar pra ninguém.
+              A Rotta conecta responsáveis, motoristas, monitores e transportadores em uma única
+              plataforma — do embarque à entrega, com o transporte visível no mapa o tempo todo.
             </Typography>
-            <HeroAudienceSwitch />
-            <div className="grid grid-cols-2 gap-x-6 gap-y-5 pt-4 sm:grid-cols-4 sm:gap-x-4">
-              {HERO_DESTAQUES.map((item) => (
-                <div key={item.titulo} className="flex flex-col gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+            <div className="flex flex-wrap items-center gap-3">
+              <Link href="#sobre" className={pillPrimaryLg}>
+                Conheça a Rotta
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link href="#como-funciona" className={pillGhostLg}>
+                Como funciona
+              </Link>
+            </div>
+            <Typography variant="bodySmall" color="muted">
+              Tecnologia para conectar. Segurança para tranquilizar.
+            </Typography>
+          </div>
+
+          <div className="relative flex justify-center pt-4 lg:justify-end lg:pt-0">
+            <div className="relative w-full max-w-md">
+              <HeroMapDemoLazy />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Faixa de prova de valor ===== */}
+      <section className="relative z-10 mx-auto -mt-6 w-full max-w-6xl px-6 sm:-mt-10">
+        <div className="flex flex-col gap-6 rounded-3xl border border-border bg-card p-6 sm:flex-row sm:items-center sm:justify-around sm:gap-8 sm:p-8">
+          {FAIXA_VALOR.map((item) => (
+            <div key={item.titulo} className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <item.icon className="h-4.5 w-4.5" />
+              </span>
+              <Typography variant="bodySmall" className="font-semibold">
+                {item.titulo}
+              </Typography>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== "O transporte escolar não precisa ser complicado." ===== */}
+      <section className="w-full px-6 py-24">
+        <Reveal className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-20">
+          <div className="flex flex-col gap-5">
+            <Typography variant="headline" as="h2">
+              O transporte escolar não precisa ser complicado.
+            </Typography>
+            <Typography variant="body" color="muted">
+              A operação do transporte escolar envolve pessoas, horários, rotas, alunos e muita
+              comunicação — motorista, monitor, transportadora e família precisando falar a mesma
+              língua, todos os dias. A Rotta organiza tudo isso numa experiência simples: uma rota
+              no mapa, visível para quem precisa acompanhar, do início ao fim do trajeto.
+            </Typography>
+          </div>
+
+          <div className="relative flex items-center justify-center rounded-3xl border border-border bg-muted p-10">
+            <svg viewBox="0 0 320 160" className="h-auto w-full max-w-sm" aria-hidden="true">
+              <path
+                d="M 24 128 C 90 120, 130 60, 180 48 S 270 32, 296 32"
+                className="stroke-primary"
+                strokeWidth={3}
+                strokeDasharray="1 9"
+                strokeLinecap="round"
+                fill="none"
+              />
+              <circle cx={24} cy={128} r={6} className="fill-text" />
+              <circle cx={296} cy={32} r={6} className="fill-primary" />
+              <circle cx={180} cy={48} r={5} className="fill-card stroke-primary" strokeWidth={2} />
+            </svg>
+            <div className="absolute bottom-6 left-8 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-text" aria-hidden="true" />
+              <Typography variant="caption" color="muted">
+                Casa
+              </Typography>
+            </div>
+            <div className="absolute right-8 top-6 flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
+              <Typography variant="caption" color="muted">
+                Escola
+              </Typography>
+            </div>
+          </div>
+        </Reveal>
+      </section>
+
+      {/* ===== Os três públicos ===== */}
+      <section className="w-full bg-muted px-6 py-24">
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-14">
+          {PUBLICOS.map((bloco, index) => (
+            <Reveal key={bloco.id} delayMs={index * 80}>
+              <div
+                id={bloco.id}
+                className={`grid grid-cols-1 items-center gap-10 scroll-mt-24 lg:grid-cols-2 lg:gap-16 ${
+                  index % 2 === 1 ? "lg:[&>*:first-child]:order-2" : ""
+                }`}
+              >
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl">
+                  <Image
+                    src={bloco.foto.src}
+                    alt={bloco.foto.alt}
+                    fill
+                    sizes="(min-width: 1024px) 520px, 100vw"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex flex-col gap-4">
+                  <Typography variant="overline" color="primary">
+                    {bloco.titulo}
+                  </Typography>
+                  <Typography variant="title" as="h3">
+                    {bloco.ideia}
+                  </Typography>
+                  <ul className="flex flex-col gap-2.5">
+                    {bloco.recursos.map((recurso) => (
+                      <li key={recurso} className="flex items-start gap-2.5">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                        <Typography variant="bodySmall" color="muted">
+                          {recurso}
+                        </Typography>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    href={bloco.ctaHref}
+                    className="mt-1 flex w-fit items-center gap-1.5 text-sm font-semibold text-primary transition-transform hover:translate-x-0.5"
+                  >
+                    Conhecer
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </div>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== "Conecta. Protege. Tranquiliza." ===== */}
+      <section className="ink-scope w-full px-6 py-24">
+        <Reveal className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center">
+          <h2 className="text-[32px] font-bold leading-tight tracking-[-0.02em] sm:text-[44px]">
+            Conecta. Protege. Tranquiliza.
+          </h2>
+          <svg viewBox="0 0 480 80" className="h-auto w-full max-w-lg" aria-hidden="true">
+            <path
+              d="M 20 40 L 130 40 L 175 15 L 240 55 L 305 15 L 350 40 L 460 40"
+              className="stroke-primary"
+              strokeWidth={2}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            {[20, 130, 175, 240, 305, 350, 460].map((x, index) => {
+              const yByX: Record<number, number> = {
+                20: 40,
+                130: 40,
+                175: 15,
+                240: 55,
+                305: 15,
+                350: 40,
+                460: 40,
+              };
+              return (
+                <circle
+                  key={x}
+                  cx={x}
+                  cy={yByX[x]}
+                  r={index === 3 ? 6 : 4}
+                  className={index === 3 ? "fill-primary" : "fill-text"}
+                />
+              );
+            })}
+          </svg>
+          <Typography variant="body" className="max-w-xl text-text-muted">
+            Uma linha só, do responsável à escola — passando pelo motorista e pelo monitor — com o
+            transportador enxergando a operação inteira. Tecnologia aplicada ao transporte escolar
+            para que cada trajeto seja acompanhado, cada parada seja confirmada e cada família fique
+            tranquila.
+          </Typography>
+        </Reveal>
+      </section>
+
+      {/* ===== "Tudo começa com uma rota." ===== */}
+      <section id="como-funciona" className="w-full scroll-mt-20 px-6 py-24">
+        <div className="mx-auto w-full max-w-6xl">
+          <Reveal>
+            <Typography variant="headline" as="h2" className="text-center">
+              Tudo começa com uma rota.
+            </Typography>
+          </Reveal>
+          <div className="relative mt-16 flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-6">
+            <div
+              className="absolute left-6 top-6 bottom-6 hidden w-px bg-border lg:left-0 lg:right-0 lg:top-6 lg:h-px lg:w-auto lg:bg-border"
+              aria-hidden="true"
+            />
+            {FLUXO.map((passo, index) => (
+              <Reveal key={passo.titulo} delayMs={index * 100} className="relative flex-1">
+                <div className="flex flex-col items-start gap-3 lg:items-center lg:text-center">
+                  <span className="relative z-10 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
+                    <passo.icon className="h-5 w-5" />
+                  </span>
+                  <Typography variant="subtitle">{passo.titulo}</Typography>
+                  <Typography variant="bodySmall" color="muted" className="lg:max-w-[220px]">
+                    {passo.descricao}
+                  </Typography>
+                </div>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ===== Produto ===== */}
+      <section className="w-full bg-muted px-6 py-24">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 text-center">
+          <Reveal>
+            <Typography variant="headline" as="h2">
+              Feita para quem transporta e para quem acompanha.
+            </Typography>
+          </Reveal>
+          <Reveal delayMs={80}>
+            <Typography variant="body" color="muted" className="max-w-xl">
+              A mesma viagem, vista de três lugares diferentes — cada papel com exatamente o que
+              precisa ver.
+            </Typography>
+          </Reveal>
+        </div>
+
+        <Reveal
+          delayMs={120}
+          className="relative mx-auto mt-16 flex w-full max-w-5xl justify-center"
+        >
+          <div className="relative flex w-full items-center justify-center py-6">
+            <div className="hidden shrink-0 -rotate-3 sm:block lg:-translate-x-6">
+              <ResponsavelMockup />
+            </div>
+            <div className="z-10 shrink-0 sm:-mx-8 lg:-mx-10">
+              <MotoristaMockup />
+            </div>
+            <div className="hidden shrink-0 rotate-3 sm:block lg:translate-x-6">
+              <TransportadoraMockup />
+            </div>
+          </div>
+        </Reveal>
+
+        <div className="mx-auto mt-10 grid w-full max-w-5xl grid-cols-1 gap-8 px-2 sm:hidden">
+          <TransportadoraMockup />
+        </div>
+
+        <div className="mx-auto mt-16 grid w-full max-w-5xl grid-cols-1 gap-8 sm:grid-cols-3">
+          {[
+            {
+              titulo: "Motorista",
+              descricao: "Mapa, rota, próxima parada, alunos embarcados e status da viagem.",
+            },
+            {
+              titulo: "Responsável",
+              descricao: "Localização do transporte, previsão de chegada e notificações.",
+            },
+            {
+              titulo: "Transportador",
+              descricao: "Rotas, viagens, motoristas, monitores e alunos organizados.",
+            },
+          ].map((item) => (
+            <div key={item.titulo} className="flex flex-col gap-1.5 text-center sm:text-left">
+              <Typography variant="bodySmall" className="font-semibold">
+                {item.titulo}
+              </Typography>
+              <Typography variant="caption" color="muted">
+                {item.descricao}
+              </Typography>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ===== "Feita para a rotina real do transporte escolar." ===== */}
+      <section className="w-full px-6 py-24">
+        <div className="mx-auto w-full max-w-5xl">
+          <Reveal>
+            <Typography variant="headline" as="h2" className="mb-14 text-center">
+              Feita para a rotina real do transporte escolar.
+            </Typography>
+          </Reveal>
+          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
+            {ROTINA_REAL.map((item, index) => (
+              <Reveal key={item.titulo} delayMs={index * 60}>
+                <div className="flex flex-col items-start gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-primary">
                     <item.icon className="h-4.5 w-4.5" />
                   </span>
                   <Typography variant="bodySmall" className="font-semibold">
                     {item.titulo}
                   </Typography>
-                  <Typography variant="caption" color="muted">
-                    {item.descricao}
-                  </Typography>
                 </div>
-              ))}
-            </div>
-          </div>
-          <div className="relative flex justify-center pt-6 lg:justify-end lg:pt-0">
-            <div className="relative w-full max-w-md">
-              <HeroMapDemoLazy />
-              <HeroFloatingBadge
-                icon={ShieldCheck}
-                titulo="Segurança"
-                descricao="Motorista verificado e viagem monitorada."
-                className="absolute -left-6 top-6 z-10 hidden sm:flex"
-              />
-              <HeroTripPhoneMockup className="absolute -right-4 -top-10 z-10 hidden sm:block lg:-right-12" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="relative z-10 mx-auto -mt-12 w-full max-w-6xl px-6 sm:-mt-16">
-        <div className="flex flex-col gap-6 rounded-[28px] border border-border bg-marketing-wash p-6 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8">
-          <div className="flex items-center gap-4">
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-white">
-              <ShieldCheck className="h-6 w-6" />
-            </span>
-            <div>
-              <Typography variant="subtitle">Segurança em cada destino.</Typography>
-              <Typography variant="bodySmall" color="muted">
-                Confiança em cada trajeto.
-              </Typography>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-x-8 gap-y-3">
-            {FAIXA_CONFIANCA.map((item) => (
-              <div key={item.titulo} className="flex items-center gap-2.5">
-                <item.icon className="h-4 w-4 shrink-0 text-primary" />
-                <Typography variant="bodySmall" className="font-medium">
-                  {item.titulo}
-                </Typography>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
       </section>
 
-      {/*
-        Rodada com screenshots reais de indrive.com/pt-br (seção "Um app,
-        muitos serviços"): fileira de cartões (foto + título + descrição
-        curta + link), em vez dos blocos alternados grandes que esta
-        seção usava antes. Fundo `bg-marketing-wash` full-bleed (o mesmo
-        azul-em-tinta-mínima de sempre, nunca o creme da referência) —
-        cartões em `bg-card` por cima, mesmo contraste "superfície sobre
-        faixa" da referência, com a paleta real da Rotta.
-      */}
-      <section className="w-full bg-marketing-wash py-24">
-        <div className="mx-auto w-full max-w-6xl px-6">
-          <Typography variant="headline" as="h2" className="text-center">
-            Escolha como você utiliza a plataforma
-          </Typography>
-          <Typography variant="body" color="muted" className="mx-auto mt-3 max-w-lg text-center">
-            Um app só, um papel por vez: encontre o seu.
-          </Typography>
-          <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {AUDIENCIAS.map((audiencia) => (
-              <AudienceServiceCard key={audiencia.titulo} audiencia={audiencia} />
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="w-full px-6 py-24">
-        <div className="mx-auto w-full max-w-6xl">
-          <Typography variant="headline" as="h2" className="mb-12 text-center">
-            Como funciona
-          </Typography>
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {COMO_FUNCIONA.map((passo) => (
-              <div
-                key={passo.numero}
-                className="group flex flex-col gap-3 rounded-3xl p-2 transition-transform duration-200 hover:-translate-y-1"
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl transition-transform duration-200 group-hover:scale-110 ${TOM_ICONE}`}
-                  >
-                    <passo.icon className="h-5 w-5" />
-                  </span>
-                  <Typography variant="headline" className="text-text-muted/40">
-                    {passo.numero}
-                  </Typography>
-                </div>
-                <Typography variant="subtitle">{passo.titulo}</Typography>
-                <Typography variant="bodySmall" color="muted">
-                  {passo.descricao}
-                </Typography>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/*
-        Bloco dedicado e grande (referência real: screenshots de
-        indrive.com/pt-br, seção de Segurança — um bloco full-bleed só
-        pra isso, headline enorme + CTA, não um card pequeno perdido num
-        grid). Fundo `bg-marketing-wash` (nunca o mesmo azul saturado do
-        bloco de CTA final mais abaixo — dois blocos cheios idênticos na
-        mesma rolagem duplicariam a solução visual). Os 4 itens somem do
-        formato "card com descrição própria" e passam a chips compactos
-        (só o título) — a descrição de cada um não repete 4x dentro de
-        um card, fica só o parágrafo corrido acima, uma vez.
-      */}
-      <section id="seguranca" className="w-full bg-marketing-wash px-6 py-24">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 text-center">
-          <span className="inline-flex items-center rounded-full bg-success/10 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.1em] text-success">
-            Segurança
+      {/* ===== "Estamos traçando uma nova rota..." ===== */}
+      <section id="sobre" className="w-full scroll-mt-20 bg-muted px-6 py-24">
+        <Reveal className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 text-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
+            <Compass className="h-3.5 w-3.5" />
+            Sobre a Rotta
           </span>
-          <h2 className="text-[36px] font-bold leading-[0.92] tracking-[-0.03em] text-text sm:text-[56px]">
-            Antes de rodar, o motorista já passou pela Rotta AI.
-          </h2>
-          <Typography variant="body" color="muted" className="max-w-xl">
-            Nenhum motorista sai com o veículo sem verificação de identidade: a mesma tecnologia
-            usada pelo mercado financeiro, aplicada ao transporte escolar.
+          <Typography variant="headline" as="h2">
+            Estamos traçando uma nova rota para o transporte escolar.
           </Typography>
-          <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-            {SEGURANCA_ITENS.map((item) => (
-              <div
-                key={item.titulo}
-                className="flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2.5"
-              >
-                <item.icon className="h-4 w-4 shrink-0 text-success" />
-                <Typography variant="bodySmall" className="font-medium">
-                  {item.titulo}
-                </Typography>
-              </div>
-            ))}
-          </div>
-          <Link href="/criar-conta" className={`${pillPrimaryLg} mt-4`}>
-            Criar conta gratuita
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+          <Typography variant="body" color="muted" className="max-w-2xl">
+            A Rotta nasceu para tornar o transporte escolar mais organizado, mais conectado e mais
+            tranquilo — tanto para quem transporta quanto para quem confia os filhos a esse serviço
+            todos os dias. Unimos responsáveis, motoristas, monitores e transportadoras numa única
+            plataforma, para que cada trajeto seja acompanhado do início ao fim.
+          </Typography>
+        </Reveal>
       </section>
 
-      <section className="mx-auto w-full max-w-3xl px-6 py-24">
-        <Typography variant="headline" as="h2" className="mb-2 text-center">
-          Problemas do dia a dia que a Rotta já resolve
-        </Typography>
-        <Typography variant="body" color="muted" className="mb-12 text-center">
-          Nada aspiracional aqui: cada item abaixo já roda em produção.
-        </Typography>
-        <div className="flex flex-col divide-y divide-border">
-          {BENEFICIOS.map((beneficio, index) => (
-            <div key={beneficio.titulo} className="flex items-start gap-5 py-7">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-primary">
-                <beneficio.icon className="h-5 w-5" />
-              </span>
-              <div className="flex flex-col gap-1.5">
-                <Typography variant="caption" color="muted">
-                  {String(index + 1).padStart(2, "0")}
-                </Typography>
-                <Typography variant="subtitle">{beneficio.titulo}</Typography>
-                <Typography variant="bodySmall" color="muted">
-                  {beneficio.descricao}
-                </Typography>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/*
-        Faixa de acento em azul cheio (adaptação do "Lime Accent Block"
-        da referência: o azul da Rotta É o fundo, sem borda/sombra —
-        único momento cromático saturado da página inteira, reservado
-        pro CTA final).
-      */}
+      {/* ===== CTA final ===== */}
       <section className="w-full bg-primary px-6 py-20">
-        <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
-          <h2 className="text-[36px] font-bold leading-[0.92] tracking-[-0.03em] text-white sm:text-[56px]">
-            Chega de ligar perguntando &ldquo;cadê o transporte?&rdquo;
+        <Reveal className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
+          <h2 className="text-[32px] font-bold leading-tight tracking-[-0.02em] text-white sm:text-[44px]">
+            Pronto para conhecer uma nova forma de cuidar do transporte escolar?
           </h2>
-          <p className="max-w-lg text-base text-white/80">
-            Leva menos de 5 minutos para criar sua conta e começar a acompanhar o transporte.
-          </p>
-          <Link href="/criar-conta" className={pillOnAccentLg}>
-            Criar conta gratuita
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <Link href={ROTTA_APP_URL} className={pillOnAccentLg}>
+              Começar agora
+              <ArrowRight className="h-4 w-4" />
+            </Link>
+            <Link
+              href="/contato"
+              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/40 px-7 py-4 text-base font-medium text-white transition-colors hover:bg-white/10"
+            >
+              <MessageCircle className="h-4 w-4" />
+              Falar com a Rotta
+            </Link>
+          </div>
+        </Reveal>
       </section>
     </div>
   );

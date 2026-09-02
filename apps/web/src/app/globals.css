@@ -193,6 +193,35 @@ body {
  */
 html {
   touch-action: manipulation;
+  /* Navegação por âncora da Landing Page (pedido do usuário 02/09/2026:
+     "os links internos devem utilizar scroll suave") — `scroll-behavior`
+     nativo cobre todo `<a href="#id">`/`Link` sem nenhum JS de rolagem
+     próprio. Desligado abaixo pra quem pede `prefers-reduced-motion`. */
+  scroll-behavior: smooth;
+}
+
+/**
+ * Redução de movimento (pedido do usuário 02/09/2026: "respeite
+ * prefers-reduced-motion e desative animações"). Regra ampla e
+ * intencional: zera duração/atraso de QUALQUER transição/animação CSS
+ * do site inteiro pra quem pediu isso no sistema operacional — mais
+ * seguro que caçar cada animação individualmente (`Reveal`,
+ * `HeroMapDemo`, hovers dos botões-pílula) e esquecer uma nova no
+ * futuro. `scroll-behavior: auto` evita o "scroll suave" de âncora
+ * virar uma sensação de movimento indesejada.
+ */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /**

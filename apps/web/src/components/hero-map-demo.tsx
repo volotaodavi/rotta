@@ -27,6 +27,15 @@ export function HeroMapDemo(): JSX.Element {
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // `prefers-reduced-motion` (pedido do usuário 02/09/2026): o `rAF`
+    // abaixo é animação orientada por JS, fora do alcance da regra
+    // ampla de `transition-duration`/`animation-duration` em
+    // `globals.css` — sem esta checagem, o marcador continuaria se
+    // movendo pelo mapa mesmo pra quem pediu menos movimento.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return;
+    }
+
     function tick(now: number): void {
       if (phaseStartRef.current === null) phaseStartRef.current = now;
       const elapsed = now - phaseStartRef.current;
@@ -87,12 +96,22 @@ export function HeroMapDemo(): JSX.Element {
       <div className="relative aspect-square w-full overflow-hidden rounded-[32px] border border-border shadow-xl">
         <RottaMap markers={markers} route={routeLine} initialZoom={13.5} />
       </div>
-      <div className="absolute -bottom-6 -left-4 right-8 rotate-[-2deg] rounded-2xl border border-border bg-card p-4 shadow-2xl sm:right-10">
-        <Typography variant="caption" color="muted">
-          A caminho de {para.nome.split(", ")[0]}
-        </Typography>
+      {/*
+        Cartão flutuante (pedido do usuário 02/09/2026: "Transporte em
+        movimento", "Rota 12", "Chegada prevista 07:52") — "Rota 12" e o
+        horário são ilustrativos (mesmo dado de exemplo do resto deste
+        componente, nunca chama o backend); os minutos restantes seguem
+        calculados de verdade a partir da animação em curso.
+      */}
+      <div className="absolute -bottom-8 -left-4 right-8 z-10 rotate-[-2deg] rounded-2xl border border-border bg-card p-4 shadow-2xl sm:right-10">
+        <div className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-success" aria-hidden="true" />
+          <Typography variant="caption" color="muted">
+            Transporte em movimento · Rota 12
+          </Typography>
+        </div>
         <Typography variant="subtitle" className="mt-1">
-          Chegada em {minutosRestantes} min
+          Chegada prevista em {minutosRestantes} min
         </Typography>
       </div>
     </div>

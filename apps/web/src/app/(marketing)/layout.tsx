@@ -2,38 +2,45 @@
 
 import { Menu, X } from "@rotta/icons";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type { Route } from "next";
 import type { ReactNode } from "react";
 
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
+import { RottaLogoLockup } from "@/components/rotta-logo-lockup";
 import { RouteWordmark } from "@/components/route-wordmark";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 
+/**
+ * Navegação principal — âncoras da própria Landing Page (pedido do
+ * usuário 02/09/2026: "os links... devem levar exatamente às seções
+ * correspondentes"), nunca páginas separadas. `/#id` funciona a partir
+ * de qualquer rota do site (Next.js navega pra `/` e rola até a
+ * âncora), não só da própria home.
+ */
 const NAV_LINKS: { href: Route; label: string }[] = [
-  { href: "/planos", label: "Planos" },
-  { href: "/beneficios", label: "Benefícios" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/contato", label: "Contato" },
-  { href: "/suporte", label: "Suporte" },
+  { href: "/#para-responsaveis", label: "Para responsáveis" },
+  { href: "/#para-transportadores", label: "Para transportadores" },
+  { href: "/#para-motoristas", label: "Para motoristas" },
+  { href: "/#como-funciona", label: "Como funciona" },
+  { href: "/#sobre", label: "Sobre a Rotta" },
 ];
 
-interface FooterColumn {
-  titulo: string;
-  links: { href: Route; label: string }[];
-}
+/**
+ * URL de destino do CTA principal "Começar agora" — configurável num
+ * único lugar (pedido do usuário: "deixe uma constante... para que seja
+ * facilmente substituída"). Já existe uma rota real de cadastro no
+ * projeto (`/selecionar-perfil`, mesmo destino que o resto do site já
+ * usa) — usada aqui em vez de um placeholder `"#"`, que só faria
+ * sentido se nenhuma URL real existisse ainda.
+ */
+export const ROTTA_APP_URL: Route = "/selecionar-perfil";
 
 const ROTTA_INSTAGRAM_URL = "https://www.instagram.com/rotta_app/";
 
-/**
- * Glifo do Instagram desenhado à mão (contorno genérico de câmera —
- * não é o logotipo/marca registrada da Meta) — a versão do Lucide
- * Icons usada neste monorepo (Dossiê 10, Seção 4) não inclui ícones de
- * marca de terceiros (removidos do pacote core há algumas versões).
- */
+/** Glifo do Instagram desenhado à mão (contorno genérico — não é o logotipo/marca registrada da Meta). */
 function InstagramGlyph({ className }: { className?: string }): JSX.Element {
   return (
     <svg
@@ -53,137 +60,123 @@ function InstagramGlyph({ className }: { className?: string }): JSX.Element {
   );
 }
 
-const FOOTER_COLUNAS: FooterColumn[] = [
+/**
+ * 8 links do rodapé pedidos pelo usuário — todos reais (nenhum
+ * placeholder inventado): as 3 âncoras da própria página, "Empresa"/
+ * "Suporte" apontando pras páginas institucionais reais que já existem
+ * (`/sobre`, `/suporte`), "Privacidade"/"Termos" pro Legal Center real
+ * (`LEGAL_FOOTER_LINKS`, mesma fonte usada no painel autenticado).
+ */
+const FOOTER_LINKS: { href: Route; label: string }[] = [
+  { href: "/#como-funciona", label: "Produto" },
+  { href: "/#para-responsaveis", label: "Para responsáveis" },
+  { href: "/#para-transportadores", label: "Para transportadores" },
+  { href: "/#para-motoristas", label: "Para motoristas" },
+  { href: "/sobre", label: "Empresa" },
+  { href: "/suporte", label: "Suporte" },
   {
-    titulo: "Produto",
-    links: [
-      { href: "/planos", label: "Planos" },
-      { href: "/beneficios", label: "Benefícios" },
-      { href: "/#seguranca", label: "Segurança" },
-      { href: "/blog", label: "Blog" },
-    ],
+    href: LEGAL_FOOTER_LINKS.find((link) => link.label === "Privacidade")!.href,
+    label: "Privacidade",
   },
   {
-    titulo: "Para você",
-    links: [
-      { href: "/criar-conta/pessoal", label: "Sou responsável" },
-      { href: "/criar-conta/empresa", label: "Sou transportadora" },
-      { href: "/criar-conta/profissional", label: "Sou motorista/monitor" },
-    ],
-  },
-  {
-    titulo: "Conta",
-    links: [
-      { href: "/entrar", label: "Entrar" },
-      { href: "/selecionar-perfil", label: "Criar conta" },
-    ],
-  },
-  {
-    titulo: "Ajuda",
-    links: [
-      { href: "/faq", label: "FAQ" },
-      { href: "/suporte", label: "Suporte" },
-      { href: "/contato", label: "Contato" },
-    ],
-  },
-  {
-    /**
-     * Dossiê 45 (Rotta Legal, Trust & Community Center) — a mesma lista
-     * (`LEGAL_FOOTER_LINKS`) usada no rodapé do painel autenticado
-     * (`(dashboard)/layout.tsx`) e no rodapé de `/legal/*`, nunca
-     * duplicada.
-     */
-    titulo: "Rotta",
-    links: LEGAL_FOOTER_LINKS,
+    href: LEGAL_FOOTER_LINKS.find((link) => link.label === "Termos de Uso")!.href,
+    label: "Termos",
   },
 ];
 
 /**
- * Layout do route group `(marketing)` — Landing Page + Site público
- * (Dossie 11, Secao 1; briefing "ROTTA DIGITAL EXPERIENCE"). Header
- * fixo (sticky + blur) com marca (ver `RouteWordmark`) e rodapé denso em
- * colunas (Produto/Para você/Conta/Ajuda + barra inferior com idioma) —
- * estrutura inspirada no rodapé multi-coluna da Uber, sem reaproveitar
- * cor ou copy das referências, e sem nenhum link fabricado (só rotas
- * reais deste site — nenhum badge de app store, já que o app da Rotta
- * ainda não tem ficha pública na App Store/Play Store). Abaixo de `md`,
- * a navegação migra para um menu de disclosure (antes desaparecia sem
- * substituto).
+ * Layout do route group `(marketing)` — reconstrução pedida pelo
+ * usuário 02/09/2026 ("Crie/reconstrua a landing page oficial da
+ * ROTTA"). Duas mudanças estruturais em relação à versão anterior:
+ *
+ * 1. Tema forçado CLARO (`data-theme="light"` no wrapper) — a marca da
+ *    Rotta aqui é "branco como base", diferente do padrão escuro do
+ *    resto da plataforma (Dossiê 10 §7.1). Os valores em si não são
+ *    novos: são os MESMOS tokens `--color-*` que `packages/theme` já
+ *    define pro tema claro (extraídos, nunca inventados) — só
+ *    reaplicados sempre, independente da preferência do sistema. Sem
+ *    `ThemeToggle` aqui: um botão de tema escuro não faz sentido numa
+ *    página que é sempre clara por decisão de marca.
+ * 2. Cabeçalho deixou de ser a barra escura fixa (`.ink-scope`) e virou
+ *    branco, ficando translúcido/com blur e sombra só depois de rolar
+ *    (pedido explícito do usuário) — texto/logo em `text-text` (escuro
+ *    sobre claro), por isso a troca de `RouteWordmark` (só funciona em
+ *    fundo escuro) por `RottaLogoLockup` (mark real + texto, pensado
+ *    pra fundo claro) no cabeçalho. O rodapé CONTINUA escuro
+ *    (`.ink-scope`) — é o "azul profundo institucional" pedido pelo
+ *    usuário, e ali `RouteWordmark` continua correto.
  */
 export default function MarketingLayout({ children }: { children: ReactNode }): JSX.Element {
   const [menuAberto, setMenuAberto] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    function onScroll(): void {
+      setScrolled(window.scrollY > 8);
+    }
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-marketing-canvas text-text">
-      {/*
-        Barra escura fixa (`.ink-scope`, ver `globals.css`) — pedido do
-        usuário: adaptar o clima "canvas quente + barra escura" de uma
-        referência de design trazida por ele, com os tokens que a Rotta
-        já tem (nunca a cor/fonte/marca literal da referência). Sólida
-        (sem blur) em vez do antigo `bg-background/85 backdrop-blur-md`:
-        também tira do caminho o `backdrop-filter`, que é uma fonte
-        conhecida de instabilidade no Safari/iOS.
-      */}
-      <header className="ink-scope sticky top-0 z-20">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center">
-            <RouteWordmark className="h-7 w-auto" />
+    <div data-theme="light" className="flex min-h-screen flex-col bg-background text-text">
+      <header
+        className={`sticky top-0 z-30 transition-[background-color,box-shadow,border-color] duration-200 ${
+          scrolled
+            ? "border-b border-border bg-background/85 shadow-sm backdrop-blur-md"
+            : "border-b border-transparent bg-background/0"
+        }`}
+      >
+        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3.5">
+          <Link href="/" className="flex items-center" aria-label="Página inicial da Rotta">
+            <RottaLogoLockup />
           </Link>
-          <nav className="hidden items-center gap-8 md:flex">
+
+          <nav className="hidden items-center gap-7 lg:flex">
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-xs font-medium uppercase tracking-[0.06em] text-text-muted transition-colors hover:text-text"
+                className="text-sm font-medium text-text-muted transition-colors hover:text-text"
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="hidden items-center gap-3 md:flex">
-            <ThemeToggle />
+
+          <div className="hidden items-center gap-3 lg:flex">
             <Link href="/entrar" className={pillGhostSm}>
               Entrar
             </Link>
-            <Link href="/selecionar-perfil" className={pillPrimarySm}>
-              Criar conta
+            <Link href={ROTTA_APP_URL} className={pillPrimarySm}>
+              Começar agora
             </Link>
           </div>
-          <div className="flex items-center gap-1 md:hidden">
-            <ThemeToggle />
-            <button
-              type="button"
-              aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={menuAberto}
-              onClick={() => setMenuAberto((aberto) => !aberto)}
-              className="flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors hover:bg-muted"
-            >
-              {menuAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
-          </div>
+
+          <button
+            type="button"
+            aria-label={menuAberto ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={menuAberto}
+            aria-controls="menu-mobile"
+            onClick={() => setMenuAberto((aberto) => !aberto)}
+            className="flex h-10 w-10 items-center justify-center rounded-md text-text transition-colors hover:bg-muted lg:hidden"
+          >
+            {menuAberto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
 
         {/*
-          BUG corrigido (usuário: "clicar duas vezes para ir em uma
-          opção", Safari/iOS) — a causa real nunca foi só o aninhamento
-          `<Link><Button></Link>` (já eliminado em todo o app): este
-          menu ficava condicionalmente MONTADO só com `{menuAberto &&
-          (...)}`, e cada `<Link>` de dentro tinha `onClick={() =>
-          setMenuAberto(false)}` — ou seja, o próprio clique que deveria
-          navegar também desmontava o `<a>` que acabou de ser tocado
-          (o React remove o nó do DOM ao re-renderizar com
-          `menuAberto = false`, no mesmo ciclo do evento de clique). O
-          Safari no iPhone cancela a navegação-padrão de um `<a>` quando
-          ele é removido da árvore antes do clique terminar de ser
-          processado — o menu fechava, mas a navegação não acontecia;
-          só no SEGUNDO toque (agora sem o menu no caminho) é que
-          funcionava. Correção: o painel fica SEMPRE montado (nunca
-          desmonta os links), só alterna a classe `hidden` — o mesmo nó
-          `<a>` continua na árvore do início ao fim do clique, então o
-          Safari completa a navegação normalmente.
+          Painel sempre montado, só alterna `hidden` (mesmo cuidado já
+          documentado no histórico deste layout: desmontar os `<Link>`
+          no clique quebra a navegação no Safari/iOS — o nó precisa
+          continuar na árvore até o clique terminar de ser processado).
         */}
         <nav
-          className={`flex-col gap-1 border-t border-border px-6 py-4 md:hidden ${menuAberto ? "flex" : "hidden"}`}
+          id="menu-mobile"
+          className={`flex-col gap-1 border-t border-border bg-background px-6 py-4 lg:hidden ${
+            menuAberto ? "flex" : "hidden"
+          }`}
         >
           {NAV_LINKS.map((link) => (
             <Link
@@ -204,11 +197,11 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               Entrar
             </Link>
             <Link
-              href="/selecionar-perfil"
+              href={ROTTA_APP_URL}
               onClick={() => setMenuAberto(false)}
               className={`${pillPrimarySm} w-full`}
             >
-              Criar conta
+              Começar agora
             </Link>
           </div>
         </nav>
@@ -216,25 +209,14 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
 
       <main className="flex-1">{children}</main>
 
-      {/* `.ink-scope` (ver header acima) — mesmo bloco escuro fixo do rodapé da referência de design, com os tokens da própria Rotta. */}
+      {/* Rodapé — permanece escuro (`.ink-scope`): o "azul profundo institucional" pedido pelo usuário. */}
       <footer className="ink-scope w-full">
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-2 gap-8 px-6 py-12 sm:grid-cols-3 lg:grid-cols-6">
-          <div className="col-span-2 flex flex-col gap-2 sm:col-span-3 lg:col-span-1">
-            {/*
-              BUG corrigido (usuário: "logo distorcida no rodapé") — o
-              container acima é `flex-col`, cujo eixo cruzado (largura)
-              tem `align-items: stretch` por padrão; como o wordmark tem
-              `width: auto` (a classe `w-auto`), o flexbox esticava a
-              imagem pra largura inteira da coluna, distorcendo a
-              proporção real do logotipo. `self-start` tira o item do
-              stretch — a imagem volta a respeitar `h-6` e sua proporção
-              original (a mesma correção não é necessária no header:
-              `flex items-center` ali é `flex-row`, eixo cruzado
-              vertical, nunca estica a largura).
-            */}
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-14">
+          <div className="flex flex-col gap-3">
             <RouteWordmark className="h-6 w-auto self-start" />
-            <p className="text-sm text-text-muted">
-              Transporte escolar sob controle, do embarque à entrega.
+            <p className="max-w-sm text-sm text-text-muted">
+              Tecnologia para o transporte escolar — conectando responsáveis, motoristas, monitores
+              e transportadoras numa única plataforma.
             </p>
             <a
               href={ROTTA_INSTAGRAM_URL}
@@ -246,22 +228,18 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               <InstagramGlyph className="h-4 w-4" />
             </a>
           </div>
-          {FOOTER_COLUNAS.map((coluna) => (
-            <div key={coluna.titulo} className="flex flex-col gap-3">
-              <span className="text-sm font-semibold">{coluna.titulo}</span>
-              <nav className="flex flex-col gap-2">
-                {coluna.links.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="text-sm text-text-muted transition-colors hover:text-text"
-                  >
-                    {link.label}
-                  </Link>
-                ))}
-              </nav>
-            </div>
-          ))}
+
+          <nav className="flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-8">
+            {FOOTER_LINKS.map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="text-sm text-text-muted transition-colors hover:text-text"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
         </div>
         <div className="border-t border-border px-6 py-6">
           <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 text-xs text-text-muted sm:flex-row">
