@@ -16,9 +16,16 @@ import { useState } from "react";
 
 import { useCreateStudentForCompany, useCompanyStudents } from "../hooks/use-students";
 
-import type { CreateStudentForCompanyInput, School } from "@rotta/api-client";
+import type {
+  CreateSchoolInput,
+  CreateStudentForCompanyInput,
+  School,
+  SchoolAdministrativeDependency,
+  SchoolShift,
+  SchoolType,
+} from "@rotta/api-client";
 
-import { useSchoolsList } from "@/features/schools/hooks/use-schools";
+import { useCreateSchool, useSchoolsList } from "@/features/schools/hooks/use-schools";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 
 
@@ -51,6 +58,26 @@ const ENDERECO_VAZIO: EnderecoForm = {
   estado: "",
 };
 
+const DEPENDENCIAS = [
+  { value: "MUNICIPAL", label: "Municipal" },
+  { value: "ESTADUAL", label: "Estadual" },
+  { value: "FEDERAL", label: "Federal" },
+  { value: "PRIVADA", label: "Privada" },
+  { value: "FILANTROPICA", label: "Filantrópica" },
+  { value: "COMUNITARIA", label: "Comunitária" },
+] as const satisfies ReadonlyArray<{ value: SchoolAdministrativeDependency; label: string }>;
+
+const SCHOOL_TIPOS = [
+  { value: "FUNDAMENTAL", label: "Fundamental" },
+  { value: "MEDIO", label: "Médio" },
+  { value: "PRE_ESCOLA", label: "Pré-escola" },
+  { value: "CRECHE", label: "Creche" },
+  { value: "EJA", label: "EJA" },
+  { value: "TECNICO", label: "Técnico" },
+  { value: "UNIVERSIDADE", label: "Universidade" },
+  { value: "OUTRO", label: "Outro" },
+] as const satisfies ReadonlyArray<{ value: SchoolType; label: string }>;
+
 /**
  * "Empresas > Alunos > cadastramos os alunos... colocamos as escolas,
  * rotas/endereços residenciais... salvamos e pronto" (pedido do usuário
@@ -59,10 +86,10 @@ const ENDERECO_VAZIO: EnderecoForm = {
  * gap real corrigido no backend). Ao salvar, o aluno já nasce
  * credenciado (Contract "termo de ciência" automático, mesmo mecanismo
  * do fluxo "código do transporte") — falta só vincular a uma `Route`
- * específica, que continua sendo uma decisão operacional separada (o
- * Admin ainda não tem uma tela de Rotas própria; usa o mesmo endpoint
- * que Empresa/Gestor já usam, `POST /routes/:id/students`, fora deste
- * formulário).
+ * específica, que continua sendo uma decisão operacional separada, na
+ * aba "Rotas" deste mesmo detalhe de empresa (`company-routes-tab.tsx`).
+ * Escola: se não existir ainda no catálogo compartilhado, dá pra
+ * cadastrar sem sair deste formulário (ver `useCreateSchool`).
  */
 export function CompanyStudentsTab({ companyId }: { companyId: string }): JSX.Element {
   const { data, isLoading, isError, refetch, isFetching } = useCompanyStudents(companyId);
@@ -127,8 +154,10 @@ function NewStudentModal({
   onClose: () => void;
 }): JSX.Element {
   const createStudent = useCreateStudentForCompany(companyId);
+  const createSchool = useCreateSchool();
   const embarqueCep = useCepLookup();
   const desembarqueCep = useCepLookup();
+  const novaEscolaCep = useCepLookup();
 
   const [nome, setNome] = useState("");
   const [dataNascimento, setDataNascimento] = useState("");
@@ -138,6 +167,14 @@ function NewStudentModal({
   const [schoolSearch, setSchoolSearch] = useState("");
   const [selectedSchool, setSelectedSchool] = useState<School | null>(null);
   const { data: schoolResults } = useSchoolsList({ search: schoolSearch, page: 1, pageSize: 6 });
+
+  const [showNovaEscola, setShowNovaEscola] = useState(false);
+  const [novaEscolaNome, setNovaEscolaNome] = useState("");
+  const [novaEscolaDependencia, setNovaEscolaDependencia] =
+    useState<SchoolAdministrativeDependency>("MUNICIPAL");
+  const [novaEscolaTipos, setNovaEscolaTipos] = useState<SchoolType[]>([]);
+  const [novaEscolaEndereco, setNovaEscolaEndereco] = useState<EnderecoForm>(ENDERECO_VAZIO);
+  const [novaEscolaError, setNovaEscolaError] = useState<string | null>(null);
 
   const [embarque, setEmbarque] = useState<EnderecoForm>(ENDERECO_VAZIO);
   const [mesmoEndereco, setMesmoEndereco] = useState(true);
@@ -174,6 +211,65 @@ function NewStudentModal({
       cidade: address.cidade || current.cidade,
       estado: address.estado || current.estado,
     }));
+  }
+
+  async function handleNovaEscolaCepBlur(): Promise<void> {
+    const address = await novaEscolaCep.lookup(novaEscolaEndereco.cep);
+    if (!address) return;
+    setNovaEscolaEndereco((current) => ({
+      ...current,
+      logradouro: address.endereco || current.logradouro,
+      bairro: address.bairro || current.bairro,
+      cidade: address.cidade || current.cidade,
+      estado: address.estado || current.estado,
+    }));
+  }
+
+  function toggleNovaEscolaTipo(tipo: SchoolType): void {
+    setNovaEscolaTipos((current) =>
+      current.includes(tipo) ? current.filter((t) => t !== tipo) : [...current, tipo],
+    );
+  }
+
+  function handleCriarEscola(): void {
+    setNovaEscolaError(null);
+    if (
+      !novaEscolaNome.trim() ||
+      novaEscolaTipos.length === 0 ||
+      !novaEscolaEndereco.cep.trim() ||
+      !novaEscolaEndereco.logradouro.trim() ||
+      !novaEscolaEndereco.numero.trim() ||
+      !novaEscolaEndereco.bairro.trim() ||
+      !novaEscolaEndereco.cidade.trim() ||
+      !novaEscolaEndereco.estado.trim()
+    ) {
+      setNovaEscolaError("Preencha nome, ao menos um tipo de ensino e o endereço completo.");
+      return;
+    }
+
+    const input: CreateSchoolInput = {
+      nomeOficial: novaEscolaNome.trim(),
+      dependenciaAdministrativa: novaEscolaDependencia,
+      tipos: novaEscolaTipos,
+      turnosAtendidos: [turno as SchoolShift],
+      cep: novaEscolaEndereco.cep,
+      logradouro: novaEscolaEndereco.logradouro,
+      numero: novaEscolaEndereco.numero,
+      complemento: novaEscolaEndereco.complemento || undefined,
+      bairro: novaEscolaEndereco.bairro,
+      cidade: novaEscolaEndereco.cidade,
+      estado: novaEscolaEndereco.estado,
+    };
+
+    createSchool.mutate(input, {
+      onSuccess: (school) => {
+        setSelectedSchool(school);
+        setShowNovaEscola(false);
+      },
+      onError: (error) => {
+        setNovaEscolaError(error instanceof Error ? error.message : "Erro ao cadastrar a escola.");
+      },
+    });
   }
 
   const enderecoDesembarque = mesmoEndereco ? embarque : desembarque;
@@ -284,6 +380,113 @@ function NewStudentModal({
                 Trocar
               </button>
             </div>
+          ) : showNovaEscola ? (
+            <div className="flex flex-col gap-2 rounded-lg border border-border p-3">
+              <div className="flex items-center justify-between">
+                <Typography variant="bodySmall" className="font-semibold">
+                  Cadastrar nova escola
+                </Typography>
+                <button
+                  type="button"
+                  className="text-xs text-primary underline"
+                  onClick={() => setShowNovaEscola(false)}
+                >
+                  Voltar a buscar
+                </button>
+              </div>
+              <Input
+                placeholder="Nome oficial da escola"
+                value={novaEscolaNome}
+                onChange={(e) => setNovaEscolaNome(e.target.value)}
+              />
+              <Select
+                value={novaEscolaDependencia}
+                onChange={(e) =>
+                  setNovaEscolaDependencia(e.target.value as SchoolAdministrativeDependency)
+                }
+              >
+                {DEPENDENCIAS.map((d) => (
+                  <option key={d.value} value={d.value}>
+                    {d.label}
+                  </option>
+                ))}
+              </Select>
+              <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                {SCHOOL_TIPOS.map((tipo) => (
+                  <label key={tipo.value} className="flex items-center gap-1.5 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={novaEscolaTipos.includes(tipo.value)}
+                      onChange={() => toggleNovaEscolaTipo(tipo.value)}
+                    />
+                    {tipo.label}
+                  </label>
+                ))}
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Input
+                  placeholder="CEP"
+                  value={novaEscolaEndereco.cep}
+                  onChange={(e) =>
+                    setNovaEscolaEndereco({ ...novaEscolaEndereco, cep: e.target.value })
+                  }
+                  onBlur={() => void handleNovaEscolaCepBlur()}
+                />
+                <Input
+                  placeholder="Logradouro"
+                  className="sm:col-span-2"
+                  value={novaEscolaEndereco.logradouro}
+                  onChange={(e) =>
+                    setNovaEscolaEndereco({ ...novaEscolaEndereco, logradouro: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Número"
+                  value={novaEscolaEndereco.numero}
+                  onChange={(e) =>
+                    setNovaEscolaEndereco({ ...novaEscolaEndereco, numero: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Bairro"
+                  value={novaEscolaEndereco.bairro}
+                  onChange={(e) =>
+                    setNovaEscolaEndereco({ ...novaEscolaEndereco, bairro: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="Cidade"
+                  value={novaEscolaEndereco.cidade}
+                  onChange={(e) =>
+                    setNovaEscolaEndereco({ ...novaEscolaEndereco, cidade: e.target.value })
+                  }
+                />
+                <Input
+                  placeholder="UF"
+                  maxLength={2}
+                  value={novaEscolaEndereco.estado}
+                  onChange={(e) =>
+                    setNovaEscolaEndereco({
+                      ...novaEscolaEndereco,
+                      estado: e.target.value.toUpperCase(),
+                    })
+                  }
+                />
+              </div>
+              {novaEscolaError && (
+                <Typography variant="caption" color="danger">
+                  {novaEscolaError}
+                </Typography>
+              )}
+              <Button
+                variant="secondary"
+                size="sm"
+                isLoading={createSchool.isPending}
+                onClick={handleCriarEscola}
+              >
+                Salvar escola e usar
+              </Button>
+            </div>
           ) : (
             <>
               <Input
@@ -313,6 +516,13 @@ function NewStudentModal({
                   ) : null}
                 </div>
               )}
+              <button
+                type="button"
+                className="self-start text-xs text-primary underline"
+                onClick={() => setShowNovaEscola(true)}
+              >
+                Não achei — cadastrar nova escola
+              </button>
             </>
           )}
         </div>

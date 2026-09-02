@@ -2,9 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ListSchoolsParams, SchoolStatus } from "@rotta/api-client";
+import type { CreateSchoolInput, ListSchoolsParams, SchoolStatus } from "@rotta/api-client";
 
 import { geoApi, schoolsApi } from "@/lib/api-client";
+
 
 /**
  * Hooks de dados do módulo Escolas (visão cross-tenant do Admin Rotta) —
@@ -16,6 +17,25 @@ export function useSchoolsList(params: ListSchoolsParams) {
   return useQuery({
     queryKey: ["schools", params],
     queryFn: () => schoolsApi.list(params),
+  });
+}
+
+/**
+ * Cadastro de escola pontual, direto de dentro do fluxo "Novo aluno"
+ * (pedido do usuário 02/09/2026, item 2: "vincular escola no fluxo de
+ * criação de aluno" — antes, se a escola não existisse no catálogo, o
+ * Admin não tinha como cadastrá-la sem sair do formulário). Backend já
+ * liberava `POST /schools` pra `ADMIN_ROTTA`/`EMPRESA`/`GESTOR`
+ * (`MANAGE_ROLES` em `schools.controller.ts`) — gap era só a falta
+ * dessa chamada no front.
+ */
+export function useCreateSchool() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateSchoolInput) => schoolsApi.create(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["schools"] });
+    },
   });
 }
 
