@@ -49,6 +49,31 @@ export interface CreateStudentInput {
 
 export type UpdateStudentInput = Partial<CreateStudentInput>;
 
+/** Dados do Responsável quando a família ainda não tem conta na Rotta — ver `NovoResponsavelDto` (backend). */
+export interface NovoResponsavelInput {
+  nome: string;
+  email: string;
+  telefone: string;
+  cpf: string;
+}
+
+/**
+ * Cadastro de aluno feito pela própria transportadora ou pelo Admin
+ * Rotta (pedido do usuário 02/09/2026: "empresas > alunos... cadastramos
+ * os alunos... salvamos e pronto") — mesmos campos de `CreateStudentInput`
+ * (sem `preRegistrationId`, esse é o caminho direto) `+` exatamente um
+ * entre `responsavelId` (conta já existente) e `novoResponsavel` (cria a
+ * conta na hora) `+` `companyId` (só obrigatório pro Admin Rotta).
+ */
+export interface CreateStudentForCompanyInput extends Omit<
+  CreateStudentInput,
+  "preRegistrationId"
+> {
+  companyId?: string;
+  responsavelId?: string;
+  novoResponsavel?: NovoResponsavelInput;
+}
+
 export interface Student {
   id: string;
   responsavelId: string;
@@ -87,6 +112,8 @@ export interface ListStudentsParams {
   search?: string;
   page?: number;
   pageSize?: number;
+  /** Só tem efeito pro Admin Rotta (aba "Alunos" em empresas/[id]) — Empresa/Gestor sempre vê só a própria empresa. */
+  companyId?: string;
 }
 
 export interface ListStudentsResult {
@@ -199,6 +226,15 @@ export function createStudentsEndpoints(apiClient: ApiClient) {
     create: async (input: CreateStudentInput): Promise<Student> =>
       (
         await apiClient.request<ApiEnvelope<Student>>("/students", {
+          method: "POST",
+          body: input,
+        })
+      ).data,
+
+    /** `POST /students/para-empresa` — Empresa/Gestor ou Admin Rotta, ver `CreateStudentForCompanyInput`. */
+    createForCompany: async (input: CreateStudentForCompanyInput): Promise<Student> =>
+      (
+        await apiClient.request<ApiEnvelope<Student>>("/students/para-empresa", {
           method: "POST",
           body: input,
         })

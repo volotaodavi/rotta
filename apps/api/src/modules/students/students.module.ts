@@ -15,9 +15,11 @@ import { StudentsService } from "./students.service";
 
 import { StorageModule } from "@/infra/storage/storage.module";
 import { AuditModule } from "@/modules/audit/audit.module";
+import { AuthModule } from "@/modules/auth/auth.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { SchoolsModule } from "@/modules/schools/schools.module";
 import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
+import { UsersModule } from "@/modules/users/users.module";
 
 /**
  * Módulo Alunos (briefing "Marketplace" §"CADASTRO DO ALUNO") —
@@ -54,6 +56,16 @@ import { StudentPreRegistrationsModule } from "@/modules/student-pre-registratio
  * direto via `PrismaService` (`withBypass`, mesmo padrão de
  * `CompaniesService.getNomeFantasia`), nunca via `RoutesService`/
  * `TripsService`.
+ *
+ * `AuthModule`/`UsersModule` importados pra `createForCompany`
+ * (`StudentsService.createResponsavelOnTheFly`/`AuthService.
+ * forgotPassword`, pedido do usuário 02/09/2026: "Admin pode criar a
+ * conta do Responsável na hora") — sem risco de ciclo: `AuthModule` só
+ * importa `SecurityModule`/`UsersModule`/`CompaniesModule`/
+ * `MessagePersonalizationModule`/`AuditModule`/
+ * `StudentPreRegistrationsModule`/`CompanyJoinRequestsModule`/
+ * `EmailModule`/`TurnstileModule` — nenhum deles depende de
+ * `StudentsModule` de volta.
  */
 @Module({
   imports: [
@@ -62,6 +74,8 @@ import { StudentPreRegistrationsModule } from "@/modules/student-pre-registratio
     MessagePersonalizationModule,
     SchoolsModule,
     StudentPreRegistrationsModule,
+    AuthModule,
+    UsersModule,
   ],
   controllers: [StudentsController],
   providers: [

@@ -10,9 +10,11 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { AuthService } from "@/modules/auth/auth.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { StudentPreRegistrationRepository } from "@/modules/student-pre-registrations/repositories/student-pre-registration.repository";
+import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { School, Student, StudentAuthorizedPerson } from "@prisma/client";
 
@@ -156,6 +158,10 @@ describe("StudentsService", () => {
   let addressOverrideRepository: jest.Mocked<StudentAddressOverrideRepository>;
   let addressOverrideRecurrenceRepository: jest.Mocked<StudentAddressOverrideRecurrenceRepository>;
   let prisma: jest.Mocked<PrismaService>;
+  let usersService: jest.Mocked<
+    Pick<UsersService, "findById" | "assertNoDuplicateIdentity" | "createUserWithPassword">
+  >;
+  let authService: jest.Mocked<Pick<AuthService, "forgotPassword">>;
   // Métodos genéricos do Prisma Client não tipam bem com `jest.Mocked<T>`
   // (TS não consegue inferir `MockedFunction` pra métodos genéricos dos
   // delegates) — handles próprios só pra estes dois usados nos testes.
@@ -200,6 +206,14 @@ describe("StudentsService", () => {
     } as unknown as jest.Mocked<EventEmitter2>;
     messagePersonalizationService = {
       novoAluno: jest.fn().mockReturnValue({ titulo: "Novo aluno", corpo: "..." }),
+    };
+    usersService = {
+      findById: jest.fn(),
+      assertNoDuplicateIdentity: jest.fn().mockResolvedValue(undefined),
+      createUserWithPassword: jest.fn(),
+    };
+    authService = {
+      forgotPassword: jest.fn().mockResolvedValue(undefined),
     };
     schoolRepository = {
       create: jest.fn(),
@@ -271,6 +285,8 @@ describe("StudentsService", () => {
       addressOverrideRepository,
       addressOverrideRecurrenceRepository,
       prisma,
+      usersService as unknown as UsersService,
+      authService as unknown as AuthService,
     );
   });
 
@@ -420,6 +436,178 @@ describe("StudentsService", () => {
 
       expect(preRegistrationRepository.findByIdWithCompany).not.toHaveBeenCalled();
       expect(preRegistrationRepository.markConcluded).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("createForCompany", () => {
+    function baseForCompanyDto(
+      overrides: Partial<Parameters<StudentsService["createForCompany"]>[0]> = {},
+    ): Parameters<StudentsService["createForCompany"]>[0] {
+      return {
+        nome: "Maria Souza",
+        dataNascimento: "2015-03-20",
+        sexo: "FEMININO",
+        schoolId: "school-1",
+        turno: "MANHA",
+        embarqueCep: "01310100",
+        embarqueLogradouro: "Avenida Paulista",
+        embarqueNumero: "1000",
+        embarqueBairro: "Bela Vista",
+        embarqueCidade: "São Paulo",
+        embarqueEstado: "SP",
+        desembarqueCep: "01310100",
+        desembarqueLogradouro: "Avenida Paulista",
+        desembarqueNumero: "1000",
+        desembarqueBairro: "Bela Vista",
+        desembarqueCidade: "São Paulo",
+        desembarqueEstado: "SP",
+        responsavelId: "responsavel-1",
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
+      studentRepository.create.mockResolvedValue(buildStudent({ responsavelId: "responsavel-1" }));
+      usersService.findById.mockResolvedValue({
+        id: "responsavel-1",
+        isResponsavel: true,
+      } as never);
+    });
+
+    it("Motorista/Monitor nunca pode usar este cadastro", async () => {
+      await expect(
+        service.createForCompany(baseForCompanyDto(), motoristaActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("Responsável (self-service) também não usa este caminho", async () => {
+      await expect(
+        service.createForCompany(baseForCompanyDto(), responsavelActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it("Admin Rotta sem companyId no corpo: 400 (não tem tenant próprio)", async () => {
+      await expect(service.createForCompany(baseForCompanyDto(), adminActor, {})).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it("Empresa: usa SEMPRE actor.tenantId, nunca um companyId vindo do corpo", async () => {
+      await service.createForCompany(
+        baseForCompanyDto({ companyId: "company-de-outra-empresa" }),
+        empresaActor,
+        {},
+      );
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "student.credentialed",
+        expect.objectContaining({ companyId: "company-1" }),
+      );
+    });
+
+    it("nem responsavelId nem novoResponsavel: 400", async () => {
+      await expect(
+        service.createForCompany(baseForCompanyDto({ responsavelId: undefined }), empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("os dois ao mesmo tempo (responsavelId E novoResponsavel): 400", async () => {
+      await expect(
+        service.createForCompany(
+          baseForCompanyDto({
+            novoResponsavel: { nome: "Ana", email: "ana@x.com", telefone: "11999999999", cpf: "1" },
+          }),
+          empresaActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("responsavelId de conta inexistente (ou que não é Responsável): 404", async () => {
+      usersService.findById.mockResolvedValue(null);
+
+      await expect(service.createForCompany(baseForCompanyDto(), empresaActor, {})).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("novoResponsavel: cria a conta com senha aleatória e dispara 'esqueci senha' de verdade", async () => {
+      usersService.createUserWithPassword.mockResolvedValue({ id: "responsavel-novo" } as never);
+
+      await service.createForCompany(
+        baseForCompanyDto({
+          responsavelId: undefined,
+          novoResponsavel: {
+            nome: "Ana Souza",
+            email: "Ana@Email.com",
+            telefone: "11999999999",
+            cpf: "52998224725",
+          },
+        }),
+        empresaActor,
+        {},
+      );
+
+      expect(usersService.assertNoDuplicateIdentity).toHaveBeenCalledWith(
+        "ana@email.com",
+        "11999999999",
+        "52998224725",
+      );
+      expect(usersService.createUserWithPassword).toHaveBeenCalledWith(
+        expect.objectContaining({ email: "ana@email.com", isResponsavel: true }),
+      );
+      expect(authService.forgotPassword).toHaveBeenCalledWith({ email: "ana@email.com" });
+      expect(studentRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ responsavelId: "responsavel-novo" }),
+      );
+    });
+
+    it("nunca bloqueia o cadastro se o e-mail de 'criar senha' falhar (best-effort)", async () => {
+      usersService.createUserWithPassword.mockResolvedValue({ id: "responsavel-novo" } as never);
+      authService.forgotPassword.mockRejectedValue(new Error("Resend fora do ar"));
+
+      await expect(
+        service.createForCompany(
+          baseForCompanyDto({
+            responsavelId: undefined,
+            novoResponsavel: {
+              nome: "Ana Souza",
+              email: "ana@email.com",
+              telefone: "11999999999",
+              cpf: "52998224725",
+            },
+          }),
+          empresaActor,
+          {},
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it("credencia igual ao fluxo de código: emite STUDENT_CREDENTIALED_EVENT direto, sem StudentPreRegistration", async () => {
+      await service.createForCompany(baseForCompanyDto(), empresaActor, {});
+
+      expect(preRegistrationRepository.findByIdWithCompany).not.toHaveBeenCalled();
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "student.credentialed",
+        expect.objectContaining({
+          responsavelId: "responsavel-1",
+          companyId: "company-1",
+          schoolId: "school-1",
+        }),
+      );
+    });
+
+    it("avisa o RESPONSÁVEL (não quem cadastrou) sobre o novo aluno", async () => {
+      await service.createForCompany(baseForCompanyDto(), empresaActor, {});
+
+      expect(eventEmitter.emit).toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({ userId: "responsavel-1", tipo: "NOVO_ALUNO" }),
+      );
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({ userId: "user-empresa" }),
+      );
     });
   });
 

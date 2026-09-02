@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import {
   BadRequestException,
   ForbiddenException,
@@ -28,6 +30,10 @@ import {
 import type { CreateStudentAddressOverrideRecurrenceDto } from "./dto/create-student-address-override-recurrence.dto";
 import type { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
 import type { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
+import type {
+  CreateStudentForCompanyDto,
+  NovoResponsavelDto,
+} from "./dto/create-student-for-company.dto";
 import type { CreateStudentDto } from "./dto/create-student.dto";
 import type { ListStudentsQueryDto } from "./dto/list-students-query.dto";
 import type { MarkStudentDailyAbsenceDto } from "./dto/mark-student-daily-absence.dto";
@@ -49,10 +55,12 @@ import type { StudentPreRegistrationRepository } from "@/modules/student-pre-reg
 import { PrismaService } from "@/infra/database/prisma.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { AuthService } from "@/modules/auth/auth.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 import { STUDENT_PRE_REGISTRATION_REPOSITORY } from "@/modules/student-pre-registrations/student-pre-registrations.constants";
+import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -92,6 +100,8 @@ export class StudentsService {
     @Inject(STUDENT_ADDRESS_OVERRIDE_RECURRENCE_REPOSITORY)
     private readonly addressOverrideRecurrenceRepository: StudentAddressOverrideRecurrenceRepository,
     private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+    private readonly authService: AuthService,
   ) {}
 
   /**
@@ -247,11 +257,158 @@ export class StudentsService {
     return toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student));
   }
 
+  /**
+   * Cadastro de aluno feito pela PRÓPRIA transportadora ou pelo Admin
+   * Rotta (pedido do usuário 02/09/2026 — ver `CreateStudentForCompanyDto`).
+   * Reaproveita o MESMO mecanismo já testado do fluxo "código do
+   * transporte" (`STUDENT_CREDENTIALED_EVENT` → `StudentCredentialedListener`
+   * cria `TransportRequest` já `APROVADA` + `Contract` "termo de ciência"
+   * `ATIVO`) — nunca duplica essa lógica, só dispara o mesmo evento
+   * direto, sem precisar de um `StudentPreRegistration` no meio.
+   *
+   * Depois disso o aluno já pode ser vinculado a uma `Route`
+   * (`POST /routes/:id/students`, endpoint que já aceita Empresa/Gestor/
+   * Admin Rotta) — "pronto para rodar" fica completo em dois passos, não
+   * um só, porque a rota é uma decisão operacional separada (qual
+   * veículo/motorista atende aquele endereço), não parte do cadastro do
+   * aluno em si.
+   */
+  async createForCompany(
+    dto: CreateStudentForCompanyDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<StudentResponseDto> {
+    if (
+      actor.role !== Role.ADMIN_ROTTA &&
+      actor.role !== Role.EMPRESA &&
+      actor.role !== Role.GESTOR
+    ) {
+      throw new ForbiddenException("Só Empresa/Gestor ou Admin Rotta podem usar este cadastro.");
+    }
+
+    // Admin Rotta não tem tenant (`actor.tenantId === null`) — precisa
+    // dizer explicitamente qual empresa está cadastrando. Empresa/Gestor
+    // SEMPRE usa o próprio tenant, nunca um `companyId` vindo do corpo
+    // da requisição (mesmo princípio de nunca confiar em id de cliente
+    // pra decidir o tenant).
+    const companyId = actor.role === Role.ADMIN_ROTTA ? dto.companyId : actor.tenantId;
+    if (!companyId) {
+      throw new BadRequestException(
+        actor.role === Role.ADMIN_ROTTA
+          ? "Informe companyId — Admin Rotta não tem uma empresa própria."
+          : "Empresa não identificada.",
+      );
+    }
+
+    if (Boolean(dto.responsavelId) === Boolean(dto.novoResponsavel)) {
+      throw new BadRequestException(
+        "Informe exatamente um: responsavelId (conta já existente) ou novoResponsavel (cria a conta agora).",
+      );
+    }
+
+    await this.assertSchoolExists(dto.schoolId);
+
+    const responsavelId = dto.responsavelId
+      ? await this.resolveExistingResponsavel(dto.responsavelId)
+      : await this.createResponsavelOnTheFly(dto.novoResponsavel!);
+
+    const { companyId: _c, responsavelId: _r, novoResponsavel: _n, ...studentInput } = dto;
+    const student = await this.studentRepository.create({
+      ...studentInput,
+      responsavelId,
+      dataNascimento: new Date(dto.dataNascimento),
+    });
+
+    // Mesmo mecanismo do fluxo "código do transporte" — gera
+    // TransportRequest + Contract automaticamente, sem reabrir uma fila
+    // de aprovação que a própria empresa (ou o Admin em nome dela) já
+    // decidiu ao cadastrar o aluno diretamente.
+    this.eventEmitter.emit(STUDENT_CREDENTIALED_EVENT, {
+      studentId: student.id,
+      responsavelId,
+      companyId,
+      schoolId: student.schoolId,
+      turno: student.turno,
+    });
+
+    await this.recordAudit({
+      entidadeId: student.id,
+      acao: "CREATED_BY_COMPANY",
+      atorUserId: actor.sub,
+      dadosDepois: { nome: student.nome, schoolId: student.schoolId, companyId },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    // Aviso pro RESPONSÁVEL (é o filho dele), não pra quem cadastrou.
+    const { titulo, corpo } = this.messagePersonalizationService.novoAluno(student.nome);
+    this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+      userId: responsavelId,
+      companyId,
+      tipo: NotificationEventType.NOVO_ALUNO,
+      titulo,
+      corpo,
+      dadosContexto: { studentId: student.id },
+    });
+
+    return toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student));
+  }
+
+  private async resolveExistingResponsavel(responsavelId: string): Promise<string> {
+    const user = await this.usersService.findById(responsavelId);
+    if (!user || !user.isResponsavel) {
+      throw new NotFoundException("Responsável não encontrado.");
+    }
+    return user.id;
+  }
+
+  /**
+   * Conta nasce com senha aleatória (nunca usada por ninguém) — na
+   * sequência dispara o "esqueci minha senha" já em produção
+   * (`AuthService.forgotPassword`) pra família escolher a própria senha
+   * de verdade por um link de e-mail. Best-effort: se o envio do e-mail
+   * falhar, a conta (e o aluno) continuam criados normalmente — a
+   * família ainda pode pedir "esqueci senha" manualmente depois.
+   */
+  private async createResponsavelOnTheFly(input: NovoResponsavelDto): Promise<string> {
+    const email = input.email.trim().toLowerCase();
+    await this.usersService.assertNoDuplicateIdentity(email, input.telefone, input.cpf);
+
+    const senhaAleatoria = randomBytes(24).toString("hex");
+    const user = await this.usersService.createUserWithPassword({
+      nome: input.nome,
+      email,
+      telefone: input.telefone,
+      cpf: input.cpf,
+      senha: senhaAleatoria,
+      isResponsavel: true,
+    });
+
+    try {
+      await this.authService.forgotPassword({ email });
+    } catch (error) {
+      this.logger.warn(
+        `Não foi possível enviar o e-mail de "criar senha" para o novo Responsável ${user.id} (${email}).`,
+      );
+      this.logger.warn(error instanceof Error ? error.message : String(error));
+    }
+
+    return user.id;
+  }
+
   async list(
     query: ListStudentsQueryDto,
     actor: AuthenticatedUser,
   ): Promise<ListStudentsResponseDto> {
-    const scope = this.scopeForActor(actor);
+    // Admin Rotta não tem `tenantId` — sem `query.companyId`, `scopeForActor`
+    // devolve `undefined` (vê TODO aluno de TODA empresa). A aba "Alunos"
+    // de `empresas/[id]` (pedido do usuário 02/09/2026) precisa do
+    // filtro explícito; Empresa/Gestor ignora isso (sempre o próprio
+    // tenant, nunca um valor vindo do cliente).
+    const scope =
+      actor.role === Role.ADMIN_ROTTA && query.companyId
+        ? { companyId: query.companyId }
+        : this.scopeForActor(actor);
     const result = await this.studentRepository.list({
       ...scope,
       search: query.search,

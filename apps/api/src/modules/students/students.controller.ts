@@ -21,6 +21,7 @@ import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { CreateStudentAddressOverrideRecurrenceDto } from "./dto/create-student-address-override-recurrence.dto";
 import { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
 import { CreateStudentAuthorizedPersonDto } from "./dto/create-student-authorized-person.dto";
+import { CreateStudentForCompanyDto } from "./dto/create-student-for-company.dto";
 import { CreateStudentDto } from "./dto/create-student.dto";
 import { ListStudentsQueryDto } from "./dto/list-students-query.dto";
 import { MarkStudentDailyAbsenceDto } from "./dto/mark-student-daily-absence.dto";
@@ -35,6 +36,8 @@ import { Role } from "@/shared/enums";
 
 /** Cadastro/edição/exclusão/foto/pessoas autorizadas: exclusivo do Responsável dono do aluno. */
 const OWNER_ROLES = [Role.RESPONSAVEL] as const;
+/** Cadastro em nome de uma família (pedido do usuário 02/09/2026) — a própria transportadora ou o Admin Rotta. */
+const CREATE_FOR_COMPANY_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA] as const;
 /** Leitura: Responsável (próprios alunos) + Empresa/Gestor/Motorista/Monitor (escopados via Contract) + Admin Rotta. */
 const READ_ROLES = [
   Role.RESPONSAVEL,
@@ -70,6 +73,25 @@ export class StudentsController {
     @Req() req: Request,
   ) {
     return this.studentsService.create(dto, actor, requestMeta(req));
+  }
+
+  /**
+   * "Empresas > Alunos > cadastramos os alunos... colocamos as escolas,
+   * rotas/endereços residenciais... salvamos e pronto" (pedido do
+   * usuário 02/09/2026) — a própria transportadora ou o Admin Rotta
+   * cadastra o aluno em nome da família (`CreateStudentForCompanyDto`),
+   * já credenciado (Contract "termo de ciência" automático). O passo
+   * seguinte pra "pronto pra rodar" é vincular à rota, endpoint já
+   * existente (`POST /routes/:id/students`).
+   */
+  @Post("para-empresa")
+  @Roles(...CREATE_FOR_COMPANY_ROLES)
+  createForCompany(
+    @Body() dto: CreateStudentForCompanyDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.studentsService.createForCompany(dto, actor, requestMeta(req));
   }
 
   @Get()
