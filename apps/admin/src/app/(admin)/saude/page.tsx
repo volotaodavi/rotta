@@ -1,11 +1,20 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, HelpCircle, XCircle } from "@rotta/icons";
-import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import { AlertTriangle, CheckCircle2, Database, HelpCircle, Server, XCircle } from "@rotta/icons";
+import {
+  Badge,
+  Card,
+  ErrorState,
+  ProgressRing,
+  Skeleton,
+  StatTile,
+  Typography,
+} from "@rotta/ui/web";
 
 import type { IntegrationHealthSnapshot, IntegrationStatusLevel } from "@rotta/api-client";
 
 import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-health";
+
 
 const STATUS_LABEL: Record<IntegrationStatusLevel, string> = {
   healthy: "Saudável",
@@ -29,6 +38,14 @@ const STATUS_ICON: Record<IntegrationStatusLevel, typeof CheckCircle2> = {
   down: XCircle,
   not_configured: HelpCircle,
   unknown: HelpCircle,
+};
+
+const STATUS_TONE: Record<IntegrationStatusLevel, "success" | "warning" | "danger" | "info"> = {
+  healthy: "success",
+  degraded: "warning",
+  down: "danger",
+  not_configured: "info",
+  unknown: "info",
 };
 
 const INTEGRATION_LABEL: Record<string, string> = {
@@ -59,11 +76,7 @@ export default function SaudePage(): JSX.Element {
   const { data, isLoading, isError, refetch, isFetching } = useIntegrationsHealth();
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Spinner size="lg" />
-      </div>
-    );
+    return <SaudeSkeleton />;
   }
 
   if (isError || !data) {
@@ -90,51 +103,63 @@ export default function SaudePage(): JSX.Element {
         </Typography>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <Card.Body className="flex flex-col gap-1">
-            <Typography variant="caption" color="muted">
-              Status geral
-            </Typography>
-            <Badge
-              variant={
-                data.status === "ok" ? "success" : data.status === "degraded" ? "warning" : "danger"
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <Card className="lg:col-span-2">
+          <Card.Body className="flex items-center gap-4">
+            <ProgressRing
+              value={
+                data.score.consideredComponents > 0
+                  ? data.score.healthyComponents / data.score.consideredComponents
+                  : 1
+              }
+              size={80}
+              strokeWidth={8}
+              progressClassName={
+                data.status === "ok"
+                  ? "stroke-success"
+                  : data.status === "degraded"
+                    ? "stroke-warning"
+                    : "stroke-danger"
               }
             >
-              {data.status === "ok"
-                ? "Tudo certo"
-                : data.status === "degraded"
-                  ? "Degradado"
-                  : "Fora do ar"}
-            </Badge>
-          </Card.Body>
-        </Card>
-        <Card>
-          <Card.Body className="flex flex-col gap-1">
-            <Typography variant="caption" color="muted">
-              Score (Postgres, Redis e integrações com evidência real)
-            </Typography>
-            <Typography variant="title">{data.score.value}/100</Typography>
-            <Typography variant="caption" color="muted">
-              {data.score.healthyComponents}/{data.score.consideredComponents} componentes saudáveis
-            </Typography>
-          </Card.Body>
-        </Card>
-        <Card>
-          <Card.Body className="flex flex-col gap-2">
-            <Typography variant="caption" color="muted">
-              Infraestrutura
-            </Typography>
-            <div className="flex gap-2">
-              <Badge variant={data.database ? "success" : "danger"}>
-                Postgres {data.database ? "ok" : "falhou"}
+              <Typography variant="subtitle">{Math.round(data.score.value)}%</Typography>
+            </ProgressRing>
+            <div className="flex flex-1 flex-col gap-1">
+              <Badge
+                variant={
+                  data.status === "ok"
+                    ? "success"
+                    : data.status === "degraded"
+                      ? "warning"
+                      : "danger"
+                }
+                className="w-fit"
+              >
+                {data.status === "ok"
+                  ? "Tudo certo"
+                  : data.status === "degraded"
+                    ? "Degradado"
+                    : "Fora do ar"}
               </Badge>
-              <Badge variant={data.cache ? "success" : "danger"}>
-                Redis {data.cache ? "ok" : "falhou"}
-              </Badge>
+              <Typography variant="caption" color="muted">
+                {data.score.healthyComponents}/{data.score.consideredComponents} componentes
+                saudáveis — Postgres, Redis e integrações com evidência real.
+              </Typography>
             </div>
           </Card.Body>
         </Card>
+        <StatTile
+          icon={Database}
+          tone={data.database ? "success" : "danger"}
+          label="Postgres"
+          value={data.database ? "Operacional" : "Falhou"}
+        />
+        <StatTile
+          icon={Server}
+          tone={data.cache ? "success" : "danger"}
+          label="Redis"
+          value={data.cache ? "Operacional" : "Falhou"}
+        />
       </div>
 
       <Card>
@@ -154,19 +179,32 @@ export default function SaudePage(): JSX.Element {
   );
 }
 
+const TONE_CIRCLE_CLASSES: Record<(typeof STATUS_TONE)[IntegrationStatusLevel], string> = {
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+  danger: "bg-danger/15 text-danger",
+  info: "bg-info/15 text-info",
+};
+
 function IntegrationCard({ snapshot }: { snapshot: IntegrationHealthSnapshot }): JSX.Element {
   const Icon = STATUS_ICON[snapshot.status];
 
   return (
-    <div className="flex flex-col gap-2 rounded-md border border-border p-4">
-      <div className="flex items-center justify-between gap-2">
-        <Typography variant="subtitle">
-          {INTEGRATION_LABEL[snapshot.integration] ?? snapshot.integration}
-        </Typography>
-        <Badge variant={STATUS_BADGE[snapshot.status]}>
-          <Icon size={12} className="mr-1 inline" />
-          {STATUS_LABEL[snapshot.status]}
-        </Badge>
+    <div className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${TONE_CIRCLE_CLASSES[STATUS_TONE[snapshot.status]]}`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="flex flex-1 flex-col gap-0.5">
+          <Typography variant="subtitle">
+            {INTEGRATION_LABEL[snapshot.integration] ?? snapshot.integration}
+          </Typography>
+          <Badge variant={STATUS_BADGE[snapshot.status]} className="w-fit">
+            {STATUS_LABEL[snapshot.status]}
+          </Badge>
+        </div>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-text-muted">
         <span>Última chamada com sucesso: {formatDateTime(snapshot.lastSuccessAt)}</span>
@@ -182,6 +220,29 @@ function IntegrationCard({ snapshot }: { snapshot: IntegrationHealthSnapshot }):
           Último erro/motivo: {snapshot.lastError}
         </Typography>
       )}
+    </div>
+  );
+}
+
+function SaudeSkeleton(): JSX.Element {
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <Skeleton variant="text" width={220} height={24} />
+        <Skeleton variant="text" width={340} height={14} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+        <Skeleton variant="rect" height={88} className="lg:col-span-2" />
+        <Skeleton variant="rect" height={88} />
+        <Skeleton variant="rect" height={88} />
+      </div>
+      <Card>
+        <Card.Body className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <Skeleton key={index} variant="rect" height={112} />
+          ))}
+        </Card.Body>
+      </Card>
     </div>
   );
 }
