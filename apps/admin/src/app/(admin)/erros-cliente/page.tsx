@@ -1,7 +1,19 @@
 "use client";
 
-import { Badge, Button, Card, ErrorState, Input, Select, Spinner, Typography } from "@rotta/ui/web";
+import { Bug } from "@rotta/icons";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  ErrorState,
+  Input,
+  Select,
+  TableSkeleton,
+  Typography,
+} from "@rotta/ui/web";
 import { useState } from "react";
+
 
 import type { ClientApp, ClientErrorReport } from "@rotta/api-client";
 import type { BadgeVariant } from "@rotta/ui/web";
@@ -174,8 +186,8 @@ export default function ErrosClientePage(): JSX.Element {
 
       <Card>
         {isLoading ? (
-          <Card.Body className="flex items-center justify-center py-12">
-            <Spinner size="lg" />
+          <Card.Body>
+            <TableSkeleton columns={3} className="border-none" />
           </Card.Body>
         ) : isError ? (
           <Card.Body>
@@ -187,9 +199,10 @@ export default function ErrosClientePage(): JSX.Element {
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>
-            <Typography variant="body" color="muted">
-              Nenhum erro reportado até agora{app ? ` para ${APP_LABEL[app]}` : ""}.
-            </Typography>
+            <EmptyState
+              icon={Bug}
+              title={`Nenhum erro reportado até agora${app ? ` para ${APP_LABEL[app]}` : ""}.`}
+            />
           </Card.Body>
         ) : (
           <div className="divide-y divide-border">

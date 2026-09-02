@@ -8,7 +8,7 @@
  * junto com a tela que precisar deles pela primeira vez):
  *
  *   atoms/      Button, Input, PhoneInput, Select, Badge, Checkbox, Spinner, Skeleton, Typography, ProgressRing
- *   molecules/  FormField, Pagination, Tabs, PanelGreeting, EmptyState, StatTile
+ *   molecules/  FormField, Pagination, Tabs, PanelGreeting, EmptyState, StatTile, TableSkeleton
  *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven),
  *               Modal (Compound: Modal.Header/Body/Footer, com portal/focus-trap),
  *               Toast (ToastProvider + useToast — feedback de sucesso/erro de mutações),
@@ -36,6 +36,7 @@ export * from "./molecules/PanelGreeting";
 export * from "./molecules/Pagination";
 export * from "./molecules/StatTile";
 export * from "./molecules/Tabs";
+export * from "./molecules/TableSkeleton";
 export * from "./organisms/Card";
 export * from "./organisms/Chart";
 export * from "./organisms/Modal";

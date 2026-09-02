@@ -1,13 +1,15 @@
 "use client";
 
+import { Car } from "@rotta/icons";
 import {
   Card,
+  EmptyState,
   ErrorState,
   Input,
   Pagination,
   Select,
-  Spinner,
   Table,
+  TableSkeleton,
   Typography,
   buttonVariants,
 } from "@rotta/ui/web";
@@ -132,9 +134,7 @@ export default function VeiculosAdminPage(): JSX.Element {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Spinner size="lg" />
-            </div>
+            <TableSkeleton columns={6} />
           ) : isError ? (
             <ErrorState
               message="Não foi possível carregar os veículos."
@@ -142,9 +142,11 @@ export default function VeiculosAdminPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : data && data.items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhum veículo encontrado.
-            </Typography>
+            <EmptyState
+              icon={Car}
+              title="Nenhum veículo encontrado."
+              description="Ajuste os filtros acima ou aguarde novos cadastros."
+            />
           ) : (
             data && (
               <>

@@ -1,6 +1,16 @@
 "use client";
 
-import { Card, ErrorState, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import { Store } from "@rotta/icons";
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  Pagination,
+  Select,
+  Table,
+  TableSkeleton,
+  Typography,
+} from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { TransportRequest, TransportRequestStatus } from "@rotta/api-client";
@@ -56,9 +66,7 @@ export default function SolicitacoesTransporteAdminPage(): JSX.Element {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Spinner size="lg" />
-            </div>
+            <TableSkeleton columns={4} />
           ) : isError ? (
             <ErrorState
               message="Não foi possível carregar as solicitações."
@@ -66,9 +74,7 @@ export default function SolicitacoesTransporteAdminPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : data && data.items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhuma solicitação encontrada.
-            </Typography>
+            <EmptyState icon={Store} title="Nenhuma solicitação encontrada." />
           ) : (
             data && (
               <>

@@ -1,11 +1,13 @@
 "use client";
 
+import { Building2 } from "@rotta/icons";
 import {
   Badge,
   Button,
   Card,
+  EmptyState,
   ErrorState,
-  Spinner,
+  TableSkeleton,
   Typography,
   buttonVariants,
 } from "@rotta/ui/web";
@@ -58,8 +60,8 @@ export default function EmpresasListPage(): JSX.Element {
 
       <Card>
         {isLoading ? (
-          <Card.Body className="flex items-center justify-center py-12">
-            <Spinner size="lg" />
+          <Card.Body>
+            <TableSkeleton columns={3} className="border-none" />
           </Card.Body>
         ) : isError ? (
           <Card.Body>
@@ -71,9 +73,11 @@ export default function EmpresasListPage(): JSX.Element {
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>
-            <Typography variant="body" color="muted">
-              Nenhuma empresa encontrada.
-            </Typography>
+            <EmptyState
+              icon={Building2}
+              title="Nenhuma empresa encontrada."
+              description="Ajuste a busca acima ou cadastre uma nova empresa."
+            />
           </Card.Body>
         ) : (
           <div className="divide-y divide-border">

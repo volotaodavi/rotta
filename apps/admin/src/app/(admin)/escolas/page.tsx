@@ -1,15 +1,16 @@
 "use client";
 
-import { RefreshCw } from "@rotta/icons";
+import { GraduationCap, RefreshCw } from "@rotta/icons";
 import {
   Button,
   Card,
+  EmptyState,
   ErrorState,
   Input,
   Pagination,
   Select,
-  Spinner,
   Table,
+  TableSkeleton,
   Typography,
 } from "@rotta/ui/web";
 import { useState } from "react";
@@ -25,6 +26,7 @@ import {
   useSyncInep,
 } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
+
 
 /** Legenda curta de quando a última sincronização rodou — "há poucos segundos" é mais legível que um timestamp cru enquanto o worker ainda está rodando. */
 function formatarQuandoRodou(iso: string): string {
@@ -300,9 +302,7 @@ export default function EscolasAdminPage(): JSX.Element {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Spinner size="lg" />
-            </div>
+            <TableSkeleton columns={5} />
           ) : isError ? (
             <ErrorState
               message="Não foi possível carregar as escolas."
@@ -310,9 +310,11 @@ export default function EscolasAdminPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : data && data.items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhuma escola encontrada.
-            </Typography>
+            <EmptyState
+              icon={GraduationCap}
+              title="Nenhuma escola encontrada."
+              description="Ajuste os filtros acima, ou rode a sincronização INEP se o catálogo ainda estiver vazio."
+            />
           ) : (
             data && (
               <>

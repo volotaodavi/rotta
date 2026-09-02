@@ -1,6 +1,15 @@
 "use client";
 
-import { Card, ErrorState, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import { FileText } from "@rotta/icons";
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  Select,
+  Table,
+  TableSkeleton,
+  Typography,
+} from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { Contract, ContractStatus } from "@rotta/api-client";
@@ -47,9 +56,7 @@ export default function ContratosAdminPage(): JSX.Element {
           </div>
 
           {isLoading ? (
-            <div className="flex justify-center py-12">
-              <Spinner size="lg" />
-            </div>
+            <TableSkeleton columns={4} />
           ) : isError ? (
             <ErrorState
               message="Não foi possível carregar os contratos."
@@ -57,9 +64,7 @@ export default function ContratosAdminPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : !items || items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhum contrato encontrado.
-            </Typography>
+            <EmptyState icon={FileText} title="Nenhum contrato encontrado." />
           ) : (
             <Table<Contract>
               columns={[

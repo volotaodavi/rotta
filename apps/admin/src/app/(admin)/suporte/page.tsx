@@ -1,6 +1,7 @@
 "use client";
 
-import { Card, ErrorState, Select, Spinner, Typography } from "@rotta/ui/web";
+import { Headset } from "@rotta/icons";
+import { Card, EmptyState, ErrorState, Select, TableSkeleton, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -65,8 +66,8 @@ export default function SuportePage(): JSX.Element {
 
       <Card>
         {isLoading ? (
-          <Card.Body className="flex items-center justify-center py-12">
-            <Spinner size="lg" />
+          <Card.Body>
+            <TableSkeleton columns={3} className="border-none" />
           </Card.Body>
         ) : isError ? (
           <Card.Body>
@@ -78,9 +79,10 @@ export default function SuportePage(): JSX.Element {
           </Card.Body>
         ) : data && data.items.length === 0 ? (
           <Card.Body>
-            <Typography variant="body" color="muted">
-              Nenhum chamado registrado ainda.
-            </Typography>
+            <EmptyState
+              icon={Headset}
+              title={arquivado ? "Nenhum chamado arquivado." : "Nenhum chamado registrado ainda."}
+            />
           </Card.Body>
         ) : (
           <div className="divide-y divide-border">
