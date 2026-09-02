@@ -17,8 +17,7 @@ import {
   MeuVeiculoScreen,
   OcorrenciasScreen,
 } from "@/features/vehicles/screens";
-import { CarteiraScreen } from "@/features/wallet/screens";
-
+import { WalletComingSoonScreen } from "@/features/wallet/screens";
 
 const Stack = createNativeStackNavigator<VeiculoStackParamList>();
 
@@ -33,6 +32,11 @@ const Stack = createNativeStackNavigator<VeiculoStackParamList>();
  * própria, já que o Bottom Navigation do Motorista está no limite de
  * 3-4 itens (Dossiê 10 §11.1); acessadas a partir dos botões "Escolas
  * atendidas"/"Rotta Pay" em `MeuVeiculoScreen`.
+ *
+ * Rotta Pay desativado temporariamente (pedido do usuário 02/09/2026:
+ * "não estará disponível no momento") — rota "Carteira" aponta pro
+ * placeholder `WalletComingSoonScreen`, `CarteiraScreen` real
+ * continua existindo, só desconectada daqui.
  */
 export function VeiculoNavigator(): JSX.Element {
   return (
@@ -72,7 +76,11 @@ export function VeiculoNavigator(): JSX.Element {
         component={EscolaHorariosScreen}
         options={{ title: "Horários" }}
       />
-      <Stack.Screen name="Carteira" component={CarteiraScreen} options={{ title: "Rotta Pay" }} />
+      <Stack.Screen
+        name="Carteira"
+        component={WalletComingSoonScreen}
+        options={{ title: "Rotta Pay" }}
+      />
     </Stack.Navigator>
   );
 }
