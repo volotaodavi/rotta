@@ -23,6 +23,7 @@ import {
   useReactivateCompany,
   useSuspendCompany,
 } from "@/features/companies/hooks/use-companies";
+import { CompanyRoutesTab } from "@/features/routes/components/company-routes-tab";
 import { CompanyStudentsTab } from "@/features/students/components/company-students-tab";
 import { CompanyVehiclesTab } from "@/features/vehicles/components/company-vehicles-tab";
 
@@ -54,7 +55,7 @@ export default function EmpresaDetalhesPage({
   const [supportError, setSupportError] = useState("");
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [suspendMotivo, setSuspendMotivo] = useState(motivo);
-  const [activeTab, setActiveTab] = useState<"dados" | "alunos" | "veiculos">("dados");
+  const [activeTab, setActiveTab] = useState<"dados" | "alunos" | "rotas" | "veiculos">("dados");
 
   function handleConfirmarAcessoSuporte(): void {
     if (supportMotivo.trim().length < 10) {
@@ -225,10 +226,11 @@ export default function EmpresaDetalhesPage({
         tabs={[
           { id: "dados", label: "Dados da empresa" },
           { id: "alunos", label: "Alunos" },
+          { id: "rotas", label: "Rotas" },
           { id: "veiculos", label: "Veículos" },
         ]}
         activeId={activeTab}
-        onChange={(id) => setActiveTab(id as "dados" | "alunos" | "veiculos")}
+        onChange={(id) => setActiveTab(id as "dados" | "alunos" | "rotas" | "veiculos")}
       />
 
       {activeTab === "dados" ? (
@@ -261,6 +263,8 @@ export default function EmpresaDetalhesPage({
         </Card>
       ) : activeTab === "alunos" ? (
         <CompanyStudentsTab companyId={id} />
+      ) : activeTab === "rotas" ? (
+        <CompanyRoutesTab companyId={id} />
       ) : (
         <CompanyVehiclesTab companyId={id} />
       )}
