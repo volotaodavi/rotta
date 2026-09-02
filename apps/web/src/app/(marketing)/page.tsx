@@ -30,6 +30,7 @@ import {
 } from "@/components/landing-product-mockups";
 import { pillGhostLg, pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
 import { Reveal } from "@/components/reveal-on-scroll";
+import { SectionErrorBoundary } from "@/components/section-error-boundary";
 
 
 
@@ -234,7 +235,18 @@ export default function LandingPage(): JSX.Element {
 
           <div className="relative flex justify-center pt-4 lg:justify-end lg:pt-0">
             <div className="relative w-full max-w-md">
-              <HeroMapDemoLazy />
+              {/* Isolamento de erro (pedido do usuário: "o botão Conheça a
+                  Rotta não funciona" — investigado, não reproduzido
+                  localmente em dev/build de produção/mobile/desktop, mas o
+                  mapa (WebGL/MapLibre, `ssr: false`) não tinha nenhum
+                  isolamento contra falha de render — se travar num
+                  dispositivo/navegador específico sem `SectionErrorBoundary`,
+                  o React pode derrubar a hidratação de toda a hero, incluindo
+                  os botões ao lado, sem isolamento nenhum. Mesmo padrão já
+                  usado em `/rotas/[id]` pra seções independentes.) */}
+              <SectionErrorBoundary label="hero-map-demo">
+                <HeroMapDemoLazy />
+              </SectionErrorBoundary>
             </div>
           </div>
         </div>
