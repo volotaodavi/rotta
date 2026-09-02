@@ -22,7 +22,6 @@ import emailConfig from "@/config/email.config";
 import { validate } from "@/config/env.validation";
 import fcmConfig from "@/config/fcm.config";
 import geoConfig from "@/config/geo.config";
-import groqConfig from "@/config/groq.config";
 import lytexConfig from "@/config/lytex.config";
 import observabilityConfig from "@/config/observability.config";
 import pushConfig from "@/config/push.config";
@@ -30,6 +29,7 @@ import qstashConfig from "@/config/qstash.config";
 import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
 import storageConfig from "@/config/storage.config";
+import supportAiConfig from "@/config/support-ai.config";
 import turnstileConfig from "@/config/turnstile.config";
 import vehiclePlateLookupConfig from "@/config/vehicle-plate-lookup.config";
 import whatsappConfig from "@/config/whatsapp.config";
@@ -95,7 +95,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         geoConfig,
         fcmConfig,
         pushConfig,
-        groqConfig,
+        supportAiConfig,
         whatsappConfig,
         smsConfig,
         emailConfig,

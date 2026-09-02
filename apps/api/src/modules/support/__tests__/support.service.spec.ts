@@ -11,7 +11,7 @@ import type {
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import type { EmailService } from "@/infra/email/email.service";
-import type { GroqService } from "@/infra/groq/groq.service";
+import type { SupportAiService } from "@/infra/support-ai/support-ai.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { ContractsService } from "@/modules/marketplace/contracts.service";
 import type { ContractResponseDto } from "@/modules/marketplace/dto/contract-response.dto";
@@ -119,7 +119,7 @@ describe("SupportService", () => {
   let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let emailService: jest.Mocked<EmailService>;
   let adminInboxEmailService: jest.Mocked<AdminInboxEmailService>;
-  let groqService: jest.Mocked<GroqService>;
+  let supportAiService: jest.Mocked<SupportAiService>;
   let contractsService: jest.Mocked<ContractsService>;
   const originalEnv = { ...process.env };
 
@@ -146,12 +146,10 @@ describe("SupportService", () => {
       suporteNovaMensagem: jest
         .fn()
         .mockReturnValue({ titulo: "Nova mensagem", corpo: "corpo da mensagem" }),
-      suporteTicketEncerrado: jest
-        .fn()
-        .mockReturnValue({
-          titulo: "Chamado de suporte encerrado",
-          corpo: "corpo do encerramento",
-        }),
+      suporteTicketEncerrado: jest.fn().mockReturnValue({
+        titulo: "Chamado de suporte encerrado",
+        corpo: "corpo do encerramento",
+      }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
     emailService = {
       sendEmail: jest.fn().mockResolvedValue(undefined),
@@ -159,9 +157,11 @@ describe("SupportService", () => {
     adminInboxEmailService = {
       send: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AdminInboxEmailService>;
-    groqService = {
-      responderDuvida: jest.fn().mockRejectedValue(new Error("GROQ_API_KEY não configurada.")),
-    } as unknown as jest.Mocked<GroqService>;
+    supportAiService = {
+      responderDuvida: jest
+        .fn()
+        .mockRejectedValue(new Error("SUPPORT_AI_API_KEY não configurada.")),
+    } as unknown as jest.Mocked<SupportAiService>;
     contractsService = {
       list: jest
         .fn()
@@ -180,7 +180,7 @@ describe("SupportService", () => {
       messagePersonalizationService,
       emailService,
       adminInboxEmailService,
-      groqService,
+      supportAiService,
       contractsService,
     );
   });
@@ -304,8 +304,8 @@ describe("SupportService", () => {
     });
   });
 
-  describe("createTicket — Rotta AI (Frente 5, Groq)", () => {
-    it("categoria DUVIDA + Groq responde → grava SupportMessage com autorIsIA", async () => {
+  describe("createTicket — Rotta AI (Frente 5, Gemini)", () => {
+    it("categoria DUVIDA + IA responde → grava SupportMessage com autorIsIA", async () => {
       ticketRepository.create.mockResolvedValue(
         buildTicket({
           categoria: "DUVIDA",
@@ -313,7 +313,7 @@ describe("SupportService", () => {
           descricao: "Não estou achando o botão de cadastrar aluno.",
         }),
       );
-      groqService.responderDuvida.mockResolvedValue(
+      supportAiService.responderDuvida.mockResolvedValue(
         "Você pode cadastrar o aluno em Alunos > Novo.",
       );
 
@@ -327,7 +327,7 @@ describe("SupportService", () => {
         {},
       );
 
-      expect(groqService.responderDuvida).toHaveBeenCalledWith(
+      expect(supportAiService.responderDuvida).toHaveBeenCalledWith(
         "Como cadastro um aluno?",
         "Não estou achando o botão de cadastrar aluno.",
       );
@@ -344,9 +344,11 @@ describe("SupportService", () => {
       );
     });
 
-    it("categoria DUVIDA sem GROQ_API_KEY (ou qualquer falha) → nunca deixa de criar o chamado, nem grava mensagem", async () => {
+    it("categoria DUVIDA sem SUPPORT_AI_API_KEY (ou qualquer falha) → nunca deixa de criar o chamado, nem grava mensagem", async () => {
       ticketRepository.create.mockResolvedValue(buildTicket({ categoria: "DUVIDA" }));
-      groqService.responderDuvida.mockRejectedValue(new Error("GROQ_API_KEY não configurada."));
+      supportAiService.responderDuvida.mockRejectedValue(
+        new Error("SUPPORT_AI_API_KEY não configurada."),
+      );
 
       const result = await service.createTicket(
         {
@@ -370,7 +372,9 @@ describe("SupportService", () => {
           descricao: "A tela trava ao salvar o cadastro.",
         }),
       );
-      groqService.responderDuvida.mockResolvedValue("Tente atualizar a página e salvar novamente.");
+      supportAiService.responderDuvida.mockResolvedValue(
+        "Tente atualizar a página e salvar novamente.",
+      );
 
       await service.createTicket(
         {
@@ -382,7 +386,7 @@ describe("SupportService", () => {
         {},
       );
 
-      expect(groqService.responderDuvida).toHaveBeenCalledWith(
+      expect(supportAiService.responderDuvida).toHaveBeenCalledWith(
         "Erro ao salvar",
         "A tela trava ao salvar o cadastro.",
       );
@@ -407,7 +411,7 @@ describe("SupportService", () => {
         {},
       );
 
-      expect(groqService.responderDuvida).not.toHaveBeenCalled();
+      expect(supportAiService.responderDuvida).not.toHaveBeenCalled();
     });
   });
 

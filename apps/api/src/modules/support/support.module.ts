@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { EmailModule } from "@/infra/email/email.module";
-import { GroqModule } from "@/infra/groq/groq.module";
+import { SupportAiModule } from "@/infra/support-ai/support-ai.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { MarketplaceModule } from "@/modules/marketplace/marketplace.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
@@ -22,8 +22,9 @@ import { SupportService } from "./support.service";
  * (listar Admin Rotta + resolver nome do autor),
  * `MessagePersonalizationModule` (texto das notificações) e
  * `EmailModule` (cópia direta pra caixa fixa da Rotta) sustentam a
- * notificação de novo chamado/mensagem. `GroqModule` (Frente 5) tenta
- * responder dúvidas simples E bugs relatados automaticamente (Epic B).
+ * notificação de novo chamado/mensagem. `SupportAiModule` (Frente 5)
+ * tenta responder dúvidas simples E bugs relatados automaticamente
+ * (Epic B).
  * `MarketplaceModule` (só `ContractsService`, Epic B) resolve a
  * transportadora do Responsável ao abrir um chamado — nenhum ciclo,
  * `MarketplaceModule` não conhece `SupportModule` de volta.
@@ -34,7 +35,7 @@ import { SupportService } from "./support.service";
     UsersModule,
     MessagePersonalizationModule,
     EmailModule,
-    GroqModule,
+    SupportAiModule,
     MarketplaceModule,
   ],
   controllers: [SupportController],

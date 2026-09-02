@@ -8,6 +8,17 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
+import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
+import { EmailService } from "@/infra/email/email.service";
+import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
+import { SupportAiService } from "@/infra/support-ai/support-ai.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { ContractsService } from "@/modules/marketplace/contracts.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { UsersService } from "@/modules/users/users.service";
+import { Role } from "@/shared/enums";
+
 import { toSupportMessageResponseDto } from "./mappers/support-message.mapper";
 import {
   toSupportTicketDetailResponseDto,
@@ -31,17 +42,6 @@ import type {
 } from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
-
-import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
-import { EmailService } from "@/infra/email/email.service";
-import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
-import { GroqService } from "@/infra/groq/groq.service";
-import { AuditLogService } from "@/modules/audit/audit-log.service";
-import { ContractsService } from "@/modules/marketplace/contracts.service";
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
-import { UsersService } from "@/modules/users/users.service";
-import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
   ip?: string;
@@ -85,7 +85,7 @@ export class SupportService {
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly emailService: EmailService,
     private readonly adminInboxEmailService: AdminInboxEmailService,
-    private readonly groqService: GroqService,
+    private readonly supportAiService: SupportAiService,
     private readonly contractsService: ContractsService,
   ) {}
 
@@ -272,12 +272,13 @@ export class SupportService {
   }
 
   /**
-   * IA de suporte (Frente 5, Groq/Llama) — atua em dúvidas simples E
-   * bugs relatados (`categoria === "DUVIDA" || "PROBLEMA_TECNICO"`;
+   * IA de suporte (Frente 5, Gemini — trocado de Groq a pedido do
+   * usuário 02/09/2026: "Groq não está indo") — atua em dúvidas simples
+   * E bugs relatados (`categoria === "DUVIDA" || "PROBLEMA_TECNICO"`;
    * nunca `COBRANCA`/`OUTRO`, que já vão direto pro humano — pedido do
    * usuário: "dúvidas frequentes... ou bugs relacionados à
    * plataforma... a IA deverá responder", Epic B). Best-effort: sem
-   * `GROQ_API_KEY` configurada ou qualquer falha de rede, não faz
+   * `SUPPORT_AI_API_KEY` configurada ou qualquer falha de rede, não faz
    * nada — o chamado já foi criado normalmente antes desta chamada.
    * A resposta vira uma `SupportMessage` comum (`autorIsIA: true`,
    * sem `autorUserId`) — preserva o histórico como mensagem normal,
@@ -305,7 +306,10 @@ export class SupportService {
       return;
     }
     try {
-      const resposta = await this.groqService.responderDuvida(ticket.assunto, ticket.descricao);
+      const resposta = await this.supportAiService.responderDuvida(
+        ticket.assunto,
+        ticket.descricao,
+      );
       const data = {
         ticketId: ticket.id,
         companyId: ticket.companyId,

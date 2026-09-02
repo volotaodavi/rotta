@@ -1,7 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-import type { GroqConfig } from "@/config/groq.config";
+import type { SupportAiConfig } from "@/config/support-ai.config";
 
 const TIMEOUT_MS = 15_000;
 
@@ -25,39 +25,42 @@ Regras rígidas:
 - Se você não souber a resposta com certeza, diga isso claramente em vez de inventar.
 - Responda em português do Brasil, de forma direta e curta (poucos parágrafos).`;
 
-interface GroqChatChoice {
+interface SupportAiChatChoice {
   message?: { content?: string };
 }
 
-interface GroqChatResponse {
-  choices?: GroqChatChoice[];
+interface SupportAiChatResponse {
+  choices?: SupportAiChatChoice[];
 }
 
 /**
- * Cliente fino da Groq (console.groq.com — camada gratuita real, Llama
- * 3.3 70B), decisão do usuário pra Frente 5 (IA de suporte). Formato de
- * chamada compatível com a Chat Completions da OpenAI.
+ * Cliente fino de IA de suporte — formato Chat Completions da OpenAI,
+ * compatível com Gemini (padrão), Groq, OpenRouter e qualquer outro
+ * provedor que fale o mesmo protocolo (ver `support-ai.config.ts`).
+ * Trocado de Groq pra Gemini a pedido do usuário 02/09/2026 ("Groq não
+ * está indo") — nada na assinatura pública mudou, `SupportService`
+ * segue chamando `responderDuvida` normalmente.
  *
- * "Stub honesto": sem `GROQ_API_KEY`, `responderDuvida` recusa com um
- * erro claro — `SupportService.createTicket` trata essa recusa como
+ * "Stub honesto": sem `SUPPORT_AI_API_KEY`, `responderDuvida` recusa com
+ * um erro claro — `SupportService.createTicket` trata essa recusa como
  * best-effort (nunca bloqueia a criação do chamado, só não grava a
  * resposta automática).
  */
 @Injectable()
-export class GroqService {
-  private readonly logger = new Logger(GroqService.name);
-  private readonly config: GroqConfig;
+export class SupportAiService {
+  private readonly logger = new Logger(SupportAiService.name);
+  private readonly config: SupportAiConfig;
 
   constructor(configService: ConfigService) {
-    this.config = configService.get<GroqConfig>("groq")!;
+    this.config = configService.get<SupportAiConfig>("supportAi")!;
   }
 
   /**
-   * @throws ServiceUnavailableException Sem `GROQ_API_KEY` configurada.
+   * @throws ServiceUnavailableException Sem `SUPPORT_AI_API_KEY` configurada.
    */
   async responderDuvida(assunto: string, descricao: string): Promise<string> {
     if (!this.config.apiKey) {
-      throw new ServiceUnavailableException("GROQ_API_KEY não configurada.");
+      throw new ServiceUnavailableException("SUPPORT_AI_API_KEY não configurada.");
     }
 
     const controller = new AbortController();
@@ -83,22 +86,22 @@ export class GroqService {
       });
     } catch (error) {
       this.logger.warn(
-        `Falha ao chamar a Groq (rede/timeout): ${error instanceof Error ? error.message : String(error)}`,
+        `Falha ao chamar a IA de suporte (rede/timeout): ${error instanceof Error ? error.message : String(error)}`,
       );
-      throw new ServiceUnavailableException("Groq indisponível no momento.");
+      throw new ServiceUnavailableException("IA de suporte indisponível no momento.");
     } finally {
       clearTimeout(timeout);
     }
 
     if (!response.ok) {
-      this.logger.warn(`Groq respondeu HTTP ${response.status}.`);
-      throw new ServiceUnavailableException("Groq indisponível no momento.");
+      this.logger.warn(`IA de suporte respondeu HTTP ${response.status}.`);
+      throw new ServiceUnavailableException("IA de suporte indisponível no momento.");
     }
 
-    const data = (await response.json()) as GroqChatResponse;
+    const data = (await response.json()) as SupportAiChatResponse;
     const conteudo = data.choices?.[0]?.message?.content?.trim();
     if (!conteudo) {
-      throw new ServiceUnavailableException("Groq respondeu sem conteúdo.");
+      throw new ServiceUnavailableException("IA de suporte respondeu sem conteúdo.");
     }
     return conteudo;
   }

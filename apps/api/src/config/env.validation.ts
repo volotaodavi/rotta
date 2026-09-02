@@ -167,14 +167,17 @@ export const envSchema = z.object({
   // link clicável (só o token, pra digitar manualmente).
   WEB_APP_URL: z.string().url().or(z.literal("")).optional(),
 
-  // Groq (console.groq.com) — IA que responde dúvidas simples de
-  // suporte (Frente 5, decisão do usuário: "Groq (Llama, grátis)").
-  // Opcional: sem GROQ_API_KEY, `GroqService` recusa a chamada com um
+  // IA de suporte (Gemini, padrão — aistudio.google.com) — responde
+  // dúvidas simples de suporte (Frente 5). Trocada de Groq a pedido do
+  // usuário 02/09/2026 ("Groq não está indo"); formato Chat Completions
+  // da OpenAI, então qualquer provedor compatível (Groq, OpenRouter
+  // etc.) funciona só trocando estas 3 vars. Opcional: sem
+  // SUPPORT_AI_API_KEY, `SupportAiService` recusa a chamada com um
   // erro claro — o chamado continua sendo criado normalmente, só sem
   // resposta automática (mesmo padrão de DIDIT_API_KEY acima).
-  GROQ_API_KEY: z.string().optional(),
-  GROQ_BASE_URL: z.string().url().optional(),
-  GROQ_MODEL: z.string().optional(),
+  SUPPORT_AI_API_KEY: z.string().optional(),
+  SUPPORT_AI_BASE_URL: z.string().url().optional(),
+  SUPPORT_AI_MODEL: z.string().optional(),
 
   // Didit (didit.me) — verificação de identidade (OCR de CNH, Face
   // Match, Liveness) usada por `RottaAiService.validateDocument`
