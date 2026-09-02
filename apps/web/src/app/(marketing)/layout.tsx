@@ -12,7 +12,6 @@ import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RottaLogoLockup } from "@/components/rotta-logo-lockup";
 import { RouteWordmark } from "@/components/route-wordmark";
 
-
 /**
  * Navegação principal — âncoras da própria Landing Page (pedido do
  * usuário 02/09/2026: "os links... devem levar exatamente às seções
@@ -215,8 +214,8 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
           <div className="flex flex-col gap-3">
             <RouteWordmark className="h-6 w-auto self-start" />
             <p className="max-w-sm text-sm text-text-muted">
-              Tecnologia para o transporte escolar — conectando responsáveis, motoristas, monitores
-              e transportadoras numa única plataforma.
+              Tecnologia para o transporte escolar: conectamos responsáveis, motoristas, monitores e
+              transportadoras numa única plataforma.
             </p>
             <a
               href={ROTTA_INSTAGRAM_URL}

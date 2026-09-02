@@ -31,8 +31,6 @@ import {
 import { pillGhostLg, pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
 import { Reveal } from "@/components/reveal-on-scroll";
 
-
-
 /** Canonical/keywords reais do produto — título/descrição/OG herdam do root layout, já otimizados. */
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -176,6 +174,19 @@ const ROTINA_REAL: { titulo: string; icon: ComponentType<{ className?: string }>
  * — ver `(marketing)/layout.tsx`, que força o tema claro nesta seção
  * do site). "Azul profundo institucional" = `.ink-scope` (cabeçalho
  * antes de rolar/rodapé); "azul vibrante" = `--color-primary`.
+ *
+ * Revisão 02/09/2026 (pedido do usuário: "tire os travessões... retire
+ * mensagens que repitam sempre a mesma coisa"): travessão (—) removido
+ * de todo texto visível da página (só sobrevive dentro de comentários
+ * de código, que ninguém vê renderizado). A seção "Conecta. Protege.
+ * Tranquiliza." foi removida inteira: repetia quase palavra por palavra
+ * a mesma mensagem da hero e da seção "Sobre" ("unifica responsável,
+ * motorista, monitor e transportador numa plataforma só, trajeto
+ * acompanhado do início ao fim") e reciclava o mesmo motivo visual de
+ * linha/rota em SVG da seção logo acima — duas vezes a mesma ideia, em
+ * texto e em desenho. O título da seção de mockups também repetia a
+ * fórmula "Feita para..." da seção seguinte; virou "A mesma viagem, sob
+ * três pontos de vista.".
  */
 export default function LandingPage(): JSX.Element {
   return (
@@ -192,7 +203,7 @@ export default function LandingPage(): JSX.Element {
             </h1>
             <Typography variant="body" color="muted" className="max-w-lg">
               A Rotta conecta responsáveis, motoristas, monitores e transportadores em uma única
-              plataforma — do embarque à entrega, com o transporte visível no mapa o tempo todo.
+              plataforma, com o transporte visível no mapa do embarque à entrega.
             </Typography>
             <div className="flex flex-wrap items-center gap-3">
               <Link href="#sobre" className={pillPrimaryLg}>
@@ -241,9 +252,9 @@ export default function LandingPage(): JSX.Element {
             </Typography>
             <Typography variant="body" color="muted">
               A operação do transporte escolar envolve pessoas, horários, rotas, alunos e muita
-              comunicação — motorista, monitor, transportadora e família precisando falar a mesma
-              língua, todos os dias. A Rotta organiza tudo isso numa experiência simples: uma rota
-              no mapa, visível para quem precisa acompanhar, do início ao fim do trajeto.
+              comunicação: motorista, monitor, transportadora e família precisando falar a mesma
+              língua, todos os dias. A Rotta organiza tudo isso numa experiência simples, com a rota
+              sempre visível para quem precisa acompanhar.
             </Typography>
           </div>
 
@@ -328,51 +339,6 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      {/* ===== "Conecta. Protege. Tranquiliza." ===== */}
-      <section className="ink-scope w-full px-6 py-24">
-        <Reveal className="mx-auto flex w-full max-w-3xl flex-col items-center gap-10 text-center">
-          <h2 className="text-[32px] font-bold leading-tight tracking-[-0.02em] sm:text-[44px]">
-            Conecta. Protege. Tranquiliza.
-          </h2>
-          <svg viewBox="0 0 480 80" className="h-auto w-full max-w-lg" aria-hidden="true">
-            <path
-              d="M 20 40 L 130 40 L 175 15 L 240 55 L 305 15 L 350 40 L 460 40"
-              className="stroke-primary"
-              strokeWidth={2}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {[20, 130, 175, 240, 305, 350, 460].map((x, index) => {
-              const yByX: Record<number, number> = {
-                20: 40,
-                130: 40,
-                175: 15,
-                240: 55,
-                305: 15,
-                350: 40,
-                460: 40,
-              };
-              return (
-                <circle
-                  key={x}
-                  cx={x}
-                  cy={yByX[x]}
-                  r={index === 3 ? 6 : 4}
-                  className={index === 3 ? "fill-primary" : "fill-text"}
-                />
-              );
-            })}
-          </svg>
-          <Typography variant="body" className="max-w-xl text-text-muted">
-            Uma linha só, do responsável à escola — passando pelo motorista e pelo monitor — com o
-            transportador enxergando a operação inteira. Tecnologia aplicada ao transporte escolar
-            para que cada trajeto seja acompanhado, cada parada seja confirmada e cada família fique
-            tranquila.
-          </Typography>
-        </Reveal>
-      </section>
-
       {/* ===== "Tudo começa com uma rota." ===== */}
       <section id="como-funciona" className="w-full scroll-mt-20 px-6 py-24">
         <div className="mx-auto w-full max-w-6xl">
@@ -408,13 +374,13 @@ export default function LandingPage(): JSX.Element {
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center gap-4 text-center">
           <Reveal>
             <Typography variant="headline" as="h2">
-              Feita para quem transporta e para quem acompanha.
+              A mesma viagem, sob três pontos de vista.
             </Typography>
           </Reveal>
           <Reveal delayMs={80}>
             <Typography variant="body" color="muted" className="max-w-xl">
-              A mesma viagem, vista de três lugares diferentes — cada papel com exatamente o que
-              precisa ver.
+              Motorista, responsável e transportador acompanham a mesma viagem, cada um vendo
+              exatamente o que precisa.
             </Typography>
           </Reveal>
         </div>
@@ -503,10 +469,10 @@ export default function LandingPage(): JSX.Element {
             Estamos traçando uma nova rota para o transporte escolar.
           </Typography>
           <Typography variant="body" color="muted" className="max-w-2xl">
-            A Rotta nasceu para tornar o transporte escolar mais organizado, mais conectado e mais
-            tranquilo — tanto para quem transporta quanto para quem confia os filhos a esse serviço
-            todos os dias. Unimos responsáveis, motoristas, monitores e transportadoras numa única
-            plataforma, para que cada trajeto seja acompanhado do início ao fim.
+            A Rotta nasceu para tornar o transporte escolar mais organizado e mais conectado, tanto
+            para quem transporta quanto para quem confia os filhos a esse serviço todos os dias. Por
+            trás de cada viagem, responsáveis, motoristas, monitores e transportadoras trabalham na
+            mesma plataforma, com a mesma informação.
           </Typography>
         </Reveal>
       </section>
