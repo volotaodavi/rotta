@@ -10,8 +10,16 @@ import {
   MaxLength,
 } from "class-validator";
 
-/** Cadastro de Rota (ROT-01) — sempre pertence ao tenant do ator autenticado. */
+/** Cadastro de Rota (ROT-01) — sempre pertence ao tenant do ator autenticado (Empresa/Gestor), ou a `companyId` explícito quando o ator é Admin Rotta (pedido do usuário 02/09/2026 — aba "Rotas" em empresas/[id]). */
 export class CreateRouteDto {
+  @ApiPropertyOptional({
+    description:
+      "Obrigatório só para Admin Rotta (sem tenant próprio). Ignorado para Empresa/Gestor — sempre a própria empresa do ator.",
+  })
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
+
   @ApiProperty({ example: "Rota Manhã — Zona Norte" })
   @IsString()
   @MaxLength(120)

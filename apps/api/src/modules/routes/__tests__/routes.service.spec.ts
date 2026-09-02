@@ -200,6 +200,49 @@ describe("RoutesService", () => {
       expect(result.id).toBe("route-1");
     });
 
+    it("Admin Rotta cria a rota com o companyId informado no corpo (pedido do usuário 02/09/2026)", async () => {
+      routeRepository.create.mockResolvedValue(buildRoute({ companyId: "company-x" }));
+      const adminActor: AuthenticatedUser = {
+        sub: "admin-1",
+        tenantId: null,
+        role: Role.ADMIN_ROTTA,
+        vinculoId: "vinculo-admin",
+      };
+
+      await service.create(
+        {
+          nome: "Rota Manhã",
+          turno: SchoolShift.MANHA,
+          diasSemana: ["SEGUNDA"] as never,
+          companyId: "company-x",
+        },
+        adminActor,
+        {},
+      );
+
+      expect(routeRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-x" }),
+      );
+    });
+
+    it("Admin Rotta sem companyId no corpo: 400 (não tem tenant próprio)", async () => {
+      const adminActor: AuthenticatedUser = {
+        sub: "admin-1",
+        tenantId: null,
+        role: Role.ADMIN_ROTTA,
+        vinculoId: "vinculo-admin",
+      };
+
+      await expect(
+        service.create(
+          { nome: "Rota Manhã", turno: SchoolShift.MANHA, diasSemana: ["SEGUNDA"] as never },
+          adminActor,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(routeRepository.create).not.toHaveBeenCalled();
+    });
+
     it("rejeita motoristaPadraoId sem vínculo ativo de Motorista", async () => {
       usersService.findActiveMembership.mockResolvedValue(null);
 

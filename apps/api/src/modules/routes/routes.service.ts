@@ -185,9 +185,22 @@ export class RoutesService {
   ): Promise<RouteResponseDto> {
     await this.assertValidDefaultResources(dto, actor);
 
-    // `actor.tenantId` nunca é nulo aqui — `@Roles(EMPRESA, GESTOR)` no controller já exclui `ADMIN_ROTTA`.
+    // Admin Rotta (sem tenant próprio) precisa dizer explicitamente qual
+    // empresa está cadastrando (pedido do usuário 02/09/2026, aba
+    // "Rotas" em empresas/[id], mesmo padrão de `StudentsService.
+    // createForCompany`) — Empresa/Gestor sempre usa o próprio tenant,
+    // nunca um valor vindo do corpo da requisição.
+    const companyId = actor.role === Role.ADMIN_ROTTA ? dto.companyId : actor.tenantId;
+    if (!companyId) {
+      throw new BadRequestException(
+        actor.role === Role.ADMIN_ROTTA
+          ? "Informe companyId — Admin Rotta não tem uma empresa própria."
+          : "Empresa não identificada.",
+      );
+    }
+
     const route = await this.routeRepository.create({
-      companyId: actor.tenantId!,
+      companyId,
       nome: dto.nome,
       turno: dto.turno,
       diasSemana: dto.diasSemana,

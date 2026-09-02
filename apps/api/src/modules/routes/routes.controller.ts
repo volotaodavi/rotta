@@ -29,7 +29,7 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-const CREATE_ROLES = [Role.EMPRESA, Role.GESTOR] as const;
+const CREATE_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA] as const;
 const MANAGE_ROLES = [Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR] as const;
 const READ_ROLES = [...MANAGE_ROLES, Role.MOTORISTA, Role.MONITOR] as const;
 
