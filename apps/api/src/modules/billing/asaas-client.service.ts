@@ -5,6 +5,7 @@ import type {
   AsaasCustomer,
   AsaasErrorEnvelope,
   AsaasPayment,
+  AsaasPixQrCode,
   AsaasSubscription,
   CreateAsaasCustomerInput,
   CreateAsaasSubscriptionInput,
@@ -13,13 +14,16 @@ import type {
 import asaasConfig from "@/config/asaas.config";
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
+
 /** Nome usado como chave nos snapshots de `IntegrationHealthService` — mesma string em toda parte que registra ou lê a saúde desta integração. */
 export const ASAAS_INTEGRATION_NAME = "asaas";
 
 /**
  * Cliente HTTP de baixo nível para a API v3 da Asaas (Dossiê 26) — quem
  * processa cartão de crédito, débito e boleto da mensalidade da Rotta
- * (Pix continua na AbacatePay, `abacatepay-client.service.ts`).
+ * (Pix é normalmente da AbacatePay, `abacatepay-client.service.ts`, mas
+ * `getPixQrCode` também serve de fallback quando a AbacatePay não está
+ * configurada/saudável — ver `AsaasBillingType`, campo `"PIX"`).
  *
  * Ao contrário de `AbacatePayClientService` (contrato já confirmado com
  * chamadas reais e autenticadas), este cliente NUNCA foi exercitado com
@@ -157,5 +161,19 @@ export class AsaasClientService {
       `/payments?subscription=${encodeURIComponent(subscriptionId)}`,
       { method: "GET" },
     );
+  }
+
+  /**
+   * QR Code + copia-e-cola de um pagamento criado com `billingType:
+   * "PIX"` (fallback da AbacatePay, ver `AsaasBillingType`). Só existe
+   * pra um pagamento PIX de verdade — chamar isto pra um pagamento
+   * cartão/boleto retorna erro da própria Asaas, nunca chamado assim
+   * neste código (`BillingService` só chama depois de criar a
+   * assinatura com `billingType: "PIX"`).
+   */
+  getPixQrCode(paymentId: string): Promise<AsaasPixQrCode> {
+    return this.request<AsaasPixQrCode>(`/payments/${encodeURIComponent(paymentId)}/pixQrCode`, {
+      method: "GET",
+    });
   }
 }

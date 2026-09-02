@@ -43,8 +43,36 @@ export interface CreateAsaasCustomerInput {
  * um checkout hospedado pra cartão). É essa diferença que viabiliza o
  * checkout próprio da Rotta pedido pelo usuário ("página própria para
  * receber os pagamentos").
+ *
+ * `"PIX"` (pedido do usuário 02/09/2026: "pode deixar o pix pelo Asaas
+ * também" — a AbacatePay ficou com a chave inválida/desatualizada em
+ * produção, "API key version mismatch") — usado só como FALLBACK
+ * automático em `BillingService.createPreSignupPixCheckout` quando a
+ * AbacatePay não está configurada, nunca oferecido como opção separada
+ * na tela (o usuário final continua vendo um único botão "Pix").
+ * Escopo desta entrega: só o pré-cadastro (`/planos/assinar`, sem conta
+ * ainda) — o Pix autenticado (`createPixCheckoutForCompany`, cobrança
+ * avulsa reemitida por `processarVencimentosPix`) continua exclusivo da
+ * AbacatePay por enquanto: é um mecanismo de "assinatura simulada"
+ * estruturalmente diferente da assinatura recorrente nativa da Asaas,
+ * que merece seu próprio fallback dedicado, não um patch apressado.
  */
-export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO";
+export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO" | "PIX";
+
+/**
+ * `GET /payments/{id}/pixQrCode` — só existe pra um `payment`/primeira
+ * cobrança de uma `subscription` criada com `billingType: "PIX"`.
+ * `payload` é o código copia-e-cola; `encodedImage` é o QR em base64
+ * puro (sem prefixo `data:image/png;base64,`, diferente da AbacatePay
+ * — ver `BillingService.toPixCheckoutFromAsaas`, que normaliza os dois
+ * formatos pro mesmo contrato que o front já consome).
+ */
+export interface AsaasPixQrCode {
+  success: boolean;
+  encodedImage: string;
+  payload: string;
+  expirationDate: string;
+}
 
 export interface AsaasCreditCardInput {
   holderName: string;

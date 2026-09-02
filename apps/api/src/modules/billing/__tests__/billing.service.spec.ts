@@ -32,7 +32,10 @@ describe("BillingService", () => {
     list: jest.Mock;
     listComPixProximoVencimento: jest.Mock;
   };
-  let prisma: { runWithTenantContext: jest.Mock };
+  let prisma: {
+    runWithTenantContext: jest.Mock;
+    pendingSubscription: { create: jest.Mock; update: jest.Mock; delete: jest.Mock };
+  };
   let service: BillingService;
 
   beforeEach(() => {
@@ -53,6 +56,7 @@ describe("BillingService", () => {
       cancelSubscription: jest.fn(),
       getPayment: jest.fn(),
       listPaymentsBySubscription: jest.fn(),
+      getPixQrCode: jest.fn(),
     } as unknown as jest.Mocked<AsaasClientService>;
 
     companyRepository = {
@@ -64,6 +68,11 @@ describe("BillingService", () => {
 
     prisma = {
       runWithTenantContext: jest.fn((_ctx: unknown, fn: () => unknown) => fn()),
+      pendingSubscription: {
+        create: jest.fn().mockResolvedValue({ id: "pending-1" }),
+        update: jest.fn().mockResolvedValue({}),
+        delete: jest.fn().mockResolvedValue({}),
+      },
     };
 
     const usersService = {
@@ -605,6 +614,112 @@ describe("BillingService", () => {
       expect(client.createPixQrCode).not.toHaveBeenCalled();
       expect(companyRepository.update).not.toHaveBeenCalled();
       expect(resultado).toEqual({ reenviados: 0, marcadosInadimplentes: 0 });
+    });
+  });
+
+  describe("createPreSignupPixCheckout", () => {
+    const dto = {
+      nome: "João da Silva",
+      email: "joao@example.com",
+      cpfCnpj: "11144477735",
+    };
+
+    it("usa a AbacatePay quando configurada (caminho padrão)", async () => {
+      client.createPixQrCode.mockResolvedValue({
+        id: "pix_1",
+        amount: 3990,
+        status: "PENDING",
+        brCode: "00020126...",
+        brCodeBase64: "base64...",
+        expiresAt: "2026-01-01T00:00:00.000Z",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      });
+
+      const result = await service.createPreSignupPixCheckout(dto);
+
+      expect(client.createPixQrCode).toHaveBeenCalled();
+      expect(asaasClient.createCustomer).not.toHaveBeenCalled();
+      expect(result.checkout.id).toBe("pix_1");
+    });
+
+    it("cai pra Asaas (billingType PIX) quando a AbacatePay não está configurada", async () => {
+      client.isConfigured.mockReturnValue(false);
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.createCustomer.mockResolvedValue({
+        id: "cus_1",
+        name: dto.nome,
+        cpfCnpj: dto.cpfCnpj,
+      });
+      asaasClient.createSubscription.mockResolvedValue({
+        id: "sub_1",
+        customer: "cus_1",
+        status: "ACTIVE",
+        billingType: "PIX",
+        value: 39.9,
+        nextDueDate: "2026-01-01",
+      });
+      asaasClient.listPaymentsBySubscription.mockResolvedValue({
+        data: [
+          {
+            id: "pay_1",
+            customer: "cus_1",
+            status: "PENDING",
+            billingType: "PIX",
+            value: 39.9,
+          },
+        ],
+      });
+      asaasClient.getPixQrCode.mockResolvedValue({
+        success: true,
+        encodedImage: "base64-qr",
+        payload: "00020126-copia-e-cola",
+        expirationDate: "2026-01-02T00:00:00.000Z",
+      });
+
+      const result = await service.createPreSignupPixCheckout(dto);
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ billingType: "PIX" }),
+      );
+      expect(asaasClient.getPixQrCode).toHaveBeenCalledWith("pay_1");
+      expect(result.checkout).toEqual({
+        id: "pay_1",
+        amount: 3990,
+        status: "PENDING",
+        brCode: "00020126-copia-e-cola",
+        brCodeBase64: "base64-qr",
+        expiresAt: "2026-01-02T00:00:00.000Z",
+        createdAt: expect.any(String),
+      });
+      expect(prisma.pendingSubscription.delete).not.toHaveBeenCalled();
+    });
+
+    it("recusa o fallback Asaas sem CPF/CNPJ (obrigatório só nesse caminho)", async () => {
+      client.isConfigured.mockReturnValue(false);
+      asaasClient.isConfigured.mockReturnValue(true);
+
+      await expect(
+        service.createPreSignupPixCheckout({ nome: "João", email: "joao@example.com" }),
+      ).rejects.toThrow(BadRequestException);
+      expect(asaasClient.createCustomer).not.toHaveBeenCalled();
+    });
+
+    it("lança erro claro quando nenhum provedor de Pix está configurado", async () => {
+      client.isConfigured.mockReturnValue(false);
+      asaasClient.isConfigured.mockReturnValue(false);
+
+      await expect(service.createPreSignupPixCheckout(dto)).rejects.toThrow(BadRequestException);
+    });
+
+    it("apaga a PendingSubscription órfã se a Asaas falhar no meio do caminho", async () => {
+      client.isConfigured.mockReturnValue(false);
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.createCustomer.mockRejectedValue(new Error("Asaas fora do ar"));
+
+      await expect(service.createPreSignupPixCheckout(dto)).rejects.toThrow("Asaas fora do ar");
+      expect(prisma.pendingSubscription.delete).toHaveBeenCalledWith({
+        where: { id: "pending-1" },
+      });
     });
   });
 });

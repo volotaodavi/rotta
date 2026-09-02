@@ -14,6 +14,7 @@ import {
   PendingSubscriptionStatus,
 } from "@prisma/client";
 
+
 import { AbacatePayClientService } from "./abacatepay-client.service";
 import { AsaasClientService } from "./asaas-client.service";
 import {
@@ -37,7 +38,7 @@ import type {
   CreatePreSignupPixDto,
 } from "./dto/create-pre-signup-checkout.dto";
 import type { AbacatePayPixQrCode, AbacatePayWebhookEnvelope } from "./types/abacatepay.types";
-import type { AsaasPayment, AsaasWebhookEnvelope } from "./types/asaas.types";
+import type { AsaasPayment, AsaasPixQrCode, AsaasWebhookEnvelope } from "./types/asaas.types";
 import type {
   CompanyRepository,
   UpdateCompanyData,
@@ -380,16 +381,33 @@ export class BillingService {
    * — é esse prefixo que `applyPixPayment` usa pra saber que deve
    * marcar a `PendingSubscription` como `PAGO` em vez de tentar achar
    * uma `Company`.
+   *
+   * Provedor escolhido em tempo de execução (pedido do usuário
+   * 02/09/2026, depois da AbacatePay quebrar em produção com "API key
+   * version mismatch": "pode deixar o pix pelo Asaas também") — prefere
+   * a AbacatePay quando configurada (fluxo original, já confirmado com
+   * chamada real), cai pra Asaas (`AsaasBillingType`, campo `"PIX"`)
+   * só quando a AbacatePay não está disponível. O front nunca sabe qual
+   * dos dois processou — mesmo formato de resposta (`AbacatePayPixQrCode`)
+   * nos dois casos, ver `toPixCheckoutFromAsaas`.
    */
   async createPreSignupPixCheckout(
     dto: CreatePreSignupPixDto,
   ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
-    if (!this.client.isConfigured()) {
-      throw new BadRequestException(
-        "Pagamento indisponível: a AbacatePay ainda não está configurada nesta implantação.",
-      );
+    if (this.client.isConfigured()) {
+      return this.createPreSignupPixCheckoutViaAbacatePay(dto);
     }
+    if (this.asaasClient.isConfigured()) {
+      return this.createPreSignupPixCheckoutViaAsaas(dto);
+    }
+    throw new BadRequestException(
+      "Pagamento indisponível: nenhum provedor de Pix está configurado nesta implantação.",
+    );
+  }
 
+  private async createPreSignupPixCheckoutViaAbacatePay(
+    dto: CreatePreSignupPixDto,
+  ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
     const expiresAt = new Date(Date.now() + PRE_SIGNUP_EXPIRES_HOURS * 60 * 60 * 1000);
     const pending = await this.prisma.pendingSubscription.create({
       data: {
@@ -426,6 +444,130 @@ export class BillingService {
     });
 
     return { pendingId: pending.id, expiresAt: expiresAt.toISOString(), checkout };
+  }
+
+  /**
+   * Fallback via Asaas (ver comentário de `createPreSignupPixCheckout`).
+   * Diferente da AbacatePay, a Asaas exige `cpfCnpj` pra criar o
+   * `customer` — se quem está pagando só preencheu e-mail/telefone
+   * (os únicos campos obrigatórios do fluxo Pix normal,
+   * `CreatePreSignupPixDto`), pede o CPF/CNPJ explicitamente em vez de
+   * falhar com um erro genérico da Asaas.
+   */
+  private async createPreSignupPixCheckoutViaAsaas(
+    dto: CreatePreSignupPixDto,
+  ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
+    if (!dto.cpfCnpj) {
+      throw new BadRequestException(
+        "Pagamento via Pix indisponível no momento sem CPF/CNPJ — preencha esse campo e tente novamente.",
+      );
+    }
+
+    const expiresAt = new Date(Date.now() + PRE_SIGNUP_EXPIRES_HOURS * 60 * 60 * 1000);
+    const pending = await this.prisma.pendingSubscription.create({
+      data: {
+        nome: dto.nome,
+        email: dto.email,
+        cpfCnpj: dto.cpfCnpj,
+        telefone: dto.telefone,
+        valorCentavos: ROTTA_SUBSCRIPTION_PRICE_CENTS,
+        provider: PendingSubscriptionProvider.ASAAS,
+        providerCheckoutId: "",
+        expiresAt,
+      },
+    });
+
+    try {
+      const externalReference = `${PENDING_SUBSCRIPTION_ID_PREFIX}${pending.id}`;
+      const customer = await this.asaasClient.createCustomer({
+        name: dto.nome,
+        cpfCnpj: dto.cpfCnpj,
+        email: dto.email,
+        externalReference,
+      });
+
+      const hoje = new Date().toISOString().slice(0, 10);
+      const subscription = await this.asaasClient.createSubscription({
+        customer: customer.id,
+        billingType: "PIX",
+        value: ROTTA_SUBSCRIPTION_PRICE_CENTS / 100,
+        cycle: "MONTHLY",
+        nextDueDate: hoje,
+        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${dto.nome}`,
+        externalReference,
+      });
+
+      const { data: pagamentos } = await this.asaasClient.listPaymentsBySubscription(
+        subscription.id,
+      );
+      const primeiroPagamento = pagamentos[0];
+      if (!primeiroPagamento) {
+        throw new InternalServerErrorException(
+          "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado — tente consultar novamente em instantes.",
+        );
+      }
+
+      const qrCode = await this.asaasClient.getPixQrCode(primeiroPagamento.id);
+
+      await this.prisma.pendingSubscription.update({
+        where: { id: pending.id },
+        data: {
+          providerCheckoutId: primeiroPagamento.id,
+          providerCustomerId: customer.id,
+          providerSubscriptionId: subscription.id,
+        },
+      });
+
+      return {
+        pendingId: pending.id,
+        expiresAt: expiresAt.toISOString(),
+        checkout: this.toPixCheckoutFromAsaas(primeiroPagamento, qrCode),
+      };
+    } catch (error) {
+      // Mesmo raciocínio do fallback AbacatePay: nunca deixa a
+      // `PendingSubscription` órfã se a Asaas falhar no meio do caminho.
+      await this.prisma.pendingSubscription.delete({ where: { id: pending.id } });
+      throw error;
+    }
+  }
+
+  /**
+   * Normaliza um pagamento Pix da Asaas pro mesmo formato
+   * `AbacatePayPixQrCode` que o front já consome (`brCode`/
+   * `brCodeBase64`) — assim `/planos/assinar` nunca precisa saber qual
+   * provedor de verdade processou o Pix.
+   */
+  private toPixCheckoutFromAsaas(
+    payment: AsaasPayment,
+    qrCode: AsaasPixQrCode,
+  ): AbacatePayPixQrCode {
+    return {
+      id: payment.id,
+      amount: Math.round(payment.value * 100),
+      status: this.mapAsaasPaymentStatusToPixStatus(payment.status),
+      brCode: qrCode.payload,
+      brCodeBase64: qrCode.encodedImage,
+      expiresAt: qrCode.expirationDate,
+      createdAt: new Date().toISOString(),
+    };
+  }
+
+  private mapAsaasPaymentStatusToPixStatus(
+    status: AsaasPayment["status"],
+  ): AbacatePayPixQrCode["status"] {
+    switch (status) {
+      case "RECEIVED":
+      case "CONFIRMED":
+      case "RECEIVED_IN_CASH":
+        return "PAID";
+      case "OVERDUE":
+        return "EXPIRED";
+      case "REFUNDED":
+      case "CHARGEBACK_REQUESTED":
+        return "REFUNDED";
+      default:
+        return "PENDING";
+    }
   }
 
   /**
