@@ -7,12 +7,15 @@
  * reutilizados, conforme `packages/ui/README.md` — os demais chegam
  * junto com a tela que precisar deles pela primeira vez):
  *
- *   atoms/      Button, Input, PhoneInput, Select, Badge, Checkbox, Spinner, Typography, ProgressRing
- *   molecules/  FormField, Pagination, Tabs, PanelGreeting
+ *   atoms/      Button, Input, PhoneInput, Select, Badge, Checkbox, Spinner, Skeleton, Typography, ProgressRing
+ *   molecules/  FormField, Pagination, Tabs, PanelGreeting, EmptyState, StatTile
  *   organisms/  Card (Compound: Card.Header/Body/Footer), Table (data-driven),
  *               Modal (Compound: Modal.Header/Body/Footer, com portal/focus-trap),
  *               Toast (ToastProvider + useToast — feedback de sucesso/erro de mutações),
- *               TrialLockModal (Dossiê 26 — pop-up de assinatura necessária)
+ *               TrialLockModal (Dossiê 26 — pop-up de assinatura necessária),
+ *               Chart (`TrendBarChart` + tema `recharts` — 1ª biblioteca de
+ *               gráficos do monorepo, pedido do usuário 02/09/2026:
+ *               "trazer mais modernidade" pro Admin)
  */
 
 export * from "./atoms/Badge";
@@ -22,15 +25,19 @@ export * from "./atoms/Input";
 export * from "./atoms/PhoneInput";
 export * from "./atoms/ProgressRing";
 export * from "./atoms/Select";
+export * from "./atoms/Skeleton";
 export * from "./atoms/Spinner";
 export * from "./atoms/Textarea";
 export * from "./atoms/Typography";
+export * from "./molecules/EmptyState";
 export * from "./molecules/ErrorState";
 export * from "./molecules/FormField";
 export * from "./molecules/PanelGreeting";
 export * from "./molecules/Pagination";
+export * from "./molecules/StatTile";
 export * from "./molecules/Tabs";
 export * from "./organisms/Card";
+export * from "./organisms/Chart";
 export * from "./organisms/Modal";
 export * from "./organisms/Table";
 export * from "./organisms/Toast";

@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@rotta/theme": "workspace:*",
-    "@rotta/icons": "workspace:*"
+    "@rotta/icons": "workspace:*",
+    "recharts": "^3.10.1"
   },
   "devDependencies": {
     "@rotta/config": "workspace:*",
