@@ -31,6 +31,7 @@ import {
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import type { CalendarAgendaItem } from "@/features/dashboard/components/operational-calendar";
 import type { ApprovalQueue, MapVehicle } from "@rotta/api-client";
 import type { LucideIcon } from "@rotta/icons";
 import type { Route } from "next";
@@ -41,8 +42,10 @@ import {
   useApprovalQueue,
   useBackofficeDashboard,
 } from "@/features/backoffice/hooks/use-backoffice";
+import { OperationalCalendarCard } from "@/features/dashboard/components/operational-calendar";
 import { useGpsMapNationwide } from "@/features/gps/hooks/use-gps";
 import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-health";
+import { useSupportTickets } from "@/features/support/hooks/use-support";
 import { analyticsApi } from "@/lib/api-client";
 import { usePrivacy } from "@/providers/privacy-provider";
 
@@ -401,6 +404,7 @@ export default function AdminHomePage(): JSX.Element {
   const { data, isLoading, isError, refetch, isFetching } = useBackofficeDashboard();
   const { data: fleet, isLoading: isFleetLoading } = useGpsMapNationwide();
   const { data: approvalQueue } = useApprovalQueue();
+  const { data: chamadosAbertos } = useSupportTickets({ status: "ABERTO", pageSize: 100 });
   const [periodoDias, setPeriodoDias] = useState(30);
   const [isExportando, setIsExportando] = useState(false);
 
@@ -430,6 +434,28 @@ export default function AdminHomePage(): JSX.Element {
   );
 
   const approvalItems = useMemo(() => buildApprovalItems(approvalQueue), [approvalQueue]);
+
+  const agendaItems = useMemo<CalendarAgendaItem[]>(
+    () => [
+      ...approvalItems.map((item): CalendarAgendaItem => ({
+        id: item.id,
+        tipo: "Aprovação",
+        titulo: item.titulo,
+        empresa: item.empresa,
+        href: "/aprovacoes",
+        createdAt: item.createdAt,
+      })),
+      ...(chamadosAbertos?.items ?? []).map((ticket): CalendarAgendaItem => ({
+        id: ticket.id,
+        tipo: "Chamado",
+        titulo: ticket.assunto,
+        empresa: ticket.companyNome,
+        href: `/suporte/${ticket.id}?companyId=${ticket.companyId}` as Route,
+        createdAt: ticket.createdAt,
+      })),
+    ],
+    [approvalItems, chamadosAbertos],
+  );
 
   async function handleExportarRelatorio(): Promise<void> {
     setIsExportando(true);
@@ -628,6 +654,8 @@ export default function AdminHomePage(): JSX.Element {
         <AprovacoesCarousel itens={approvalItems} total={data.aprovacoesPendentesTotal} />
         <SaudeIntegracoesCard />
       </div>
+
+      <OperationalCalendarCard itens={agendaItems} />
 
       <Card>
         <Card.Header

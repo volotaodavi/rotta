@@ -37,6 +37,7 @@ export * from "./molecules/Pagination";
 export * from "./molecules/StatTile";
 export * from "./molecules/Tabs";
 export * from "./molecules/TableSkeleton";
+export * from "./organisms/Calendar";
 export * from "./organisms/Card";
 export * from "./organisms/Chart";
 export * from "./organisms/Modal";
