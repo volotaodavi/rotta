@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
+import { wakeApi } from "@/lib/wake-api";
 
 
 /**
@@ -125,6 +126,13 @@ const FOOTER_LINKS: { href: Route; label: string }[] = [
 export default function MarketingLayout({ children }: { children: ReactNode }): JSX.Element {
   const [menuAberto, setMenuAberto] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // Acorda a API cedo (ver `wakeApi` pro raciocínio completo) — dispara
+  // uma vez por visita à Landing Page/páginas institucionais, nunca em
+  // loop, nunca bloqueia nada visível.
+  useEffect(() => {
+    wakeApi();
+  }, []);
 
   useEffect(() => {
     function onScroll(): void {
