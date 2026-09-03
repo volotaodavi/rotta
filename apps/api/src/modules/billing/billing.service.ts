@@ -33,6 +33,7 @@ import {
   ROTTA_SUBSCRIPTION_PRODUCT_NAME,
 } from "./billing.constants";
 
+import type { CreateAdminPixChargeDto } from "./dto/create-admin-pix-charge.dto";
 import type { CreateAdminTransferDto } from "./dto/create-admin-transfer.dto";
 import type { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
 import type {
@@ -1541,6 +1542,160 @@ export class BillingService {
       page,
       pageSize,
     };
+  }
+
+  /**
+   * Cobrança Pix avulsa, gerada pelo Admin (pedido do usuário
+   * 03/09/2026: "posso também pedir o recebimento de transferências
+   * através da plataforma? Incluindo o QR Code pix?") — não vinculada
+   * a nenhuma empresa/mensalidade, diferente de
+   * `createPixCheckoutForCompany`. Reaproveita um `AsaasCustomer` já
+   * existente pro mesmo CPF/CNPJ em vez de criar um duplicado toda
+   * vez. Auditado (mesmo raciocínio de `createAdminTransfer`, RN-32) —
+   * é uma cobrança em nome da Rotta pra um terceiro, fica registrado
+   * quem gerou.
+   */
+  async createAdminPixCharge(
+    dto: CreateAdminPixChargeDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<AbacatePayPixQrCode> {
+    if (!this.asaasClient.isConfigured()) {
+      throw new InternalServerErrorException(
+        "Asaas não está configurada (ASAAS_API_KEY ausente) — cobrança indisponível.",
+      );
+    }
+
+    let customer = await this.asaasClient.findCustomerByCpfCnpj(dto.cpfCnpjPagador);
+    if (!customer) {
+      customer = await this.asaasClient.createCustomer({
+        name: dto.nomePagador,
+        cpfCnpj: dto.cpfCnpjPagador,
+        email: dto.emailPagador,
+        externalReference: `admin-charge:${actor.sub}`,
+      });
+    }
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const payment = await this.asaasClient.createPayment({
+      customer: customer.id,
+      billingType: "PIX",
+      value: dto.valorCentavos / 100,
+      dueDate: hoje,
+      description: dto.descricao,
+    });
+
+    const qrCode = await this.asaasClient.getPixQrCode(payment.id);
+
+    await this.auditLogService.record({
+      entidadeTipo: "AsaasPayment",
+      entidadeId: payment.id,
+      acao: "ADMIN_CREATED_PIX_CHARGE",
+      atorUserId: actor.sub,
+      dadosDepois: {
+        valorCentavos: dto.valorCentavos,
+        nomePagador: dto.nomePagador,
+        cpfCnpjPagador: dto.cpfCnpjPagador,
+        descricao: dto.descricao ?? null,
+      },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    this.logger.log(
+      `Admin ${actor.sub} gerou cobrança Pix avulsa Asaas ${payment.id} (R$ ${(dto.valorCentavos / 100).toFixed(2)}, pagador ${dto.nomePagador}).`,
+    );
+
+    return this.toPixCheckoutFromAsaas(payment, qrCode);
+  }
+
+  /**
+   * Estorno manual de UM pagamento pelo painel (pedido do usuário
+   * 03/09/2026: item antes marcado "❌ só existe automatizado" no
+   * inventário — `refundPayment` já existia no cliente, só faltava um
+   * jeito do Admin acionar manualmente). GERAL-only (sem
+   * `@AdminAreas`, mesmo raciocínio de `createAdminTransfer`): devolve
+   * dinheiro de verdade, mesmo risco de uma transferência. Auditado.
+   */
+  async refundAdminPayment(
+    paymentId: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<AsaasPayment> {
+    if (!this.asaasClient.isConfigured()) {
+      throw new InternalServerErrorException(
+        "Asaas não está configurada (ASAAS_API_KEY ausente) — estorno indisponível.",
+      );
+    }
+
+    const payment = await this.asaasClient.refundPayment(paymentId);
+
+    await this.auditLogService.record({
+      entidadeTipo: "AsaasPayment",
+      entidadeId: paymentId,
+      acao: "ADMIN_REFUNDED_PAYMENT",
+      atorUserId: actor.sub,
+      dadosDepois: { status: payment.status },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    this.logger.log(`Admin ${actor.sub} estornou o pagamento Asaas ${paymentId}.`);
+
+    return payment;
+  }
+
+  /**
+   * Cancelamento manual da assinatura Asaas de UMA empresa pelo
+   * painel (mesmo item do inventário 03/09/2026: antes só acontecia
+   * automatizado, via webhook `SUBSCRIPTION_DELETED`). GERAL-only.
+   * Marca a `Company` como `CANCELADO` — mesmo status que o webhook já
+   * aplicaria se a Asaas notificasse o cancelamento por conta própria
+   * (idempotente: se o webhook chegar depois, reaplica o mesmo
+   * status). Auditado.
+   */
+  async cancelCompanySubscription(
+    companyId: string,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<{ cancelled: boolean }> {
+    const company = await this.prisma.runWithTenantContext(
+      { tenantId: companyId, bypass: false },
+      () => this.companyRepository.findById(companyId),
+    );
+    if (!company) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+    if (!company.asaasSubscriptionId) {
+      throw new BadRequestException("Esta empresa não tem assinatura Asaas ativa pra cancelar.");
+    }
+    if (!this.asaasClient.isConfigured()) {
+      throw new InternalServerErrorException(
+        "Asaas não está configurada (ASAAS_API_KEY ausente) — cancelamento indisponível.",
+      );
+    }
+
+    await this.asaasClient.cancelSubscription(company.asaasSubscriptionId);
+
+    await this.prisma.runWithTenantContext({ tenantId: companyId, bypass: false }, () =>
+      this.companyRepository.update(companyId, { status: CompanyStatus.CANCELADO }),
+    );
+
+    await this.auditLogService.record({
+      entidadeTipo: "Company",
+      entidadeId: companyId,
+      acao: "ADMIN_CANCELLED_SUBSCRIPTION",
+      atorUserId: actor.sub,
+      dadosDepois: { asaasSubscriptionId: company.asaasSubscriptionId },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    this.logger.log(
+      `Admin ${actor.sub} cancelou a assinatura Asaas ${company.asaasSubscriptionId} da empresa ${companyId}.`,
+    );
+
+    return { cancelled: true };
   }
 
   /**

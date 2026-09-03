@@ -91,6 +91,23 @@ export interface AsaasCreditCardHolderInfoInput {
   phone?: string;
 }
 
+/**
+ * `POST /payments` — cobrança AVULSA, sem assinatura (diferente de
+ * `CreateAsaasSubscriptionInput`, sempre recorrente). Usado pelo Admin
+ * pra gerar um QR Pix pra receber um valor qualquer, não vinculado à
+ * mensalidade de nenhuma empresa (pedido do usuário 03/09/2026:
+ * "posso também pedir o recebimento de transferências... incluindo o
+ * QR Code pix?").
+ */
+export interface CreateAsaasPaymentInput {
+  customer: string;
+  billingType: AsaasBillingType;
+  value: number;
+  dueDate: string;
+  description?: string;
+  externalReference?: string;
+}
+
 export interface CreateAsaasSubscriptionInput {
   customer: string;
   billingType: AsaasBillingType;

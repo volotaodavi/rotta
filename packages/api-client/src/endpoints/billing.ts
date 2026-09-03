@@ -129,6 +129,20 @@ export interface BillingCompanyPaymentHistoryResult {
   note?: string;
 }
 
+/**
+ * `POST /billing/admin/pix-charges` (pedido do usuário 03/09/2026:
+ * "posso também pedir o recebimento de transferências através da
+ * plataforma? Incluindo o QR Code pix?") — cobrança avulsa, sem
+ * vínculo com mensalidade de nenhuma empresa.
+ */
+export interface CreateAdminPixChargeInput {
+  valorCentavos: number;
+  descricao?: string;
+  nomePagador: string;
+  cpfCnpjPagador: string;
+  emailPagador?: string;
+}
+
 export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO";
 
 export interface CreateAsaasCheckoutInput {
@@ -255,6 +269,38 @@ export function createBillingEndpoints(apiClient: ApiClient) {
           method: "POST",
           body: input,
         })
+      ).data,
+
+    /** Cobrança Pix avulsa — recebível, `AdminRottaPapel.FINANCEIRO` também aciona. */
+    createAdminPixCharge: async (input: CreateAdminPixChargeInput): Promise<PixCheckout> =>
+      (
+        await apiClient.request<ApiEnvelope<PixCheckout>>("/billing/admin/pix-charges", {
+          method: "POST",
+          body: input,
+        })
+      ).data,
+
+    /** Polling da cobrança avulsa enquanto o pagador não paga/o webhook não chega. */
+    getAdminPixChargeStatus: async (id: string): Promise<PixCheckout> =>
+      (await apiClient.request<ApiEnvelope<PixCheckout>>(`/billing/admin/pix-charges/${id}/status`))
+        .data,
+
+    /** Estorno manual de um pagamento — GERAL-only no backend, dinheiro de verdade voltando. */
+    refundAdminPayment: async (paymentId: string): Promise<AsaasPayment> =>
+      (
+        await apiClient.request<ApiEnvelope<AsaasPayment>>(
+          `/billing/admin/payments/${paymentId}/refund`,
+          { method: "POST" },
+        )
+      ).data,
+
+    /** Cancela a assinatura Asaas de uma empresa — GERAL-only no backend. */
+    cancelCompanySubscription: async (companyId: string): Promise<{ cancelled: boolean }> =>
+      (
+        await apiClient.request<ApiEnvelope<{ cancelled: boolean }>>(
+          `/billing/admin/companies/${companyId}/subscription/cancel`,
+          { method: "POST" },
+        )
       ).data,
 
     /** Extrato completo de pagamentos de uma empresa específica ("qual foi o usuário, qual conta pagou"). */

@@ -2,10 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { CreateAdminTransferInput } from "@rotta/api-client";
+import type { CreateAdminPixChargeInput, CreateAdminTransferInput } from "@rotta/api-client";
 
 import { billingApi } from "@/lib/api-client";
-
 
 /**
  * Visão financeira da mensalidade da plataforma (Dossiê 26) — valores
@@ -70,6 +69,52 @@ export function useCreateAdminTransfer() {
       void queryClient.invalidateQueries({ queryKey: ["billing", "admin-balance"] });
       void queryClient.invalidateQueries({ queryKey: ["billing", "admin-statement"] });
       void queryClient.invalidateQueries({ queryKey: ["billing", "admin-overview"] });
+    },
+  });
+}
+
+/**
+ * Cobrança Pix avulsa (pedido do usuário 03/09/2026: "posso pedir o
+ * recebimento de transferências... incluindo o QR Code pix?") —
+ * recebível, `AdminRottaPapel.FINANCEIRO` também aciona.
+ */
+export function useCreateAdminPixCharge() {
+  return useMutation({
+    mutationFn: (input: CreateAdminPixChargeInput) => billingApi.createAdminPixCharge(input),
+  });
+}
+
+/** Polling da cobrança avulsa enquanto o pagador não paga/o webhook não chega — mesmo ritmo de `usePixCheckoutStatus` (apps/web). */
+export function useAdminPixChargeStatus(id: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ["billing", "admin-pix-charge", id],
+    queryFn: () => billingApi.getAdminPixChargeStatus(id as string),
+    enabled: Boolean(id) && enabled,
+    refetchInterval: (query) => (query.state.data?.status === "PENDING" ? 4_000 : false),
+  });
+}
+
+/** Estorno manual de um pagamento — GERAL-only no backend. Invalida extrato/saldo/histórico da empresa, dinheiro de verdade voltando pra conta. */
+export function useRefundAdminPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (paymentId: string) => billingApi.refundAdminPayment(paymentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["billing", "admin-balance"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing", "admin-statement"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing", "company-payments"] });
+    },
+  });
+}
+
+/** Cancela a assinatura Asaas de uma empresa — GERAL-only no backend. Invalida a lista de empresas ativas e o histórico dela. */
+export function useCancelCompanySubscription() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (companyId: string) => billingApi.cancelCompanySubscription(companyId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["billing", "admin-overview"] });
+      void queryClient.invalidateQueries({ queryKey: ["billing", "company-payments"] });
     },
   });
 }

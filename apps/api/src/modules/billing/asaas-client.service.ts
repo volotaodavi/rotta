@@ -12,6 +12,7 @@ import type {
   AsaasSubscription,
   AsaasTransfer,
   CreateAsaasCustomerInput,
+  CreateAsaasPaymentInput,
   CreateAsaasSubscriptionInput,
   CreateAsaasTransferInput,
 } from "./types/asaas.types";
@@ -131,6 +132,31 @@ export class AsaasClientService {
 
   createSubscription(input: CreateAsaasSubscriptionInput): Promise<AsaasSubscription> {
     return this.request<AsaasSubscription>("/subscriptions", { method: "POST", body: input });
+  }
+
+  /**
+   * Cobrança avulsa — `POST /payments` — diferente de
+   * `createSubscription` (sempre recorrente). Usado pra gerar um QR
+   * Pix (ou boleto/cartão) de um valor qualquer, não vinculado a
+   * nenhuma mensalidade (pedido do usuário 03/09/2026: "posso pedir o
+   * recebimento de transferências... incluindo o QR Code pix?").
+   */
+  createPayment(input: CreateAsaasPaymentInput): Promise<AsaasPayment> {
+    return this.request<AsaasPayment>("/payments", { method: "POST", body: input });
+  }
+
+  /**
+   * `GET /customers?cpfCnpj=X` — evita criar um `AsaasCustomer`
+   * duplicado toda vez que o admin gera uma cobrança avulsa pra um
+   * mesmo CPF/CNPJ (diferente de `createCustomer`, que sempre cria um
+   * novo). `null` quando não existe nenhum ainda.
+   */
+  async findCustomerByCpfCnpj(cpfCnpj: string): Promise<AsaasCustomer | null> {
+    const { data } = await this.request<AsaasListEnvelope<AsaasCustomer>>(
+      `/customers?cpfCnpj=${encodeURIComponent(cpfCnpj)}`,
+      { method: "GET" },
+    );
+    return data[0] ?? null;
   }
 
   cancelSubscription(id: string): Promise<AsaasSubscription> {

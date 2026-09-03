@@ -5,6 +5,7 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Landmark,
+  QrCode,
   ReceiptText,
   RefreshCw,
   Send,
@@ -26,6 +27,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import type { BillingAdminStatementItem, PixKeyType } from "@rotta/api-client";
 
+import { PixChargeCard } from "@/features/billing/components/pix-charge-card";
 import {
   useBillingAdminBalance,
   useBillingAdminStatement,
@@ -664,6 +666,14 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
               )}
               <button
                 type="button"
+                onClick={() => irParaSecao("gerar-cobranca-pix")}
+                className="flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
+              >
+                <QrCode className="h-3.5 w-3.5" />
+                Gerar cobrança
+              </button>
+              <button
+                type="button"
                 onClick={() => irParaSecao("extrato-asaas")}
                 className="flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
               >
@@ -677,6 +687,12 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
 
       {balance?.configured && (
         <TaxasPorTipoCard items={statement?.configured ? statement.items : []} hidden={hidden} />
+      )}
+
+      {balance?.configured && (
+        <div id="gerar-cobranca-pix">
+          <PixChargeCard />
+        </div>
       )}
 
       {balance?.configured && podeTransferir && (

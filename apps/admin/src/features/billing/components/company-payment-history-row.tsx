@@ -1,17 +1,28 @@
 "use client";
 
-import { ChevronDown, ChevronUp } from "@rotta/icons";
-import { Badge, Spinner, Typography } from "@rotta/ui/web";
+import { ApiError } from "@rotta/api-client";
+import { ChevronDown, ChevronUp, CircleX, Undo2 } from "@rotta/icons";
+import { Badge, Button, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { BillingAdminCompanySummary } from "@rotta/api-client";
 
-import { useCompanyPaymentHistory } from "@/features/billing/hooks/use-billing";
-
+import {
+  useCancelCompanySubscription,
+  useCompanyPaymentHistory,
+  useRefundAdminPayment,
+} from "@/features/billing/hooks/use-billing";
 
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
+
+function errorMessage(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback;
+}
+
+/** Só um pagamento efetivamente recebido pode ser estornado — nunca oferece o botão pra `PENDING`/`OVERDUE`/já `REFUNDED`/`CHARGEBACK_REQUESTED`. */
+const STATUS_ESTORNAVEL = new Set(["RECEIVED", "CONFIRMED", "RECEIVED_IN_CASH"]);
 
 const STATUS_LABEL: Record<string, string> = {
   RECEIVED: "Recebido",
@@ -40,17 +51,58 @@ const METODO_LABEL: Record<string, string> = {
  */
 export function CompanyPaymentHistoryRow({
   empresa,
+  podeGerenciar = false,
 }: {
   empresa: BillingAdminCompanySummary;
+  /** Ações que mexem em dinheiro/assinatura de verdade (estornar, cancelar) — mesmo nível de risco de `TransferForm`, só pro papel Geral. */
+  podeGerenciar?: boolean;
 }): JSX.Element {
   const [expandido, setExpandido] = useState(false);
+  const [erroAcao, setErroAcao] = useState<string | null>(null);
   const { data, isLoading } = useCompanyPaymentHistory(empresa.id, expandido);
+  const cancelarAssinatura = useCancelCompanySubscription();
+  const estornarPagamento = useRefundAdminPayment();
+
+  function handleCancelarAssinatura(): void {
+    setErroAcao(null);
+    const confirmado = window.confirm(
+      `Cancelar a assinatura Asaas de ${empresa.nomeFantasia}? Ela para de ser cobrada e o status vira CANCELADO — não dá pra desfazer por aqui.`,
+    );
+    if (!confirmado) return;
+    cancelarAssinatura.mutate(empresa.id, {
+      onError: (err) =>
+        setErroAcao(errorMessage(err, "Não foi possível cancelar a assinatura. Tente novamente.")),
+    });
+  }
+
+  function handleEstornar(pagamentoId: string, valorCentavos: number): void {
+    setErroAcao(null);
+    const confirmado = window.confirm(
+      `Estornar o pagamento de ${centsToBRL(valorCentavos)}? O valor volta pro pagador e sai da conta da Rotta.`,
+    );
+    if (!confirmado) return;
+    estornarPagamento.mutate(pagamentoId, {
+      onError: (err) =>
+        setErroAcao(errorMessage(err, "Não foi possível estornar o pagamento. Tente novamente.")),
+    });
+  }
 
   return (
     <div className="flex flex-col">
-      <button
-        type="button"
+      {/*
+        `<div role="button">`, não um `<button>` de verdade — precisa
+        aninhar o botão real "Cancelar assinatura" ali dentro, e HTML
+        não permite elemento interativo dentro de `<button>` (mesma
+        ressalva já documentada em `packages/ui/.../Button.tsx` sobre
+        `<a><button>` — gera duplo-toque no Safari/iPhone).
+      */}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpandido((atual) => !atual)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") setExpandido((atual) => !atual);
+        }}
         className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-muted"
       >
         <div>
@@ -69,13 +121,33 @@ export function CompanyPaymentHistoryRow({
           {!empresa.abacatepaySubscriptionId && !empresa.asaasSubscriptionId && (
             <Badge variant="warning">Sem assinatura recorrente</Badge>
           )}
+          {podeGerenciar && empresa.asaasSubscriptionId && (
+            <Button
+              variant="ghost"
+              size="sm"
+              iconLeft={<CircleX className="h-3.5 w-3.5" />}
+              isLoading={cancelarAssinatura.isPending}
+              onClick={(event) => {
+                event.stopPropagation();
+                handleCancelarAssinatura();
+              }}
+            >
+              Cancelar assinatura
+            </Button>
+          )}
           {expandido ? (
             <ChevronUp className="h-4 w-4 text-text-muted" />
           ) : (
             <ChevronDown className="h-4 w-4 text-text-muted" />
           )}
         </div>
-      </button>
+      </div>
+
+      {erroAcao && (
+        <Typography variant="caption" color="danger" className="px-4 pb-2">
+          {erroAcao}
+        </Typography>
+      )}
 
       {expandido && (
         <div className="border-t border-border bg-muted/30 px-4 py-3">
@@ -103,7 +175,8 @@ export function CompanyPaymentHistoryRow({
                       <th className="py-1 pr-3 font-medium">Status</th>
                       <th className="py-1 pr-3 font-medium">Valor</th>
                       <th className="py-1 pr-3 font-medium">Taxa</th>
-                      <th className="py-1 font-medium">Líquido</th>
+                      <th className="py-1 pr-3 font-medium">Líquido</th>
+                      {podeGerenciar && <th className="py-1 font-medium" />}
                     </tr>
                   </thead>
                   <tbody>
@@ -120,9 +193,24 @@ export function CompanyPaymentHistoryRow({
                         <td className="py-1.5 pr-3 text-text-muted">
                           {item.taxaCentavos === null ? "-" : centsToBRL(item.taxaCentavos)}
                         </td>
-                        <td className="py-1.5">
+                        <td className="py-1.5 pr-3">
                           {item.liquidoCentavos === null ? "-" : centsToBRL(item.liquidoCentavos)}
                         </td>
+                        {podeGerenciar && (
+                          <td className="py-1.5">
+                            {STATUS_ESTORNAVEL.has(item.status) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                iconLeft={<Undo2 className="h-3.5 w-3.5" />}
+                                isLoading={estornarPagamento.isPending}
+                                onClick={() => handleEstornar(item.id, item.valorCentavos)}
+                              >
+                                Estornar
+                              </Button>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>

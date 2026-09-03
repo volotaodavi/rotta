@@ -57,9 +57,12 @@ describe("BillingService", () => {
     asaasClient = {
       isConfigured: jest.fn().mockReturnValue(false),
       createCustomer: jest.fn(),
+      findCustomerByCpfCnpj: jest.fn(),
       createSubscription: jest.fn(),
+      createPayment: jest.fn(),
       cancelSubscription: jest.fn(),
       getPayment: jest.fn(),
+      refundPayment: jest.fn(),
       listPaymentsBySubscription: jest.fn(),
       getPixQrCode: jest.fn(),
       listPayments: jest.fn(),
@@ -1086,6 +1089,206 @@ describe("BillingService", () => {
           atorUserId: "admin-1",
           ip: "127.0.0.1",
           userAgent: "jest",
+        }),
+      );
+    });
+  });
+
+  describe("createAdminPixCharge", () => {
+    const actor = {
+      sub: "admin-1",
+      tenantId: null,
+      role: "ADMIN_ROTTA",
+      vinculoId: "vinculo-1",
+    } as unknown as Parameters<BillingService["createAdminPixCharge"]>[1];
+    const dto = {
+      valorCentavos: 5000,
+      descricao: "Reembolso de combustível",
+      nomePagador: "Fornecedor Exemplo",
+      cpfCnpjPagador: "12345678000199",
+      emailPagador: "fornecedor@exemplo.com",
+    };
+
+    it("lança erro claro quando a Asaas não está configurada — nunca finge sucesso", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+
+      await expect(service.createAdminPixCharge(dto, actor, { ip: "127.0.0.1" })).rejects.toThrow(
+        "Asaas não está configurada",
+      );
+      expect(asaasClient.createPayment).not.toHaveBeenCalled();
+      expect(auditLogService.record).not.toHaveBeenCalled();
+    });
+
+    it("reaproveita um AsaasCustomer já existente pro mesmo CPF/CNPJ (nunca duplica)", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.findCustomerByCpfCnpj.mockResolvedValue({
+        id: "cus_existente",
+        name: "Fornecedor Exemplo",
+        cpfCnpj: "12345678000199",
+      });
+      asaasClient.createPayment.mockResolvedValue({
+        id: "pay_1",
+        customer: "cus_existente",
+        status: "PENDING",
+        billingType: "PIX",
+        value: 50,
+      });
+      asaasClient.getPixQrCode.mockResolvedValue({
+        success: true,
+        encodedImage: "base64img",
+        payload: "copia-e-cola",
+        expirationDate: "2026-01-01T00:00:00Z",
+      });
+
+      const checkout = await service.createAdminPixCharge(dto, actor, { ip: "127.0.0.1" });
+
+      expect(asaasClient.createCustomer).not.toHaveBeenCalled();
+      expect(asaasClient.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ customer: "cus_existente", billingType: "PIX", value: 50 }),
+      );
+      expect(checkout.brCode).toBe("copia-e-cola");
+      expect(checkout.brCodeBase64).toBe("base64img");
+    });
+
+    it("cria um AsaasCustomer novo quando não encontra nenhum pro CPF/CNPJ, e audita a cobrança (RN-32)", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.findCustomerByCpfCnpj.mockResolvedValue(null);
+      asaasClient.createCustomer.mockResolvedValue({
+        id: "cus_novo",
+        name: "Fornecedor Exemplo",
+        cpfCnpj: "12345678000199",
+      });
+      asaasClient.createPayment.mockResolvedValue({
+        id: "pay_2",
+        customer: "cus_novo",
+        status: "PENDING",
+        billingType: "PIX",
+        value: 50,
+      });
+      asaasClient.getPixQrCode.mockResolvedValue({
+        success: true,
+        encodedImage: "base64img",
+        payload: "copia-e-cola",
+        expirationDate: "2026-01-01T00:00:00Z",
+      });
+
+      await service.createAdminPixCharge(dto, actor, { ip: "127.0.0.1", userAgent: "jest" });
+
+      expect(asaasClient.createCustomer).toHaveBeenCalledWith(
+        expect.objectContaining({ name: "Fornecedor Exemplo", cpfCnpj: "12345678000199" }),
+      );
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entidadeTipo: "AsaasPayment",
+          entidadeId: "pay_2",
+          acao: "ADMIN_CREATED_PIX_CHARGE",
+          atorUserId: "admin-1",
+        }),
+      );
+    });
+  });
+
+  describe("refundAdminPayment", () => {
+    const actor = {
+      sub: "admin-1",
+      tenantId: null,
+      role: "ADMIN_ROTTA",
+      vinculoId: "vinculo-1",
+    } as unknown as Parameters<BillingService["refundAdminPayment"]>[1];
+
+    it("lança erro claro quando a Asaas não está configurada — nunca finge sucesso", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+
+      await expect(service.refundAdminPayment("pay_1", actor, { ip: "127.0.0.1" })).rejects.toThrow(
+        "Asaas não está configurada",
+      );
+      expect(asaasClient.refundPayment).not.toHaveBeenCalled();
+    });
+
+    it("estorna e sempre audita (RN-32)", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.refundPayment.mockResolvedValue({
+        id: "pay_1",
+        customer: "cus_1",
+        status: "REFUNDED",
+        billingType: "PIX",
+        value: 50,
+      });
+
+      const payment = await service.refundAdminPayment("pay_1", actor, {
+        ip: "127.0.0.1",
+        userAgent: "jest",
+      });
+
+      expect(asaasClient.refundPayment).toHaveBeenCalledWith("pay_1");
+      expect(payment.status).toBe("REFUNDED");
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entidadeTipo: "AsaasPayment",
+          entidadeId: "pay_1",
+          acao: "ADMIN_REFUNDED_PAYMENT",
+          atorUserId: "admin-1",
+        }),
+      );
+    });
+  });
+
+  describe("cancelCompanySubscription", () => {
+    const actor = {
+      sub: "admin-1",
+      tenantId: null,
+      role: "ADMIN_ROTTA",
+      vinculoId: "vinculo-1",
+    } as unknown as Parameters<BillingService["cancelCompanySubscription"]>[1];
+
+    it("lança 404 quando a empresa não existe", async () => {
+      companyRepository.findById.mockResolvedValue(null);
+
+      await expect(
+        service.cancelCompanySubscription("company-x", actor, { ip: "127.0.0.1" }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("lança erro claro quando a empresa não tem assinatura Asaas ativa", async () => {
+      companyRepository.findById.mockResolvedValue(buildCompany());
+
+      await expect(
+        service.cancelCompanySubscription("company-1", actor, { ip: "127.0.0.1" }),
+      ).rejects.toThrow("Esta empresa não tem assinatura Asaas ativa");
+      expect(asaasClient.cancelSubscription).not.toHaveBeenCalled();
+    });
+
+    it("cancela na Asaas, marca a empresa CANCELADO e audita (RN-32)", async () => {
+      companyRepository.findById.mockResolvedValue({
+        ...buildCompany(),
+        asaasSubscriptionId: "sub_123",
+      });
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.cancelSubscription.mockResolvedValue({
+        id: "sub_123",
+        customer: "cus_1",
+        status: "INACTIVE",
+        billingType: "PIX",
+        value: 39.9,
+        nextDueDate: "2026-01-01",
+      });
+
+      const result = await service.cancelCompanySubscription("company-1", actor, {
+        ip: "127.0.0.1",
+        userAgent: "jest",
+      });
+
+      expect(asaasClient.cancelSubscription).toHaveBeenCalledWith("sub_123");
+      expect(companyRepository.update).toHaveBeenCalledWith("company-1", {
+        status: CompanyStatus.CANCELADO,
+      });
+      expect(result).toEqual({ cancelled: true });
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entidadeTipo: "Company",
+          entidadeId: "company-1",
+          acao: "ADMIN_CANCELLED_SUBSCRIPTION",
+          atorUserId: "admin-1",
         }),
       );
     });

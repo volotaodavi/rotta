@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req } from "@
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { BillingService, type RequestMeta } from "./billing.service";
+import { CreateAdminPixChargeDto } from "./dto/create-admin-pix-charge.dto";
 import { CreateAdminTransferDto } from "./dto/create-admin-transfer.dto";
 import { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
 import {
@@ -19,8 +20,6 @@ import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { PlanNoticesService } from "@/modules/plan-notices/plan-notices.service";
 import { AdminArea, Role } from "@/shared/enums";
-
-
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
@@ -127,6 +126,63 @@ export class BillingController {
     @Req() req: Request,
   ) {
     return this.billingService.createAdminTransfer(dto, actor, requestMeta(req));
+  }
+
+  /**
+   * Cobrança Pix avulsa (pedido do usuário 03/09/2026: "posso pedir o
+   * recebimento de transferências... incluindo o QR Code pix?") — é um
+   * RECEBÍVEL (nunca dinheiro saindo), `AdminRottaPapel.FINANCEIRO`
+   * também aciona, mesmo nível de risco de `admin/balance`/`admin/statement`.
+   */
+  @Post("admin/pix-charges")
+  @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.FINANCEIRO)
+  createAdminPixCharge(
+    @Body() dto: CreateAdminPixChargeDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.billingService.createAdminPixCharge(dto, actor, requestMeta(req));
+  }
+
+  /** Polling da cobrança avulsa enquanto o pagador não paga/o webhook não chega (mesmo papel de `checkout/pix/:id/status`). */
+  @Get("admin/pix-charges/:id/status")
+  @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.FINANCEIRO)
+  getAdminPixChargeStatus(@Param("id") id: string) {
+    return this.billingService.getPixCheckoutStatus(id);
+  }
+
+  /**
+   * Estorno manual de um pagamento (pedido do usuário 03/09/2026, item
+   * antes "❌" no inventário). SEM `@AdminAreas`: GERAL-only por
+   * padrão, mesmo raciocínio de `admin/transfers` — devolve dinheiro
+   * de verdade.
+   */
+  @Post("admin/payments/:id/refund")
+  @Roles(Role.ADMIN_ROTTA)
+  refundAdminPayment(
+    @Param("id") id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.billingService.refundAdminPayment(id, actor, requestMeta(req));
+  }
+
+  /**
+   * Cancelamento manual da assinatura Asaas de uma empresa (mesmo
+   * pedido, outro item "❌" do inventário). SEM `@AdminAreas`:
+   * GERAL-only — para a cobrança recorrente de uma empresa é uma ação
+   * tão sensível quanto mover dinheiro.
+   */
+  @Post("admin/companies/:id/subscription/cancel")
+  @Roles(Role.ADMIN_ROTTA)
+  cancelCompanySubscription(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.billingService.cancelCompanySubscription(id, actor, requestMeta(req));
   }
 
   /** Avisos de plano ativos (globais + os da própria empresa) — publicados pelo Admin Rotta em `/plan-notices` (painel "Controle de Planos"). */

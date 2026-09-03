@@ -308,7 +308,11 @@ export default function FinanceiroPage(): JSX.Element {
             <div className="overflow-x-auto">
               <div className="flex flex-col divide-y divide-border">
                 {data.empresasAtivas.map((empresa) => (
-                  <CompanyPaymentHistoryRow key={empresa.id} empresa={empresa} />
+                  <CompanyPaymentHistoryRow
+                    key={empresa.id}
+                    empresa={empresa}
+                    podeGerenciar={podeTransferir}
+                  />
                 ))}
               </div>
             </div>
