@@ -14,6 +14,7 @@ import {
   PendingSubscriptionStatus,
 } from "@prisma/client";
 
+
 import { AbacatePayClientService } from "./abacatepay-client.service";
 import { AsaasClientService } from "./asaas-client.service";
 import {
@@ -135,6 +136,27 @@ export interface BillingAdminStatementResult {
 export interface RequestMeta {
   ip?: string;
   userAgent?: string;
+}
+
+/** Um pagamento de UMA empresa — pedido do usuário 03/09/2026: "extrato completo de cada usuário que adquiriu o plano... qual foi o usuário, qual conta pagou". A Rotta cobra por `Company` (nunca por pessoa/`Responsável`), então "usuário/conta" aqui É a empresa. */
+export interface BillingCompanyPaymentHistoryItem {
+  id: string;
+  status: string;
+  valorCentavos: number;
+  /** `null` quando o provedor não devolve valor líquido pra este item específico. */
+  liquidoCentavos: number | null;
+  taxaCentavos: number | null;
+  metodo: string;
+  data: string | null;
+}
+
+export interface BillingCompanyPaymentHistoryResult {
+  companyId: string;
+  companyNome: string;
+  provider: "asaas" | "abacatepay" | "nenhum";
+  items: BillingCompanyPaymentHistoryItem[];
+  /** Explica por que `items` pode vir vazio mesmo a empresa tendo assinatura — nunca um vazio silencioso sem motivo. */
+  note?: string;
 }
 
 /**
@@ -629,7 +651,7 @@ export class BillingService {
    * da AbacatePay logo acima (`ABACATEPAY_FEE_*`), cujo `billing/list`
    * não devolve valor líquido.
    */
-  private async reconciliarPagamentosAsaas(): Promise<{
+  private async reconciliarPagamentosAsaas(inicioDeHoje: Date): Promise<{
     totalRecebidoCentavos: number;
     totalTaxaRetidaCentavos: number;
     quantidadeCobrancasPagas: number;
@@ -647,6 +669,11 @@ export class BillingService {
 
       for (const pagamento of pagamentos) {
         if (this.mapAsaasPaymentStatusToPixStatus(pagamento.status) !== "PAID") continue;
+        // "Zere os dados e só conte os dados a partir do dia de hoje"
+        // (pedido do usuário 03/09/2026) — ignora tudo pago antes de
+        // hoje, mesmo já confirmado.
+        const dataPagamento = pagamento.paymentDate ?? pagamento.dateCreated;
+        if (!dataPagamento || new Date(dataPagamento) < inicioDeHoje) continue;
         const valorCentavos = Math.round(pagamento.value * 100);
         const liquidoCentavos =
           pagamento.netValue !== undefined ? Math.round(pagamento.netValue * 100) : valorCentavos;
@@ -1258,6 +1285,18 @@ export class BillingService {
   }
 
   /**
+   * Meia-noite de hoje no servidor (Render roda em UTC — mesma
+   * simplificação já aceita no resto do módulo, nenhum outro ponto do
+   * codebase faz conversão explícita pra `America/Sao_Paulo`; até 3h
+   * de diferença perto da virada não muda o objetivo real do pedido,
+   * que é "zerar o histórico de teste/QA", não bater o segundo exato).
+   */
+  private inicioDeHoje(): Date {
+    const agora = new Date();
+    return new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()));
+  }
+
+  /**
    * Painel financeiro do Admin Rotta (pedido do usuário: "valores
    * recebidos, taxas retidas, quantidade de empresas/planos, quais
    * empresas estão usando"). Duas fontes deliberadamente separadas:
@@ -1269,8 +1308,17 @@ export class BillingService {
    *   campos ficam `null` (nunca 0 fingido, mesmo padrão "stub honesto"
    *   do resto do módulo) e `abacatepayConfigured`/o log dizem o
    *   motivo.
+   *
+   * Só conta cobranças pagas A PARTIR DE HOJE (pedido do usuário
+   * 03/09/2026: "zere os dados e só conte os dados a partir do dia de
+   * hj") — meses de teste/QA acumulados não devem aparecer como
+   * "receita real" no painel. O saldo/extrato da conta Asaas
+   * (`getAdminBalance`/`getAdminStatement`) continua mostrando o
+   * histórico completo de verdade — são telas diferentes com objetivos
+   * diferentes (saldo bancário nunca "zera", extrato é auditoria).
    */
   async getAdminOverview(): Promise<BillingAdminOverview> {
+    const inicioDeHoje = this.inicioDeHoje();
     const { items: empresasAtivas } = await this.companyRepository.list({
       status: CompanyStatus.ATIVO,
       page: 1,
@@ -1327,7 +1375,11 @@ export class BillingService {
     if (overview.abacatepayConfigured) {
       try {
         const billings = await this.client.listBillings();
-        const pagas = billings.filter((billing) => billing.status === "PAID");
+        const pagas = billings.filter((billing) => {
+          if (billing.status !== "PAID") return false;
+          const dataPagamento = billing.paidAt ?? billing.createdAt;
+          return dataPagamento ? new Date(dataPagamento) >= inicioDeHoje : false;
+        });
 
         const totalRecebido = pagas.reduce((soma, billing) => soma + billing.amount, 0);
         const totalTaxa = pagas.reduce((soma, billing) => {
@@ -1359,7 +1411,7 @@ export class BillingService {
     if (overview.asaas.configured) {
       try {
         const { totalRecebidoCentavos, totalTaxaRetidaCentavos, quantidadeCobrancasPagas } =
-          await this.reconciliarPagamentosAsaas();
+          await this.reconciliarPagamentosAsaas(inicioDeHoje);
 
         overview.totalRecebidoCentavos =
           (overview.totalRecebidoCentavos ?? 0) + totalRecebidoCentavos;
@@ -1486,5 +1538,68 @@ export class BillingService {
     );
 
     return transfer;
+  }
+
+  /**
+   * Extrato completo de pagamentos de UMA empresa (Frente 33, pedido
+   * do usuário 03/09/2026: "extrato completo de cada usuário que
+   * adquiriu o plano... qual foi o usuário, qual conta pagou").
+   * Correlação 100% confiável — usa `Company.asaasSubscriptionId`
+   * (salvo no nosso banco, nunca "adivinhado" a partir de metadata do
+   * provedor) pra pedir só os pagamentos DAQUELA assinatura.
+   *
+   * A AbacatePay não tem esse mesmo endpoint (`GET /billing/list` não
+   * filtra por assinatura — ver comentário de `AbacatePayBilling`),
+   * então uma empresa só-AbacatePay volta com `items: []` + `note`
+   * explicando o motivo — nunca inventa uma correlação frágil por
+   * valor/data que poderia mostrar o pagamento errado.
+   */
+  async getCompanyPaymentHistory(companyId: string): Promise<BillingCompanyPaymentHistoryResult> {
+    const company = await this.companyRepository.findById(companyId);
+    if (!company) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    if (company.asaasSubscriptionId && this.asaasClient.isConfigured()) {
+      const { data: pagamentos } = await this.asaasClient.listPaymentsBySubscription(
+        company.asaasSubscriptionId,
+      );
+      return {
+        companyId: company.id,
+        companyNome: company.nomeFantasia,
+        provider: "asaas",
+        items: pagamentos.map((pagamento) => ({
+          id: pagamento.id,
+          status: pagamento.status,
+          valorCentavos: Math.round(pagamento.value * 100),
+          liquidoCentavos:
+            pagamento.netValue !== undefined ? Math.round(pagamento.netValue * 100) : null,
+          taxaCentavos:
+            pagamento.netValue !== undefined
+              ? Math.round(pagamento.value * 100) - Math.round(pagamento.netValue * 100)
+              : null,
+          metodo: pagamento.billingType,
+          data: pagamento.paymentDate ?? pagamento.dateCreated ?? null,
+        })),
+      };
+    }
+
+    if (company.abacatepaySubscriptionId) {
+      return {
+        companyId: company.id,
+        companyNome: company.nomeFantasia,
+        provider: "abacatepay",
+        items: [],
+        note: "A AbacatePay não expõe histórico de pagamentos por assinatura — veja o extrato geral da conta acima.",
+      };
+    }
+
+    return {
+      companyId: company.id,
+      companyNome: company.nomeFantasia,
+      provider: "nenhum",
+      items: [],
+      note: "Esta empresa ainda não tem assinatura recorrente ativa.",
+    };
   }
 }

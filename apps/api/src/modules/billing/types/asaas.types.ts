@@ -129,6 +129,10 @@ export interface AsaasPayment {
     | "CHARGEBACK_REQUESTED";
   billingType: AsaasBillingType;
   value: number;
+  /** Quando a cobrança foi criada — sempre presente. */
+  dateCreated?: string;
+  /** Quando o pagamento foi de fato confirmado — só presente após `status` virar pago; usado pra filtrar "a partir de hoje" (pedido do usuário 03/09/2026). */
+  paymentDate?: string | null;
   /**
    * Valor líquido já com a taxa da Asaas descontada — vem pronto da
    * própria API (confirmado com uma chamada real de produção, pedido do

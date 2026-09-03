@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { BillingService, type RequestMeta } from "./billing.service";
@@ -19,6 +19,8 @@ import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { PlanNoticesService } from "@/modules/plan-notices/plan-notices.service";
 import { AdminArea, Role } from "@/shared/enums";
+
+
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
@@ -100,6 +102,14 @@ export class BillingController {
   @AdminAreas(AdminArea.FINANCEIRO)
   getAdminStatement(@Query() query: ListAdminStatementQueryDto) {
     return this.billingService.getAdminStatement(query.page, query.pageSize);
+  }
+
+  /** Extrato completo de pagamentos de UMA empresa ("extrato completo de cada usuário que adquiriu o plano"). Leitura — `AdminRottaPapel.FINANCEIRO` também acessa. */
+  @Get("admin/companies/:id/payments")
+  @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.FINANCEIRO)
+  getCompanyPaymentHistory(@Param("id", ParseUUIDPipe) id: string) {
+    return this.billingService.getCompanyPaymentHistory(id);
   }
 
   /**

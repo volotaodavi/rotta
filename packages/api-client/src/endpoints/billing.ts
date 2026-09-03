@@ -110,6 +110,25 @@ export interface AsaasTransferResult {
   failReason?: string | null;
 }
 
+/** Um pagamento de uma empresa específica — pedido do usuário 03/09/2026: "extrato completo de cada usuário que adquiriu o plano". */
+export interface BillingCompanyPaymentHistoryItem {
+  id: string;
+  status: string;
+  valorCentavos: number;
+  liquidoCentavos: number | null;
+  taxaCentavos: number | null;
+  metodo: string;
+  data: string | null;
+}
+
+export interface BillingCompanyPaymentHistoryResult {
+  companyId: string;
+  companyNome: string;
+  provider: "asaas" | "abacatepay" | "nenhum";
+  items: BillingCompanyPaymentHistoryItem[];
+  note?: string;
+}
+
 export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO";
 
 export interface CreateAsaasCheckoutInput {
@@ -236,6 +255,16 @@ export function createBillingEndpoints(apiClient: ApiClient) {
           method: "POST",
           body: input,
         })
+      ).data,
+
+    /** Extrato completo de pagamentos de uma empresa específica ("qual foi o usuário, qual conta pagou"). */
+    getCompanyPaymentHistory: async (
+      companyId: string,
+    ): Promise<BillingCompanyPaymentHistoryResult> =>
+      (
+        await apiClient.request<ApiEnvelope<BillingCompanyPaymentHistoryResult>>(
+          `/billing/admin/companies/${companyId}/payments`,
+        )
       ).data,
 
     /** Checkout próprio da Rotta pra cartão/débito/boleto — processado pela Asaas por trás, sem sair da Rotta. */

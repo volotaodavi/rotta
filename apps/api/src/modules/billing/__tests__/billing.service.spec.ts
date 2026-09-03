@@ -13,6 +13,9 @@ import type { MessagePersonalizationService } from "@/modules/notifications/mess
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 
+/** "Zere os dados e só conte os dados a partir do dia de hoje" (pedido do usuário 03/09/2026) — toda cobrança PAGA que os testes esperam contar precisa de uma data de hoje, senão o filtro novo do serviço a descarta. */
+const HOJE_ISO = new Date().toISOString();
+
 function buildCompany(): CompanyWithPlan {
   return {
     id: "company-1",
@@ -520,8 +523,8 @@ describe("BillingService", () => {
         total: 1,
       });
       client.listBillings.mockResolvedValue([
-        { id: "b1", status: "PAID", amount: 3990, methods: ["PIX"] },
-        { id: "b2", status: "PAID", amount: 3990, methods: ["CARD"] },
+        { id: "b1", status: "PAID", amount: 3990, methods: ["PIX"], paidAt: HOJE_ISO },
+        { id: "b2", status: "PAID", amount: 3990, methods: ["CARD"], paidAt: HOJE_ISO },
         { id: "b3", status: "PENDING", amount: 3990, methods: ["PIX"] },
       ]);
 
@@ -530,6 +533,24 @@ describe("BillingService", () => {
       expect(overview.quantidadeCobrancasPagas).toBe(2);
       expect(overview.totalRecebidoCentavos).toBe(3990 + 3990);
       expect(overview.totalTaxaRetidaCentavos).toBe(80 + (Math.round(3990 * 0.035) + 60));
+    });
+
+    it("nunca conta cobrança PAID paga antes de hoje ('zere os dados', pedido do usuário 03/09/2026)", async () => {
+      companyRepository.list.mockResolvedValue({ items: [buildActiveCompany()], total: 1 });
+      client.listBillings.mockResolvedValue([
+        {
+          id: "b1",
+          status: "PAID",
+          amount: 3990,
+          methods: ["PIX"],
+          paidAt: "2020-01-01T00:00:00.000Z",
+        },
+      ]);
+
+      const overview = await service.getAdminOverview();
+
+      expect(overview.quantidadeCobrancasPagas).toBe(0);
+      expect(overview.totalRecebidoCentavos).toBe(0);
     });
 
     it("nunca lança e deixa os valores null quando billing/list falha", async () => {
@@ -561,6 +582,7 @@ describe("BillingService", () => {
             billingType: "BOLETO",
             value: 39.9,
             netValue: 37.91,
+            paymentDate: HOJE_ISO,
           },
           {
             id: "p2",
@@ -569,6 +591,7 @@ describe("BillingService", () => {
             billingType: "CREDIT_CARD",
             value: 39.9,
             netValue: 38.5,
+            paymentDate: HOJE_ISO,
           },
           { id: "p3", customer: "cus_1", status: "PENDING", billingType: "BOLETO", value: 39.9 },
         ],
@@ -603,6 +626,7 @@ describe("BillingService", () => {
               billingType: "PIX",
               value: 39.9,
               netValue: 39.1,
+              paymentDate: HOJE_ISO,
             },
           ],
         })
@@ -620,6 +644,7 @@ describe("BillingService", () => {
               billingType: "PIX",
               value: 39.9,
               netValue: 39.1,
+              paymentDate: HOJE_ISO,
             },
           ],
         });
@@ -633,7 +658,7 @@ describe("BillingService", () => {
     it("combina AbacatePay + Asaas nos totais gerais quando os dois estão configurados", async () => {
       companyRepository.list.mockResolvedValue({ items: [], total: 0 });
       client.listBillings.mockResolvedValue([
-        { id: "b1", status: "PAID", amount: 3990, methods: ["PIX"] },
+        { id: "b1", status: "PAID", amount: 3990, methods: ["PIX"], paidAt: HOJE_ISO },
       ]);
       asaasClient.isConfigured.mockReturnValue(true);
       asaasClient.listPayments.mockResolvedValue({
@@ -650,6 +675,7 @@ describe("BillingService", () => {
             billingType: "BOLETO",
             value: 39.9,
             netValue: 37.91,
+            paymentDate: HOJE_ISO,
           },
         ],
       });
@@ -992,6 +1018,76 @@ describe("BillingService", () => {
           userAgent: "jest",
         }),
       );
+    });
+  });
+
+  describe("getCompanyPaymentHistory", () => {
+    it("lança 404 quando a empresa não existe", async () => {
+      companyRepository.findById.mockResolvedValue(null);
+
+      await expect(service.getCompanyPaymentHistory("company-x")).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it("usa listPaymentsBySubscription (correlação confiável) quando a empresa tem asaasSubscriptionId", async () => {
+      companyRepository.findById.mockResolvedValue({
+        ...buildCompany(),
+        asaasSubscriptionId: "sub_123",
+      });
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.listPaymentsBySubscription.mockResolvedValue({
+        data: [
+          {
+            id: "pay_1",
+            customer: "cus_1",
+            status: "CONFIRMED",
+            billingType: "CREDIT_CARD",
+            value: 39.9,
+            netValue: 38.5,
+            paymentDate: HOJE_ISO,
+          },
+        ],
+      });
+
+      const result = await service.getCompanyPaymentHistory("company-1");
+
+      expect(asaasClient.listPaymentsBySubscription).toHaveBeenCalledWith("sub_123");
+      expect(result.provider).toBe("asaas");
+      expect(result.items).toEqual([
+        {
+          id: "pay_1",
+          status: "CONFIRMED",
+          valorCentavos: 3990,
+          liquidoCentavos: 3850,
+          taxaCentavos: 140,
+          metodo: "CREDIT_CARD",
+          data: HOJE_ISO,
+        },
+      ]);
+    });
+
+    it("nunca inventa correlação pra AbacatePay — devolve items: [] com um motivo explicando por quê", async () => {
+      companyRepository.findById.mockResolvedValue({
+        ...buildCompany(),
+        abacatepaySubscriptionId: "sub_abc",
+      });
+
+      const result = await service.getCompanyPaymentHistory("company-1");
+
+      expect(result.provider).toBe("abacatepay");
+      expect(result.items).toEqual([]);
+      expect(result.note).toBeTruthy();
+    });
+
+    it("empresa sem nenhuma assinatura recorrente — items: [] com motivo, nunca erro", async () => {
+      companyRepository.findById.mockResolvedValue(buildCompany());
+
+      const result = await service.getCompanyPaymentHistory("company-1");
+
+      expect(result.provider).toBe("nenhum");
+      expect(result.items).toEqual([]);
+      expect(result.note).toBeTruthy();
     });
   });
 });

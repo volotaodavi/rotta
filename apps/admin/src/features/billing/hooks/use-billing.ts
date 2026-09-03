@@ -42,6 +42,21 @@ export function useBillingAdminStatement(page: number, pageSize = 20) {
 }
 
 /**
+ * Extrato completo de pagamentos de UMA empresa (pedido do usuário
+ * 03/09/2026: "extrato completo de cada usuário que adquiriu o
+ * plano"). `enabled` — só busca quando a linha da empresa é expandida
+ * (`CompanyPaymentHistoryRow`), nunca N chamadas automáticas pra cada
+ * empresa da lista de uma vez.
+ */
+export function useCompanyPaymentHistory(companyId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["billing", "company-payments", companyId],
+    queryFn: () => billingApi.getCompanyPaymentHistory(companyId),
+    enabled,
+  });
+}
+
+/**
  * Transferência Pix pra fora da conta ("fazer transferências") —
  * GERAL-only no backend; a tela só chega a montar este hook/botão pro
  * papel certo (ver `FinanceiroPage`). Invalida saldo/extrato/overview

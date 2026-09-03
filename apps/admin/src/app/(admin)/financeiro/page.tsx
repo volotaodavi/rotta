@@ -7,6 +7,7 @@ import { Badge, Card, ErrorState, Skeleton, StatTile, Typography } from "@rotta/
 import type { BillingProviderOverview } from "@rotta/api-client";
 
 import { AsaasAccountSection } from "@/features/billing/components/asaas-account-section";
+import { CompanyPaymentHistoryRow } from "@/features/billing/components/company-payment-history-row";
 import { useBillingAdminOverview } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
 
@@ -71,7 +72,7 @@ function ProviderCard({
         </Typography>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatTile
-            label="Recebido"
+            label="Recebido hoje"
             value={
               overview.totalRecebidoCentavos === null
                 ? "-"
@@ -81,7 +82,7 @@ function ProviderCard({
             }
           />
           <StatTile
-            label="Taxa retida"
+            label="Taxa retida hoje"
             value={
               overview.totalTaxaRetidaCentavos === null
                 ? "-"
@@ -91,7 +92,7 @@ function ProviderCard({
             }
           />
           <StatTile
-            label="Cobranças pagas"
+            label="Cobranças pagas hoje"
             value={
               overview.quantidadeCobrancasPagas === null
                 ? "-"
@@ -163,7 +164,8 @@ export default function FinanceiroPage(): JSX.Element {
         <Typography variant="display">Financeiro</Typography>
         <Typography variant="bodySmall" color="muted">
           Mensalidade da plataforma (R$ 39,90/mês) — Pix via AbacatePay, cartão/débito/boleto via
-          Asaas.
+          Asaas. Os números abaixo contam só a partir de hoje (00h) — o saldo e o extrato da conta
+          Asaas, mais abaixo, continuam mostrando o histórico completo.
         </Typography>
       </div>
 
@@ -198,7 +200,7 @@ export default function FinanceiroPage(): JSX.Element {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ValorTile
           icon={Wallet}
-          label="Total recebido"
+          label="Recebido hoje"
           value={
             data.totalRecebidoCentavos === null ? null : centsToBRL(data.totalRecebidoCentavos)
           }
@@ -206,7 +208,7 @@ export default function FinanceiroPage(): JSX.Element {
         />
         <ValorTile
           icon={ReceiptText}
-          label="Taxa retida pela AbacatePay"
+          label="Taxa retida hoje (AbacatePay + Asaas)"
           value={
             data.totalTaxaRetidaCentavos === null ? null : centsToBRL(data.totalTaxaRetidaCentavos)
           }
@@ -214,7 +216,7 @@ export default function FinanceiroPage(): JSX.Element {
         />
         <ValorTile
           icon={DollarSign}
-          label="Cobranças pagas"
+          label="Cobranças pagas hoje"
           value={
             data.quantidadeCobrancasPagas === null
               ? null
@@ -230,7 +232,7 @@ export default function FinanceiroPage(): JSX.Element {
         />
         <ValorTile
           icon={TrendingUp}
-          label="Lucro líquido (recebido − taxas)"
+          label="Lucro líquido hoje (recebido − taxas)"
           value={data.lucroLiquidoCentavos === null ? null : centsToBRL(data.lucroLiquidoCentavos)}
           hidden={hidden}
         />
@@ -270,7 +272,14 @@ export default function FinanceiroPage(): JSX.Element {
       </Card>
 
       <Card>
-        <Card.Header title="Empresas usando o plano" />
+        <Card.Header
+          title="Empresas usando o plano"
+          action={
+            <Typography variant="caption" color="muted">
+              Clique numa empresa pra ver o extrato completo de pagamentos dela
+            </Typography>
+          }
+        />
         <Card.Body className="p-0">
           {data.empresasAtivas.length === 0 ? (
             <div className="p-6">
@@ -282,32 +291,7 @@ export default function FinanceiroPage(): JSX.Element {
             <div className="overflow-x-auto">
               <div className="flex flex-col divide-y divide-border">
                 {data.empresasAtivas.map((empresa) => (
-                  <div
-                    key={empresa.id}
-                    className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-                  >
-                    <div>
-                      <Typography variant="bodySmall" className="font-medium">
-                        {empresa.nomeFantasia}
-                      </Typography>
-                      <Typography variant="caption" color="muted">
-                        {empresa.razaoSocial} · ativa desde{" "}
-                        {new Date(empresa.ativaDesde).toLocaleDateString("pt-BR")}
-                      </Typography>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="neutral">{empresa.planoNome}</Badge>
-                      {empresa.abacatepaySubscriptionId && (
-                        <Badge variant="info">Pix (AbacatePay)</Badge>
-                      )}
-                      {empresa.asaasSubscriptionId && (
-                        <Badge variant="info">Cartão/Boleto (Asaas)</Badge>
-                      )}
-                      {!empresa.abacatepaySubscriptionId && !empresa.asaasSubscriptionId && (
-                        <Badge variant="warning">Sem assinatura recorrente</Badge>
-                      )}
-                    </div>
-                  </div>
+                  <CompanyPaymentHistoryRow key={empresa.id} empresa={empresa} />
                 ))}
               </div>
             </div>

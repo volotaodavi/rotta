@@ -19,6 +19,7 @@ import type {
 import asaasConfig from "@/config/asaas.config";
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
+
 /** Nome usado como chave nos snapshots de `IntegrationHealthService` — mesma string em toda parte que registra ou lê a saúde desta integração. */
 export const ASAAS_INTEGRATION_NAME = "asaas";
 

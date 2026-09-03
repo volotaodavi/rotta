@@ -48,6 +48,42 @@ function errorMessage(error: unknown, fallback: string): string {
 }
 
 /**
+ * Tradução dos tipos mais comuns do extrato da Asaas
+ * (`docs.asaas.com` — `financialTransactions`) — nunca uma lista
+ * fechada: tipo sem tradução aqui cai no fallback (`tipoLabel`) que só
+ * troca "_" por espaço e capitaliza, nunca esconde um tipo novo que a
+ * Asaas adicionar sem aviso.
+ */
+const TIPO_LABEL: Record<string, string> = {
+  PAYMENT_RECEIVED: "Cobrança recebida",
+  PAYMENT_CREDIT_CARD_FEE: "Taxa de cartão",
+  PAYMENT_DUNNING_RECEIVED: "Cobrança de recuperação",
+  ASAAS_FEE: "Taxa Asaas",
+  TRANSFER: "Transferência",
+  TRANSFER_FEE: "Taxa de transferência",
+  PIX_TRANSACTION_FEE: "Taxa Pix",
+  BOLETO_FEE: "Taxa de boleto",
+  BANK_SLIP_FEE: "Taxa de boleto",
+  PAYMENT_REFUND: "Estorno de cobrança",
+  CHARGEBACK: "Contestação (chargeback)",
+};
+
+function tipoLabel(tipo: string): string {
+  return (
+    TIPO_LABEL[tipo] ??
+    tipo
+      .replaceAll("_", " ")
+      .toLowerCase()
+      .replace(/^./, (c) => c.toUpperCase())
+  );
+}
+
+/** "Coloque também as taxas retidas pelo Asaas" (pedido do usuário 03/09/2026) — qualquer tipo com "FEE" no nome é uma taxa retida, sempre destacada em amarelo no extrato. */
+function isTaxa(tipo: string): boolean {
+  return tipo.includes("FEE");
+}
+
+/**
  * Formulário de transferência Pix (Frente 33, pedido do usuário
  * 03/09/2026: "fazer transferências") — só renderizado pra
  * `AdminRottaPapel.GERAL` (ver `FinanceiroPage`, `podeTransferir`). O
@@ -234,7 +270,9 @@ function ExtratoTable(): JSX.Element {
     {
       key: "tipo",
       header: "Tipo",
-      render: (item) => <Badge variant="neutral">{item.tipo}</Badge>,
+      render: (item) => (
+        <Badge variant={isTaxa(item.tipo) ? "warning" : "neutral"}>{tipoLabel(item.tipo)}</Badge>
+      ),
     },
     {
       key: "valor",
