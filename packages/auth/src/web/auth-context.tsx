@@ -19,8 +19,10 @@ import {
   broadcastAuthEvent,
   clearSession,
   decodeJwtExpiryMs,
+  getAccessToken,
   getPersistedRefreshToken,
   persistSession,
+  registerRefreshHandler,
   releaseRefreshLock,
   setAccessToken,
   subscribeToAuthBroadcast,
@@ -244,6 +246,20 @@ export function AuthProvider({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Registra `refreshSession` pra `createApiClient` chamar reativamente
+  // a cada 401 (ver comentário grande em `token-store.ts` e em
+  // `http.ts#ApiClientConfig.refreshAccessToken`) — fecha o BUG REAL de
+  // produção "clico e dá erro" em toda ação depois que o refresh
+  // PROATIVO por timer atrasa além do `exp` numa aba em segundo plano.
+  // Desregistra no unmount pra nunca sobreviver a este `AuthProvider`.
+  useEffect(() => {
+    registerRefreshHandler(async () => {
+      const ok = await refreshSession();
+      return ok ? getAccessToken() : null;
+    });
+    return () => registerRefreshHandler(null);
+  }, [refreshSession]);
 
   const login = useCallback(
     async (input: LoginInput): Promise<LoginResponse> => {

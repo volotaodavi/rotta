@@ -16,8 +16,10 @@ import {
 import {
   clearSession,
   decodeJwtExpiryMs,
+  getAccessToken,
   getPersistedRefreshToken,
   persistSession,
+  registerRefreshHandler,
   setAccessToken,
 } from "./token-store";
 
@@ -109,7 +111,7 @@ export function AuthProvider({
     [scheduleProactiveRefresh],
   );
 
-  const refreshSession = useCallback(async (): Promise<boolean> => {
+  const performRefresh = useCallback(async (): Promise<boolean> => {
     const persistedRefreshToken = await getPersistedRefreshToken();
     if (!persistedRefreshToken) {
       setStatus("unauthenticated");
@@ -127,6 +129,27 @@ export function AuthProvider({
     }
   }, [authApi, applySession]);
 
+  /**
+   * Dedupe: sem app com múltiplas abas (é um app só), mas o refresh
+   * PROATIVO por timer e um retry REATIVO por 401 (ver `token-store.ts`/
+   * `registerRefreshHandler` abaixo) podem disparar ao mesmo tempo — o
+   * `refresh_token` é de uso único, então a segunda chamada concorrente
+   * reapresentaria um token que a primeira já consumiu e derrubaria a
+   * sessão à toa. Toda chamada concorrente recebe a MESMA promise.
+   */
+  const refreshInFlight = useRef<Promise<boolean> | null>(null);
+
+  const refreshSession = useCallback((): Promise<boolean> => {
+    if (refreshInFlight.current) {
+      return refreshInFlight.current;
+    }
+    const promise = performRefresh().finally(() => {
+      refreshInFlight.current = null;
+    });
+    refreshInFlight.current = promise;
+    return promise;
+  }, [performRefresh]);
+
   useEffect(() => {
     void refreshSession();
     return () => {
@@ -136,6 +159,18 @@ export function AuthProvider({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Registra `refreshSession` pra `createApiClient` chamar reativamente
+  // a cada 401 (ver comentário grande em `../web/auth-context.tsx` —
+  // mesmo BUG REAL de produção "clico e dá erro" em toda ação, aqui
+  // fechado do lado mobile também por paridade).
+  useEffect(() => {
+    registerRefreshHandler(async () => {
+      const ok = await refreshSession();
+      return ok ? getAccessToken() : null;
+    });
+    return () => registerRefreshHandler(null);
+  }, [refreshSession]);
 
   const login = useCallback(
     async (input: LoginInput): Promise<LoginResponse> => {

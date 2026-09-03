@@ -24,7 +24,7 @@ import {
   createVehiclesEndpoints,
   createWalletEndpoints,
 } from "@rotta/api-client";
-import { getAccessToken } from "@rotta/auth/web";
+import { getAccessToken, requestTokenRefresh } from "@rotta/auth/web";
 
 import { env } from "@/config/env";
 
@@ -32,10 +32,17 @@ import { env } from "@/config/env";
  * Instância única do cliente de API do painel do cliente (Dossie 22, Secao 5.6).
  * `getAccessToken` lê o token em memória mantido por `AuthProvider`
  * (Dossiê 15) — nunca `localStorage` (Dossiê 12 §4.6).
+ *
+ * `refreshAccessToken` (ver `http.ts#ApiClientConfig`) fecha o mesmo BUG
+ * REAL de produção corrigido em `apps/admin` (03/09/2026 — "clico e dá
+ * erro" em toda ação): sem retry reativo, um `access_token` expirado
+ * enquanto a aba ficava em segundo plano derrubava toda ação seguinte
+ * com 401, sem nenhuma chance de recuperação sozinha.
  */
 const apiClient = createApiClient({
   baseUrl: env.NEXT_PUBLIC_API_URL,
   getAccessToken: () => getAccessToken(),
+  refreshAccessToken: () => requestTokenRefresh(),
   platform: "web",
 });
 

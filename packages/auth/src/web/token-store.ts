@@ -23,6 +23,27 @@ export function setAccessToken(token: string | null): void {
   inMemoryAccessToken = token;
 }
 
+/**
+ * Ponte entre `packages/api-client` (que não conhece `AuthProvider`,
+ * nem React) e o refresh de sessão de verdade (`refreshSession` em
+ * `auth-context.tsx`, com todo o dedupe/lock entre abas documentado
+ * acima) — `AuthProvider` registra o handler no mount;
+ * `createApiClient({ refreshAccessToken })` chama `requestTokenRefresh`
+ * reativamente a cada 401 (ver comentário em `http.ts`). Sem
+ * `AuthProvider` montado (nunca deveria acontecer numa tela real),
+ * `requestTokenRefresh` só devolve `null` — o 401 original segue seu
+ * caminho normal.
+ */
+let refreshHandler: (() => Promise<string | null>) | null = null;
+
+export function registerRefreshHandler(handler: (() => Promise<string | null>) | null): void {
+  refreshHandler = handler;
+}
+
+export async function requestTokenRefresh(): Promise<string | null> {
+  return (await refreshHandler?.()) ?? null;
+}
+
 export function getPersistedRefreshToken(): string | null {
   if (typeof window === "undefined") {
     return null;

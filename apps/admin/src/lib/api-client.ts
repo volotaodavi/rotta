@@ -22,7 +22,7 @@ import {
   createTripsEndpoints,
   createVehiclesEndpoints,
 } from "@rotta/api-client";
-import { getAccessToken } from "@rotta/auth/web";
+import { getAccessToken, requestTokenRefresh } from "@rotta/auth/web";
 
 import { env } from "@/config/env";
 
@@ -30,10 +30,18 @@ import { env } from "@/config/env";
  * Instância única do cliente de API do Admin Rotta (Dossie 22, Secao 5.6).
  * `getAccessToken` lê o token em memória mantido por `AuthProvider`
  * (Dossiê 15) — nunca `localStorage` (Dossiê 12 §4.6).
+ *
+ * `refreshAccessToken` (ver `http.ts#ApiClientConfig`) fecha o BUG REAL
+ * de produção "está dando erro na plataforma dos admins, por
+ * completo... clico e dá erro" (usuário, 03/09/2026) — sem isto, um
+ * `access_token` expirado enquanto a aba ficava em segundo plano (o
+ * refresh proativo por timer atrasa nesse caso) derrubava TODA ação
+ * subsequente com 401, sem nenhuma tentativa de recuperação sozinha.
  */
 const apiClient = createApiClient({
   baseUrl: env.NEXT_PUBLIC_API_URL,
   getAccessToken: () => getAccessToken(),
+  refreshAccessToken: () => requestTokenRefresh(),
   platform: "web",
 });
 
