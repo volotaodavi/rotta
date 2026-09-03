@@ -1,5 +1,7 @@
 import { registerAs } from "@nestjs/config";
 
+import { parseCorsOrigins } from "./cors-origin.util";
+
 export interface AppConfig {
   nodeEnv: string;
   port: number;
@@ -14,7 +16,7 @@ export default registerAs("app", (): AppConfig => ({
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? 3333),
   apiPrefix: process.env.API_PREFIX ?? "v1",
-  corsOrigins: (process.env.CORS_ORIGINS ?? "").split(",").filter(Boolean),
+  corsOrigins: parseCorsOrigins(process.env.CORS_ORIGINS ?? ""),
   corsOriginRegex: process.env.CORS_ORIGIN_REGEX
     ? new RegExp(process.env.CORS_ORIGIN_REGEX)
     : undefined,

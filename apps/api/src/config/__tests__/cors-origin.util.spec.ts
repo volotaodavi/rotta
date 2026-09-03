@@ -1,4 +1,4 @@
-import { isCorsOriginAllowed } from "../cors-origin.util";
+import { isCorsOriginAllowed, parseCorsOrigins } from "../cors-origin.util";
 
 describe("isCorsOriginAllowed", () => {
   const allowedOrigins = ["https://rotta-web.vercel.app", "https://rotta-admin.vercel.app"];
@@ -33,5 +33,38 @@ describe("isCorsOriginAllowed", () => {
 
   it("recusa qualquer origem quando a lista está vazia e não há regex", () => {
     expect(isCorsOriginAllowed("https://rotta-web.vercel.app", [], undefined)).toBe(false);
+  });
+});
+
+describe("parseCorsOrigins", () => {
+  it("separa origens simples por vírgula", () => {
+    expect(parseCorsOrigins("https://rottabr.com.br,https://rotta-admin.vercel.app")).toEqual([
+      "https://rottabr.com.br",
+      "https://rotta-admin.vercel.app",
+    ]);
+  });
+
+  it("remove espaço em branco ao redor de cada origem (achado real: espaço depois da vírgula quebrava a comparação exata)", () => {
+    expect(parseCorsOrigins("https://rottabr.com.br, https://rotta-admin.vercel.app")).toEqual([
+      "https://rottabr.com.br",
+      "https://rotta-admin.vercel.app",
+    ]);
+  });
+
+  it("remove barra(s) no final de cada origem (o header Origin do navegador nunca tem barra)", () => {
+    expect(parseCorsOrigins("https://rotta-admin.vercel.app/")).toEqual([
+      "https://rotta-admin.vercel.app",
+    ]);
+  });
+
+  it("ignora entradas vazias (vírgula sobrando no início/fim/meio)", () => {
+    expect(parseCorsOrigins(",https://rottabr.com.br,,https://rotta-admin.vercel.app,")).toEqual([
+      "https://rottabr.com.br",
+      "https://rotta-admin.vercel.app",
+    ]);
+  });
+
+  it("devolve lista vazia para string vazia (CORS_ORIGINS não configurado)", () => {
+    expect(parseCorsOrigins("")).toEqual([]);
   });
 });
