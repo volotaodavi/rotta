@@ -2,6 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { getSiteUrl } from "@/lib/site-config";
 
+
 /**
  * `robots.txt` gerado nativamente pelo Next.js 15 a partir deste
  * arquivo (Dossiê 12 §7.4). Bloqueia rastreamento de tudo que exige
@@ -17,7 +18,16 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/empresa", "/veiculos", "/escolas", "/marketplace", "/notificacoes", "/convite"],
+      disallow: [
+        "/empresa",
+        "/veiculos",
+        "/escolas",
+        "/marketplace",
+        "/notificacoes",
+        "/convite",
+        // Relay de webhook (POST-only, nunca conteúdo pra indexar).
+        "/api",
+      ],
     },
     sitemap: `${siteUrl}/sitemap.xml`,
   };
