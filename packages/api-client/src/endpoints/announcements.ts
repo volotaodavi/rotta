@@ -55,7 +55,7 @@ export function createAnnouncementsEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<Announcement>>("/announcements", {
           method: "POST",
-          body: JSON.stringify(input),
+          body: input,
         })
       ).data,
 

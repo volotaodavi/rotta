@@ -14,6 +14,8 @@ import {
   Min,
 } from "class-validator";
 
+import { ParseQueryBoolean } from "@/common/validators";
+
 /**
  * Busca de transportadores próximos (briefing "Marketplace" §"MAPA"/
  * "BUSCA"/"FILTROS"). `latitude`/`longitude` sempre vêm do cliente
@@ -82,7 +84,7 @@ export class SearchTransportersQueryDto {
 
   @ApiPropertyOptional({ description: "Somente transportadores com selo Verificado" })
   @IsOptional()
-  @Type(() => Boolean)
+  @ParseQueryBoolean()
   @IsBoolean()
   apenasVerificados?: boolean;
 

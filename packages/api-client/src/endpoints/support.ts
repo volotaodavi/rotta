@@ -94,7 +94,7 @@ export function createSupportEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<SupportTicket>>("/support/tickets", {
           method: "POST",
-          body: JSON.stringify(input),
+          body: input,
         })
       ).data,
 
@@ -123,7 +123,7 @@ export function createSupportEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<SupportMessage>>(
           `/support/tickets/${ticketId}/messages${buildQueryString({ companyId })}`,
-          { method: "POST", body: JSON.stringify({ mensagem, anexoUrl }) },
+          { method: "POST", body: { mensagem, anexoUrl } },
         )
       ).data,
 

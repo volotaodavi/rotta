@@ -3,6 +3,8 @@ import { SupportTicketCategoria, SupportTicketStatus } from "@prisma/client";
 import { Type } from "class-transformer";
 import { IsBoolean, IsEnum, IsInt, IsOptional, IsUUID, Max, Min } from "class-validator";
 
+import { ParseQueryBoolean } from "@/common/validators";
+
 /** Listagem de chamados — `companyId` só é lido para `Role.ADMIN_ROTTA` (Empresa/Gestor sempre veem só o próprio tenant, ver `SupportService`). */
 export class ListSupportTicketsQueryDto {
   @ApiPropertyOptional({ enum: SupportTicketStatus })
@@ -28,7 +30,7 @@ export class ListSupportTicketsQueryDto {
       "false (padrão) esconde arquivados; true mostra só os arquivados (pedido do usuário 02/09/2026).",
   })
   @IsOptional()
-  @Type(() => Boolean)
+  @ParseQueryBoolean()
   @IsBoolean()
   arquivado?: boolean;
 

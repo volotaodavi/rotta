@@ -84,7 +84,7 @@ export function createBackofficeEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<{ id: string; nomeFantasia: string }>>(
           `/backoffice/companies/${companyId}/access-as-support`,
-          { method: "POST", body: JSON.stringify({ motivo }) },
+          { method: "POST", body: { motivo } },
         )
       ).data,
   };
