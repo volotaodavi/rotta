@@ -129,11 +129,30 @@ export interface AsaasPayment {
     | "CHARGEBACK_REQUESTED";
   billingType: AsaasBillingType;
   value: number;
+  /**
+   * Valor líquido já com a taxa da Asaas descontada — vem pronto da
+   * própria API (confirmado com uma chamada real de produção, pedido do
+   * usuário 02/09/2026: "veja a parte de faturamento... provedor
+   * Asaas"), diferente da AbacatePay (`ABACATEPAY_FEE_*`, formula
+   * estimada porque o `billing/list` deles não devolve valor líquido).
+   * `value - netValue` = taxa retida, sem precisar estimar nada.
+   */
+  netValue?: number;
   /** Boleto: linha digitável, pra exibir sem precisar abrir o PDF. */
   identificationField?: string;
   /** Boleto: link do PDF hospedado pela própria Asaas. */
   bankSlipUrl?: string;
   invoiceUrl?: string;
+}
+
+/** Envelope de lista paginada da Asaas (`GET /payments` etc.) — `hasMore` indica se há mais páginas além de `offset + data.length`. */
+export interface AsaasListEnvelope<T> {
+  object: "list";
+  hasMore: boolean;
+  totalCount: number;
+  limit: number;
+  offset: number;
+  data: T[];
 }
 
 /**

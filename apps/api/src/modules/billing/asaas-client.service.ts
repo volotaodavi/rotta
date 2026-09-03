@@ -4,6 +4,7 @@ import { ConfigType } from "@nestjs/config";
 import type {
   AsaasCustomer,
   AsaasErrorEnvelope,
+  AsaasListEnvelope,
   AsaasPayment,
   AsaasPixQrCode,
   AsaasSubscription,
@@ -175,5 +176,25 @@ export class AsaasClientService {
     return this.request<AsaasPixQrCode>(`/payments/${encodeURIComponent(paymentId)}/pixQrCode`, {
       method: "GET",
     });
+  }
+
+  /**
+   * Uma página de pagamentos da CONTA INTEIRA (não de uma assinatura
+   * só, diferente de `listPaymentsBySubscription`) — usado pela
+   * reconciliação financeira do painel Admin (pedido do usuário
+   * 02/09/2026: "veja a parte de faturamento e recebimentos, provedor
+   * Asaas" — até esta entrega, `getAdminOverview` só refletia
+   * `configured` pra Asaas, nunca somava valor nenhum). `BillingService`
+   * pagina chamando isto em loop até `hasMore` virar `false`. Limite
+   * máximo de 100 por página, o mesmo da própria API da Asaas.
+   */
+  listPayments(params: {
+    offset: number;
+    limit: number;
+  }): Promise<AsaasListEnvelope<AsaasPayment>> {
+    return this.request<AsaasListEnvelope<AsaasPayment>>(
+      `/payments?offset=${params.offset}&limit=${params.limit}`,
+      { method: "GET" },
+    );
   }
 }

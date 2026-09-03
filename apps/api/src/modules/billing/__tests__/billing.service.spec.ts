@@ -57,6 +57,7 @@ describe("BillingService", () => {
       getPayment: jest.fn(),
       listPaymentsBySubscription: jest.fn(),
       getPixQrCode: jest.fn(),
+      listPayments: jest.fn(),
     } as unknown as jest.Mocked<AsaasClientService>;
 
     companyRepository = {
@@ -531,6 +532,137 @@ describe("BillingService", () => {
       expect(overview.totalRecebidoCentavos).toBeNull();
       expect(overview.totalTaxaRetidaCentavos).toBeNull();
       expect(overview.quantidadeCobrancasPagas).toBeNull();
+    });
+
+    it("soma valores recebidos e taxa retida da Asaas (netValue já vem líquido, sem estimar fórmula) só das cobranças pagas", async () => {
+      client.isConfigured.mockReturnValue(false);
+      asaasClient.isConfigured.mockReturnValue(true);
+      companyRepository.list.mockResolvedValue({ items: [buildActiveCompany()], total: 1 });
+      asaasClient.listPayments.mockResolvedValue({
+        object: "list",
+        hasMore: false,
+        totalCount: 3,
+        limit: 100,
+        offset: 0,
+        data: [
+          {
+            id: "p1",
+            customer: "cus_1",
+            status: "RECEIVED",
+            billingType: "BOLETO",
+            value: 39.9,
+            netValue: 37.91,
+          },
+          {
+            id: "p2",
+            customer: "cus_1",
+            status: "CONFIRMED",
+            billingType: "CREDIT_CARD",
+            value: 39.9,
+            netValue: 38.5,
+          },
+          { id: "p3", customer: "cus_1", status: "PENDING", billingType: "BOLETO", value: 39.9 },
+        ],
+      });
+
+      const overview = await service.getAdminOverview();
+
+      expect(overview.asaas.configured).toBe(true);
+      expect(overview.asaas.quantidadeCobrancasPagas).toBe(2);
+      expect(overview.asaas.totalRecebidoCentavos).toBe(3990 + 3990);
+      expect(overview.asaas.totalTaxaRetidaCentavos).toBe(3990 - 3791 + (3990 - 3850));
+      expect(overview.quantidadeCobrancasPagas).toBe(2);
+      expect(overview.totalRecebidoCentavos).toBe(3990 + 3990);
+    });
+
+    it("pagina até hasMore virar false", async () => {
+      client.isConfigured.mockReturnValue(false);
+      asaasClient.isConfigured.mockReturnValue(true);
+      companyRepository.list.mockResolvedValue({ items: [], total: 0 });
+      asaasClient.listPayments
+        .mockResolvedValueOnce({
+          object: "list",
+          hasMore: true,
+          totalCount: 2,
+          limit: 1,
+          offset: 0,
+          data: [
+            {
+              id: "p1",
+              customer: "cus_1",
+              status: "RECEIVED",
+              billingType: "PIX",
+              value: 39.9,
+              netValue: 39.1,
+            },
+          ],
+        })
+        .mockResolvedValueOnce({
+          object: "list",
+          hasMore: false,
+          totalCount: 2,
+          limit: 1,
+          offset: 1,
+          data: [
+            {
+              id: "p2",
+              customer: "cus_1",
+              status: "RECEIVED",
+              billingType: "PIX",
+              value: 39.9,
+              netValue: 39.1,
+            },
+          ],
+        });
+
+      const overview = await service.getAdminOverview();
+
+      expect(asaasClient.listPayments).toHaveBeenCalledTimes(2);
+      expect(overview.asaas.quantidadeCobrancasPagas).toBe(2);
+    });
+
+    it("combina AbacatePay + Asaas nos totais gerais quando os dois estão configurados", async () => {
+      companyRepository.list.mockResolvedValue({ items: [], total: 0 });
+      client.listBillings.mockResolvedValue([
+        { id: "b1", status: "PAID", amount: 3990, methods: ["PIX"] },
+      ]);
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.listPayments.mockResolvedValue({
+        object: "list",
+        hasMore: false,
+        totalCount: 1,
+        limit: 100,
+        offset: 0,
+        data: [
+          {
+            id: "p1",
+            customer: "cus_1",
+            status: "RECEIVED",
+            billingType: "BOLETO",
+            value: 39.9,
+            netValue: 37.91,
+          },
+        ],
+      });
+
+      const overview = await service.getAdminOverview();
+
+      expect(overview.quantidadeCobrancasPagas).toBe(2);
+      expect(overview.totalRecebidoCentavos).toBe(3990 + 3990);
+      expect(overview.lucroLiquidoCentavos).not.toBeNull();
+    });
+
+    it("nunca lança e deixa o bloco Asaas com valores null quando a Asaas falha", async () => {
+      client.isConfigured.mockReturnValue(false);
+      asaasClient.isConfigured.mockReturnValue(true);
+      companyRepository.list.mockResolvedValue({ items: [], total: 0 });
+      asaasClient.listPayments.mockRejectedValue(new Error("timeout"));
+
+      const overview = await service.getAdminOverview();
+
+      expect(overview.asaas.configured).toBe(true);
+      expect(overview.asaas.totalRecebidoCentavos).toBeNull();
+      expect(overview.totalRecebidoCentavos).toBeNull();
     });
   });
 

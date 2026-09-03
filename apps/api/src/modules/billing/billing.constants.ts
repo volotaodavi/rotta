@@ -93,3 +93,15 @@ export const PENDING_SUBSCRIPTION_ID_PREFIX = "pending:";
 
 /** 48h, decisão do usuário ("Expira em 48h e reembolsa") — pagamento feito antes do cadastro que ninguém veio reclamar expira e é devolvido automaticamente. */
 export const PRE_SIGNUP_EXPIRES_HOURS = 48;
+
+/** Página máxima aceita pela própria API da Asaas (`GET /payments?limit=...`). */
+export const ASAAS_PAYMENTS_PAGE_SIZE = 100;
+/**
+ * Circuit breaker da reconciliação financeira (`BillingService.
+ * reconciliarPagamentosAsaas`) — nunca deveria bater nisto tão cedo no
+ * produto (volume baixo), mas existe pra nunca deixar o painel Admin
+ * preso num loop de paginação infinito se a Asaas devolver `hasMore`
+ * incorretamente. Loga um aviso claro se bater no teto, nunca falha
+ * silenciosamente.
+ */
+export const ASAAS_PAYMENTS_MAX_PAGES = 50;

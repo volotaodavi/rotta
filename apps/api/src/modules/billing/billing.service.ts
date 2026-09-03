@@ -22,6 +22,8 @@ import {
   ABACATEPAY_FEE_CARD_PERCENT,
   ABACATEPAY_FEE_PIX_CENTS,
   ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
+  ASAAS_PAYMENTS_MAX_PAGES,
+  ASAAS_PAYMENTS_PAGE_SIZE,
   PENDING_SUBSCRIPTION_ID_PREFIX,
   PIX_OVERDUE_GRACE_DAYS,
   PIX_RECURRENCE_MONTHS,
@@ -568,6 +570,61 @@ export class BillingService {
       default:
         return "PENDING";
     }
+  }
+
+  /**
+   * Reconciliação financeira da Asaas pro painel Admin (pedido do
+   * usuário 02/09/2026: "veja a parte de faturamento e recebimentos,
+   * provedor Asaas" — até esta entrega, `getAdminOverview` só refletia
+   * `configured: true/false` pra Asaas, nunca somava valor nenhum, por
+   * faltar exatamente este método). Pagina `AsaasClientService.
+   * listPayments` (conta inteira, não uma assinatura só) até `hasMore`
+   * virar `false` ou bater no circuit breaker `ASAAS_PAYMENTS_MAX_PAGES`.
+   *
+   * Só conta como "pago" o mesmo trio de status que
+   * `mapAsaasPaymentStatusToPixStatus` já trata como `PAID` — nunca
+   * duplica essa classificação. Taxa retida = `value - netValue`,
+   * direto do que a própria Asaas devolve (confirmado com uma chamada
+   * real de produção) — nada estimado por fórmula, diferente do bloco
+   * da AbacatePay logo acima (`ABACATEPAY_FEE_*`), cujo `billing/list`
+   * não devolve valor líquido.
+   */
+  private async reconciliarPagamentosAsaas(): Promise<{
+    totalRecebidoCentavos: number;
+    totalTaxaRetidaCentavos: number;
+    quantidadeCobrancasPagas: number;
+  }> {
+    let totalRecebidoCentavos = 0;
+    let totalTaxaRetidaCentavos = 0;
+    let quantidadeCobrancasPagas = 0;
+
+    let offset = 0;
+    for (let pagina = 0; pagina < ASAAS_PAYMENTS_MAX_PAGES; pagina += 1) {
+      const { data: pagamentos, hasMore } = await this.asaasClient.listPayments({
+        offset,
+        limit: ASAAS_PAYMENTS_PAGE_SIZE,
+      });
+
+      for (const pagamento of pagamentos) {
+        if (this.mapAsaasPaymentStatusToPixStatus(pagamento.status) !== "PAID") continue;
+        const valorCentavos = Math.round(pagamento.value * 100);
+        const liquidoCentavos =
+          pagamento.netValue !== undefined ? Math.round(pagamento.netValue * 100) : valorCentavos;
+        totalRecebidoCentavos += valorCentavos;
+        totalTaxaRetidaCentavos += valorCentavos - liquidoCentavos;
+        quantidadeCobrancasPagas += 1;
+      }
+
+      if (!hasMore) break;
+      offset += ASAAS_PAYMENTS_PAGE_SIZE;
+      if (pagina === ASAAS_PAYMENTS_MAX_PAGES - 1) {
+        this.logger.warn(
+          `Reconciliação de pagamentos Asaas atingiu o limite de ${ASAAS_PAYMENTS_MAX_PAGES} páginas (${offset} pagamentos) sem terminar — números do painel financeiro podem estar incompletos.`,
+        );
+      }
+    }
+
+    return { totalRecebidoCentavos, totalTaxaRetidaCentavos, quantidadeCobrancasPagas };
   }
 
   /**
@@ -1259,12 +1316,29 @@ export class BillingService {
       }
     }
 
-    // Asaas não expõe um "billing/list" equivalente já mapeado neste
-    // módulo (contrato não testado, ver `types/asaas.types.ts`) — por
-    // ora, o bloco `asaas` do painel financeiro só reflete
-    // `configured`; os valores populam assim que a Frente de
-    // reconciliação (consultar pagamentos por assinatura) for
-    // construída. Nunca finge 0 — fica `null` (stub honesto).
+    if (overview.asaas.configured) {
+      try {
+        const { totalRecebidoCentavos, totalTaxaRetidaCentavos, quantidadeCobrancasPagas } =
+          await this.reconciliarPagamentosAsaas();
+
+        overview.totalRecebidoCentavos =
+          (overview.totalRecebidoCentavos ?? 0) + totalRecebidoCentavos;
+        overview.totalTaxaRetidaCentavos =
+          (overview.totalTaxaRetidaCentavos ?? 0) + totalTaxaRetidaCentavos;
+        overview.quantidadeCobrancasPagas =
+          (overview.quantidadeCobrancasPagas ?? 0) + quantidadeCobrancasPagas;
+        overview.asaas = {
+          configured: true,
+          totalRecebidoCentavos,
+          totalTaxaRetidaCentavos,
+          quantidadeCobrancasPagas,
+        };
+      } catch (error) {
+        this.logger.warn(
+          `Não foi possível buscar o histórico de pagamentos da Asaas pro painel financeiro: ${(error as Error).message}`,
+        );
+      }
+    }
 
     const totalTaxaCombinada =
       (overview.abacatepay.totalTaxaRetidaCentavos ?? 0) +
