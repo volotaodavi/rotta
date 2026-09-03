@@ -125,18 +125,22 @@ export function getGoogleAnalyticsId(): string | undefined {
  * uma página de domínio à venda de terceiro) — os antigos
  * `contato@`/`suporte@rotta.com.br` eram endereços que ninguém
  * conseguia receber. O domínio oficial agora é `rottabr.com.br`
- * (confirmado pelo usuário 31/08/2026) e a caixa `contato@rottabr.com.br`
- * já existe de verdade (Cloudflare Email Routing + Email Service,
- * confirmado pelo usuário 01/09/2026 — Dossiê 33 §6) — é o e-mail
- * oficial da Rotta usado em toda comunicação (contato, suporte,
- * segurança e o funil `/governo`), um único ponto de origem, trocar só
- * aqui no dia em que um endereço dedicado por finalidade existir.
+ * (confirmado pelo usuário 31/08/2026), ambas as caixas já existem de
+ * verdade (Cloudflare Email Routing + Email Service) e passaram a ter
+ * finalidade própria (pedido do usuário 03/09/2026: "o suporte... deve
+ * ter o e-mail do suporte (suporte@rottabr.com.br). contato@rottabr.com.br
+ * é para outros tipos de contatos, como 'me ajuda', 'parceria',
+ * 'contratos' etc." — antes as duas eram a MESMA caixa de propósito,
+ * documentado aqui como provisório até um endereço dedicado por
+ * finalidade existir; agora existe).
  */
 export const COMPANY_LEGAL_NAME = "Rotta do Brasil Tecnologia e Soluções de Transportes";
 export const COMPANY_CNPJ = "54.623.584/0001-80";
 export const COMPANY_FORUM = "Maricá/RJ";
+/** Contato geral — parcerias, contratos, imprensa, dúvidas institucionais. Nunca usado pra suporte ao usuário do produto (ver `SUPPORT_EMAIL`). */
 export const CONTACT_EMAIL = "contato@rottabr.com.br";
-export const SUPPORT_EMAIL = CONTACT_EMAIL;
+/** Suporte ao usuário do produto (transportadora, motorista, monitor, responsável) — mesma caixa que `DEFAULT_FROM_ADDRESS_SUPORTE` já usa como remetente dos e-mails reais de chamado (`apps/api/src/config/email.config.ts`). */
+export const SUPPORT_EMAIL = "suporte@rottabr.com.br";
 /**
  * Não existe um endereço de segurança dedicado hoje — o canal de
  * divulgação responsável de vulnerabilidade reaproveita o e-mail real
