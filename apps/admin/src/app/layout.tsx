@@ -14,7 +14,12 @@ export const metadata: Metadata = {
  * Script bloqueante (roda antes do primeiro paint, antes da hidratação
  * do React) que resolve e aplica `data-theme` na raiz do documento —
  * mesmo mecanismo de `apps/web/src/app/layout.tsx` (ver a nota lá para
- * o porquê de `<html>` abaixo NÃO declarar `data-theme` no JSX).
+ * o porquê de `<html>` abaixo NÃO declarar `data-theme` no JSX, e para
+ * o porquê de precisar de `suppressHydrationWarning` — mesmo bug,
+ * replicado aqui e corrigido na auditoria de 03/09/2026: sem ele, o
+ * React comparava o HTML do servidor (sem `data-theme`) com o DOM já
+ * modificado por este script e logava "hidratação divergente" como
+ * ERRO em toda navegação/reload do Admin).
  */
 const THEME_INIT_SCRIPT = `
 (function () {
@@ -40,7 +45,7 @@ const THEME_INIT_SCRIPT = `
  */
 export default function RootLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
       </head>
