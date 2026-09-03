@@ -10,7 +10,6 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
-
 import { toSupportMessageResponseDto } from "./mappers/support-message.mapper";
 import {
   toSupportTicketDetailResponseDto,
@@ -34,6 +33,7 @@ import type {
 } from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
+
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import { EmailService } from "@/infra/email/email.service";
 import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
@@ -215,12 +215,18 @@ export class SupportService {
         });
       }
 
-      // Caixa fixa da Rotta (pedido do usuário 01/09/2026: "novos
-      // pedidos de suporte... abertura de chamados") — só na ABERTURA,
-      // nunca a cada mensagem trocada (`SUPORTE_NOVA_MENSAGEM` continua
-      // só pelo `SUPPORT_INBOX_EMAIL` opcional logo abaixo, senão viraria
-      // spam pras duas caixas a cada troca de mensagem da conversa).
-      if (input.tipo === "SUPORTE_TICKET_ABERTO") {
+      // Caixa fixa da Rotta — FALLBACK de verdade agora, só quando não
+      // existe nenhuma conta Admin Rotta cadastrada ainda (mesmo
+      // propósito documentado em `AdminInboxEmailService`: "garantia de
+      // que o e-mail chega... mesmo que nenhuma conta Admin Rotta
+      // exista ainda"). Antes disparava SEMPRE, em cima do que cada
+      // Admin Rotta já recebe via `COMMUNICATION_REQUESTED_EVENT`
+      // (loop acima) — com as contas de papel Geral/Financeiro/Suporte
+      // já existindo (RBAC de sub-papéis), isso virava várias cópias
+      // do mesmo aviso pro mesmo lugar (pedido do usuário 03/09/2026:
+      // "mesmo chamando uma vez o suporte, chegam disparando e-mails
+      // pra mim (chegaram 6), conserte").
+      if (input.tipo === "SUPORTE_TICKET_ABERTO" && adminIds.length === 0) {
         void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "suporte");
       }
     } catch (error) {

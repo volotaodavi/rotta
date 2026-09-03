@@ -24,8 +24,8 @@ import { useMyIdentityVerification } from "@/features/identity-verification/hook
 import { VinculoPendenteBlockScreen } from "@/features/team/components/vinculo-pendente-block-screen";
 import { VehicleAdminReviewAcknowledgeModal } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-modal";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
+import { wakeApi } from "@/lib/wake-api";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
-
 
 /** Um item de navegação do cabeçalho — `href`/`label`, nada além disso. */
 interface NavLink {
@@ -167,6 +167,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   useEffect(() => {
     setIsMobileNavOpen(false);
   }, [pathname]);
+
+  // "Acorda" a API do Render (ver `wakeApi` — cold start medido em
+  // ~89s) — antes só disparava na Landing Page (`(marketing)/layout.tsx`),
+  // nunca aqui no Painel autenticado (pedido do usuário 03/09/2026, ao
+  // reportar telas de erro pro Responsável logo depois de reabrir o
+  // app: "vai para a tela de erro"/"não aparece nada" — quem já está
+  // logado e volta pro app depois de um tempo cai direto numa página
+  // do painel que já busca dado de verdade, sem o "tempo de leitura"
+  // que a Landing Page dá de graça pro cold start terminar por trás).
+  // Dispara uma vez por sessão deste layout, nunca em loop.
+  useEffect(() => {
+    wakeApi();
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") {

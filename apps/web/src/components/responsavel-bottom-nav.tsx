@@ -8,7 +8,6 @@ import { PortalBottomNav } from "./portal-bottom-nav";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import { useStudentsList } from "@/features/students/hooks/use-students";
 
-
 /**
  * Frente AO — o Responsável só tinha uma lista de links de texto no
  * cabeçalho (`RESPONSAVEL_NAV`, `(dashboard)/layout.tsx`), nunca a
@@ -20,12 +19,17 @@ import { useStudentsList } from "@/features/students/hooks/use-students";
  * "Viagens" não tem uma rota fixa: o Painel Web organiza o
  * acompanhamento por aluno (`/alunos/:id/mapa`, com o card "Viagens"
  * Hoje/Semana/Mês — Frente AM), não por um único "meu transporte" como
- * o Marketplace do app mobile. Com só 1 filho cadastrado (caso comum),
- * navega direto pro mapa dele; com 0 ou 2+, cai em "Meus Alunos"
- * (`/alunos`, que já é a própria home/"Início" — lá dá pra escolher ou
- * cadastrar). Mesma query (`useStudentsList({ pageSize: 50 })`) que a
- * própria página usa, então o React Query reaproveita o cache — sem
- * chamada de rede extra.
+ * o Marketplace do app mobile. Sempre navega pro mapa/histórico do
+ * PRIMEIRO aluno (ordem que a própria lista já usa) — com 2+ filhos dá
+ * pra trocar de um pro outro por lá (`VoltarLink` leva de volta pra
+ * `/alunos/:id`, e "Meus Alunos" continua na aba Início). Só cai em
+ * "Meus Alunos" (`/alunos`) quando não há NENHUM aluno cadastrado
+ * ainda — achado real (pedido do usuário 03/09/2026, "quando clica em
+ * viagens, não aparece nada"): antes, com 0 OU 2+ filhos, "Viagens"
+ * mandava pra `/alunos` — o mesmo lugar que "Início" já mostra, então
+ * clicar não parecia fazer nada com 2+ filhos. Mesma query
+ * (`useStudentsList({ pageSize: 50 })`) que a própria página usa,
+ * então o React Query reaproveita o cache — sem chamada de rede extra.
  */
 export function ResponsavelBottomNav(): JSX.Element {
   const router = useRouter();
@@ -33,8 +37,8 @@ export function ResponsavelBottomNav(): JSX.Element {
   const { data: alunos } = useStudentsList({ pageSize: 50 });
 
   function handleViagens(): void {
-    const unico = alunos?.items.length === 1 ? alunos.items[0] : undefined;
-    router.push(unico ? `/alunos/${unico.id}/mapa` : "/alunos");
+    const primeiro = alunos?.items[0];
+    router.push(primeiro ? `/alunos/${primeiro.id}/mapa` : "/alunos");
   }
 
   return (
