@@ -19,6 +19,7 @@ import {
   Layers,
   LogOut,
   Megaphone,
+  Menu,
   MessageCircle,
   Plus,
   Radar,
@@ -53,46 +54,76 @@ interface NavItem {
   badge?: "aprovacoes" | "chamados";
 }
 
+interface NavGroup {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  items: NavItem[];
+}
+
 /**
- * Navegação principal (Frente Mercury, pedido do usuário: "pegue de
- * exemplo esse design e transforme a tela do admin" — banner de
- * referência de um painel bancário com sidebar de ícones). Mesmas 9
- * rotas que já existiam no cabeçalho horizontal antigo, agora com ícone
- * + badge de pendência real onde faz sentido (Aprovações/Suporte) —
- * nenhuma rota nova inventada, só reorganizada.
+ * Painel e Inteligência ficam soltos (não fazem parte de nenhum
+ * grupo temático — cada um é a raiz da própria seção). O resto (eram
+ * 17 itens soltos na sidebar, pedido do usuário 03/09/2026: "tem muitas
+ * abas soltas... por que não cria subabas que serão incorporadas por
+ * abas sêniores?") virou 3 grupos recolhíveis por tema — ver
+ * `NAV_GROUPS` logo abaixo.
  */
-const NAV_PRINCIPAL: NavItem[] = [
+const NAV_STANDALONE: NavItem[] = [
   { href: "/", label: "Painel", icon: Home },
-  { href: "/aprovacoes", label: "Aprovações", icon: ClipboardCheck, badge: "aprovacoes" },
-  { href: "/suporte", label: "Suporte", icon: MessageCircle, badge: "chamados" },
-  { href: "/avisos", label: "Avisos", icon: Megaphone },
   { href: "/inteligencia", label: "Inteligência", icon: BarChart3 },
-  { href: "/empresas", label: "Empresas", icon: Building2 },
-  { href: "/veiculos", label: "Veículos", icon: Car },
-  { href: "/monitoramento", label: "Monitoramento", icon: Radar },
-  { href: "/escolas", label: "Escolas", icon: GraduationCap },
-  { href: "/marketplace/solicitacoes", label: "Marketplace", icon: Store },
-  { href: "/verificacao-identidade", label: "Verificação de identidade", icon: ShieldCheck },
 ];
 
 /**
- * Segundo grupo da sidebar (rótulo próprio, mesmo papel visual de
- * "Workflows" no banner de referência) — as 3 rotas que sobravam do
- * cabeçalho antigo, todas sobre a PLATAFORMA em si (não sobre uma
- * operação do dia a dia de uma empresa/rota específica).
+ * Sub-abas agrupadas por tema (pedido do usuário 03/09/2026) —
+ * substitui a lista plana antiga (`NAV_PRINCIPAL`/`NAV_PLATAFORMA`,
+ * 17 itens soltos). Cada grupo abre/fecha (`NavGroupAccordion`);
+ * abre sozinho quando a rota atual é uma das suas sub-abas
+ * (`AdminSidebar`), senão começa fechado. Nenhuma rota nova, nenhuma
+ * removida — só reorganizadas.
  */
-const NAV_PLATAFORMA: NavItem[] = [
-  { href: "/saude", label: "Saúde", icon: HeartPulse },
-  { href: "/financeiro", label: "Financeiro", icon: DollarSign },
-  { href: "/planos", label: "Planos", icon: Layers },
-  { href: "/documentos-legais", label: "Documentos legais", icon: FileText },
-  { href: "/auditoria-legal", label: "Auditoria legal", icon: ScrollText },
-  { href: "/erros-cliente", label: "Erros do cliente", icon: Bug },
-  // Só aparece pra quem já enxerga a rota (`isAdminRouteAllowed`) — na
-  // prática só Admin Geral, já que SUPORTE/FINANCEIRO nunca têm
-  // `/admin-contas` no próprio allowlist (pedido do usuário 03/09/2026:
-  // "crie outros acessos... com particularidades").
-  { href: "/admin-contas", label: "Contas Admin", icon: Users },
+const NAV_GROUPS: NavGroup[] = [
+  {
+    id: "atendimento",
+    label: "Atendimento",
+    icon: MessageCircle,
+    items: [
+      { href: "/aprovacoes", label: "Aprovações", icon: ClipboardCheck, badge: "aprovacoes" },
+      { href: "/suporte", label: "Suporte", icon: MessageCircle, badge: "chamados" },
+      { href: "/avisos", label: "Avisos", icon: Megaphone },
+      { href: "/verificacao-identidade", label: "Verificação de identidade", icon: ShieldCheck },
+    ],
+  },
+  {
+    id: "operacao",
+    label: "Operação",
+    icon: Building2,
+    items: [
+      { href: "/empresas", label: "Empresas", icon: Building2 },
+      { href: "/veiculos", label: "Veículos", icon: Car },
+      { href: "/monitoramento", label: "Monitoramento", icon: Radar },
+      { href: "/escolas", label: "Escolas", icon: GraduationCap },
+      { href: "/marketplace/solicitacoes", label: "Marketplace", icon: Store },
+    ],
+  },
+  {
+    id: "plataforma",
+    label: "Plataforma",
+    icon: Layers,
+    items: [
+      { href: "/saude", label: "Saúde", icon: HeartPulse },
+      { href: "/financeiro", label: "Financeiro", icon: DollarSign },
+      { href: "/planos", label: "Planos", icon: Layers },
+      { href: "/documentos-legais", label: "Documentos legais", icon: FileText },
+      { href: "/auditoria-legal", label: "Auditoria legal", icon: ScrollText },
+      { href: "/erros-cliente", label: "Erros do cliente", icon: Bug },
+      // Só aparece pra quem já enxerga a rota (`isAdminRouteAllowed`) —
+      // na prática só Admin Geral, já que SUPORTE/FINANCEIRO nunca têm
+      // `/admin-contas` no próprio allowlist (pedido do usuário
+      // 03/09/2026: "crie outros acessos... com particularidades").
+      { href: "/admin-contas", label: "Contas Admin", icon: Users },
+    ],
+  },
 ];
 
 function NavLink({ item, count }: { item: NavItem; count: number | undefined }): JSX.Element {
@@ -270,7 +301,15 @@ function AvatarMenu({
   );
 }
 
-function AdminTopbar(): JSX.Element {
+/**
+ * Cabeçalho do Admin — responsivo (pedido do usuário 03/09/2026: "no
+ * celular, a parada tem que ter o mesmo sentido, porém com outro
+ * layout"). Busca/"Ações rápidas" somem abaixo de `md` (viram peso
+ * morto num celular estreito, a pessoa já tem a sidebar/o botão de
+ * menu pra chegar em qualquer tela); o essencial (privacidade,
+ * notificações, tema, conta) continua sempre visível.
+ */
+function AdminTopbar({ onMenuClick }: { onMenuClick: () => void }): JSX.Element {
   const { user, logout } = useAuth();
   const router = useRouter();
   const { hidden, toggle } = usePrivacy();
@@ -278,9 +317,19 @@ function AdminTopbar(): JSX.Element {
   const pendencias = (data?.aprovacoesPendentesTotal ?? 0) + (data?.chamadosAbertos ?? 0);
 
   return (
-    <header className="flex items-center gap-3 border-b border-border px-6 py-3">
-      <TopbarSearch />
-      <AcoesRapidasMenu />
+    <header className="flex items-center gap-3 border-b border-border px-4 py-3 sm:px-6">
+      <button
+        type="button"
+        onClick={onMenuClick}
+        aria-label="Abrir menu"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-muted hover:text-text lg:hidden"
+      >
+        <Menu size={20} />
+      </button>
+      <div className="hidden min-w-0 flex-1 items-center gap-3 md:flex">
+        <TopbarSearch />
+        <AcoesRapidasMenu />
+      </div>
       <button
         type="button"
         onClick={toggle}
@@ -316,28 +365,52 @@ function AdminTopbar(): JSX.Element {
   );
 }
 
-function AdminSidebar({ papel }: { papel: AdminRottaPapel | undefined }): JSX.Element {
-  const { data } = useBackofficeDashboard();
-  const counts: Record<"aprovacoes" | "chamados", number> = {
-    aprovacoes: data?.aprovacoesPendentesTotal ?? 0,
-    chamados: data?.chamadosAbertos ?? 0,
-  };
-  // Ver `admin-area.guard.ts` (backend) — este filtro só controla o que
-  // APARECE aqui, nunca é a autorização de verdade (o guard recusa a
-  // rota de qualquer jeito, mesmo com o link escondido).
-  const navPrincipal = NAV_PRINCIPAL.filter((item) => isAdminRouteAllowed(papel, item.href));
-  const navPlataforma = NAV_PLATAFORMA.filter((item) => isAdminRouteAllowed(papel, item.href));
+/**
+ * Um grupo recolhível na sidebar (pedido do usuário 03/09/2026: "cria
+ * subabas que serão incorporadas por abas sêniores"). Abre sozinho
+ * quando a rota atual é uma das sub-abas (`defaultOpen`), senão começa
+ * fechado — nunca esconde onde a pessoa já está. O selo de contagem
+ * (aprovações/chamados) soma os badges de TODAS as sub-abas: mesmo
+ * fechado, dá pra ver que tem pendência lá dentro sem precisar abrir.
+ */
+function NavGroupAccordion({
+  group,
+  counts,
+  defaultOpen,
+}: {
+  group: NavGroup;
+  counts: Record<"aprovacoes" | "chamados", number>;
+  defaultOpen: boolean;
+}): JSX.Element {
+  const [open, setOpen] = useState(defaultOpen);
+  const totalBadge = group.items.reduce(
+    (soma, item) => soma + (item.badge ? counts[item.badge] : 0),
+    0,
+  );
 
   return (
-    <aside className="flex w-64 shrink-0 flex-col gap-6 border-r border-border px-3 py-5">
-      <Link href="/" className="flex items-center gap-2 px-2">
-        <Image src="/brand/rotta-mark-512.png" alt="Rotta" width={28} height={28} priority />
-        <Typography variant="subtitle">Rotta Admin</Typography>
-      </Link>
-
-      {navPrincipal.length > 0 && (
-        <nav className="flex flex-col gap-0.5">
-          {navPrincipal.map((item) => (
+    <div className="flex flex-col gap-0.5">
+      <button
+        type="button"
+        onClick={() => setOpen((atual) => !atual)}
+        aria-expanded={open}
+        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-text-muted transition-colors hover:bg-muted hover:text-text"
+      >
+        <group.icon size={18} className="shrink-0" />
+        <span className="flex-1 truncate text-left font-medium">{group.label}</span>
+        {totalBadge > 0 && (
+          <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-warning/15 px-1.5 text-[11px] font-semibold text-warning">
+            {totalBadge}
+          </span>
+        )}
+        <ChevronDown
+          size={14}
+          className={`shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <nav className="flex flex-col gap-0.5 py-0.5 pl-4">
+          {group.items.map((item) => (
             <NavLink
               key={item.href}
               item={item}
@@ -346,33 +419,99 @@ function AdminSidebar({ papel }: { papel: AdminRottaPapel | undefined }): JSX.El
           ))}
         </nav>
       )}
+    </div>
+  );
+}
 
-      {navPlataforma.length > 0 && (
-        <div className="flex flex-col gap-1">
-          <Typography variant="overline" color="muted" className="px-3 uppercase tracking-wide">
-            Plataforma
-          </Typography>
+/**
+ * Vira uma gaveta (drawer) abaixo de `lg` (pedido do usuário
+ * 03/09/2026: "no celular, a parada tem que ter o mesmo sentido,
+ * porém com outro layout") — antes disso a sidebar de 256px fixos
+ * nunca se escondia, o conteúdo real da tela ficava espremido numa
+ * faixa estreitíssima ao lado dela em qualquer celular. `open`/
+ * `onClose` só têm efeito abaixo de `lg` (`translate-x-0 lg:translate-x-0`
+ * sempre visível em telas grandes, independente do estado).
+ */
+function AdminSidebar({
+  papel,
+  open,
+  onClose,
+}: {
+  papel: AdminRottaPapel | undefined;
+  open: boolean;
+  onClose: () => void;
+}): JSX.Element {
+  const pathname = usePathname();
+  const { data } = useBackofficeDashboard();
+  const counts: Record<"aprovacoes" | "chamados", number> = {
+    aprovacoes: data?.aprovacoesPendentesTotal ?? 0,
+    chamados: data?.chamadosAbertos ?? 0,
+  };
+  // Ver `admin-area.guard.ts` (backend) — este filtro só controla o que
+  // APARECE aqui, nunca é a autorização de verdade (o guard recusa a
+  // rota de qualquer jeito, mesmo com o link escondido).
+  const standalone = NAV_STANDALONE.filter((item) => isAdminRouteAllowed(papel, item.href));
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => isAdminRouteAllowed(papel, item.href)),
+  })).filter((group) => group.items.length > 0);
+
+  return (
+    <>
+      {open && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 shrink-0 flex-col gap-2 overflow-y-auto border-r border-border bg-background px-3 py-5 transition-transform duration-200 lg:static lg:z-auto lg:translate-x-0 ${
+          open ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <Link href="/" className="mb-4 flex items-center gap-2 px-2" onClick={onClose}>
+          <Image src="/brand/rotta-mark-512.png" alt="Rotta" width={28} height={28} priority />
+          <Typography variant="subtitle">Rotta Admin</Typography>
+        </Link>
+
+        {standalone.length > 0 && (
           <nav className="flex flex-col gap-0.5">
-            {navPlataforma.map((item) => (
-              <NavLink key={item.href} item={item} count={undefined} />
+            {standalone.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                count={item.badge ? counts[item.badge] : undefined}
+              />
             ))}
           </nav>
-        </div>
-      )}
+        )}
 
-      {/* "Nova empresa" é uma ação operacional geral — mesmo raciocínio de `/`, só faz sentido pra quem tem acesso total. */}
-      {(!papel || papel === "GERAL") && (
-        <div className="mt-auto">
-          <Link
-            href="/empresas/nova"
-            className={buttonVariants({ variant: "primary", fullWidth: true })}
-          >
-            <Plus className="h-4 w-4" />
-            Nova empresa
-          </Link>
-        </div>
-      )}
-    </aside>
+        {groups.map((group) => (
+          <NavGroupAccordion
+            key={group.id}
+            group={group}
+            counts={counts}
+            defaultOpen={group.items.some(
+              (item) => pathname === item.href || (pathname?.startsWith(item.href) ?? false),
+            )}
+          />
+        ))}
+
+        {/* "Nova empresa" é uma ação operacional geral — mesmo raciocínio de `/`, só faz sentido pra quem tem acesso total. */}
+        {(!papel || papel === "GERAL") && (
+          <div className="mt-auto">
+            <Link
+              href="/empresas/nova"
+              className={buttonVariants({ variant: "primary", fullWidth: true })}
+            >
+              <Plus className="h-4 w-4" />
+              Nova empresa
+            </Link>
+          </div>
+        )}
+      </aside>
+    </>
   );
 }
 
@@ -394,6 +533,13 @@ export default function AdminLayout({ children }: { children: ReactNode }): JSX.
   const { status, user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Fecha a gaveta sozinha ao navegar — a pessoa já chegou onde queria,
+  // não devia precisar de um segundo toque só pra tirar o menu do caminho.
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -429,10 +575,14 @@ export default function AdminLayout({ children }: { children: ReactNode }): JSX.
   return (
     <PrivacyProvider>
       <div className="flex min-h-screen bg-background text-text">
-        <AdminSidebar papel={user.adminPapel} />
+        <AdminSidebar
+          papel={user.adminPapel}
+          open={mobileMenuOpen}
+          onClose={() => setMobileMenuOpen(false)}
+        />
         <div className="flex min-w-0 flex-1 flex-col">
-          <AdminTopbar />
-          <main className="flex-1 p-6">{children}</main>
+          <AdminTopbar onMenuClick={() => setMobileMenuOpen(true)} />
+          <main className="flex-1 p-4 sm:p-6">{children}</main>
         </div>
       </div>
     </PrivacyProvider>
