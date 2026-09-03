@@ -1,6 +1,7 @@
 import {
   createApiClient,
   createAuthEndpoints,
+  createClientErrorsEndpoints,
   createCompanyJoinRequestsEndpoints,
   createDriversEndpoints,
   createGeoEndpoints,
@@ -57,3 +58,6 @@ export const walletApi = createWalletEndpoints(apiClient);
 export const routesApi = createRoutesEndpoints(apiClient);
 export const tripsApi = createTripsEndpoints(apiClient);
 export const identityVerificationApi = createIdentityVerificationEndpoints(apiClient);
+// Auditoria minuciosa 03/09/2026 — ver `@/components/app-error-boundary.tsx`:
+// `app: "MOBILE"` já existia pronto no backend, só nunca tinha sido chamado.
+export const clientErrorsApi = createClientErrorsEndpoints(apiClient);
