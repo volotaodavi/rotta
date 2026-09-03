@@ -1,5 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
-import { CommunicationChannel } from "@prisma/client";
+import { CommunicationChannel, NotificationEventType } from "@prisma/client";
 
 import { EmailChannelSender } from "../channels/email-channel.sender";
 
@@ -11,6 +11,7 @@ function buildNotification(overrides: Partial<Notification> = {}): Notification 
   return {
     id: "notification-1",
     userId: "user-1",
+    tipo: NotificationEventType.VIAGEM_INICIADA,
     titulo: "Título",
     corpo: "Corpo",
     ...overrides,
@@ -47,7 +48,7 @@ describe("EmailChannelSender", () => {
     expect(emailService.sendEmail).not.toHaveBeenCalled();
   });
 
-  it("envia para o e-mail cadastrado do usuário com o template HTML responsivo", async () => {
+  it("envia para o e-mail cadastrado do usuário com o template HTML responsivo, remetente genérico por padrão", async () => {
     usersService.findById.mockResolvedValue(buildUser());
     emailService.sendEmail.mockResolvedValue({} as never);
 
@@ -57,7 +58,31 @@ describe("EmailChannelSender", () => {
       "user@example.com",
       "Título",
       expect.stringContaining("Corpo"),
+      "notificacoes",
     );
     expect(resultado).toEqual({ provedor: "email", entregueImediatamente: false });
+  });
+
+  it.each([
+    [NotificationEventType.PAGAMENTO_APROVADO, "financeiro"],
+    [NotificationEventType.PAGAMENTO_RECUSADO, "financeiro"],
+    [NotificationEventType.TRIAL_VENCE_HOJE, "financeiro"],
+    [NotificationEventType.PLANO_NOVA_ASSINATURA, "financeiro"],
+    [NotificationEventType.SUPORTE_TICKET_ABERTO, "suporte"],
+    [NotificationEventType.SUPORTE_NOVA_MENSAGEM, "suporte"],
+    [NotificationEventType.CONVERSA_NOVA_MENSAGEM, "notificacoes"],
+    [NotificationEventType.VIAGEM_INICIADA, "notificacoes"],
+  ] as const)("evento %s usa remetente %s", async (tipo, remetente) => {
+    usersService.findById.mockResolvedValue(buildUser());
+    emailService.sendEmail.mockResolvedValue({} as never);
+
+    await sender.send({ notification: buildNotification({ tipo }) });
+
+    expect(emailService.sendEmail).toHaveBeenCalledWith(
+      "user@example.com",
+      "Título",
+      expect.any(String),
+      remetente,
+    );
   });
 });

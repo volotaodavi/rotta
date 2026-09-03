@@ -10,16 +10,6 @@ import {
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 
-import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
-import { EmailService } from "@/infra/email/email.service";
-import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
-import { SupportAiService } from "@/infra/support-ai/support-ai.service";
-import { AuditLogService } from "@/modules/audit/audit-log.service";
-import { ContractsService } from "@/modules/marketplace/contracts.service";
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
-import { UsersService } from "@/modules/users/users.service";
-import { Role } from "@/shared/enums";
 
 import { toSupportMessageResponseDto } from "./mappers/support-message.mapper";
 import {
@@ -44,6 +34,16 @@ import type {
 } from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
+import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
+import { EmailService } from "@/infra/email/email.service";
+import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
+import { SupportAiService } from "@/infra/support-ai/support-ai.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { ContractsService } from "@/modules/marketplace/contracts.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+import { UsersService } from "@/modules/users/users.service";
+import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
   ip?: string;
@@ -221,7 +221,7 @@ export class SupportService {
       // só pelo `SUPPORT_INBOX_EMAIL` opcional logo abaixo, senão viraria
       // spam pras duas caixas a cada troca de mensagem da conversa).
       if (input.tipo === "SUPORTE_TICKET_ABERTO") {
-        void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+        void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "suporte");
       }
     } catch (error) {
       this.logger.warn(`Falha ao notificar Admin Rotta sobre o chamado ${input.ticketId}.`);
@@ -249,6 +249,7 @@ export class SupportService {
               : "Nova mensagem de suporte",
           corpo,
         }),
+        "suporte",
       );
     } catch (error) {
       this.logger.warn(
@@ -704,7 +705,7 @@ export class SupportService {
 
     // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
     // entrega mesmo sem nenhuma conta Admin Rotta real configurada.
-    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "suporte");
 
     this.usersService
       .listAdminRottaUserIds()

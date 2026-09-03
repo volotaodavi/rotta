@@ -18,6 +18,7 @@ import {
   type PendingSubscription,
 } from "@prisma/client";
 
+
 import {
   COMPANY_REPOSITORY,
   COMPANY_SETTING_REPOSITORY,
@@ -47,7 +48,6 @@ import type {
   ListAuditLogsResponseDto,
 } from "@/common/dto/audit-log-response.dto";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
-
 import { PrismaService } from "@/infra/database/prisma.service";
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import {
@@ -61,6 +61,7 @@ import { DashboardService } from "@/modules/dashboard/dashboard.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
+
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
 
@@ -554,7 +555,8 @@ export class CompaniesService implements OnModuleInit {
     // está de admin na Rotta não existe... direcionar essas informações
     // pra contato@.../rottadobrasil@...") — garante a entrega mesmo sem
     // nenhuma conta Admin Rotta real configurada.
-    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+    // "financeiro": novo cliente cadastrado é evento de aquisição/receita.
+    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "financeiro");
 
     this.usersService
       .listAdminRottaUserIds()

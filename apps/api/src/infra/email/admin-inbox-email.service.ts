@@ -3,6 +3,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { EmailService } from "./email.service";
 import { renderNotificationEmailHtml } from "./templates/notification-email.template";
 
+import type { EmailRemetente } from "./email-provider.interface";
+
 /**
  * Sem `ADMIN_DIGEST_INBOX_EMAILS`, cai nestas duas — pedido do usuário
  * (01/09/2026: "o e-mail que está de admin na Rotta não existe (de
@@ -39,14 +41,23 @@ export class AdminInboxEmailService {
       .filter(Boolean);
   }
 
-  /** Best-effort — nunca lança, nunca impede o fluxo principal que chamou. */
-  async send(titulo: string, corpo: string): Promise<void> {
+  /**
+   * Best-effort — nunca lança, nunca impede o fluxo principal que
+   * chamou. `remetente` (default `"notificacoes"`) deixa cada chamador
+   * escolher o "De" certo — ex. `BillingService`/`AdminDigestService`
+   * usam `"financeiro"`, `SupportService` usa `"suporte"`.
+   */
+  async send(
+    titulo: string,
+    corpo: string,
+    remetente: EmailRemetente = "notificacoes",
+  ): Promise<void> {
     const html = renderNotificationEmailHtml({ titulo, corpo });
     const inboxes = this.resolveInboxes();
 
     await Promise.all(
       inboxes.map((to) =>
-        this.emailService.sendEmail(to, titulo, html).catch((error: unknown) => {
+        this.emailService.sendEmail(to, titulo, html, remetente).catch((error: unknown) => {
           this.logger.warn(
             `Falha ao enviar informativo "${titulo}" pra ${to}: ${
               error instanceof Error ? error.message : String(error)

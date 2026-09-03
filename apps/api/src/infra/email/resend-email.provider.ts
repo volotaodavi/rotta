@@ -34,7 +34,7 @@ export class ResendEmailProvider implements EmailProvider {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: `${this.config.fromName} <${this.config.fromAddress}>`,
+        from: `${input.from.name} <${input.from.address}>`,
         to: [input.to],
         subject: input.subject,
         html: input.html,

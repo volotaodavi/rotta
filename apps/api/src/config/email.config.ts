@@ -6,6 +6,11 @@ export interface EmailConfig {
   apiKey: string | undefined;
   fromAddress: string;
   fromName: string;
+  /** Ver `EmailRemetente` em `email-provider.interface.ts` — mesmo domínio já verificado na Resend, só um endereço diferente. */
+  fromAddressFinanceiro: string;
+  fromNameFinanceiro: string;
+  fromAddressSuporte: string;
+  fromNameSuporte: string;
 }
 
 const DEFAULT_PROVIDER = "resend";
@@ -21,6 +26,22 @@ const DEFAULT_PROVIDER = "resend";
  */
 const DEFAULT_FROM_ADDRESS = "notificacoes@rottabr.com.br";
 const DEFAULT_FROM_NAME = "Rotta";
+/**
+ * Remetentes por categoria (pedido do usuário 03/09/2026:
+ * "financeiro@rottabr.com.br, suporte@rottabr.com.br... quero colocar
+ * pra enviar e-mails com esses dois também") — mesmo domínio
+ * `rottabr.com.br` já verificado na Resend acima, então nenhuma
+ * verificação nova é necessária (a Resend verifica o DOMÍNIO inteiro
+ * via SPF/DKIM/DMARC, não cada caixa individualmente — qualquer
+ * endereço `@rottabr.com.br` já pode ser usado como remetente).
+ * `EmailService.sendEmail` escolhe qual destes usar por categoria
+ * (`EmailRemetente`); sem categoria, cai no genérico `notificacoes@`
+ * de sempre — nenhum comportamento existente muda.
+ */
+const DEFAULT_FROM_ADDRESS_FINANCEIRO = "financeiro@rottabr.com.br";
+const DEFAULT_FROM_NAME_FINANCEIRO = "Rotta Financeiro";
+const DEFAULT_FROM_ADDRESS_SUPORTE = "suporte@rottabr.com.br";
+const DEFAULT_FROM_NAME_SUPORTE = "Rotta Suporte";
 
 /**
  * Configuração do canal E-mail (briefing — "Criar serviço de envio de
@@ -40,4 +61,9 @@ export default registerAs("email", (): EmailConfig => ({
   apiKey: process.env.EMAIL_API_KEY || undefined,
   fromAddress: process.env.EMAIL_FROM_ADDRESS || DEFAULT_FROM_ADDRESS,
   fromName: process.env.EMAIL_FROM_NAME || DEFAULT_FROM_NAME,
+  fromAddressFinanceiro:
+    process.env.EMAIL_FROM_ADDRESS_FINANCEIRO || DEFAULT_FROM_ADDRESS_FINANCEIRO,
+  fromNameFinanceiro: process.env.EMAIL_FROM_NAME_FINANCEIRO || DEFAULT_FROM_NAME_FINANCEIRO,
+  fromAddressSuporte: process.env.EMAIL_FROM_ADDRESS_SUPORTE || DEFAULT_FROM_ADDRESS_SUPORTE,
+  fromNameSuporte: process.env.EMAIL_FROM_NAME_SUPORTE || DEFAULT_FROM_NAME_SUPORTE,
 }));

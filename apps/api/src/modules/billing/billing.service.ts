@@ -143,7 +143,9 @@ export class BillingService {
 
         // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
         // entrega mesmo sem nenhuma conta Admin Rotta real configurada.
-        void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+        // "financeiro": evento de assinatura/pagamento (pedido do usuário
+        // 03/09/2026 — remetente dedicado pra e-mails financeiros).
+        void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "financeiro");
 
         return this.usersService.listAdminRottaUserIds().then((adminIds) => {
           for (const adminUserId of adminIds) {

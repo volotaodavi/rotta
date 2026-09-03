@@ -26,11 +26,13 @@ describe("AdminInboxEmailService", () => {
       "contato@rottabr.com.br",
       "Novo cliente cadastrado",
       expect.any(String),
+      "notificacoes",
     );
     expect(emailService.sendEmail).toHaveBeenCalledWith(
       "rottadobrasil@gmail.com",
       "Novo cliente cadastrado",
       expect.any(String),
+      "notificacoes",
     );
   });
 
@@ -44,11 +46,24 @@ describe("AdminInboxEmailService", () => {
       "ops@rottabr.com.br",
       "Resumo semanal",
       expect.any(String),
+      "notificacoes",
     );
     expect(emailService.sendEmail).toHaveBeenCalledWith(
       "financeiro@rottabr.com.br",
       "Resumo semanal",
       expect.any(String),
+      "notificacoes",
+    );
+  });
+
+  it("repassa o remetente escolhido pelo chamador (financeiro/suporte) pro EmailService", async () => {
+    await service.send("Nova assinatura", "...", "financeiro");
+
+    expect(emailService.sendEmail).toHaveBeenCalledWith(
+      "contato@rottabr.com.br",
+      "Nova assinatura",
+      expect.any(String),
+      "financeiro",
     );
   });
 

@@ -197,7 +197,8 @@ export class AdminDigestService {
     });
     // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
     // entrega mesmo sem nenhuma conta Admin Rotta real configurada.
-    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
+    // "financeiro": resumo semanal/mensal é relatório de faturamento.
+    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "financeiro");
 
     const adminIds = await this.usersService.listAdminRottaUserIds();
 

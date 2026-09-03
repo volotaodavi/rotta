@@ -1,7 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-import { Role } from "@/shared/enums";
 
 import { SupportService } from "../support.service";
 
@@ -20,6 +18,9 @@ import type { ContractResponseDto } from "@/modules/marketplace/dto/contract-res
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
+
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { Role } from "@/shared/enums";
 
 function buildTicket(
   overrides: Partial<SupportTicketWithRelations> = {},
@@ -273,6 +274,7 @@ describe("SupportService", () => {
         "rottadobrasil@gmail.com",
         expect.any(String),
         expect.any(String),
+        "suporte",
       );
     });
 
@@ -752,6 +754,7 @@ describe("SupportService", () => {
         "rottadobrasil@gmail.com",
         expect.any(String),
         expect.any(String),
+        "suporte",
       );
     });
 

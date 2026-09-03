@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 
 import { EMAIL_PROVIDERS } from "./email.constants";
 
-import type { EmailProvider, EmailSendResult } from "./email-provider.interface";
+import type { EmailProvider, EmailRemetente, EmailSendResult } from "./email-provider.interface";
 import type { EmailConfig } from "@/config/email.config";
 
 /**
@@ -22,7 +22,18 @@ export class EmailService {
     this.providersByName = new Map(providers.map((provider) => [provider.name, provider]));
   }
 
-  async sendEmail(to: string, subject: string, html: string): Promise<EmailSendResult> {
+  /**
+   * `remetente` (default `"notificacoes"`, ver `EmailRemetente`) escolhe
+   * qual endereço/nome usar como "De" — nunca muda o provedor, nem
+   * exige nova verificação de domínio (mesmo `rottabr.com.br` já
+   * verificado na Resend).
+   */
+  async sendEmail(
+    to: string,
+    subject: string,
+    html: string,
+    remetente: EmailRemetente = "notificacoes",
+  ): Promise<EmailSendResult> {
     const provider = this.providersByName.get(this.config.provider);
     if (!provider) {
       throw new ServiceUnavailableException(
@@ -30,6 +41,17 @@ export class EmailService {
       );
     }
 
-    return provider.send({ to, subject, html });
+    return provider.send({ to, subject, html, from: this.resolveFrom(remetente) });
+  }
+
+  private resolveFrom(remetente: EmailRemetente): { address: string; name: string } {
+    switch (remetente) {
+      case "financeiro":
+        return { address: this.config.fromAddressFinanceiro, name: this.config.fromNameFinanceiro };
+      case "suporte":
+        return { address: this.config.fromAddressSuporte, name: this.config.fromNameSuporte };
+      case "notificacoes":
+        return { address: this.config.fromAddress, name: this.config.fromName };
+    }
   }
 }

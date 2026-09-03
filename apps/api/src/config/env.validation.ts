@@ -151,6 +151,16 @@ export const envSchema = z.object({
   EMAIL_API_KEY: z.string().optional(),
   EMAIL_FROM_ADDRESS: z.string().optional(),
   EMAIL_FROM_NAME: z.string().optional(),
+  // Remetentes por categoria (pedido do usuário 03/09/2026:
+  // "financeiro@rottabr.com.br, suporte@rottabr.com.br... quero
+  // colocar pra enviar e-mails com esses dois também") — mesmo domínio
+  // `rottabr.com.br` já verificado na Resend, nenhuma verificação nova
+  // necessária. Sem estas variáveis, cai nos defaults
+  // `financeiro@`/`suporte@rottabr.com.br` (`email.config.ts`).
+  EMAIL_FROM_ADDRESS_FINANCEIRO: z.string().optional(),
+  EMAIL_FROM_NAME_FINANCEIRO: z.string().optional(),
+  EMAIL_FROM_ADDRESS_SUPORTE: z.string().optional(),
+  EMAIL_FROM_NAME_SUPORTE: z.string().optional(),
 
   // Suporte (pedido do usuário: "a cada pedido de suporte deverá ser
   // notificado no e-mail da Rotta também"). `SUPPORT_INBOX_EMAIL` é a
