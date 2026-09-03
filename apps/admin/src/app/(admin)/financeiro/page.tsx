@@ -47,6 +47,7 @@ function ValorTile({
     <StatTile
       icon={icon}
       tone={tone}
+      iconShape="square"
       label={label}
       value={value === null ? "-" : hidden ? "R$ ••••••" : value}
     />
@@ -84,6 +85,7 @@ function ProviderCard({
           <StatTile
             icon={Wallet}
             tone="success"
+            iconShape="square"
             label="Recebido hoje"
             value={
               overview.totalRecebidoCentavos === null
@@ -96,6 +98,7 @@ function ProviderCard({
           <StatTile
             icon={ReceiptText}
             tone="warning"
+            iconShape="square"
             label="Taxa retida hoje"
             value={
               overview.totalTaxaRetidaCentavos === null
@@ -108,6 +111,7 @@ function ProviderCard({
           <StatTile
             icon={DollarSign}
             tone="info"
+            iconShape="square"
             label="Cobranças pagas hoje"
             value={
               overview.quantidadeCobrancasPagas === null

@@ -274,7 +274,7 @@ function TransferForm(): JSX.Element {
                 }}
                 className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-text transition-colors hover:border-primary/40 hover:bg-primary/5"
               >
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-white">
                   <User className="h-3.5 w-3.5" />
                 </span>
                 {recente.descricao ?? recente.chavePix}
@@ -373,7 +373,7 @@ function LinhaExtrato({
   return (
     <div className="flex items-center gap-3 py-3">
       <div
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${TONE_ICON_BG[tone]}`}
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${TONE_ICON_BG[tone]}`}
       >
         <Icon className="h-5 w-5" />
       </div>
@@ -497,7 +497,7 @@ function TaxasPorTipoCard({
           <div className="flex flex-wrap gap-6">
             {breakdown.map(({ tipo, totalCentavos }) => (
               <div key={tipo} className="flex items-center gap-3">
-                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/15 text-warning">
                   <ReceiptText className="h-4 w-4" />
                 </div>
                 <div className="flex flex-col">
@@ -569,7 +569,7 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
       </div>
 
       {isLoadingBalance ? (
-        <Skeleton variant="rect" height={180} />
+        <Skeleton variant="rect" height={220} />
       ) : !balance?.configured ? (
         <Card>
           <Card.Body>
@@ -577,79 +577,102 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
           </Card.Body>
         </Card>
       ) : (
-        <Card>
-          <Card.Body className="flex flex-col gap-4">
+        // Cartão de destaque estilo "cartão de banco" (pedido do usuário
+        // 03/09/2026, imagens de referência OIBANK/app mobile — gradiente
+        // azul, valor grande em branco). NUNCA um número de cartão/validade
+        // fabricado (a Rotta não emite cartão) — só dado real: nome da
+        // conta, saldo, curva do dia. Não usa `Card`/`Typography`/`Button`
+        // com `color`/`variant` padrão aqui de propósito: esses componentes
+        // aplicam sua própria classe de cor (`text-text`, `bg-secondary`
+        // etc.) que colidiria de forma imprevisível com branco/translúcido
+        // por cima do gradiente (`cn()` deste design system não faz merge
+        // de classes Tailwind conflitantes — ver `packages/ui/.../cn.ts`).
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary to-primary-hover p-6 shadow-card">
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -right-10 -top-12 h-40 w-40 rounded-full bg-white/10"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute -bottom-16 -left-8 h-32 w-32 rounded-full bg-white/5"
+          />
+
+          <div className="relative flex flex-col gap-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                  <Wallet className="h-7 w-7" />
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                  <Wallet className="h-5 w-5 text-white" />
                 </div>
-                <div className="flex flex-col gap-0.5">
-                  <Typography variant="caption" color="muted">
-                    Saldo atual da conta
-                  </Typography>
-                  <Typography variant="display">
-                    {balance.saldoCentavos === null
-                      ? "-"
-                      : hidden
-                        ? "R$ ••••••"
-                        : centsToBRL(balance.saldoCentavos)}
-                  </Typography>
-                  <Typography variant="caption" color="muted">
+                <div>
+                  <p className="text-sm font-semibold leading-5 text-white">Conta Asaas da Rotta</p>
+                  <p className="text-xs leading-4 text-white/70">
                     {isFetchingBalance
                       ? "Atualizando..."
                       : dataUpdatedAt
                         ? `Atualizado às ${new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
                         : ""}
-                  </Typography>
+                  </p>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-2">
-                {podeTransferir && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    iconLeft={<Send className="h-4 w-4" />}
-                    onClick={() => irParaSecao("transferencia-pix")}
-                  >
-                    Nova transferência
-                  </Button>
-                )}
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  iconLeft={<ReceiptText className="h-4 w-4" />}
-                  onClick={() => irParaSecao("extrato-asaas")}
-                >
-                  Ver extrato
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  iconLeft={<RefreshCw className="h-4 w-4" />}
-                  isDisabled={isFetchingBalance}
-                  onClick={() => void refetchBalance()}
-                >
-                  Atualizar
-                </Button>
-              </div>
+              <button
+                type="button"
+                aria-label="Atualizar saldo"
+                disabled={isFetchingBalance}
+                onClick={() => void refetchBalance()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${isFetchingBalance ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+
+            <div>
+              <p className="text-xs leading-4 text-white/70">Saldo atual</p>
+              <p className="text-[40px] font-bold leading-[48px] text-white">
+                {balance.saldoCentavos === null
+                  ? "-"
+                  : hidden
+                    ? "R$ ••••••"
+                    : centsToBRL(balance.saldoCentavos)}
+              </p>
             </div>
 
             {hidden ? null : pontosSaldo.length >= 2 ? (
               <TrendAreaChart
                 data={pontosSaldo}
-                height={72}
+                height={64}
+                color="rgba(255,255,255,0.9)"
                 seriesName="Saldo"
                 valueFormatter={(value) => centsToBRL(Math.round(value * 100))}
               />
             ) : (
-              <Typography variant="caption" color="muted">
+              <p className="text-xs leading-4 text-white/70">
                 Poucos lançamentos hoje pra desenhar a curva do saldo — ela aparece assim que houver
                 2 ou mais.
-              </Typography>
+              </p>
             )}
-          </Card.Body>
-        </Card>
+
+            <div className="flex flex-wrap gap-2 pt-1">
+              {podeTransferir && (
+                <button
+                  type="button"
+                  onClick={() => irParaSecao("transferencia-pix")}
+                  className="flex items-center gap-1.5 rounded-full bg-white px-3.5 py-2 text-sm font-medium text-primary transition-opacity hover:opacity-90"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Nova transferência
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => irParaSecao("extrato-asaas")}
+                className="flex items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-2 text-sm font-medium text-white transition-colors hover:bg-white/25"
+              >
+                <ReceiptText className="h-3.5 w-3.5" />
+                Ver extrato
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {balance?.configured && (

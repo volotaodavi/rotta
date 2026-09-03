@@ -30,6 +30,14 @@ export interface StatTileProps {
    * é passado.
    */
   interactive?: boolean;
+  /**
+   * Forma do círculo do ícone — `"square"` (cantos arredondados, não
+   * círculo) reproduz o estilo de dashboard bancário pedido pelo
+   * usuário 03/09/2026 (imagens de referência "OIBANK"/app mobile,
+   * ícones em quadrado arredondado, não círculo). Default `"circle"`:
+   * nenhuma tela existente muda de aparência por causa deste prop.
+   */
+  iconShape?: "circle" | "square";
   className?: string;
 }
 
@@ -62,6 +70,7 @@ export function StatTile({
   trend,
   onClick,
   interactive = Boolean(onClick),
+  iconShape = "circle",
   className,
 }: StatTileProps) {
   const TrendIcon = trend?.direction === "down" ? TrendingDown : TrendingUp;
@@ -89,7 +98,8 @@ export function StatTile({
         {Icon ? (
           <div
             className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-full",
+              "flex h-9 w-9 items-center justify-center",
+              iconShape === "square" ? "rounded-xl" : "rounded-full",
               TONE_CLASSES[tone],
             )}
           >
