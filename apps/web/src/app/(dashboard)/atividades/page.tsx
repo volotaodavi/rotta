@@ -59,16 +59,18 @@ function formatarHora(iso: string | null): string | null {
  * aqui.
  */
 /** Motorista usa `driverPrimary`, Monitor mantém `monitorAccent` — mesma decisão de escopo de "Minha Rota". */
-function useAccentClassName(): string {
+function useAccentClassNames(): { text: string; activeTab: string } {
   const { user } = useAuth();
-  return user?.role === "monitor"
-    ? "border-monitorAccent text-monitorAccent"
-    : "border-driverPrimary text-driverPrimary";
+  const isMonitor = user?.role === "monitor";
+  return {
+    text: isMonitor ? "text-monitorAccent" : "text-driverPrimary",
+    activeTab: isMonitor ? "bg-monitorAccent text-white" : "bg-driverPrimary text-white",
+  };
 }
 
 export default function AtividadesPage(): JSX.Element {
   const { user } = useAuth();
-  const accentClassName = useAccentClassName();
+  const accent = useAccentClassNames();
   const [aba, setAba] = useState<FiltroAba>("todas");
   const { data: rotasResult, isLoading: isLoadingRotas } = useMinhasRotas();
   const rotas = useMemo(() => rotasResult?.items ?? [], [rotasResult]);
@@ -92,12 +94,12 @@ export default function AtividadesPage(): JSX.Element {
         tabs={TABS}
         activeId={aba}
         onChange={(id) => setAba(id as FiltroAba)}
-        activeClassName={accentClassName}
+        activeClassName={accent.activeTab}
       />
 
       {isLoading ? (
         <div className="flex justify-center py-12">
-          <Spinner size="lg" className={accentClassName} />
+          <Spinner size="lg" className={accent.text} />
         </div>
       ) : filtradas.length === 0 ? (
         <Typography variant="bodySmall" color="muted" className="py-8 text-center">
