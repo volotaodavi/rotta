@@ -1,7 +1,15 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { ArrowDownRight, ArrowUpRight, Landmark, ReceiptText, Send, Wallet } from "@rotta/icons";
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  Landmark,
+  ReceiptText,
+  RefreshCw,
+  Send,
+  Wallet,
+} from "@rotta/icons";
 import {
   Badge,
   Button,
@@ -10,9 +18,10 @@ import {
   Pagination,
   Select,
   Skeleton,
+  TrendAreaChart,
   Typography,
 } from "@rotta/ui/web";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { BillingAdminStatementItem, PixKeyType } from "@rotta/api-client";
 
@@ -372,9 +381,38 @@ function ExtratoTable(): JSX.Element {
  * o backend (`AdminAreaGuard`) é quem realmente barra o papel
  * Financeiro.
  */
+/** Rola suavemente até uma seção da própria página (âncoras reais — "Nova transferência"/"Ver extrato" no card de saldo levam pros cards de verdade logo abaixo, nunca um botão decorativo). */
+function irParaSecao(id: string): void {
+  document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolean }): JSX.Element {
   const { hidden } = usePrivacy();
-  const { data: balance, isLoading: isLoadingBalance } = useBillingAdminBalance();
+  const {
+    data: balance,
+    isLoading: isLoadingBalance,
+    isFetching: isFetchingBalance,
+    dataUpdatedAt,
+    refetch: refetchBalance,
+  } = useBillingAdminBalance();
+  // Primeira página do extrato já carrega aqui também (mesma queryKey da
+  // `ExtratoTable`, cache do React Query compartilhado — sem 2ª chamada) só
+  // pra desenhar a curva do saldo do card de destaque com PONTO REAL de
+  // cada lançamento (`saldoAposCentavos`), nunca uma série inventada.
+  const { data: statement } = useBillingAdminStatement(1, 20);
+
+  const pontosSaldo = useMemo(() => {
+    if (!statement?.configured) return [];
+    return [...statement.items]
+      .sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime())
+      .map((item) => ({
+        label: new Date(item.data).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        value: item.saldoAposCentavos / 100,
+      }));
+  }, [statement]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -387,7 +425,7 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
       </div>
 
       {isLoadingBalance ? (
-        <Skeleton variant="rect" height={112} />
+        <Skeleton variant="rect" height={180} />
       ) : !balance?.configured ? (
         <Card>
           <Card.Body>
@@ -396,28 +434,82 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
         </Card>
       ) : (
         <Card>
-          <Card.Body className="flex items-center gap-4">
-            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-              <Wallet className="h-7 w-7" />
+          <Card.Body className="flex flex-col gap-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <Wallet className="h-7 w-7" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <Typography variant="caption" color="muted">
+                    Saldo atual da conta
+                  </Typography>
+                  <Typography variant="display">
+                    {balance.saldoCentavos === null
+                      ? "-"
+                      : hidden
+                        ? "R$ ••••••"
+                        : centsToBRL(balance.saldoCentavos)}
+                  </Typography>
+                  <Typography variant="caption" color="muted">
+                    {isFetchingBalance
+                      ? "Atualizando..."
+                      : dataUpdatedAt
+                        ? `Atualizado às ${new Date(dataUpdatedAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+                        : ""}
+                  </Typography>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {podeTransferir && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    iconLeft={<Send className="h-4 w-4" />}
+                    onClick={() => irParaSecao("transferencia-pix")}
+                  >
+                    Nova transferência
+                  </Button>
+                )}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  iconLeft={<ReceiptText className="h-4 w-4" />}
+                  onClick={() => irParaSecao("extrato-asaas")}
+                >
+                  Ver extrato
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  iconLeft={<RefreshCw className="h-4 w-4" />}
+                  isDisabled={isFetchingBalance}
+                  onClick={() => void refetchBalance()}
+                >
+                  Atualizar
+                </Button>
+              </div>
             </div>
-            <div className="flex flex-col gap-0.5">
+
+            {hidden ? null : pontosSaldo.length >= 2 ? (
+              <TrendAreaChart
+                data={pontosSaldo}
+                height={72}
+                seriesName="Saldo"
+                valueFormatter={(value) => centsToBRL(Math.round(value * 100))}
+              />
+            ) : (
               <Typography variant="caption" color="muted">
-                Saldo atual da conta
+                Poucos lançamentos hoje pra desenhar a curva do saldo — ela aparece assim que houver
+                2 ou mais.
               </Typography>
-              <Typography variant="display">
-                {balance.saldoCentavos === null
-                  ? "-"
-                  : hidden
-                    ? "R$ ••••••"
-                    : centsToBRL(balance.saldoCentavos)}
-              </Typography>
-            </div>
+            )}
           </Card.Body>
         </Card>
       )}
 
       {balance?.configured && podeTransferir && (
-        <Card>
+        <Card id="transferencia-pix">
           <Card.Header title="Nova transferência" />
           <Card.Body>
             <TransferForm />
@@ -426,7 +518,7 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
       )}
 
       {balance?.configured && (
-        <Card>
+        <Card id="extrato-asaas">
           <Card.Header title="Extrato" action={<Badge variant="neutral">Desde hoje</Badge>} />
           <Card.Body>
             <ExtratoTable />
