@@ -24,11 +24,13 @@ function centsToBRL(cents: number): string {
  */
 function ValorTile({
   icon,
+  tone,
   label,
   value,
   hidden,
 }: {
   icon: typeof DollarSign;
+  tone: "primary" | "success" | "warning" | "danger" | "info";
   label: string;
   value: string | null;
   hidden: boolean;
@@ -36,6 +38,7 @@ function ValorTile({
   return (
     <StatTile
       icon={icon}
+      tone={tone}
       label={label}
       value={value === null ? "-" : hidden ? "R$ ••••••" : value}
     />
@@ -71,6 +74,8 @@ function ProviderCard({
         </Typography>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <StatTile
+            icon={Wallet}
+            tone="success"
             label="Recebido hoje"
             value={
               overview.totalRecebidoCentavos === null
@@ -81,6 +86,8 @@ function ProviderCard({
             }
           />
           <StatTile
+            icon={ReceiptText}
+            tone="warning"
             label="Taxa retida hoje"
             value={
               overview.totalTaxaRetidaCentavos === null
@@ -91,6 +98,8 @@ function ProviderCard({
             }
           />
           <StatTile
+            icon={DollarSign}
+            tone="info"
             label="Cobranças pagas hoje"
             value={
               overview.quantidadeCobrancasPagas === null
@@ -189,6 +198,7 @@ export default function FinanceiroPage(): JSX.Element {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ValorTile
           icon={Wallet}
+          tone="success"
           label="Recebido hoje"
           value={
             data.totalRecebidoCentavos === null ? null : centsToBRL(data.totalRecebidoCentavos)
@@ -197,6 +207,7 @@ export default function FinanceiroPage(): JSX.Element {
         />
         <ValorTile
           icon={ReceiptText}
+          tone="warning"
           label="Taxa retida hoje (AbacatePay + Asaas)"
           value={
             data.totalTaxaRetidaCentavos === null ? null : centsToBRL(data.totalTaxaRetidaCentavos)
@@ -205,6 +216,7 @@ export default function FinanceiroPage(): JSX.Element {
         />
         <ValorTile
           icon={DollarSign}
+          tone="info"
           label="Cobranças pagas hoje"
           value={
             data.quantidadeCobrancasPagas === null
@@ -215,12 +227,14 @@ export default function FinanceiroPage(): JSX.Element {
         />
         <ValorTile
           icon={Building2}
+          tone="primary"
           label="Empresas ativas no plano"
           value={data.quantidadeEmpresasAtivas.toLocaleString("pt-BR")}
           hidden={false}
         />
         <ValorTile
           icon={TrendingUp}
+          tone="success"
           label="Lucro líquido hoje (recebido − taxas)"
           value={data.lucroLiquidoCentavos === null ? null : centsToBRL(data.lucroLiquidoCentavos)}
           hidden={hidden}

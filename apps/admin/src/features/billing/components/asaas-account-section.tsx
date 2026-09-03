@@ -1,7 +1,7 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { ArrowDownRight, ArrowUpRight, Landmark, Send, Wallet } from "@rotta/icons";
+import { ArrowDownRight, ArrowUpRight, Landmark, ReceiptText, Send, Wallet } from "@rotta/icons";
 import {
   Badge,
   Button,
@@ -10,15 +10,11 @@ import {
   Pagination,
   Select,
   Skeleton,
-  StatTile,
-  Table,
-  TableSkeleton,
   Typography,
 } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { BillingAdminStatementItem, PixKeyType } from "@rotta/api-client";
-import type { TableColumn } from "@rotta/ui/web";
 
 import {
   useBillingAdminBalance,
@@ -80,6 +76,29 @@ function tipoLabel(tipo: string): string {
 /** "Coloque também as taxas retidas pelo Asaas" (pedido do usuário 03/09/2026) — qualquer tipo com "FEE" no nome é uma taxa retida, sempre destacada em amarelo no extrato. */
 function isTaxa(tipo: string): boolean {
   return tipo.includes("FEE");
+}
+
+const TONE_ICON_BG: Record<"success" | "warning" | "danger", string> = {
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+  danger: "bg-danger/15 text-danger",
+};
+
+/**
+ * Ícone + cor de cada lançamento do extrato — estilo "linha de banco"
+ * (pedido do usuário 03/09/2026: "estilo banco mesmo", imagem de
+ * referência com um ícone colorido por transação). Taxa (`isTaxa`)
+ * sempre em amarelo com ícone de recibo, mesmo que o valor seja
+ * negativo; entrada (valor ≥ 0) em verde com seta pra dentro; saída em
+ * vermelho com seta pra fora.
+ */
+function iconeDoLancamento(item: BillingAdminStatementItem) {
+  if (isTaxa(item.tipo)) {
+    return { Icon: ReceiptText, tone: "warning" as const };
+  }
+  return item.valorCentavos >= 0
+    ? { Icon: ArrowDownRight, tone: "success" as const }
+    : { Icon: ArrowUpRight, tone: "danger" as const };
 }
 
 /**
@@ -250,54 +269,63 @@ function TransferForm(): JSX.Element {
   );
 }
 
+/** Uma linha do extrato — ícone colorido + descrição/tipo à esquerda, valor + saldo após à direita ("estilo banco mesmo", pedido do usuário 03/09/2026). */
+function LinhaExtrato({
+  item,
+  hidden,
+}: {
+  item: BillingAdminStatementItem;
+  hidden: boolean;
+}): JSX.Element {
+  const { Icon, tone } = iconeDoLancamento(item);
+  const taxa = isTaxa(item.tipo);
+  return (
+    <div className="flex items-center gap-3 py-3">
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${TONE_ICON_BG[tone]}`}
+      >
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <Typography variant="bodySmall" className="truncate font-medium">
+          {item.descricao ?? tipoLabel(item.tipo)}
+        </Typography>
+        <div className="flex items-center gap-2">
+          <Typography variant="caption" color="muted">
+            {new Date(item.data).toLocaleString("pt-BR")}
+          </Typography>
+          {taxa && <Badge variant="warning">{tipoLabel(item.tipo)}</Badge>}
+        </div>
+      </div>
+      <div className="flex shrink-0 flex-col items-end">
+        <Typography
+          variant="bodySmall"
+          className={`font-semibold ${item.valorCentavos >= 0 ? "text-success" : "text-danger"}`}
+        >
+          {item.valorCentavos >= 0 ? "+" : "−"}
+          {hidden ? "R$ ••••••" : centsToBRL(Math.abs(item.valorCentavos))}
+        </Typography>
+        <Typography variant="caption" color="muted">
+          saldo {hidden ? "••••••" : centsToBRL(item.saldoAposCentavos)}
+        </Typography>
+      </div>
+    </div>
+  );
+}
+
 function ExtratoTable(): JSX.Element {
   const [page, setPage] = useState(1);
   const { hidden } = usePrivacy();
   const { data, isLoading, isError } = useBillingAdminStatement(page, 20);
 
-  const columns: TableColumn<BillingAdminStatementItem>[] = [
-    {
-      key: "data",
-      header: "Data",
-      render: (item) => new Date(item.data).toLocaleString("pt-BR"),
-    },
-    {
-      key: "descricao",
-      header: "Descrição",
-      render: (item) => item.descricao ?? "-",
-    },
-    {
-      key: "tipo",
-      header: "Tipo",
-      render: (item) => (
-        <Badge variant={isTaxa(item.tipo) ? "warning" : "neutral"}>{tipoLabel(item.tipo)}</Badge>
-      ),
-    },
-    {
-      key: "valor",
-      header: "Valor",
-      render: (item) => (
-        <span
-          className={`flex items-center gap-1 font-medium ${item.valorCentavos >= 0 ? "text-success" : "text-danger"}`}
-        >
-          {item.valorCentavos >= 0 ? (
-            <ArrowDownRight className="h-3.5 w-3.5" />
-          ) : (
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          )}
-          {hidden ? "R$ ••••••" : centsToBRL(Math.abs(item.valorCentavos))}
-        </span>
-      ),
-    },
-    {
-      key: "saldo",
-      header: "Saldo após",
-      render: (item) => (hidden ? "R$ ••••••" : centsToBRL(item.saldoAposCentavos)),
-    },
-  ];
-
   if (isLoading) {
-    return <TableSkeleton rows={6} columns={5} />;
+    return (
+      <div className="flex flex-col gap-2">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <Skeleton key={index} variant="rect" height={56} />
+        ))}
+      </div>
+    );
   }
 
   if (isError || !data?.configured) {
@@ -315,20 +343,22 @@ function ExtratoTable(): JSX.Element {
       <EmptyState
         icon={Landmark}
         title="Nenhuma movimentação"
-        description="Ainda não há lançamentos nesta conta."
+        description="Ainda não há lançamentos nesta conta hoje."
       />
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <Table
-        columns={columns}
-        rows={data.items}
-        keyExtractor={(item) =>
-          `${item.data}-${item.tipo}-${item.valorCentavos}-${item.saldoAposCentavos}`
-        }
-      />
+      <div className="flex flex-col divide-y divide-border">
+        {data.items.map((item) => (
+          <LinhaExtrato
+            key={`${item.data}-${item.tipo}-${item.valorCentavos}-${item.saldoAposCentavos}`}
+            item={item}
+            hidden={hidden}
+          />
+        ))}
+      </div>
       <Pagination page={page} pageSize={20} total={data.total} onPageChange={setPage} />
     </div>
   );
@@ -357,7 +387,7 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
       </div>
 
       {isLoadingBalance ? (
-        <Skeleton variant="rect" height={80} className="max-w-xs" />
+        <Skeleton variant="rect" height={112} />
       ) : !balance?.configured ? (
         <Card>
           <Card.Body>
@@ -365,19 +395,25 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
           </Card.Body>
         </Card>
       ) : (
-        <div className="max-w-xs">
-          <StatTile
-            icon={Wallet}
-            label="Saldo atual"
-            value={
-              balance.saldoCentavos === null
-                ? "-"
-                : hidden
-                  ? "R$ ••••••"
-                  : centsToBRL(balance.saldoCentavos)
-            }
-          />
-        </div>
+        <Card>
+          <Card.Body className="flex items-center gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Wallet className="h-7 w-7" />
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <Typography variant="caption" color="muted">
+                Saldo atual da conta
+              </Typography>
+              <Typography variant="display">
+                {balance.saldoCentavos === null
+                  ? "-"
+                  : hidden
+                    ? "R$ ••••••"
+                    : centsToBRL(balance.saldoCentavos)}
+              </Typography>
+            </div>
+          </Card.Body>
+        </Card>
       )}
 
       {balance?.configured && podeTransferir && (
