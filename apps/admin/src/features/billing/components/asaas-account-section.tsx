@@ -27,7 +27,6 @@ import {
 } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
 
-
 const CAMPO_CLASSNAME =
   "h-11 w-full rounded-md border border-border bg-surface px-4 text-sm text-text placeholder:text-placeholder outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30";
 
@@ -392,7 +391,7 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
 
       {balance?.configured && (
         <Card>
-          <Card.Header title="Extrato" />
+          <Card.Header title="Extrato" action={<Badge variant="neutral">Desde hoje</Badge>} />
           <Card.Body>
             <ExtratoTable />
           </Card.Body>

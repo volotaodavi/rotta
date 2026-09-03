@@ -19,7 +19,6 @@ import type {
 import asaasConfig from "@/config/asaas.config";
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
-
 /** Nome usado como chave nos snapshots de `IntegrationHealthService` — mesma string em toda parte que registra ou lê a saúde desta integração. */
 export const ASAAS_INTEGRATION_NAME = "asaas";
 
@@ -207,13 +206,27 @@ export class AsaasClientService {
     return this.request<AsaasBalance>("/finance/balance", { method: "GET" });
   }
 
-  /** Extrato de verdade da conta — toda entrada/saída, não só cobranças (pedido do usuário: "olhar o extrato"). */
+  /**
+   * Extrato de verdade da conta — toda entrada/saída, não só cobranças
+   * (pedido do usuário: "olhar o extrato"). `startDate` (formato
+   * AAAA-MM-DD, filtro real da própria Asaas —
+   * `docs.asaas.com/reference/listar-extrato`) — pedido do usuário
+   * 03/09/2026: "o histórico também só deverá mostrar a partir de
+   * hoje", opcional pra continuar dando pra consultar sem filtro se
+   * algum consumidor futuro precisar.
+   */
   listFinancialTransactions(params: {
     offset: number;
     limit: number;
+    startDate?: string;
   }): Promise<AsaasListEnvelope<AsaasFinancialTransaction>> {
+    const query = new URLSearchParams({
+      offset: String(params.offset),
+      limit: String(params.limit),
+    });
+    if (params.startDate) query.set("startDate", params.startDate);
     return this.request<AsaasListEnvelope<AsaasFinancialTransaction>>(
-      `/financialTransactions?offset=${params.offset}&limit=${params.limit}`,
+      `/financialTransactions?${query.toString()}`,
       { method: "GET" },
     );
   }

@@ -11,7 +11,6 @@ import { CompanyPaymentHistoryRow } from "@/features/billing/components/company-
 import { useBillingAdminOverview } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
 
-
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
@@ -163,32 +162,22 @@ export default function FinanceiroPage(): JSX.Element {
       <div>
         <Typography variant="display">Financeiro</Typography>
         <Typography variant="bodySmall" color="muted">
-          Mensalidade da plataforma (R$ 39,90/mês) — Pix via AbacatePay, cartão/débito/boleto via
-          Asaas. Os números abaixo contam só a partir de hoje (00h) — o saldo e o extrato da conta
-          Asaas, mais abaixo, continuam mostrando o histórico completo.
+          Mensalidade da plataforma (R$ 39,90/mês), 100% via Asaas — Pix, cartão, débito e boleto.
+          Todos os números e o extrato abaixo contam só a partir de hoje (00h); o saldo é sempre o
+          saldo atual de verdade da conta.
         </Typography>
       </div>
 
-      {(!data.abacatepay.configured || !data.asaas.configured) && (
+      {!data.asaas.configured && (
         <Card>
           <Card.Body className="flex flex-col gap-2">
-            {!data.abacatepay.configured && (
-              <div className="flex items-center gap-2">
-                <Badge variant="warning">AbacatePay não configurada</Badge>
-                <Typography variant="bodySmall" color="muted">
-                  Sem <code>ABACATEPAY_API_KEY</code> — valores de Pix não podem ser consultados.
-                </Typography>
-              </div>
-            )}
-            {!data.asaas.configured && (
-              <div className="flex items-center gap-2">
-                <Badge variant="warning">Asaas não configurada</Badge>
-                <Typography variant="bodySmall" color="muted">
-                  Sem <code>ASAAS_API_KEY</code> — valores de cartão/boleto não podem ser
-                  consultados.
-                </Typography>
-              </div>
-            )}
+            <div className="flex items-center gap-2">
+              <Badge variant="warning">Asaas não configurada</Badge>
+              <Typography variant="bodySmall" color="muted">
+                Sem <code>ASAAS_API_KEY</code> — valores de Pix/cartão/boleto não podem ser
+                consultados.
+              </Typography>
+            </div>
             <Typography variant="caption" color="muted">
               Empresas e planos abaixo continuam corretos (vêm do banco da Rotta, não dos
               provedores).
@@ -240,15 +229,15 @@ export default function FinanceiroPage(): JSX.Element {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ProviderCard
-          titulo="AbacatePay (Pix)"
-          descricao="Assinatura via Pix — cobrança recorrente embutida na Rotta."
-          overview={data.abacatepay}
+          titulo="Asaas (Pix, Cartão e Boleto)"
+          descricao="Checkout próprio da Rotta — Pix, cartão de crédito, débito e boleto, tudo processado pela Asaas."
+          overview={data.asaas}
           hidden={hidden}
         />
         <ProviderCard
-          titulo="Asaas (Cartão e Boleto)"
-          descricao="Checkout próprio da Rotta — cartão de crédito, débito e boleto processados pela Asaas."
-          overview={data.asaas}
+          titulo="AbacatePay (legado)"
+          descricao="Pix passou a ser 100% Asaas (pedido do usuário 03/09/2026) — a AbacatePay só aparece aqui se ainda houver uma assinatura antiga dela em aberto, nenhum Pix novo passa mais por ela."
+          overview={data.abacatepay}
           hidden={hidden}
         />
       </div>
@@ -276,7 +265,7 @@ export default function FinanceiroPage(): JSX.Element {
           title="Empresas usando o plano"
           action={
             <Typography variant="caption" color="muted">
-              Clique numa empresa pra ver o extrato completo de pagamentos dela
+              Clique numa empresa pra ver os pagamentos dela (a partir de hoje)
             </Typography>
           }
         />

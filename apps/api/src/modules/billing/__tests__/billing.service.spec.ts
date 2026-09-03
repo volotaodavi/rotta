@@ -265,58 +265,86 @@ describe("BillingService", () => {
   });
 
   describe("createPixCheckoutForCompany", () => {
-    it("recusa quando a AbacatePay não está configurada", async () => {
-      client.isConfigured.mockReturnValue(false);
+    it("recusa quando a Asaas não está configurada (Pix é 100% Asaas, pedido do usuário 03/09/2026)", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
       await expect(service.createPixCheckoutForCompany("company-1")).rejects.toThrow(
         BadRequestException,
       );
+      expect(client.createPixQrCode).not.toHaveBeenCalled();
     });
 
     it("lança NotFoundException quando a empresa não existe", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
       companyRepository.findById.mockResolvedValue(null);
       await expect(service.createPixCheckoutForCompany("company-1")).rejects.toThrow(
         NotFoundException,
       );
     });
 
-    it("cria o QR Code com metadata.externalId=companyId", async () => {
+    it("cria assinatura Asaas billingType PIX com externalReference=companyId e devolve o QR Code", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
       companyRepository.findById.mockResolvedValue(buildCompany());
-      client.createPixQrCode.mockResolvedValue({
-        id: "pix_1",
-        amount: 3990,
-        status: "PENDING",
-        brCode: "00020126...",
-        brCodeBase64: "data:image/png;base64,xyz",
-        expiresAt: "2026-08-19T13:00:00.000Z",
-        createdAt: "2026-08-19T12:30:00.000Z",
+      asaasClient.createCustomer.mockResolvedValue({
+        id: "cus_1",
+        name: "Transportadora Exemplo",
+        cpfCnpj: "12345678000199",
+      });
+      asaasClient.createSubscription.mockResolvedValue({
+        id: "sub_1",
+        customer: "cus_1",
+        status: "ACTIVE",
+        billingType: "PIX",
+        value: 39.9,
+        nextDueDate: "2026-08-27",
+      });
+      asaasClient.listPaymentsBySubscription.mockResolvedValue({
+        data: [
+          { id: "pay_1", customer: "cus_1", status: "PENDING", billingType: "PIX", value: 39.9 },
+        ],
+      });
+      asaasClient.getPixQrCode.mockResolvedValue({
+        success: true,
+        encodedImage: "xyz",
+        payload: "00020126...",
+        expirationDate: "2026-08-19T13:00:00.000Z",
       });
 
       const result = await service.createPixCheckoutForCompany("company-1");
 
-      expect(result.id).toBe("pix_1");
-      expect(client.createPixQrCode).toHaveBeenCalledWith(
-        expect.objectContaining({
-          amount: 3990,
-          metadata: { externalId: "company-1" },
-        }),
+      expect(result.id).toBe("pay_1");
+      expect(result.brCode).toBe("00020126...");
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ billingType: "PIX", externalReference: "company-1" }),
       );
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ asaasCustomerId: "cus_1", asaasSubscriptionId: "sub_1" }),
+      );
+      expect(client.createPixQrCode).not.toHaveBeenCalled();
     });
   });
 
   describe("getPixCheckoutStatus", () => {
-    it("repassa direto para o client", async () => {
-      client.checkPixQrCodeStatus.mockResolvedValue({
-        id: "pix_1",
-        amount: 3990,
-        status: "PAID",
-        brCode: "00020126...",
-        brCodeBase64: "data:image/png;base64,xyz",
-        expiresAt: "2026-08-19T13:00:00.000Z",
-        createdAt: "2026-08-19T12:30:00.000Z",
+    it("busca status + QR Code na Asaas e devolve os dois juntos (o modal troca de fonte pro que vier daqui)", async () => {
+      asaasClient.getPayment.mockResolvedValue({
+        id: "pay_1",
+        customer: "cus_1",
+        status: "CONFIRMED",
+        billingType: "PIX",
+        value: 39.9,
       });
-      const result = await service.getPixCheckoutStatus("pix_1");
+      asaasClient.getPixQrCode.mockResolvedValue({
+        success: true,
+        encodedImage: "xyz",
+        payload: "00020126...",
+        expirationDate: "2026-08-19T13:00:00.000Z",
+      });
+
+      const result = await service.getPixCheckoutStatus("pay_1");
+
       expect(result.status).toBe("PAID");
-      expect(client.checkPixQrCodeStatus).toHaveBeenCalledWith("pix_1");
+      expect(result.brCode).toBe("00020126...");
+      expect(client.checkPixQrCodeStatus).not.toHaveBeenCalled();
     });
   });
 
@@ -791,7 +819,48 @@ describe("BillingService", () => {
       cpfCnpj: "11144477735",
     };
 
-    it("usa a AbacatePay quando configurada (caminho padrão)", async () => {
+    it("usa a Asaas quando configurada — caminho padrão agora (pedido do usuário 03/09/2026: 'tiram o Pix da AbacatePay')", async () => {
+      // AbacatePay continua "configurada" (default do mock) — a
+      // prioridade nova é da Asaas ganhar de qualquer jeito, não só
+      // quando a AbacatePay falta.
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.createCustomer.mockResolvedValue({
+        id: "cus_1",
+        name: dto.nome,
+        cpfCnpj: dto.cpfCnpj,
+      });
+      asaasClient.createSubscription.mockResolvedValue({
+        id: "sub_1",
+        customer: "cus_1",
+        status: "ACTIVE",
+        billingType: "PIX",
+        value: 39.9,
+        nextDueDate: "2026-01-01",
+      });
+      asaasClient.listPaymentsBySubscription.mockResolvedValue({
+        data: [
+          { id: "pay_1", customer: "cus_1", status: "PENDING", billingType: "PIX", value: 39.9 },
+        ],
+      });
+      asaasClient.getPixQrCode.mockResolvedValue({
+        success: true,
+        encodedImage: "base64-qr",
+        payload: "00020126-copia-e-cola",
+        expirationDate: "2026-01-02T00:00:00.000Z",
+      });
+
+      const result = await service.createPreSignupPixCheckout(dto);
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ billingType: "PIX" }),
+      );
+      expect(result.checkout.id).toBe("pay_1");
+      expect(client.createPixQrCode).not.toHaveBeenCalled();
+    });
+
+    it("cai pra AbacatePay só quando a Asaas não está configurada (último recurso)", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+      client.isConfigured.mockReturnValue(true);
       client.createPixQrCode.mockResolvedValue({
         id: "pix_1",
         amount: 3990,
@@ -809,7 +878,7 @@ describe("BillingService", () => {
       expect(result.checkout.id).toBe("pix_1");
     });
 
-    it("cai pra Asaas (billingType PIX) quando a AbacatePay não está configurada", async () => {
+    it("cai pra Asaas (billingType PIX) quando a AbacatePay não está configurada (mesmo teste de sempre, prioridade continua funcionando nesse sentido também)", async () => {
       client.isConfigured.mockReturnValue(false);
       asaasClient.isConfigured.mockReturnValue(true);
       asaasClient.createCustomer.mockResolvedValue({
@@ -944,6 +1013,7 @@ describe("BillingService", () => {
       expect(asaasClient.listFinancialTransactions).toHaveBeenCalledWith({
         offset: 20,
         limit: 20,
+        startDate: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
       });
       expect(statement).toEqual({
         configured: true,
@@ -1065,6 +1135,30 @@ describe("BillingService", () => {
           data: HOJE_ISO,
         },
       ]);
+    });
+
+    it("nunca mostra pagamento anterior a hoje ('o histórico também só deverá mostrar a partir de hoje', pedido do usuário 03/09/2026)", async () => {
+      companyRepository.findById.mockResolvedValue({
+        ...buildCompany(),
+        asaasSubscriptionId: "sub_123",
+      });
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.listPaymentsBySubscription.mockResolvedValue({
+        data: [
+          {
+            id: "pay_antigo",
+            customer: "cus_1",
+            status: "CONFIRMED",
+            billingType: "PIX",
+            value: 39.9,
+            paymentDate: "2020-01-01T00:00:00.000Z",
+          },
+        ],
+      });
+
+      const result = await service.getCompanyPaymentHistory("company-1");
+
+      expect(result.items).toEqual([]);
     });
 
     it("nunca inventa correlação pra AbacatePay — devolve items: [] com um motivo explicando por quê", async () => {

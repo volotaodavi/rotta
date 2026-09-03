@@ -14,7 +14,6 @@ import {
   PendingSubscriptionStatus,
 } from "@prisma/client";
 
-
 import { AbacatePayClientService } from "./abacatepay-client.service";
 import { AsaasClientService } from "./asaas-client.service";
 import {
@@ -301,23 +300,28 @@ export class BillingService {
   /**
    * Checkout Pix embutido na própria Rotta (pedido do usuário: "para não
    * precisar ir em outro lugar") — devolve QR Code + copia-e-cola direto,
-   * sem nenhum redirecionamento. `metadata.externalId: companyId` é o
-   * mesmo mecanismo de correlação do checkout de assinatura, só que pro
-   * evento `billing.paid` (ver `applyPixPayment`).
+   * sem nenhum redirecionamento.
    *
-   * Diferença importante do checkout de cartão/débito/boleto (Asaas,
-   * `createAsaasCheckoutForCompany`): isto é uma cobrança AVULSA (não
-   * uma assinatura recorrente da AbacatePay) — o pagamento confirmado
-   * ativa a empresa por este ciclo e agenda `pixProximoVencimento`
-   * (`applyPixPayment`), que o job diário (`processarVencimentosPix`)
-   * usa pra reemitir um novo Pix automaticamente perto do vencimento —
-   * a "renovação automática" do Pix é simulada por esse agendador, já
-   * que a AbacatePay em si não tem assinatura recorrente de Pix.
+   * Pix 100% via Asaas (pedido do usuário 03/09/2026: "por que não
+   * tiram o Pix da AbacatePay? Aí fica direto com a Asaas" — a
+   * AbacatePay ficou com a chave inválida/desatualizada em produção o
+   * tempo todo desta sessão). Mesmo mecanismo de `createAsaasCheckoutForCompany`
+   * (cartão/débito/boleto): cria (ou reaproveita) o `customer` na
+   * Asaas, cria uma assinatura mensal com `billingType: "PIX"` e
+   * devolve o QR Code do primeiro pagamento. `externalReference:
+   * company.id` é o MESMO mecanismo de correlação que
+   * `handleAsaasWebhookEvent`/`applyAsaasStatus` já usam pra
+   * cartão/boleto — nenhum webhook novo precisou ser escrito, a
+   * confirmação (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`) e a renovação
+   * mensal são nativas da Asaas, sem precisar do job de reemissão
+   * manual que a AbacatePay exigia (`processarVencimentosPix` — deixado
+   * intacto só pelas assinaturas AbacatePay já existentes, nunca mais
+   * alcançado por um Pix novo).
    */
   async createPixCheckoutForCompany(companyId: string): Promise<AbacatePayPixQrCode> {
-    if (!this.client.isConfigured()) {
+    if (!this.asaasClient.isConfigured()) {
       throw new BadRequestException(
-        "Pagamento indisponível: a AbacatePay ainda não está configurada nesta implantação.",
+        "Pagamento indisponível: a Asaas ainda não está configurada nesta implantação.",
       );
     }
 
@@ -329,17 +333,62 @@ export class BillingService {
       throw new NotFoundException("Empresa não encontrada.");
     }
 
-    return this.client.createPixQrCode({
-      amount: ROTTA_SUBSCRIPTION_PRICE_CENTS,
-      expiresIn: ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
+    let asaasCustomerId = company.asaasCustomerId;
+    if (!asaasCustomerId) {
+      const customer = await this.asaasClient.createCustomer({
+        name: company.nomeFantasia,
+        cpfCnpj: company.cpfCnpj,
+        email: company.email,
+        externalReference: company.id,
+      });
+      asaasCustomerId = customer.id;
+    }
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const subscription = await this.asaasClient.createSubscription({
+      customer: asaasCustomerId,
+      billingType: "PIX",
+      value: ROTTA_SUBSCRIPTION_PRICE_CENTS / 100,
+      cycle: "MONTHLY",
+      nextDueDate: hoje,
       description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${company.nomeFantasia}`,
-      metadata: { externalId: company.id },
+      externalReference: company.id,
     });
+
+    await this.prisma.runWithTenantContext({ tenantId: companyId, bypass: false }, () =>
+      this.companyRepository.update(companyId, {
+        asaasCustomerId,
+        asaasSubscriptionId: subscription.id,
+      }),
+    );
+
+    const { data: pagamentos } = await this.asaasClient.listPaymentsBySubscription(subscription.id);
+    const primeiroPagamento = pagamentos[0];
+    if (!primeiroPagamento) {
+      throw new InternalServerErrorException(
+        "Assinatura Pix criada na Asaas, mas nenhum pagamento foi encontrado — tente consultar novamente em instantes.",
+      );
+    }
+
+    const qrCode = await this.asaasClient.getPixQrCode(primeiroPagamento.id);
+    return this.toPixCheckoutFromAsaas(primeiroPagamento, qrCode);
   }
 
-  /** Consultado pelo front enquanto aguarda o webhook (`PixCheckoutModal`, apps/web) — nunca a única forma de confirmar (o webhook continua sendo a fonte de verdade). */
-  getPixCheckoutStatus(id: string): Promise<AbacatePayPixQrCode> {
-    return this.client.checkPixQrCodeStatus(id);
+  /**
+   * Consultado pelo front enquanto aguarda o webhook confirmar
+   * (`PixCheckoutModal`, apps/web) — nunca a única forma de confirmar
+   * (o webhook continua sendo a fonte de verdade). Busca status +
+   * QR Code de novo a cada poll (o `PixCheckoutModal` troca de fonte
+   * pro objeto retornado por aqui assim que a primeira resposta chega
+   * — precisa continuar com `brCode`/`brCodeBase64` válidos, não só
+   * `status`, senão o QR Code desaparece da tela no primeiro poll).
+   */
+  async getPixCheckoutStatus(id: string): Promise<AbacatePayPixQrCode> {
+    const [payment, qrCode] = await Promise.all([
+      this.asaasClient.getPayment(id),
+      this.asaasClient.getPixQrCode(id),
+    ]);
+    return this.toPixCheckoutFromAsaas(payment, qrCode);
   }
 
   /**
@@ -446,23 +495,25 @@ export class BillingService {
    * marcar a `PendingSubscription` como `PAGO` em vez de tentar achar
    * uma `Company`.
    *
-   * Provedor escolhido em tempo de execução (pedido do usuário
-   * 02/09/2026, depois da AbacatePay quebrar em produção com "API key
-   * version mismatch": "pode deixar o pix pelo Asaas também") — prefere
-   * a AbacatePay quando configurada (fluxo original, já confirmado com
-   * chamada real), cai pra Asaas (`AsaasBillingType`, campo `"PIX"`)
-   * só quando a AbacatePay não está disponível. O front nunca sabe qual
-   * dos dois processou — mesmo formato de resposta (`AbacatePayPixQrCode`)
-   * nos dois casos, ver `toPixCheckoutFromAsaas`.
+   * Pix 100% via Asaas (pedido do usuário 03/09/2026: "por que não
+   * tiram o Pix da AbacatePay? Aí fica direto com a Asaas" — a
+   * AbacatePay ficou com a chave inválida/desatualizada em produção o
+   * tempo todo desta sessão, mesmo motivo que já tinha motivado o
+   * fallback em 02/09/2026). A AbacatePay só entra em cena aqui como
+   * ÚLTIMO recurso, se a própria Asaas não estiver configurada nesta
+   * implantação — nenhum checkout novo prefere a AbacatePay quando a
+   * Asaas está disponível, o inverso da prioridade original. O front
+   * nunca sabe qual dos dois processou — mesmo formato de resposta
+   * (`AbacatePayPixQrCode`) nos dois casos, ver `toPixCheckoutFromAsaas`.
    */
   async createPreSignupPixCheckout(
     dto: CreatePreSignupPixDto,
   ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
-    if (this.client.isConfigured()) {
-      return this.createPreSignupPixCheckoutViaAbacatePay(dto);
-    }
     if (this.asaasClient.isConfigured()) {
       return this.createPreSignupPixCheckoutViaAsaas(dto);
+    }
+    if (this.client.isConfigured()) {
+      return this.createPreSignupPixCheckoutViaAbacatePay(dto);
     }
     throw new BadRequestException(
       "Pagamento indisponível: nenhum provedor de Pix está configurado nesta implantação.",
@@ -1462,14 +1513,21 @@ export class BillingService {
   /**
    * Extrato paginado da conta Asaas da Rotta (Frente 33, pedido do
    * usuário: "olhar o extrato") — toda entrada/saída real da conta, não
-   * só cobranças de mensalidade (diferente de `getAdminOverview`).
+   * só cobranças de mensalidade (diferente de `getAdminOverview`). Só
+   * mostra a partir de hoje (pedido do usuário 03/09/2026: "o
+   * histórico também só deverá mostrar a partir de hoje") — via
+   * `startDate` real da própria Asaas, não um filtro em memória.
    */
   async getAdminStatement(page: number, pageSize: number): Promise<BillingAdminStatementResult> {
     if (!this.asaasClient.isConfigured()) {
       return { configured: false, items: [], total: 0, page, pageSize };
     }
     const offset = (page - 1) * pageSize;
-    const result = await this.asaasClient.listFinancialTransactions({ offset, limit: pageSize });
+    const result = await this.asaasClient.listFinancialTransactions({
+      offset,
+      limit: pageSize,
+      startDate: this.inicioDeHoje().toISOString().slice(0, 10),
+    });
     return {
       configured: true,
       items: result.data.map((transacao) => ({
@@ -1564,11 +1622,20 @@ export class BillingService {
       const { data: pagamentos } = await this.asaasClient.listPaymentsBySubscription(
         company.asaasSubscriptionId,
       );
+      // "O histórico também só deverá mostrar a partir de hoje"
+      // (pedido do usuário 03/09/2026) — `listPaymentsBySubscription`
+      // não tem filtro de data próprio (é sempre a assinatura inteira),
+      // então filtra aqui mesmo antes de mapear pra resposta.
+      const inicioDeHoje = this.inicioDeHoje();
+      const pagamentosDeHoje = pagamentos.filter((pagamento) => {
+        const data = pagamento.paymentDate ?? pagamento.dateCreated;
+        return data ? new Date(data) >= inicioDeHoje : false;
+      });
       return {
         companyId: company.id,
         companyNome: company.nomeFantasia,
         provider: "asaas",
-        items: pagamentos.map((pagamento) => ({
+        items: pagamentosDeHoje.map((pagamento) => ({
           id: pagamento.id,
           status: pagamento.status,
           valorCentavos: Math.round(pagamento.value * 100),
