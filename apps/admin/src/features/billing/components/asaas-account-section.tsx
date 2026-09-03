@@ -8,6 +8,7 @@ import {
   ReceiptText,
   RefreshCw,
   Send,
+  User,
   Wallet,
 } from "@rotta/icons";
 import {
@@ -21,7 +22,7 @@ import {
   TrendAreaChart,
   Typography,
 } from "@rotta/ui/web";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type { BillingAdminStatementItem, PixKeyType } from "@rotta/api-client";
 
@@ -87,6 +88,49 @@ function isTaxa(tipo: string): boolean {
   return tipo.includes("FEE");
 }
 
+const RECENT_TRANSFERS_STORAGE_KEY = "rotta-admin-recent-pix-transfers";
+const MAX_TRANSFERENCIAS_RECENTES = 5;
+
+interface TransferenciaRecente {
+  chavePix: string;
+  tipoChavePix: PixKeyType;
+  descricao?: string;
+}
+
+/**
+ * "Quick Transfer" da imagem de referência (avatares de destinatários
+ * recentes) — a Rotta não tem um `GET` que liste transferências
+ * passadas (só `POST /billing/admin/transfers`, ver
+ * `billing.controller.ts`), então não dá pra reconstruir isso do
+ * backend sem inventar dado. Em vez de fabricar ou simplesmente
+ * pular o recurso, guarda os destinatários reais que ESTE navegador já
+ * usou (`localStorage`, nunca sincronizado com o servidor) — mesmo
+ * padrão de `theme-provider.tsx` (try/catch: modo privado/quota nunca
+ * quebra a função, só faz os favoritos não persistirem).
+ */
+function carregarTransferenciasRecentes(): TransferenciaRecente[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(RECENT_TRANSFERS_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as TransferenciaRecente[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function salvarTransferenciaRecente(entrada: TransferenciaRecente): void {
+  if (typeof window === "undefined") return;
+  try {
+    const restantes = carregarTransferenciasRecentes().filter(
+      (item) => item.chavePix !== entrada.chavePix,
+    );
+    const proximas = [entrada, ...restantes].slice(0, MAX_TRANSFERENCIAS_RECENTES);
+    window.localStorage.setItem(RECENT_TRANSFERS_STORAGE_KEY, JSON.stringify(proximas));
+  } catch {
+    // Storage indisponível — os favoritos só não persistem, nunca quebra a transferência em si.
+  }
+}
+
 const TONE_ICON_BG: Record<"success" | "warning" | "danger", string> = {
   success: "bg-success/15 text-success",
   warning: "bg-warning/15 text-warning",
@@ -129,6 +173,11 @@ function TransferForm(): JSX.Element {
   const [confirmando, setConfirmando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [recentes, setRecentes] = useState<TransferenciaRecente[]>([]);
+
+  useEffect(() => {
+    setRecentes(carregarTransferenciasRecentes());
+  }, []);
 
   const createTransfer = useCreateAdminTransfer();
 
@@ -151,6 +200,12 @@ function TransferForm(): JSX.Element {
       { valorCentavos, chavePix: chavePix.trim(), tipoChavePix, descricao: descricao || undefined },
       {
         onSuccess: (transfer) => {
+          salvarTransferenciaRecente({
+            chavePix: chavePix.trim(),
+            tipoChavePix,
+            descricao: descricao.trim() || undefined,
+          });
+          setRecentes(carregarTransferenciasRecentes());
           setConfirmando(false);
           setValor("");
           setChavePix("");
@@ -201,7 +256,34 @@ function TransferForm(): JSX.Element {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-4">
+      {recentes.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <Typography variant="caption" color="muted">
+            Transferências recentes (lembradas só neste navegador)
+          </Typography>
+          <div className="flex flex-wrap gap-2">
+            {recentes.map((recente) => (
+              <button
+                key={recente.chavePix}
+                type="button"
+                onClick={() => {
+                  setChavePix(recente.chavePix);
+                  setTipoChavePix(recente.tipoChavePix);
+                  if (recente.descricao) setDescricao(recente.descricao);
+                }}
+                className="flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1.5 text-sm text-text transition-colors hover:border-primary/40 hover:bg-primary/5"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <User className="h-3.5 w-3.5" />
+                </span>
+                {recente.descricao ?? recente.chavePix}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col gap-1">
           <label className="text-sm font-medium text-text" htmlFor="transfer-valor">
@@ -374,6 +456,68 @@ function ExtratoTable(): JSX.Element {
 }
 
 /**
+ * "Taxa retida pelo Asaas" quebrada por tipo (imagem de referência —
+ * "Top Categories Expenses") — a Rotta não tem categoria de despesa
+ * de verdade (é uma mensalidade só), então o equivalente honesto são
+ * os tipos de TAXA que o extrato de hoje já traz (`ASAAS_FEE`,
+ * `PIX_TRANSACTION_FEE` etc.), somados de verdade a partir dos
+ * mesmos itens da `ExtratoTable`/curva de saldo — nunca uma categoria
+ * inventada.
+ */
+function TaxasPorTipoCard({
+  items,
+  hidden,
+}: {
+  items: BillingAdminStatementItem[];
+  hidden: boolean;
+}): JSX.Element {
+  const breakdown = useMemo(() => {
+    const porTipo = new Map<string, number>();
+    for (const item of items) {
+      if (!isTaxa(item.tipo)) continue;
+      porTipo.set(item.tipo, (porTipo.get(item.tipo) ?? 0) + Math.abs(item.valorCentavos));
+    }
+    return [...porTipo.entries()]
+      .map(([tipo, totalCentavos]) => ({ tipo, totalCentavos }))
+      .sort((a, b) => b.totalCentavos - a.totalCentavos);
+  }, [items]);
+
+  return (
+    <Card>
+      <Card.Header
+        title="Taxas retidas hoje, por tipo"
+        action={<Badge variant="neutral">Desde hoje</Badge>}
+      />
+      <Card.Body>
+        {breakdown.length === 0 ? (
+          <Typography variant="bodySmall" color="muted">
+            Nenhuma taxa retida ainda hoje.
+          </Typography>
+        ) : (
+          <div className="flex flex-wrap gap-6">
+            {breakdown.map(({ tipo, totalCentavos }) => (
+              <div key={tipo} className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-warning/15 text-warning">
+                  <ReceiptText className="h-4 w-4" />
+                </div>
+                <div className="flex flex-col">
+                  <Typography variant="caption" color="muted">
+                    {tipoLabel(tipo)}
+                  </Typography>
+                  <Typography variant="bodySmall" className="font-semibold text-warning">
+                    {hidden ? "R$ ••••••" : centsToBRL(totalCentavos)}
+                  </Typography>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card.Body>
+    </Card>
+  );
+}
+
+/**
  * "Área financeira... transferências, extrato, saldo atual" (pedido do
  * usuário 03/09/2026) — conta Asaas de verdade da Rotta, diferente do
  * resto de `/financeiro` (que é sobre a mensalidade que a Rotta COBRA
@@ -506,6 +650,10 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
             )}
           </Card.Body>
         </Card>
+      )}
+
+      {balance?.configured && (
+        <TaxasPorTipoCard items={statement?.configured ? statement.items : []} hidden={hidden} />
       )}
 
       {balance?.configured && podeTransferir && (

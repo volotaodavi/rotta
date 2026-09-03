@@ -2,7 +2,15 @@
 
 import { useAuth } from "@rotta/auth/web";
 import { Building2, DollarSign, ReceiptText, TrendingUp, Wallet } from "@rotta/icons";
-import { Badge, Card, ErrorState, Skeleton, StatTile, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Card,
+  ErrorState,
+  PanelGreeting,
+  Skeleton,
+  StatTile,
+  Typography,
+} from "@rotta/ui/web";
 
 import type { BillingProviderOverview } from "@rotta/api-client";
 
@@ -168,6 +176,8 @@ export default function FinanceiroPage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
+      <PanelGreeting nome={user?.nome ?? "Admin"} className="sm:hidden" />
+
       <div>
         <Typography variant="display">Financeiro</Typography>
         <Typography variant="bodySmall" color="muted">
