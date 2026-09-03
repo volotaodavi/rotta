@@ -26,6 +26,7 @@ import {
   Search,
   ShieldCheck,
   Store,
+  Users,
 } from "@rotta/icons";
 import { Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Image from "next/image";
@@ -33,13 +34,16 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import type { AdminRottaPapel } from "@rotta/api-client";
 import type { LucideIcon } from "@rotta/icons";
 import type { Route } from "next";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffice";
 import { useClickOutside } from "@/hooks/use-click-outside";
+import { defaultRouteForAdminPapel, isAdminRouteAllowed } from "@/lib/admin-area-access";
 import { PrivacyProvider, usePrivacy } from "@/providers/privacy-provider";
+
 
 interface NavItem {
   href: Route;
@@ -84,6 +88,11 @@ const NAV_PLATAFORMA: NavItem[] = [
   { href: "/documentos-legais", label: "Documentos legais", icon: FileText },
   { href: "/auditoria-legal", label: "Auditoria legal", icon: ScrollText },
   { href: "/erros-cliente", label: "Erros do cliente", icon: Bug },
+  // Só aparece pra quem já enxerga a rota (`isAdminRouteAllowed`) — na
+  // prática só Admin Geral, já que SUPORTE/FINANCEIRO nunca têm
+  // `/admin-contas` no próprio allowlist (pedido do usuário 03/09/2026:
+  // "crie outros acessos... com particularidades").
+  { href: "/admin-contas", label: "Contas Admin", icon: Users },
 ];
 
 function NavLink({ item, count }: { item: NavItem; count: number | undefined }): JSX.Element {
@@ -307,12 +316,17 @@ function AdminTopbar(): JSX.Element {
   );
 }
 
-function AdminSidebar(): JSX.Element {
+function AdminSidebar({ papel }: { papel: AdminRottaPapel | undefined }): JSX.Element {
   const { data } = useBackofficeDashboard();
   const counts: Record<"aprovacoes" | "chamados", number> = {
     aprovacoes: data?.aprovacoesPendentesTotal ?? 0,
     chamados: data?.chamadosAbertos ?? 0,
   };
+  // Ver `admin-area.guard.ts` (backend) — este filtro só controla o que
+  // APARECE aqui, nunca é a autorização de verdade (o guard recusa a
+  // rota de qualquer jeito, mesmo com o link escondido).
+  const navPrincipal = NAV_PRINCIPAL.filter((item) => isAdminRouteAllowed(papel, item.href));
+  const navPlataforma = NAV_PLATAFORMA.filter((item) => isAdminRouteAllowed(papel, item.href));
 
   return (
     <aside className="flex w-64 shrink-0 flex-col gap-6 border-r border-border px-3 py-5">
@@ -321,36 +335,43 @@ function AdminSidebar(): JSX.Element {
         <Typography variant="subtitle">Rotta Admin</Typography>
       </Link>
 
-      <nav className="flex flex-col gap-0.5">
-        {NAV_PRINCIPAL.map((item) => (
-          <NavLink
-            key={item.href}
-            item={item}
-            count={item.badge ? counts[item.badge] : undefined}
-          />
-        ))}
-      </nav>
-
-      <div className="flex flex-col gap-1">
-        <Typography variant="overline" color="muted" className="px-3 uppercase tracking-wide">
-          Plataforma
-        </Typography>
+      {navPrincipal.length > 0 && (
         <nav className="flex flex-col gap-0.5">
-          {NAV_PLATAFORMA.map((item) => (
-            <NavLink key={item.href} item={item} count={undefined} />
+          {navPrincipal.map((item) => (
+            <NavLink
+              key={item.href}
+              item={item}
+              count={item.badge ? counts[item.badge] : undefined}
+            />
           ))}
         </nav>
-      </div>
+      )}
 
-      <div className="mt-auto">
-        <Link
-          href="/empresas/nova"
-          className={buttonVariants({ variant: "primary", fullWidth: true })}
-        >
-          <Plus className="h-4 w-4" />
-          Nova empresa
-        </Link>
-      </div>
+      {navPlataforma.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <Typography variant="overline" color="muted" className="px-3 uppercase tracking-wide">
+            Plataforma
+          </Typography>
+          <nav className="flex flex-col gap-0.5">
+            {navPlataforma.map((item) => (
+              <NavLink key={item.href} item={item} count={undefined} />
+            ))}
+          </nav>
+        </div>
+      )}
+
+      {/* "Nova empresa" é uma ação operacional geral — mesmo raciocínio de `/`, só faz sentido pra quem tem acesso total. */}
+      {(!papel || papel === "GERAL") && (
+        <div className="mt-auto">
+          <Link
+            href="/empresas/nova"
+            className={buttonVariants({ variant: "primary", fullWidth: true })}
+          >
+            <Plus className="h-4 w-4" />
+            Nova empresa
+          </Link>
+        </div>
+      )}
     </aside>
   );
 }
@@ -372,16 +393,32 @@ function AdminSidebar(): JSX.Element {
 export default function AdminLayout({ children }: { children: ReactNode }): JSX.Element {
   const { status, user } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.replace("/entrar");
     } else if (status === "authenticated" && user?.role !== "admin_rotta") {
       router.replace("/entrar");
+    } else if (
+      status === "authenticated" &&
+      pathname &&
+      !isAdminRouteAllowed(user?.adminPapel, pathname)
+    ) {
+      // Sub-papel restrito (SUPORTE/FINANCEIRO) tentando uma rota fora
+      // do próprio escopo — o backend já recusaria a chamada de
+      // qualquer jeito (`AdminAreaGuard`), isto só evita a tela quebrada
+      // de "carregando pra sempre"/erro genérico, manda pro destino
+      // certo direto.
+      router.replace(defaultRouteForAdminPapel(user?.adminPapel));
     }
-  }, [status, user, router]);
+  }, [status, user, router, pathname]);
 
-  if (status !== "authenticated" || user?.role !== "admin_rotta") {
+  if (
+    status !== "authenticated" ||
+    user?.role !== "admin_rotta" ||
+    (pathname && !isAdminRouteAllowed(user.adminPapel, pathname))
+  ) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Spinner size="lg" />
@@ -392,7 +429,7 @@ export default function AdminLayout({ children }: { children: ReactNode }): JSX.
   return (
     <PrivacyProvider>
       <div className="flex min-h-screen bg-background text-text">
-        <AdminSidebar />
+        <AdminSidebar papel={user.adminPapel} />
         <div className="flex min-w-0 flex-1 flex-col">
           <AdminTopbar />
           <main className="flex-1 p-6">{children}</main>

@@ -8,12 +8,14 @@ import {
   CreatePreSignupPixDto,
 } from "./dto/create-pre-signup-checkout.dto";
 
+import { AdminAreas } from "@/common/decorators/admin-areas.decorator";
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { PlanNoticesService } from "@/modules/plan-notices/plan-notices.service";
-import { Role } from "@/shared/enums";
+import { AdminArea, Role } from "@/shared/enums";
+
 
 /**
  * API REST do módulo Billing (Dossiê 26) — só `Role.EMPRESA`/`Role.GESTOR`,
@@ -72,6 +74,7 @@ export class BillingController {
   /** Painel financeiro (Frente AF) — valores recebidos, taxa retida, empresas/planos ativos, AbacatePay (Pix) e Asaas (cartão/débito/boleto) lado a lado. */
   @Get("admin/overview")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.FINANCEIRO)
   getAdminOverview() {
     return this.billingService.getAdminOverview();
   }

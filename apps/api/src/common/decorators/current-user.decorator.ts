@@ -1,6 +1,7 @@
 import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
 
 import type { Role } from "@/shared/enums";
+import type { AdminRottaPapel } from "@prisma/client";
 
 /**
  * Payload minimo carregado pelo JWT de acesso (Dossie 12, Secao 4.2):
@@ -27,6 +28,12 @@ export interface AuthenticatedUser {
   role: Role;
   vinculoId: string;
   sessionId?: string;
+  /**
+   * Sub-papel do Admin Rotta (`User.adminRottaPapel`, pedido do usuário
+   * 03/09/2026 — ver `AdminArea`/`AdminAreaGuard`) — só presente quando
+   * `role === Role.ADMIN_ROTTA`; `undefined` pra todo outro papel.
+   */
+  adminPapel?: AdminRottaPapel;
 }
 
 /**

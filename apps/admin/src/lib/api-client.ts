@@ -1,4 +1,5 @@
 import {
+  createAdminAccountsEndpoints,
   createAnalyticsEndpoints,
   createAnnouncementsEndpoints,
   createApiClient,
@@ -66,3 +67,4 @@ export const legalDocumentsApi = createLegalDocumentsEndpoints(apiClient);
 export const identityVerificationApi = createIdentityVerificationEndpoints(apiClient);
 export const billingApi = createBillingEndpoints(apiClient);
 export const planNoticesApi = createPlanNoticesEndpoints(apiClient);
+export const adminAccountsApi = createAdminAccountsEndpoints(apiClient);

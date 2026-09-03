@@ -1,7 +1,6 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Param, Post, Query } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { CreateIdentityVerificationSessionDto } from "./dto/create-identity-verification-session.dto";
 import { DecideIdentityVerificationDto } from "./dto/decide-identity-verification.dto";
 import { ListIdentityVerificationsQueryDto } from "./dto/list-identity-verifications-query.dto";
@@ -13,9 +12,11 @@ import {
   type IdentityVerificationStatusResult,
 } from "./identity-verification.service";
 
+import { AdminAreas } from "@/common/decorators/admin-areas.decorator";
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
-import { Role } from "@/shared/enums";
+import { AdminArea, Role } from "@/shared/enums";
+
 
 /** Quem verifica a PRÓPRIA identidade hoje (Motorista/Monitor dirigem; Empresa/Gestor administram a conta) — Responsável/Escola/Admin Rotta não usam este fluxo. */
 const SELF_VERIFICATION_ROLES = [Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR] as const;
@@ -63,6 +64,7 @@ export class IdentityVerificationController {
 
   @Get("admin")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.IDENTIDADE)
   listAdmin(
     @Query() query: ListIdentityVerificationsQueryDto,
   ): Promise<AdminIdentityVerificationListResult> {
@@ -71,18 +73,21 @@ export class IdentityVerificationController {
 
   @Get("admin/:userId")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.IDENTIDADE)
   getAdmin(@Param("userId") userId: string): Promise<AdminIdentityVerificationDetail> {
     return this.service.getForAdmin(userId);
   }
 
   @Post("admin/:userId/refresh")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.IDENTIDADE)
   refreshAdmin(@Param("userId") userId: string): Promise<AdminIdentityVerificationDetail> {
     return this.service.refreshForAdmin(userId);
   }
 
   @Post("admin/:userId/decision")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.IDENTIDADE)
   decideAdmin(
     @Param("userId") userId: string,
     @Body() dto: DecideIdentityVerificationDto,

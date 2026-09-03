@@ -1,4 +1,4 @@
-import type { Prisma, User } from "@prisma/client";
+import type { AdminRottaPapel, Prisma, User, UserStatus } from "@prisma/client";
 
 /**
  * Interface de repositorio (Repository Pattern, Dossie 12 Secao 6.1) —
@@ -17,6 +17,10 @@ export interface CreateUserInput {
   isResponsavel?: boolean;
   /** Ver nota em `User.autonomoRole`, `schema.prisma` (Frente N). */
   autonomoRole?: string;
+  /** Ver nota em `User.isAdminRotta`, `schema.prisma` — nunca setável por nenhuma rota pública (só `AdminAccountsService`, restrito a `AdminRottaPapel.GERAL`). */
+  isAdminRotta?: boolean;
+  /** Ver `AdminRottaPapel`/`AdminAreaGuard` — só relevante junto de `isAdminRotta: true`. */
+  adminRottaPapel?: AdminRottaPapel;
 }
 
 /** Campos de estado de autenticação atualizáveis (Dossiê 15, `AUTH-*`) — nunca um passthrough genérico de `Prisma.UserUpdateInput`. */
@@ -48,4 +52,10 @@ export interface UserRepository {
   listActiveIds(): Promise<string[]>;
   /** IDs de todo Responsável ativo (`User.isResponsavel`) — usado pelo público `RESPONSAVEIS` de um `Announcement`. */
   listResponsavelIds(): Promise<string[]>;
+  /** Registros completos de todo Admin Rotta (ativo ou não) — tela "Contas Admin" (`AdminAccountsService`, GERAL-only). */
+  listAdminRottaUsers(): Promise<User[]>;
+  /** Muda o sub-papel de uma conta Admin Rotta existente (`AdminAccountsService`). */
+  updateAdminRottaPapel(id: string, papel: AdminRottaPapel): Promise<User>;
+  /** Ativa/desativa uma conta Admin Rotta (`AdminAccountsService`) — nunca deleta o registro (auditoria/histórico). */
+  updateStatus(id: string, status: UserStatus): Promise<User>;
 }

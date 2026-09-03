@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable } from "@nes
 import { CompanyType } from "@prisma/client";
 import { passwordEqualsIdentifier } from "@rotta/validators";
 
+
 import {
   CONSENT_RECORD_REPOSITORY,
   MEMBERSHIP_REPOSITORY,
@@ -15,7 +16,14 @@ import type {
   MembershipWithCompany,
 } from "./repositories/membership.repository";
 import type { UserRepository } from "./repositories/user.repository";
-import type { ConsentType, Membership, Prisma, User } from "@prisma/client";
+import type {
+  AdminRottaPapel,
+  ConsentType,
+  Membership,
+  Prisma,
+  User,
+  UserStatus,
+} from "@prisma/client";
 
 import { PasswordHasherService } from "@/infra/security/password-hasher.service";
 import { CURRENT_PRIVACY_VERSION, CURRENT_TERMS_VERSION } from "@/modules/auth/legal-versions";
@@ -42,6 +50,9 @@ export interface CreateUserWithPasswordInput {
   isResponsavel?: boolean;
   /** Ver nota em `User.autonomoRole`, `schema.prisma` (Frente N). */
   autonomoRole?: string;
+  /** Ver `AdminAccountsService` — só setado ali, nunca por nenhuma rota de cadastro pública. */
+  isAdminRotta?: boolean;
+  adminRottaPapel?: AdminRottaPapel;
 }
 
 /**
@@ -128,9 +139,24 @@ export class UsersService {
         avatarUrl: input.avatarUrl,
         isResponsavel: input.isResponsavel,
         autonomoRole: input.autonomoRole,
+        isAdminRotta: input.isAdminRotta,
+        adminRottaPapel: input.adminRottaPapel,
       },
       tx,
     );
+  }
+
+  /** Ver `AdminAccountsService` (GERAL-only) — tela "Contas Admin". */
+  listAdminRottaAccounts(): Promise<User[]> {
+    return this.userRepository.listAdminRottaUsers();
+  }
+
+  updateAdminRottaPapel(id: string, papel: AdminRottaPapel): Promise<User> {
+    return this.userRepository.updateAdminRottaPapel(id, papel);
+  }
+
+  updateAdminAccountStatus(id: string, status: UserStatus): Promise<User> {
+    return this.userRepository.updateStatus(id, status);
   }
 
   createMembership(

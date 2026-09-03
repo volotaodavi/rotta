@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { CompanyType, ConsentType } from "@prisma/client";
+import { AdminRottaPapel, CompanyType, ConsentType } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -42,6 +42,12 @@ export class MeResponseDto {
       "Consentimentos (Termos de Uso / Política de Privacidade, Dossiê 45 FRENTE 5) cuja versão vigente o usuário ainda não aceitou — vazio quando está tudo em dia. Cliente deve exibir um reaceite bloqueante quando não-vazio (mesma UX do cadastro, ver `POST /auth/me/consent`).",
   })
   pendingConsents!: ConsentType[];
+  @ApiPropertyOptional({
+    enum: AdminRottaPapel,
+    description:
+      "Sub-papel dentro de Role.ADMIN_ROTTA (pedido do usuário 03/09/2026 — suporte@/financeiro@/admin geral com áreas diferentes) — só presente pra ADMIN_ROTTA, undefined pra todo outro papel. Front usa isto pra decidir o que mostrar na navegação (ver Dossiê do painel Admin).",
+  })
+  adminPapel?: AdminRottaPapel;
 }
 
 /** Resposta de login/registro/refresh/resgate de convite bem-sucedidos (Dossiê 15). */

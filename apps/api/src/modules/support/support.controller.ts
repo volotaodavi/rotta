@@ -11,7 +11,6 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { CreateSupportMessageDto } from "./dto/create-support-message.dto";
 import { CreateSupportTicketDto } from "./dto/create-support-ticket.dto";
 import { ListSupportTicketsQueryDto } from "./dto/list-support-tickets-query.dto";
@@ -19,10 +18,13 @@ import { SupportService, type RequestMeta } from "./support.service";
 
 import type { Request } from "express";
 
+import { AdminAreas } from "@/common/decorators/admin-areas.decorator";
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
-import { Role } from "@/shared/enums";
+import { AdminArea, Role } from "@/shared/enums";
+
+
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
@@ -49,6 +51,11 @@ const ARCHIVE_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA] as const;
 @ApiBearerAuth()
 @Controller("support/tickets")
 @SkipTrialGuard()
+// Admin Rotta com adminRottaPapel === SUPORTE só vê esta área (pedido
+// do usuário 03/09/2026) — nível de classe, seguro mesmo pro `create`
+// abaixo (nunca lista ADMIN_ROTTA em `@Roles`, então `AdminAreaGuard`
+// nem chega a rodar pra ele nessa rota).
+@AdminAreas(AdminArea.SUPORTE)
 export class SupportController {
   constructor(private readonly supportService: SupportService) {}
 

@@ -14,6 +14,14 @@ export type Role =
 /** Dossiê 45 FRENTE 5 — consentimento versionado (Termos de Uso / Política de Privacidade). */
 export type ConsentType = "TERMOS_DE_USO" | "POLITICA_PRIVACIDADE";
 
+/**
+ * Sub-papel dentro de role "admin_rotta" (pedido do usuário 03/09/2026:
+ * "crie outros acessos para o painel do admin, porém com
+ * particularidades") — GERAL: tudo. SUPORTE: só Suporte/Identidade/
+ * Veículos. FINANCEIRO: só as áreas financeiras, sempre leitura.
+ */
+export type AdminRottaPapel = "GERAL" | "SUPORTE" | "FINANCEIRO";
+
 export interface MeResponse {
   id: string;
   nome: string;
@@ -33,6 +41,8 @@ export interface MeResponse {
   billingBlockedReason?: string | null;
   /** Tipos cuja versão vigente o usuário ainda não aceitou (Dossiê 45 FRENTE 5) — vazio quando está tudo em dia. Não-vazio deve disparar um reaceite bloqueante (ver `authApi.acceptConsent`). */
   pendingConsents: ConsentType[];
+  /** Sub-papel do Admin Rotta (pedido do usuário 03/09/2026) — só presente pra role "admin_rotta", undefined pra todo outro papel. */
+  adminPapel?: AdminRottaPapel;
 }
 
 export interface AuthTokensResponse {

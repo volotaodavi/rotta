@@ -4,6 +4,7 @@ import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 
 import { AllExceptionsFilter } from "@/common/filters/all-exceptions.filter";
+import { AdminAreaGuard } from "@/common/guards/admin-area.guard";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
 import { TenantGuard } from "@/common/guards/tenant.guard";
@@ -38,6 +39,7 @@ import { RedisModule } from "@/infra/cache/redis.module";
 import { PrismaModule } from "@/infra/database/prisma.module";
 import { LoggerModule } from "@/infra/observability/logger.module";
 import { QueueModule } from "@/infra/queue/queue.module";
+import { AdminAccountsModule } from "@/modules/admin-accounts/admin-accounts.module";
 import { AdminDigestModule } from "@/modules/admin-digest/admin-digest.module";
 import { AgendaModule } from "@/modules/agenda/agenda.module";
 import { AnalyticsModule } from "@/modules/analytics/analytics.module";
@@ -164,6 +166,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     BackofficeModule,
     LegalDocumentsModule,
     IdentityVerificationModule,
+    AdminAccountsModule,
   ],
   providers: [
     // --- Guards globais (Dossie 12, Secao 5.1) ---
@@ -171,6 +174,11 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    // Sub-papéis DENTRO de Role.ADMIN_ROTTA (pedido do usuário
+    // 03/09/2026 — suporte@/financeiro@/admin geral com áreas
+    // diferentes) — roda logo depois do RolesGuard, mesma ordem
+    // "autenticação -> tenant -> papel -> [sub-papel]".
+    { provide: APP_GUARD, useClass: AdminAreaGuard },
     // Faturamento (Dossiê 26) — trial vencido/inadimplente/suspenso
     // bloqueia escrita em toda a API, exceto `@SkipTrialGuard()`
     // (Support, Billing). Roda por último: precisa do papel já

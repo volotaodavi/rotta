@@ -19,6 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { VehicleDocumentType } from "@prisma/client";
 
+
 import { CreateVehicleAssignmentDto } from "./dto/create-vehicle-assignment.dto";
 import { CreateVehicleChecklistDto } from "./dto/create-vehicle-checklist.dto";
 import { CreateVehicleDocumentDto } from "./dto/create-vehicle-document.dto";
@@ -39,9 +40,10 @@ import { VehiclesService, type RequestMeta } from "./vehicles.service";
 
 import type { Request, Response } from "express";
 
+import { AdminAreas } from "@/common/decorators/admin-areas.decorator";
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
-import { Role } from "@/shared/enums";
+import { AdminArea, Role } from "@/shared/enums";
 
 const MANAGE_ROLES = [Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR] as const;
 const READ_ROLES = [...MANAGE_ROLES, Role.MOTORISTA, Role.MONITOR] as const;
@@ -74,6 +76,7 @@ export class VehiclesController {
 
   @Get()
   @Roles(...MANAGE_ROLES)
+  @AdminAreas(AdminArea.VEICULOS)
   list(@Query() query: ListVehiclesQueryDto, @CurrentUser() actor: AuthenticatedUser) {
     return this.vehiclesService.list(query, actor);
   }
@@ -139,6 +142,7 @@ export class VehiclesController {
    */
   @Get("revisao-categoria")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.VEICULOS)
   listCategoryReview(@Query() query: ListVehicleCategoryReviewQueryDto) {
     return this.vehiclesService.listCategoryReview(query);
   }
@@ -157,6 +161,7 @@ export class VehiclesController {
 
   @Get(":id")
   @Roles(...READ_ROLES)
+  @AdminAreas(AdminArea.VEICULOS)
   findById(@Param("id", ParseUUIDPipe) id: string, @CurrentUser() actor: AuthenticatedUser) {
     return this.vehiclesService.findByIdOrThrow(id, actor);
   }
@@ -196,6 +201,7 @@ export class VehiclesController {
 
   @Patch(":id/revisao-categoria")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.VEICULOS)
   resolveCategoryReview(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: ResolveVehicleCategoryReviewDto,
@@ -207,6 +213,7 @@ export class VehiclesController {
 
   @Patch(":id/revisao-admin")
   @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.VEICULOS)
   reviewVehicle(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: ReviewVehicleDto,
@@ -279,6 +286,7 @@ export class VehiclesController {
 
   @Get(":id/documents")
   @Roles(...READ_ROLES)
+  @AdminAreas(AdminArea.VEICULOS)
   listDocuments(
     @Param("id", ParseUUIDPipe) id: string,
     @CurrentUser() actor: AuthenticatedUser,

@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
 
+
 import type { CreateUserInput, UpdateUserAuthStateInput, UserRepository } from "./user.repository";
-import type { Prisma, User } from "@prisma/client";
+import type { AdminRottaPapel, Prisma, User, UserStatus } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 
@@ -60,5 +61,20 @@ export class PrismaUserRepository implements UserRepository {
       select: { id: true },
     });
     return responsaveis.map((responsavel) => responsavel.id);
+  }
+
+  listAdminRottaUsers(): Promise<User[]> {
+    return this.prisma.user.findMany({
+      where: { isAdminRotta: true },
+      orderBy: { nome: "asc" },
+    });
+  }
+
+  updateAdminRottaPapel(id: string, papel: AdminRottaPapel): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data: { adminRottaPapel: papel } });
+  }
+
+  updateStatus(id: string, status: UserStatus): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data: { status } });
   }
 }
