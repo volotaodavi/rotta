@@ -12,6 +12,7 @@ import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 
 import { EmailModule } from "@/infra/email/email.module";
+import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
@@ -34,6 +35,7 @@ import { UsersModule } from "@/modules/users/users.module";
     UsersModule,
     MessagePersonalizationModule,
     EmailModule,
+    AuditModule,
   ],
   controllers: [
     BillingController,

@@ -1,12 +1,16 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-import { BillingService } from "./billing.service";
+import { BillingService, type RequestMeta } from "./billing.service";
+import { CreateAdminTransferDto } from "./dto/create-admin-transfer.dto";
 import { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
 import {
   CreatePreSignupAsaasDto,
   CreatePreSignupPixDto,
 } from "./dto/create-pre-signup-checkout.dto";
+import { ListAdminStatementQueryDto } from "./dto/list-admin-statement-query.dto";
+
+import type { Request } from "express";
 
 import { AdminAreas } from "@/common/decorators/admin-areas.decorator";
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
@@ -16,6 +20,9 @@ import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { PlanNoticesService } from "@/modules/plan-notices/plan-notices.service";
 import { AdminArea, Role } from "@/shared/enums";
 
+function requestMeta(req: Request): RequestMeta {
+  return { ip: req.ip, userAgent: req.headers["user-agent"] };
+}
 
 /**
  * API REST do módulo Billing (Dossiê 26) — só `Role.EMPRESA`/`Role.GESTOR`,
@@ -77,6 +84,39 @@ export class BillingController {
   @AdminAreas(AdminArea.FINANCEIRO)
   getAdminOverview() {
     return this.billingService.getAdminOverview();
+  }
+
+  /** Saldo atual da conta Asaas da Rotta (Frente 33, pedido do usuário 03/09/2026: "saldo atual"). Leitura — `AdminRottaPapel.FINANCEIRO` também acessa. */
+  @Get("admin/balance")
+  @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.FINANCEIRO)
+  getAdminBalance() {
+    return this.billingService.getAdminBalance();
+  }
+
+  /** Extrato paginado da conta Asaas da Rotta ("olhar o extrato"). Leitura — `AdminRottaPapel.FINANCEIRO` também acessa. */
+  @Get("admin/statement")
+  @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.FINANCEIRO)
+  getAdminStatement(@Query() query: ListAdminStatementQueryDto) {
+    return this.billingService.getAdminStatement(query.page, query.pageSize);
+  }
+
+  /**
+   * Transferência Pix pra fora da conta Asaas da Rotta ("fazer
+   * transferências"). SEM `@AdminAreas`: por design do
+   * `AdminAreaGuard`, isso deixa a rota GERAL-only por padrão —
+   * `AdminRottaPapel.FINANCEIRO` (só leitura) é bloqueado
+   * automaticamente, sem precisar de checagem extra aqui.
+   */
+  @Post("admin/transfers")
+  @Roles(Role.ADMIN_ROTTA)
+  createAdminTransfer(
+    @Body() dto: CreateAdminTransferDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.billingService.createAdminTransfer(dto, actor, requestMeta(req));
   }
 
   /** Avisos de plano ativos (globais + os da própria empresa) — publicados pelo Admin Rotta em `/plan-notices` (painel "Controle de Planos"). */

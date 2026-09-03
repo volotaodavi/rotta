@@ -7,6 +7,7 @@ import type { AbacatePayClientService } from "../abacatepay-client.service";
 import type { AsaasClientService } from "../asaas-client.service";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
+import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { CompanyWithPlan } from "@/modules/companies/repositories/company.repository";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { UsersService } from "@/modules/users/users.service";
@@ -36,6 +37,7 @@ describe("BillingService", () => {
     runWithTenantContext: jest.Mock;
     pendingSubscription: { create: jest.Mock; update: jest.Mock; delete: jest.Mock };
   };
+  let auditLogService: jest.Mocked<AuditLogService>;
   let service: BillingService;
 
   beforeEach(() => {
@@ -58,6 +60,9 @@ describe("BillingService", () => {
       listPaymentsBySubscription: jest.fn(),
       getPixQrCode: jest.fn(),
       listPayments: jest.fn(),
+      getBalance: jest.fn(),
+      listFinancialTransactions: jest.fn(),
+      createTransfer: jest.fn(),
     } as unknown as jest.Mocked<AsaasClientService>;
 
     companyRepository = {
@@ -90,6 +95,9 @@ describe("BillingService", () => {
     const adminInboxEmailService = {
       send: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AdminInboxEmailService>;
+    auditLogService = {
+      record: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<AuditLogService>;
 
     service = new BillingService(
       client,
@@ -100,6 +108,7 @@ describe("BillingService", () => {
       messagePersonalizationService,
       eventEmitter,
       adminInboxEmailService,
+      auditLogService,
     );
   });
 
@@ -852,6 +861,137 @@ describe("BillingService", () => {
       expect(prisma.pendingSubscription.delete).toHaveBeenCalledWith({
         where: { id: "pending-1" },
       });
+    });
+  });
+
+  describe("getAdminBalance", () => {
+    it("nunca fabrica saldo quando a Asaas não está configurada", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+
+      const balance = await service.getAdminBalance();
+
+      expect(balance).toEqual({ configured: false, saldoCentavos: null });
+      expect(asaasClient.getBalance).not.toHaveBeenCalled();
+    });
+
+    it("converte o saldo (reais, formato Asaas) pra centavos", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.getBalance.mockResolvedValue({ balance: 1234.56 });
+
+      const balance = await service.getAdminBalance();
+
+      expect(balance).toEqual({ configured: true, saldoCentavos: 123456 });
+    });
+  });
+
+  describe("getAdminStatement", () => {
+    it("nunca fabrica extrato quando a Asaas não está configurada", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+
+      const statement = await service.getAdminStatement(1, 20);
+
+      expect(statement).toEqual({ configured: false, items: [], total: 0, page: 1, pageSize: 20 });
+      expect(asaasClient.listFinancialTransactions).not.toHaveBeenCalled();
+    });
+
+    it("pagina corretamente (offset = (page-1)*pageSize) e converte valores pra centavos", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.listFinancialTransactions.mockResolvedValue({
+        object: "list",
+        hasMore: false,
+        totalCount: 1,
+        limit: 20,
+        offset: 20,
+        data: [
+          {
+            date: "2026-09-03",
+            value: 399.9,
+            balance: 1000,
+            type: "PAYMENT_RECEIVED",
+            description: "Mensalidade",
+          },
+        ],
+      });
+
+      const statement = await service.getAdminStatement(2, 20);
+
+      expect(asaasClient.listFinancialTransactions).toHaveBeenCalledWith({
+        offset: 20,
+        limit: 20,
+      });
+      expect(statement).toEqual({
+        configured: true,
+        items: [
+          {
+            data: "2026-09-03",
+            valorCentavos: 39990,
+            saldoAposCentavos: 100000,
+            tipo: "PAYMENT_RECEIVED",
+            descricao: "Mensalidade",
+          },
+        ],
+        total: 1,
+        page: 2,
+        pageSize: 20,
+      });
+    });
+  });
+
+  describe("createAdminTransfer", () => {
+    const actor = {
+      sub: "admin-1",
+      tenantId: null,
+      role: "ADMIN_ROTTA",
+      vinculoId: "vinculo-1",
+    } as unknown as Parameters<BillingService["createAdminTransfer"]>[1];
+    const dto = {
+      valorCentavos: 10000,
+      chavePix: "financeiro@rottabr.com.br",
+      tipoChavePix: "EMAIL" as const,
+      descricao: "Repasse mensal",
+    };
+
+    it("lança erro claro quando a Asaas não está configurada — nunca finge sucesso", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+
+      await expect(service.createAdminTransfer(dto, actor, { ip: "127.0.0.1" })).rejects.toThrow(
+        "Asaas não está configurada",
+      );
+      expect(asaasClient.createTransfer).not.toHaveBeenCalled();
+      expect(auditLogService.record).not.toHaveBeenCalled();
+    });
+
+    it("converte centavos pra reais e sempre audita a transferência (RN-32)", async () => {
+      asaasClient.isConfigured.mockReturnValue(true);
+      asaasClient.createTransfer.mockResolvedValue({
+        id: "transfer-1",
+        value: 100,
+        status: "PENDING",
+      });
+
+      const transfer = await service.createAdminTransfer(dto, actor, {
+        ip: "127.0.0.1",
+        userAgent: "jest",
+      });
+
+      expect(asaasClient.createTransfer).toHaveBeenCalledWith({
+        value: 100,
+        pixAddressKey: "financeiro@rottabr.com.br",
+        pixAddressKeyType: "EMAIL",
+        operationType: "PIX",
+        description: "Repasse mensal",
+      });
+      expect(transfer).toEqual({ id: "transfer-1", value: 100, status: "PENDING" });
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entidadeTipo: "AsaasTransfer",
+          entidadeId: "transfer-1",
+          acao: "ADMIN_CREATED_TRANSFER",
+          atorUserId: "admin-1",
+          ip: "127.0.0.1",
+          userAgent: "jest",
+        }),
+      );
     });
   });
 });

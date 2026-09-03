@@ -2,19 +2,22 @@ import { Inject, Injectable, InternalServerErrorException, Logger } from "@nestj
 import { ConfigType } from "@nestjs/config";
 
 import type {
+  AsaasBalance,
   AsaasCustomer,
   AsaasErrorEnvelope,
+  AsaasFinancialTransaction,
   AsaasListEnvelope,
   AsaasPayment,
   AsaasPixQrCode,
   AsaasSubscription,
+  AsaasTransfer,
   CreateAsaasCustomerInput,
   CreateAsaasSubscriptionInput,
+  CreateAsaasTransferInput,
 } from "./types/asaas.types";
 
 import asaasConfig from "@/config/asaas.config";
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
-
 
 /** Nome usado como chave nos snapshots de `IntegrationHealthService` — mesma string em toda parte que registra ou lê a saúde desta integração. */
 export const ASAAS_INTEGRATION_NAME = "asaas";
@@ -196,5 +199,31 @@ export class AsaasClientService {
       `/payments?offset=${params.offset}&limit=${params.limit}`,
       { method: "GET" },
     );
+  }
+
+  /** Saldo atual da conta Asaas da Rotta (pedido do usuário 03/09/2026 — "área financeira... saldo atual"). */
+  getBalance(): Promise<AsaasBalance> {
+    return this.request<AsaasBalance>("/finance/balance", { method: "GET" });
+  }
+
+  /** Extrato de verdade da conta — toda entrada/saída, não só cobranças (pedido do usuário: "olhar o extrato"). */
+  listFinancialTransactions(params: {
+    offset: number;
+    limit: number;
+  }): Promise<AsaasListEnvelope<AsaasFinancialTransaction>> {
+    return this.request<AsaasListEnvelope<AsaasFinancialTransaction>>(
+      `/financialTransactions?offset=${params.offset}&limit=${params.limit}`,
+      { method: "GET" },
+    );
+  }
+
+  /**
+   * Envia dinheiro pra fora da conta Asaas da Rotta (pedido do usuário:
+   * "fazer transferências") — Pix por chave. Quem chama isto SEMPRE
+   * audita (ver `BillingController.createAdminTransfer`, `AdminArea`
+   * sem `@AdminAreas` = GERAL-only por padrão do guard).
+   */
+  createTransfer(input: CreateAsaasTransferInput): Promise<AsaasTransfer> {
+    return this.request<AsaasTransfer>("/transfers", { method: "POST", body: input });
   }
 }

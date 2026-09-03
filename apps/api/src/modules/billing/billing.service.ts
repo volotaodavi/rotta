@@ -14,7 +14,6 @@ import {
   PendingSubscriptionStatus,
 } from "@prisma/client";
 
-
 import { AbacatePayClientService } from "./abacatepay-client.service";
 import { AsaasClientService } from "./asaas-client.service";
 import {
@@ -34,13 +33,20 @@ import {
   ROTTA_SUBSCRIPTION_PRODUCT_NAME,
 } from "./billing.constants";
 
+import type { CreateAdminTransferDto } from "./dto/create-admin-transfer.dto";
 import type { CreateAsaasCheckoutDto } from "./dto/create-asaas-checkout.dto";
 import type {
   CreatePreSignupAsaasDto,
   CreatePreSignupPixDto,
 } from "./dto/create-pre-signup-checkout.dto";
 import type { AbacatePayPixQrCode, AbacatePayWebhookEnvelope } from "./types/abacatepay.types";
-import type { AsaasPayment, AsaasPixQrCode, AsaasWebhookEnvelope } from "./types/asaas.types";
+import type {
+  AsaasPayment,
+  AsaasPixQrCode,
+  AsaasTransfer,
+  AsaasWebhookEnvelope,
+} from "./types/asaas.types";
+import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type {
   CompanyRepository,
   UpdateCompanyData,
@@ -48,6 +54,7 @@ import type {
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
+import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -100,6 +107,36 @@ export interface BillingAdminOverview {
   lucroLiquidoCentavos: number | null;
 }
 
+/** `GET /billing/admin/balance` (Frente 33) — saldo atual da conta Asaas da Rotta. */
+export interface BillingAdminBalance {
+  configured: boolean;
+  saldoCentavos: number | null;
+}
+
+/** Uma linha do extrato — mesma convenção de `AsaasFinancialTransaction`: `valorCentavos` positivo = entrada, negativo = saída. */
+export interface BillingAdminStatementItem {
+  data: string;
+  valorCentavos: number;
+  saldoAposCentavos: number;
+  tipo: string;
+  descricao: string | null;
+}
+
+/** `GET /billing/admin/statement` (Frente 33) — extrato paginado. */
+export interface BillingAdminStatementResult {
+  configured: boolean;
+  items: BillingAdminStatementItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+/** Metadados da requisição HTTP pra trilha de auditoria — mesmo formato de `CompaniesService.RequestMeta`/`BackofficeService.RequestMeta` (RN-32: toda transferência de dinheiro é obrigatoriamente auditada). */
+export interface RequestMeta {
+  ip?: string;
+  userAgent?: string;
+}
+
 /**
  * Núcleo de negócio da cobrança de mensalidade da Rotta (Dossiê 26) —
  * Pix via AbacatePay, cartão/débito/boleto via Asaas. Nunca cobra o
@@ -122,6 +159,7 @@ export class BillingService {
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly eventEmitter: EventEmitter2,
     private readonly adminInboxEmailService: AdminInboxEmailService,
+    private readonly auditLogService: AuditLogService,
   ) {}
 
   /**
@@ -1353,5 +1391,100 @@ export class BillingService {
     }
 
     return overview;
+  }
+
+  /**
+   * Saldo atual da conta Asaas da Rotta (Frente 33, pedido do usuário
+   * 03/09/2026: "área financeira... saldo atual"). Mesmo padrão "stub
+   * honesto" do resto do módulo: sem `ASAAS_API_KEY`, `configured:
+   * false` e `saldoCentavos: null` (nunca 0 fingido).
+   */
+  async getAdminBalance(): Promise<BillingAdminBalance> {
+    if (!this.asaasClient.isConfigured()) {
+      return { configured: false, saldoCentavos: null };
+    }
+    const { balance } = await this.asaasClient.getBalance();
+    return { configured: true, saldoCentavos: Math.round(balance * 100) };
+  }
+
+  /**
+   * Extrato paginado da conta Asaas da Rotta (Frente 33, pedido do
+   * usuário: "olhar o extrato") — toda entrada/saída real da conta, não
+   * só cobranças de mensalidade (diferente de `getAdminOverview`).
+   */
+  async getAdminStatement(page: number, pageSize: number): Promise<BillingAdminStatementResult> {
+    if (!this.asaasClient.isConfigured()) {
+      return { configured: false, items: [], total: 0, page, pageSize };
+    }
+    const offset = (page - 1) * pageSize;
+    const result = await this.asaasClient.listFinancialTransactions({ offset, limit: pageSize });
+    return {
+      configured: true,
+      items: result.data.map((transacao) => ({
+        data: transacao.date,
+        valorCentavos: Math.round(transacao.value * 100),
+        saldoAposCentavos: Math.round(transacao.balance * 100),
+        tipo: transacao.type,
+        descricao: transacao.description ?? null,
+      })),
+      total: result.totalCount,
+      page,
+      pageSize,
+    };
+  }
+
+  /**
+   * Transferência Pix pra fora da conta Asaas da Rotta (Frente 33,
+   * pedido do usuário: "fazer transferências"). SEMPRE auditado (RN-32)
+   * — dinheiro de verdade saindo da conta da plataforma. Sem
+   * `companyId` no log: é uma ação sobre a conta da PRÓPRIA Rotta, não
+   * sobre nenhum tenant (mesmo raciocínio de `BackofficeService.
+   * accessAsSupport`, que grava com `companyId` só porque a ação em si
+   * É sobre uma empresa — aqui não há empresa nenhuma envolvida).
+   *
+   * Nunca decorada com `@AdminAreas` no controller — por design do
+   * `AdminAreaGuard` isso torna a rota GERAL-only por padrão, então
+   * `AdminRottaPapel.FINANCEIRO` (que só enxerga leitura) nem chega
+   * aqui; este método não reprecisa checar o papel de novo.
+   */
+  async createAdminTransfer(
+    dto: CreateAdminTransferDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<AsaasTransfer> {
+    if (!this.asaasClient.isConfigured()) {
+      throw new InternalServerErrorException(
+        "Asaas não está configurada (ASAAS_API_KEY ausente) — transferência indisponível.",
+      );
+    }
+
+    const transfer = await this.asaasClient.createTransfer({
+      value: dto.valorCentavos / 100,
+      pixAddressKey: dto.chavePix,
+      pixAddressKeyType: dto.tipoChavePix,
+      operationType: "PIX",
+      description: dto.descricao,
+    });
+
+    await this.auditLogService.record({
+      entidadeTipo: "AsaasTransfer",
+      entidadeId: transfer.id,
+      acao: "ADMIN_CREATED_TRANSFER",
+      atorUserId: actor.sub,
+      dadosDepois: {
+        valorCentavos: dto.valorCentavos,
+        tipoChavePix: dto.tipoChavePix,
+        descricao: dto.descricao ?? null,
+        status: transfer.status,
+      },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    this.logger.log(
+      `Admin ${actor.sub} criou transferência Asaas ${transfer.id} (R$ ${(dto.valorCentavos / 100).toFixed(2)}, status ${transfer.status}).`,
+    );
+
+    return transfer;
   }
 }

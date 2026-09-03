@@ -165,3 +165,64 @@ export interface AsaasWebhookEnvelope {
   event: string;
   payment?: AsaasPayment;
 }
+
+/**
+ * `GET /finance/balance` — saldo atual da conta Asaas da Rotta (dinheiro
+ * já recebido, disponível para transferência). Pedido do usuário
+ * 03/09/2026: "área financeira... saldo atual". Valor em REAIS (não
+ * centavos) — igual a todo o resto deste arquivo, `BillingService`
+ * converte pra centavos na borda antes de expor pro front.
+ */
+export interface AsaasBalance {
+  balance: number;
+}
+
+/**
+ * `GET /financialTransactions` — o extrato de verdade da conta (toda
+ * entrada/saída: cobrança recebida, taxa da Asaas, transferência feita,
+ * estorno...). `value` positivo = entrada, negativo = saída — mesma
+ * convenção da própria Asaas, `BillingService` não inverte sinal
+ * nenhum. `balance` é o saldo IMEDIATAMENTE APÓS esta transação (extrato
+ * bancário tradicional).
+ */
+export interface AsaasFinancialTransaction {
+  id?: string;
+  date: string;
+  value: number;
+  balance: number;
+  /** Tipo bruto da Asaas (`PAYMENT_RECEIVED`, `TRANSFER`, `ASAAS_FEE`...) — nunca um enum fechado nosso, a Asaas adiciona tipos novos sem aviso. */
+  type: string;
+  description?: string;
+}
+
+/**
+ * `POST /transfers` (`docs.asaas.com/reference/criar-transferencia`) —
+ * saída de dinheiro da conta Asaas da Rotta. Só Pix por chave nesta
+ * entrega (pedido do usuário: "fazer transferências") — TED/conta
+ * bancária tradicional fica pra uma entrega futura se for pedido.
+ * `value` em REAIS.
+ */
+export interface CreateAsaasTransferInput {
+  value: number;
+  pixAddressKey: string;
+  pixAddressKeyType: "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "EVP";
+  operationType: "PIX";
+  description?: string;
+}
+
+/**
+ * "A criação da transferência não significa que ela já foi concluída"
+ * (docs.asaas.com) — `status` começa `PENDING`/`BANK_PROCESSING` e só
+ * um webhook (ou nova consulta) confirma `DONE`. `BillingService` nunca
+ * assume sucesso só por ter recebido 2xx daqui.
+ */
+export interface AsaasTransfer {
+  id: string;
+  value: number;
+  netValue?: number;
+  transferFee?: number;
+  status: "PENDING" | "BANK_PROCESSING" | "DONE" | "CANCELLED" | "FAILED";
+  failReason?: string | null;
+  dateCreated?: string;
+  effectiveDate?: string | null;
+}

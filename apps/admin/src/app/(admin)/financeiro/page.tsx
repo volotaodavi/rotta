@@ -1,10 +1,12 @@
 "use client";
 
+import { useAuth } from "@rotta/auth/web";
 import { Building2, DollarSign, ReceiptText, TrendingUp, Wallet } from "@rotta/icons";
 import { Badge, Card, ErrorState, Skeleton, StatTile, Typography } from "@rotta/ui/web";
 
 import type { BillingProviderOverview } from "@rotta/api-client";
 
+import { AsaasAccountSection } from "@/features/billing/components/asaas-account-section";
 import { useBillingAdminOverview } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
 
@@ -132,6 +134,10 @@ function FinanceiroSkeleton(): JSX.Element {
 export default function FinanceiroPage(): JSX.Element {
   const { data, isLoading, isError, refetch, isFetching } = useBillingAdminOverview();
   const { hidden } = usePrivacy();
+  const { user } = useAuth();
+  // Sem `adminPapel` (ex. token antigo) cai no default seguro do resto do
+  // sistema (GERAL) — mesmo raciocínio de `AdminAreaGuard`/`AdminSidebar`.
+  const podeTransferir = (user?.adminPapel ?? "GERAL") === "GERAL";
 
   if (isLoading) {
     return <FinanceiroSkeleton />;
@@ -308,6 +314,8 @@ export default function FinanceiroPage(): JSX.Element {
           )}
         </Card.Body>
       </Card>
+
+      <AsaasAccountSection podeTransferir={podeTransferir} />
     </div>
   );
 }

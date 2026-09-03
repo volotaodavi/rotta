@@ -1,3 +1,5 @@
+import { buildQueryString } from "../query.util";
+
 import type { ApiClient } from "../http";
 
 /**
@@ -60,6 +62,52 @@ export interface BillingAdminOverview {
   asaas: BillingProviderOverview;
   /** Recebido menos taxa retida dos dois provedores — `null` se nenhum estiver configurado. */
   lucroLiquidoCentavos: number | null;
+}
+
+/** `GET /billing/admin/balance` (Frente 33, pedido do usuário 03/09/2026: "área financeira... saldo atual"). */
+export interface BillingAdminBalance {
+  configured: boolean;
+  saldoCentavos: number | null;
+}
+
+/** Uma linha do extrato — `valorCentavos` positivo = entrada, negativo = saída (convenção do próprio provedor). */
+export interface BillingAdminStatementItem {
+  data: string;
+  valorCentavos: number;
+  saldoAposCentavos: number;
+  tipo: string;
+  descricao: string | null;
+}
+
+/** `GET /billing/admin/statement` — extrato paginado da conta Asaas da Rotta ("olhar o extrato"). */
+export interface BillingAdminStatementResponse {
+  configured: boolean;
+  items: BillingAdminStatementItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export type PixKeyType = "CPF" | "CNPJ" | "EMAIL" | "PHONE" | "EVP";
+
+/** `POST /billing/admin/transfers` — Pix por chave, GERAL-only (papel Financeiro nunca chega a chamar isto, o botão nem aparece pra ele). */
+export interface CreateAdminTransferInput {
+  valorCentavos: number;
+  chavePix: string;
+  tipoChavePix: PixKeyType;
+  descricao?: string;
+}
+
+export type AsaasTransferStatus = "PENDING" | "BANK_PROCESSING" | "DONE" | "CANCELLED" | "FAILED";
+
+/** "A criação da transferência não significa que ela já foi concluída" (docs.asaas.com) — `status` inicial é sempre `PENDING`/`BANK_PROCESSING`. */
+export interface AsaasTransferResult {
+  id: string;
+  value: number;
+  netValue?: number;
+  transferFee?: number;
+  status: AsaasTransferStatus;
+  failReason?: string | null;
 }
 
 export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO";
@@ -166,6 +214,29 @@ export function createBillingEndpoints(apiClient: ApiClient) {
 
     getAdminOverview: async (): Promise<BillingAdminOverview> =>
       (await apiClient.request<ApiEnvelope<BillingAdminOverview>>("/billing/admin/overview")).data,
+
+    /** Saldo atual da conta Asaas da Rotta — leitura, `AdminRottaPapel.FINANCEIRO` também acessa. */
+    getAdminBalance: async (): Promise<BillingAdminBalance> =>
+      (await apiClient.request<ApiEnvelope<BillingAdminBalance>>("/billing/admin/balance")).data,
+
+    /** Extrato paginado — leitura, `AdminRottaPapel.FINANCEIRO` também acessa. */
+    getAdminStatement: async (
+      params: { page?: number; pageSize?: number } = {},
+    ): Promise<BillingAdminStatementResponse> =>
+      (
+        await apiClient.request<ApiEnvelope<BillingAdminStatementResponse>>(
+          `/billing/admin/statement${buildQueryString(params)}`,
+        )
+      ).data,
+
+    /** Transferência Pix pra fora da conta — GERAL-only no backend (`AdminAreaGuard`), nunca oferecido pro papel Financeiro na tela. */
+    createAdminTransfer: async (input: CreateAdminTransferInput): Promise<AsaasTransferResult> =>
+      (
+        await apiClient.request<ApiEnvelope<AsaasTransferResult>>("/billing/admin/transfers", {
+          method: "POST",
+          body: input,
+        })
+      ).data,
 
     /** Checkout próprio da Rotta pra cartão/débito/boleto — processado pela Asaas por trás, sem sair da Rotta. */
     createAsaasCheckout: async (input: CreateAsaasCheckoutInput): Promise<AsaasPayment> =>
