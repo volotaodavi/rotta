@@ -2,17 +2,27 @@ name: CI
 
 # Pipeline de Integracao Continua — Dossie 23, Secao 14.
 #
-# Roda em todo Pull Request e em push para `main` (Dossie 23, Secao 11.1
-# — trunk-based). Cada etapa usa o Turborepo para executar apenas contra
-# os apps/packages efetivamente afetados pelo diff, aproveitando o cache
-# remoto quando configurado (TURBO_TOKEN/TURBO_TEAM como secrets do
-# repositorio) — Dossie 23, Secao 14.2.
-
+# Roda em todo Pull Request e em push para a branch padrao (Dossie 23,
+# Secao 11.1 — trunk-based). Cada etapa usa o Turborepo para executar
+# apenas contra os apps/packages efetivamente afetados pelo diff,
+# aproveitando o cache remoto quando configurado (TURBO_TOKEN/TURBO_TEAM
+# como secrets do repositorio) — Dossie 23, Secao 14.2.
+#
+# BUG REAL encontrado na auditoria minuciosa (04/09/2026): os triggers
+# abaixo apontavam pra `main`, mas este repositorio NUNCA teve uma
+# branch `main` — a branch padrao real e
+# `claude/rotta-platform-design-gr0xzq` (`git remote show origin` ->
+# `HEAD branch:`). Resultado: nenhum destes triggers disparava NUNCA —
+# confirmado via GitHub Actions API (`list_workflow_runs` devolvia
+# `total_count: 0` pra este workflow, em qualquer branch). Toda a
+# suite (lint/typecheck/teste/build/auditoria de dependencias/
+# Lighthouse) documentada abaixo nunca rodou de verdade neste
+# repositorio ate esta correcao.
 on:
   pull_request:
-    branches: [main]
+    branches: [claude/rotta-platform-design-gr0xzq]
   push:
-    branches: [main]
+    branches: [claude/rotta-platform-design-gr0xzq]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -27,7 +37,21 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
+      # `fetch-depth: 0` (histórico completo) — o filtro `...[HEAD^1]` do
+      # Turborepo abaixo precisa do commit pai pra calcular o diff; com
+      # o `fetch-depth: 1` padrão do checkout, HEAD^1 nem existe
+      # localmente e o filtro falha.
+      #
+      # `HEAD^1` (não `origin/<branch>`) — achado real da auditoria
+      # minuciosa de 04/09/2026: com `push.branches` e `pull_request.branches`
+      # apontando pra essa mesma branch, num evento `push` o checkout já
+      # reflete o commit recém-empurrado, então `origin/<branch>` == HEAD
+      # (diff vazio, ZERO pacotes rodam — "sucesso" que não checou nada).
+      # `HEAD^1` sempre compara contra o estado imediatamente anterior a
+      # este push/commit, então sempre produz um diff de verdade.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -39,10 +63,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Lint
-        run: pnpm turbo run lint --filter="...[origin/main]"
+        run: pnpm turbo run lint --filter="...[HEAD^1]"
 
       - name: Type check
-        run: pnpm turbo run typecheck --filter="...[origin/main]"
+        run: pnpm turbo run typecheck --filter="...[HEAD^1]"
 
       - name: Format check
         run: pnpm format:check
@@ -82,6 +106,8 @@ jobs:
       REDIS_URL: "redis://localhost:6379"
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -93,7 +119,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Test
-        run: pnpm turbo run test --filter="...[origin/main]"
+        run: pnpm turbo run test --filter="...[HEAD^1]"
 
       # Testes E2E do @rotta/api (test/*.e2e-spec.ts) rodam à parte do
       # "Test" acima: só eles sobem o Nest completo contra um Postgres
@@ -124,6 +150,8 @@ jobs:
     needs: lint-and-typecheck
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -135,7 +163,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm turbo run build --filter="...[origin/main]"
+        run: pnpm turbo run build --filter="...[HEAD^1]"
 
   dependency-audit:
     name: Auditoria de dependências
