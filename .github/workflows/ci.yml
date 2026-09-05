@@ -8,16 +8,40 @@ name: CI
 # aproveitando o cache remoto quando configurado (TURBO_TOKEN/TURBO_TEAM
 # como secrets do repositorio) — Dossie 23, Secao 14.2.
 #
-# BUG REAL encontrado na auditoria minuciosa (04/09/2026): os triggers
-# abaixo apontavam pra `main`, mas este repositorio NUNCA teve uma
-# branch `main` — a branch padrao real e
-# `claude/rotta-platform-design-gr0xzq` (`git remote show origin` ->
-# `HEAD branch:`). Resultado: nenhum destes triggers disparava NUNCA —
-# confirmado via GitHub Actions API (`list_workflow_runs` devolvia
-# `total_count: 0` pra este workflow, em qualquer branch). Toda a
-# suite (lint/typecheck/teste/build/auditoria de dependencias/
-# Lighthouse) documentada abaixo nunca rodou de verdade neste
+# BUG REAL #1 (auditoria minuciosa, 04/09/2026): os triggers abaixo
+# apontavam pra `main`, mas este repositorio NUNCA teve uma branch
+# `main` — a branch padrao real e `claude/rotta-platform-design-gr0xzq`
+# (`git remote show origin` -> `HEAD branch:`). Resultado: nenhum
+# destes triggers disparava NUNCA — confirmado via GitHub Actions API
+# (`list_workflow_runs` devolvia `total_count: 0` pra este workflow, em
+# qualquer branch). Toda a suite abaixo nunca rodou de verdade neste
 # repositorio ate esta correcao.
+#
+# BUG REAL #2, encontrado ao ligar o CI pela primeira vez: os jobs
+# usavam `pnpm turbo run <task> --filter="...[HEAD^1]"` pra rodar só
+# contra o que mudou. Duas falhas do MESMO mecanismo, ambas
+# confirmadas ao vivo nas duas primeiras execucoes reais deste
+# workflow: (a) um push cujo diff nao toca nenhum input rastreado pelo
+# Turborepo (ex.: só este arquivo de workflow) faz o filtro selecionar
+# ZERO pacotes — job "passa" sem checar literalmente nada; (b) mesmo
+# quando o filtro seleciona pacotes de verdade, o alcance parcial
+# escondeu por completo o BUG REAL #3 abaixo (só apareceu quando um
+# commit de formatacao tocou apps/api pela primeira vez). Sem cache
+# remoto configurado (TURBO_TOKEN/TURBO_TEAM) e sem cache de `.turbo`
+# entre runs, rodar tudo sem filtro nao é mais lento na prática (o
+# proprio cache de conteudo do Turborepo já evita trabalho redundante
+# dentro do mesmo run) — e é a unica forma de garantir que o CI está
+# de fato checando o repositorio inteiro a cada vez.
+#
+# BUG REAL #3: nem o job de lint/typecheck nem o de build geravam o
+# Prisma Client antes de rodar — só o job de teste fazia isso, e só
+# por causa dos testes E2E. Sem `prisma generate`, `@prisma/client`
+# não tem os tipos reais dos models, e todo acesso a `this.prisma.X`
+# vira `any`/erro de tipo — isso sozinho gerou 6271 erros de lint
+# (regras type-aware: `@typescript-eslint/no-unsafe-return`,
+# `require-await`) e 1141 erros de `tsc`/build em cima de código que
+# na verdade está correto (confirmado: clonando o repo do zero,
+# gerando o Prisma Client e rodando via Turborepo, tudo passa limpo).
 on:
   pull_request:
     branches: [claude/rotta-platform-design-gr0xzq]
@@ -37,21 +61,7 @@ jobs:
     name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      # `fetch-depth: 0` (histórico completo) — o filtro `...[HEAD^1]` do
-      # Turborepo abaixo precisa do commit pai pra calcular o diff; com
-      # o `fetch-depth: 1` padrão do checkout, HEAD^1 nem existe
-      # localmente e o filtro falha.
-      #
-      # `HEAD^1` (não `origin/<branch>`) — achado real da auditoria
-      # minuciosa de 04/09/2026: com `push.branches` e `pull_request.branches`
-      # apontando pra essa mesma branch, num evento `push` o checkout já
-      # reflete o commit recém-empurrado, então `origin/<branch>` == HEAD
-      # (diff vazio, ZERO pacotes rodam — "sucesso" que não checou nada).
-      # `HEAD^1` sempre compara contra o estado imediatamente anterior a
-      # este push/commit, então sempre produz um diff de verdade.
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -62,11 +72,19 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # BUG REAL #3 (ver nota no topo do arquivo) — sem isso, todo
+      # `this.prisma.X` em apps/api vira `any`/erro de tipo, e o lint
+      # type-aware (@typescript-eslint/no-unsafe-return, require-await)
+      # dispara em cascata sobre código correto. Não precisa de banco de
+      # dados de verdade — só lê prisma/schema.prisma.
+      - name: Gerar Prisma Client (@rotta/api)
+        run: pnpm --filter=@rotta/api prisma:generate
+
       - name: Lint
-        run: pnpm turbo run lint --filter="...[HEAD^1]"
+        run: pnpm turbo run lint
 
       - name: Type check
-        run: pnpm turbo run typecheck --filter="...[HEAD^1]"
+        run: pnpm turbo run typecheck
 
       - name: Format check
         run: pnpm format:check
@@ -106,8 +124,6 @@ jobs:
       REDIS_URL: "redis://localhost:6379"
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -118,8 +134,14 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Mesmo motivo do job "Lint & Type Check" (ver nota no topo do
+      # arquivo, BUG REAL #3) — sem isso, os testes unitários de
+      # apps/api também rodariam sobre tipos quebrados.
+      - name: Gerar Prisma Client (@rotta/api)
+        run: pnpm --filter=@rotta/api prisma:generate
+
       - name: Test
-        run: pnpm turbo run test --filter="...[HEAD^1]"
+        run: pnpm turbo run test
 
       # Testes E2E do @rotta/api (test/*.e2e-spec.ts) rodam à parte do
       # "Test" acima: só eles sobem o Nest completo contra um Postgres
@@ -133,8 +155,9 @@ jobs:
           DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
           # Sem pooler neste ambiente — sempre igual a DATABASE_URL (Dossie 31).
           DIRECT_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
+        # `prisma:generate` já rodou acima (Prisma Client não muda com
+        # DATABASE_URL) — aqui só migra e semeia o banco de teste.
         run: |
-          pnpm --filter=@rotta/api prisma:generate
           pnpm --filter=@rotta/api prisma:migrate:deploy
           pnpm --filter=@rotta/api prisma:seed
 
@@ -150,8 +173,6 @@ jobs:
     needs: lint-and-typecheck
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4
 
@@ -162,8 +183,13 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Mesmo motivo do job "Lint & Type Check" (ver nota no topo do
+      # arquivo, BUG REAL #3).
+      - name: Gerar Prisma Client (@rotta/api)
+        run: pnpm --filter=@rotta/api prisma:generate
+
       - name: Build
-        run: pnpm turbo run build --filter="...[HEAD^1]"
+        run: pnpm turbo run build
 
   dependency-audit:
     name: Auditoria de dependências
