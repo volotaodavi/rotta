@@ -7,9 +7,12 @@ import type { ParentPerfilStackParamList, ParentTabParamList } from "@/navigatio
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { PinSetupCard } from "@/features/auth/components";
 import { useStudentsList } from "@/features/marketplace/hooks/use-students";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
+
+
 
 type Props = NativeStackScreenProps<ParentPerfilStackParamList, "PerfilHome">;
 
@@ -75,6 +78,11 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
           ))}
         </VehicleCard>
       ) : null}
+
+      {/* Pedido do usuário 05/09/2026: "tanto para responsável, quanto para
+          monitor/motorista" — antes o Acesso rápido só existia no Perfil
+          de Motorista/Monitor. */}
+      <PinSetupCard />
 
       <VehicleButton label="Meu transporte" variant="secondary" onPress={handleMeuTransporte} />
       <VehicleButton

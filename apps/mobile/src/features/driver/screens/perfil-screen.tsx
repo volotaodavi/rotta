@@ -11,6 +11,8 @@ import { PinSetupCard } from "@/features/auth/components";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
+
+
 type Props = NativeStackScreenProps<DriverPerfilStackParamList, "PerfilHome">;
 
 const ROLE_LABEL: Record<string, string> = {
@@ -73,7 +75,11 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
         <Text style={{ color: theme.colors.textMuted }}>{user?.email}</Text>
       </VehicleCard>
 
-      {user?.role === "motorista" ? <PinSetupCard /> : null}
+      {/* Pedido do usuário 05/09/2026: "tanto para responsável, quanto para
+          monitor/motorista" — antes só `motorista` tinha esta opção, sem
+          motivo pra excluir o Monitor (usa o mesmo app, o mesmo tipo de
+          esquecimento de senha acontece com os dois papéis). */}
+      {user?.role === "motorista" || user?.role === "monitor" ? <PinSetupCard /> : null}
 
       {/* Frente AO — "Veículo" saiu da barra de 4 ícones (a referência não
           mostra essa aba) e virou um atalho aqui, igual à versão web

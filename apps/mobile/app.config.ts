@@ -78,6 +78,20 @@ export default (): ExpoConfig => ({
     // este app usava antes, nenhum token de download é necessário aqui.
     "@maplibre/maplibre-react-native",
     [
+      // "Acesso rápido" (pedido do usuário 05/09/2026: "pode colocar
+      // digital?") — Face ID/Touch ID no iOS, impressão digital/rosto no
+      // Android, mesma API dos dois lados (`expo-local-authentication`).
+      // A frase abaixo só é exigida pela App Store Review (Info.plist);
+      // no Android o sistema não pede nenhuma permissão de tempo de
+      // execução pra isto. Opt-in explícito no Perfil — nunca ativado
+      // sozinho, e nunca substitui a sessão real (`@rotta/auth`), só
+      // desbloqueia a UI de uma sessão que já existe (mesmo papel do PIN).
+      "expo-local-authentication",
+      {
+        faceIDPermission: "A Rotta usa Face ID para desbloquear o app rapidamente.",
+      },
+    ],
+    [
       "expo-location",
       {
         // Textos de justificativa de uso de localizacao exigidos pela

@@ -1,16 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { AppState, type AppStateStatus } from "react-native";
 
+import { isBiometricLockEnabled } from "../biometric-lock-store";
 import { isPinLockEnabled } from "../pin-lock-store";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
+/** PIN OU biometria ativados — qualquer um dos dois já é motivo pra travar (pedido do usuário 05/09/2026: "pode colocar digital?"). */
+async function isQuickAccessEnabled(userId: string): Promise<boolean> {
+  const [pin, biometria] = await Promise.all([
+    isPinLockEnabled(userId),
+    isBiometricLockEnabled(userId),
+  ]);
+  return pin || biometria;
+}
+
 /**
- * Trava do PIN de acesso rápido (Dossiê 42) — decide só se a UI de uma
- * sessão que JÁ existe fica visível ou escondida atrás da tela de PIN.
- * Nunca é a fonte de verdade da sessão (`@rotta/auth` continua sendo) —
- * por isso vive local ao app mobile, não em `packages/auth` (que é
- * compartilhado com Web/Admin, onde este recurso não existe).
+ * Trava do "Acesso rápido" — PIN e/ou biometria (Dossiê 42) — decide só
+ * se a UI de uma sessão que JÁ existe fica visível ou escondida atrás da
+ * tela de desbloqueio. Nunca é a fonte de verdade da sessão (`@rotta/auth`
+ * continua sendo) — por isso vive local ao app mobile, não em
+ * `packages/auth` (que é compartilhado com Web/Admin, onde este recurso
+ * não existe).
  *
  * Quando trava:
  * - Sessão restaurada do zero no boot do app (`status` sai de "loading"
@@ -46,7 +57,7 @@ export function usePinLock(params: { userId: string | null; status: AuthStatus }
       return;
     }
     let cancelled = false;
-    void isPinLockEnabled(userId).then((enabled) => {
+    void isQuickAccessEnabled(userId).then((enabled) => {
       if (!cancelled && enabled) {
         setIsLocked(true);
       }
@@ -64,7 +75,7 @@ export function usePinLock(params: { userId: string | null; status: AuthStatus }
       const previous = appState.current;
       appState.current = next;
       if ((previous === "background" || previous === "inactive") && next === "active") {
-        void isPinLockEnabled(userId).then((enabled) => {
+        void isQuickAccessEnabled(userId).then((enabled) => {
           if (enabled) {
             setIsLocked(true);
           }
