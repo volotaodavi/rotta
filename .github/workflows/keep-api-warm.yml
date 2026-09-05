@@ -11,17 +11,33 @@ name: Keep API Warm
 #
 # Ferramenta gratuita (sem custo, sem cadastro novo, já que o repo já
 # vive no GitHub): um cron do GitHub Actions batendo no endpoint de
-# liveness a cada poucos minutos, mantendo o processo sempre quente.
-# Isso NÃO é um substituto de um plano pago do Render — é só uma forma
-# honesta e gratuita de reduzir a chance de cold start durante o
-# horário em que a plataforma é usada.
+# liveness a cada poucos minutos, mantendo o processo quente na maior
+# parte do tempo. Isso NÃO é um substituto de um plano pago do Render
+# (que elimina a suspensão por completo) — é só uma forma honesta e
+# gratuita de reduzir a chance de cold start, sem forçar 100% de
+# uptime (ver nota sobre limite de horas grátis abaixo).
 on:
   schedule:
-    # A cada 10 minutos — abaixo da janela de suspensão de ~15min do
-    # Render free tier, com margem de segurança para variação de
-    # agendamento do GitHub Actions (cron de `schedule` não é
-    # garantido no minuto exato).
-    - cron: "*/10 * * * *"
+    # A cada 5 minutos (pedido do usuário 05/09/2026: apertar o
+    # intervalo sem estourar o limite gratuito do Render) — é o menor
+    # intervalo que o `schedule` do GitHub Actions suporta de forma
+    # confiável, dando mais margem contra o atraso de agendamento que
+    # já causava falha mesmo com o cron de 10 em 10 (o cron não é
+    # garantido no minuto exato; um atraso ocasional bastava pra
+    # estourar a janela de 15min de suspensão do Render).
+    #
+    # NÃO apertar mais que isso: as 750h grátis/mês do Render (Dossiê
+    # 12 §7.4) já são quase todas consumidas por UM serviço ficando
+    # acordado o mês inteiro (~720-744h num mês de 30-31 dias) — isso
+    # DELIBERADAMENTE ainda deixa `apps/api` dormir em janelas
+    # realmente ociosas (de madrugada, por exemplo), em vez de forçá-la
+    # 100% acordada. Forçar 100% arriscaria estourar as 750h (as 750h
+    # são compartilhadas entre TODOS os serviços gratuitos da mesma
+    # conta Render) e suspender a conta inteira até o mês seguinte —
+    # um problema muito pior que uma soneca ocasional de 30-90s.
+    # Durante uso real da plataforma, este ping nem chega a importar:
+    # o próprio tráfego de usuários já mantém a API acordada sozinha.
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 jobs:
