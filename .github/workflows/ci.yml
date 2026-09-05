@@ -171,6 +171,31 @@ jobs:
           pnpm --filter=@rotta/api prisma:migrate:deploy
           pnpm --filter=@rotta/api prisma:seed
 
+      # BUG REAL #5 (auditoria minuciosa, 05/09/2026 — achado ao investigar
+      # por que `tenant-isolation.e2e-spec.ts` reprovava só no CI, nunca
+      # localmente): a imagem oficial `postgres`/`postgis` cria a role de
+      # `POSTGRES_USER` como o SUPERUSER de bootstrap do `initdb` — e o
+      # Postgres NUNCA aplica Row Level Security a um superuser, mesmo com
+      # `FORCE ROW LEVEL SECURITY` (que só afeta o dono da tabela quando
+      # ele NÃO é superuser). Resultado real, confirmado reproduzindo
+      # localmente com a mesma role promovida a superuser: as 3 asserções
+      # de `tenant-isolation.e2e-spec.ts` falhavam exatamente como se a
+      # RLS não existisse — uma consulta de um tenant enxergava as linhas
+      # dos dois, e uma escrita com tenant inválido não era rejeitada.
+      # Ou seja, o teste que existe especificamente para nunca deixar
+      # passar despercebido um vazamento de dados entre tenants (ver nota
+      # em `prisma.service.ts`) nunca esteve validando nada de verdade
+      # neste CI. Correção: a mesma role continua migrando/semeando como
+      # superuser acima (as migrations de PostGIS precisam disso pra
+      # `CREATE EXTENSION`), mas perde o superuser ANTES da suíte E2E
+      # rodar — só depois disso a RLS passa a ser aplicada de verdade,
+      # igual a qualquer role de aplicação não-superuser de um Postgres
+      # gerenciado real (Render/Supabase/RDS nunca dão superuser à role
+      # da aplicação).
+      - name: Revogar superusuário da role de teste (RLS não se aplica a superusers)
+        run: |
+          PGPASSWORD=rotta_ci_only psql -h localhost -U rotta -d rotta_ci -c "ALTER ROLE rotta NOSUPERUSER;"
+
       - name: Testes E2E (@rotta/api)
         env:
           TEST_DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_ci?schema=public"
