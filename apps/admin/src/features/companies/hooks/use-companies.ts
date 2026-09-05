@@ -15,6 +15,10 @@ export function useCompaniesList(params: ListCompaniesParams) {
   return useQuery({
     queryKey: ["companies", params],
     queryFn: () => companiesApi.list(params),
+    // Nova empresa cadastrada precisa aparecer sozinha (pedido do
+    // usuário 05/09/2026: "cada novidade aparecerá de forma automática,
+    // sem precisar de atualização no painel?").
+    refetchInterval: 60_000,
   });
 }
 

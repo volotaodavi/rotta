@@ -15,6 +15,7 @@ export function useBillingAdminOverview() {
   return useQuery({
     queryKey: ["billing", "admin-overview"],
     queryFn: () => billingApi.getAdminOverview(),
+    refetchInterval: 60_000,
   });
 }
 

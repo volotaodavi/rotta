@@ -11,6 +11,11 @@ export function useSupportTickets(params: ListSupportTicketsParams) {
   return useQuery({
     queryKey: ["support-tickets", params],
     queryFn: () => supportApi.listTickets(params),
+    // Fila de chamados — novo chamado aberto por uma transportadora
+    // precisa aparecer sozinho (pedido do usuário 05/09/2026: "cada
+    // novidade aparecerá de forma automática, sem precisar de
+    // atualização no painel?").
+    refetchInterval: 30_000,
   });
 }
 
@@ -19,6 +24,11 @@ export function useSupportTicketDetail(ticketId: string, companyId?: string) {
     queryKey: ["support-tickets", ticketId, companyId],
     queryFn: () => supportApi.getTicketDetail(ticketId, companyId),
     enabled: Boolean(ticketId),
+    // Conversa estilo chat (pedido do usuário 03/09/2026) — mensagem
+    // nova da transportadora precisa aparecer sem o Admin precisar
+    // sair e voltar na tela, mesmo raciocínio de qualquer chat de
+    // verdade.
+    refetchInterval: 10_000,
   });
 }
 

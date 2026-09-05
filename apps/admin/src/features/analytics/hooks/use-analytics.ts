@@ -21,5 +21,8 @@ export function useNationalHeatmap() {
   return useQuery({
     queryKey: ["analytics", "national", "heatmap"],
     queryFn: () => analyticsApi.getNationalHeatmap(),
+    // Mesmo ritmo de `useNationalKpis` — mesma tela, mesma expectativa
+    // de atualização sozinha.
+    refetchInterval: 60_000,
   });
 }

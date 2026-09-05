@@ -17,6 +17,11 @@ export function useTransportRequestsList(params: ListTransportRequestsParams) {
   return useQuery({
     queryKey: ["marketplace", "transport-requests", params],
     queryFn: () => marketplaceApi.listTransportRequests(params),
+    // Visão cross-tenant ao vivo (pedido do usuário 05/09/2026: "cada
+    // novidade aparecerá de forma automática, sem precisar de
+    // atualização no painel?") — nova solicitação de uma família
+    // qualquer precisa aparecer sozinha.
+    refetchInterval: 60_000,
   });
 }
 
@@ -32,6 +37,7 @@ export function useContractsList(params: ListContractsParams) {
   return useQuery({
     queryKey: ["marketplace", "contracts", params],
     queryFn: () => marketplaceApi.listContracts(params),
+    refetchInterval: 60_000,
   });
 }
 

@@ -19,6 +19,11 @@ export function useApprovalQueue(limit = 20) {
   return useQuery({
     queryKey: ["backoffice", "approvals", limit],
     queryFn: () => backofficeApi.listApprovals(limit),
+    // Fila de trabalho real do Admin (pedido do usuário 05/09/2026: "cada
+    // novidade aparecerá de forma automática, sem precisar de
+    // atualização no painel?") — mesmo ritmo do sino/badge que já conta
+    // este mesmo total (`useBackofficeDashboard`).
+    refetchInterval: 60_000,
   });
 }
 

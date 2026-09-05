@@ -16,6 +16,11 @@ export function useSchoolsList(params: ListSchoolsParams) {
   return useQuery({
     queryKey: ["schools", params],
     queryFn: () => schoolsApi.list(params),
+    // Nova escola autocadastrada (status EM_ANALISE) precisa aparecer
+    // sozinha pra moderação (pedido do usuário 05/09/2026: "cada
+    // novidade aparecerá de forma automática, sem precisar de
+    // atualização no painel?").
+    refetchInterval: 60_000,
   });
 }
 

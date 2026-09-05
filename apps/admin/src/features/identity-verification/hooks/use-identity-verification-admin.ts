@@ -20,6 +20,11 @@ export function useIdentityVerificationsList(params: ListAdminIdentityVerificati
   return useQuery({
     queryKey: ["identity-verifications", params],
     queryFn: () => identityVerificationApi.listAdmin(params),
+    // Fila de verificações pendentes — uma nova sessão da Didit precisa
+    // aparecer sozinha (pedido do usuário 05/09/2026: "cada novidade
+    // aparecerá de forma automática, sem precisar de atualização no
+    // painel?").
+    refetchInterval: 60_000,
   });
 }
 

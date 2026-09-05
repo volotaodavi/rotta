@@ -16,5 +16,10 @@ export function useClientErrorReportsList(params: ListClientErrorReportsParams) 
   return useQuery({
     queryKey: ["client-errors", params],
     queryFn: () => clientErrorsApi.list(params),
+    // Fila de investigação — um erro novo reportado por um usuário
+    // precisa aparecer sozinho (pedido do usuário 05/09/2026: "cada
+    // novidade aparecerá de forma automática, sem precisar de
+    // atualização no painel?").
+    refetchInterval: 60_000,
   });
 }

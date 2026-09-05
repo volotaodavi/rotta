@@ -79,6 +79,10 @@ export function useVehicleCategoryReviewList(params: ListVehicleCategoryReviewPa
   return useQuery({
     queryKey: ["vehicles", "revisao-categoria", params],
     queryFn: () => vehiclesApi.listCategoryReview(params),
+    // Fila de revisão — um veículo novo cai aqui sozinho (pedido do
+    // usuário 05/09/2026: "cada novidade aparecerá de forma automática,
+    // sem precisar de atualização no painel?").
+    refetchInterval: 60_000,
   });
 }
 
