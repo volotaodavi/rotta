@@ -3,7 +3,6 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import { useCreateAdminTransfer } from "../hooks/use-admin-billing";
 import { PIX_KEY_TYPE_LABEL } from "../labels";
 

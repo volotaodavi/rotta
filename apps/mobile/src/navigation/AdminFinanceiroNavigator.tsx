@@ -10,7 +10,6 @@ import {
   AdminFinanceiroTransferenciaScreen,
 } from "@/features/admin/screens";
 
-
 const Stack = createNativeStackNavigator<AdminFinanceiroStackParamList>();
 
 /**

@@ -2,7 +2,6 @@ import { useAuth } from "@rotta/auth/native";
 import { Building2, Bus, ClipboardCheck, GraduationCap, Headset, Route } from "@rotta/icons/native";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { AdminStatTile } from "../components";
 import { useAdminBackofficeDashboard } from "../hooks/use-admin-backoffice";
 import { ADMIN_PAPEL_LABEL } from "../labels";

@@ -13,7 +13,6 @@ import {
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 type Props = NativeStackScreenProps<AdminSupportStackParamList, "Lista">;
 
 /**

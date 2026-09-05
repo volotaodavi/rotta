@@ -4,7 +4,6 @@ import type { CreateAdminPixChargeInput, CreateAdminTransferInput } from "@rotta
 
 import { billingApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do Financeiro completo do Admin no app (pedido do
  * usuário 05/09/2026: "pode adicionar o financeiro completo para admins

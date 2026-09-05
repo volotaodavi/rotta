@@ -5,7 +5,6 @@ import type { AdminSupportStackParamList } from "./types";
 import { AdminChamadosScreen } from "@/features/admin/screens";
 import { ChamadoDetalhesScreen } from "@/features/support/screens";
 
-
 const Stack = createNativeStackNavigator<AdminSupportStackParamList>();
 
 /**

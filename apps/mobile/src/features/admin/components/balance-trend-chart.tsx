@@ -6,7 +6,6 @@ import type { LayoutChangeEvent } from "react-native";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
 export interface TrendPoint {
   value: number;
   label: string;

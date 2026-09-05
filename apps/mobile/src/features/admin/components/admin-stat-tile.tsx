@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * Cartão de indicador (ícone + valor + rótulo) da área Admin reduzida no
  * app — mesmo espírito do `StatTile` novo de `@rotta/ui/web` (Admin

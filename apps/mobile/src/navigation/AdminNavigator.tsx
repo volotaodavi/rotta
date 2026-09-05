@@ -2,7 +2,6 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuth } from "@rotta/auth/native";
 import { Bell, Headset, Home, User, Wallet } from "@rotta/icons/native";
 
-
 import { AdminFinanceiroNavigator } from "./AdminFinanceiroNavigator";
 import { AdminHomeNavigator } from "./AdminHomeNavigator";
 import { AdminSupportNavigator } from "./AdminSupportNavigator";

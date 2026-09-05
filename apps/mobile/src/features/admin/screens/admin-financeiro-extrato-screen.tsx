@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { BalanceTrendChart } from "../components";
 import { useAdminBillingStatement } from "../hooks/use-admin-billing";
 import { isTaxaLancamento, tipoLancamentoLabel } from "../labels";

@@ -11,7 +11,6 @@ import {
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 /** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */
 function iniciais(nome: string | undefined): string {
   if (!nome) return "?";

@@ -3,7 +3,6 @@ import { useAuth } from "@rotta/auth/native";
 import { Undo2 } from "@rotta/icons/native";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 
-
 import {
   useAdminCompanyPaymentHistory,
   useCancelCompanySubscription,

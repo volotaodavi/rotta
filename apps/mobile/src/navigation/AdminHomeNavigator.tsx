@@ -4,7 +4,6 @@ import type { AdminHomeStackParamList } from "./types";
 
 import { AdminApprovalsScreen, AdminHomeScreen } from "@/features/admin/screens";
 
-
 const Stack = createNativeStackNavigator<AdminHomeStackParamList>();
 
 /**

@@ -14,7 +14,6 @@ import {
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }

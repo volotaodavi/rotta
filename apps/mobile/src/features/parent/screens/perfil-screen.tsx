@@ -12,8 +12,6 @@ import { useStudentsList } from "@/features/marketplace/hooks/use-students";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
-
 type Props = NativeStackScreenProps<ParentPerfilStackParamList, "PerfilHome">;
 
 /** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */

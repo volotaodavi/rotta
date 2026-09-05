@@ -2,7 +2,6 @@ import { useAuth } from "@rotta/auth/native";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
 import { isBiometricLockEnabled, setBiometricLockEnabled } from "../biometric-lock-store";
 import { useBiometricAuth } from "../hooks/use-biometric-auth";
 import { disablePinLock, isPinLockEnabled, setPinLock } from "../pin-lock-store";

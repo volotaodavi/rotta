@@ -1,6 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { useAdminApprovalQueue } from "../hooks/use-admin-backoffice";
 
 import type { AdminHomeStackParamList } from "@/navigation/types";

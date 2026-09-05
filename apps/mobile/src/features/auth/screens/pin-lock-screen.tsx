@@ -3,7 +3,6 @@ import { Fingerprint } from "@rotta/icons/native";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import { isBiometricLockEnabled } from "../biometric-lock-store";
 import { AuthButton, AuthScreen } from "../components";
 import { PinCodeInput } from "../components/pin-code-input";
