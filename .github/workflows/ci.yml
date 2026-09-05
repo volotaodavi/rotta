@@ -60,6 +60,16 @@ jobs:
   lint-and-typecheck:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    # BUG REAL #4, encontrado na 3ª execução real do CI: `turbo.json`
+    # declara `"typecheck": { "dependsOn": ["^build", "build"] }` — ou
+    # seja, tipar @rotta/admin/@rotta/web exige primeiro um `next build`
+    # de verdade (não só checar tipos), e esse build EXECUTA o código
+    # que valida `NEXT_PUBLIC_API_URL` (Zod) durante a geração estática
+    # das páginas. Sem essa env aqui, `@rotta/admin#build` falhava com
+    # `ZodError: NEXT_PUBLIC_API_URL Required` — mesma env que o job
+    # "Lighthouse" já define lá embaixo, só que só pra apps/web.
+    env:
+      NEXT_PUBLIC_API_URL: "https://rotta-vt7i.onrender.com/v1"
     steps:
       - uses: actions/checkout@v4
 
@@ -171,6 +181,11 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: lint-and-typecheck
+    # Mesmo motivo do job "Lint & Type Check" (ver BUG REAL #4 lá) —
+    # `@rotta/admin`/`@rotta/web` fazem um `next build` de verdade
+    # aqui também.
+    env:
+      NEXT_PUBLIC_API_URL: "https://rotta-vt7i.onrender.com/v1"
     steps:
       - uses: actions/checkout@v4
 
