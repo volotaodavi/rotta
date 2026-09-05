@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"[@rotta/mobile] nenhum teste ainda — ver Dossie 23, Secao 10\" && exit 0",
+    "test": "jest",
     "test:e2e": "echo \"[@rotta/mobile] Detox/Maestro sera configurado junto com o primeiro fluxo real\" && exit 0",
     "clean": "rm -rf .expo dist .turbo"
   },
@@ -60,9 +60,14 @@
   "devDependencies": {
     "@babel/core": "^7.26.0",
     "@rotta/config": "workspace:*",
+    "@testing-library/react-native": "^12.9.0",
+    "@types/jest": "^29.5.14",
     "@types/react": "^18.3.17",
+    "@types/react-test-renderer": "^18.3.0",
     "babel-preset-expo": "~12.0.0",
     "eslint": "^8.57.1",
+    "jest-expo": "~52.0.2",
+    "react-test-renderer": "18.3.1",
     "typescript": "^5.7.2"
   }
 }

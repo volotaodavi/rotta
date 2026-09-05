@@ -12,7 +12,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"[@rotta/auth] nenhum teste ainda\" && exit 0",
+    "test": "jest",
     "clean": "rm -rf dist .turbo *.tsbuildinfo"
   },
   "dependencies": {
@@ -21,10 +21,14 @@
   },
   "devDependencies": {
     "@rotta/config": "workspace:*",
+    "@types/jest": "^29.5.14",
     "@types/react": "^18.3.17",
     "eslint": "^8.57.1",
     "expo-secure-store": "~14.0.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "react": "^18.3.1",
+    "ts-jest": "^29.2.5",
     "typescript": "^5.7.2"
   },
   "peerDependencies": {

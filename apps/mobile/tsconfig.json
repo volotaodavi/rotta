@@ -11,7 +11,12 @@
     // com um `declare module "*.png"` coringa em `global.d.ts`, testado
     // e confirmado que não se aplica a imports relativos neste modo).
     // Ver `assets/welcome-hero.png.d.ts`.
-    "allowArbitraryExtensions": true
+    "allowArbitraryExtensions": true,
+    // Auditoria minuciosa 04/09/2026 — o preset base (`typescript/react-native`)
+    // restringe `types` só a `["react-native"]`; sem reafirmar `jest` aqui,
+    // os globais de teste (`describe`/`it`/`expect`/`jest`) ficavam
+    // invisíveis pro `tsc --noEmit` nos novos `*.spec.tsx`.
+    "types": ["react-native", "jest"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]
