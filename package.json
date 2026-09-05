@@ -34,7 +34,9 @@
     "overrides": {
       "@types/react": "19.2.18",
       "@types/react-dom": "19.2.5",
-      "multer": "^2.1.1"
+      "multer": "^2.1.1",
+      "handlebars": "^4.7.9",
+      "tar": "^7.5.19"
     }
   },
   "devDependencies": {
