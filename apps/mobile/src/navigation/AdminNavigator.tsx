@@ -1,7 +1,9 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Bell, Headset, Home, User } from "@rotta/icons/native";
+import { useAuth } from "@rotta/auth/native";
+import { Bell, Headset, Home, User, Wallet } from "@rotta/icons/native";
 
 
+import { AdminFinanceiroNavigator } from "./AdminFinanceiroNavigator";
 import { AdminHomeNavigator } from "./AdminHomeNavigator";
 import { AdminSupportNavigator } from "./AdminSupportNavigator";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
@@ -15,21 +17,29 @@ const Tab = createBottomTabNavigator<AdminTabParamList>();
 
 /**
  * Navegação do Admin Rotta no app (pedido do usuário 05/09/2026: "área
- * do admin no app, porém de forma reduzida... enquanto a web fica
- * completa, a área do admin no app poderia ser reduzida"). Antes,
- * `admin_rotta` caía sempre em `PainelWebOnlyScreen` (ver
- * `RootNavigator`) — esta é a primeira navegação própria desse papel.
+ * do admin no app"). Antes, `admin_rotta` caía sempre em
+ * `PainelWebOnlyScreen` (ver `RootNavigator`) — esta é a primeira
+ * navegação própria desse papel.
  *
- * Escopo deliberadamente reduzido (fica só na Web: financeiro completo
- * com transferências/estornos, gestão de empresas/veículos/escolas,
- * marketplace, auditoria legal, contas admin): Início (KPIs + fila de
- * aprovações, ambos somente-leitura), Suporte (chat com qualquer
- * empresa/responsável — mesma tela de chat do resto do app), mesma
- * Central de Notificações de qualquer outro papel (`NotificacoesNavigator`,
- * agnóstica de papel) e Perfil (dados da conta + sair).
+ * Fica só na Web (gestão de empresas/veículos/escolas, marketplace,
+ * auditoria legal, contas admin — operações raras/administrativas
+ * demais pra uma tela pequena): Início (KPIs + fila de aprovações,
+ * ambos somente-leitura), Suporte (chat com qualquer empresa/
+ * responsável), Financeiro (completo — saldo/extrato/transferências/
+ * cobranças Pix/estornos, pedido do usuário 05/09/2026: "pode adicionar
+ * o financeiro completo para admins no app"), Notificações (mesma
+ * Central de qualquer papel, `NotificacoesNavigator` é agnóstica) e
+ * Perfil.
+ *
+ * `Financeiro` só aparece pra sub-papel GERAL/FINANCEIRO — SUPORTE não
+ * acessa nenhuma área financeira nem no Painel Web (RBAC dos
+ * sub-papéis); esta checagem no front só decide se a ABA aparece, o
+ * backend (`AdminAreaGuard`) é quem realmente barra cada rota.
  */
 export function AdminNavigator(): JSX.Element {
+  const { user } = useAuth();
   const { data: naoLidas } = useUnreadNotificationsCount();
+  const podeVerFinanceiro = (user?.adminPapel ?? "GERAL") !== "SUPORTE";
 
   return (
     <Tab.Navigator initialRouteName="Inicio" screenOptions={{ headerShown: false }}>
@@ -46,6 +56,13 @@ export function AdminNavigator(): JSX.Element {
         component={AdminSupportNavigator}
         options={{ tabBarIcon: ({ size, color }) => <Headset size={size} color={color} /> }}
       />
+      {podeVerFinanceiro ? (
+        <Tab.Screen
+          name="Financeiro"
+          component={AdminFinanceiroNavigator}
+          options={{ tabBarIcon: ({ size, color }) => <Wallet size={size} color={color} /> }}
+        />
+      ) : null}
       <Tab.Screen
         name="Notificacoes"
         component={NotificacoesNavigator}

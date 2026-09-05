@@ -175,16 +175,20 @@ export type NotificationsStackParamList = {
 
 /**
  * Bottom Navigation do Admin Rotta (pedido do usuário 05/09/2026: "área
- * do admin no app, porém de forma reduzida" — a Web continua completa,
- * o app cobre só o que faz diferença "de olho" fora do computador). Só
+ * do admin no app" — a Web continua sendo a ferramenta completa de
+ * gestão; o app cobre o que faz diferença "de olho"/agir fora do
+ * computador, incluindo o Financeiro completo desde que o usuário pediu
+ * "pode adicionar o financeiro completo para admins no app"). Só
  * alcançável por `user.role === "admin_rotta"` — ver `RootNavigator`.
- * Mesmo formato Início/Feature/Notificações/Perfil de `ParentTabParamList`
- * — `Notificacoes` reaproveita literalmente `NotificacoesNavigator` (é
- * agnóstico de papel), nenhuma tela nova precisou ser criada para ela.
+ * `Financeiro` só aparece pra sub-papel GERAL/FINANCEIRO — RBAC dos
+ * sub-papéis (Dossiê "papéis de acesso admin"): SUPORTE não acessa
+ * nenhuma área financeira, nem no Painel Web. `Notificacoes` reaproveita
+ * literalmente `NotificacoesNavigator` (é agnóstico de papel).
  */
 export type AdminTabParamList = {
   Inicio: undefined;
   Suporte: undefined;
+  Financeiro: undefined;
   Notificacoes: undefined;
   Perfil: undefined;
 };
@@ -210,3 +214,21 @@ export type AdminHomeStackParamList = {
  * ator autenticado, então nenhuma tela nova era necessária pra isso.
  */
 export type AdminSupportStackParamList = Pick<SupportStackParamList, "Lista" | "Detalhes">;
+
+/**
+ * Stack do Financeiro completo do Admin no app (pedido do usuário
+ * 05/09/2026) — espelha `apps/admin/src/app/(admin)/financeiro`:
+ * `Overview` (saldo + composição recebido/taxa/líquido + empresas por
+ * plano + lista de empresas ativas), `Extrato` (lançamentos reais da
+ * conta Asaas + tendência de saldo), `Transferencia` (Pix pra fora da
+ * conta, botão só aparece pra GERAL), `CobrancaPix` (cobrança avulsa,
+ * GERAL+FINANCEIRO) e `Empresa` (histórico de pagamentos de uma empresa
+ * + estorno/cancelamento de assinatura, ambos GERAL-only).
+ */
+export type AdminFinanceiroStackParamList = {
+  Overview: undefined;
+  Extrato: undefined;
+  Transferencia: undefined;
+  CobrancaPix: undefined;
+  Empresa: { companyId: string; companyNome: string };
+};

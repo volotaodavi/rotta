@@ -2,6 +2,7 @@ import {
   createApiClient,
   createAuthEndpoints,
   createBackofficeEndpoints,
+  createBillingEndpoints,
   createClientErrorsEndpoints,
   createCompanyJoinRequestsEndpoints,
   createDriversEndpoints,
@@ -62,6 +63,10 @@ export const identityVerificationApi = createIdentityVerificationEndpoints(apiCl
 // Auditoria minuciosa 03/09/2026 — ver `@/components/app-error-boundary.tsx`:
 // `app: "MOBILE"` já existia pronto no backend, só nunca tinha sido chamado.
 export const clientErrorsApi = createClientErrorsEndpoints(apiClient);
-// Área Admin reduzida no app (pedido do usuário 05/09/2026) — mesmos
-// endpoints exclusivos de `Role.ADMIN_ROTTA` já usados por `apps/admin`.
+// Área Admin no app (pedido do usuário 05/09/2026) — mesmos endpoints
+// exclusivos de `Role.ADMIN_ROTTA` já usados por `apps/admin`.
 export const backofficeApi = createBackofficeEndpoints(apiClient);
+// Financeiro completo do Admin no app (pedido do usuário 05/09/2026:
+// "pode adicionar o financeiro completo para admins no app") — mesmos
+// endpoints `/billing/admin/*` de `apps/admin/src/features/billing`.
+export const billingApi = createBillingEndpoints(apiClient);
