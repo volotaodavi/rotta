@@ -4,7 +4,6 @@ import type { CreateSupportTicketInput, ListSupportTicketsParams } from "@rotta/
 
 import { supportApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do módulo Suporte no app mobile (Epic B — não existia
  * NENHUMA tela de suporte no app nativo, pra nenhum papel; espelha 1:1

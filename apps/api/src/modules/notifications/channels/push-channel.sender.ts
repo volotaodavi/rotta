@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { CommunicationChannel, DeviceTokenPlatform, type Prisma } from "@prisma/client";
 
-
 import { DEVICE_TOKEN_REPOSITORY } from "../notifications.constants";
 
 import type {

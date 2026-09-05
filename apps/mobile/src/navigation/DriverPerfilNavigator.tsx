@@ -9,8 +9,6 @@ import { DriverPerfilScreen } from "@/features/driver/screens";
 import { DriverIdentityVerificationWebViewScreen } from "@/features/driver/screens/identity-verification-webview-screen";
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
 
-
-
 const Stack = createNativeStackNavigator<DriverPerfilStackParamList>();
 
 /**

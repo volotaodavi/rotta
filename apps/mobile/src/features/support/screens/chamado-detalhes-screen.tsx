@@ -2,7 +2,6 @@ import { Sparkles } from "@rotta/icons/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import {
   useAddSupportMessage,
   useCloseSupportTicket,

@@ -8,7 +8,6 @@ import {
   NovoChamadoScreen,
 } from "@/features/support/screens";
 
-
 const Stack = createNativeStackNavigator<SupportStackParamList>();
 
 /**

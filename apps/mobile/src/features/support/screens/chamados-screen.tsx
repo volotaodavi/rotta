@@ -1,7 +1,6 @@
 import { Plus } from "@rotta/icons/native";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import { useSupportTickets } from "../hooks/use-support";
 import { SUPPORT_TICKET_STATUS_LABEL, SUPPORT_TICKET_STATUS_TONE } from "../labels";
 
