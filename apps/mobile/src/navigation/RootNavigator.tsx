@@ -1,6 +1,7 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
 
+import { AdminNavigator } from "./AdminNavigator";
 import { AuthNavigator } from "./AuthNavigator";
 import { DriverNavigator } from "./DriverNavigator";
 import { ParentNavigator } from "./ParentNavigator";
@@ -24,8 +25,11 @@ import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/componen
  * A sessao real (`@rotta/auth`, Dossie 15) decide isso em tempo de
  * execucao — mesma conta compartilhada com `apps/web`/`apps/admin`, nunca
  * uma variante de build ou app separado (briefing: "nunca aplicativos
- * separados por papel"). Papeis de gestao (Empresa/Gestor/Escola/Admin
- * Rotta) ainda nao tem telas proprias no app — ver `PainelWebOnlyScreen`.
+ * separados por papel"). Papeis de gestao (Empresa/Gestor/Escola) ainda
+ * nao tem telas proprias no app — ver `PainelWebOnlyScreen`. Admin Rotta
+ * (pedido do usuário 05/09/2026: "área do admin no app, porém de forma
+ * reduzida") passou a ter `AdminNavigator` — um recorte deliberadamente
+ * pequeno do Painel Web, que continua sendo a ferramenta completa.
  *
  * PIN de acesso rápido (Dossiê 42, opt-in do Motorista no Perfil) — se
  * ativado, `usePinLock` decide se a tela de PIN aparece por cima de
@@ -88,6 +92,8 @@ export function RootNavigator(): JSX.Element {
           <ParentNavigator />
           <VehicleAdminReviewAcknowledgeSheet />
         </>
+      ) : user.role === "admin_rotta" ? (
+        <AdminNavigator />
       ) : (
         <PainelWebOnlyScreen />
       )}

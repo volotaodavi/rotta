@@ -172,3 +172,41 @@ export type NotificationsStackParamList = {
   Historico: undefined;
   Preferencias: undefined;
 };
+
+/**
+ * Bottom Navigation do Admin Rotta (pedido do usuário 05/09/2026: "área
+ * do admin no app, porém de forma reduzida" — a Web continua completa,
+ * o app cobre só o que faz diferença "de olho" fora do computador). Só
+ * alcançável por `user.role === "admin_rotta"` — ver `RootNavigator`.
+ * Mesmo formato Início/Feature/Notificações/Perfil de `ParentTabParamList`
+ * — `Notificacoes` reaproveita literalmente `NotificacoesNavigator` (é
+ * agnóstico de papel), nenhuma tela nova precisou ser criada para ela.
+ */
+export type AdminTabParamList = {
+  Inicio: undefined;
+  Suporte: undefined;
+  Notificacoes: undefined;
+  Perfil: undefined;
+};
+
+/**
+ * Stack aninhada na aba `Inicio` do Admin Rotta — `Dashboard` (KPIs
+ * somente-leitura) e `Aprovacoes` (a mesma fila de `/aprovacoes` da Web,
+ * também somente-leitura hoje — aprovar/reprovar em lote continua "Plano
+ * de evolução" do Dossiê 29, tanto na Web quanto aqui).
+ */
+export type AdminHomeStackParamList = {
+  Dashboard: undefined;
+  Aprovacoes: undefined;
+};
+
+/**
+ * Stack de Suporte do Admin Rotta — mesmas 2 rotas finais de
+ * `SupportStackParamList` (`Lista`/`Detalhes`; sem `Novo`, o Admin
+ * responde chamados, não abre os seus próprios). `Detalhes` reaproveita
+ * literalmente `ChamadoDetalhesScreen` (a mesma tela usada por
+ * Responsável/Motorista/Monitor) — o chat já distingue
+ * `autorIsAdminRotta` e o backend já resolve o escopo cross-tenant pelo
+ * ator autenticado, então nenhuma tela nova era necessária pra isso.
+ */
+export type AdminSupportStackParamList = Pick<SupportStackParamList, "Lista" | "Detalhes">;
