@@ -6,7 +6,6 @@ import type { CreateSchoolInput, ListSchoolsParams, SchoolStatus } from "@rotta/
 
 import { geoApi, schoolsApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do módulo Escolas (visão cross-tenant do Admin Rotta) —
  * mesmo padrão de `use-vehicles.ts`. Apenas leitura + moderação de status

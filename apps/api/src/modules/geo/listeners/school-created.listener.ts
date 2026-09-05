@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { OnEvent } from "@nestjs/event-emitter";
 
-
 import { NominatimRateLimitedException } from "../geo-engine.service";
 import { GeoPipelineService } from "../geo-pipeline.service";
 

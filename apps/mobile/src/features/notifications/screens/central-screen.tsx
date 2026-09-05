@@ -2,7 +2,6 @@ import { Star } from "@rotta/icons/native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,

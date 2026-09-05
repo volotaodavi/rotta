@@ -10,7 +10,6 @@ import type {
 
 import { identityVerificationApi } from "@/lib/api-client";
 
-
 /** Mensagem de erro legível a partir do que `ApiClient.request` lança — mesmo padrão adotado nos novos `onError`, pra não vazar `"[object Object]"`/stack trace pra tela. */
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error && error.message ? error.message : fallback;

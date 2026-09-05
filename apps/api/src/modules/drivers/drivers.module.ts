@@ -10,7 +10,6 @@ import { AuditModule } from "@/modules/audit/audit.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { UsersModule } from "@/modules/users/users.module";
 
-
 /**
  * Modulo Drivers (Dossie 13, Secao 5) — documentacao de
  * habilitacao/qualificacao do motorista (CNH, EAR, cursos obrigatórios

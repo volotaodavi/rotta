@@ -9,7 +9,6 @@ import {
   type ExceptionFilter,
 } from "@nestjs/common";
 
-
 import type { ApiErrorBody } from "@/shared/types/api-error.type";
 import type { Response, Request } from "express";
 

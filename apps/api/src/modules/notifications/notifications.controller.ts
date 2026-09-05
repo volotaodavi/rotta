@@ -13,7 +13,6 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { CommunicationDashboardQueryDto } from "./dto/communication-dashboard-query.dto";
 import { CommunicationDashboardResponseDto } from "./dto/communication-dashboard-response.dto";
 import { ListNotificationsQueryDto } from "./dto/list-notifications-query.dto";

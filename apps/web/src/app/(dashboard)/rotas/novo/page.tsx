@@ -15,8 +15,6 @@ import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
 
-
-
 const WEEKDAYS: RouteWeekday[] = [
   "SEGUNDA",
   "TERCA",

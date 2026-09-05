@@ -1,8 +1,6 @@
 import { Plus } from "@rotta/icons/native";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { StatusPill, VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
-import { useTheme } from "@/providers/theme-provider";
 
 import { useSupportTickets } from "../hooks/use-support";
 import { SUPPORT_TICKET_STATUS_LABEL, SUPPORT_TICKET_STATUS_TONE } from "../labels";
@@ -10,6 +8,13 @@ import { SUPPORT_TICKET_STATUS_LABEL, SUPPORT_TICKET_STATUS_TONE } from "../labe
 import type { SupportStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import {
+  StatusPill,
+  VehicleButton,
+  VehicleCard,
+  VehicleScreen,
+} from "@/features/vehicles/components";
+import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<SupportStackParamList, "Lista">;
 
@@ -54,7 +59,10 @@ export function ChamadosScreen({ navigation }: Props): JSX.Element {
         <Text style={{ color: theme.colors.textMuted }}>Nenhum chamado registrado ainda.</Text>
       ) : (
         data.items.map((ticket) => (
-          <Pressable key={ticket.id} onPress={() => navigation.navigate("Detalhes", { ticketId: ticket.id })}>
+          <Pressable
+            key={ticket.id}
+            onPress={() => navigation.navigate("Detalhes", { ticketId: ticket.id })}
+          >
             <VehicleCard>
               <View style={styles.linha}>
                 <Text style={[styles.assunto, { color: theme.colors.text }]} numberOfLines={1}>

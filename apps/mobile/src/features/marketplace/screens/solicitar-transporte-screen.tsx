@@ -7,7 +7,6 @@ import {
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import { useGeocodeAddress } from "../hooks/use-geocode-address";
 import { useLocation } from "../hooks/use-location";
 import { useSchoolsSearch } from "../hooks/use-school-picker";

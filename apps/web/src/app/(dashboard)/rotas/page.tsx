@@ -27,8 +27,6 @@ import {
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 
-
-
 /**
  * "Minhas Rotas" (pedido do usuário: "crie uma aba para 'Criar
  * rota'"... "Minhas rotas aparecerá a rota") — fluxo novo, começando do

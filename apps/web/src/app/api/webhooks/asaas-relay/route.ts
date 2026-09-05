@@ -4,7 +4,6 @@ import type { NextRequest } from "next/server";
 
 import { env } from "@/config/env";
 
-
 /**
  * Relay "sempre acordado" pro webhook da Asaas (pedido do usuário
  * 03/09/2026: "como fazer o webhook do Asaas não expirar, sem gastar

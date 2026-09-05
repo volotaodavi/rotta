@@ -113,8 +113,8 @@ export default function NotificacoesPreferenciasPage(): JSX.Element {
           <Card.Body className="flex flex-col gap-3">
             <Typography variant="subtitle">Push no navegador</Typography>
             <Typography variant="caption" color="muted">
-              Ative para receber os avisos da Rotta como notificação do sistema, mesmo com esta
-              aba fechada — precisa ser feito uma vez em cada navegador/dispositivo.
+              Ative para receber os avisos da Rotta como notificação do sistema, mesmo com esta aba
+              fechada — precisa ser feito uma vez em cada navegador/dispositivo.
             </Typography>
             <div>
               <Button
@@ -128,8 +128,8 @@ export default function NotificacoesPreferenciasPage(): JSX.Element {
             </div>
             {pushBrowser.status === "negado" && (
               <Typography variant="caption" color="danger">
-                Permissão negada — libere notificações para este site nas configurações do
-                navegador e tente de novo.
+                Permissão negada — libere notificações para este site nas configurações do navegador
+                e tente de novo.
               </Typography>
             )}
             {pushBrowser.status === "erro" && (

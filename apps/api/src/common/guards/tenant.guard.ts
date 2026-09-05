@@ -7,7 +7,6 @@ import type { TenantContext } from "@/infra/database/tenant-context";
 import { IS_PUBLIC_KEY } from "@/common/decorators/public.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * Guard de isolamento multi-tenant (Dossie 8, Secao 15 e Dossie 12,
  * Secao 15.1) — resolve o `tenant_id` exclusivamente a partir do JWT

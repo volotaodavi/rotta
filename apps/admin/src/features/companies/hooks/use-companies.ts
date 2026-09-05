@@ -10,7 +10,6 @@ import type {
 
 import { companiesApi } from "@/lib/api-client";
 
-
 /** Hooks de dados do módulo Empresas (Dossie 23, Secao 2.2 — TanStack Query como fonte de estado de servidor). */
 export function useCompaniesList(params: ListCompaniesParams) {
   return useQuery({

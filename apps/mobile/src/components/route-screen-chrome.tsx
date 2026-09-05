@@ -2,7 +2,6 @@ import { ArrowLeft, LocateFixed } from "@rotta/icons/native";
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
-
 import type { ReactNode } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 

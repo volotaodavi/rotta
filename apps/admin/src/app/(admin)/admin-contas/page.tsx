@@ -4,7 +4,6 @@ import { ApiError } from "@rotta/api-client";
 import { Badge, Button, Card, ErrorState, Select, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
-
 import type { AdminAccount, AdminRottaPapel } from "@rotta/api-client";
 import type { BadgeVariant } from "@rotta/ui/web";
 

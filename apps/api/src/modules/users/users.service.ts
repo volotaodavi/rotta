@@ -2,7 +2,6 @@ import { BadRequestException, ConflictException, Inject, Injectable } from "@nes
 import { CompanyType } from "@prisma/client";
 import { passwordEqualsIdentifier } from "@rotta/validators";
 
-
 import {
   CONSENT_RECORD_REPOSITORY,
   MEMBERSHIP_REPOSITORY,

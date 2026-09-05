@@ -23,9 +23,7 @@ export function NotificationBell(): JSX.Element {
     <Link
       href="/notificacoes"
       prefetch={false}
-      aria-label={
-        naoLidas ? `Notificações (${naoLidas} não lidas)` : "Notificações"
-      }
+      aria-label={naoLidas ? `Notificações (${naoLidas} não lidas)` : "Notificações"}
       className="relative flex items-center justify-center rounded-lg p-2 text-text-muted transition-colors hover:bg-muted hover:text-text"
     >
       <Bell size={20} />

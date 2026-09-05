@@ -12,7 +12,6 @@ import { EmailService } from "@/infra/email/email.service";
 import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
 import { UsersService } from "@/modules/users/users.service";
 
-
 /**
  * Tipos financeiros (pedido do usuário 03/09/2026: "financeiro@...,
  * suporte@... quero colocar pra enviar e-mails com esses dois também")

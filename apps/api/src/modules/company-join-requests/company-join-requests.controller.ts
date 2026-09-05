@@ -9,7 +9,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * `company-join-requests` (Frente N, briefing item 9) — API REST de
  * "informar código da transportadora e pedir vínculo". `me`/`create` são

@@ -13,7 +13,6 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { ListWalletTransactionsQueryDto } from "./dto/list-wallet-transactions-query.dto";
 import { RejectWithdrawalDto } from "./dto/reject-withdrawal.dto";
 import { RequestWithdrawalDto } from "./dto/request-withdrawal.dto";

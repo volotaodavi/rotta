@@ -12,7 +12,6 @@ import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
 import { wakeApi } from "@/lib/wake-api";
 
-
 /**
  * Navegação principal — majoritariamente âncoras da própria Landing
  * Page (pedido do usuário 02/09/2026: "os links... devem levar

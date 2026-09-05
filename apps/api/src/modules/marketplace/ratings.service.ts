@@ -7,7 +7,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-
 import { toRatingResponseDto } from "./mappers/rating.mapper";
 import { CONTRACT_REPOSITORY, RATING_REPOSITORY } from "./marketplace.constants";
 

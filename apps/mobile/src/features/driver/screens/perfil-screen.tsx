@@ -11,8 +11,6 @@ import { PinSetupCard } from "@/features/auth/components";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
-
 type Props = NativeStackScreenProps<DriverPerfilStackParamList, "PerfilHome">;
 
 const ROLE_LABEL: Record<string, string> = {

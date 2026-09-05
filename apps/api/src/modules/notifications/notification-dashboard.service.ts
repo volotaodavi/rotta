@@ -1,7 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { NotificationDeliveryStatus } from "@prisma/client";
 
-
 import {
   NOTIFICATION_DELIVERY_ATTEMPT_REPOSITORY,
   NOTIFICATION_REPOSITORY,

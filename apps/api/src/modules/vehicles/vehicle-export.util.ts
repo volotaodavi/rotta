@@ -7,7 +7,6 @@ import {
   type ExportColumn,
 } from "@/common/utils/tabular-export.util";
 
-
 /**
  * Exportação de listagem de veículos (briefing "EXPORTAÇÃO" — PDF/Excel/
  * CSV) — colunas específicas de Veículo sobre o utilitário genérico em

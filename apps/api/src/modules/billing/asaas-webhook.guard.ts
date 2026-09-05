@@ -3,7 +3,6 @@ import { timingSafeEqual } from "node:crypto";
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 
-
 import type { CanActivate, ExecutionContext } from "@nestjs/common";
 import type { Request } from "express";
 

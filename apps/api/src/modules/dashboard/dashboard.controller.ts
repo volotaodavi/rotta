@@ -7,7 +7,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * API REST do Dashboard (`DASH-01` a `DASH-07`, Dossiê 19; Prompt
  * 22/Dossiê 30) — tela inicial de Motorista/Monitor/Responsável, os

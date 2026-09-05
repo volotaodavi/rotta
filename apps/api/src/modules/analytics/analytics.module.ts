@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { ANALYTICS_REPOSITORY } from "./analytics.constants";
 import { AnalyticsController } from "./analytics.controller";
 import { AnalyticsService } from "./analytics.service";

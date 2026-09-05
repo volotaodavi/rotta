@@ -1,6 +1,5 @@
 import { AdminRottaPapel } from "@prisma/client";
 
-
 import { AdminAreaGuard } from "../admin-area.guard";
 
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";

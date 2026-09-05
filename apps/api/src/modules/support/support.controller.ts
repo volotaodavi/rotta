@@ -24,8 +24,6 @@ import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { AdminArea, Role } from "@/shared/enums";
 
-
-
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
 }

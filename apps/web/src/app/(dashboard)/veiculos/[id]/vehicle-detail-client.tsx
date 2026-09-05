@@ -58,7 +58,6 @@ import {
   VEHICLE_TYPE_LABEL,
 } from "@/features/vehicles/labels";
 
-
 const TABS = [
   { id: "dados", label: "Dados" },
   { id: "documentos", label: "Documentos" },

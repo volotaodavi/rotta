@@ -3,7 +3,6 @@ import type { MetadataRoute } from "next";
 import { LEGAL_DOCUMENTS } from "@/features/legal/documents";
 import { getSiteUrl } from "@/lib/site-config";
 
-
 /**
  * `sitemap.xml` gerado nativamente pelo Next.js 15 a partir deste
  * arquivo (Dossiê 12 §7.4 — indexação gratuita no Google: nenhuma

@@ -1,6 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { CompanyJoinPreRegistrationsService } from "../company-join-pre-registrations.service";
 
 import type { CompanyJoinPreRegistrationRepository } from "../repositories/company-join-pre-registration.repository";

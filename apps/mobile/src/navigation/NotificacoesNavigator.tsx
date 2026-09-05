@@ -11,7 +11,6 @@ import {
 } from "@/features/notifications/screens";
 import { useTheme } from "@/providers/theme-provider";
 
-
 const Stack = createNativeStackNavigator<NotificationsStackParamList>();
 
 /**

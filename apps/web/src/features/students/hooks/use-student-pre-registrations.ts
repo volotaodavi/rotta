@@ -6,7 +6,6 @@ import type { CreateStudentPreRegistrationInput } from "@rotta/api-client";
 
 import { studentPreRegistrationsApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados de `student-pre-registrations` (pedido do usuário:
  * "no painel do admin deverá ter essa opção de cadastrar alunos por

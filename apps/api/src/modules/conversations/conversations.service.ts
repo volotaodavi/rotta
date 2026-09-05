@@ -2,7 +2,6 @@ import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } fro
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { type Contract, type Conversation, NotificationEventType } from "@prisma/client";
 
-
 import { CONVERSATION_REPOSITORY } from "./conversations.constants";
 import { toConversationMessageResponseDto } from "./mappers/conversation-message.mapper";
 

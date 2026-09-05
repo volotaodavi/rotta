@@ -6,7 +6,6 @@ import type { ListNotificationsParams, UpdateNotificationPreferenceInput } from 
 
 import { notificationsApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados da Central de Notificações Internas (Painel Web) —
  * inbox sempre pessoal, mesma garantia de `apps/mobile/.../use-

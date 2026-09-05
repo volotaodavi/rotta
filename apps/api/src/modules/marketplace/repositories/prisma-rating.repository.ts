@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type { CreateRatingData, RatingAccessScope, RatingRepository } from "./rating.repository";
 import type { Rating, RatingTargetType } from "@prisma/client";
 

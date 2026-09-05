@@ -5,11 +5,11 @@ import { AnnouncementAudience } from "@prisma/client";
 import { ANNOUNCEMENT_REPOSITORY } from "./announcements.constants";
 import { toAnnouncementResponseDto } from "./mappers/announcement.mapper";
 
-import type { CreateAnnouncementDto } from "./dto/create-announcement.dto";
 import type {
   AnnouncementResponseDto,
   ListAnnouncementsResponseDto,
 } from "./dto/announcement-response.dto";
+import type { CreateAnnouncementDto } from "./dto/create-announcement.dto";
 import type { ListAnnouncementsQueryDto } from "./dto/list-announcements-query.dto";
 import type { AnnouncementRepository } from "./repositories/announcement.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
@@ -35,7 +35,8 @@ export class AnnouncementsService {
   private readonly logger = new Logger(AnnouncementsService.name);
 
   constructor(
-    @Inject(ANNOUNCEMENT_REPOSITORY) private readonly announcementRepository: AnnouncementRepository,
+    @Inject(ANNOUNCEMENT_REPOSITORY)
+    private readonly announcementRepository: AnnouncementRepository,
     private readonly usersService: UsersService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
@@ -55,7 +56,12 @@ export class AnnouncementsService {
   }
 
   /** Best-effort — cada falha individual só é logada, nunca interrompe o fan-out dos demais destinatários. */
-  private notifyRecipients(userIds: string[], titulo: string, corpo: string, announcementId: string): void {
+  private notifyRecipients(
+    userIds: string[],
+    titulo: string,
+    corpo: string,
+    announcementId: string,
+  ): void {
     const mensagem = this.messagePersonalizationService.avisoGeral(titulo, corpo);
     for (const userId of userIds) {
       try {

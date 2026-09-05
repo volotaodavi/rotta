@@ -1,12 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import type { SupportStackParamList } from "./types";
+
 import {
   ChamadoDetalhesScreen,
   ChamadosScreen,
   NovoChamadoScreen,
 } from "@/features/support/screens";
-
-import type { SupportStackParamList } from "./types";
 
 
 const Stack = createNativeStackNavigator<SupportStackParamList>();

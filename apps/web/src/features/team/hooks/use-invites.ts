@@ -6,7 +6,6 @@ import type { Role } from "@rotta/api-client";
 
 import { authApi } from "@/lib/api-client";
 
-
 /**
  * Convite de papel para Motorista/Monitor (Dossiê 15, endpoint
  * `POST /companies/:companyId/invites` já existia pronto desde a

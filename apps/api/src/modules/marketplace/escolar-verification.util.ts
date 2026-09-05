@@ -2,7 +2,6 @@ import type { DriverDocument, Vehicle } from "@prisma/client";
 
 import { computeSchoolTransportEligibility } from "@/modules/drivers/school-transport-eligibility.util";
 
-
 type VehicleWithMotoristaDocuments = Vehicle & {
   ultimoMotorista: { documentosMotorista: DriverDocument[] } | null;
 };

@@ -28,8 +28,6 @@ import type { CreateRouteInput, Route, RouteStop, SchoolShift } from "@rotta/api
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { useCompanyStudents } from "@/features/students/hooks/use-students";
 
-
-
 const DIAS_SEMANA = [
   { value: "SEGUNDA", label: "Seg" },
   { value: "TERCA", label: "Ter" },

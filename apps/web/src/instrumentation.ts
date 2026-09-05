@@ -2,7 +2,6 @@ import * as Sentry from "@sentry/nextjs";
 
 import type { Instrumentation } from "next";
 
-
 /**
  * Pedido explícito do usuário (fundador, investigando o "Server
  * Components render" com digest real capturado — `4088390160`, rota

@@ -7,7 +7,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-
 import { COMPANY_JOIN_PRE_REGISTRATION_REPOSITORY } from "./company-join-pre-registrations.constants";
 import { toCompanyJoinPreRegistrationResponseDto } from "./mappers/company-join-pre-registration.mapper";
 

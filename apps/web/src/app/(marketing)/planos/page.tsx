@@ -6,7 +6,6 @@ import type { Metadata } from "next";
 
 import { AsaasSecurityBadge } from "@/components/asaas-security-badge";
 
-
 export const metadata: Metadata = {
   title: "Planos e preços",
   description:

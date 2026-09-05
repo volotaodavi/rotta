@@ -5,7 +5,6 @@ import { RottaLogo } from "./rotta-logo";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * Splash em React puro (Seção 1/16) — mostrada enquanto o `RootNavigator`
  * resolve a sessão (`useAuth().status === "loading"`) e o flag de

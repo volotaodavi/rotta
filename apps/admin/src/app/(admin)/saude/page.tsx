@@ -15,7 +15,6 @@ import type { IntegrationHealthSnapshot, IntegrationStatusLevel } from "@rotta/a
 
 import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-health";
 
-
 const STATUS_LABEL: Record<IntegrationStatusLevel, string> = {
   healthy: "Saudável",
   degraded: "Degradada",

@@ -22,7 +22,6 @@ import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-statu
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
 
-
 /**
  * Listagem de veículos — visão CROSS-TENANT exclusiva do Admin Rotta
  * (mesma decisão estrutural de `/empresas`: Admin Rotta enxerga a frota

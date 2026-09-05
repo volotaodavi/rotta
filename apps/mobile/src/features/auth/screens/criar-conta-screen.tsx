@@ -1,6 +1,5 @@
 import { StyleSheet, Text } from "react-native";
 
-
 import { AuthButton, AuthScreen } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";

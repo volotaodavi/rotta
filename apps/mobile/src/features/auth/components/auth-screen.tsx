@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * Container comum das telas do fluxo de entrada/autenticação (Dossiê 15) —
  * fundo do tema + scroll + deslocamento de teclado, para não repetir este

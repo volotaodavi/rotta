@@ -6,7 +6,6 @@ import type { MapVehicle, StudentEventsHistoryRange } from "@rotta/api-client";
 
 import { gpsApi } from "@/lib/api-client";
 
-
 /**
  * Cadência do polling de posição ao vivo (GPS-01/03/06) — pedido do
  * usuário: "diminuir o tempo de mostrar o veículo se movendo... algo

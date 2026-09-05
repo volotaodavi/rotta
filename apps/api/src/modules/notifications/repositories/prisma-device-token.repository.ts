@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type { DeviceTokenRepository, RegisterDeviceTokenData } from "./device-token.repository";
 import type { DeviceToken } from "@prisma/client";
 

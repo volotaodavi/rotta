@@ -6,7 +6,6 @@ import type { ListSupportTicketsParams } from "@rotta/api-client";
 
 import { supportApi } from "@/lib/api-client";
 
-
 /** Hooks de dados do módulo Suporte, visão Admin Rotta (`ADM-04`/Dossiê 29). */
 export function useSupportTickets(params: ListSupportTicketsParams) {
   return useQuery({

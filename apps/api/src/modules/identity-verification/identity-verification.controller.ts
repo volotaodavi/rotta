@@ -17,7 +17,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { AdminArea, Role } from "@/shared/enums";
 
-
 /** Quem verifica a PRÓPRIA identidade hoje (Motorista/Monitor dirigem; Empresa/Gestor administram a conta) — Responsável/Escola/Admin Rotta não usam este fluxo. */
 const SELF_VERIFICATION_ROLES = [Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR] as const;
 

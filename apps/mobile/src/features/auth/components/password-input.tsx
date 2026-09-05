@@ -2,7 +2,6 @@ import { Eye, EyeOff } from "@rotta/icons/native";
 import { useState } from "react";
 import { Pressable } from "react-native";
 
-
 import { AuthTextField } from "./auth-text-field";
 
 import type { TextInputProps } from "react-native";

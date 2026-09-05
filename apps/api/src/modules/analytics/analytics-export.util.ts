@@ -7,7 +7,6 @@ import {
   type ExportColumn,
 } from "@/common/utils/tabular-export.util";
 
-
 /**
  * Exportação nacional por empresa (briefing "Relatórios exportáveis
  * PDF/Excel/CSV") — colunas específicas de Analytics sobre o utilitário

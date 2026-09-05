@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { AdminRottaPapel, UserStatus } from "@prisma/client";
 
-
 import type { CreateAdminAccountDto } from "./dto/create-admin-account.dto";
 import type { UpdateAdminAccountDto } from "./dto/update-admin-account.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";

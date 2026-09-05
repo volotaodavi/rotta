@@ -4,7 +4,6 @@ import { driverShadow } from "@rotta/theme";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import { PanelGreeting } from "../components";
 import { useRouteTripHistory } from "../hooks/use-driver-history";
 import { useMinhasRotas } from "../hooks/use-driver-routes";

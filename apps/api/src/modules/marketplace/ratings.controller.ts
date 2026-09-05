@@ -10,8 +10,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
-
 const READ_ROLES = [Role.RESPONSAVEL, Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA] as const;
 
 function requestMeta(req: Request): RequestMeta {

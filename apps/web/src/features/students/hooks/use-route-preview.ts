@@ -6,7 +6,6 @@ import type { Coordenada } from "@rotta/api-client";
 
 import { geoApi } from "@/lib/api-client";
 
-
 export interface RoutePreviewPoint {
   latitude: number;
   longitude: number;

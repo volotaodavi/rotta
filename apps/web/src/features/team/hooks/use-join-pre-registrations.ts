@@ -6,7 +6,6 @@ import type { CreateCompanyJoinPreRegistrationInput } from "@rotta/api-client";
 
 import { companyJoinPreRegistrationsApi } from "@/lib/api-client";
 
-
 const JOIN_PRE_REGISTRATIONS_QUERY_KEY = ["company-join-pre-registrations"];
 
 /**

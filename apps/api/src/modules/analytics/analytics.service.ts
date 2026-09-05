@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotImplementedException } from "@nestjs/common";
 import { CompanyStatus } from "@prisma/client";
 
-
 import {
   companyBiRowsToCsv,
   companyBiRowsToExcelBuffer,

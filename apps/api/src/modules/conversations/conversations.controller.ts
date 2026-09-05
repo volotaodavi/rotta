@@ -21,8 +21,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
-
 /** RBAC de rota é só "autenticado com um destes papéis" — a checagem FINA (é participante DESTE contrato) é sempre feita dentro do `ConversationsService`, nunca aqui. */
 const PARTICIPANT_ROLES = [Role.RESPONSAVEL, Role.MOTORISTA, Role.MONITOR] as const;
 const READ_ROLES = [...PARTICIPANT_ROLES, Role.ADMIN_ROTTA] as const;

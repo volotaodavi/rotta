@@ -7,7 +7,6 @@ import { PrepararDocumentoAssinaturaDto } from "./dto/preparar-documento-assinat
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * Achado em auditoria de segurança 02/09/2026: sem `@Roles(...)`, o
  * `RolesGuard` libera QUALQUER papel autenticado (ver

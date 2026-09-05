@@ -1,13 +1,14 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import { DriverPerfilScreen } from "@/features/driver/screens";
-import { DriverIdentityVerificationWebViewScreen } from "@/features/driver/screens/identity-verification-webview-screen";
-import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
-
 import { SupportNavigator } from "./SupportNavigator";
 import { VeiculoNavigator } from "./VeiculoNavigator";
 
 import type { DriverPerfilStackParamList } from "./types";
+
+import { DriverPerfilScreen } from "@/features/driver/screens";
+import { DriverIdentityVerificationWebViewScreen } from "@/features/driver/screens/identity-verification-webview-screen";
+import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
+
 
 
 const Stack = createNativeStackNavigator<DriverPerfilStackParamList>();

@@ -4,7 +4,6 @@ import type { CreateTransportRequestInput } from "@rotta/api-client";
 
 import { marketplaceApi } from "@/lib/api-client";
 
-
 /** Hooks de solicitação de transporte do Responsável (briefing "SOLICITAR TRANSPORTE"/"SOLICITAÇÃO"). */
 export function useTransportRequests() {
   return useQuery({

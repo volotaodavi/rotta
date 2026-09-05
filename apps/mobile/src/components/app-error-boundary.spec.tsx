@@ -13,7 +13,6 @@ import { AppErrorBoundary } from "./app-error-boundary";
 
 import { clientErrorsApi } from "@/lib/api-client";
 
-
 jest.mock("@/lib/api-client", () => ({
   clientErrorsApi: { report: jest.fn() },
 }));

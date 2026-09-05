@@ -6,7 +6,6 @@ import type { LucideIcon } from "@rotta/icons/native";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * Opção de perfil da tela "Como você utiliza a Rotta?" (Seção 3) — ícone
  * + título + descrição curta + indicador de seleção, área de toque

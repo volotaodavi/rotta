@@ -6,7 +6,6 @@ import type { NationalKpisParams } from "@rotta/api-client";
 
 import { analyticsApi } from "@/lib/api-client";
 
-
 /** Hooks de dados da Central de Inteligência Operacional (Prompt 22/Dossiê 30). */
 export function useNationalKpis(params: NationalKpisParams = {}) {
   return useQuery({

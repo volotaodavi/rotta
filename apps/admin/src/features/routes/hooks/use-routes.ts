@@ -10,7 +10,6 @@ import type {
 
 import { marketplaceApi, routesApi } from "@/lib/api-client";
 
-
 /**
  * Hooks do módulo Rotas, visão Admin Rotta (pedido do usuário
  * 02/09/2026: "empresas > alunos > ... rotas/endereços residenciais").

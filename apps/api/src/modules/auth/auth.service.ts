@@ -15,7 +15,6 @@ import { EventEmitter2 } from "@nestjs/event-emitter";
 import { JwtService } from "@nestjs/jwt";
 import { CompanyType, NotificationEventType, UserStatus } from "@prisma/client";
 
-
 import { PASSWORD_RESET_TOKEN_REPOSITORY, SESSION_REPOSITORY } from "./auth.constants";
 import { MfaService } from "./mfa.service";
 import { PasswordResetNotifierService } from "./password-reset-notifier.service";
@@ -49,6 +48,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { AuthConfig } from "@/config/auth.config";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
 import type { ConsentType, User } from "@prisma/client";
+
 import { resolveTrialBloqueioMotivo } from "@/common/billing/resolve-trial-bloqueio.util";
 import { TRIAL_BLOQUEIO_MENSAGENS } from "@/common/exceptions/trial-expirado.exception";
 import { parseDurationToMs } from "@/common/utils/duration.util";
@@ -59,7 +59,6 @@ import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService, type RequestMeta } from "@/modules/companies/companies.service";
 import { CompanyJoinRequestsService } from "@/modules/company-join-requests/company-join-requests.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
-
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { StudentPreRegistrationsService } from "@/modules/student-pre-registrations/student-pre-registrations.service";
 import { UsersService } from "@/modules/users/users.service";

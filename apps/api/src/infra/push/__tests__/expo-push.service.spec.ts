@@ -27,9 +27,9 @@ describe("ExpoPushService", () => {
 
   it("envia pro endpoint do Expo sem Authorization quando EXPO_ACCESS_TOKEN não está configurado", async () => {
     service = new ExpoPushService(buildConfigService());
-    global.fetch = jest.fn().mockResolvedValue(
-      jsonResponse({ data: [{ status: "ok" }, { status: "ok" }] }),
-    );
+    global.fetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ data: [{ status: "ok" }, { status: "ok" }] }));
 
     const resultado = await service.sendToTokens(
       ["ExponentPushToken[a]", "ExponentPushToken[b]"],
@@ -37,7 +37,10 @@ describe("ExpoPushService", () => {
       "Corpo",
     );
 
-    expect(resultado).toEqual({ sucesso: ["ExponentPushToken[a]", "ExponentPushToken[b]"], invalidos: [] });
+    expect(resultado).toEqual({
+      sucesso: ["ExponentPushToken[a]", "ExponentPushToken[b]"],
+      invalidos: [],
+    });
     const [, options] = (global.fetch as jest.Mock).mock.calls[0]!;
     expect(options.headers.Authorization).toBeUndefined();
   });

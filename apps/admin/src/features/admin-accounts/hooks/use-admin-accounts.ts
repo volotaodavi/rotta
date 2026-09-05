@@ -6,7 +6,6 @@ import type { CreateAdminAccountInput, UpdateAdminAccountInput } from "@rotta/ap
 
 import { adminAccountsApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados de "Contas Admin" (pedido do usuário 03/09/2026 —
  * GERAL-only, o backend recusa qualquer outro papel via

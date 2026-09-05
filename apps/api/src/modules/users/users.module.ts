@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { PrismaConsentRecordRepository } from "./repositories/prisma-consent-record.repository";
 import { PrismaMembershipRepository } from "./repositories/prisma-membership.repository";
 import { PrismaUserRepository } from "./repositories/prisma-user.repository";

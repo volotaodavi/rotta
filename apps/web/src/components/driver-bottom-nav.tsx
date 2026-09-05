@@ -6,7 +6,6 @@ import { PortalBottomNav } from "./portal-bottom-nav";
 
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
-
 /**
  * Frente AO — corrigido pra bater EXATAMENTE com os rótulos das 3
  * imagens de referência (Início/Viagens/Notificações/Perfil, os mesmos

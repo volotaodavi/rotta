@@ -1,6 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import { useSchoolsList } from "../hooks/use-schools";
 import { SCHOOL_STATUS_LABEL, SCHOOL_STATUS_TONE } from "../labels";
 

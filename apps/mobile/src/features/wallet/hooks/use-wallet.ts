@@ -4,7 +4,6 @@ import type { RequestWithdrawalInput } from "@rotta/api-client";
 
 import { walletApi } from "@/lib/api-client";
 
-
 /**
  * Hooks de dados do Rotta Pay (Dossiê 26) — carteira própria do
  * Motorista (`/wallet/me/*`, mesma API do painel web da transportadora,

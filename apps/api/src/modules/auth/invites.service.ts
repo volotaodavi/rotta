@@ -10,7 +10,6 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 
-
 import { INVITE_REPOSITORY } from "./auth.constants";
 import { AuthService, type AuthRequestMeta } from "./auth.service";
 

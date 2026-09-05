@@ -1,8 +1,6 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { CommunicationChannel, DeviceTokenPlatform, type Prisma } from "@prisma/client";
 
-import { ExpoPushService } from "@/infra/push/expo-push.service";
-import { WebPushService } from "@/infra/push/web-push.service";
 
 import { DEVICE_TOKEN_REPOSITORY } from "../notifications.constants";
 
@@ -13,6 +11,8 @@ import type {
 } from "./channel-sender.interface";
 import type { DeviceTokenRepository } from "../repositories/device-token.repository";
 
+import { ExpoPushService } from "@/infra/push/expo-push.service";
+import { WebPushService } from "@/infra/push/web-push.service";
 
 /**
  * Canal `PUSH` — fan-out para TODOS os `DeviceToken`s ativos do

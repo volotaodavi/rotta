@@ -2,7 +2,6 @@ import type { MetadataRoute } from "next";
 
 import { getSiteUrl } from "@/lib/site-config";
 
-
 /**
  * `robots.txt` gerado nativamente pelo Next.js 15 a partir deste
  * arquivo (Dossiê 12 §7.4). Bloqueia rastreamento de tudo que exige

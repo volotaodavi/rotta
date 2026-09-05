@@ -2,15 +2,25 @@ import { Sparkles } from "@rotta/icons/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-import { StatusPill, VehicleButton, VehicleCard, VehicleScreen, VehicleTextField } from "@/features/vehicles/components";
-import { useTheme } from "@/providers/theme-provider";
 
-import { useAddSupportMessage, useCloseSupportTicket, useSupportTicketDetail } from "../hooks/use-support";
+import {
+  useAddSupportMessage,
+  useCloseSupportTicket,
+  useSupportTicketDetail,
+} from "../hooks/use-support";
 import { SUPPORT_TICKET_STATUS_LABEL, SUPPORT_TICKET_STATUS_TONE } from "../labels";
 
 import type { SupportStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import {
+  StatusPill,
+  VehicleButton,
+  VehicleCard,
+  VehicleScreen,
+  VehicleTextField,
+} from "@/features/vehicles/components";
+import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<SupportStackParamList, "Detalhes">;
 
@@ -86,14 +96,19 @@ export function ChamadoDetalhesScreen({ route }: Props): JSX.Element {
                   {
                     backgroundColor,
                     borderRadius: theme.radius.md,
-                    alignSelf: message.autorIsIA || message.autorIsAdminRotta ? "flex-start" : "flex-end",
+                    alignSelf:
+                      message.autorIsIA || message.autorIsAdminRotta ? "flex-start" : "flex-end",
                   },
                 ]}
               >
                 <View style={styles.autorLinha}>
                   {message.autorIsIA ? <Sparkles size={13} color={theme.colors.textMuted} /> : null}
                   <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
-                    {message.autorIsIA ? "Rotta AI" : message.autorIsAdminRotta ? "Suporte Rotta" : message.autorNome}
+                    {message.autorIsIA
+                      ? "Rotta AI"
+                      : message.autorIsAdminRotta
+                        ? "Suporte Rotta"
+                        : message.autorNome}
                     {" · "}
                     {new Date(message.createdAt).toLocaleString("pt-BR")}
                   </Text>

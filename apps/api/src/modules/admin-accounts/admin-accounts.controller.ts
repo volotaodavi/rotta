@@ -9,7 +9,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * "Contas Admin" (pedido do usuário 03/09/2026) — GERAL-only: nenhuma
  * rota aqui leva `@AdminAreas`, então `AdminAreaGuard` recusa qualquer

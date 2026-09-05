@@ -1,6 +1,5 @@
 import { Inject, Injectable, InternalServerErrorException } from "@nestjs/common";
 
-
 import { DASHBOARD_REPOSITORY } from "./dashboard.constants";
 
 import type { DashboardResponseDto } from "./dto/dashboard-response.dto";

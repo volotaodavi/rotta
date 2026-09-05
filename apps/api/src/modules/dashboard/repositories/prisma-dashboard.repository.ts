@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { TripStatus } from "@prisma/client";
 
-
 import type {
   CompanyDashboardData,
   DashboardRepository,

@@ -67,7 +67,9 @@ export class ExpoPushService {
       });
 
       if (!response.ok) {
-        this.logger.warn(`Expo Push respondeu HTTP ${response.status} para um lote de ${lote.length} token(s).`);
+        this.logger.warn(
+          `Expo Push respondeu HTTP ${response.status} para um lote de ${lote.length} token(s).`,
+        );
         continue;
       }
 
@@ -80,7 +82,9 @@ export class ExpoPushService {
         } else if (ticket.details?.error && INVALID_TOKEN_ERRORS.has(ticket.details.error)) {
           invalidos.push(token);
         } else {
-          this.logger.warn(`Expo Push recusou o token ${token}: ${ticket.message ?? "erro desconhecido"}.`);
+          this.logger.warn(
+            `Expo Push recusou o token ${token}: ${ticket.message ?? "erro desconhecido"}.`,
+          );
         }
       });
     }

@@ -15,7 +15,13 @@ jest.mock("web-push", () => ({
 
 const mockedWebpush = webpush as jest.Mocked<typeof webpush>;
 
-function buildConfigService(overrides: Partial<{ vapidPublicKey: string; vapidPrivateKey: string; vapidSubject: string }> = {}): ConfigService {
+function buildConfigService(
+  overrides: Partial<{
+    vapidPublicKey: string;
+    vapidPrivateKey: string;
+    vapidSubject: string;
+  }> = {},
+): ConfigService {
   return {
     get: jest.fn().mockReturnValue({
       vapidPublicKey: "public-key",

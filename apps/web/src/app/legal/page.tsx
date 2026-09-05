@@ -5,7 +5,6 @@ import type { Metadata } from "next";
 
 import { LEGAL_DOCUMENTS } from "@/features/legal/documents";
 
-
 export const metadata: Metadata = {
   title: "Documentação Rotta",
   description:

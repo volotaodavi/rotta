@@ -11,7 +11,6 @@ import {
 import { VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * "Meu filho não vai hoje" (Frente 10, auditoria 31/08/2026, pedido do
  * usuário: "informando que o aluno não irá") — paridade mobile de

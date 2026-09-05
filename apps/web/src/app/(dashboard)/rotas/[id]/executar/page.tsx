@@ -6,7 +6,6 @@ import { ExecuteRouteClient } from "./_components/execute-route-client";
 
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 
-
 /**
  * Tela de execução do fluxo novo de Rotas (pedido do usuário: "Para
  * iniciar: deve estar em 'minhas rotas' -> botão deslizante para

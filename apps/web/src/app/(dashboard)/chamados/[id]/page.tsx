@@ -93,11 +93,7 @@ export default function ChamadoDetalhePage(): JSX.Element {
                       : "ml-auto max-w-[80%] rounded-lg bg-primary/10 px-4 py-3"
                 }
               >
-                <Typography
-                  variant="caption"
-                  color="muted"
-                  className="flex items-center gap-1.5"
-                >
+                <Typography variant="caption" color="muted" className="flex items-center gap-1.5">
                   {message.autorIsIA && <Sparkles className="h-3.5 w-3.5" />}
                   {message.autorIsIA
                     ? "Rotta AI"

@@ -21,7 +21,6 @@ import {
   VEHICLE_CATEGORY_LABEL,
 } from "@/features/vehicles/labels";
 
-
 const STATUS_BADGE_VARIANT: Record<VehicleAdminReviewStatus, BadgeVariant> = {
   PRE_APROVADO: "neutral",
   APROVADO: "success",

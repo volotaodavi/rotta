@@ -49,7 +49,6 @@ import { useSupportTickets } from "@/features/support/hooks/use-support";
 import { analyticsApi } from "@/lib/api-client";
 import { usePrivacy } from "@/providers/privacy-provider";
 
-
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }

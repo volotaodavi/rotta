@@ -12,7 +12,6 @@ import {
   useRefreshMyIdentityVerification,
 } from "@/features/identity-verification/hooks/use-identity-verification";
 
-
 /** Textos por status — nunca a mesma frase de "recusada" pra quem simplesmente nunca começou ou está aguardando análise. */
 const COPY: Record<
   Exclude<IdentityVerificationStatus, "APROVADA">,

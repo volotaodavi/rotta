@@ -1,6 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { SupportService } from "../support.service";
 
 import type { SupportMessageRepository } from "../repositories/support-message.repository";

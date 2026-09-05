@@ -1,6 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
-
 import { useNotificationsList, useSetNotificationArquivada } from "../hooks/use-notifications";
 import { NOTIFICATION_PRIORITY_TONE, NOTIFICATION_TYPE_ICON } from "../labels";
 

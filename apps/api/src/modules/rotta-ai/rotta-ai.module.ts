@@ -7,7 +7,6 @@ import { DiditModule } from "@/infra/didit/didit.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { GeoModule } from "@/modules/geo/geo.module";
 
-
 /**
  * Importa `GeoModule` para `analyzeSchoolAddress`/`suggestRouteOptimization`
  * chamarem o `GeoEngineService` de verdade (briefing "ROTTA GEO

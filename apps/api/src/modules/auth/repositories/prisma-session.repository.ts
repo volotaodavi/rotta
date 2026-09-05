@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type { CreateSessionInput, SessionRepository } from "./session.repository";
 import type { Prisma, Session } from "@prisma/client";
 

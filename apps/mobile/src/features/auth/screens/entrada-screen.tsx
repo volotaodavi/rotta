@@ -1,7 +1,6 @@
 import { ImageBackground, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
 import HERO_IMAGE from "../../../../assets/welcome-hero.png";
 import { AuthButton } from "../components";
 

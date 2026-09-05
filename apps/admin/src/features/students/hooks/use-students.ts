@@ -6,7 +6,6 @@ import type { CreateStudentForCompanyInput } from "@rotta/api-client";
 
 import { studentsApi } from "@/lib/api-client";
 
-
 /**
  * Hooks do módulo Alunos, visão Admin Rotta (pedido do usuário
  * 02/09/2026: "empresas > alunos > cadastramos os alunos... salvamos e

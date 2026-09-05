@@ -18,7 +18,6 @@ import type { TransportRequest, TransportRequestStatus } from "@rotta/api-client
 import { TransportRequestStatusBadge } from "@/features/marketplace/components/transport-request-status-badge";
 import { useTransportRequestsList } from "@/features/marketplace/hooks/use-marketplace";
 
-
 const STATUS_OPTIONS: TransportRequestStatus[] = ["RECEBIDA", "EM_ANALISE", "APROVADA", "RECUSADA"];
 
 /**

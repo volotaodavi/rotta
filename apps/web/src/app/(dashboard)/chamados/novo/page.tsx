@@ -9,7 +9,6 @@ import type { SupportTicketCategoria } from "@rotta/api-client";
 import { useCreateSupportTicket } from "@/features/support/hooks/use-support";
 import { SUPPORT_QUICK_REPLIES } from "@/features/support/quick-replies";
 
-
 /** Abertura de chamado (`SUP-01`) — "assunto e descrição obrigatórios". */
 export default function NovoChamadoPage(): JSX.Element {
   const router = useRouter();

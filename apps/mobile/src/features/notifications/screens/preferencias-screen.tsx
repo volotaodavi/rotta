@@ -14,7 +14,6 @@ import {
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 interface FormState {
   receberPush: boolean;
   receberWhatsapp: boolean;

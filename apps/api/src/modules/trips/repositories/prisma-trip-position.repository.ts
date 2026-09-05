@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type { CreateTripPositionData, TripPositionRepository } from "./trip-position.repository";
 import type { TripPosition } from "@prisma/client";
 

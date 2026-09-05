@@ -1,6 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 
-
 import {
   DEVICE_TOKEN_REPOSITORY,
   NOTIFICATION_PREFERENCE_REPOSITORY,

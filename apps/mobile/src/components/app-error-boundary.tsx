@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 
 import { clientErrorsApi } from "@/lib/api-client";
 
-
 /**
  * Rede de segurança contra erro de render não tratado (auditoria
  * minuciosa 03/09/2026) — achado real: `apps/web` tem um `error.tsx`

@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * Container comum das telas de "Meu Veículo" (briefing "APP MOBILE") —
  * mesmo papel de `AuthScreen` (Dossiê 15), porém local a esta feature:

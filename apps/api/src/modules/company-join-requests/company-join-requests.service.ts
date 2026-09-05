@@ -7,7 +7,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-
 import { COMPANY_JOIN_REQUEST_REPOSITORY } from "./company-join-requests.constants";
 
 import type { CreateCompanyJoinRequestDto } from "./dto/create-company-join-request.dto";

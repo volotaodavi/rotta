@@ -14,8 +14,6 @@ import { useSuggestSchools } from "@/features/schools/hooks/use-schools";
 import { useMyLocation } from "@/hooks/use-my-location";
 import { geoApi } from "@/lib/api-client";
 
-
-
 /** Cor do selo Ida/Volta — mesma paleta neutra usada nos demais `Badge` informativos desta tela (nunca semântica de sucesso/erro, é só rótulo). */
 const STOP_DIRECTION_BADGE_VARIANT: Record<StopDirection, "neutral" | "info"> = {
   IDA: "info",

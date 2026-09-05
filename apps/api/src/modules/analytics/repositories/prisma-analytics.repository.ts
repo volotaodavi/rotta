@@ -10,7 +10,6 @@ import type {
 
 import { PrismaService } from "@/infra/database/prisma.service";
 
-
 /** Grade de ~1,1km (2 casas decimais de grau) para agrupar paradas próximas no heatmap — mesma ordem de grandeza de `roundCoord` em `map-intelligence.service.ts`, mas arredondamento mais grosso de propósito (visão nacional, não bairro a bairro). */
 function roundToGrid(value: number): number {
   return Math.round(value * 100) / 100;

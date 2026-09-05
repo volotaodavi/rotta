@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { PrismaWalletRepository } from "./repositories/prisma-wallet.repository";
 import { RottaPayProviderService } from "./rotta-pay-provider.service";
 import { WALLET_REPOSITORY } from "./wallet.constants";

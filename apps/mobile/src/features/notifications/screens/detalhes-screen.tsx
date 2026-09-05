@@ -2,7 +2,6 @@ import { Star } from "@rotta/icons/native";
 import { useEffect } from "react";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 
-
 import {
   useDeleteNotification,
   useMarkNotificationRead,

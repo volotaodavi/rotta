@@ -8,7 +8,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-
 import {
   toWalletResponseDto,
   toWalletTransactionResponseDto,

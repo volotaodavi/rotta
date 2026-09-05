@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 import { WebView } from "react-native-webview";
 
-
 import { AuthButton } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";

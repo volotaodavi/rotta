@@ -1,7 +1,6 @@
 import { ApiError, type CnpjPreview } from "@rotta/api-client";
 import { useCallback, useState } from "react";
 
-
 import { companiesApi } from "@/lib/api-client";
 
 export type CnpjLookupStatus = "idle" | "loading" | "found" | "not-found" | "error";

@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { BACKOFFICE_REPOSITORY } from "./backoffice.constants";
 import { BackofficeController } from "./backoffice.controller";
 import { BackofficeService } from "./backoffice.service";

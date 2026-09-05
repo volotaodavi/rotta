@@ -32,8 +32,6 @@ import { pillGhostLg, pillOnAccentLg, pillPrimaryLg } from "@/components/pill-bu
 import { Reveal } from "@/components/reveal-on-scroll";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
 
-
-
 /** Canonical/keywords reais do produto — título/descrição/OG herdam do root layout, já otimizados. */
 export const metadata: Metadata = {
   alternates: { canonical: "/" },

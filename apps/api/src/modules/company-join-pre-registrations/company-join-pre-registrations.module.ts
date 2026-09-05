@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { COMPANY_JOIN_PRE_REGISTRATION_REPOSITORY } from "./company-join-pre-registrations.constants";
 import { CompanyJoinPreRegistrationsController } from "./company-join-pre-registrations.controller";
 import { CompanyJoinPreRegistrationsService } from "./company-join-pre-registrations.service";

@@ -10,7 +10,6 @@ import type {
 import { WhatsAppService } from "@/infra/whatsapp/whatsapp.service";
 import { UsersService } from "@/modules/users/users.service";
 
-
 /**
  * Canal `WHATSAPP` (briefing — "Preparar arquitetura para integração com
  * WhatsApp Business API, através de provedores oficiais, com camada de

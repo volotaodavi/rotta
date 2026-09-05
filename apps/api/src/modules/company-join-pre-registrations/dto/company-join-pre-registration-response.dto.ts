@@ -4,7 +4,6 @@ import type { CompanyJoinPreRegistrationStatus } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
-
 export class CompanyJoinPreRegistrationResponseDto {
   @ApiProperty()
   id!: string;

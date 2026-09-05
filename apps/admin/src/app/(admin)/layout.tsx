@@ -45,7 +45,6 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 import { defaultRouteForAdminPapel, isAdminRouteAllowed } from "@/lib/admin-area-access";
 import { PrivacyProvider, usePrivacy } from "@/providers/privacy-provider";
 
-
 interface NavItem {
   href: Route;
   label: string;

@@ -10,7 +10,6 @@ import type {
 import { SmsService } from "@/infra/sms/sms.service";
 import { UsersService } from "@/modules/users/users.service";
 
-
 /**
  * Canal `SMS` (briefing — "Preparar arquitetura para integração com
  * provedores de SMS, totalmente desacoplada") — envia de verdade através

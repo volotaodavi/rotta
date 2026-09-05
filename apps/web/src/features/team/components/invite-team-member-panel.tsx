@@ -8,7 +8,6 @@ import type { Role } from "@rotta/api-client";
 
 import { useCreateInvite } from "@/features/team/hooks/use-invites";
 
-
 /**
  * Pedido do usuário: "a janela de 'equipe' deve ter a possibilidade de
  * adicionar outro motorista e adicionar um monitor (cadastro manual ou

@@ -8,7 +8,6 @@ import { useApproveJoinRequest, useRejectJoinRequest } from "../hooks/use-join-r
 
 import type { CompanyJoinRequestListItem, Role } from "@rotta/api-client";
 
-
 const PAPEL_LABEL: Partial<Record<Role, string>> = {
   motorista: "Motorista",
   monitor: "Monitor",

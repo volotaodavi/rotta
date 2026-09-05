@@ -5,7 +5,6 @@ import {
   NotImplementedException,
 } from "@nestjs/common";
 
-
 import { RottaAiService } from "../rotta-ai.service";
 
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";

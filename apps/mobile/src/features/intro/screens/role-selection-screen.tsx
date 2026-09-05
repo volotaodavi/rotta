@@ -2,7 +2,6 @@ import { Car, ClipboardCheck, Heart } from "@rotta/icons/native";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
 import { RoleOption } from "../components/role-option";
 
 import type { AuthStackParamList } from "@/navigation/types";

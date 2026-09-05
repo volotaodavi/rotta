@@ -14,7 +14,6 @@ import {
 } from "@rotta/ui/web";
 import { useState, type FormEvent } from "react";
 
-
 import type {
   CreateStudentPreRegistrationInput,
   StudentPreRegistrationStatus,

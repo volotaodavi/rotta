@@ -9,7 +9,6 @@ import {
 } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 
-
 import { ABACATEPAY_HMAC_PUBLIC_KEY } from "./billing.constants";
 
 import type { Request } from "express";

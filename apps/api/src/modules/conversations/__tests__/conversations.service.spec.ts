@@ -1,6 +1,5 @@
 import { ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { ConversationsService } from "../conversations.service";
 
 import type { ConversationRepository } from "../repositories/conversation.repository";

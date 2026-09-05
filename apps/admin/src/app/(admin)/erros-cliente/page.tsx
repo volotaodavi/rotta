@@ -14,7 +14,6 @@ import {
 } from "@rotta/ui/web";
 import { useState } from "react";
 
-
 import type { ClientApp, ClientErrorReport } from "@rotta/api-client";
 import type { BadgeVariant } from "@rotta/ui/web";
 

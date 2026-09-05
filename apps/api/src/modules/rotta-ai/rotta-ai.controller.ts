@@ -1,7 +1,6 @@
 import { Body, Controller, Post } from "@nestjs/common";
 import { ApiBearerAuth, ApiResponse, ApiTags } from "@nestjs/swagger";
 
-
 import { AnalyzeDriverDocumentDto } from "./dto/analyze-driver-document.dto";
 import { AnalyzeSchoolAddressDto } from "./dto/analyze-school-address.dto";
 import { AnalyzeVehicleDocumentDto } from "./dto/analyze-vehicle-document.dto";

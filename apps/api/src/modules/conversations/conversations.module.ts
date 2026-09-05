@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { CONVERSATION_REPOSITORY } from "./conversations.constants";
 import { ConversationsController } from "./conversations.controller";
 import { ConversationsService } from "./conversations.service";

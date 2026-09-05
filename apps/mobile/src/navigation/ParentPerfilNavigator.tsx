@@ -1,11 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
-import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
-import { ParentPerfilScreen } from "@/features/parent/screens";
-
 import { SupportNavigator } from "./SupportNavigator";
 
 import type { ParentPerfilStackParamList } from "./types";
+
+import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
+import { ParentPerfilScreen } from "@/features/parent/screens";
+
 
 
 const Stack = createNativeStackNavigator<ParentPerfilStackParamList>();

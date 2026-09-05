@@ -12,7 +12,6 @@ import {
   useSuggestRouteOptimization,
 } from "@/features/routes/hooks/use-routes";
 
-
 function formatarDuracao(segundos: number): string {
   const minutos = Math.round(segundos / 60);
   if (minutos < 60) return `${minutos} min`;

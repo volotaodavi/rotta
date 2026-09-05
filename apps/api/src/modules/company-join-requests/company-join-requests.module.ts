@@ -10,7 +10,6 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
 import { CompanyJoinPreRegistrationsModule } from "@/modules/company-join-pre-registrations/company-join-pre-registrations.module";
 import { UsersModule } from "@/modules/users/users.module";
 
-
 /**
  * Módulo `CompanyJoinRequests` (Frente N, briefing item 9) — importa
  * `CompaniesModule` só por `COMPANY_REPOSITORY` (resolver

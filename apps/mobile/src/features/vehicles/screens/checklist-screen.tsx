@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Switch, Text, View } from "react-native";
 
-
 import { VehicleButton, VehicleCard, VehicleScreen, VehicleTextField } from "../components";
 import {
   useCreateVehicleChecklist,

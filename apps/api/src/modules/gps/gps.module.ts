@@ -4,7 +4,6 @@ import { GpsController } from "./gps.controller";
 
 import { TripsModule } from "@/modules/trips/trips.module";
 
-
 /**
  * Módulo GPS (Dossiê 13, Seção 12) — camada de LEITURA agregada sobre o
  * módulo Trips: mapa operacional (Empresa/Gestor), localizador do

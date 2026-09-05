@@ -14,7 +14,6 @@ import {
   useCreatePixCheckout,
 } from "@/features/company/hooks/use-company";
 
-
 type Metodo = "PIX" | AsaasBillingType;
 
 const METODOS: Array<{ id: Metodo; label: string }> = [

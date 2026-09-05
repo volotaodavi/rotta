@@ -6,7 +6,10 @@ import { useState } from "react";
 
 import type { AnnouncementAudience } from "@rotta/api-client";
 
-import { useAnnouncements, useCreateAnnouncement } from "@/features/announcements/hooks/use-announcements";
+import {
+  useAnnouncements,
+  useCreateAnnouncement,
+} from "@/features/announcements/hooks/use-announcements";
 
 /**
  * Aba "Avisos" (pedido do usuário: "no painel do admin também deverá

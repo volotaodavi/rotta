@@ -1,7 +1,6 @@
 import { BadRequestException, NotFoundException, UnauthorizedException } from "@nestjs/common";
 import { Prisma, UserStatus } from "@prisma/client";
 
-
 import { InvitesService } from "../invites.service";
 
 import type { AuthService } from "../auth.service";

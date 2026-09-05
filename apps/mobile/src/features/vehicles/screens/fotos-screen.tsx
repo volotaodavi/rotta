@@ -1,6 +1,5 @@
 import { Image, StyleSheet, Text } from "react-native";
 
-
 import { VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle, useVehicleDocuments } from "../hooks/use-vehicles";
 

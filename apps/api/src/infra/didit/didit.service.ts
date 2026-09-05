@@ -5,7 +5,6 @@ import type { DiditConfig } from "@/config/didit.config";
 
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
-
 /** Chave nos snapshots de `IntegrationHealthService` (Admin Rotta → `GET /health/integrations`). */
 export const DIDIT_INTEGRATION_NAME = "didit";
 

@@ -8,7 +8,6 @@ import type { PixCheckout } from "@rotta/api-client";
 
 import { usePixCheckoutStatus } from "@/features/company/hooks/use-company";
 
-
 /**
  * Checkout Pix embutido (briefing "pagar sem precisar ir em outro
  * lugar") — QR Code + código copia-e-cola vêm prontos na resposta da

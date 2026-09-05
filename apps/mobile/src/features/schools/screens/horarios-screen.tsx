@@ -1,6 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { useSchool } from "../hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL } from "../labels";
 

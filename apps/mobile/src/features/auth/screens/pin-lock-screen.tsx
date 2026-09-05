@@ -2,7 +2,6 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-
 import { AuthButton, AuthScreen } from "../components";
 import { PinCodeInput } from "../components/pin-code-input";
 import { verifyPinLock } from "../pin-lock-store";

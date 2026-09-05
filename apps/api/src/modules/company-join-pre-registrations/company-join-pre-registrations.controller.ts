@@ -8,7 +8,6 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * `company-join-pre-registrations` — API REST da tela "Convites"
  * (pedido do usuário 02/09/2026). Só a Empresa/Gestor acessa: o

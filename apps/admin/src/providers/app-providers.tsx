@@ -14,8 +14,6 @@ import { env } from "@/config/env";
 import { authApi } from "@/lib/api-client";
 import { initGlobalErrorCapture } from "@/lib/global-error-capture";
 
-
-
 /** Mesmo raciocínio de `apps/web/src/providers/app-providers.tsx` — chamado no corpo do módulo, nunca dentro de um `useEffect`. */
 configureRottaMaps({
   mapTilerApiKey: env.NEXT_PUBLIC_MAPTILER_API_KEY,

@@ -27,7 +27,6 @@ import {
 } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
 
-
 /** Legenda curta de quando a última sincronização rodou — "há poucos segundos" é mais legível que um timestamp cru enquanto o worker ainda está rodando. */
 function formatarQuandoRodou(iso: string): string {
   const segundos = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));

@@ -2,7 +2,6 @@ import { AuthProvider } from "@rotta/auth/native";
 import { configureRottaMaps } from "@rotta/maps/native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-
 import { QueryProvider } from "./query-provider";
 import { ThemeProvider } from "./theme-provider";
 

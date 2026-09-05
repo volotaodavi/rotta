@@ -1,7 +1,6 @@
 import { useAuth } from "@rotta/auth/native";
 import { View, StyleSheet, Text } from "react-native";
 
-
 import { SCHOOL_SHIFT_LABEL } from "../../schools/labels";
 
 import type { ParentPerfilStackParamList, ParentTabParamList } from "@/navigation/types";

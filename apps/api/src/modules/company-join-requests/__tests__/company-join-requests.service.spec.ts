@@ -1,6 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
 
-
 import { CompanyJoinRequestsService } from "../company-join-requests.service";
 
 import type {

@@ -6,7 +6,6 @@ import type { ReactNode } from "react";
 
 import { wakeApi } from "@/lib/wake-api";
 
-
 /**
  * Layout de autenticacao do Admin Rotta — e-mail/senha + 2FA obrigatorio
  * (Dossie 12, Secao 4.5), nunca OTP/magic link (perfil de acesso

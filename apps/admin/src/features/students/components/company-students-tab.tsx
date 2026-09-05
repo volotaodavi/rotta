@@ -28,8 +28,6 @@ import type {
 import { useCreateSchool, useSchoolsList } from "@/features/schools/hooks/use-schools";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 
-
-
 const TURNOS = [
   { value: "MANHA", label: "Manhã" },
   { value: "TARDE", label: "Tarde" },

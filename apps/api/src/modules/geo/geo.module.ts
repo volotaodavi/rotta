@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { GeocodingAiAgentService } from "./agents/geocoding-ai-agent.service";
 import { InepSyncSchedulerService } from "./agents/inep-sync-scheduler.service";
 import { InepSyncService } from "./agents/inep-sync.service";

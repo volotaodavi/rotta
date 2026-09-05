@@ -8,7 +8,6 @@ import type { Contract, ContractStatus } from "@rotta/api-client";
 import { ContractStatusBadge } from "@/features/marketplace/components/contract-status-badge";
 import { useContractsList } from "@/features/marketplace/hooks/use-marketplace";
 
-
 const STATUS_OPTIONS: ContractStatus[] = ["AGUARDANDO_ASSINATURA", "ATIVO", "ENCERRADO"];
 
 /**

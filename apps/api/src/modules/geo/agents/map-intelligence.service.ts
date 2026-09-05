@@ -1,6 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
 
-
 import { SCHOOL_MARKER_REPOSITORY } from "../geo.constants";
 
 import type { Coordenada } from "../geo-engine.types";

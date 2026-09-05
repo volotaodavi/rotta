@@ -3,7 +3,6 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-
 import {
   AuthButton,
   AuthScreen,

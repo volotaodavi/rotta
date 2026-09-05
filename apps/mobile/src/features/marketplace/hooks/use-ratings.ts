@@ -4,7 +4,6 @@ import type { CreateRatingInput } from "@rotta/api-client";
 
 import { marketplaceApi } from "@/lib/api-client";
 
-
 /** Hooks de avaliação pós-transporte (briefing "AVALIAÇÕES" — liberada 30 dias após a ativação). */
 export function useRatings(contractId: string | undefined) {
   return useQuery({

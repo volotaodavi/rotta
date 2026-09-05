@@ -8,7 +8,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 
-
 import { toTransportRequestResponseDto } from "./mappers/transport-request.mapper";
 import { TRANSPORTER_REPOSITORY, TRANSPORT_REQUEST_REPOSITORY } from "./marketplace.constants";
 

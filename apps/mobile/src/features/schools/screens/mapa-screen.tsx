@@ -2,7 +2,6 @@ import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { useMemo } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
-
 import { useSchool, useSchoolAccessPoints } from "../hooks/use-schools";
 import { SCHOOL_ACCESS_POINT_TYPE_LABEL } from "../labels";
 

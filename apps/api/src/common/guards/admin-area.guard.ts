@@ -7,7 +7,6 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import { ADMIN_AREAS_KEY } from "@/common/decorators/admin-areas.decorator";
 import { AdminArea, Role } from "@/shared/enums";
 
-
 /** Áreas que cada sub-papel de Admin Rotta enxerga — `GERAL` é tratado à parte (sempre tudo), nunca aparece aqui. */
 const AREAS_BY_PAPEL: Record<Exclude<AdminRottaPapel, "GERAL">, ReadonlySet<AdminArea>> = {
   [AdminRottaPapel.SUPORTE]: new Set([AdminArea.SUPORTE, AdminArea.IDENTIDADE, AdminArea.VEICULOS]),

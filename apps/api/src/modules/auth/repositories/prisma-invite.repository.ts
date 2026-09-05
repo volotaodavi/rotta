@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
 
-
 import type { CreateInviteInput, InviteRepository, InviteWithCompany } from "./invite.repository";
 import type { Invite, Prisma } from "@prisma/client";
 

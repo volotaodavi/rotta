@@ -9,7 +9,6 @@ import {
   TransportadorDetalhesScreen,
 } from "@/features/marketplace/screens";
 
-
 const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
 
 /**

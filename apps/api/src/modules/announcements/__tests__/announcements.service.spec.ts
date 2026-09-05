@@ -51,7 +51,9 @@ describe("AnnouncementsService", () => {
     } as unknown as jest.Mocked<UsersService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
     messagePersonalizationService = {
-      avisoGeral: jest.fn().mockImplementation((titulo: string, corpo: string) => ({ titulo, corpo })),
+      avisoGeral: jest
+        .fn()
+        .mockImplementation((titulo: string, corpo: string) => ({ titulo, corpo })),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
 
     service = new AnnouncementsService(
@@ -67,7 +69,11 @@ describe("AnnouncementsService", () => {
       announcementRepository.create.mockResolvedValue(buildAnnouncement({ destinatariosCount: 3 }));
 
       const result = await service.create(
-        { titulo: "Manutenção programada", corpo: "O app ficará indisponível das 2h às 3h.", publico: AnnouncementAudience.TODOS },
+        {
+          titulo: "Manutenção programada",
+          corpo: "O app ficará indisponível das 2h às 3h.",
+          publico: AnnouncementAudience.TODOS,
+        },
         adminActor,
       );
 
@@ -89,11 +95,18 @@ describe("AnnouncementsService", () => {
       );
 
       await service.create(
-        { titulo: "Novidade pro seu negócio", corpo: "Lançamos uma nova funcionalidade.", publico: AnnouncementAudience.EMPRESAS },
+        {
+          titulo: "Novidade pro seu negócio",
+          corpo: "Lançamos uma nova funcionalidade.",
+          publico: AnnouncementAudience.EMPRESAS,
+        },
         adminActor,
       );
 
-      expect(usersService.listActiveUserIdsByRoles).toHaveBeenCalledWith([Role.EMPRESA, Role.GESTOR]);
+      expect(usersService.listActiveUserIdsByRoles).toHaveBeenCalledWith([
+        Role.EMPRESA,
+        Role.GESTOR,
+      ]);
       expect(usersService.listAllActiveUserIds).not.toHaveBeenCalled();
     });
 
@@ -103,7 +116,11 @@ describe("AnnouncementsService", () => {
       );
 
       await service.create(
-        { titulo: "Aviso pros pais", corpo: "Novo recurso de acompanhamento.", publico: AnnouncementAudience.RESPONSAVEIS },
+        {
+          titulo: "Aviso pros pais",
+          corpo: "Novo recurso de acompanhamento.",
+          publico: AnnouncementAudience.RESPONSAVEIS,
+        },
         adminActor,
       );
 
@@ -117,7 +134,11 @@ describe("AnnouncementsService", () => {
       });
 
       const result = await service.create(
-        { titulo: "Manutenção programada", corpo: "O app ficará indisponível das 2h às 3h.", publico: AnnouncementAudience.TODOS },
+        {
+          titulo: "Manutenção programada",
+          corpo: "O app ficará indisponível das 2h às 3h.",
+          publico: AnnouncementAudience.TODOS,
+        },
         adminActor,
       );
 
