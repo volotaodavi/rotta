@@ -79,22 +79,50 @@ export class IntegrationHealthService {
     return `${KEY_PREFIX}:${integration}`;
   }
 
+  private static readonly UNKNOWN_SNAPSHOT: StoredIntegrationHealth = {
+    status: "unknown",
+    lastSuccessAt: null,
+    lastFailureAt: null,
+    lastError: null,
+    lastLatencyMs: null,
+    consecutiveFailures: 0,
+  };
+
+  /**
+   * `read`/`write` nunca lançam (achado real da auditoria de CI de
+   * 04/09/2026, ao rodar os testes E2E pela primeira vez): este
+   * serviço é chamado sempre via `void this.integrationHealth.recordX(...)`
+   * (fire-and-forget, de propósito — registrar saúde nunca deve
+   * bloquear a chamada real que está sendo medida). Sem o
+   * try/catch aqui, uma falha real do próprio Redis (conexão caindo,
+   * reinício, etc.) virava uma promise rejeitada sem `.catch()` em
+   * cada um dos 6 call sites — rejeição não tratada que, num teste
+   * Jest, aparecia atribuída a QUALQUER teste rodando no momento (não
+   * necessariamente o que causou a falha), e em produção poderia
+   * derrubar o processo. Mesma disciplina de "nunca lança" já usada em
+   * `WebPushService`/`AdminInboxEmailService`: rastrear a saúde de uma
+   * integração não pode, ela mesma, criar um novo modo de falha.
+   */
   private async read(integration: string): Promise<StoredIntegrationHealth> {
-    const stored = await this.redis.get<StoredIntegrationHealth>(this.key(integration));
-    return (
-      stored ?? {
-        status: "unknown",
-        lastSuccessAt: null,
-        lastFailureAt: null,
-        lastError: null,
-        lastLatencyMs: null,
-        consecutiveFailures: 0,
-      }
-    );
+    try {
+      const stored = await this.redis.get<StoredIntegrationHealth>(this.key(integration));
+      return stored ?? IntegrationHealthService.UNKNOWN_SNAPSHOT;
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao ler o histórico de saúde de "${integration}" no Redis — assumindo estado desconhecido. Erro: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return IntegrationHealthService.UNKNOWN_SNAPSHOT;
+    }
   }
 
   private async write(integration: string, value: StoredIntegrationHealth): Promise<void> {
-    await this.redis.set(this.key(integration), value);
+    try {
+      await this.redis.set(this.key(integration), value);
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao gravar o histórico de saúde de "${integration}" no Redis — descartado (best-effort). Erro: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   /** Chamada real teve sucesso — zera falhas consecutivas, status volta a `healthy`. */

@@ -129,4 +129,33 @@ describe("IntegrationHealthService (Dossiê 44 — Integration & Intelligence Au
       expect(snapshots[2]?.status).toBe("unknown");
     });
   });
+
+  /**
+   * Auditoria minuciosa 04/09/2026 — achado real ao rodar os testes E2E
+   * pela primeira vez: `void this.integrationHealth.recordX(...)` (fire-
+   * and-forget, em 6 call sites diferentes) nunca tinha `.catch()`, e o
+   * serviço em si não tratava falha nenhuma do Redis — uma conexão caindo
+   * virava rejeição não tratada, atribuída pelo Jest a qualquer teste
+   * rodando no momento (não ao teste que causou a falha).
+   */
+  describe("resiliência a falhas do Redis (nunca lança)", () => {
+    it("getSnapshot nunca lança mesmo se o Redis falhar ao ler", async () => {
+      redis.get.mockRejectedValueOnce(new Error("Connection is closed."));
+      await expect(service.getSnapshot("lytex")).resolves.toEqual(
+        expect.objectContaining({ integration: "lytex", status: "unknown" }),
+      );
+    });
+
+    it("recordSuccess nunca lança mesmo se o Redis falhar ao ler OU gravar", async () => {
+      redis.get.mockRejectedValueOnce(new Error("Connection is closed."));
+      redis.set.mockRejectedValueOnce(new Error("Connection is closed."));
+      await expect(service.recordSuccess("osrm", 42)).resolves.toBeUndefined();
+    });
+
+    it("recordFailure nunca lança mesmo se o Redis falhar ao ler OU gravar", async () => {
+      redis.get.mockRejectedValueOnce(new Error("Connection is closed."));
+      redis.set.mockRejectedValueOnce(new Error("Connection is closed."));
+      await expect(service.recordFailure("osrm", "timeout")).resolves.toBeUndefined();
+    });
+  });
 });

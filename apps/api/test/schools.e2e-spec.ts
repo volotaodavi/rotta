@@ -146,6 +146,8 @@ describe("Schools (e2e)", () => {
     await prisma.school.deleteMany();
     await prisma.membership.deleteMany();
     await prisma.auditLog.deleteMany();
+    await prisma.walletTransaction.deleteMany();
+    await prisma.withdrawalRequest.deleteMany();
     await prisma.company.deleteMany();
     await prisma.user.deleteMany({ where: { id: { not: adminUserId } } });
     await prisma.$disconnect();
@@ -159,6 +161,8 @@ describe("Schools (e2e)", () => {
     await prisma.school.deleteMany();
     await prisma.membership.deleteMany();
     await prisma.auditLog.deleteMany();
+    await prisma.walletTransaction.deleteMany();
+    await prisma.withdrawalRequest.deleteMany();
     await prisma.company.deleteMany();
     await prisma.user.deleteMany({ where: { id: { not: adminUserId } } });
   });

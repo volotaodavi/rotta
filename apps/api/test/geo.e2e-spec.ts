@@ -230,8 +230,19 @@ describe("Geo Platform (e2e)", () => {
         .expect(201);
 
       expect(response.body.data.status).toBe("REVISAO_MANUAL");
-      expect(response.body.data.tentativa).toBe(3);
-      expect(geocodeMock).toHaveBeenCalledTimes(3);
+      // 3 tentativas reais (endereço completo → sem número → sem bairro,
+      // tentativa 1/2/3) esgotadas pelo Validation AI Agent, MAIS a
+      // aproximação final por município (`GeoPipelineService.
+      // aproximarPorMunicipio`, achado real documentado ali: nunca confiar
+      // na coordenada da 3ª tentativa reprovada, sempre cair pra um pino de
+      // cidade — mais seguro que uma coordenada possivelmente na cidade
+      // errada). Essa aproximação grava uma coordenada NOVA com
+      // `tentativa: 1` (é a 1ª — e única — tentativa daquele fallback,
+      // deliberadamente não numerada como "4ª tentativa do endereço
+      // exato", que é um fluxo diferente) — por isso 4 chamadas ao
+      // Nominatim no total (3 reais + 1 do fallback), não 3.
+      expect(response.body.data.tentativa).toBe(1);
+      expect(geocodeMock).toHaveBeenCalledTimes(4);
 
       const fila = await request(app.getHttpServer())
         .get("/v1/geo/revisao-manual")

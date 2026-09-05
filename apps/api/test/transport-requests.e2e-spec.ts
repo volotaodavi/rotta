@@ -173,6 +173,8 @@ describe("Marketplace — solicitação de transporte (e2e)", () => {
     await prisma.student.deleteMany();
     await prisma.membership.deleteMany();
     await prisma.auditLog.deleteMany();
+    await prisma.walletTransaction.deleteMany();
+    await prisma.withdrawalRequest.deleteMany();
     await prisma.company.deleteMany();
     await prisma.school.deleteMany();
     await prisma.user.deleteMany({ where: { id: { not: adminUserId } } });
@@ -188,6 +190,8 @@ describe("Marketplace — solicitação de transporte (e2e)", () => {
     await prisma.student.deleteMany();
     await prisma.membership.deleteMany();
     await prisma.auditLog.deleteMany();
+    await prisma.walletTransaction.deleteMany();
+    await prisma.withdrawalRequest.deleteMany();
     await prisma.company.deleteMany();
     await prisma.user.deleteMany({ where: { id: { not: adminUserId } } });
   });
