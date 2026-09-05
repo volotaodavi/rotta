@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
+import { SITE_INSTAGRAM_URL } from "@/lib/site-config";
 import { wakeApi } from "@/lib/wake-api";
 
 /**
@@ -43,8 +44,6 @@ const NAV_LINKS: { href: Route; label: string }[] = [
  * sentido se nenhuma URL real existisse ainda.
  */
 export const ROTTA_APP_URL: Route = "/selecionar-perfil";
-
-const ROTTA_INSTAGRAM_URL = "https://www.instagram.com/rotta_app/";
 
 /** Glifo do Instagram desenhado à mão (contorno genérico — não é o logotipo/marca registrada da Meta). */
 function InstagramGlyph({ className }: { className?: string }): JSX.Element {
@@ -242,7 +241,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
               transportadoras numa única plataforma.
             </p>
             <a
-              href={ROTTA_INSTAGRAM_URL}
+              href={SITE_INSTAGRAM_URL}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Rotta no Instagram (abre em nova aba)"

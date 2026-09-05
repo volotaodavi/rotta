@@ -75,7 +75,8 @@ export const SITE_DESCRIPTION =
 /** Logotipo real da marca (Dossiê 24) — usado como `logo` no JSON-LD Organization e como imagem de fallback do OpenGraph. */
 export const SITE_LOGO_PATH = "/brand/rotta-mark-512.png";
 
-export const SITE_INSTAGRAM_URL = "https://www.instagram.com/rotta_app/";
+/** Perfil novo (pedido do usuário 05/09/2026) — substitui o antigo @rotta_app. URL sem parâmetros de rastreio de QR code (?igsi=.../utm_source=qr): esses só fazem sentido numa campanha específica, nunca num link permanente do site. */
+export const SITE_INSTAGRAM_URL = "https://www.instagram.com/rottabr.com.br/";
 
 /** Número real de WhatsApp da Rotta do Brasil (fornecido pelo usuário), em E.164 sem "+" — formato exigido pelo `wa.me`. */
 export const SITE_WHATSAPP_NUMBER = "5521997099557";
