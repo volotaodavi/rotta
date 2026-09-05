@@ -124,11 +124,16 @@ export default function PrivacidadePage(): JSX.Element {
       <LegalSection id="localizacao" title="9. Geolocalização (GPS)">
         O GPS do veículo é usado exclusivamente durante uma viagem ativa, para permitir que os
         responsáveis vinculados àquela rota acompanhem o trajeto em tempo real e recebam avisos de
-        aproximação/embarque/desembarque. A localização do motorista/veículo{" "}
+        aproximação/embarque/desembarque. Para o Motorista/Monitor, essa coleta acontece{" "}
+        <strong>mesmo com o aplicativo minimizado ou a tela do aparelho bloqueada</strong>{" "}
+        (localização em segundo plano) — sempre e somente enquanto a viagem estiver em andamento, e
+        com aviso e consentimento explícitos dentro do próprio aplicativo antes de qualquer coleta
+        (a permissão do sistema operacional pode ser revogada a qualquer momento nas configurações
+        do aparelho). A localização do motorista/veículo{" "}
         <strong>não fica publicamente disponível</strong>: ela é disponibilizada somente aos
         usuários autorizados e relacionados àquela operação (responsáveis com aluno na rota, a
         própria transportadora, e o motorista/monitor da viagem). Fora de uma viagem ativa, a
-        localização não é compartilhada com terceiros.
+        localização não é coletada nem compartilhada com terceiros.
       </LegalSection>
 
       <LegalSection id="financeiro" title="10. Dados financeiros">

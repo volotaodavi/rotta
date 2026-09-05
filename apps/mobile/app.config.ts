@@ -20,7 +20,12 @@ export default (): ExpoConfig => ({
   slug: "rotta",
   scheme: "rotta",
   owner: "rotta",
-  version: "0.1.0",
+  // Auditoria minuciosa 04/09/2026 — bump pra 1.0.0 (primeiro envio
+  // público real à Play Store). `versionCode` (Android) é numérico e
+  // gerenciado à parte pelo EAS (`eas.json` -> `appVersionSource:
+  // "remote"` + `autoIncrement: true` no perfil de produção) — este
+  // campo é só o "versionName" exibido ao usuário.
+  version: "1.0.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
