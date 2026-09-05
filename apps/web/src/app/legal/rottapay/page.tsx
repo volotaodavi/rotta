@@ -7,7 +7,7 @@ import { getLegalDocumentMeta } from "@/features/legal/documents";
 
 export const metadata: Metadata = {
   title: "Política Financeira RottaPay",
-  description: "O que é a RottaPay, o papel da AbacatePay e da Lytex, e como o dinheiro circula.",
+  description: "O que é a RottaPay, o papel da Asaas e da Lytex, e como o dinheiro circula.",
   alternates: { canonical: "/legal/rottapay" },
 };
 
@@ -15,7 +15,7 @@ const meta = getLegalDocumentMeta("rottapay")!;
 
 const TOC = [
   { id: "o-que-e", label: "O que é a RottaPay" },
-  { id: "abacatepay", label: "AbacatePay" },
+  { id: "asaas", label: "Asaas" },
   { id: "lytex", label: "Lytex" },
   { id: "valores", label: "Como o dinheiro circula" },
   { id: "notas-fiscais", label: "Notas fiscais" },
@@ -23,10 +23,12 @@ const TOC = [
 
 /**
  * Política Financeira RottaPay (Dossiê 45, prompt §21-§25) — a
- * distinção RottaPay/AbacatePay/Lytex que o prompt pede é literalmente
+ * distinção RottaPay/Asaas/Lytex que o prompt pede é literalmente
  * como a arquitetura já foi construída (Dossiê 26/63, auditado nos
  * Dossiês 43/44 desta série): nenhuma das três já era confundida no
  * código, este documento só torna essa distinção pública e explícita.
+ * Seção 2 migrada de AbacatePay pra Asaas em 05/09/2026 (pedido do
+ * usuário: "Nós usaremos 100% Asaas, esquece a AbacatePay").
  */
 export default function RottaPayPage(): JSX.Element {
   return (
@@ -46,13 +48,13 @@ export default function RottaPayPage(): JSX.Element {
         financeira nem a processadora dos pagamentos.
       </LegalSection>
 
-      <LegalSection id="abacatepay" title="2. AbacatePay">
-        A AbacatePay é a parceira usada para processar a{" "}
+      <LegalSection id="asaas" title="2. Asaas">
+        A Asaas é a parceira usada para processar a{" "}
         <strong>assinatura/plano da própria plataforma Rotta</strong>: a mensalidade que uma
-        transportadora paga para usar a Rotta, conforme a integração efetivamente implementada. A
-        AbacatePay não é a Rotta, e não deve ser confundida com a RottaPay: uma processa a cobrança
-        do plano da plataforma, a outra é a camada financeira voltada às operações da transportadora
-        dentro da plataforma.
+        transportadora paga para usar a Rotta (Pix, cartão de crédito/débito e boleto), conforme a
+        integração efetivamente implementada. A Asaas não é a Rotta, e não deve ser confundida com a
+        RottaPay: uma processa a cobrança do plano da plataforma, a outra é a camada financeira
+        voltada às operações da transportadora dentro da plataforma.
       </LegalSection>
 
       <LegalSection id="lytex" title="3. Lytex">

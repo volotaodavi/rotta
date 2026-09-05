@@ -116,9 +116,9 @@ export function CompanyPaymentHistoryRow({
         </div>
         <div className="flex items-center gap-3">
           <Badge variant="neutral">{empresa.planoNome}</Badge>
-          {empresa.abacatepaySubscriptionId && <Badge variant="info">Pix (AbacatePay)</Badge>}
-          {empresa.asaasSubscriptionId && <Badge variant="info">Cartão/Boleto (Asaas)</Badge>}
-          {!empresa.abacatepaySubscriptionId && !empresa.asaasSubscriptionId && (
+          {empresa.asaasSubscriptionId ? (
+            <Badge variant="info">Assinatura ativa (Asaas)</Badge>
+          ) : (
             <Badge variant="warning">Sem assinatura recorrente</Badge>
           )}
           {podeGerenciar && empresa.asaasSubscriptionId && (

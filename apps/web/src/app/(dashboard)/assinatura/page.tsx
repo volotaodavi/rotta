@@ -26,10 +26,9 @@ const METODOS: Array<{ id: Metodo; label: string }> = [
 /**
  * Checkout próprio da Rotta (Dossiê 26, faturamento) — página que
  * `TrialLockModal`/`BillingBlockScreen` linkam pra "Assinar agora".
- * Dois provedores por trás, uma única experiência de "Assinar":
- * Pix continua na AbacatePay (`PixCheckoutModal`), cartão/débito/
- * boleto passam pela Asaas (`createAsaasCheckout`) — sem o usuário
- * precisar saber ou escolher o provedor, só o método de pagamento.
+ * 100% Asaas por trás (Pix via `PixCheckoutModal`, cartão/débito/
+ * boleto via `createAsaasCheckout`) — o usuário só escolhe o método de
+ * pagamento, nunca precisa saber qual provedor processa.
  */
 export default function AssinaturaPage(): JSX.Element {
   const toast = useToast();
@@ -146,10 +145,9 @@ export default function AssinaturaPage(): JSX.Element {
         </Card>
       )}
 
-      {/* Só nos métodos que passam pela Asaas de verdade (Pix continua
-          na AbacatePay, ver nota acima) — nunca atribuir o provedor
-          errado. */}
-      {metodo !== "PIX" ? <AsaasSecurityBadge /> : null}
+      {/* 100% Asaas por trás de qualquer método (Pix incluso, desde a
+          migração 05/09/2026) — o selo aparece sempre. */}
+      <AsaasSecurityBadge />
 
       {(metodo === "CREDIT_CARD" || metodo === "DEBIT_CARD") &&
         (pagamentoAtual ? (

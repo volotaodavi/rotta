@@ -67,7 +67,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
   ],
   // `COMPANY_REPOSITORY` também é exportado (além de `CompaniesService`)
   // para o `BillingModule` (Dossiê 26) atualizar `Company.status`/
-  // `abacatepaySubscriptionId` a partir do webhook da AbacatePay sem
+  // `asaasSubscriptionId` a partir do webhook da Asaas sem
   // reimplementar acesso a `Prisma.company` — o próprio Repository
   // Pattern deste módulo, reusado por outro módulo de domínio.
   exports: [CompaniesService, COMPANY_REPOSITORY],

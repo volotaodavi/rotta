@@ -51,7 +51,7 @@ export class BillingController {
     return this.billingService.createPixCheckoutForCompany(actor.tenantId as string);
   }
 
-  /** Polling enquanto o cliente não paga/o webhook não chega — nunca a única confirmação (ver `BillingService.applyPixPayment`). */
+  /** Polling enquanto o cliente não paga/o webhook não chega — nunca a única confirmação (ver `BillingService.applyAsaasStatus`). */
   @Get("checkout/pix/:id/status")
   @Roles(Role.EMPRESA, Role.GESTOR)
   getPixCheckoutStatus(@Param("id") id: string) {
@@ -79,7 +79,7 @@ export class BillingController {
     return this.billingService.getAsaasCheckoutStatus(id);
   }
 
-  /** Painel financeiro (Frente AF) — valores recebidos, taxa retida, empresas/planos ativos, AbacatePay (Pix) e Asaas (cartão/débito/boleto) lado a lado. */
+  /** Painel financeiro (Frente AF) — valores recebidos, taxa retida, empresas/planos ativos (100% Asaas: Pix, cartão/débito/boleto). */
   @Get("admin/overview")
   @Roles(Role.ADMIN_ROTTA)
   @AdminAreas(AdminArea.FINANCEIRO)

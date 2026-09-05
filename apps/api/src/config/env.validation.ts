@@ -222,31 +222,21 @@ export const envSchema = z.object({
   LYTEX_CLIENT_SECRET: z.string().optional(),
   LYTEX_BASE_URL: z.string().url().optional(),
 
-  // AbacatePay (abacatepay.com) — provedora que cobra a MENSALIDADE da
-  // Rotta das transportadoras/empresas/autônomos (Dossiê 26, R$ 39,90/mês
-  // — NUNCA o Responsável, que é 100% gratuito e não tem plano). Ao
-  // contrário da Lytex acima, o contrato real da API JÁ foi verificado
-  // (docs.abacatepay.com + chamadas reais confirmando a chave). Opcional:
-  // sem ABACATEPAY_API_KEY, `AbacatePayClientService` recusa a chamada
-  // com um erro claro, nunca falha o boot. ABACATEPAY_WEBHOOK_SECRET é
-  // escolhido por nós (não pela AbacatePay) e deve ser o mesmo valor
-  // colado no campo "Secret" do webhook criado no dashboard — ver
-  // `abacatepay-webhook.controller.ts`.
-  ABACATEPAY_API_KEY: z.string().optional(),
-  ABACATEPAY_BASE_URL: z.string().url().optional(),
-  ABACATEPAY_WEBHOOK_SECRET: z.string().optional(),
-
-  // Asaas (asaas.com) — pedido do usuário: cartão de crédito, débito e
-  // boleto da mensalidade da Rotta (Pix continua na AbacatePay acima).
-  // Mesmo padrão "stub honesto" da AbacatePay: sem ASAAS_API_KEY,
-  // `AsaasClientService` recusa a chamada com um erro claro, nunca
-  // derruba o boot. `ASAAS_BASE_URL` tem default de sandbox — troca
-  // pra `https://api.asaas.com/v3` em produção (`ASAAS_BASE_URL` real
-  // no ambiente). `ASAAS_WEBHOOK_TOKEN` é escolhido por nós (não pela
-  // Asaas) e deve ser o mesmo valor colado no cabeçalho `asaas-access-
-  // token` configurado no webhook do dashboard — ver
-  // `asaas-webhook.guard.ts`. Contrato da API não testado ainda contra
-  // uma conta real nesta base de código (mesma ressalva da Lytex).
+  // Asaas (asaas.com) — provedora ÚNICA (pedido do usuário 05/09/2026:
+  // "Nós usaremos 100% Asaas, esquece a AbacatePay") que cobra a
+  // MENSALIDADE da Rotta das transportadoras/empresas/autônomos
+  // (Dossiê 26, R$ 39,90/mês — NUNCA o Responsável, que é 100%
+  // gratuito e não tem plano): Pix, cartão de crédito/débito e boleto,
+  // todos via Asaas. Mesmo padrão "stub honesto" do resto do módulo:
+  // sem ASAAS_API_KEY, `AsaasClientService` recusa a chamada com um
+  // erro claro, nunca derruba o boot. `ASAAS_BASE_URL` tem default de
+  // sandbox — troca pra `https://api.asaas.com/v3` em produção
+  // (`ASAAS_BASE_URL` real no ambiente). `ASAAS_WEBHOOK_TOKEN` é
+  // escolhido por nós (não pela Asaas) e deve ser o mesmo valor colado
+  // no cabeçalho `asaas-access-token` configurado no webhook do
+  // dashboard — ver `asaas-webhook.guard.ts`. Contrato da API não
+  // testado ainda contra uma conta real nesta base de código (mesma
+  // ressalva da Lytex).
   ASAAS_API_KEY: z.string().optional(),
   ASAAS_BASE_URL: z.string().url().default("https://api-sandbox.asaas.com/v3"),
   ASAAS_WEBHOOK_TOKEN: z.string().optional(),

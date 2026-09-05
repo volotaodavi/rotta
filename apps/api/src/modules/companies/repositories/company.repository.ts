@@ -39,8 +39,6 @@ export interface CreateCompanyData {
   asaasCustomerId?: string;
   /** Copiado da `PendingSubscription` vinculada quando o provedor é Asaas — ver nota acima. */
   asaasSubscriptionId?: string;
-  /** Agendado (hoje + 1 ciclo) quando a `PendingSubscription` vinculada é da AbacatePay (Pix) — mesmo cálculo de `BillingService.applyPixPayment`. */
-  pixProximoVencimento?: Date;
 }
 
 export interface UpdateCompanyData {
@@ -65,16 +63,10 @@ export interface UpdateCompanyData {
   fusoHorario?: string;
   status?: CompanyStatus;
   planId?: string;
-  /** ID da assinatura ativa na AbacatePay (`subs_...`) — ver nota no schema Prisma. */
-  abacatepaySubscriptionId?: string | null;
   /** ID do cliente na Asaas (`cus_...`) — ver nota no schema Prisma. */
   asaasCustomerId?: string | null;
   /** ID da assinatura ativa na Asaas (`sub_...`) — ver nota no schema Prisma. */
   asaasSubscriptionId?: string | null;
-  /** Próximo vencimento do Pix avulso — ver nota no schema Prisma. */
-  pixProximoVencimento?: Date | null;
-  /** Último reenvio automático do Pix de renovação — ver nota no schema Prisma. */
-  pixUltimoAvisoEm?: Date | null;
   deletedAt?: Date | null;
 }
 
@@ -126,7 +118,7 @@ export interface CompanyRepository {
    * JÁ tem uma relação com a empresa (o código veio da própria
    * transportadora, por WhatsApp/papel) tentando se vincular a algo que
    * ela mesma já criou. `Company.status` só vira `ATIVO` depois da
-   * assinatura paga confirmada (`BillingService`, webhook AbacatePay) —
+   * assinatura paga confirmada (`BillingService`, webhook Asaas) —
    * toda empresa nova começa em `TRIAL` (`@default(TRIAL)`) e É
    * exatamente durante o trial que a transportadora mais precisa
    * cadastrar motoristas/alunos pra provar valor antes de pagar. Corrigido
@@ -137,12 +129,4 @@ export interface CompanyRepository {
    * transportadoras pagantes pra Responsável NOVO descobrir).
    */
   findActiveByCodigoInterno(codigoInterno: string): Promise<Company | null>;
-  /**
-   * Candidatas ao reenvio automático de Pix (Dossiê 26,
-   * `BillingService.processarVencimentosPix`) — toda empresa `ATIVO`
-   * que já pagou por Pix avulso pelo menos uma vez (`pixProximoVencimento`
-   * não nulo). A decisão de reenviar/marcar inadimplente é do serviço
-   * (regra de negócio), este método só traz os candidatos.
-   */
-  listComPixProximoVencimento(): Promise<CompanyWithPlan[]>;
 }

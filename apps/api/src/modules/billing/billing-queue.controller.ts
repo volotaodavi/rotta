@@ -20,14 +20,6 @@ import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guar
 export class BillingQueueController {
   constructor(private readonly billingService: BillingService) {}
 
-  /** Sem payload — o job em si decide quais empresas processar (`processarVencimentosPix`). */
-  @Post("reissue-pix")
-  @HttpCode(HttpStatus.OK)
-  async reissuePix(): Promise<{ ok: true; reenviados: number; marcadosInadimplentes: number }> {
-    const resultado = await this.billingService.processarVencimentosPix();
-    return { ok: true, ...resultado };
-  }
-
   /** Sem payload — reembolsa/expira `PendingSubscription` pagas há mais de 48h sem cadastro vinculado (`processarPendingSubscriptionsExpiradas`). */
   @Post("expire-pending-subscriptions")
   @HttpCode(HttpStatus.OK)

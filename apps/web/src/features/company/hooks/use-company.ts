@@ -85,7 +85,7 @@ export function usePixCheckoutStatus(id: string | undefined, enabled: boolean) {
  * Checkout próprio da Rotta pra cartão de crédito/débito e boleto
  * (Dossiê 26 — "página própria para receber os pagamentos, porém
  * utilizando a Asaas por trás"). Pix continua em `useCreatePixCheckout`
- * (AbacatePay) — mesma tela (`/assinatura`), dois provedores por trás.
+ * — mesma tela (`/assinatura`), 100% Asaas por trás dos dois.
  */
 export function useCreateAsaasCheckout() {
   return useMutation<AsaasPayment, unknown, CreateAsaasCheckoutInput>({

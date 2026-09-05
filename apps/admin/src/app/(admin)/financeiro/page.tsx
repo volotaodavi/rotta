@@ -25,10 +25,10 @@ function centsToBRL(cents: number): string {
 
 /**
  * Cartão de um valor financeiro agregado (recebido/taxa retida/cobranças
- * pagas). Quando a AbacatePay não está configurada nesta implantação
- * (`abacatepayConfigured === false`) ou a consulta a `billing/list`
- * falhou, o valor vem `null` — mostra "-", nunca um `0` fabricado (nunca
- * fingir um valor que não temos).
+ * pagas). Quando a Asaas não está configurada nesta implantação
+ * (`asaas.configured === false`) ou a consulta falhou, o valor vem
+ * `null` — mostra "-", nunca um `0` fabricado (nunca fingir um valor
+ * que não temos).
  */
 function ValorTile({
   icon,
@@ -55,10 +55,9 @@ function ValorTile({
 }
 
 /**
- * Bloco de valores de UM provedor (AbacatePay ou Asaas), lado a lado no
- * painel (pedido do usuário: "taxas da Asaas, quanto as taxas da
- * Abacatepay (pix)"). Quando `configured === false`, mostra o aviso em
- * vez de valores fabricados.
+ * Bloco de valores da Asaas (única provedora desde 05/09/2026 — pedido
+ * do usuário: "Nós usaremos 100% Asaas, esquece a AbacatePay"). Quando
+ * `configured === false`, mostra o aviso em vez de valores fabricados.
  */
 function ProviderCard({
   titulo,
@@ -145,12 +144,11 @@ function FinanceiroSkeleton(): JSX.Element {
 /**
  * Painel financeiro da mensalidade da plataforma (pedido do usuário:
  * "mostrar no painel do admin os valores recebidos, as taxas que a
- * abacatepay retrai + quantidade de empresas + quantidade de planos que
+ * Asaas retrai + quantidade de empresas + quantidade de planos que
  * estão usando + quais empresas estão usando o plano"). Todo número vem
- * de `GET /billing/admin/overview` (real) — quando a AbacatePay não está
- * configurada, ou a consulta a `billing/list` falha, os campos de
- * valores vêm `null` e a tela mostra isso explicitamente, sem fabricar
- * dado nenhum.
+ * de `GET /billing/admin/overview` (real) — quando a Asaas não está
+ * configurada, ou a consulta falha, os campos de valores vêm `null` e a
+ * tela mostra isso explicitamente, sem fabricar dado nenhum.
  */
 export default function FinanceiroPage(): JSX.Element {
   const { data, isLoading, isError, refetch, isFetching } = useBillingAdminOverview();
@@ -222,7 +220,7 @@ export default function FinanceiroPage(): JSX.Element {
         <ValorTile
           icon={ReceiptText}
           tone="warning"
-          label="Taxa retida hoje (AbacatePay + Asaas)"
+          label="Taxa retida hoje (Asaas)"
           value={
             data.totalTaxaRetidaCentavos === null ? null : centsToBRL(data.totalTaxaRetidaCentavos)
           }
@@ -255,20 +253,12 @@ export default function FinanceiroPage(): JSX.Element {
         />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <ProviderCard
-          titulo="Asaas (Pix, Cartão e Boleto)"
-          descricao="Checkout próprio da Rotta — Pix, cartão de crédito, débito e boleto, tudo processado pela Asaas."
-          overview={data.asaas}
-          hidden={hidden}
-        />
-        <ProviderCard
-          titulo="AbacatePay (legado)"
-          descricao="Pix passou a ser 100% Asaas (pedido do usuário 03/09/2026) — a AbacatePay só aparece aqui se ainda houver uma assinatura antiga dela em aberto, nenhum Pix novo passa mais por ela."
-          overview={data.abacatepay}
-          hidden={hidden}
-        />
-      </div>
+      <ProviderCard
+        titulo="Asaas (Pix, Cartão e Boleto)"
+        descricao="Checkout próprio da Rotta — Pix, cartão de crédito, débito e boleto, tudo processado pela Asaas."
+        overview={data.asaas}
+        hidden={hidden}
+      />
 
       <Card>
         <Card.Header title="Planos em uso" />

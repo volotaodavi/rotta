@@ -9,23 +9,22 @@ import type { Request } from "express";
 import asaasConfig from "@/config/asaas.config";
 
 /**
- * Defesa do webhook da Asaas (Dossiê 26) — mais simples que a da
- * AbacatePay (sem HMAC): a Asaas envia de volta, em todo evento, o
- * mesmo header `asaas-access-token` cadastrado como "Token de
- * autenticação" no dashboard dela ao criar o webhook
+ * Defesa do webhook da Asaas (Dossiê 26) — sem HMAC: a Asaas envia de
+ * volta, em todo evento, o mesmo header `asaas-access-token` cadastrado
+ * como "Token de autenticação" no dashboard dela ao criar o webhook
  * (`docs.asaas.com/docs/webhook` — token estático, não rotativo, sem
  * assinatura sobre o corpo). Comparado contra `ASAAS_WEBHOOK_TOKEN`
  * (valor escolhido por nós, colado também no dashboard).
  *
  * A rota é `@Public()` (sem JWT de usuário — a Asaas não tem um token
  * de usuário Rotta para enviar), então este Guard é a ÚNICA defesa
- * real deste endpoint — mesmo papel de `AbacatePayWebhookGuard`.
+ * real deste endpoint.
  *
  * Comparação em tempo constante (achado em auditoria de segurança
  * 02/09/2026) — `!==` normal em string vaza timing proporcional a
  * quantos caracteres batem antes da primeira diferença; `timingSafeEqual`
- * (mesmo padrão já usado em `AbacatePayWebhookGuard`/`DiditWebhookGuard`)
- * fecha esse canal, mesmo sendo um token estático (não HMAC).
+ * (mesmo padrão já usado em `DiditWebhookGuard`) fecha esse canal,
+ * mesmo sendo um token estático (não HMAC).
  */
 @Injectable()
 export class AsaasWebhookGuard implements CanActivate {

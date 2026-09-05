@@ -1,8 +1,5 @@
 import { Module } from "@nestjs/common";
 
-import { AbacatePayClientService } from "./abacatepay-client.service";
-import { AbacatePayWebhookController } from "./abacatepay-webhook.controller";
-import { AbacatePayWebhookGuard } from "./abacatepay-webhook.guard";
 import { AsaasClientService } from "./asaas-client.service";
 import { AsaasWebhookController } from "./asaas-webhook.controller";
 import { AsaasWebhookGuard } from "./asaas-webhook.guard";
@@ -20,9 +17,10 @@ import { UsersModule } from "@/modules/users/users.module";
 
 /**
  * Módulo Billing (Dossiê 26) — a Rotta cobrando a mensalidade das
- * empresas/transportadoras/autônomos (R$ 39,90/mês): Pix via AbacatePay,
- * cartão de crédito/débito e boleto via Asaas (checkout próprio da
- * Rotta). Nunca cobra o Responsável (100% gratuito, sem
+ * empresas/transportadoras/autônomos (R$ 39,90/mês), 100% via Asaas
+ * (Pix, cartão de crédito/débito e boleto — checkout próprio da Rotta,
+ * pedido do usuário 05/09/2026: "Nós usaremos 100% Asaas, esquece a
+ * AbacatePay"). Nunca cobra o Responsável (100% gratuito, sem
  * `Company`/`tenantId`).
  *
  * Importa `CompaniesModule` só pelo `COMPANY_REPOSITORY` que ela
@@ -37,23 +35,11 @@ import { UsersModule } from "@/modules/users/users.module";
     EmailModule,
     AuditModule,
   ],
-  controllers: [
-    BillingController,
-    AbacatePayWebhookController,
-    AsaasWebhookController,
-    BillingQueueController,
-  ],
-  providers: [
-    AbacatePayClientService,
-    AsaasClientService,
-    BillingService,
-    AbacatePayWebhookGuard,
-    AsaasWebhookGuard,
-    BillingSchedulerService,
-  ],
-  // `AbacatePayClientService` exportado pra `AdminDigestModule`
-  // reaproveitar (resumo semanal/mensal do Admin Rotta) sem duplicar
-  // uma segunda instância do client.
-  exports: [AbacatePayClientService],
+  controllers: [BillingController, AsaasWebhookController, BillingQueueController],
+  providers: [AsaasClientService, BillingService, AsaasWebhookGuard, BillingSchedulerService],
+  // `BillingService` exportado pra `AdminDigestModule` reaproveitar
+  // (`reconciliarPagamentosAsaas`, resumo semanal/mensal do Admin
+  // Rotta) sem duplicar a lógica de reconciliação Asaas.
+  exports: [BillingService],
 })
 export class BillingModule {}

@@ -10,7 +10,7 @@ import { MessagePersonalizationModule } from "@/modules/notifications/message-pe
 /**
  * `DiditWebhookController` fica aqui (não em `RottaAiModule`) porque é
  * infraestrutura da própria integração com a Didit — mesmo raciocínio
- * de `AbacatePayWebhookController` viver dentro de `BillingModule`, não
+ * de `AsaasWebhookController` viver dentro de `BillingModule`, não
  * de um módulo de domínio separado. `DiditWebhookProvisioningService`
  * roda uma vez (`OnModuleInit`) e auto-registra o destino de webhook na
  * própria Didit — ver nota completa nele. Este módulo é importado tanto

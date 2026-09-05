@@ -4,12 +4,7 @@ import { CompanyStatus, NotificationEventType, SupportTicketStatus } from "@pris
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
-import { AbacatePayClientService } from "@/modules/billing/abacatepay-client.service";
-import {
-  ABACATEPAY_FEE_CARD_FIXED_CENTS,
-  ABACATEPAY_FEE_CARD_PERCENT,
-  ABACATEPAY_FEE_PIX_CENTS,
-} from "@/modules/billing/billing.constants";
+import { BillingService } from "@/modules/billing/billing.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
@@ -37,27 +32,23 @@ export interface AdminDigestSummary {
   planosAtivosAgora: number;
   chamadosAbertos: number;
   chamadosEncerrados: number;
-  /** `null` = AbacatePay não configurada nesse ambiente (stub honesto, nunca finge 0). */
-  faturamentoAbacatePayCentavos: number | null;
-  /** `null` pelo mesmo motivo de `BillingService.getAdminOverview` — Asaas ainda não tem um "billing/list" mapeado aqui (ver nota lá). */
-  faturamentoAsaasCentavos: null;
-  /** Só reflete AbacatePay hoje, pela mesma razão acima — nunca `null` vira 0 fingido, nunca soma um valor Asaas que não existe. */
-  lucroLiquidoAbacatePayCentavos: number | null;
+  /** `null` = Asaas não configurada nesse ambiente (stub honesto, nunca finge 0). */
+  faturamentoCentavos: number | null;
+  /** Recebido menos taxa retida da Asaas — `null` pelo mesmo motivo acima. */
+  lucroLiquidoCentavos: number | null;
 }
 
 /**
  * "Informativos da Rotta" pro Admin (pedido do usuário 01/09/2026) —
  * resumo semanal/mensal com os números que importam pra rodar o
  * negócio: novos clientes, assinaturas, chamados de suporte,
- * faturamento e lucro líquido (baseado nas taxas retidas). Disparado
- * por `AdminDigestSchedulerService` (QStash, cron), nunca por uma ação
- * de usuário — por isso não vive em `BillingService`/`SupportService`
- * (que reagem a eventos), mas num módulo cross-domain próprio.
- *
- * `faturamentoAsaasCentavos`/parte do `lucroLiquido` ficam `null` até a
- * reconciliação de pagamentos Asaas ser construída (mesmo gap já
- * documentado em `BillingService.getAdminOverview` — este relatório só
- * herda a mesma limitação, não a esconde).
+ * faturamento e lucro líquido (baseado nas taxas retidas, 100% Asaas
+ * desde 05/09/2026 — pedido do usuário: "esquece a AbacatePay").
+ * Disparado por `AdminDigestSchedulerService` (QStash, cron), nunca por
+ * uma ação de usuário — por isso não vive em `BillingService`/
+ * `SupportService` (que reagem a eventos), mas num módulo cross-domain
+ * próprio, que só reaproveita `BillingService.reconciliarPagamentosAsaas`
+ * pra não duplicar a lógica de paginação/reconciliação.
  */
 @Injectable()
 export class AdminDigestService {
@@ -65,7 +56,7 @@ export class AdminDigestService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly abacatePayClient: AbacatePayClientService,
+    private readonly billingService: BillingService,
     private readonly usersService: UsersService,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly eventEmitter: EventEmitter2,
@@ -103,7 +94,7 @@ export class AdminDigestService {
       ]);
 
       const { faturamentoCentavos, lucroLiquidoCentavos } =
-        await this.calcularFaturamentoAbacatePay(periodo);
+        await this.calcularFaturamentoAsaas(periodo);
 
       return {
         periodo,
@@ -112,46 +103,29 @@ export class AdminDigestService {
         planosAtivosAgora,
         chamadosAbertos,
         chamadosEncerrados,
-        faturamentoAbacatePayCentavos: faturamentoCentavos,
-        faturamentoAsaasCentavos: null,
-        lucroLiquidoAbacatePayCentavos: lucroLiquidoCentavos,
+        faturamentoCentavos,
+        lucroLiquidoCentavos,
       };
     });
   }
 
-  /** `null`/`null` quando a AbacatePay não está configurada ou a consulta falha — nunca finge 0 (stub honesto, mesmo padrão de `BillingService.getAdminOverview`). */
-  private async calcularFaturamentoAbacatePay(
+  /** `null`/`null` quando a Asaas não está configurada ou a consulta falha — nunca finge 0 (stub honesto, mesmo padrão de `BillingService.getAdminOverview`). */
+  private async calcularFaturamentoAsaas(
     periodo: DigestPeriod,
   ): Promise<{ faturamentoCentavos: number | null; lucroLiquidoCentavos: number | null }> {
-    if (!this.abacatePayClient.isConfigured()) {
-      return { faturamentoCentavos: null, lucroLiquidoCentavos: null };
-    }
-
     try {
-      const billings = await this.abacatePayClient.listBillings();
-      const pagasNoPeriodo = billings.filter((billing) => {
-        if (billing.status !== "PAID" || !billing.paidAt) return false;
-        const paidAt = new Date(billing.paidAt);
-        return paidAt >= periodo.inicio && paidAt < periodo.fim;
-      });
-
-      const faturamentoCentavos = pagasNoPeriodo.reduce((soma, b) => soma + b.amount, 0);
-      const taxaCentavos = pagasNoPeriodo.reduce((soma, b) => {
-        const metodo = b.methods?.[0] ?? "CARD";
-        const taxa =
-          metodo === "PIX"
-            ? ABACATEPAY_FEE_PIX_CENTS
-            : Math.round(b.amount * ABACATEPAY_FEE_CARD_PERCENT) + ABACATEPAY_FEE_CARD_FIXED_CENTS;
-        return soma + taxa;
-      }, 0);
-
+      const { totalRecebidoCentavos, totalTaxaRetidaCentavos } =
+        await this.billingService.reconciliarPagamentosAsaas({
+          inicio: periodo.inicio,
+          fim: periodo.fim,
+        });
       return {
-        faturamentoCentavos,
-        lucroLiquidoCentavos: faturamentoCentavos - taxaCentavos,
+        faturamentoCentavos: totalRecebidoCentavos,
+        lucroLiquidoCentavos: totalRecebidoCentavos - totalTaxaRetidaCentavos,
       };
     } catch (error) {
       this.logger.warn(
-        `Falha ao calcular faturamento AbacatePay pro resumo do Admin: ${
+        `Falha ao calcular faturamento Asaas pro resumo do Admin: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -192,8 +166,8 @@ export class AdminDigestService {
       planosAtivosAgora: resumo.planosAtivosAgora,
       chamadosAbertos: resumo.chamadosAbertos,
       chamadosEncerrados: resumo.chamadosEncerrados,
-      faturamentoAbacatePayCentavos: resumo.faturamentoAbacatePayCentavos,
-      lucroLiquidoAbacatePayCentavos: resumo.lucroLiquidoAbacatePayCentavos,
+      faturamentoCentavos: resumo.faturamentoCentavos,
+      lucroLiquidoCentavos: resumo.lucroLiquidoCentavos,
     });
     // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
     // entrega mesmo sem nenhuma conta Admin Rotta real configurada.

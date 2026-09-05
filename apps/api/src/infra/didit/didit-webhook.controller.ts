@@ -53,7 +53,7 @@ interface DiditWebhookEnvelope {
  * cria sessão) não têm onde correlacionar — só ficam logados, nunca
  * inventa uma correlação que não existe.
  *
- * Sempre 2xx (mesmo padrão de `AbacatePayWebhookController`): a Didit
+ * Sempre 2xx (mesmo padrão de `AsaasWebhookController`): a Didit
  * reentrega em 5xx/404 (até 2 vezes, backoff de ~1min e ~4min) — nunca
  * forçar retry por um evento que já foi aplicado ou que não tem onde
  * persistir.

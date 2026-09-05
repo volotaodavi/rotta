@@ -13,7 +13,6 @@ import {
   CompanyType,
   MembershipStatus,
   NotificationEventType,
-  PendingSubscriptionProvider,
   PendingSubscriptionStatus,
   type PendingSubscription,
 } from "@prisma/client";
@@ -56,7 +55,6 @@ import {
 } from "@/infra/receita-federal/receita-federal.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
-import { PIX_RECURRENCE_MONTHS } from "@/modules/billing/billing.constants";
 import { DashboardService } from "@/modules/dashboard/dashboard.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
@@ -445,25 +443,15 @@ export class CompaniesService implements OnModuleInit {
           // Pula o trial e nasce ATIVO só quando achou um pagamento
           // `PAGO` batendo (ver `pendingSubscriptionPago` acima) — do
           // contrário, omitido de propósito, mesmo comportamento de
-          // sempre (default `TRIAL` do schema).
+          // sempre (default `TRIAL` do schema). 100% Asaas desde
+          // 05/09/2026 (pedido do usuário: "esquece a AbacatePay") —
+          // `pendingSubscriptionPago.provider` só pode valer ASAAS pra
+          // qualquer pagamento novo.
           ...(pendingSubscriptionPago
             ? {
                 status: CompanyStatus.ATIVO,
-                ...(pendingSubscriptionPago.provider === PendingSubscriptionProvider.ABACATEPAY
-                  ? {
-                      pixProximoVencimento: (() => {
-                        const proximoVencimento = new Date();
-                        proximoVencimento.setMonth(
-                          proximoVencimento.getMonth() + PIX_RECURRENCE_MONTHS,
-                        );
-                        return proximoVencimento;
-                      })(),
-                    }
-                  : {
-                      asaasCustomerId: pendingSubscriptionPago.providerCustomerId ?? undefined,
-                      asaasSubscriptionId:
-                        pendingSubscriptionPago.providerSubscriptionId ?? undefined,
-                    }),
+                asaasCustomerId: pendingSubscriptionPago.providerCustomerId ?? undefined,
+                asaasSubscriptionId: pendingSubscriptionPago.providerSubscriptionId ?? undefined,
               }
             : {}),
         },

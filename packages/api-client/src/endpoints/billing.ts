@@ -5,9 +5,10 @@ import type { ApiClient } from "../http";
 /**
  * Endpoints tipados do módulo Billing (Dossiê 26) — espelham
  * `apps/api/src/modules/billing`. Cobra a mensalidade da PLATAFORMA
- * (R$ 39,90/mês) das empresas/transportadoras/autônomos — Pix via
- * AbacatePay, cartão/débito/boleto via Asaas — nunca o Responsável,
- * que é 100% gratuito e não tem plano.
+ * (R$ 39,90/mês) das empresas/transportadoras/autônomos — 100% via
+ * Asaas (Pix, cartão/débito/boleto), desde 05/09/2026 (pedido do
+ * usuário: "Nós usaremos 100% Asaas, esquece a AbacatePay") — nunca o
+ * Responsável, que é 100% gratuito e não tem plano.
  */
 
 /**
@@ -29,7 +30,6 @@ export interface BillingAdminCompanySummary {
   nomeFantasia: string;
   razaoSocial: string;
   planoNome: string;
-  abacatepaySubscriptionId: string | null;
   asaasSubscriptionId: string | null;
   ativaDesde: string;
 }
@@ -40,7 +40,7 @@ export interface BillingAdminPlanSummary {
   quantidadeEmpresas: number;
 }
 
-/** Bloco de valores de UM provedor (AbacatePay ou Asaas) — mesmo formato pros dois no painel financeiro do Admin. */
+/** Bloco de valores da Asaas (única provedora) no painel financeiro do Admin. */
 export interface BillingProviderOverview {
   configured: boolean;
   totalRecebidoCentavos: number | null;
@@ -49,18 +49,14 @@ export interface BillingProviderOverview {
 }
 
 export interface BillingAdminOverview {
-  /** `false` = AbacatePay não configurada nesta implantação — os campos de valores/taxa abaixo vêm `null`. */
-  abacatepayConfigured: boolean;
   quantidadeEmpresasAtivas: number;
   planos: BillingAdminPlanSummary[];
   empresasAtivas: BillingAdminCompanySummary[];
   totalRecebidoCentavos: number | null;
   totalTaxaRetidaCentavos: number | null;
   quantidadeCobrancasPagas: number | null;
-  /** AbacatePay (Pix) e Asaas (cartão/débito/boleto) lado a lado. */
-  abacatepay: BillingProviderOverview;
   asaas: BillingProviderOverview;
-  /** Recebido menos taxa retida dos dois provedores — `null` se nenhum estiver configurado. */
+  /** Recebido menos taxa retida — `null` se a Asaas não estiver configurada. */
   lucroLiquidoCentavos: number | null;
 }
 
@@ -124,7 +120,7 @@ export interface BillingCompanyPaymentHistoryItem {
 export interface BillingCompanyPaymentHistoryResult {
   companyId: string;
   companyNome: string;
-  provider: "asaas" | "abacatepay" | "nenhum";
+  provider: "asaas" | "nenhum";
   items: BillingCompanyPaymentHistoryItem[];
   note?: string;
 }

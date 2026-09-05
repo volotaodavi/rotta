@@ -45,7 +45,7 @@ interface BrasilApiCnpjResponse {
  * SOBRESCREVE o que veio do cliente com o que a Receita Federal
  * devolveu, pros campos de razão social/endereço.
  *
- * Sem API key (ao contrário de Didit/QStash/AbacatePay) — BrasilAPI é
+ * Sem API key (ao contrário de Didit/QStash/Asaas) — BrasilAPI é
  * público. Ainda assim nunca bloqueia o cadastro por indisponibilidade
  * de rede pura (timeout/erro 5xx): quem chama decide se aceita os
  * dados do cliente como fallback ou rejeita — ver

@@ -3,12 +3,10 @@
  * do conhecimento geral público da API (docs.asaas.com), SEM nenhuma
  * chamada real testada ainda (não há `ASAAS_API_KEY` neste ambiente de
  * desenvolvimento). Mesma ressalva de `RottaPayProviderService`
- * (Lytex) — NÃO tem o mesmo grau de confiança que `abacatepay.types.ts`
- * (contrato confirmado com chamadas reais). `IntegrationHealthService`
- * vai registrar qualquer divergência assim que a primeira chamada real
- * acontecer em produção.
+ * (Lytex). `IntegrationHealthService` vai registrar qualquer
+ * divergência assim que a primeira chamada real acontecer em produção.
  *
- * Duas diferenças estruturais da AbacatePay que valem destacar:
+ * Duas características estruturais que valem destacar:
  * - Resposta é um JSON "flat" (o próprio objeto, sem envelope
  *   `{success, data}`) — erro vem como `{errors: [{code, description}]}`.
  * - Autenticação é o header custom `access_token` (não `Authorization:
@@ -32,30 +30,22 @@ export interface CreateAsaasCustomerInput {
   name: string;
   cpfCnpj: string;
   email?: string;
-  /** `company.id` — mesmo papel do `externalId` na AbacatePay: correlação de volta no webhook, sem outra consulta. */
+  /** `company.id` — correlação de volta no webhook (`externalReference`), sem outra consulta. */
   externalReference: string;
 }
 
 /**
  * `billingType` — a Asaas aceita cobrar cartão SEM tokenização prévia
  * (campos `creditCard`/`creditCardHolderInfo` direto no `POST
- * /payments` ou `/subscriptions`), diferente da AbacatePay (que exige
- * um checkout hospedado pra cartão). É essa diferença que viabiliza o
- * checkout próprio da Rotta pedido pelo usuário ("página própria para
- * receber os pagamentos").
+ * /payments` ou `/subscriptions`). É essa característica que viabiliza
+ * o checkout próprio da Rotta pedido pelo usuário ("página própria
+ * para receber os pagamentos").
  *
- * `"PIX"` (pedido do usuário 02/09/2026: "pode deixar o pix pelo Asaas
- * também" — a AbacatePay ficou com a chave inválida/desatualizada em
- * produção, "API key version mismatch") — usado só como FALLBACK
- * automático em `BillingService.createPreSignupPixCheckout` quando a
- * AbacatePay não está configurada, nunca oferecido como opção separada
- * na tela (o usuário final continua vendo um único botão "Pix").
- * Escopo desta entrega: só o pré-cadastro (`/planos/assinar`, sem conta
- * ainda) — o Pix autenticado (`createPixCheckoutForCompany`, cobrança
- * avulsa reemitida por `processarVencimentosPix`) continua exclusivo da
- * AbacatePay por enquanto: é um mecanismo de "assinatura simulada"
- * estruturalmente diferente da assinatura recorrente nativa da Asaas,
- * que merece seu próprio fallback dedicado, não um patch apressado.
+ * `"PIX"` — 100% Asaas desde 05/09/2026 (pedido do usuário: "Nós
+ * usaremos 100% Asaas, esquece a AbacatePay"; já vinha sendo usado como
+ * fallback desde 02/09/2026, quando a AbacatePay ficou com a chave
+ * inválida/desatualizada em produção). Assinatura mensal nativa da
+ * Asaas — renova sozinha, sem nenhum job de reemissão manual.
  */
 export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO" | "PIX";
 
@@ -63,9 +53,9 @@ export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO" | "PIX";
  * `GET /payments/{id}/pixQrCode` — só existe pra um `payment`/primeira
  * cobrança de uma `subscription` criada com `billingType: "PIX"`.
  * `payload` é o código copia-e-cola; `encodedImage` é o QR em base64
- * puro (sem prefixo `data:image/png;base64,`, diferente da AbacatePay
- * — ver `BillingService.toPixCheckoutFromAsaas`, que normaliza os dois
- * formatos pro mesmo contrato que o front já consome).
+ * puro (sem prefixo `data:image/png;base64,`) — ver
+ * `BillingService.toPixCheckoutFromAsaas`, que normaliza pro contrato
+ * (`PixCheckoutResult`) que o front já consome.
  */
 export interface AsaasPixQrCode {
   success: boolean;
@@ -112,7 +102,7 @@ export interface CreateAsaasSubscriptionInput {
   customer: string;
   billingType: AsaasBillingType;
   value: number;
-  /** `"MONTHLY"` — mesmo ciclo de cobrança da AbacatePay, sem alternativa por ora (plano único Starter). */
+  /** Único ciclo em uso — sem alternativa por ora (plano único Starter). */
   cycle: "MONTHLY";
   nextDueDate: string;
   description?: string;
@@ -154,9 +144,7 @@ export interface AsaasPayment {
    * Valor líquido já com a taxa da Asaas descontada — vem pronto da
    * própria API (confirmado com uma chamada real de produção, pedido do
    * usuário 02/09/2026: "veja a parte de faturamento... provedor
-   * Asaas"), diferente da AbacatePay (`ABACATEPAY_FEE_*`, formula
-   * estimada porque o `billing/list` deles não devolve valor líquido).
-   * `value - netValue` = taxa retida, sem precisar estimar nada.
+   * Asaas"). `value - netValue` = taxa retida, sem precisar estimar nada.
    */
   netValue?: number;
   /** Boleto: linha digitável, pra exibir sem precisar abrir o PDF. */

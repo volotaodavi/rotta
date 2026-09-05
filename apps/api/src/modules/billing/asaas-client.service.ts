@@ -25,14 +25,12 @@ export const ASAAS_INTEGRATION_NAME = "asaas";
 
 /**
  * Cliente HTTP de baixo nível para a API v3 da Asaas (Dossiê 26) — quem
- * processa cartão de crédito, débito e boleto da mensalidade da Rotta
- * (Pix é normalmente da AbacatePay, `abacatepay-client.service.ts`, mas
- * `getPixQrCode` também serve de fallback quando a AbacatePay não está
- * configurada/saudável — ver `AsaasBillingType`, campo `"PIX"`).
+ * processa Pix, cartão de crédito, débito e boleto da mensalidade da
+ * Rotta, 100% Asaas desde 05/09/2026 (pedido do usuário: "esquece a
+ * AbacatePay" — ver `AsaasBillingType`, campo `"PIX"`).
  *
- * Ao contrário de `AbacatePayClientService` (contrato já confirmado com
- * chamadas reais e autenticadas), este cliente NUNCA foi exercitado com
- * uma `ASAAS_API_KEY` válida (mesma ressalva de `RottaPayProviderService`/
+ * Este cliente NUNCA foi exercitado com uma `ASAAS_API_KEY` válida
+ * (mesma ressalva de `RottaPayProviderService`/
  * Lytex) — o formato de payload de sucesso (`createSubscription`,
  * `getPayment` etc.) segue a documentação pública, não uma resposta real.
  * O mecanismo de autenticação e o envelope de erro, porém, já foram
@@ -73,9 +71,9 @@ export class AsaasClientService {
   }
 
   /**
-   * Diferente da AbacatePay: sem envelope `{success, data}` — o corpo
-   * de sucesso É o próprio recurso; o de erro é `{errors: [...]}`.
-   * Autenticação por header custom `access_token` (não `Bearer`).
+   * Sem envelope `{success, data}` — o corpo de sucesso É o próprio
+   * recurso; o de erro é `{errors: [...]}`. Autenticação por header
+   * custom `access_token` (não `Bearer`).
    */
   private async request<T>(
     path: string,
@@ -195,8 +193,8 @@ export class AsaasClientService {
 
   /**
    * QR Code + copia-e-cola de um pagamento criado com `billingType:
-   * "PIX"` (fallback da AbacatePay, ver `AsaasBillingType`). Só existe
-   * pra um pagamento PIX de verdade — chamar isto pra um pagamento
+   * "PIX"` (ver `AsaasBillingType`). Só existe pra um pagamento PIX de
+   * verdade — chamar isto pra um pagamento
    * cartão/boleto retorna erro da própria Asaas, nunca chamado assim
    * neste código (`BillingService` só chama depois de criar a
    * assinatura com `billingType: "PIX"`).

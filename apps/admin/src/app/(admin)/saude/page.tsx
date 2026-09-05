@@ -48,8 +48,7 @@ const STATUS_TONE: Record<IntegrationStatusLevel, "success" | "warning" | "dange
 };
 
 const INTEGRATION_LABEL: Record<string, string> = {
-  abacatepay: "AbacatePay (assinatura via Pix)",
-  asaas: "Asaas (cartão de crédito, débito e boleto)",
+  asaas: "Asaas (Pix, cartão de crédito, débito e boleto)",
   lytex: "Lytex (Rotta Pay: split/transferência PIX)",
   nominatim: "Nominatim (Rotta Geo Engine: geocodificação)",
   osrm: "OSRM (Rotta Geo Engine: rotas)",
@@ -66,7 +65,7 @@ function formatDateTime(iso: string | null): string {
  * INTELLIGENCE AUDIT ENGINE, Seção 35) — saúde REAL das integrações
  * externas rastreadas por `IntegrationHealthService`, derivada do
  * tráfego real de produção (nunca um ping artificial). Escopo desta
- * entrega: as integrações com instrumentação real até agora (AbacatePay,
+ * entrega: as integrações com instrumentação real até agora (Asaas,
  * Lytex, Nominatim, OSRM, Didit — adicionada na Frente C) — o restante
  * do Dossiê 44 (KPIs de negócio, funil, reconciliação com provedores,
  * tracing distribuído) fica documentado como deferido, não fingido aqui.

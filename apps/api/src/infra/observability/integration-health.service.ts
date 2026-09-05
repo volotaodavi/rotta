@@ -14,7 +14,7 @@ import { RedisService } from "@/infra/cache/redis.service";
  * - `not_configured`: credenciais ausentes (nem tentou chamar) — estado
  *   diferente de `down`, porque não é uma falha, é uma configuração
  *   pendente (mesma distinção de `RottaPayProviderService`/
- *   `AbacatePayClientService`: "sem credenciais" nunca deve aparecer
+ *   `AsaasClientService`: "sem credenciais" nunca deve aparecer
  *   como "fora do ar").
  * - `unknown`: nenhuma chamada registrada ainda desde o último boot/
  *   `flushall` do Redis — não confundir com `healthy`.
@@ -58,7 +58,7 @@ const KEY_PREFIX = "integration_health";
  * chamada). Este serviço não dispara chamada nenhuma — ele só REGISTRA
  * o resultado (sucesso/falha/latência) de chamadas que os próprios
  * módulos de negócio já fazem no curso normal de operação
- * (`AbacatePayClientService.request`, `GeoEngineService.geocode`, etc.),
+ * (`AsaasClientService.assertConfigured`, `GeoEngineService.geocode`, etc.),
  * e deriva um status a partir do HISTÓRICO recente. Isso responde a uma
  * pergunta diferente e mais útil: "essa integração está falhando *na
  * prática*, com tráfego real?" — em vez de "ela respondeu a um ping

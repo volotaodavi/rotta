@@ -59,7 +59,7 @@ function sortKeys(value: unknown): unknown {
  * API & Webhooks → Add destination), mesmo quando `DiditService` usa só
  * as APIs standalone síncronas (sem sessão). Este Guard é a ÚNICA
  * defesa da rota (`@Public()`, sem JWT — a Didit não tem token de
- * usuário Rotta), mesmo papel de `QstashSignatureGuard`/`AbacatePayWebhookGuard`.
+ * usuário Rotta), mesmo papel de `QstashSignatureGuard`/`AsaasWebhookGuard`.
  *
  * Verifica `X-Signature-V2` (o algoritmo RECOMENDADO pela própria
  * Didit — https://docs.didit.me/integration/webhooks §"Why three

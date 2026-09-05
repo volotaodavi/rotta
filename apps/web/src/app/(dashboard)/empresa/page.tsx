@@ -51,9 +51,9 @@ import { useGpsMap } from "@/features/gps/hooks/use-gps";
  * self-service SEMPRE é permitido; a cobrança acontece depois, aqui,
  * nunca bloqueando a criação da conta). Mostrado enquanto
  * `company.status === "TRIAL"`. "Assinar agora" leva pro checkout
- * próprio da Rotta (`/assinatura`) — Pix (AbacatePay) e cartão/débito/
- * boleto (Asaas) numa única tela, sem duplicar o fluxo aqui (mesmo
- * link que `TrialLockModal` usa quando o trial vence de verdade).
+ * próprio da Rotta (`/assinatura`) — Pix, cartão/débito e boleto, 100%
+ * Asaas, numa única tela, sem duplicar o fluxo aqui (mesmo link que
+ * `TrialLockModal` usa quando o trial vence de verdade).
  */
 const MS_DIA = 24 * 60 * 60 * 1000;
 

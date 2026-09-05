@@ -64,7 +64,7 @@ export class CreateAsaasCheckoutDto {
   @ApiProperty({
     enum: ["CREDIT_CARD", "DEBIT_CARD", "BOLETO"],
     description:
-      "Método escolhido no checkout próprio da Rotta — Pix continua num endpoint separado (AbacatePay).",
+      "Método escolhido no checkout próprio da Rotta — Pix continua num endpoint separado (POST /billing/checkout/pix), mesmo provedor Asaas por trás.",
   })
   @IsIn(["CREDIT_CARD", "DEBIT_CARD", "BOLETO"])
   billingType!: AsaasBillingType;

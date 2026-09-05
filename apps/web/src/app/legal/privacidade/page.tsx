@@ -82,7 +82,7 @@ export default function PrivacidadePage(): JSX.Element {
         armazenamento de arquivo, envio de e-mail/notificação), mas nunca vendemos dado pessoal a
         terceiros. Documentos sensíveis (CNH, foto de aluno) ficam em um armazenamento privado,
         acessível só por link assinado e temporário, nunca por URL pública. Quando uma operação
-        financeira envolve um parceiro de pagamento (AbacatePay, Lytex), o compartilhamento mínimo
+        financeira envolve um parceiro de pagamento (Asaas, Lytex), o compartilhamento mínimo
         necessário para processar aquela operação é descrito na{" "}
         <Link href="/legal/rottapay">Política Financeira RottaPay</Link>.
       </LegalSection>
@@ -138,8 +138,8 @@ export default function PrivacidadePage(): JSX.Element {
 
       <LegalSection id="financeiro" title="10. Dados financeiros">
         Dados de cobrança/pagamento (ex. dados de cartão ou chave PIX) são processados diretamente
-        pelos parceiros de pagamento da Rotta (AbacatePay para a assinatura da plataforma, Lytex
-        para transferências/split das operações aplicáveis). A Rotta não armazena número completo de
+        pelos parceiros de pagamento da Rotta (Asaas para a assinatura da plataforma, Lytex para
+        transferências/split das operações aplicáveis). A Rotta não armazena número completo de
         cartão. O papel de cada parceiro está detalhado na{" "}
         <Link href="/legal/rottapay">Política Financeira RottaPay</Link>.
       </LegalSection>

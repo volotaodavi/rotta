@@ -67,18 +67,6 @@ export class PrismaCompanyRepository implements CompanyRepository {
     );
   }
 
-  listComPixProximoVencimento(): Promise<CompanyWithPlan[]> {
-    // Bypass — job de fundo (`internal/queue/billing`), sem tenant
-    // logado, precisa enxergar empresas de TODOS os tenants (mesmo
-    // motivo de `findActiveByCodigoInterno`).
-    return this.prisma.withBypass(
-      this.prisma.company.findMany({
-        where: { status: "ATIVO", pixProximoVencimento: { not: null }, deletedAt: null },
-        include: { plan: true },
-      }),
-    );
-  }
-
   async list(filter: ListCompaniesFilter): Promise<ListCompaniesResult> {
     const where: Prisma.CompanyWhereInput = {
       deletedAt: filter.includeDeleted ? undefined : null,

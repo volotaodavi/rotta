@@ -13,7 +13,6 @@ import { LoggingInterceptor } from "@/common/interceptors/logging.interceptor";
 import { TenantContextInterceptor } from "@/common/interceptors/tenant-context.interceptor";
 import { TimeoutInterceptor } from "@/common/interceptors/timeout.interceptor";
 import { TransformResponseInterceptor } from "@/common/interceptors/transform-response.interceptor";
-import abacatepayConfig from "@/config/abacatepay.config";
 import appConfig from "@/config/app.config";
 import asaasConfig from "@/config/asaas.config";
 import authConfig from "@/config/auth.config";
@@ -104,7 +103,6 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         emailConfig,
         diditConfig,
         lytexConfig,
-        abacatepayConfig,
         asaasConfig,
         observabilityConfig,
         vehiclePlateLookupConfig,

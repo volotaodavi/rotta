@@ -14,20 +14,11 @@ import {
   PendingSubscriptionStatus,
 } from "@prisma/client";
 
-import { AbacatePayClientService } from "./abacatepay-client.service";
 import { AsaasClientService } from "./asaas-client.service";
 import {
-  ABACATEPAY_FEE_CARD_FIXED_CENTS,
-  ABACATEPAY_FEE_CARD_PERCENT,
-  ABACATEPAY_FEE_PIX_CENTS,
-  ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
   ASAAS_PAYMENTS_MAX_PAGES,
   ASAAS_PAYMENTS_PAGE_SIZE,
   PENDING_SUBSCRIPTION_ID_PREFIX,
-  PIX_OVERDUE_GRACE_DAYS,
-  PIX_RECURRENCE_MONTHS,
-  PIX_REISSUE_REPEAT_DAYS,
-  PIX_REISSUE_WINDOW_DAYS,
   PRE_SIGNUP_EXPIRES_HOURS,
   ROTTA_SUBSCRIPTION_PRICE_CENTS,
   ROTTA_SUBSCRIPTION_PRODUCT_NAME,
@@ -40,7 +31,6 @@ import type {
   CreatePreSignupAsaasDto,
   CreatePreSignupPixDto,
 } from "./dto/create-pre-signup-checkout.dto";
-import type { AbacatePayPixQrCode, AbacatePayWebhookEnvelope } from "./types/abacatepay.types";
 import type {
   AsaasPayment,
   AsaasPixQrCode,
@@ -48,10 +38,7 @@ import type {
   AsaasWebhookEnvelope,
 } from "./types/asaas.types";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type {
-  CompanyRepository,
-  UpdateCompanyData,
-} from "@/modules/companies/repositories/company.repository";
+import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
@@ -67,7 +54,6 @@ export interface BillingAdminCompanySummary {
   nomeFantasia: string;
   razaoSocial: string;
   planoNome: string;
-  abacatepaySubscriptionId: string | null;
   asaasSubscriptionId: string | null;
   ativaDesde: string;
 }
@@ -79,13 +65,12 @@ export interface BillingAdminPlanSummary {
 }
 
 /**
- * Bloco de valores de UM provedor (AbacatePay ou Asaas) — mesmo formato
- * pros dois, pra o painel financeiro do Admin (pedido do usuário:
- * "taxas da Asaas, quanto as taxas da Abacatepay, o lucro líquido de
- * cada operação") desenhar os dois lado a lado sem duplicar lógica.
+ * Bloco de valores da Asaas (único provedor, desde a migração 100%
+ * Asaas de 05/09/2026 — ver nota em `billing.constants.ts`) pro painel
+ * financeiro do Admin.
  */
 export interface BillingProviderOverview {
-  /** `false` = chave da API ausente — os campos abaixo ficam `null` (nunca 0 fingido). */
+  /** `false` = `ASAAS_API_KEY` ausente — os campos abaixo ficam `null` (nunca 0 fingido). */
   configured: boolean;
   totalRecebidoCentavos: number | null;
   totalTaxaRetidaCentavos: number | null;
@@ -93,18 +78,14 @@ export interface BillingProviderOverview {
 }
 
 export interface BillingAdminOverview {
-  /** `false` = `ABACATEPAY_API_KEY` ausente — os campos de valores/taxa abaixo ficam `null` (nunca 0 fingido). */
-  abacatepayConfigured: boolean;
   quantidadeEmpresasAtivas: number;
   planos: BillingAdminPlanSummary[];
   empresasAtivas: BillingAdminCompanySummary[];
   totalRecebidoCentavos: number | null;
   totalTaxaRetidaCentavos: number | null;
   quantidadeCobrancasPagas: number | null;
-  /** AbacatePay (Pix) e Asaas (cartão/débito/boleto) lado a lado — mesmos números dos 3 campos "total*" acima, só que já separados por provedor. */
-  abacatepay: BillingProviderOverview;
   asaas: BillingProviderOverview;
-  /** Recebido (Pix + cartão/débito/boleto) menos taxa retida dos dois provedores — `null` se NENHUM dos dois estiver configurado. */
+  /** Recebido menos taxa retida — `null` se a Asaas não estiver configurada. */
   lucroLiquidoCentavos: number | null;
 }
 
@@ -153,27 +134,44 @@ export interface BillingCompanyPaymentHistoryItem {
 export interface BillingCompanyPaymentHistoryResult {
   companyId: string;
   companyNome: string;
-  provider: "asaas" | "abacatepay" | "nenhum";
+  provider: "asaas" | "nenhum";
   items: BillingCompanyPaymentHistoryItem[];
   /** Explica por que `items` pode vir vazio mesmo a empresa tendo assinatura — nunca um vazio silencioso sem motivo. */
   note?: string;
 }
 
 /**
+ * Resultado de um checkout Pix, no formato que o front já consome
+ * (`brCode`/`brCodeBase64`) — nome neutro (não amarrado a provedor
+ * nenhum) desde a migração 100% Asaas de 05/09/2026; antes deste nome,
+ * era `AbacatePayPixQrCode`, herdado de quando a AbacatePay processava
+ * Pix (a estrutura nunca mudou, só o provedor por trás).
+ */
+export interface PixCheckoutResult {
+  id: string;
+  amount: number;
+  status: "PENDING" | "PAID" | "EXPIRED" | "REFUNDED";
+  brCode: string;
+  brCodeBase64: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+/**
  * Núcleo de negócio da cobrança de mensalidade da Rotta (Dossiê 26) —
- * Pix via AbacatePay, cartão/débito/boleto via Asaas. Nunca cobra o
- * Responsável — este service só é acionado a partir de `Company`
- * (empresa/transportadora/autônomo), que é quem tem `Plan`/mensalidade
- * no schema; `Role.RESPONSAVEL` não tem `Company`/`tenantId` (ver
- * `AuthenticatedUser`), então não há caminho de código aqui que o
- * alcance.
+ * 100% via Asaas (pedido do usuário 05/09/2026: "Nós usaremos 100%
+ * Asaas, esquece a AbacatePay" — ver nota em `billing.constants.ts`).
+ * Nunca cobra o Responsável — este service só é acionado a partir de
+ * `Company` (empresa/transportadora/autônomo), que é quem tem
+ * `Plan`/mensalidade no schema; `Role.RESPONSAVEL` não tem
+ * `Company`/`tenantId` (ver `AuthenticatedUser`), então não há caminho
+ * de código aqui que o alcance.
  */
 @Injectable()
 export class BillingService {
   private readonly logger = new Logger(BillingService.name);
 
   constructor(
-    private readonly client: AbacatePayClientService,
     private readonly asaasClient: AsaasClientService,
     @Inject(COMPANY_REPOSITORY) private readonly companyRepository: CompanyRepository,
     private readonly prisma: PrismaService,
@@ -293,33 +291,25 @@ export class BillingService {
     return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
-  /** `centavos` no padrão interno da Rotta (AbacatePay/`billing.constants.ts`). */
-  private formatarValorCentavos(centavos: number): string {
-    return (centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  }
-
   /**
    * Checkout Pix embutido na própria Rotta (pedido do usuário: "para não
    * precisar ir em outro lugar") — devolve QR Code + copia-e-cola direto,
    * sem nenhum redirecionamento.
    *
-   * Pix 100% via Asaas (pedido do usuário 03/09/2026: "por que não
-   * tiram o Pix da AbacatePay? Aí fica direto com a Asaas" — a
-   * AbacatePay ficou com a chave inválida/desatualizada em produção o
-   * tempo todo desta sessão). Mesmo mecanismo de `createAsaasCheckoutForCompany`
-   * (cartão/débito/boleto): cria (ou reaproveita) o `customer` na
-   * Asaas, cria uma assinatura mensal com `billingType: "PIX"` e
-   * devolve o QR Code do primeiro pagamento. `externalReference:
-   * company.id` é o MESMO mecanismo de correlação que
-   * `handleAsaasWebhookEvent`/`applyAsaasStatus` já usam pra
-   * cartão/boleto — nenhum webhook novo precisou ser escrito, a
-   * confirmação (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`) e a renovação
-   * mensal são nativas da Asaas, sem precisar do job de reemissão
-   * manual que a AbacatePay exigia (`processarVencimentosPix` — deixado
-   * intacto só pelas assinaturas AbacatePay já existentes, nunca mais
-   * alcançado por um Pix novo).
+   * 100% Asaas (pedido do usuário 05/09/2026: "Nós usaremos 100% Asaas,
+   * esquece a AbacatePay" — ver nota em `billing.constants.ts`). Mesmo
+   * mecanismo de `createAsaasCheckoutForCompany` (cartão/débito/
+   * boleto): cria (ou reaproveita) o `customer` na Asaas, cria uma
+   * assinatura mensal com `billingType: "PIX"` e devolve o QR Code do
+   * primeiro pagamento. `externalReference: company.id` é o MESMO
+   * mecanismo de correlação que `handleAsaasWebhookEvent`/
+   * `applyAsaasStatus` já usam pra cartão/boleto — a confirmação
+   * (`PAYMENT_CONFIRMED`/`PAYMENT_RECEIVED`) e a renovação mensal são
+   * nativas da Asaas, sem precisar de nenhum job de reemissão manual
+   * (a AbacatePay não tinha assinatura Pix recorrente de verdade, só
+   * cobrança avulsa — a Asaas tem).
    */
-  async createPixCheckoutForCompany(companyId: string): Promise<AbacatePayPixQrCode> {
+  async createPixCheckoutForCompany(companyId: string): Promise<PixCheckoutResult> {
     if (!this.asaasClient.isConfigured()) {
       throw new BadRequestException(
         "Pagamento indisponível: a Asaas ainda não está configurada nesta implantação.",
@@ -384,7 +374,7 @@ export class BillingService {
    * — precisa continuar com `brCode`/`brCodeBase64` válidos, não só
    * `status`, senão o QR Code desaparece da tela no primeiro poll).
    */
-  async getPixCheckoutStatus(id: string): Promise<AbacatePayPixQrCode> {
+  async getPixCheckoutStatus(id: string): Promise<PixCheckoutResult> {
     const [payment, qrCode] = await Promise.all([
       this.asaasClient.getPayment(id),
       this.asaasClient.getPixQrCode(id),
@@ -492,87 +482,34 @@ export class BillingService {
    * autenticado `createPixCheckoutForCompany`). Sem `companyId`: a
    * correlação com o webhook usa `pending:<PendingSubscription.id>` no
    * lugar do `company.id` de sempre (`PENDING_SUBSCRIPTION_ID_PREFIX`)
-   * — é esse prefixo que `applyPixPayment` usa pra saber que deve
+   * — é esse prefixo que `applyAsaasStatus` usa pra saber que deve
    * marcar a `PendingSubscription` como `PAGO` em vez de tentar achar
    * uma `Company`.
    *
-   * Pix 100% via Asaas (pedido do usuário 03/09/2026: "por que não
-   * tiram o Pix da AbacatePay? Aí fica direto com a Asaas" — a
-   * AbacatePay ficou com a chave inválida/desatualizada em produção o
-   * tempo todo desta sessão, mesmo motivo que já tinha motivado o
-   * fallback em 02/09/2026). A AbacatePay só entra em cena aqui como
-   * ÚLTIMO recurso, se a própria Asaas não estiver configurada nesta
-   * implantação — nenhum checkout novo prefere a AbacatePay quando a
-   * Asaas está disponível, o inverso da prioridade original. O front
-   * nunca sabe qual dos dois processou — mesmo formato de resposta
-   * (`AbacatePayPixQrCode`) nos dois casos, ver `toPixCheckoutFromAsaas`.
-   */
-  async createPreSignupPixCheckout(
-    dto: CreatePreSignupPixDto,
-  ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
-    if (this.asaasClient.isConfigured()) {
-      return this.createPreSignupPixCheckoutViaAsaas(dto);
-    }
-    if (this.client.isConfigured()) {
-      return this.createPreSignupPixCheckoutViaAbacatePay(dto);
-    }
-    throw new BadRequestException(
-      "Pagamento indisponível: nenhum provedor de Pix está configurado nesta implantação.",
-    );
-  }
-
-  private async createPreSignupPixCheckoutViaAbacatePay(
-    dto: CreatePreSignupPixDto,
-  ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
-    const expiresAt = new Date(Date.now() + PRE_SIGNUP_EXPIRES_HOURS * 60 * 60 * 1000);
-    const pending = await this.prisma.pendingSubscription.create({
-      data: {
-        nome: dto.nome,
-        email: dto.email,
-        cpfCnpj: dto.cpfCnpj,
-        telefone: dto.telefone,
-        valorCentavos: ROTTA_SUBSCRIPTION_PRICE_CENTS,
-        provider: PendingSubscriptionProvider.ABACATEPAY,
-        providerCheckoutId: "",
-        expiresAt,
-      },
-    });
-
-    let checkout: AbacatePayPixQrCode;
-    try {
-      checkout = await this.client.createPixQrCode({
-        amount: ROTTA_SUBSCRIPTION_PRICE_CENTS,
-        expiresIn: ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
-        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${dto.nome}`,
-        metadata: { externalId: `${PENDING_SUBSCRIPTION_ID_PREFIX}${pending.id}` },
-      });
-    } catch (error) {
-      // Não deixa a `PendingSubscription` órfã (sem `providerCheckoutId`
-      // nenhum, presa em PENDENTE pra sempre) se a AbacatePay falhar —
-      // mesmo raciocínio da transação atômica de `CompaniesService.create`.
-      await this.prisma.pendingSubscription.delete({ where: { id: pending.id } });
-      throw error;
-    }
-
-    await this.prisma.pendingSubscription.update({
-      where: { id: pending.id },
-      data: { providerCheckoutId: checkout.id },
-    });
-
-    return { pendingId: pending.id, expiresAt: expiresAt.toISOString(), checkout };
-  }
-
-  /**
-   * Fallback via Asaas (ver comentário de `createPreSignupPixCheckout`).
-   * Diferente da AbacatePay, a Asaas exige `cpfCnpj` pra criar o
-   * `customer` — se quem está pagando só preencheu e-mail/telefone
-   * (os únicos campos obrigatórios do fluxo Pix normal,
+   * 100% Asaas (pedido do usuário 05/09/2026: "Nós usaremos 100% Asaas,
+   * esquece a AbacatePay" — ver nota em `billing.constants.ts`; a
+   * AbacatePay já vinha em desuso desde 03/09/2026, chave inválida em
+   * produção, todo checkout novo caindo em fallback pra Asaas mesmo).
+   * Diferente da AbacatePay (removida), a Asaas exige `cpfCnpj` pra
+   * criar o `customer` — se quem está pagando só preencheu e-mail/
+   * telefone (os únicos campos obrigatórios do fluxo Pix normal,
    * `CreatePreSignupPixDto`), pede o CPF/CNPJ explicitamente em vez de
    * falhar com um erro genérico da Asaas.
    */
+  async createPreSignupPixCheckout(
+    dto: CreatePreSignupPixDto,
+  ): Promise<{ pendingId: string; expiresAt: string; checkout: PixCheckoutResult }> {
+    if (!this.asaasClient.isConfigured()) {
+      throw new BadRequestException(
+        "Pagamento indisponível: a Asaas ainda não está configurada nesta implantação.",
+      );
+    }
+    return this.createPreSignupPixCheckoutViaAsaas(dto);
+  }
+
   private async createPreSignupPixCheckoutViaAsaas(
     dto: CreatePreSignupPixDto,
-  ): Promise<{ pendingId: string; expiresAt: string; checkout: AbacatePayPixQrCode }> {
+  ): Promise<{ pendingId: string; expiresAt: string; checkout: PixCheckoutResult }> {
     if (!dto.cpfCnpj) {
       throw new BadRequestException(
         "Pagamento via Pix indisponível no momento sem CPF/CNPJ — preencha esse campo e tente novamente.",
@@ -640,23 +577,20 @@ export class BillingService {
         checkout: this.toPixCheckoutFromAsaas(primeiroPagamento, qrCode),
       };
     } catch (error) {
-      // Mesmo raciocínio do fallback AbacatePay: nunca deixa a
-      // `PendingSubscription` órfã se a Asaas falhar no meio do caminho.
+      // Nunca deixa a `PendingSubscription` órfã (sem `providerCheckoutId`
+      // nenhum, presa em PENDENTE pra sempre) se a Asaas falhar no meio
+      // do caminho — mesmo raciocínio da transação atômica de
+      // `CompaniesService.create`.
       await this.prisma.pendingSubscription.delete({ where: { id: pending.id } });
       throw error;
     }
   }
 
   /**
-   * Normaliza um pagamento Pix da Asaas pro mesmo formato
-   * `AbacatePayPixQrCode` que o front já consome (`brCode`/
-   * `brCodeBase64`) — assim `/planos/assinar` nunca precisa saber qual
-   * provedor de verdade processou o Pix.
+   * Normaliza um pagamento Pix da Asaas pro formato `PixCheckoutResult`
+   * que o front já consome (`brCode`/`brCodeBase64`).
    */
-  private toPixCheckoutFromAsaas(
-    payment: AsaasPayment,
-    qrCode: AsaasPixQrCode,
-  ): AbacatePayPixQrCode {
+  private toPixCheckoutFromAsaas(payment: AsaasPayment, qrCode: AsaasPixQrCode): PixCheckoutResult {
     return {
       id: payment.id,
       amount: Math.round(payment.value * 100),
@@ -670,7 +604,7 @@ export class BillingService {
 
   private mapAsaasPaymentStatusToPixStatus(
     status: AsaasPayment["status"],
-  ): AbacatePayPixQrCode["status"] {
+  ): PixCheckoutResult["status"] {
     switch (status) {
       case "RECEIVED":
       case "CONFIRMED":
@@ -687,23 +621,22 @@ export class BillingService {
   }
 
   /**
-   * Reconciliação financeira da Asaas pro painel Admin (pedido do
-   * usuário 02/09/2026: "veja a parte de faturamento e recebimentos,
-   * provedor Asaas" — até esta entrega, `getAdminOverview` só refletia
-   * `configured: true/false` pra Asaas, nunca somava valor nenhum, por
-   * faltar exatamente este método). Pagina `AsaasClientService.
-   * listPayments` (conta inteira, não uma assinatura só) até `hasMore`
-   * virar `false` ou bater no circuit breaker `ASAAS_PAYMENTS_MAX_PAGES`.
+   * Reconciliação financeira da Asaas — usada pelo painel financeiro do
+   * Admin (`getAdminOverview`, pedido do usuário 02/09/2026: "veja a
+   * parte de faturamento e recebimentos, provedor Asaas") E pelo
+   * resumo semanal/mensal (`AdminDigestService`, que passa `fim`
+   * explícito em vez do padrão "até agora" — daí ser pública, não mais
+   * privada). Pagina `AsaasClientService.listPayments` (conta inteira,
+   * não uma assinatura só) até `hasMore` virar `false` ou bater no
+   * circuit breaker `ASAAS_PAYMENTS_MAX_PAGES`.
    *
    * Só conta como "pago" o mesmo trio de status que
    * `mapAsaasPaymentStatusToPixStatus` já trata como `PAID` — nunca
    * duplica essa classificação. Taxa retida = `value - netValue`,
    * direto do que a própria Asaas devolve (confirmado com uma chamada
-   * real de produção) — nada estimado por fórmula, diferente do bloco
-   * da AbacatePay logo acima (`ABACATEPAY_FEE_*`), cujo `billing/list`
-   * não devolve valor líquido.
+   * real de produção) — nada estimado por fórmula.
    */
-  private async reconciliarPagamentosAsaas(inicioDeHoje: Date): Promise<{
+  async reconciliarPagamentosAsaas(periodo: { inicio: Date; fim?: Date }): Promise<{
     totalRecebidoCentavos: number;
     totalTaxaRetidaCentavos: number;
     quantidadeCobrancasPagas: number;
@@ -721,11 +654,17 @@ export class BillingService {
 
       for (const pagamento of pagamentos) {
         if (this.mapAsaasPaymentStatusToPixStatus(pagamento.status) !== "PAID") continue;
-        // "Zere os dados e só conte os dados a partir do dia de hoje"
-        // (pedido do usuário 03/09/2026) — ignora tudo pago antes de
-        // hoje, mesmo já confirmado.
         const dataPagamento = pagamento.paymentDate ?? pagamento.dateCreated;
-        if (!dataPagamento || new Date(dataPagamento) < inicioDeHoje) continue;
+        if (!dataPagamento) continue;
+        const data = new Date(dataPagamento);
+        // "Zere os dados e só conte os dados a partir do dia de hoje"
+        // (pedido do usuário 03/09/2026, `getAdminOverview`) — ignora
+        // tudo pago antes de `periodo.inicio`, mesmo já confirmado.
+        // `periodo.fim` (opcional) fecha a outra ponta — usado pelo
+        // resumo semanal/mensal, que quer só o que caiu DENTRO da
+        // janela, não "desde então".
+        if (data < periodo.inicio) continue;
+        if (periodo.fim && data >= periodo.fim) continue;
         const valorCentavos = Math.round(pagamento.value * 100);
         const liquidoCentavos =
           pagamento.netValue !== undefined ? Math.round(pagamento.netValue * 100) : valorCentavos;
@@ -738,7 +677,7 @@ export class BillingService {
       offset += ASAAS_PAYMENTS_PAGE_SIZE;
       if (pagina === ASAAS_PAYMENTS_MAX_PAGES - 1) {
         this.logger.warn(
-          `Reconciliação de pagamentos Asaas atingiu o limite de ${ASAAS_PAYMENTS_MAX_PAGES} páginas (${offset} pagamentos) sem terminar — números do painel financeiro podem estar incompletos.`,
+          `Reconciliação de pagamentos Asaas atingiu o limite de ${ASAAS_PAYMENTS_MAX_PAGES} páginas (${offset} pagamentos) sem terminar — números podem estar incompletos.`,
         );
       }
     }
@@ -896,20 +835,27 @@ export class BillingService {
 
     for (const pending of candidatas) {
       try {
-        if (pending.provider === PendingSubscriptionProvider.ABACATEPAY) {
-          if (!this.client.isConfigured()) {
-            throw new Error("AbacatePay não configurada.");
-          }
-          await this.client.refundPixQrCode(pending.providerCheckoutId);
-        } else {
-          if (!this.asaasClient.isConfigured()) {
-            throw new Error("Asaas não configurada.");
-          }
-          if (pending.providerSubscriptionId) {
-            await this.asaasClient.cancelSubscription(pending.providerSubscriptionId);
-          }
-          await this.asaasClient.refundPayment(pending.providerCheckoutId);
+        // `provider` só pode valer ASAAS pra qualquer `PendingSubscription`
+        // criada a partir da migração 100% Asaas (05/09/2026) — um
+        // valor ABACATEPAY só existiria numa linha antiga, de antes da
+        // migração, e essas expiram em 48h (`PRE_SIGNUP_EXPIRES_HOURS`)
+        // então já teriam sido processadas há muito tempo. Se ainda
+        // assim aparecer uma, cai direto no `catch` (nenhum client
+        // AbacatePay mais existe pra reembolsar) e é marcada EXPIRADO
+        // pra reconciliação manual, nunca tenta reembolsar via Asaas
+        // algo que a Asaas nunca cobrou.
+        if (pending.provider !== PendingSubscriptionProvider.ASAAS) {
+          throw new Error(
+            `Provedor "${pending.provider}" não suportado mais (só Asaas) — reconciliar manualmente.`,
+          );
         }
+        if (!this.asaasClient.isConfigured()) {
+          throw new Error("Asaas não configurada.");
+        }
+        if (pending.providerSubscriptionId) {
+          await this.asaasClient.cancelSubscription(pending.providerSubscriptionId);
+        }
+        await this.asaasClient.refundPayment(pending.providerCheckoutId);
 
         await this.prisma.pendingSubscription.update({
           where: { id: pending.id },
@@ -982,19 +928,16 @@ export class BillingService {
 
   /**
    * Processa um evento de webhook da Asaas já autenticado (token do
-   * header verificado pelo controller). Idempotente por design, mesmo
-   * raciocínio de `handleWebhookEvent` (AbacatePay) — reaplicar o mesmo
-   * evento só reescreve o mesmo `status`/`asaasSubscriptionId`.
+   * header verificado pelo controller). Idempotente por design —
+   * reaplicar o mesmo evento só reescreve o mesmo `status`/
+   * `asaasSubscriptionId`, nunca duplica nada.
    */
   async handleAsaasWebhookEvent(event: AsaasWebhookEnvelope): Promise<void> {
     const companyId = event.payment?.externalReference ?? undefined;
     const subscriptionId = event.payment?.subscription;
-    // `payment.value` é o único valor de pagamento que qualquer webhook
-    // desta integração de fato ecoa de volta (a AbacatePay não manda
-    // `amount` em nenhum evento de assinatura, ver `applyStatus`) —
-    // usado só pra compor o texto de PAGAMENTO_*, nunca pra lógica de
-    // negócio (o `status` já resolvido acima continua a única fonte de
-    // verdade).
+    // `payment.value` é o valor real ecoado pelo webhook — usado só pra
+    // compor o texto de PAGAMENTO_*, nunca pra lógica de negócio (o
+    // `status` já resolvido acima continua a única fonte de verdade).
     const valorFormatado =
       event.payment?.value !== undefined
         ? this.formatarValorAsaasReais(event.payment.value)
@@ -1017,8 +960,11 @@ export class BillingService {
         // evento próprio — `PAYMENT_OVERDUE` lê melhor como "ainda
         // pendente" do ponto de vista de quem só quer saber se já
         // pagou ou não (pedido do usuário: "pagamento... pendente").
-        // `PAGAMENTO_RECUSADO` fica reservado pro evento real de recusa
-        // da AbacatePay (`subscription.payment_failed`, ver `applyStatus`).
+        // `NotificationEventType.PAGAMENTO_RECUSADO` fica sem gatilho
+        // real desde a remoção da AbacatePay (05/09/2026) — a Asaas não
+        // tem um evento equivalente a "recusado" (só "vencido"). Mesmo
+        // princípio de "stub honesto" do resto do módulo: o tipo
+        // continua no schema, só não é mais emitido por nada.
         await this.applyAsaasStatus(
           event.event,
           companyId,
@@ -1042,8 +988,7 @@ export class BillingService {
   }
 
   /**
-   * `event.payment.externalReference` — diferente da AbacatePay
-   * (`checkout.externalId`), a Asaas ecoa a referência dentro do
+   * `event.payment.externalReference` ecoa a referência dentro do
    * próprio objeto `payment` (mesmo `externalReference: company.id`
    * passado em `createSubscription`, ver `AsaasPayment`).
    */
@@ -1086,9 +1031,12 @@ export class BillingService {
       // transição pra ATIVO vindo de um status não-ATIVO).
       const antes = await this.companyRepository.findById(companyId);
 
-      // Mesmo padrão de bypass explícito e já-validado de `applyStatus`
-      // (AbacatePay) — fora do fluxo HTTP autenticado normal (webhook
-      // público, sem JWT/TenantGuard).
+      // Mesmo padrão de bypass explícito e já-validado do resgate de
+      // convite (`PrismaService.runInBypassTransaction`) — fora do
+      // fluxo HTTP autenticado normal (webhook público, sem JWT/
+      // TenantGuard): o `companyId` aqui não veio de um parâmetro de
+      // cliente não verificado, veio ecoado pela própria Asaas do
+      // `externalReference` que NÓS demos a ela ao criar a assinatura.
       await this.prisma.runWithTenantContext({ tenantId: null, bypass: true }, () =>
         this.companyRepository.update(companyId, {
           status,
@@ -1111,232 +1059,6 @@ export class BillingService {
   }
 
   /**
-   * Processa um evento de webhook já autenticado (secret + HMAC
-   * verificados pelo controller). Idempotente por design: reaplicar o
-   * mesmo evento duas vezes (reentrega da AbacatePay) só reescreve o
-   * mesmo `status`/`abacatepaySubscriptionId`, nunca duplica nada —
-   * dispensa uma tabela de deduplicação dedicada.
-   */
-  async handleWebhookEvent(event: AbacatePayWebhookEnvelope): Promise<void> {
-    const companyId = event.data.checkout?.externalId ?? undefined;
-    const subscriptionId = event.data.subscription?.id;
-
-    // A AbacatePay não ecoa `amount` em NENHUM evento de assinatura (ver
-    // `AbacatePaySubscriptionWebhookData` — só `subscription`/`checkout`/
-    // `payment` com `id`+`status`) — diferente da Asaas, que manda
-    // `payment.value` de verdade. Como hoje só existe o plano Starter
-    // único, `ROTTA_SUBSCRIPTION_PRICE_CENTS` é o valor real cobrado,
-    // não uma invenção — stub-honesto seria esconder o valor por
-    // completo, o que piora a notificação sem necessidade.
-    const valorFormatado = this.formatarValorCentavos(ROTTA_SUBSCRIPTION_PRICE_CENTS);
-
-    switch (event.event) {
-      case "subscription.completed":
-      case "subscription.renewed":
-        await this.applyStatus(
-          event.event,
-          companyId,
-          CompanyStatus.ATIVO,
-          subscriptionId,
-          {},
-          NotificationEventType.PAGAMENTO_APROVADO,
-          valorFormatado,
-        );
-        return;
-      case "subscription.payment_failed":
-        await this.applyStatus(
-          event.event,
-          companyId,
-          CompanyStatus.INADIMPLENTE,
-          subscriptionId,
-          {},
-          NotificationEventType.PAGAMENTO_RECUSADO,
-          valorFormatado,
-        );
-        return;
-      case "subscription.cancelled":
-        await this.applyStatus(event.event, companyId, CompanyStatus.CANCELADO, subscriptionId);
-        return;
-      case "billing.paid":
-        await this.applyPixPayment(event);
-        return;
-      default:
-        this.logger.debug(`Evento AbacatePay não tratado (ignorado de propósito): ${event.event}`);
-    }
-  }
-
-  /**
-   * `billing.paid` — cobrança avulsa confirmada (Pix embutido,
-   * `createPixCheckoutForCompany`). O `metadata.externalId` pode vir
-   * dentro de `data.billing` ou `data.pixQrCode` (o formato exato deste
-   * evento específico não foi confirmado com uma conta real, ver
-   * `AbacatePayOneTimeBillingWebhookData`) — tenta os dois antes de
-   * desistir, e loga o payload bruto quando nenhum bate, pra facilitar
-   * ajustar isto assim que o primeiro evento real chegar em produção.
-   */
-  private async applyPixPayment(event: AbacatePayWebhookEnvelope): Promise<void> {
-    const correlationId =
-      event.data.billing?.metadata?.externalId ?? event.data.pixQrCode?.metadata?.externalId;
-
-    if (!correlationId) {
-      this.logger.warn(
-        `Webhook AbacatePay "billing.paid" sem metadata.externalId reconhecível — payload: ${JSON.stringify(event.data)}`,
-      );
-      return;
-    }
-
-    const pendingId = this.extractPendingSubscriptionId(correlationId);
-    if (pendingId) {
-      await this.markPendingSubscriptionPaid("billing.paid", pendingId);
-      return;
-    }
-    const companyId = correlationId;
-
-    // Agenda o próximo vencimento (Pix "recorrente" simulado — ver nota
-    // em `createPixCheckoutForCompany`) e limpa o controle de reenvio,
-    // pra o próximo ciclo poder reemitir de novo perto do vencimento.
-    const proximoVencimento = new Date();
-    proximoVencimento.setMonth(proximoVencimento.getMonth() + PIX_RECURRENCE_MONTHS);
-
-    await this.applyStatus(
-      "billing.paid",
-      companyId,
-      CompanyStatus.ATIVO,
-      undefined,
-      { pixProximoVencimento: proximoVencimento, pixUltimoAvisoEm: null },
-      NotificationEventType.PAGAMENTO_APROVADO,
-      this.formatarValorCentavos(ROTTA_SUBSCRIPTION_PRICE_CENTS),
-    );
-  }
-
-  private async applyStatus(
-    eventName: string,
-    companyId: string | undefined,
-    status: CompanyStatus,
-    subscriptionId: string | undefined,
-    extra: Partial<UpdateCompanyData> = {},
-    pagamentoTipo?:
-      | typeof NotificationEventType.PAGAMENTO_APROVADO
-      | typeof NotificationEventType.PAGAMENTO_RECUSADO
-      | typeof NotificationEventType.PAGAMENTO_PENDENTE,
-    valorFormatado?: string,
-  ): Promise<void> {
-    if (!companyId) {
-      this.logger.warn(
-        `Webhook AbacatePay "${eventName}" sem checkout.externalId — não é possível correlacionar com nenhuma Company.`,
-      );
-      return;
-    }
-
-    try {
-      // Lido ANTES do update — mesmo raciocínio de `applyAsaasStatus`
-      // (pedido do usuário 01/09/2026): só notifica assinatura NOVA,
-      // nunca uma renovação (a recorrência de Pix passa por aqui a
-      // cada ciclo, sempre com `status: ATIVO`).
-      const antes = await this.companyRepository.findById(companyId);
-
-      // Fora do fluxo HTTP autenticado normal (webhook público, sem
-      // JWT/TenantGuard) — mesmo padrão de bypass explícito e
-      // já-validado do resgate de convite (`PrismaService.runInBypassTransaction`):
-      // o `companyId` aqui não veio de um parâmetro de cliente não
-      // verificado, veio ecoado pela própria AbacatePay do `externalId`
-      // que NÓS demos a ela ao criar o checkout.
-      await this.prisma.runWithTenantContext({ tenantId: null, bypass: true }, () =>
-        this.companyRepository.update(companyId, {
-          status,
-          ...(subscriptionId ? { abacatepaySubscriptionId: subscriptionId } : {}),
-          ...extra,
-        }),
-      );
-      this.logger.log(
-        `Empresa ${companyId} -> status ${status} (webhook AbacatePay "${eventName}").`,
-      );
-
-      if (status === CompanyStatus.ATIVO && antes && antes.status !== CompanyStatus.ATIVO) {
-        this.notifyAdminRottaNovaAssinaturaBestEffort(companyId);
-      }
-      if (pagamentoTipo && valorFormatado) {
-        this.notifyPagamentoBestEffort(companyId, pagamentoTipo, valorFormatado);
-      }
-    } catch (error) {
-      this.logger.warn(
-        `Não foi possível atualizar a empresa ${companyId} a partir do webhook AbacatePay "${eventName}": ${(error as Error).message}`,
-      );
-    }
-  }
-
-  /**
-   * Job diário (`internal/queue/billing/reissue-pix`, registrado por
-   * `BillingSchedulerService` via QStash — mesmo mecanismo do
-   * `InepSyncSchedulerService`) que simula a "assinatura recorrente" que
-   * a AbacatePay não tem pra Pix avulso (Dossiê 26): reemite um novo Pix
-   * perto do vencimento e marca `INADIMPLENTE` quem não pagou depois da
-   * folga (`PIX_OVERDUE_GRACE_DAYS`, mesma folga do trial). Nunca mexe
-   * em quem paga por Asaas (cartão/débito/boleto) — a renovação desses é
-   * da própria assinatura Asaas.
-   */
-  async processarVencimentosPix(): Promise<{ reenviados: number; marcadosInadimplentes: number }> {
-    if (!this.client.isConfigured()) {
-      this.logger.log("AbacatePay não configurada — reenvio automático de Pix pulado.");
-      return { reenviados: 0, marcadosInadimplentes: 0 };
-    }
-
-    const candidatas = await this.companyRepository.listComPixProximoVencimento();
-    const agora = new Date();
-    let reenviados = 0;
-    let marcadosInadimplentes = 0;
-
-    for (const empresa of candidatas) {
-      const vencimento = empresa.pixProximoVencimento;
-      if (!vencimento) continue;
-
-      const diasParaVencer = (vencimento.getTime() - agora.getTime()) / (24 * 60 * 60 * 1000);
-
-      if (diasParaVencer < -PIX_OVERDUE_GRACE_DAYS) {
-        await this.applyStatus(
-          "pix.vencido-sem-pagamento",
-          empresa.id,
-          CompanyStatus.INADIMPLENTE,
-          undefined,
-        );
-        marcadosInadimplentes += 1;
-        continue;
-      }
-
-      const diasDesdeUltimoAviso = empresa.pixUltimoAvisoEm
-        ? (agora.getTime() - empresa.pixUltimoAvisoEm.getTime()) / (24 * 60 * 60 * 1000)
-        : Number.POSITIVE_INFINITY;
-
-      if (
-        diasParaVencer <= PIX_REISSUE_WINDOW_DAYS &&
-        diasDesdeUltimoAviso >= PIX_REISSUE_REPEAT_DAYS
-      ) {
-        try {
-          await this.client.createPixQrCode({
-            amount: ROTTA_SUBSCRIPTION_PRICE_CENTS,
-            expiresIn: ABACATEPAY_PIX_EXPIRES_IN_SECONDS,
-            description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${empresa.nomeFantasia} (renovação)`,
-            metadata: { externalId: empresa.id },
-          });
-          await this.prisma.runWithTenantContext({ tenantId: null, bypass: true }, () =>
-            this.companyRepository.update(empresa.id, { pixUltimoAvisoEm: agora }),
-          );
-          reenviados += 1;
-        } catch (error) {
-          this.logger.warn(
-            `Falha ao reemitir Pix de renovação da empresa ${empresa.id}: ${(error as Error).message}`,
-          );
-        }
-      }
-    }
-
-    this.logger.log(
-      `Processamento de vencimentos Pix: ${reenviados} reenvio(s), ${marcadosInadimplentes} empresa(s) marcada(s) INADIMPLENTE.`,
-    );
-    return { reenviados, marcadosInadimplentes };
-  }
-
-  /**
    * Meia-noite de hoje no servidor (Render roda em UTC — mesma
    * simplificação já aceita no resto do módulo, nenhum outro ponto do
    * codebase faz conversão explícita pra `America/Sao_Paulo`; até 3h
@@ -1354,12 +1076,11 @@ export class BillingService {
    * empresas estão usando"). Duas fontes deliberadamente separadas:
    *
    * - Empresas/planos: sempre do banco local (`Company.status ATIVO`,
-   *   confiável, nunca depende da AbacatePay estar no ar).
-   * - Valores recebidos/taxa: da AbacatePay (`billing/list`) — se a
-   *   chamada falhar ou a integração não estiver configurada, os
+   *   confiável, nunca depende da Asaas estar no ar).
+   * - Valores recebidos/taxa: da Asaas (`reconciliarPagamentosAsaas`) —
+   *   se a chamada falhar ou a integração não estiver configurada, os
    *   campos ficam `null` (nunca 0 fingido, mesmo padrão "stub honesto"
-   *   do resto do módulo) e `abacatepayConfigured`/o log dizem o
-   *   motivo.
+   *   do resto do módulo) e `asaas.configured`/o log dizem o motivo.
    *
    * Só conta cobranças pagas A PARTIR DE HOJE (pedido do usuário
    * 03/09/2026: "zere os dados e só conte os dados a partir do dia de
@@ -1394,7 +1115,6 @@ export class BillingService {
     }
 
     const overview: BillingAdminOverview = {
-      abacatepayConfigured: this.client.isConfigured(),
       quantidadeEmpresasAtivas: empresasAtivas.length,
       planos: [...planosPorCodigo.values()],
       empresasAtivas: empresasAtivas.map((company) => ({
@@ -1402,19 +1122,12 @@ export class BillingService {
         nomeFantasia: company.nomeFantasia,
         razaoSocial: company.razaoSocial,
         planoNome: company.plan.name,
-        abacatepaySubscriptionId: company.abacatepaySubscriptionId,
         asaasSubscriptionId: company.asaasSubscriptionId,
         ativaDesde: company.updatedAt.toISOString(),
       })),
       totalRecebidoCentavos: null,
       totalTaxaRetidaCentavos: null,
       quantidadeCobrancasPagas: null,
-      abacatepay: {
-        configured: this.client.isConfigured(),
-        totalRecebidoCentavos: null,
-        totalTaxaRetidaCentavos: null,
-        quantidadeCobrancasPagas: null,
-      },
       asaas: {
         configured: this.asaasClient.isConfigured(),
         totalRecebidoCentavos: null,
@@ -1424,74 +1137,26 @@ export class BillingService {
       lucroLiquidoCentavos: null,
     };
 
-    if (overview.abacatepayConfigured) {
-      try {
-        const billings = await this.client.listBillings();
-        const pagas = billings.filter((billing) => {
-          if (billing.status !== "PAID") return false;
-          const dataPagamento = billing.paidAt ?? billing.createdAt;
-          return dataPagamento ? new Date(dataPagamento) >= inicioDeHoje : false;
-        });
-
-        const totalRecebido = pagas.reduce((soma, billing) => soma + billing.amount, 0);
-        const totalTaxa = pagas.reduce((soma, billing) => {
-          const metodo = billing.methods?.[0] ?? "CARD";
-          const taxa =
-            metodo === "PIX"
-              ? ABACATEPAY_FEE_PIX_CENTS
-              : Math.round(billing.amount * ABACATEPAY_FEE_CARD_PERCENT) +
-                ABACATEPAY_FEE_CARD_FIXED_CENTS;
-          return soma + taxa;
-        }, 0);
-
-        overview.quantidadeCobrancasPagas = pagas.length;
-        overview.totalRecebidoCentavos = totalRecebido;
-        overview.totalTaxaRetidaCentavos = totalTaxa;
-        overview.abacatepay = {
-          configured: true,
-          quantidadeCobrancasPagas: pagas.length,
-          totalRecebidoCentavos: totalRecebido,
-          totalTaxaRetidaCentavos: totalTaxa,
-        };
-      } catch (error) {
-        this.logger.warn(
-          `Não foi possível buscar o histórico de cobranças da AbacatePay pro painel financeiro: ${(error as Error).message}`,
-        );
-      }
-    }
-
     if (overview.asaas.configured) {
       try {
         const { totalRecebidoCentavos, totalTaxaRetidaCentavos, quantidadeCobrancasPagas } =
-          await this.reconciliarPagamentosAsaas(inicioDeHoje);
+          await this.reconciliarPagamentosAsaas({ inicio: inicioDeHoje });
 
-        overview.totalRecebidoCentavos =
-          (overview.totalRecebidoCentavos ?? 0) + totalRecebidoCentavos;
-        overview.totalTaxaRetidaCentavos =
-          (overview.totalTaxaRetidaCentavos ?? 0) + totalTaxaRetidaCentavos;
-        overview.quantidadeCobrancasPagas =
-          (overview.quantidadeCobrancasPagas ?? 0) + quantidadeCobrancasPagas;
+        overview.totalRecebidoCentavos = totalRecebidoCentavos;
+        overview.totalTaxaRetidaCentavos = totalTaxaRetidaCentavos;
+        overview.quantidadeCobrancasPagas = quantidadeCobrancasPagas;
         overview.asaas = {
           configured: true,
           totalRecebidoCentavos,
           totalTaxaRetidaCentavos,
           quantidadeCobrancasPagas,
         };
+        overview.lucroLiquidoCentavos = totalRecebidoCentavos - totalTaxaRetidaCentavos;
       } catch (error) {
         this.logger.warn(
           `Não foi possível buscar o histórico de pagamentos da Asaas pro painel financeiro: ${(error as Error).message}`,
         );
       }
-    }
-
-    const totalTaxaCombinada =
-      (overview.abacatepay.totalTaxaRetidaCentavos ?? 0) +
-      (overview.asaas.totalTaxaRetidaCentavos ?? 0);
-    const totalRecebidoCombinado =
-      (overview.abacatepay.totalRecebidoCentavos ?? 0) +
-      (overview.asaas.totalRecebidoCentavos ?? 0);
-    if (overview.abacatepay.configured || overview.asaas.configured) {
-      overview.lucroLiquidoCentavos = totalRecebidoCombinado - totalTaxaCombinada;
     }
 
     return overview;
@@ -1559,7 +1224,7 @@ export class BillingService {
     dto: CreateAdminPixChargeDto,
     actor: AuthenticatedUser,
     meta: RequestMeta,
-  ): Promise<AbacatePayPixQrCode> {
+  ): Promise<PixCheckoutResult> {
     if (!this.asaasClient.isConfigured()) {
       throw new InternalServerErrorException(
         "Asaas não está configurada (ASAAS_API_KEY ausente) — cobrança indisponível.",
@@ -1760,12 +1425,6 @@ export class BillingService {
    * Correlação 100% confiável — usa `Company.asaasSubscriptionId`
    * (salvo no nosso banco, nunca "adivinhado" a partir de metadata do
    * provedor) pra pedir só os pagamentos DAQUELA assinatura.
-   *
-   * A AbacatePay não tem esse mesmo endpoint (`GET /billing/list` não
-   * filtra por assinatura — ver comentário de `AbacatePayBilling`),
-   * então uma empresa só-AbacatePay volta com `items: []` + `note`
-   * explicando o motivo — nunca inventa uma correlação frágil por
-   * valor/data que poderia mostrar o pagamento errado.
    */
   async getCompanyPaymentHistory(companyId: string): Promise<BillingCompanyPaymentHistoryResult> {
     const company = await this.companyRepository.findById(companyId);
@@ -1803,16 +1462,6 @@ export class BillingService {
           metodo: pagamento.billingType,
           data: pagamento.paymentDate ?? pagamento.dateCreated ?? null,
         })),
-      };
-    }
-
-    if (company.abacatepaySubscriptionId) {
-      return {
-        companyId: company.id,
-        companyNome: company.nomeFantasia,
-        provider: "abacatepay",
-        items: [],
-        note: "A AbacatePay não expõe histórico de pagamentos por assinatura — veja o extrato geral da conta acima.",
       };
     }
 

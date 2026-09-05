@@ -8,13 +8,14 @@ export interface AsaasConfig {
 }
 
 /**
- * Configuração da Asaas (asaas.com) — provedora de pagamento que
- * processa cartão de crédito, débito e boleto da mensalidade da Rotta
- * (Dossiê 26, R$ 39,90/mês; Pix continua na AbacatePay,
- * `abacatepay.config.ts`). `apiKey`/`webhookToken` opcionais: sem eles,
- * a aplicação sobe normalmente e `AsaasClientService` recusa a chamada
- * com um erro claro (mesmo padrão "stub honesto" de `AbacatePayConfig`/
- * `LytexConfig`) — nunca finge uma cobrança que não existe.
+ * Configuração da Asaas (asaas.com) — provedora ÚNICA de pagamento
+ * (pedido do usuário 05/09/2026: "Nós usaremos 100% Asaas, esquece a
+ * AbacatePay") que processa Pix, cartão de crédito/débito e boleto da
+ * mensalidade da Rotta (Dossiê 26, R$ 39,90/mês). `apiKey`/
+ * `webhookToken` opcionais: sem eles, a aplicação sobe normalmente e
+ * `AsaasClientService` recusa a chamada com um erro claro (mesmo
+ * padrão "stub honesto" de `LytexConfig`) — nunca finge uma cobrança
+ * que não existe.
  */
 export default registerAs("asaas", (): AsaasConfig => ({
   apiKey: process.env.ASAAS_API_KEY || undefined,

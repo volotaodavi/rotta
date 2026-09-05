@@ -383,10 +383,10 @@ export class MessagePersonalizationService {
 
   /**
    * Resumo semanal/mensal pro Admin Rotta (`AdminDigestService`) —
-   * `faturamentoAbacatePayCentavos`/`lucroLiquidoAbacatePayCentavos`
-   * chegam `null` quando a AbacatePay não está configurada, ou a
-   * consulta falhou — vira "indisponível", nunca "R$ 0,00" (stub
-   * honesto: dado ausente não é dado zero).
+   * `faturamentoCentavos`/`lucroLiquidoCentavos` chegam `null` quando a
+   * Asaas não está configurada, ou a consulta falhou — vira
+   * "indisponível", nunca "R$ 0,00" (stub honesto: dado ausente não é
+   * dado zero).
    */
   relatorioAdmin(resumo: {
     label: string;
@@ -395,8 +395,8 @@ export class MessagePersonalizationService {
     planosAtivosAgora: number;
     chamadosAbertos: number;
     chamadosEncerrados: number;
-    faturamentoAbacatePayCentavos: number | null;
-    lucroLiquidoAbacatePayCentavos: number | null;
+    faturamentoCentavos: number | null;
+    lucroLiquidoCentavos: number | null;
   }): PersonalizedMessage {
     const formatar = (centavos: number | null): string =>
       centavos === null
@@ -409,9 +409,8 @@ export class MessagePersonalizationService {
         `Novos clientes: ${resumo.novasEmpresas}.`,
         `Novas assinaturas: ${resumo.novasAssinaturas} (${resumo.planosAtivosAgora} planos ativos no total).`,
         `Chamados de suporte: ${resumo.chamadosAbertos} aberto(s), ${resumo.chamadosEncerrados} encerrado(s).`,
-        `Faturamento (AbacatePay/Pix): ${formatar(resumo.faturamentoAbacatePayCentavos)}.`,
-        `Lucro líquido (AbacatePay, após taxas): ${formatar(resumo.lucroLiquidoAbacatePayCentavos)}.`,
-        "Valores da Asaas (cartão/boleto) ainda não entram nesse cálculo — reconciliação pendente.",
+        `Faturamento: ${formatar(resumo.faturamentoCentavos)}.`,
+        `Lucro líquido (após taxas): ${formatar(resumo.lucroLiquidoCentavos)}.`,
       ].join("\n"),
     };
   }

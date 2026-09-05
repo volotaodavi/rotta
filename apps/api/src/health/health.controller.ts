@@ -9,7 +9,6 @@ import { RedisService } from "@/infra/cache/redis.service";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { DIDIT_INTEGRATION_NAME } from "@/infra/didit/didit.service";
 import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
-import { ABACATEPAY_INTEGRATION_NAME } from "@/modules/billing/abacatepay-client.service";
 import { ASAAS_INTEGRATION_NAME } from "@/modules/billing/asaas-client.service";
 import {
   NOMINATIM_INTEGRATION_NAME,
@@ -18,9 +17,15 @@ import {
 import { LYTEX_INTEGRATION_NAME } from "@/modules/wallet/rotta-pay-provider.service";
 import { Role } from "@/shared/enums";
 
-/** As integrações externas com instrumentação real de saúde (Dossiê 44 — PROMPT ROTTA INTEGRATION & INTELLIGENCE AUDIT ENGINE, Seção 34: "LYTEX... ABACATEPAY... GEO PROVIDER"; Didit — verificação de identidade — adicionada na Frente C do acompanhamento pós-Dossiê 45; Asaas — cartão/débito/boleto, Dossiê 26 — adicionada depois: `AsaasClientService` já registrava a própria saúde, mas ficara de fora desta lista, então nunca aparecia em `GET /health/integrations`/painel Admin). */
+/**
+ * As integrações externas com instrumentação real de saúde (Dossiê 44
+ * — PROMPT ROTTA INTEGRATION & INTELLIGENCE AUDIT ENGINE, Seção 34:
+ * "LYTEX... GEO PROVIDER"; Didit — verificação de identidade —
+ * adicionada na Frente C do acompanhamento pós-Dossiê 45; Asaas —
+ * cartão/débito/boleto, Dossiê 26. AbacatePay removida em 05/09/2026
+ * (pedido do usuário: "Nós usaremos 100% Asaas, esquece a AbacatePay").
+ */
 const TRACKED_INTEGRATIONS = [
-  ABACATEPAY_INTEGRATION_NAME,
   ASAAS_INTEGRATION_NAME,
   LYTEX_INTEGRATION_NAME,
   NOMINATIM_INTEGRATION_NAME,
