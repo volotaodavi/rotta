@@ -153,7 +153,16 @@ export class AdminDigestService {
     return { inicio, fim, label: "mensal" };
   }
 
-  /** Chamado por `AdminDigestSchedulerService` — monta o resumo e notifica todo Admin Rotta (push + e-mail). */
+  /**
+   * Chamado por `AdminDigestSchedulerService` — monta o resumo e
+   * dispara dois canais bem separados: o E-MAIL de verdade vai só pra
+   * `financeiro@rottabr.com.br` (`AdminInboxEmailService`, fora do
+   * Communication Engine por usuário); cada conta Admin Rotta recebe só
+   * um PUSH/in-app (pedido do usuário 07/09/2026: "vem muito e-mail
+   * para o mesmo objetivo... não deverá vir para nenhum outro e-mail" —
+   * ver `RELATORIO_SEMANAL`/`RELATORIO_MENSAL` em
+   * `NotificationChannelSelectorService`, sem `EMAIL` no canal).
+   */
   async enviarResumo(
     tipo: "RELATORIO_SEMANAL" | "RELATORIO_MENSAL",
     periodo: DigestPeriod,
@@ -169,9 +178,11 @@ export class AdminDigestService {
       faturamentoCentavos: resumo.faturamentoCentavos,
       lucroLiquidoCentavos: resumo.lucroLiquidoCentavos,
     });
-    // Caixa fixa da Rotta (pedido do usuário 01/09/2026) — garante a
-    // entrega mesmo sem nenhuma conta Admin Rotta real configurada.
-    // "financeiro": resumo semanal/mensal é relatório de faturamento.
+    // Único e-mail de verdade deste relatório — "financeiro" cai em
+    // `financeiro@rottabr.com.br` (`AdminInboxEmailService`), sempre,
+    // relatório de faturamento é assunto dessa caixa. NUNCA some mesmo
+    // com contas Admin Rotta configuradas — é a caixa fixa, não um
+    // fallback.
     void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "financeiro");
 
     const adminIds = await this.usersService.listAdminRottaUserIds();
@@ -186,7 +197,7 @@ export class AdminDigestService {
     }
 
     this.logger.log(
-      `Resumo ${resumo.periodo.label} enviado a ${adminIds.length} Admin Rotta: ${resumo.novasEmpresas} nova(s) empresa(s), ${resumo.novasAssinaturas} nova(s) assinatura(s), ${resumo.chamadosAbertos} chamado(s) aberto(s), ${resumo.chamadosEncerrados} encerrado(s).`,
+      `Resumo ${resumo.periodo.label} enviado a financeiro@rottabr.com.br + push/in-app pra ${adminIds.length} Admin Rotta: ${resumo.novasEmpresas} nova(s) empresa(s), ${resumo.novasAssinaturas} nova(s) assinatura(s), ${resumo.chamadosAbertos} chamado(s) aberto(s), ${resumo.chamadosEncerrados} encerrado(s).`,
     );
 
     return resumo;

@@ -104,8 +104,17 @@ export class NotificationChannelSelectorService {
     NOVO_CLIENTE_CADASTRADO: [PUSH, EMAIL],
     PLANO_NOVA_ASSINATURA: [PUSH, EMAIL],
     SUPORTE_TICKET_ENCERRADO: [PUSH, EMAIL],
-    RELATORIO_SEMANAL: [PUSH, EMAIL],
-    RELATORIO_MENSAL: [PUSH, EMAIL],
+    // Só PUSH/in-app, nunca EMAIL por Admin Rotta individual (pedido do
+    // usuário 07/09/2026: "vem muito e-mail para o mesmo objetivo... não
+    // deverá vir para nenhum outro e-mail, apenas para
+    // financeiro@rottabr.com.br") — antes, cada conta Admin Rotta
+    // (Geral/Suporte/Financeiro) recebia o MESMO relatório por e-mail,
+    // em cima da cópia já enviada pra `financeiro@` (`AdminDigestService`,
+    // via `AdminInboxEmailService`, fora do Communication Engine por
+    // usuário). Push continua — é só um aviso rápido, não enche caixa de
+    // entrada nenhuma.
+    RELATORIO_SEMANAL: [PUSH],
+    RELATORIO_MENSAL: [PUSH],
   };
 
   selectChannels(tipo: NotificationEventType): CommunicationChannel[] {

@@ -541,9 +541,12 @@ export class CompaniesService implements OnModuleInit {
     // Caixa fixa da Rotta (pedido do usuário 01/09/2026: "o e-mail que
     // está de admin na Rotta não existe... direcionar essas informações
     // pra contato@.../rottadobrasil@...") — garante a entrega mesmo sem
-    // nenhuma conta Admin Rotta real configurada.
-    // "financeiro": novo cliente cadastrado é evento de aquisição/receita.
-    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo, "financeiro");
+    // nenhuma conta Admin Rotta real configurada. Categoria padrão
+    // ("notificacoes", cai em `contato@`) — pedido do usuário
+    // 07/09/2026: "contato@ → novo cliente e demais informações"; não
+    // é evento financeiro (isso é `PLANO_NOVA_ASSINATURA`, pagamento de
+    // verdade — este aqui é só o cadastro em si, ainda sem cobrança).
+    void this.adminInboxEmailService.send(mensagem.titulo, mensagem.corpo);
 
     this.usersService
       .listAdminRottaUserIds()
