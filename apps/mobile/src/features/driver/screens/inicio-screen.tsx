@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  LifeBuoy,
   LogIn,
   LogOut,
   MapPin,
@@ -67,6 +68,7 @@ import {
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "../hooks/use-my-location";
 import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
+
 import type {
   NextEta,
   Route,
@@ -92,6 +94,7 @@ import {
   useCreateVehicleOccurrence,
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
+import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -455,6 +458,15 @@ function TripStatsGrid({
     { label: "Mensagens", valor: String(unreadCount ?? 0), icon: MessageCircle },
   ];
 
+  function handleSuporte(): void {
+    Linking.openURL(buildWhatsAppUrl("Olá! Preciso de ajuda do suporte durante uma viagem.")).catch(
+      () => {
+        // Best-effort — mesmo padrão dos outros `Linking.openURL` desta tela
+        // (navegação): sem app de WhatsApp instalado, não quebra a viagem.
+      },
+    );
+  }
+
   return (
     <View style={styles.statsGrid}>
       {tiles.map((tile) => (
@@ -474,6 +486,21 @@ function TripStatsGrid({
           </Text>
         </View>
       ))}
+      {/* Paridade com o Painel Web (`TripStatsGrid` de `minha-rota/page.tsx`)
+          e com o modelo de referência ("Suporte / Falar com a central",
+          linha própria abaixo da grade 2x2) — faltava aqui no mobile. */}
+      <Pressable
+        onPress={handleSuporte}
+        style={[
+          styles.statsSuporteRow,
+          { backgroundColor: theme.colors.surface, borderColor: theme.colors.border },
+        ]}
+      >
+        <LifeBuoy size={18} color={accentColor} />
+        <Text style={{ color: accentColor, fontWeight: "600", fontSize: 13 }}>
+          Suporte: falar com a central
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -2124,6 +2151,16 @@ const styles = StyleSheet.create({
   secao: { fontSize: 16, fontWeight: "700" },
   statsCard: { marginHorizontal: 16 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  statsSuporteRow: {
+    alignItems: "center",
+    borderRadius: 16,
+    borderWidth: 1,
+    flexBasis: "100%",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    padding: 12,
+  },
   statsTile: {
     borderRadius: 16,
     borderWidth: 1,
