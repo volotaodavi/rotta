@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T21:12:28Z",
+  "title": "Design System: Rotta Mobile",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Azul Elétrico",
+        "canonical": "#3B6EF6",
+        "tonalRamp": [
+          "#12214A",
+          "#213E8A",
+          "#2F58C5",
+          "#3B6EF6",
+          "#6A91F8",
+          "#99B4FA",
+          "#C4D4FC",
+          "#EBF1FE"
+        ]
+      },
+      "driver-primary": {
+        "role": "primary",
+        "displayName": "Azul Estrada",
+        "canonical": "#4C86FF",
+        "tonalRamp": [
+          "#17284D",
+          "#2B4B8F",
+          "#3D6BCC",
+          "#4C86FF",
+          "#77A3FF",
+          "#A2C0FF",
+          "#C9DBFF",
+          "#EDF3FF"
+        ]
+      },
+      "driver-success": {
+        "role": "success",
+        "displayName": "Verde Embarque",
+        "canonical": "#22C55E",
+        "tonalRamp": [
+          "#0A3B1C",
+          "#136E35",
+          "#1B9E4B",
+          "#22C55E",
+          "#57D385",
+          "#8CE1AB",
+          "#BDEECF",
+          "#E9F9EF"
+        ]
+      },
+      "driver-danger": {
+        "role": "danger",
+        "displayName": "Vermelho Parada",
+        "canonical": "#EF4444",
+        "tonalRamp": [
+          "#481414",
+          "#862626",
+          "#BF3636",
+          "#EF4444",
+          "#F37171",
+          "#F79E9E",
+          "#FAC7C7",
+          "#FDECEC"
+        ]
+      },
+      "monitor-accent": {
+        "role": "secondary",
+        "displayName": "Roxo Monitor",
+        "canonical": "#8B5CF6",
+        "tonalRamp": [
+          "#2A1C4A",
+          "#4E348A",
+          "#6F4AC5",
+          "#8B5CF6",
+          "#A783F8",
+          "#C3AAFA",
+          "#DCCEFC",
+          "#F3EFFE"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Headline Mobile",
+        "purpose": "Título de tela (26px, menor que o web pra caber melhor)."
+      },
+      "title": { "displayName": "Title", "purpose": "Título de card/bloco." },
+      "body": { "displayName": "Body", "purpose": "Texto corrido padrão." },
+      "label": {
+        "displayName": "Overline/Label",
+        "purpose": "Rótulo de categoria/etapa, uppercase."
+      }
+    },
+    "shadows": [
+      {
+        "name": "driver-map-card",
+        "value": "shadowOpacity 0.12, shadowRadius 20, shadowOffset {0,8}, elevation 8",
+        "purpose": "Único componente com sombra própria — cartão de mapa/bottom sheet do Motorista."
+      }
+    ],
+    "motion": [
+      {
+        "name": "slide-release-spring",
+        "value": "Animated.spring(bounciness: 4)",
+        "purpose": "SlideToAction volta ao início quando solto antes do limiar de 82%."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Slide To Action",
+      "kind": "custom",
+      "refersTo": "slide-to-action",
+      "description": "Confirmação por arrasto (82% do percurso) — iniciar/encerrar viagem, confirmar embarque em lote.",
+      "html": "<div class=\"ds-slide-track\"><span class=\"ds-slide-label\">Deslize para iniciar</span><div class=\"ds-slide-thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M9 6l6 6-6 6\" stroke=\"#fff\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></div></div>",
+      "css": ".ds-slide-track { position: relative; height: 56px; width: 100%; border-radius: 9999px; background: #1A2029; border: 1px solid #232A35; display: flex; align-items: center; justify-content: center; overflow: hidden; } .ds-slide-label { color: #9AA4B2; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 600; padding: 0 64px; } .ds-slide-thumb { position: absolute; left: 0; top: 0; width: 56px; height: 56px; border-radius: 9999px; background: #4C86FF; display: flex; align-items: center; justify-content: center; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Botão principal fora do Modo Operacional (ex. \"Entrar\" no acesso rápido).",
+      "html": "<button class=\"ds-btn-primary\">Entrar</button>",
+      "css": ".ds-btn-primary { background: #3B6EF6; color: #fff; height: 48px; padding: 0 24px; border-radius: 10px; border: none; font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 16px; } .ds-btn-primary:active { transform: scale(0.98); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Container padrão de conteúdo — plano no repouso.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-title\">Próxima viagem</p><p class=\"ds-card-body\">07:15 — Rota Centro</p></div>",
+      "css": ".ds-card { background: #151A22; border-radius: 16px; padding: 16px; } .ds-card-title { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 16px; color: #F5F7FA; margin: 0 0 4px; } .ds-card-body { font-family: 'Inter', system-ui, sans-serif; font-weight: 400; font-size: 14px; color: #9AA4B2; margin: 0; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Torre de Controle",
+    "overview": "Mesmo sistema visual do apps/web/apps/admin (mesmos tokens, packages/theme) — escuro por padrão, azul único como marca, profundidade por tom de superfície, Inter em tudo. O app troca inteiramente de navegação por papel (Motorista, Monitor, Responsável, Admin reduzido), mas a linguagem visual de base é uma só.\n\nA única exceção deliberada é o Modo Operacional (telas de Motorista/Monitor durante a viagem): usa uma paleta driver* própria, pedida explicitamente pelo usuário com valores hex exatos — nunca aproximar. Essa identidade fica isolada nessas telas; Responsável e Admin reduzido nunca a herdam.",
+    "keyCharacteristics": [
+      "Um app, quatro papéis, uma linguagem visual — navegação muda, tokens de base não.",
+      "Modo Operacional (Motorista/Monitor) tem paleta driver* exclusiva, com valores exatos do usuário.",
+      "Componente de assinatura: SlideToAction — confirmação por arrasto, nunca por toque simples.",
+      "PIN/biometria são atalhos opcionais de reentrada — nunca obrigatórios.",
+      "Nenhum gráfico/histórico mostra dado fabricado — sempre real ou estado vazio honesto."
+    ],
+    "rules": [
+      {
+        "name": "The Driver Isolation Rule",
+        "body": "A paleta driver* só existe nas telas de Modo Operacional. Nunca vaza pra Responsável, Admin reduzido, ou qualquer tela fora desse contexto.",
+        "section": "colors"
+      },
+      {
+        "name": "The Discrete Map-Card Rule",
+        "body": "Só o cartão flutuante de mapa/bottom sheet do Modo Operacional recebe sombra própria e discreta; todo o resto segue a regra geral de sem sombra em card padrão.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do manter a paleta driver* restrita às telas de Modo Operacional.",
+      "Do usar SlideToAction (não um botão de toque simples) pra qualquer ação irreversível/crítica de viagem.",
+      "Do manter PIN e biometria como atalhos opcionais.",
+      "Do mostrar sempre dado real ou estado vazio honesto em gráficos/históricos."
+    ],
+    "donts": [
+      "Don't deixar a paleta driver* vazar pra telas de Responsável ou Admin reduzido.",
+      "Don't adicionar sombra genérica em card fora do cartão de mapa do Motorista.",
+      "Don't tornar PIN ou biometria obrigatório, ou condicionar login a eles."
+    ]
+  }
+}

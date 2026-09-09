@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-09T21:12:28Z",
+  "title": "Design System: Rotta — Site & Painel da Transportadora",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Azul Elétrico",
+        "canonical": "#3B6EF6",
+        "tonalRamp": [
+          "#12214A",
+          "#213E8A",
+          "#2F58C5",
+          "#3B6EF6",
+          "#6A91F8",
+          "#99B4FA",
+          "#C4D4FC",
+          "#EBF1FE"
+        ]
+      },
+      "success": {
+        "role": "success",
+        "displayName": "Verde Confirmação",
+        "canonical": "#22C55E",
+        "tonalRamp": [
+          "#0A3B1C",
+          "#136E35",
+          "#1B9E4B",
+          "#22C55E",
+          "#57D385",
+          "#8CE1AB",
+          "#BDEECF",
+          "#E9F9EF"
+        ]
+      },
+      "warning": {
+        "role": "warning",
+        "displayName": "Âmbar Atenção",
+        "canonical": "#F5A623",
+        "tonalRamp": [
+          "#4A320B",
+          "#895D14",
+          "#C4851C",
+          "#F5A623",
+          "#F7BB58",
+          "#FAD18D",
+          "#FCE4BD",
+          "#FEF6E9"
+        ]
+      },
+      "danger": {
+        "role": "danger",
+        "displayName": "Vermelho Alerta",
+        "canonical": "#EF4444",
+        "tonalRamp": [
+          "#481414",
+          "#862626",
+          "#BF3636",
+          "#EF4444",
+          "#F37171",
+          "#F79E9E",
+          "#FAC7C7",
+          "#FDECEC"
+        ]
+      },
+      "info": {
+        "role": "info",
+        "displayName": "Ciano Informativo",
+        "canonical": "#22D3EE",
+        "tonalRamp": [
+          "#0A3F47",
+          "#137685",
+          "#1BA9BE",
+          "#22D3EE",
+          "#57DEF2",
+          "#8CE8F6",
+          "#BDF2FA",
+          "#E9FBFD"
+        ]
+      },
+      "neutral-900": {
+        "role": "neutral",
+        "displayName": "Névoa",
+        "canonical": "#F5F7FA"
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Grafite Profundo",
+        "canonical": "#0B0F14"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Hero da landing page, títulos de maior destaque."
+      },
+      "headline": { "displayName": "Headline", "purpose": "Título de página/seção." },
+      "title": { "displayName": "Title", "purpose": "Título de card/bloco." },
+      "body": { "displayName": "Body", "purpose": "Texto corrido padrão." },
+      "label": {
+        "displayName": "Overline/Label",
+        "purpose": "Rótulo de categoria/etapa, uppercase."
+      }
+    },
+    "shadows": [
+      {
+        "name": "card",
+        "value": "0 1px 2px 0 rgba(0,0,0,0.24)",
+        "purpose": "Reforço opcional entre cards empilhados — não é o padrão."
+      },
+      {
+        "name": "dropdown",
+        "value": "0 4px 12px 0 rgba(0,0,0,0.32)",
+        "purpose": "Menus e popovers."
+      },
+      { "name": "modal", "value": "0 8px 24px 0 rgba(0,0,0,0.4)", "purpose": "Diálogos e modais." }
+    ],
+    "motion": [
+      {
+        "name": "button-press",
+        "value": "transform 0.15s, scale(0.98) on active",
+        "purpose": "Feedback tátil ao pressionar botões."
+      },
+      {
+        "name": "color-transition",
+        "value": "transition-colors duration-150",
+        "purpose": "Hover/estado de botões e links."
+      }
+    ],
+    "breakpoints": []
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Ação principal — nunca mais de uma por tela.",
+      "html": "<button class=\"ds-btn-primary\">Salvar alterações</button>",
+      "css": ".ds-btn-primary { background: #3B6EF6; color: #fff; height: 40px; padding: 0 16px; border-radius: 10px; border: none; font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 14px; letter-spacing: 0.2px; transition: background-color 0.15s, transform 0.15s; } .ds-btn-primary:hover { background: #5A8CFF; } .ds-btn-primary:focus-visible { outline: 2px solid #3B6EF6; outline-offset: 2px; } .ds-btn-primary:active { transform: scale(0.98); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Ação secundária — fundo neutro claro.",
+      "html": "<button class=\"ds-btn-secondary\">Cancelar</button>",
+      "css": ".ds-btn-secondary { background: #E5E8EC; color: #0B0F14; height: 40px; padding: 0 16px; border-radius: 10px; border: none; font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 14px; transition: opacity 0.15s; } .ds-btn-secondary:hover { opacity: 0.9; } .ds-btn-secondary:active { transform: scale(0.98); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Container padrão de conteúdo — plano no repouso, sem sombra.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-title\">Título do card</p><p class=\"ds-card-body\">Conteúdo do card.</p></div>",
+      "css": ".ds-card { background: #151A22; border-radius: 16px; padding: 24px; } .ds-card-title { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 24px; line-height: 32px; color: #F5F7FA; margin: 0 0 8px; } .ds-card-body { font-family: 'Inter', system-ui, sans-serif; font-weight: 400; font-size: 16px; line-height: 24px; color: #9AA4B2; margin: 0; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo de texto padrão — borda muda pra primary no foco.",
+      "html": "<input class=\"ds-input\" type=\"text\" placeholder=\"Digite aqui\" />",
+      "css": ".ds-input { background: #12161D; border: 1px solid #232A35; border-radius: 10px; height: 40px; padding: 0 12px; color: #F5F7FA; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; } .ds-input::placeholder { color: #6B7484; } .ds-input:focus-visible { outline: none; border-color: #3B6EF6; box-shadow: 0 0 0 2px rgba(59,110,246,0.4); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "A Torre de Controle",
+    "overview": "Rotta parece uma torre de controle noturna de tráfego: fundo quase preto-azulado por padrão, telas de operação calmas onde nada compete por atenção sem motivo. A marca se restringe deliberadamente a azul + preto + branco + cinza, com as quatro cores semânticas (sucesso/aviso/perigo/informação) reservadas exclusivamente a significado de estado — nunca decoração. Hierarquia visual nasce de peso e tamanho tipográfico (uma família só, Inter, do site ao app), nunca de cor.\n\nApesar do fundo escuro e do rigor da paleta, o azul principal é tratado como vivo e caloroso, não frio/institucional — é o elemento que puxa o olho num painel deliberadamente monocromático, e por isso aparece com moderação (a raridade é o ponto). Profundidade vem quase inteiramente da progressão de tom background → surface → surfaceElevated → card, nunca de sombra pesada.",
+    "keyCharacteristics": [
+      "Escuro por padrão (#0B0F14), tema claro como preferência explícita do usuário, nunca o padrão.",
+      "Azul único como cor de marca; verde/âmbar/vermelho/ciano só para estado, nunca decoração.",
+      "Sem sombra em cards no estado padrão — profundidade por tom de superfície.",
+      "Uma família tipográfica (Inter) do marketing ao painel autenticado.",
+      "Micro-interação tátil: botões encolhem levemente (scale(0.98)) ao serem pressionados."
+    ],
+    "rules": [
+      {
+        "name": "The Brand Restraint Rule",
+        "body": "A marca é só azul + preto/branco/cinza. Qualquer outra cor em tela precisa carregar significado semântico — nunca decoração pura.",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat Card Rule",
+        "body": "Cards no estado padrão nunca têm sombra. Sombra só existe em camadas realmente flutuantes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Weight-Not-Color Rule",
+        "body": "Hierarquia visual é peso/tamanho tipográfico. Cor é reservada a significado semântico.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Sombra nunca aparece em cards no estado de repouso. Ela só existe como resposta a uma camada genuinamente flutuante.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do usar Azul Elétrico como única cor de marca — CTA primário, foco, links, estado ativo.",
+      "Do construir hierarquia por peso/tamanho de Inter, nunca por cor.",
+      "Do manter cards planos no repouso; sombra só em camadas flutuantes de verdade.",
+      "Do basear qualquer espaçamento novo na escala de 4px."
+    ],
+    "donts": [
+      "Don't introduzir uma cor de marca nova fora de azul/preto/branco/cinza.",
+      "Don't usar sucesso/aviso/perigo/informação como decoração.",
+      "Don't adicionar sombra pesada/dramática em card de estado padrão.",
+      "Don't misturar família tipográfica — é Inter em toda a plataforma."
+    ]
+  }
+}
