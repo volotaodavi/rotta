@@ -6,7 +6,7 @@ import {
   PointAnnotation,
   ShapeSource,
 } from "@maplibre/maplibre-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { isCoordenadaValida } from "../types";
@@ -14,6 +14,7 @@ import { isCoordenadaValida } from "../types";
 import type { RottaMapMarker, RottaMapProps } from "../types";
 import type { CameraRef, MapViewRef } from "@maplibre/maplibre-react-native";
 import type { Feature, LineString } from "geojson";
+import type { ReactNode } from "react";
 
 export type { RottaMapProps, RottaMapMarker, BoundingBox, Coordenada } from "../types";
 export { isCoordenadaValida } from "../types";
@@ -269,8 +270,11 @@ function AnimatedVehicleAnnotation({
  * `@rnmapbox/maps` que este pacote usava antes, o MapLibre Native é
  * inteiramente open-source: nenhum token de download é necessário em
  * build-time (SDK distribuído via Maven Central/CocoaPods livremente).
+ *
+ * `export`ado como `RottaMapInner` e só usado através de `RottaMap`
+ * (abaixo, envolto em `MapCrashBoundary`) — ver o motivo lá.
  */
-export function RottaMap({
+function RottaMapInner({
   markers: markersProp,
   route,
   routeColor = DEFAULT_ROUTE_COLOR,
@@ -438,6 +442,62 @@ export function RottaMap({
         </View>
       ) : null}
     </View>
+  );
+}
+
+/**
+ * Rede de segurança contra o crash de render mais comum desta tela:
+ * abrir uma rota com mapa (Motorista/Monitor/Responsável) dentro do
+ * app Expo Go (auditoria 09/09/2026, pedido do usuário — "aparece
+ * naquela tela de erro de render... contorne"). `RottaMapInner` exige
+ * o módulo nativo do MapLibre (doc acima), que só existe num build
+ * próprio (dev client/EAS); no Expo Go, o `<MapView>` lança uma
+ * exceção de render assim que monta, e sem isto aqui o erro subia até
+ * o `AppErrorBoundary` de `apps/mobile` — derrubando a TELA INTEIRA
+ * (grade de estatísticas, botão de ocorrência, lista de alunos, tudo)
+ * por causa só do mapa. Este boundary local isola o dano: só a área
+ * do mapa vira um aviso, o resto da tela continua funcionando normal.
+ *
+ * Nunca tenta "resolver" o erro sozinho (não existe `retry` que
+ * conserte um módulo nativo ausente) — só explica o motivo real, pra
+ * não parecer um bug aleatório.
+ */
+class MapCrashBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  override state: { hasError: boolean } = { hasError: false };
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  override componentDidCatch(error: Error): void {
+    // eslint-disable-next-line no-console
+    console.error(
+      "[RottaMap] Falha ao renderizar o mapa nativo (MapLibre). Se você está testando pelo " +
+        "app Expo Go, isso é esperado — mapas nativos exigem um build próprio do app " +
+        "(dev client/EAS), Expo Go não carrega módulos nativos de terceiros.",
+      error,
+    );
+  }
+
+  override render(): ReactNode {
+    if (!this.state.hasError) return this.props.children;
+    return (
+      <View style={styles.errorOverlay}>
+        <Text style={styles.errorText}>
+          Mapa não disponível neste modo de teste (Expo Go). Mapas nativos só funcionam num build
+          próprio do app — o resto da tela continua funcionando normalmente.
+        </Text>
+      </View>
+    );
+  }
+}
+
+/** Ver documentação completa em `RottaMapInner` acima — este wrapper só isola o crash de render dentro do MapLibre nativo (ver `MapCrashBoundary`). */
+export function RottaMap(props: RottaMapProps): JSX.Element {
+  return (
+    <MapCrashBoundary>
+      <RottaMapInner {...props} />
+    </MapCrashBoundary>
   );
 }
 
