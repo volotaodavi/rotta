@@ -140,12 +140,28 @@ const FLUXO: { titulo: string; descricao: string; icon: ComponentType<{ classNam
     },
   ];
 
-/** "Feita para a rotina real do transporte escolar." — só capacidades já implementadas. */
+/** Os dois recursos mais diferenciadores da seção "Feita para a rotina real" — ganham destaque com descrição, o resto vira lista compacta (`ROTINA_REAL`). */
+const DESTAQUES: {
+  titulo: string;
+  descricao: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
+  {
+    titulo: "Localização em tempo real",
+    descricao: "Veja exatamente onde o transporte está, do embarque à chegada.",
+    icon: MapPin,
+  },
+  {
+    titulo: "Notificações na hora certa",
+    descricao: "Um aviso a cada embarque e desembarque, sem precisar perguntar.",
+    icon: Bell,
+  },
+];
+
+/** "Feita para a rotina real do transporte escolar." — demais capacidades já implementadas, em lista compacta abaixo dos dois destaques. */
 const ROTINA_REAL: { titulo: string; icon: ComponentType<{ className?: string }> }[] = [
   { titulo: "Rotas organizadas", icon: RouteIcon },
-  { titulo: "Localização em tempo real", icon: MapPin },
   { titulo: "Controle de embarque e desembarque", icon: CheckCircle2 },
-  { titulo: "Notificações", icon: Bell },
   { titulo: "Gestão de motoristas e monitores", icon: Users },
   { titulo: "Registro de ocorrências", icon: AlertTriangle },
   { titulo: "Histórico de viagens", icon: History },
@@ -196,10 +212,7 @@ export default function LandingPage(): JSX.Element {
       <section className="relative isolate overflow-hidden">
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-24 pt-14 sm:pt-20 lg:grid-cols-2 lg:gap-16">
           <div className="flex flex-col items-start gap-6 text-left">
-            <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
-              Transporte escolar inteligente
-            </span>
-            <h1 className="text-[42px] font-bold leading-[1.03] tracking-[-0.02em] text-text sm:text-[56px] lg:text-[64px]">
+            <h1 className="text-[42px] font-bold leading-[1.03] tracking-[-0.02em] text-text [text-wrap:balance] sm:text-[56px] lg:text-[64px]">
               Uma nova rota para o transporte escolar.
             </h1>
             <Typography variant="body" color="muted" className="max-w-lg">
@@ -270,7 +283,7 @@ export default function LandingPage(): JSX.Element {
       <section className="w-full px-6 py-24">
         <Reveal className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-20">
           <div className="flex flex-col gap-5">
-            <Typography variant="headline" as="h2">
+            <Typography variant="headline" as="h2" className="[text-wrap:balance]">
               O transporte escolar não precisa ser complicado.
             </Typography>
             <Typography variant="body" color="muted">
@@ -331,14 +344,14 @@ export default function LandingPage(): JSX.Element {
                     className="object-cover"
                   />
                 </div>
-                <div className="flex flex-col gap-4">
-                  <Typography variant="overline" color="primary">
+                <div className="flex flex-col gap-3">
+                  <Typography variant="headline" as="h3" className="[text-wrap:balance]">
                     {bloco.titulo}
                   </Typography>
-                  <Typography variant="title" as="h3">
+                  <Typography variant="body" color="muted" className="max-w-md">
                     {bloco.ideia}
                   </Typography>
-                  <ul className="flex flex-col gap-2.5">
+                  <ul className="mt-2 flex flex-col gap-2.5">
                     {bloco.recursos.map((recurso) => (
                       <li key={recurso} className="flex items-start gap-2.5">
                         <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
@@ -456,39 +469,61 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
-      {/* ===== "Feita para a rotina real do transporte escolar." ===== */}
+      {/* ===== "Feita para a rotina real do transporte escolar." =====
+          Hierarquia deliberada em vez de grade uniforme: os dois
+          recursos mais diferenciadores (localização ao vivo e
+          notificações) ganham destaque com descrição; o resto vira uma
+          lista compacta de apoio, escaneável, sem virar mais uma fileira
+          de cards do mesmo tamanho. */}
       <section className="w-full px-6 py-24">
         <div className="mx-auto w-full max-w-5xl">
           <Reveal>
-            <Typography variant="headline" as="h2" className="mb-14 text-center">
+            <Typography variant="headline" as="h2" className="max-w-2xl [text-wrap:balance]">
               Feita para a rotina real do transporte escolar.
             </Typography>
           </Reveal>
-          <div className="grid grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-            {ROTINA_REAL.map((item, index) => (
-              <Reveal key={item.titulo} delayMs={index * 60}>
-                <div className="flex flex-col items-start gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-border text-primary">
-                    <item.icon className="h-4.5 w-4.5" />
+
+          <div className="mt-14 grid grid-cols-1 gap-10 border-y border-border py-10 sm:grid-cols-2 sm:gap-8">
+            {DESTAQUES.map((item, index) => (
+              <Reveal key={item.titulo} delayMs={index * 80}>
+                <div className="flex items-start gap-4">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <item.icon className="h-5 w-5" />
                   </span>
-                  <Typography variant="bodySmall" className="font-semibold">
-                    {item.titulo}
-                  </Typography>
+                  <div className="flex flex-col gap-1.5">
+                    <Typography variant="subtitle">{item.titulo}</Typography>
+                    <Typography variant="bodySmall" color="muted" className="max-w-xs">
+                      {item.descricao}
+                    </Typography>
+                  </div>
                 </div>
               </Reveal>
             ))}
           </div>
+
+          <Reveal delayMs={160} className="mt-10 flex flex-wrap gap-3">
+            {ROTINA_REAL.map((item) => (
+              <div
+                key={item.titulo}
+                className="flex items-center gap-2 rounded-full border border-border py-2 pl-2.5 pr-4"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-text-muted">
+                  <item.icon className="h-3.5 w-3.5" />
+                </span>
+                <Typography variant="bodySmall">{item.titulo}</Typography>
+              </div>
+            ))}
+          </Reveal>
         </div>
       </section>
 
       {/* ===== "Estamos traçando uma nova rota..." ===== */}
       <section id="sobre" className="w-full scroll-mt-20 bg-muted px-6 py-24">
         <Reveal className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 text-center">
-          <span className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary">
-            <Compass className="h-3.5 w-3.5" />
-            Sobre a Rotta
+          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+            <Compass className="h-5 w-5" />
           </span>
-          <Typography variant="headline" as="h2">
+          <Typography variant="headline" as="h2" className="[text-wrap:balance]">
             Estamos traçando uma nova rota para o transporte escolar.
           </Typography>
           <Typography variant="body" color="muted" className="max-w-2xl">
