@@ -17,9 +17,18 @@ import type { ExpoConfig } from "expo/config";
  */
 export default (): ExpoConfig => ({
   name: "Rotta",
-  slug: "rotta",
+  // Slug real do projeto na conta EAS (criado como "rottabr", não
+  // "rotta" — "rotta" sozinho já não estava disponível/era outro
+  // projeto). Não afeta o nome exibido do app (`name` acima) nem o
+  // pacote Android/iOS (`android.package`/`ios.bundleIdentifier`
+  // abaixo), só o identificador do projeto na Expo.
+  slug: "rottabr",
   scheme: "rotta",
-  owner: "rotta",
+  // Conta EAS real do projeto (09/09/2026) — a organização Expo se
+  // chama "rotta-do-brasil-mobilidade-escolar", não "rotta" (esse nome
+  // já existia como outra conta/slug na Expo, sem relação com este
+  // projeto).
+  owner: "rotta-do-brasil-mobilidade-escolar",
   // Auditoria minuciosa 04/09/2026 — bump pra 1.0.0 (primeiro envio
   // público real à Play Store). `versionCode` (Android) é numérico e
   // gerenciado à parte pelo EAS (`eas.json` -> `appVersionSource:
@@ -51,14 +60,17 @@ export default (): ExpoConfig => ({
   web: {
     favicon: "./assets/favicon.png",
   },
-  // `extra.eas.projectId` — só existe depois de rodar `eas init` uma vez
-  // (grátis, só exige login na conta Expo do projeto; nenhum cartão ou
-  // console pago). Sem ele, `usePushRegistration` (mobile) detecta a
-  // ausência e não tenta registrar nenhum token — mesmo "stub honesto"
-  // usado em `FcmService`/`WebPushService` (Frente 0 do push real).
+  // `extra.eas.projectId` — vinculado via `eas init --id ...` (09/09/2026),
+  // projeto real na conta EAS "rotta". Sem ele, `usePushRegistration`
+  // (mobile) detecta a ausência e não tenta registrar nenhum token —
+  // mesmo "stub honesto" usado em `FcmService`/`WebPushService` (Frente 0
+  // do push real). Não é segredo (é só um identificador de projeto,
+  // público em qualquer build do app) — por isso fixo aqui, com
+  // `EAS_PROJECT_ID` como override só pra quem quiser apontar pra outro
+  // projeto EAS em dev.
   extra: {
     eas: {
-      projectId: process.env.EAS_PROJECT_ID || undefined,
+      projectId: process.env.EAS_PROJECT_ID || "40595609-e641-48aa-a8d2-f5c55e19050f",
     },
   },
   plugins: [
