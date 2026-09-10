@@ -74,6 +74,21 @@ export default (): ExpoConfig => ({
     },
   },
   plugins: [
+    [
+      "expo-build-properties",
+      {
+        // Fix do build de producao/preview (EAS, 10/09/2026): o Compose
+        // Compiler 1.5.15 que o `expo-modules-core` do SDK 52 traz exige
+        // Kotlin >=1.9.25, mas o AGP/Expo Gradle plugin ainda fixa Kotlin
+        // 1.9.24 por padrao — `expo-modules-core:compileReleaseKotlin`
+        // falhava com "Compilation error" nos dois builds (ver log da
+        // fase RUN_GRADLEW). Kotlin 1.9.25 e 100% compativel com 1.9.24
+        // (patch release), sem mudanca de comportamento esperada.
+        android: {
+          kotlinVersion: "1.9.25",
+        },
+      },
+    ],
     "expo-secure-store",
     [
       "expo-notifications",
