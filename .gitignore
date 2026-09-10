@@ -25,6 +25,11 @@ storybook-static/
 *.mobileprovision
 *.orig.*
 web-build/
+# Pastas nativas geradas por `expo prebuild` (managed workflow — nunca
+# versionadas, a EAS/`eas build` gera do zero a cada build a partir de
+# apps/mobile/app.config.ts).
+apps/mobile/android/
+apps/mobile/ios/
 
 # Prisma
 apps/api/prisma/migrations/dev/
