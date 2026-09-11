@@ -64,7 +64,10 @@ function InstagramGlyph({ className }: { className?: string }): JSX.Element {
  * (`LEGAL_FOOTER_LINKS`, mesma fonte usada no painel autenticado).
  */
 const FOOTER_LINKS: { href: Route; label: string }[] = [
-  { href: "/#como-funciona", label: "Produto" },
+  // Pedido do usuário 11/09/2026: "quando a pessoa clicar em 'produto',
+  // poderá direcionar para ela [/baixar-app]" — antes apontava pra
+  // âncora "como funciona" da própria home.
+  { href: "/baixar-app", label: "Produto" },
   { href: "/#para-responsaveis", label: "Para responsáveis" },
   { href: "/#para-transportadores", label: "Para transportadores" },
   { href: "/#para-motoristas", label: "Para motoristas" },
