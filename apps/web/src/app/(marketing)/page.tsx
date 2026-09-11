@@ -17,7 +17,6 @@ import { Typography } from "@rotta/ui/web";
 import Image from "next/image";
 import Link from "next/link";
 
-import { ROTTA_APP_URL } from "./layout";
 
 import type { Metadata, Route } from "next";
 import type { ComponentType } from "react";
@@ -31,6 +30,7 @@ import {
 import { pillGhostLg, pillOnAccentLg, pillPrimaryLg } from "@/components/pill-button-classes";
 import { Reveal } from "@/components/reveal-on-scroll";
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { ROTTA_APP_URL } from "@/lib/app-links";
 
 /** Canonical/keywords reais do produto — título/descrição/OG herdam do root layout, já otimizados. */
 export const metadata: Metadata = {

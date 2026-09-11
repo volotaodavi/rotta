@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
+import { ROTTA_APP_URL } from "@/lib/app-links";
 import { SITE_INSTAGRAM_URL } from "@/lib/site-config";
 import { wakeApi } from "@/lib/wake-api";
 
@@ -34,16 +35,6 @@ const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
   { href: "/#sobre", label: "Sobre a Rotta" },
 ];
-
-/**
- * URL de destino do CTA principal "Começar agora" — configurável num
- * único lugar (pedido do usuário: "deixe uma constante... para que seja
- * facilmente substituída"). Já existe uma rota real de cadastro no
- * projeto (`/selecionar-perfil`, mesmo destino que o resto do site já
- * usa) — usada aqui em vez de um placeholder `"#"`, que só faria
- * sentido se nenhuma URL real existisse ainda.
- */
-export const ROTTA_APP_URL: Route = "/selecionar-perfil";
 
 /** Glifo do Instagram desenhado à mão (contorno genérico — não é o logotipo/marca registrada da Meta). */
 function InstagramGlyph({ className }: { className?: string }): JSX.Element {
