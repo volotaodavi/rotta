@@ -3,10 +3,10 @@
 import { ApiError, isMfaChallengeResponse, isMfaSetupRequiredResponse } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Eye, EyeOff } from "@rotta/icons";
-import { Button, FormField, Input, Modal, Typography } from "@rotta/ui/web";
+import { Button, FormField, Input, Modal, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type ComponentProps, type FormEvent } from "react";
+import { useEffect, useState, type ComponentProps, type FormEvent } from "react";
 
 import type { LoginMascotMood } from "@/components/login-mascot";
 import type { ProfileOption } from "@rotta/api-client";
@@ -59,7 +59,22 @@ function SenhaField({
  */
 export default function EntrarPage(): JSX.Element {
   const router = useRouter();
-  const { login, logout } = useAuth();
+  const { login, logout, status, user } = useAuth();
+
+  // PWA (pedido do usuário, 11/09/2026 — "quero a tela de login, com
+  // tudo integrado, que configuramos no app oficial"): o
+  // `start_url` do manifest (`../../manifest.ts`) manda o app instalado
+  // abrir direto aqui, nunca na landing page. Reabrir o app já logado
+  // (sessão persistida) não deve mostrar o formulário de novo — pula
+  // direto pra tela certa do papel, igual o app nativo faz ao reabrir.
+  // `admin_rotta` nunca deveria ter sessão válida aqui (ver
+  // `attemptLogin` abaixo, que sempre desloga esse papel na hora) — sem
+  // redirecionamento automático pra ele, cai no formulário como hoje.
+  useEffect(() => {
+    if (status === "authenticated" && user && user.role !== "admin_rotta") {
+      router.replace(defaultRouteForRole(user.role));
+    }
+  }, [status, user, router]);
   const [identificador, setIdentificador] = useState("");
   const [senha, setSenha] = useState("");
   const [profiles, setProfiles] = useState<ProfileOption[] | null>(null);
@@ -125,6 +140,18 @@ export default function EntrarPage(): JSX.Element {
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     await attemptLogin();
+  }
+
+  // Mesmo padrão do `(dashboard)/layout.tsx`: nunca deixa o formulário
+  // "piscar" na tela enquanto a sessão ainda está sendo checada
+  // (`status === "loading"`) nem no instante entre confirmar que já
+  // está logado e o `router.replace` do efeito acima de fato navegar.
+  if (status === "loading" || (status === "authenticated" && user && user.role !== "admin_rotta")) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
   }
 
   if (profiles) {
