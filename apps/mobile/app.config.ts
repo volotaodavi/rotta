@@ -96,8 +96,21 @@ export default (): ExpoConfig => ({
         // falhava com "Compilation error" nos dois builds (ver log da
         // fase RUN_GRADLEW). Kotlin 1.9.25 e 100% compativel com 1.9.24
         // (patch release), sem mudanca de comportamento esperada.
+        //
+        // targetSdkVersion/compileSdkVersion (11/09/2026): erro real
+        // bloqueante da Google Play Console no primeiro upload aceito —
+        // "atualmente tem como alvo o nivel de API 34 e precisa ter como
+        // alvo pelo menos o nivel de API 36". O padrao do Expo SDK 52/
+        // `@react-native/gradle-plugin` 0.76 ainda e compileSdk 35/
+        // targetSdk 34. AGP 8.6 (versao fixada pelo mesmo gradle-plugin)
+        // compila normalmente contra compileSdk 36 — so emite aviso de
+        // "versao nao testada oficialmente", nao erro — entao nao foi
+        // necessario trocar de versao do Expo SDK/React Native pra isto.
         android: {
           kotlinVersion: "1.9.25",
+          compileSdkVersion: 36,
+          targetSdkVersion: 36,
+          buildToolsVersion: "36.0.0",
         },
       },
     ],
