@@ -47,10 +47,22 @@ export default (): ExpoConfig => ({
   },
   ios: {
     supportsTablet: false,
-    bundleIdentifier: "br.com.rotta.app",
+    bundleIdentifier: "br.com.rottabr",
   },
   android: {
-    package: "br.com.rotta.app",
+    // Corrigido de "br.com.rotta.app" (10/09/2026) — o upload do .aab pra
+    // Play Console recusou com dois avisos: (1) "precisa ter o nome de
+    // pacote br.com.rottabr" — o app ja tinha sido criado no Console com
+    // ESTE nome de pacote (a ficha do app la fixa o nome de pacote pra
+    // sempre desde a criacao, nunca muda depois); (2) as authorities dos
+    // content providers automaticos do Android
+    // (FileSystemFileProvider/androidx-startup/fileprovider, derivadas do
+    // applicationId) ja estavam em uso por OUTRO desenvolvedor com
+    // "br.com.rotta.app" — nome de pacote colidindo globalmente na Play
+    // Store, nao so uma preferencia nossa. Nenhum outro lugar do codigo
+    // dependia do nome antigo (sem google-services.json/FCM acoplado a
+    // ele — push usa o servico da Expo).
+    package: "br.com.rottabr",
     permissions: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",
