@@ -1,0 +1,109 @@
+name: Build Android (EAS local, sem custo)
+
+# Alternativa gratuita ao EAS Build em nuvem — pedido do usuário
+# 11/09/2026 ("tem outro local para gerar isso não? De forma
+# gratuita", depois "algo que seja à altura").
+#
+# Contexto real: a conta gratuita do EAS Build tem uma cota mensal de
+# builds Android na nuvem (confirmado ao vivo neste projeto: "This
+# account has used its Android builds from the Free plan this month,
+# which will reset in ... on Thu Oct 01 2026"). Essa cota é
+# especificamente da FILA de build da própria Expo — não existe cota
+# nenhuma para `eas build --local`, porque nesse modo o binário é
+# compilado na própria máquina que roda o comando (aqui, um runner do
+# GitHub Actions), não na infraestrutura da Expo. A Expo só é usada
+# pra autenticar e baixar as credenciais de assinatura (keystore) já
+# configuradas na conta — isso nunca consumiu cota de build, hoje ou
+# em qualquer plano.
+#
+# Runners do GitHub Actions são gratuitos (2000 min/mês no plano Free
+# de conta pessoal, e o dobro em contas de organização) — então isso
+# não é um contorno frágil, é o jeito oficial e documentado da própria
+# Expo de gerar build sem depender da fila/cota da nuvem deles:
+# https://docs.expo.dev/build-reference/local-builds/
+#
+# Único pré-requisito que não dá pra automatizar por aqui: o segredo
+# `EXPO_TOKEN` (Settings → Secrets and variables → Actions, neste
+# repositório) precisa existir, com um Access Token gerado em
+# https://expo.dev/accounts/[conta]/settings/access-tokens — é uma
+# credencial de conta, só o dono consegue gerar.
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Perfil do eas.json a buildar"
+        type: choice
+        required: true
+        default: preview
+        options:
+          - development
+          - preview
+          - production
+
+concurrency:
+  group: build-android-local-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build local (${{ inputs.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      # AGP 8.6 (fixado pelo @react-native/gradle-plugin desta versão
+      # do RN) exige JDK 17 — o mesmo runtime que o próprio Android
+      # Studio usa hoje.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      # Instala só o que o app realmente declara em app.config.ts
+      # (expo-build-properties): compileSdk/targetSdk 36, build-tools
+      # 36.0.0. `android-actions/setup-android` já cuida de aceitar as
+      # licenças do SDK sozinho.
+      - uses: android-actions/setup-android@v3
+      - name: Instalar plataforma/build-tools do Android SDK
+        run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
+
+      - run: pnpm install --frozen-lockfile
+
+      # `development`/`preview` usam `distribution: internal` (eas.json)
+      # — a EAS gera `.apk` por padrão nesse caso. `production` não
+      # define `distribution`, então cai no padrão da EAS pra builds de
+      # loja: App Bundle (`.aab`), o formato que a Google Play exige.
+      - name: Definir extensão do artefato
+        id: artifact
+        run: |
+          if [ "${{ inputs.profile }}" = "production" ]; then
+            echo "ext=aab" >> "$GITHUB_OUTPUT"
+          else
+            echo "ext=apk" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build local via EAS CLI (não consome cota da nuvem)
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli@latest build \
+            --platform android \
+            --profile "${{ inputs.profile }}" \
+            --local \
+            --non-interactive \
+            --output "${{ github.workspace }}/rotta-${{ inputs.profile }}.${{ steps.artifact.outputs.ext }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rotta-android-${{ inputs.profile }}-${{ github.run_number }}
+          path: rotta-${{ inputs.profile }}.${{ steps.artifact.outputs.ext }}
+          retention-days: 90
