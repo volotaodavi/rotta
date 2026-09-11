@@ -1,0 +1,62 @@
+name: Enviar build Android pra Google Play
+
+# Pedido do usuário 11/09/2026 ("cadê o da Play Store?") — o build
+# `production` (.aab) corrigido (EXPO_PUBLIC_WEB_URL) ainda não tinha
+# sido reenviado ao Play Console, só o .apk de sideload. `eas submit`
+# não usa a fila/cota de build da EAS (é só upload pro Play Console),
+# então não é afetado pelo mesmo bloqueio do plano Free.
+#
+# Recebe a URL pública do .aab (a GitHub Release que
+# build-android-local.yml já publica sozinho) e envia direto, sem
+# precisar baixar/reenviar nada manualmente.
+on:
+  workflow_dispatch:
+    inputs:
+      aab_url:
+        description: "URL pública do .aab (asset da GitHub Release do build production)"
+        type: string
+        required: true
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      # `eas.json` (submit.production) aponta pra este caminho
+      # (`serviceAccountKeyPath: "./google-play-service-account.json"`,
+      # relativo a apps/mobile). O arquivo nunca fica versionado no
+      # repo (é credencial de conta de serviço do Google Cloud/Play
+      # Console) — só existe no disco deste runner, escrito a partir
+      # do secret, e some quando o job termina.
+      - name: Escrever a chave de conta de serviço do Google Play
+        working-directory: apps/mobile
+        env:
+          KEY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$KEY_JSON" ]; then
+            echo "::error::Secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON nao configurado neste repositorio (Settings > Secrets and variables > Actions)."
+            exit 1
+          fi
+          printf '%s' "$KEY_JSON" > google-play-service-account.json
+
+      - name: Enviar pro Play Console (track interno, mesmo do eas.json)
+        working-directory: apps/mobile
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          npx eas-cli@latest submit \
+            --platform android \
+            --profile production \
+            --url "${{ inputs.aab_url }}" \
+            --non-interactive
