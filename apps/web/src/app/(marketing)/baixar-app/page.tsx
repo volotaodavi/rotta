@@ -2,11 +2,10 @@ import { InstallFlow } from "./install-flow";
 
 import type { Metadata } from "next";
 
-
 export const metadata: Metadata = {
   title: "Baixar o app Rotta para Android",
   description:
-    "Instale o app oficial da Rotta direto no seu Android, sem passar pela Google Play — mesma conta, mesmo login, mesmos recursos.",
+    "Instale o app oficial da Rotta direto no seu Android, sem passar pela Google Play. Mesma conta, mesmo login, mesmos recursos.",
   alternates: { canonical: "/baixar-app" },
 };
 
@@ -18,9 +17,10 @@ export const metadata: Metadata = {
  * iOS não tem equivalente sem passar pela App Store/TestFlight, então
  * esta página é Android-only de propósito.
  *
- * Fluxo em 2 telas (`InstallFlow`, client component) — "Instalar" não
- * baixa nada na hora, primeiro explica o aviso do Android e tranquiliza
- * que o app é seguro/testado, só então mostra o botão real de download.
+ * `InstallFlow` (client component) abre um `Modal` de verdade
+ * (`@rotta/ui/web`) ao clicar em "Instalar" — primeiro explica o aviso
+ * do Android e tranquiliza que o app é seguro/testado, só então mostra
+ * o botão real de download dentro do próprio pop-up.
  *
  * `APK_DOWNLOAD_URL` aponta pro artefato do build EAS mais recente —
  * link temporário da própria Expo (expira ~30 dias depois do build,
