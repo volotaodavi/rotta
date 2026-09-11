@@ -49,6 +49,12 @@ jobs:
     name: Build local (${{ inputs.profile }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Sem isso, o GITHUB_TOKEN automático só tem permissão de LEITURA
+    # (padrão da conta) — o passo de Release no final falharia com 403
+    # "Resource not accessible by integration" (confirmado ao vivo no
+    # workflow irmão publish-build-release.yml).
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 

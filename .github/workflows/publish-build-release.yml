@@ -30,6 +30,12 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Sem isso, o GITHUB_TOKEN automático do Actions só tem permissão
+    # de LEITURA no repositório (padrão da conta) — criar Release
+    # falha com 403 "Resource not accessible by integration"
+    # (confirmado ao vivo no primeiro run deste workflow).
+    permissions:
+      contents: write
     steps:
       - name: Definir extensão do artefato
         id: artifact
