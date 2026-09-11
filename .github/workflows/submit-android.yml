@@ -33,22 +33,23 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # `eas.json` (submit.production) aponta pra este caminho
-      # (`serviceAccountKeyPath: "./google-play-service-account.json"`,
-      # relativo a apps/mobile). O arquivo nunca fica versionado no
-      # repo (é credencial de conta de serviço do Google Cloud/Play
-      # Console) — só existe no disco deste runner, escrito a partir
-      # do secret, e some quando o job termina.
-      - name: Escrever a chave de conta de serviço do Google Play
+      # `eas.json` (submit.production) NAO tem mais `serviceAccountKeyPath`
+      # (removido de proposito, 11/09/2026, pra testar se a conta ja tem
+      # uma Google Service Account Key guardada nos servidores da EAS de
+      # um envio anterior). Se o secret existir, escreve o arquivo local
+      # e ele tem prioridade; se nao existir, deixa o eas-cli tentar usar
+      # a credencial remota (ou avisar que precisa de uma).
+      - name: Escrever a chave de conta de serviço do Google Play (se houver secret)
         working-directory: apps/mobile
         env:
           KEY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
         run: |
           if [ -z "$KEY_JSON" ]; then
-            echo "::error::Secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON nao configurado neste repositorio (Settings > Secrets and variables > Actions)."
-            exit 1
+            echo "Secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON nao configurado — eas submit vai tentar usar credencial ja guardada na conta EAS, se existir."
+          else
+            printf '%s' "$KEY_JSON" > google-play-service-account.json
+            echo "Chave escrita a partir do secret."
           fi
-          printf '%s' "$KEY_JSON" > google-play-service-account.json
 
       - name: Enviar pro Play Console (track interno, mesmo do eas.json)
         working-directory: apps/mobile
