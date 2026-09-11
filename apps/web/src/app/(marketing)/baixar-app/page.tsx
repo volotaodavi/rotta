@@ -22,16 +22,22 @@ export const metadata: Metadata = {
  * do Android e tranquiliza que o app é seguro/testado, só então mostra
  * o botão real de download dentro do próprio pop-up.
  *
- * `APK_DOWNLOAD_URL` aponta pro artefato do build EAS mais recente —
- * link temporário da própria Expo (expira ~30 dias depois do build,
- * ver `expirationDate` em `eas build:view`), não um storage
- * permanente nosso (o projeto ainda não tem S3/Vercel Blob
- * configurado). Precisa ser atualizado à mão a cada novo build até
- * existir um storage de verdade — documentado aqui de propósito, pra
- * não virar um link morto silenciosamente.
+ * `APK_DOWNLOAD_URL` aponta pra uma GitHub Release do próprio
+ * repositório (11/09/2026) — link público permanente, não expira
+ * (diferente do artefato temporário da Expo usado antes, que caducava
+ * ~30 dias depois do build). O `.apk` é gerado pelo workflow
+ * `.github/workflows/build-android-local.yml` (`eas build --local`
+ * rodando num runner do GitHub Actions, sem consumir a cota de build
+ * em nuvem da EAS) e publicado automaticamente como Release ao final
+ * de cada run. Este build específico já inclui a correção do
+ * `EXPO_PUBLIC_WEB_URL` faltante no `eas.json` (causa da tela branca
+ * ao abrir o app instalado). Precisa ser atualizado à mão a cada novo
+ * build até existir um domínio fixo tipo `download.rotta...` —
+ * documentado aqui de propósito, pra não virar um link morto
+ * silenciosamente.
  */
 const APK_DOWNLOAD_URL =
-  "https://expo.dev/artifacts/eas/5XzFtVlCZG1J2rC6DsrF8kDg1qJgEsMrNhPXpf-badQ.apk";
+  "https://github.com/volotaodavi/rotta/releases/download/android-preview-run34650790740/rotta-preview.apk";
 const APK_VERSION = "1.0.0";
 const APK_SIZE_MB = 124;
 
