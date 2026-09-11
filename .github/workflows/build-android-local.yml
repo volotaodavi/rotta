@@ -107,3 +107,19 @@ jobs:
           name: rotta-android-${{ inputs.profile }}-${{ github.run_number }}
           path: rotta-${{ inputs.profile }}.${{ steps.artifact.outputs.ext }}
           retention-days: 90
+
+      # Pedido do usuário 11/09/2026 ("falta só o apk e o app") — o
+      # artefato do Actions sozinho não serve como link público
+      # permanente pro `/baixar-app` (expira, exige login no GitHub
+      # pra baixar). Uma GitHub Release, por outro lado, é pública (o
+      # repositório já é público, confirmado) e o link
+      # `.../releases/download/<tag>/<arquivo>` não expira. Usa o
+      # `GITHUB_TOKEN` automático do próprio Actions (permissão
+      # padrão de escrita em Releases), não precisa de segredo extra.
+      - name: Publicar como GitHub Release (link público permanente)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ inputs.profile }}-run${{ github.run_number }}
+          name: "Rotta Android (${{ inputs.profile }}) — build #${{ github.run_number }}"
+          files: rotta-${{ inputs.profile }}.${{ steps.artifact.outputs.ext }}
+          make_latest: ${{ inputs.profile == 'preview' }}

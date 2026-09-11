@@ -1,0 +1,54 @@
+name: Publicar build existente como Release
+
+# Utilitário pontual (pedido do usuário 11/09/2026): pega um artefato
+# de um run já concluído do "Build Android (EAS local, sem custo)" e
+# publica como GitHub Release, sem precisar rodar o build de novo.
+# Necessário só pra runs feitos ANTES do passo de publicação ter sido
+# adicionado direto no workflow de build — a partir de agora, todo
+# build novo já se auto-publica.
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "ID do run que já rodou o build (aba Actions > run > URL)"
+        type: string
+        required: true
+      artifact_name:
+        description: "Nome do artefato dentro do run (ex.: rotta-android-preview-1)"
+        type: string
+        required: true
+      profile:
+        description: "Profile daquele build (define a extensão: apk ou aab)"
+        type: choice
+        required: true
+        default: preview
+        options:
+          - development
+          - preview
+          - production
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Definir extensão do artefato
+        id: artifact
+        run: |
+          if [ "${{ inputs.profile }}" = "production" ]; then
+            echo "ext=aab" >> "$GITHUB_OUTPUT"
+          else
+            echo "ext=apk" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.artifact_name }}
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-${{ inputs.profile }}-run${{ inputs.run_id }}
+          name: "Rotta Android (${{ inputs.profile }}) — build do run ${{ inputs.run_id }}"
+          files: rotta-${{ inputs.profile }}.${{ steps.artifact.outputs.ext }}
+          make_latest: ${{ inputs.profile == 'preview' }}
