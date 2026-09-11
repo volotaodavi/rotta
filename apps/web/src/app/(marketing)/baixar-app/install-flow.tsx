@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Download, ShieldCheck, Smartphone } from "@rotta/icons";
+import { Download, ShieldCheck, Smartphone } from "@rotta/icons";
 import { Button, buttonVariants, Modal, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
@@ -51,39 +51,16 @@ export function InstallFlow({
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} ariaLabel="Antes de baixar o app">
         <Modal.Header onClose={() => setIsOpen(false)}>Antes de baixar</Modal.Header>
-        <Modal.Body className="flex flex-col gap-4">
+        <Modal.Body className="flex flex-col gap-3">
           <Typography variant="bodySmall" className="text-text-muted">
-            O Android vai te avisar sobre instalar um app fora da Play Store. Isso é normal, veja o
-            que vai acontecer:
+            O Android vai avisar que o app vem de fora da Play Store e pedir permissão pra instalar.
+            É normal, só precisa permitir uma vez.
           </Typography>
-
-          <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4">
-            <AlertTriangle size={20} className="mt-0.5 shrink-0 text-warning" />
-            <div className="flex flex-col gap-1">
-              <Typography variant="bodySmall" className="font-semibold text-text">
-                Aviso de “fontes desconhecidas”
-              </Typography>
-              <Typography variant="caption" className="text-text-muted">
-                Ao abrir o arquivo baixado, o Android pode pedir permissão pra instalar apps de fora
-                da loja. Toque em Configurações e permita. O sistema só pede isso uma vez; não é um
-                alerta sobre este app específico, e sim o comportamento padrão pra qualquer
-                instalação fora da Play Store.
-              </Typography>
-            </div>
-          </div>
-
-          <div className="flex items-start gap-3 rounded-xl border border-border bg-surface p-4">
-            <ShieldCheck size={20} className="mt-0.5 shrink-0 text-success" />
-            <div className="flex flex-col gap-1">
-              <Typography variant="bodySmall" className="font-semibold text-text">
-                É o app oficial, testado pela nossa equipe
-              </Typography>
-              <Typography variant="caption" className="text-text-muted">
-                Este é o mesmo código, com a mesma assinatura digital do app disponível na Google
-                Play. Testado internamente pela equipe Rotta antes de cada versão. Não contém nenhum
-                conteúdo malicioso.
-              </Typography>
-            </div>
+          <div className="flex items-center gap-2 text-success">
+            <ShieldCheck size={18} className="shrink-0" />
+            <Typography variant="bodySmall" className="font-medium">
+              Mesmo app, mesma assinatura da Google Play. Testado pela nossa equipe.
+            </Typography>
           </div>
         </Modal.Body>
         <Modal.Footer className="items-center">
