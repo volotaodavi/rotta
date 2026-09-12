@@ -129,6 +129,15 @@ export type ParentPerfilStackParamList = {
   Documentacao: undefined;
   /** Suporte (Epic B) — antes bloqueado pro Responsável no backend; agora liberado, mesma decisão de aninhamento de `Documentacao`. */
   Chamados: undefined;
+  /**
+   * "Meus Alunos" completo (Frente 2, 11/09/2026: "Responsável: alunos +
+   * escolas + perfil") — antes só um card read-only dentro do Perfil.
+   * `Escolas` (Frente 3) segue o mesmo padrão de aninhamento aqui.
+   */
+  Alunos: undefined;
+  AlunoDetalhe: { studentId: string };
+  AlunoNovo: undefined;
+  AlunoEnderecoDoDia: { studentId: string };
 };
 
 /**

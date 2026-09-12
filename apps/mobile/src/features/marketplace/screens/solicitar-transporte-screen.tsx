@@ -18,6 +18,13 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import {
+  EnderecoFields,
+  ENDERECO_VAZIO,
+  enderecoCompleto,
+  enderecoParaGeocodificar,
+  type EnderecoForm,
+} from "@/features/students/components/endereco-fields";
+import {
   StatusPill,
   VehicleButton,
   VehicleCard,
@@ -43,26 +50,6 @@ const TURNO_OPTIONS: { value: SchoolShift; label: string }[] = [
   { value: "NOITE", label: "Noite" },
   { value: "PERSONALIZADO", label: "Personalizado" },
 ];
-
-interface EnderecoForm {
-  cep: string;
-  logradouro: string;
-  numero: string;
-  complemento: string;
-  bairro: string;
-  cidade: string;
-  estado: string;
-}
-
-const ENDERECO_VAZIO: EnderecoForm = {
-  cep: "",
-  logradouro: "",
-  numero: "",
-  complemento: "",
-  bairro: "",
-  cidade: "",
-  estado: "",
-};
 
 /**
  * "Solicitar Transporte" (briefing "Marketplace" §"SOLICITAR TRANSPORTE")
@@ -115,26 +102,12 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
 
   const students = studentsData?.items ?? [];
 
-  const enderecoCompleto = (endereco: EnderecoForm): boolean =>
-    endereco.cep.trim().length > 0 &&
-    endereco.logradouro.trim().length > 0 &&
-    endereco.numero.trim().length > 0 &&
-    endereco.bairro.trim().length > 0 &&
-    endereco.cidade.trim().length > 0 &&
-    endereco.estado.trim().length > 0;
-
   // Geocodificação em segundo plano (gap corrigido: esta tela nunca
   // preenchia embarqueLatitude/Longitude — só o cadastro pelo site
   // fazia isso). `null` enquanto o endereço ainda não está completo
   // desativa a busca, mesmo critério do Painel Web.
-  const embarqueEnderecoTexto = enderecoCompleto(embarque)
-    ? `${embarque.logradouro}, ${embarque.numero}, ${embarque.bairro}, ${embarque.cidade}, ${embarque.estado}, ${embarque.cep}`
-    : null;
-  const desembarqueEnderecoTexto = enderecoCompleto(desembarque)
-    ? `${desembarque.logradouro}, ${desembarque.numero}, ${desembarque.bairro}, ${desembarque.cidade}, ${desembarque.estado}, ${desembarque.cep}`
-    : null;
-  const embarqueGeocoded = useGeocodeAddress(embarqueEnderecoTexto);
-  const desembarqueGeocoded = useGeocodeAddress(desembarqueEnderecoTexto);
+  const embarqueGeocoded = useGeocodeAddress(enderecoParaGeocodificar(embarque));
+  const desembarqueGeocoded = useGeocodeAddress(enderecoParaGeocodificar(desembarque));
 
   const novoAlunoValido =
     nome.trim().length > 0 &&
@@ -367,61 +340,6 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
         isLoading={createRequest.isPending}
       />
     </VehicleScreen>
-  );
-}
-
-function EnderecoFields({
-  value,
-  onChange,
-}: {
-  value: EnderecoForm;
-  onChange: (value: EnderecoForm) => void;
-}): JSX.Element {
-  function setField(field: keyof EnderecoForm, text: string): void {
-    onChange({ ...value, [field]: text });
-  }
-
-  return (
-    <>
-      <VehicleTextField
-        label="CEP"
-        value={value.cep}
-        onChangeText={(text) => setField("cep", text)}
-        keyboardType="numeric"
-      />
-      <VehicleTextField
-        label="Rua"
-        value={value.logradouro}
-        onChangeText={(text) => setField("logradouro", text)}
-      />
-      <VehicleTextField
-        label="Número"
-        value={value.numero}
-        onChangeText={(text) => setField("numero", text)}
-        keyboardType="numeric"
-      />
-      <VehicleTextField
-        label="Complemento (opcional)"
-        value={value.complemento}
-        onChangeText={(text) => setField("complemento", text)}
-      />
-      <VehicleTextField
-        label="Bairro"
-        value={value.bairro}
-        onChangeText={(text) => setField("bairro", text)}
-      />
-      <VehicleTextField
-        label="Cidade"
-        value={value.cidade}
-        onChangeText={(text) => setField("cidade", text)}
-      />
-      <VehicleTextField
-        label="Estado (UF)"
-        value={value.estado}
-        onChangeText={(text) => setField("estado", text)}
-        maxLength={2}
-      />
-    </>
   );
 }
 

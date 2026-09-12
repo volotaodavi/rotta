@@ -1,5 +1,5 @@
 import { useAuth } from "@rotta/auth/native";
-import { View, StyleSheet, Text } from "react-native";
+import { View, StyleSheet, Text, Pressable } from "react-native";
 
 import { SCHOOL_SHIFT_LABEL } from "../../schools/labels";
 
@@ -33,6 +33,10 @@ function iniciais(nome: string | undefined): string {
  * Tarefa #199). "Meu transporte" leva pra aba "Viagens" — mesma fonte
  * de verdade de `useResponsavelTransportState`, nenhum resumo
  * duplicado aqui.
+ *
+ * "Meus filhos" (Frente 2, 11/09/2026) deixou de ser só leitura — cada
+ * linha agora navega pro detalhe/edição completo (`AlunoDetalhe`), e o
+ * card ganhou um atalho pra lista completa/cadastro (`Alunos`).
  */
 export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -63,19 +67,29 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
         ) : null}
       </VehicleCard>
 
-      {alunos && alunos.items.length > 0 ? (
-        <VehicleCard>
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Meus filhos</Text>
-          {alunos.items.map((aluno) => (
-            <View key={aluno.id} style={styles.alunoLinha}>
-              <Text style={{ color: theme.colors.text }}>{aluno.nome}</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                {SCHOOL_SHIFT_LABEL[aluno.turno]}
-              </Text>
-            </View>
-          ))}
-        </VehicleCard>
-      ) : null}
+      <VehicleCard>
+        <Text style={[styles.secao, { color: theme.colors.text }]}>Meus filhos</Text>
+        {alunos && alunos.items.length > 0
+          ? alunos.items.map((aluno) => (
+              <Pressable
+                key={aluno.id}
+                onPress={() => navigation.navigate("AlunoDetalhe", { studentId: aluno.id })}
+              >
+                <View style={styles.alunoLinha}>
+                  <Text style={{ color: theme.colors.text }}>{aluno.nome}</Text>
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    {SCHOOL_SHIFT_LABEL[aluno.turno]}
+                  </Text>
+                </View>
+              </Pressable>
+            ))
+          : null}
+        <VehicleButton
+          label="Ver todos / adicionar aluno"
+          variant="secondary"
+          onPress={() => navigation.navigate("Alunos")}
+        />
+      </VehicleCard>
 
       {/* Pedido do usuário 05/09/2026: "tanto para responsável, quanto para
           monitor/motorista" — antes o Acesso rápido só existia no Perfil

@@ -6,6 +6,12 @@ import type { ParentPerfilStackParamList } from "./types";
 
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
 import { ParentPerfilScreen } from "@/features/parent/screens";
+import {
+  AlunoDetalheScreen,
+  AlunoEnderecoDoDiaScreen,
+  AlunoNovoScreen,
+  AlunosListaScreen,
+} from "@/features/students/screens";
 
 const Stack = createNativeStackNavigator<ParentPerfilStackParamList>();
 
@@ -16,6 +22,10 @@ const Stack = createNativeStackNavigator<ParentPerfilStackParamList>();
  * "Documentação Rotta", sem consumir um item a mais do Bottom
  * Navigation (que já está no limite de 4 itens: Mapa/Transporte/
  * Notificações/Perfil — briefing "Marketplace" §"NAVEGAÇÃO").
+ *
+ * "Meus Alunos" completo (Frente 2) entrou aqui pelo mesmo motivo —
+ * `Alunos`/`AlunoDetalhe`/`AlunoNovo`/`AlunoEnderecoDoDia`, alcançados
+ * a partir do card "Meus filhos" do `ParentPerfilScreen`.
  */
 export function ParentPerfilNavigator(): JSX.Element {
   return (
@@ -31,6 +41,26 @@ export function ParentPerfilNavigator(): JSX.Element {
         options={{ title: "Documentação Rotta" }}
       />
       <Stack.Screen name="Chamados" component={SupportNavigator} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="Alunos"
+        component={AlunosListaScreen}
+        options={{ title: "Meus Alunos" }}
+      />
+      <Stack.Screen
+        name="AlunoDetalhe"
+        component={AlunoDetalheScreen}
+        options={{ title: "Aluno" }}
+      />
+      <Stack.Screen
+        name="AlunoNovo"
+        component={AlunoNovoScreen}
+        options={{ title: "Novo aluno" }}
+      />
+      <Stack.Screen
+        name="AlunoEnderecoDoDia"
+        component={AlunoEnderecoDoDiaScreen}
+        options={{ title: "Endereço do dia" }}
+      />
     </Stack.Navigator>
   );
 }
