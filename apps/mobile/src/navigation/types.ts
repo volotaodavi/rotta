@@ -264,9 +264,11 @@ export type EmpresaTabParamList = {
 
 /**
  * Stack aninhada na aba `Inicio` da Empresa/Gestor — `Dashboard`
- * (saudação + atalhos), `AlunosPreCadastro` e `Equipe` (ver
- * `EmpresaTabParamList` pro raciocínio de aninhamento).
+ * (saudação + atalhos), `AlunosPreCadastro` (Frente 2) e `Equipe`
+ * (Frente 5) — ver `EmpresaTabParamList` pro raciocínio de
+ * aninhamento.
  */
 export type EmpresaHomeStackParamList = {
   Dashboard: undefined;
+  AlunosPreCadastro: undefined;
 };
