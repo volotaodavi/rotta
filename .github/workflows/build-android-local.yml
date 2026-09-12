@@ -83,6 +83,19 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # `@rotta/validators` é o único pacote do monorepo cujo `main`
+      # aponta pra um `dist/` compilado (`tsc`) em vez de apontar
+      # direto pro `.ts` fonte — todos os outros pacotes (`@rotta/ui`,
+      # `@rotta/theme`, `@rotta/api-client` etc.) o Metro resolve certo
+      # sem build nenhum, via Babel. No dev local isso nunca dá erro
+      # porque o Turborepo builda e cacheia `@rotta/validators` como
+      # efeito colateral de outros comandos (`pnpm build`/pre-push) —
+      # mas esse job de CI nunca rodou isso, então o Metro falhava com
+      # "could not be resolved (.../dist/index.js" ao empacotar
+      # qualquer tela que importa `@rotta/validators` (ex.:
+      # `empresa-veiculo-novo-screen.tsx`).
+      - run: pnpm --filter @rotta/validators build
+
       # `development`/`preview` usam `distribution: internal` (eas.json)
       # — a EAS gera `.apk` por padrão nesse caso. `production` não
       # define `distribution`, então cai no padrão da EAS pra builds de
