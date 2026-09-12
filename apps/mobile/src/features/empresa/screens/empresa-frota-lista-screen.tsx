@@ -71,7 +71,7 @@ export function EmpresaFrotaListaScreen({ navigation }: Props): JSX.Element {
         />
       </View>
 
-      {/* "+ Novo veículo" entra na Frente 3b, quando a tela `Novo` existir de verdade. */}
+      <VehicleButton label="+ Novo veículo" onPress={() => navigation.navigate("Novo")} />
 
       {!data || data.items.length === 0 ? (
         <Text style={{ color: theme.colors.textMuted }}>Nenhum veículo cadastrado ainda.</Text>

@@ -24,12 +24,11 @@ type Props = NativeStackScreenProps<EmpresaFrotaStackParamList, "Detalhe">;
 const TODOS_OS_STATUS = Object.keys(VEHICLE_STATUS_LABEL) as VehicleStatus[];
 
 /**
- * Frota — detalhe (Frente 3a) — dados do veículo + seletor de status
- * (chips, mesmo truque de `novo-chamado-screen.tsx`). Documentos (Frente
- * 3b) ainda não tem botão aqui — evita apontar pra rota que não existe
- * nesta sub-entrega, mesmo cuidado do Admin/Frente 2.
+ * Frota — detalhe — dados do veículo + seletor de status (chips,
+ * mesmo truque de `novo-chamado-screen.tsx`) + atalho pra Documentos
+ * (Frente 3b).
  */
-export function EmpresaVeiculoDetalheScreen({ route }: Props): JSX.Element {
+export function EmpresaVeiculoDetalheScreen({ route, navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { vehicleId } = route.params;
   const { data: vehicle, isLoading, isError, refetch } = useVehicle(vehicleId);
@@ -89,6 +88,12 @@ export function EmpresaVeiculoDetalheScreen({ route }: Props): JSX.Element {
           ))}
         </View>
       </VehicleCard>
+
+      <VehicleButton
+        label="Documentos"
+        variant="secondary"
+        onPress={() => navigation.navigate("Documentos", { vehicleId })}
+      />
     </VehicleScreen>
   );
 }

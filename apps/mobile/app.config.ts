@@ -162,5 +162,17 @@ export default (): ExpoConfig => ({
         isAndroidBackgroundLocationEnabled: true,
       },
     ],
+    [
+      // Frente 3b (Empresa/Gestor reduzida no app) — upload de foto de
+      // documento de veículo (CRLV/seguro/etc.), primeiro uso de
+      // seleção de arquivo em todo o app mobile. Textos de
+      // justificativa exigidos pela App Store Review, mesmo padrão de
+      // `expo-location`/`expo-local-authentication` acima.
+      "expo-image-picker",
+      {
+        photosPermission: "A Rotta usa suas fotos para anexar documentos dos seus veículos.",
+        cameraPermission: "A Rotta usa a câmera para fotografar documentos dos seus veículos.",
+      },
+    ],
   ],
 });
