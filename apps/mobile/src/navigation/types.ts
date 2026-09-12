@@ -271,6 +271,7 @@ export type EmpresaTabParamList = {
 export type EmpresaHomeStackParamList = {
   Dashboard: undefined;
   AlunosPreCadastro: undefined;
+  Equipe: undefined;
 };
 
 /**

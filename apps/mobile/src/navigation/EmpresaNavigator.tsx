@@ -8,6 +8,7 @@ import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { EmpresaTabParamList } from "./types";
 
+import { usePendingJoinRequests } from "@/features/empresa/hooks/use-empresa-team";
 import { EmpresaPerfilScreen } from "@/features/empresa/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
@@ -33,6 +34,10 @@ const Tab = createBottomTabNavigator<EmpresaTabParamList>();
  */
 export function EmpresaNavigator(): JSX.Element {
   const { data: naoLidas } = useUnreadNotificationsCount();
+  // Frente 5 fechou o placeholder deixado na Frente 1: badge da aba
+  // Início = contagem de pedidos de vínculo pendentes (ação real,
+  // não só leitura — mesmo raciocínio da fila de Aprovações do Admin).
+  const { data: pedidosPendentes } = usePendingJoinRequests();
 
   return (
     <Tab.Navigator initialRouteName="Inicio" screenOptions={{ headerShown: false }}>
@@ -41,6 +46,8 @@ export function EmpresaNavigator(): JSX.Element {
         component={EmpresaHomeNavigator}
         options={{
           tabBarLabel: "Início",
+          tabBarBadge:
+            pedidosPendentes && pedidosPendentes.length > 0 ? pedidosPendentes.length : undefined,
           tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
         }}
       />
