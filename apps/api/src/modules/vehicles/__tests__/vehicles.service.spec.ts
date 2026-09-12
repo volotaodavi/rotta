@@ -682,6 +682,15 @@ describe("VehiclesService", () => {
       const result = await service.findMyVehicle(motoristaActor);
       expect(result?.id).toBe("vehicle-1");
     });
+
+    it("trata o dono autônomo/MEI (role empresa, Frente 6 'Modo Ação') como motorista, nunca monitor", async () => {
+      assignmentRepository.findCurrentVehicleIdForUser.mockResolvedValue(null);
+      await service.findMyVehicle(empresaActor);
+      expect(assignmentRepository.findCurrentVehicleIdForUser).toHaveBeenCalledWith(
+        empresaActor.sub,
+        VehicleAssignmentRole.MOTORISTA,
+      );
+    });
   });
 
   describe("uploadDocument", () => {

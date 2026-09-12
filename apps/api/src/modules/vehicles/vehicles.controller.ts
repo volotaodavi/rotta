@@ -80,8 +80,14 @@ export class VehiclesController {
     return this.vehiclesService.list(query, actor);
   }
 
+  /**
+   * `Role.EMPRESA` (Frente 6 mobile — "Modo Ação") é o dono
+   * autônomo/MEI que também dirige, nunca um Gestor (nunca vê este
+   * botão no app) — `findMyVehicle` sabe tratar esse `role` como um
+   * motorista comum.
+   */
   @Get("me")
-  @Roles(Role.MOTORISTA, Role.MONITOR)
+  @Roles(Role.MOTORISTA, Role.MONITOR, Role.EMPRESA)
   findMyVehicle(@CurrentUser() actor: AuthenticatedUser) {
     return this.vehiclesService.findMyVehicle(actor);
   }

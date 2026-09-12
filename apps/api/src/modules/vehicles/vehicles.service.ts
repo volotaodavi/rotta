@@ -1000,12 +1000,21 @@ export class VehiclesService {
     return history.map(toVehicleAssignmentResponseDto);
   }
 
-  /** "Meu Veículo" (app mobile) — veículo atualmente vinculado ao Motorista/Monitor autenticado. */
+  /**
+   * "Meu Veículo" (app mobile) — veículo atualmente vinculado ao
+   * Motorista/Monitor autenticado. `Role.EMPRESA` (Frente 6 — dono
+   * autônomo/MEI em "Modo Ação") é tratado como MOTORISTA aqui: é o
+   * único outro papel que chega neste método (`@Roles` no controller),
+   * e nunca existe um "Monitor" equivalente pro dono dirigindo sozinho.
+   * Hoje ainda retorna `null` pra ele na prática — `assign()` (vínculo
+   * formal Motorista/Monitor↔Veículo) continua exigindo
+   * `membership.role === Role.MOTORISTA`, e o dono nunca tem esse
+   * `role` — mas retorna o estado honesto "sem veículo vinculado" em
+   * vez de um 403, nunca um erro genérico.
+   */
   async findMyVehicle(actor: AuthenticatedUser): Promise<VehicleResponseDto | null> {
     const papel =
-      actor.role === Role.MOTORISTA
-        ? VehicleAssignmentRole.MOTORISTA
-        : VehicleAssignmentRole.MONITOR;
+      actor.role === Role.MONITOR ? VehicleAssignmentRole.MONITOR : VehicleAssignmentRole.MOTORISTA;
     const vehicleId = await this.assignmentRepository.findCurrentVehicleIdForUser(actor.sub, papel);
     if (!vehicleId) {
       return null;

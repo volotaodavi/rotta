@@ -11,11 +11,13 @@ import { VinculoPendenteNavigator } from "./VinculoPendenteNavigator";
 import { AppSplashScreen } from "@/components/app-splash-screen";
 import { usePinLock } from "@/features/auth/hooks/use-pin-lock";
 import { PainelWebOnlyScreen, PinLockScreen } from "@/features/auth/screens";
+import { useAppMode } from "@/features/driver/hooks/use-app-mode";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
 import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
 import { EmpresaBillingBlockedScreen } from "@/features/empresa/screens";
 import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
 import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-sheet";
+import { AppModeProvider } from "@/providers/app-mode-provider";
 
 /**
  * Navigator raiz — decide entre `AuthNavigator` e o navigator do papel
@@ -40,6 +42,13 @@ import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/componen
  * tudo isto antes de mostrar o navigator do papel ativo. Fora do
  * `NavigationContainer` de propósito: a tela de PIN não navega para
  * nada, é só um portão sobre uma sessão que já existe.
+ *
+ * "Modo Ação" (Frente 6 — dono autônomo/MEI que também dirige, mesmo
+ * conceito já existente na Web) decide entre `EmpresaNavigator` (Visão
+ * completa) e `DriverNavigator` reaproveitado (operação) pra
+ * `role === "empresa"` — `useAppMode` é chamado UMA VEZ aqui e
+ * compartilhado com os Perfis (onde mora o alternador) via
+ * `AppModeProvider`.
  */
 export function RootNavigator(): JSX.Element {
   const { status, user } = useAuth();
@@ -49,16 +58,31 @@ export function RootNavigator(): JSX.Element {
   // navegação (só efeito colateral, sem UI própria).
   usePushRegistration({ status });
 
-  // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor;
-  // Responsável não usa este fluxo (backend nem aceita
-  // `SELF_VERIFICATION_ROLES` pra ele). A query nem dispara fora desse papel.
+  const appMode = useAppMode(user);
+
+  // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor
+  // de verdade OU ao dono autônomo/MEI enquanto estiver em "Modo Ação"
+  // (Frente 6 — o backend já libera `SELF_VERIFICATION_ROLES` pra
+  // `Role.EMPRESA` com `companyType` AUTONOMO/MEI desde sempre; só
+  // faltava o mobile checar nesse caso). Enquanto em "Visão completa",
+  // não checa — sem urgência de verificação pra quem só está
+  // administrando, não dirigindo. Responsável não usa este fluxo
+  // (backend nem aceita `SELF_VERIFICATION_ROLES` pra ele). A query nem
+  // dispara fora desses casos.
   const isMotoristaOuMonitor =
-    status === "authenticated" && (user?.role === "motorista" || user?.role === "monitor");
+    status === "authenticated" &&
+    (user?.role === "motorista" ||
+      user?.role === "monitor" ||
+      (appMode.canToggle && appMode.mode === "acao"));
   const { data: identityVerification, isLoading: isIdentityLoading } = useMyIdentityVerification({
     enabled: isMotoristaOuMonitor,
   });
 
-  if (status === "loading" || (isMotoristaOuMonitor && isIdentityLoading)) {
+  if (
+    status === "loading" ||
+    (appMode.canToggle && !appMode.isModeResolved) ||
+    (isMotoristaOuMonitor && isIdentityLoading)
+  ) {
     return <AppSplashScreen />;
   }
 
@@ -78,38 +102,50 @@ export function RootNavigator(): JSX.Element {
   }
 
   return (
-    <NavigationContainer>
-      {status === "unauthenticated" || !user ? (
-        <AuthNavigator />
-      ) : user.role === "motorista" || user.role === "monitor" ? (
-        // Frente N — cadastro autônomo (`registerAutonomo`) ainda não tem
-        // `companyId` até um `CompanyJoinRequest` ser aprovado.
-        user.companyId ? (
-          <DriverNavigator />
+    <AppModeProvider value={appMode}>
+      <NavigationContainer>
+        {status === "unauthenticated" || !user ? (
+          <AuthNavigator />
+        ) : user.role === "motorista" || user.role === "monitor" ? (
+          // Frente N — cadastro autônomo (`registerAutonomo`) ainda não tem
+          // `companyId` até um `CompanyJoinRequest` ser aprovado.
+          user.companyId ? (
+            <DriverNavigator />
+          ) : (
+            <VinculoPendenteNavigator />
+          )
+        ) : user.role === "responsavel" ? (
+          <>
+            <ParentNavigator />
+            <VehicleAdminReviewAcknowledgeSheet />
+          </>
+        ) : user.role === "admin_rotta" ? (
+          <AdminNavigator />
+        ) : user.role === "empresa" || user.role === "gestor" ? (
+          // Faturamento (Dossiê 26) — mesma regra da Web
+          // (`(dashboard)/layout.tsx`, `BillingBlockScreen`): trial
+          // vencido/inadimplente/suspenso/cancelado bloqueia o acesso até
+          // regularizar. `billingBlocked` só é `true` pra este papel
+          // (nunca pros demais), mas o `&&` é defesa em profundidade.
+          user.billingBlocked ? (
+            <EmpresaBillingBlockedScreen reason={user.billingBlockedReason ?? null} />
+          ) : appMode.mode === "acao" ? (
+            // Frente 6 — dono autônomo/MEI em "Modo Ação": reaproveita
+            // literalmente o MESMO `DriverNavigator` do Motorista/Monitor
+            // (ele não faz nenhuma checagem de papel própria — quem
+            // gate-keeps é cada tela, ver `inicio-screen.tsx`/
+            // `VeiculoNavigator`). `appMode.canToggle` já garante que só
+            // chega aqui quem é `role === "empresa"` com `companyType`
+            // AUTONOMO/MEI (nunca LTDA/SA/Cooperativa/Sociedade Simples,
+            // nunca `gestor`).
+            <DriverNavigator />
+          ) : (
+            <EmpresaNavigator />
+          )
         ) : (
-          <VinculoPendenteNavigator />
-        )
-      ) : user.role === "responsavel" ? (
-        <>
-          <ParentNavigator />
-          <VehicleAdminReviewAcknowledgeSheet />
-        </>
-      ) : user.role === "admin_rotta" ? (
-        <AdminNavigator />
-      ) : user.role === "empresa" || user.role === "gestor" ? (
-        // Faturamento (Dossiê 26) — mesma regra da Web
-        // (`(dashboard)/layout.tsx`, `BillingBlockScreen`): trial
-        // vencido/inadimplente/suspenso/cancelado bloqueia o acesso até
-        // regularizar. `billingBlocked` só é `true` pra este papel
-        // (nunca pros demais), mas o `&&` é defesa em profundidade.
-        user.billingBlocked ? (
-          <EmpresaBillingBlockedScreen reason={user.billingBlockedReason ?? null} />
-        ) : (
-          <EmpresaNavigator />
-        )
-      ) : (
-        <PainelWebOnlyScreen />
-      )}
-    </NavigationContainer>
+          <PainelWebOnlyScreen />
+        )}
+      </NavigationContainer>
+    </AppModeProvider>
   );
 }

@@ -2,6 +2,7 @@ import { useAuth } from "@rotta/auth/native";
 import { StyleSheet, Text, View } from "react-native";
 
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { useAppModeContext } from "@/providers/app-mode-provider";
 import { useTheme } from "@/providers/theme-provider";
 
 /** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */
@@ -19,10 +20,18 @@ function iniciais(nome: string | undefined): string {
  * Mesmo modelo de `admin-perfil-screen.tsx`, trocando o sub-papel
  * (`adminPapel`) pelo `companyName`. Sem edição de conta/empresa aqui
  * — isso continua exclusivo da Web (`/empresa`).
+ *
+ * "Modo Ação" (Frente 6, 11/09/2026 — pedido do usuário: "Motorista
+ * (autônomo/MEI) - Tudo oq o motorista anterior tem + financeiro +
+ * alunos + perfil + escolas + veículos") — só o dono autônomo/MEI
+ * (`canToggle`, mesma regra de `apps/web/.../use-app-mode.ts`) vê o
+ * botão pra alternar; Empresa LTDA/SA/Cooperativa/Sociedade Simples e
+ * Gestor nunca veem, sempre ficam só na Visão completa.
  */
 export function EmpresaPerfilScreen(): JSX.Element {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
+  const { canToggle, setMode } = useAppModeContext();
 
   return (
     <VehicleScreen>
@@ -47,6 +56,17 @@ export function EmpresaPerfilScreen(): JSX.Element {
           <Text style={{ color: theme.colors.textMuted }}>{user.telefone}</Text>
         ) : null}
       </VehicleCard>
+
+      {/* "Modo Ação" (Frente 6) — só o dono autônomo/MEI vê este botão.
+          Troca pro MESMO `DriverNavigator` do Motorista/Monitor, com
+          Financeiro (Rotta Pay) e Escolas já reativados pra este papel. */}
+      {canToggle ? (
+        <VehicleButton
+          label="Entrar no Modo Ação"
+          variant="secondary"
+          onPress={() => setMode("acao")}
+        />
+      ) : null}
 
       <VehicleButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </VehicleScreen>

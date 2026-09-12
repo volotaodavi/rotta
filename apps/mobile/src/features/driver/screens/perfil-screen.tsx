@@ -9,6 +9,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { PinSetupCard } from "@/features/auth/components";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { useAppModeContext } from "@/providers/app-mode-provider";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<DriverPerfilStackParamList, "PerfilHome">;
@@ -16,6 +17,9 @@ type Props = NativeStackScreenProps<DriverPerfilStackParamList, "PerfilHome">;
 const ROLE_LABEL: Record<string, string> = {
   motorista: "Motorista",
   monitor: "Monitor(a)",
+  // Frente 6 — dono autônomo/MEI em "Modo Ação" chega nesta MESMA tela
+  // (`DriverNavigator` reaproveitado), com `role === "empresa"`.
+  empresa: "Motorista autônomo/MEI",
 };
 
 /** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */
@@ -38,10 +42,16 @@ function iniciais(nome: string | undefined): string {
  * Central de Documentação pública em uma WebView — disponível para os
  * dois papéis. "Meus Alunos" (Frente 4, 11/09/2026) também é dos dois
  * papéis — read-only, todas as rotas ativas da pessoa.
+ *
+ * Também é a tela de Perfil de quem está em "Modo Ação" (Frente 6 —
+ * dono autônomo/MEI, `role === "empresa"`, mesmo `DriverNavigator`
+ * reaproveitado sem nenhuma tela nova) — só essa pessoa vê o botão
+ * "Voltar para Visão completa" (`canToggle`, `useAppModeContext`).
  */
 export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
+  const { canToggle, setMode } = useAppModeContext();
   const isMonitor = user?.role === "monitor";
   const accentColor = isMonitor ? theme.colors.monitorAccent : theme.colors.driverPrimary;
   const accentMuted = isMonitor ? theme.colors.monitorAccentMuted : theme.colors.driverPrimaryMuted;
@@ -77,8 +87,23 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
       {/* Pedido do usuário 05/09/2026: "tanto para responsável, quanto para
           monitor/motorista" — antes só `motorista` tinha esta opção, sem
           motivo pra excluir o Monitor (usa o mesmo app, o mesmo tipo de
-          esquecimento de senha acontece com os dois papéis). */}
-      {user?.role === "motorista" || user?.role === "monitor" ? <PinSetupCard /> : null}
+          esquecimento de senha acontece com os dois papéis). Dono
+          autônomo/MEI em "Modo Ação" (Frente 6) também ganha — dirige
+          igual a um Motorista de verdade. */}
+      {user?.role === "motorista" || user?.role === "monitor" || canToggle ? (
+        <PinSetupCard />
+      ) : null}
+
+      {/* "Modo Ação" (Frente 6) — só o dono autônomo/MEI vê este botão;
+          Motorista/Monitor FUNCIONÁRIO nunca tem `canToggle`. Volta pra
+          `EmpresaNavigator` (Frota/Rotas/Alunos/Equipe) sem deslogar. */}
+      {canToggle ? (
+        <VehicleButton
+          label="Voltar para Visão completa"
+          variant="secondary"
+          onPress={() => setMode("completo")}
+        />
+      ) : null}
 
       {/* Frente AO — "Veículo" saiu da barra de 4 ícones (a referência não
           mostra essa aba) e virou um atalho aqui, igual à versão web

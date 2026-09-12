@@ -1,4 +1,5 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useAuth } from "@rotta/auth/native";
 
 import type { VeiculoStackParamList } from "./types";
 
@@ -17,7 +18,7 @@ import {
   MeuVeiculoScreen,
   OcorrenciasScreen,
 } from "@/features/vehicles/screens";
-import { WalletComingSoonScreen } from "@/features/wallet/screens";
+import { CarteiraScreen, WalletComingSoonScreen } from "@/features/wallet/screens";
 
 const Stack = createNativeStackNavigator<VeiculoStackParamList>();
 
@@ -33,12 +34,20 @@ const Stack = createNativeStackNavigator<VeiculoStackParamList>();
  * 3-4 itens (Dossiê 10 §11.1); acessadas a partir dos botões "Escolas
  * atendidas"/"Rotta Pay" em `MeuVeiculoScreen`.
  *
- * Rotta Pay desativado temporariamente (pedido do usuário 02/09/2026:
- * "não estará disponível no momento") — rota "Carteira" aponta pro
- * placeholder `WalletComingSoonScreen`, `CarteiraScreen` real
- * continua existindo, só desconectada daqui.
+ * Rotta Pay desativado temporariamente pro Motorista/Monitor FUNCIONÁRIO
+ * (pedido do usuário 02/09/2026: "não estará disponível no momento") —
+ * rota "Carteira" aponta pro placeholder `WalletComingSoonScreen` pra
+ * eles. Reativado (Frente 6, 11/09/2026) SÓ pro dono autônomo/MEI em
+ * "Modo Ação" (`role === "empresa"` — a única forma de esta stack ser
+ * alcançada com esse `role`, já que `EmpresaNavigator`/"Visão completa"
+ * nunca monta `VeiculoNavigator`): "Motorista (autônomo/MEI) - Tudo oq
+ * o motorista anterior tem + financeiro..." — pedido explícito do
+ * usuário. `CarteiraScreen` real nunca mudou, só qual role a alcança.
  */
 export function VeiculoNavigator(): JSX.Element {
+  const { user } = useAuth();
+  const isAutonomoOuMeiEmModoAcao = user?.role === "empresa";
+
   return (
     <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
       <Stack.Screen
@@ -78,7 +87,7 @@ export function VeiculoNavigator(): JSX.Element {
       />
       <Stack.Screen
         name="Carteira"
-        component={WalletComingSoonScreen}
+        component={isAutonomoOuMeiEmModoAcao ? CarteiraScreen : WalletComingSoonScreen}
         options={{ title: "Rotta Pay" }}
       />
     </Stack.Navigator>

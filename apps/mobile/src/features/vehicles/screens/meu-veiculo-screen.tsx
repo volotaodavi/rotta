@@ -1,3 +1,4 @@
+import { useAuth } from "@rotta/auth/native";
 import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
 
 import { StatusPill, VehicleButton, VehicleCard, VehicleScreen } from "../components";
@@ -17,9 +18,19 @@ type Props = NativeStackScreenProps<VeiculoStackParamList, "MeuVeiculo">;
  * (`GET /vehicles/me`, Dossiê 13 §RBAC: 404/`null` quando não há vínculo
  * ativo, nunca os dados de outro veículo). Os atalhos abaixo levam às
  * demais telas desta stack — todas operando sobre o mesmo veículo.
+ *
+ * Dono autônomo/MEI em "Modo Ação" (Frente 6, `role === "empresa"`)
+ * também alcança esta tela — mas hoje o vínculo formal
+ * Motorista↔Veículo (`VehicleAssignment`) só é criado pela Web
+ * (`assign()`, exige um `membership.role === MOTORISTA`, que o dono
+ * nunca tem) — então `vehicle` vem sempre `null` pra ele por enquanto,
+ * nunca um erro. Mensagem de "sem veículo" avisa isso, em vez de
+ * mandar "fale com sua empresa" (ele É a empresa).
  */
 export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const isDono = user?.role === "empresa";
   const { data: vehicle, isLoading, isError, refetch } = useMyVehicle();
 
   if (isLoading) {
@@ -45,7 +56,9 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
     return (
       <VehicleScreen>
         <Text style={{ color: theme.colors.textMuted }}>
-          Você ainda não está vinculado a nenhum veículo. Fale com sua empresa.
+          {isDono
+            ? "Nenhum veículo vinculado a você ainda. Gerencie a frota e os vínculos pelo Painel Web."
+            : "Você ainda não está vinculado a nenhum veículo. Fale com sua empresa."}
         </Text>
       </VehicleScreen>
     );

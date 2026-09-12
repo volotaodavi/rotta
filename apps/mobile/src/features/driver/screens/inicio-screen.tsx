@@ -46,6 +46,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BackgroundLocationDisclosureModal, PanelGreeting } from "../components";
+import { podeAlternarModoAcao } from "../hooks/use-app-mode";
 import {
   useMinhasRotas,
   useRouteStops,
@@ -67,7 +68,6 @@ import {
 } from "../hooks/use-driver-trip";
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "../hooks/use-my-location";
 import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
-
 
 import type {
   NextEta,
@@ -683,7 +683,13 @@ function RotaOperacional({
 }): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
-  const isMotorista = user?.role === "motorista";
+  // Frente 6 — dono autônomo/MEI em "Modo Ação" (`role === "empresa"`,
+  // nunca `role === "motorista"`) opera exatamente como um Motorista de
+  // verdade nesta tela (inicia/pausa/finaliza viagem, reporta GPS) —
+  // sem um "Monitor" correspondente, já que é o próprio dono dirigindo
+  // sozinho. `podeAlternarModoAcao` já confere `companyType` AUTONOMO/
+  // MEI, então nunca inclui LTDA/SA/Cooperativa/Sociedade Simples.
+  const isMotorista = user?.role === "motorista" || podeAlternarModoAcao(user);
   const isMonitor = user?.role === "monitor";
   // Cor de papel (Frente 304 — 3 imagens de referência anexadas pelo
   // usuário, pedido explícito "quero o mesmo design, idêntico"):
