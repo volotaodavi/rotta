@@ -3,25 +3,15 @@ import { Bell, Bus, Home, Route, User } from "@rotta/icons/native";
 
 import { EmpresaFrotaNavigator } from "./EmpresaFrotaNavigator";
 import { EmpresaHomeNavigator } from "./EmpresaHomeNavigator";
+import { EmpresaRotasNavigator } from "./EmpresaRotasNavigator";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { EmpresaTabParamList } from "./types";
 
-import { ComingSoonScreen } from "@/components/coming-soon-screen";
 import { EmpresaPerfilScreen } from "@/features/empresa/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
 const Tab = createBottomTabNavigator<EmpresaTabParamList>();
-
-/** Placeholder da aba "Rotas" até a Frente 4 (lista/detalhe/criar de rotas) entrar. */
-function RotasPlaceholder(): JSX.Element {
-  return (
-    <ComingSoonScreen
-      titulo="Rotas"
-      corpo="Em breve você vai poder ver e gerenciar suas rotas direto por aqui."
-    />
-  );
-}
 
 /**
  * Navegação da Empresa/Gestor no app (pedido do usuário 11/09/2026:
@@ -37,9 +27,9 @@ function RotasPlaceholder(): JSX.Element {
  * de rota por IA, edição de endereço livre em parada — ver
  * `EmpresaTabParamList` pro raciocínio completo de escopo.
  *
- * `Frota` (Frente 3a) já é real; `Rotas` ainda mostra `ComingSoonScreen`
- * até a Frente 4 entrar. `Notificacoes` reaproveita a mesma Central de
- * qualquer papel (`NotificacoesNavigator` é agnóstica).
+ * `Frota` (Frente 3) e `Rotas` (Frente 4) já são reais. `Notificacoes`
+ * reaproveita a mesma Central de qualquer papel (`NotificacoesNavigator`
+ * é agnóstica).
  */
 export function EmpresaNavigator(): JSX.Element {
   const { data: naoLidas } = useUnreadNotificationsCount();
@@ -61,7 +51,7 @@ export function EmpresaNavigator(): JSX.Element {
       />
       <Tab.Screen
         name="Rotas"
-        component={RotasPlaceholder}
+        component={EmpresaRotasNavigator}
         options={{ tabBarIcon: ({ size, color }) => <Route size={size} color={color} /> }}
       />
       <Tab.Screen

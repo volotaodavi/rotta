@@ -286,3 +286,17 @@ export type EmpresaFrotaStackParamList = {
   Novo: undefined;
   Documentos: { vehicleId: string };
 };
+
+/**
+ * Stack da aba `Rotas` da Empresa/Gestor (Frente 4 — lista/detalhe/
+ * pausar-ativar entram na 4a; `Novo` entra na 4b, junto com adicionar
+ * parada/aluno dentro do próprio `Detalhe`). Espelha
+ * `apps/web/.../rotas/**`, em escopo reduzido: sem otimização de rota
+ * por IA, sem reordenar paradas manualmente, sem parada por endereço
+ * livre (só por escola do catálogo).
+ */
+export type EmpresaRotasStackParamList = {
+  Lista: undefined;
+  Detalhe: { routeId: string };
+  Novo: undefined;
+};

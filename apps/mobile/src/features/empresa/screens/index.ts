@@ -3,6 +3,8 @@ export * from "./empresa-billing-blocked-screen";
 export * from "./empresa-frota-lista-screen";
 export * from "./empresa-home-screen";
 export * from "./empresa-perfil-screen";
+export * from "./empresa-rota-detalhe-screen";
+export * from "./empresa-rotas-lista-screen";
 export * from "./empresa-veiculo-detalhe-screen";
 export * from "./empresa-veiculo-documentos-screen";
 export * from "./empresa-veiculo-novo-screen";
