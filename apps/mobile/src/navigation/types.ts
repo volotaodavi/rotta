@@ -138,6 +138,18 @@ export type ParentPerfilStackParamList = {
   AlunoDetalhe: { studentId: string };
   AlunoNovo: undefined;
   AlunoEnderecoDoDia: { studentId: string };
+  /**
+   * Escolas dos alunos do Responsável (Frente 3, 11/09/2026) — mesmas
+   * telas genéricas já usadas por `VeiculoStackParamList`
+   * (Motorista/Monitor), sem nenhuma tela nova: só uma segunda entrada
+   * de navegação pra elas, agora também a partir do Perfil do
+   * Responsável.
+   */
+  Escolas: undefined;
+  EscolaDetalhes: { schoolId: string };
+  EscolaMapa: { schoolId: string };
+  EscolaRotasVinculadas: { schoolId: string };
+  EscolaHorarios: { schoolId: string };
 };
 
 /**

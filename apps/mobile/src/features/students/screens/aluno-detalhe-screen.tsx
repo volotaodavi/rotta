@@ -36,6 +36,9 @@ type Props = NativeStackScreenProps<ParentPerfilStackParamList, "AlunoDetalhe">;
  * um pedido real por isso"; pra mudar, é pelo Chamados). Sem "ver
  * localização ao vivo" aqui — já existe na aba Viagens quando há
  * transporte ativo, não duplicado nesta tela.
+ *
+ * "Ver escola" (Frente 3, 11/09/2026) leva pro mesmo módulo Escolas já
+ * usado por Motorista/Monitor, aberto direto na escola deste aluno.
  */
 export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -191,6 +194,17 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
           label="Vai levar/buscar num endereço diferente algum dia?"
           variant="ghost"
           onPress={() => navigation.navigate("AlunoEnderecoDoDia", { studentId })}
+        />
+      </VehicleCard>
+
+      <VehicleCard style={styles.card}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+          Escola
+        </Text>
+        <VehicleButton
+          label="Ver escola"
+          variant="secondary"
+          onPress={() => navigation.navigate("EscolaDetalhes", { schoolId: student.schoolId })}
         />
       </VehicleCard>
 

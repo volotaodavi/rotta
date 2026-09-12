@@ -37,6 +37,10 @@ function iniciais(nome: string | undefined): string {
  * "Meus filhos" (Frente 2, 11/09/2026) deixou de ser só leitura — cada
  * linha agora navega pro detalhe/edição completo (`AlunoDetalhe`), e o
  * card ganhou um atalho pra lista completa/cadastro (`Alunos`).
+ *
+ * "Escolas" (Frente 3, 11/09/2026) é um atalho direto pra navegação
+ * livre entre as escolas dos alunos — o mesmo módulo também é
+ * alcançável a partir do detalhe de cada aluno (`AlunoDetalhe`).
  */
 export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -97,6 +101,11 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
       <PinSetupCard />
 
       <VehicleButton label="Meu transporte" variant="secondary" onPress={handleMeuTransporte} />
+      <VehicleButton
+        label="Escolas"
+        variant="secondary"
+        onPress={() => navigation.navigate("Escolas")}
+      />
       <VehicleButton
         label="Chamados"
         variant="secondary"

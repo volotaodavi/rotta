@@ -7,6 +7,13 @@ import type { ParentPerfilStackParamList } from "./types";
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
 import { ParentPerfilScreen } from "@/features/parent/screens";
 import {
+  EscolaDetalhesScreen,
+  EscolaHorariosScreen,
+  EscolaMapaScreen,
+  EscolaRotasVinculadasScreen,
+  EscolasScreen,
+} from "@/features/schools/screens";
+import {
   AlunoDetalheScreen,
   AlunoEnderecoDoDiaScreen,
   AlunoNovoScreen,
@@ -26,6 +33,12 @@ const Stack = createNativeStackNavigator<ParentPerfilStackParamList>();
  * "Meus Alunos" completo (Frente 2) entrou aqui pelo mesmo motivo —
  * `Alunos`/`AlunoDetalhe`/`AlunoNovo`/`AlunoEnderecoDoDia`, alcançados
  * a partir do card "Meus filhos" do `ParentPerfilScreen`.
+ *
+ * "Escolas" (Frente 3, 11/09/2026) reaproveita literalmente as mesmas
+ * telas já usadas por `VeiculoNavigator` (Motorista/Monitor) — nenhuma
+ * tela nova, só uma segunda entrada de navegação, alcançável tanto por
+ * um atalho direto no Perfil quanto pelo detalhe de cada aluno (que já
+ * tem `schoolId`).
  */
 export function ParentPerfilNavigator(): JSX.Element {
   return (
@@ -60,6 +73,23 @@ export function ParentPerfilNavigator(): JSX.Element {
         name="AlunoEnderecoDoDia"
         component={AlunoEnderecoDoDiaScreen}
         options={{ title: "Endereço do dia" }}
+      />
+      <Stack.Screen name="Escolas" component={EscolasScreen} options={{ title: "Escolas" }} />
+      <Stack.Screen
+        name="EscolaDetalhes"
+        component={EscolaDetalhesScreen}
+        options={{ title: "Escola" }}
+      />
+      <Stack.Screen name="EscolaMapa" component={EscolaMapaScreen} options={{ title: "Mapa" }} />
+      <Stack.Screen
+        name="EscolaRotasVinculadas"
+        component={EscolaRotasVinculadasScreen}
+        options={{ title: "Rotas vinculadas" }}
+      />
+      <Stack.Screen
+        name="EscolaHorarios"
+        component={EscolaHorariosScreen}
+        options={{ title: "Horários" }}
       />
     </Stack.Navigator>
   );
