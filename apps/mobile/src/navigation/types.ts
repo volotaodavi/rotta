@@ -74,6 +74,12 @@ export type DriverPerfilStackParamList = {
   Veiculo: undefined;
   /** Suporte (Epic B) — mesma decisão de aninhamento de `Veiculo`/`Documentacao` acima. */
   Chamados: undefined;
+  /**
+   * "Meus Alunos" do Motorista/Monitor (Frente 4, 11/09/2026: "Monitor:
+   * alunos + perfil + escolas") — read-only, todos os alunos de todas
+   * as rotas ativas da pessoa, não só os da viagem em andamento.
+   */
+  Alunos: undefined;
 };
 
 /** Stack de "Meu Veículo" (briefing "APP MOBILE"), aberta a partir da aba `Veiculo` do Motorista/Monitor. */

@@ -36,7 +36,8 @@ function iniciais(nome: string | undefined): string {
  * explícito do usuário ("caso os motoristas queiram"), Monitor não
  * ganha essa opção aqui. "Documentação Rotta" (Dossiê 45) abre a
  * Central de Documentação pública em uma WebView — disponível para os
- * dois papéis.
+ * dois papéis. "Meus Alunos" (Frente 4, 11/09/2026) também é dos dois
+ * papéis — read-only, todas as rotas ativas da pessoa.
  */
 export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -86,6 +87,11 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
         label="Meu Veículo"
         variant="secondary"
         onPress={() => navigation.navigate("Veiculo")}
+      />
+      <VehicleButton
+        label="Meus Alunos"
+        variant="secondary"
+        onPress={() => navigation.navigate("Alunos")}
       />
       <VehicleButton
         label="Verificar identidade"

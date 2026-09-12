@@ -5,7 +5,7 @@ import { VeiculoNavigator } from "./VeiculoNavigator";
 
 import type { DriverPerfilStackParamList } from "./types";
 
-import { DriverPerfilScreen } from "@/features/driver/screens";
+import { DriverAlunosScreen, DriverPerfilScreen } from "@/features/driver/screens";
 import { DriverIdentityVerificationWebViewScreen } from "@/features/driver/screens/identity-verification-webview-screen";
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
 
@@ -22,6 +22,10 @@ const Stack = createNativeStackNavigator<DriverPerfilStackParamList>();
  * referência, e não sobrava espaço pra manter "Veículo" como aba
  * própria). `headerShown: false` em `Veiculo`: `VeiculoNavigator` já
  * põe cabeçalho em cada uma das próprias telas.
+ *
+ * "Meus Alunos" (Frente 4, 11/09/2026) entrou pelo mesmo motivo —
+ * read-only, alcançável tanto por Motorista quanto por Monitor (mesma
+ * árvore de Perfil dos dois papéis).
  */
 export function DriverPerfilNavigator(): JSX.Element {
   return (
@@ -32,6 +36,11 @@ export function DriverPerfilNavigator(): JSX.Element {
         options={{ title: "Perfil", headerShown: false }}
       />
       <Stack.Screen name="Veiculo" component={VeiculoNavigator} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="Alunos"
+        component={DriverAlunosScreen}
+        options={{ title: "Meus Alunos" }}
+      />
       <Stack.Screen
         name="Documentacao"
         component={LegalWebViewScreen}
