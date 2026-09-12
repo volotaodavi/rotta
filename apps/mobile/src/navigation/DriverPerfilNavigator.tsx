@@ -5,8 +5,11 @@ import { VeiculoNavigator } from "./VeiculoNavigator";
 
 import type { DriverPerfilStackParamList } from "./types";
 
-import { DriverAlunosScreen, DriverPerfilScreen } from "@/features/driver/screens";
-import { DriverIdentityVerificationWebViewScreen } from "@/features/driver/screens/identity-verification-webview-screen";
+import {
+  DriverAlunosScreen,
+  DriverIdentityVerificationScreen,
+  DriverPerfilScreen,
+} from "@/features/driver/screens";
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
 
 const Stack = createNativeStackNavigator<DriverPerfilStackParamList>();
@@ -48,7 +51,7 @@ export function DriverPerfilNavigator(): JSX.Element {
       />
       <Stack.Screen
         name="VerificacaoIdentidade"
-        component={DriverIdentityVerificationWebViewScreen}
+        component={DriverIdentityVerificationScreen}
         options={{ title: "Verificar identidade" }}
       />
       <Stack.Screen name="Chamados" component={SupportNavigator} options={{ headerShown: false }} />
