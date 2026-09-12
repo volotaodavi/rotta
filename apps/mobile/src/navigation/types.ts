@@ -324,6 +324,8 @@ export type EmpresaFrotaStackParamList = {
   Detalhe: { vehicleId: string };
   Novo: undefined;
   Documentos: { vehicleId: string };
+  /** Mapa da frota em tempo real (Frente B, 12/09/2026) — atalho a partir de `Lista`. */
+  Mapa: undefined;
 };
 
 /**

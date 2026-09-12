@@ -16,6 +16,23 @@ import { gpsApi } from "@/lib/api-client";
 const GPS_LIVE_POLL_INTERVAL_MS = 3_000;
 
 /**
+ * "Mapa" da frota da Empresa/Gestor (Frente B do plano "lacunas
+ * Empresa/Gestor no app" — pedido do usuário 12/09/2026: "traga o que
+ * tem na Web pro app") — mirror exato de
+ * `apps/web/src/features/gps/hooks/use-gps.ts#useGpsMap`: um marcador
+ * por VIAGEM em andamento agora, `GET /gps/map`. `companyId` só é
+ * usado pelo Admin Rotta (mapa nacional); Empresa/Gestor chama sem
+ * parâmetro — o backend já escopa pelo `tenantId` do ator.
+ */
+export function useGpsMap(companyId?: string) {
+  return useQuery({
+    queryKey: ["gps", "map", companyId],
+    queryFn: () => gpsApi.getMap(companyId),
+    refetchInterval: GPS_LIVE_POLL_INTERVAL_MS,
+  });
+}
+
+/**
  * Localizador do Responsável (briefing "Marketplace" §"ACOMPANHAMENTO"
  * — mapa/GPS/ETA da viagem do próprio filho, GPS-01/03/06). Polling
  * substitui um canal em tempo real dedicado (WebSocket,

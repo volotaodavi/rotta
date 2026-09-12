@@ -4,6 +4,7 @@ import type { EmpresaFrotaStackParamList } from "./types";
 
 import {
   EmpresaFrotaListaScreen,
+  EmpresaFrotaMapaScreen,
   EmpresaVeiculoDetalheScreen,
   EmpresaVeiculoDocumentosScreen,
   EmpresaVeiculoNovoScreen,
@@ -13,7 +14,8 @@ const Stack = createNativeStackNavigator<EmpresaFrotaStackParamList>();
 
 /**
  * Stack da aba "Frota" da Empresa/Gestor — lista, detalhe (Frente 3a),
- * cadastro e documentos (Frente 3b).
+ * cadastro e documentos (Frente 3b), e Mapa (Frente B — localizador em
+ * tempo real, antes só existia pra escolas/transportadores).
  */
 export function EmpresaFrotaNavigator(): JSX.Element {
   return (
@@ -34,6 +36,7 @@ export function EmpresaFrotaNavigator(): JSX.Element {
         component={EmpresaVeiculoDocumentosScreen}
         options={{ title: "Documentos" }}
       />
+      <Stack.Screen name="Mapa" component={EmpresaFrotaMapaScreen} options={{ title: "Mapa" }} />
     </Stack.Navigator>
   );
 }

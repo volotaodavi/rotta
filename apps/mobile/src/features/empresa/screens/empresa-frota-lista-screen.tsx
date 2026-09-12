@@ -24,6 +24,9 @@ type Props = NativeStackScreenProps<EmpresaFrotaStackParamList, "Lista">;
  * texto + lista, sem os cards de métrica/export (fica pra Web). Página
  * única com `pageSize: 100` (sem paginação real — ver raciocínio no
  * plano da Frente).
+ *
+ * "Ver frota no mapa" (Frente B, 12/09/2026) — atalho pro localizador
+ * em tempo real, equivalente a `apps/web/.../veiculos/mapa/page.tsx`.
  */
 export function EmpresaFrotaListaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -72,6 +75,11 @@ export function EmpresaFrotaListaScreen({ navigation }: Props): JSX.Element {
       </View>
 
       <VehicleButton label="+ Novo veículo" onPress={() => navigation.navigate("Novo")} />
+      <VehicleButton
+        label="Ver frota no mapa"
+        variant="secondary"
+        onPress={() => navigation.navigate("Mapa")}
+      />
 
       {!data || data.items.length === 0 ? (
         <Text style={{ color: theme.colors.textMuted }}>Nenhum veículo cadastrado ainda.</Text>
