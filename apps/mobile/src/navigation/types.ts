@@ -272,3 +272,17 @@ export type EmpresaHomeStackParamList = {
   Dashboard: undefined;
   AlunosPreCadastro: undefined;
 };
+
+/**
+ * Stack da aba `Frota` da Empresa/Gestor (Frente 3 — lista/detalhe
+ * entram na 3a; `Novo`/`Documentos` entram na 3b). Espelha
+ * `apps/web/.../veiculos/**`, em escopo reduzido (ver
+ * `EmpresaTabParamList`: sem lembretes/manutenções/checklist/
+ * ocorrências/auditoria/vínculos por enquanto).
+ */
+export type EmpresaFrotaStackParamList = {
+  Lista: undefined;
+  Detalhe: { vehicleId: string };
+  Novo: undefined;
+  Documentos: { vehicleId: string };
+};
