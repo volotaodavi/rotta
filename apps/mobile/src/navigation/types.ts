@@ -232,3 +232,41 @@ export type AdminFinanceiroStackParamList = {
   CobrancaPix: undefined;
   Empresa: { companyId: string; companyNome: string };
 };
+
+/**
+ * Bottom Navigation da Empresa/Gestor no app (pedido do usuário
+ * 11/09/2026: "veja oq tem na web e traga para o app oficial" —
+ * confirmado escopo "versão reduzida primeiro", mesmo espírito de
+ * `AdminTabParamList"). Só alcançável por `user.role === "empresa" ||
+ * "gestor"` — ver `RootNavigator`. Fica só na Web (paridade completa
+ * fica pra depois): Escolas, Marketplace, Chamados, Assinatura,
+ * relatórios avançados de Veículos (auditoria/lembretes/manutenções/
+ * checklist/ocorrências), otimização de rota por IA, edição de
+ * endereço livre em parada.
+ *
+ * `Inicio` aninha `Alunos`(pré-cadastro) e `Equipe` (roster +
+ * aprovações + convites) — nenhuma aba própria pra elas: são áreas de
+ * uso esporádico, não de consulta diária, mesmo raciocínio que já
+ * levou `Aprovacoes` a ficar dentro de `Inicio` no Admin em vez de
+ * ganhar aba própria. Pra não perder visibilidade dos pedidos de
+ * vínculo pendentes (ação real, não só leitura), a aba ganha
+ * `tabBarBadge` com essa contagem (ver `EmpresaNavigator`).
+ * `Notificacoes` reaproveita literalmente `NotificacoesNavigator` (é
+ * agnóstico de papel).
+ */
+export type EmpresaTabParamList = {
+  Inicio: undefined;
+  Frota: undefined;
+  Rotas: undefined;
+  Notificacoes: undefined;
+  Perfil: undefined;
+};
+
+/**
+ * Stack aninhada na aba `Inicio` da Empresa/Gestor — `Dashboard`
+ * (saudação + atalhos), `AlunosPreCadastro` e `Equipe` (ver
+ * `EmpresaTabParamList` pro raciocínio de aninhamento).
+ */
+export type EmpresaHomeStackParamList = {
+  Dashboard: undefined;
+};

@@ -4,6 +4,7 @@ import {
   createBackofficeEndpoints,
   createBillingEndpoints,
   createClientErrorsEndpoints,
+  createCompanyJoinPreRegistrationsEndpoints,
   createCompanyJoinRequestsEndpoints,
   createDriversEndpoints,
   createGeoEndpoints,
@@ -47,6 +48,10 @@ const apiClient = createApiClient({
 export const authApi = createAuthEndpoints(apiClient);
 export const driversApi = createDriversEndpoints(apiClient);
 export const companyJoinRequestsApi = createCompanyJoinRequestsEndpoints(apiClient);
+// Área Empresa/Gestor no app (pedido do usuário 11/09/2026: "veja oq
+// tem na web e traga para o app oficial") — tela "Convites", mesmo
+// endpoint já usado por `apps/web/src/features/team`.
+export const companyJoinPreRegistrationsApi = createCompanyJoinPreRegistrationsEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const studentsApi = createStudentsEndpoints(apiClient);

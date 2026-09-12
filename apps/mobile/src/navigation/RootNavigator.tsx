@@ -4,6 +4,7 @@ import { useAuth } from "@rotta/auth/native";
 import { AdminNavigator } from "./AdminNavigator";
 import { AuthNavigator } from "./AuthNavigator";
 import { DriverNavigator } from "./DriverNavigator";
+import { EmpresaNavigator } from "./EmpresaNavigator";
 import { ParentNavigator } from "./ParentNavigator";
 import { VinculoPendenteNavigator } from "./VinculoPendenteNavigator";
 
@@ -12,6 +13,7 @@ import { usePinLock } from "@/features/auth/hooks/use-pin-lock";
 import { PainelWebOnlyScreen, PinLockScreen } from "@/features/auth/screens";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
 import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/identity-verification-blocked-screen";
+import { EmpresaBillingBlockedScreen } from "@/features/empresa/screens";
 import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
 import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-sheet";
 
@@ -25,11 +27,13 @@ import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/componen
  * A sessao real (`@rotta/auth`, Dossie 15) decide isso em tempo de
  * execucao — mesma conta compartilhada com `apps/web`/`apps/admin`, nunca
  * uma variante de build ou app separado (briefing: "nunca aplicativos
- * separados por papel"). Papeis de gestao (Empresa/Gestor/Escola) ainda
- * nao tem telas proprias no app — ver `PainelWebOnlyScreen`. Admin Rotta
- * (pedido do usuário 05/09/2026: "área do admin no app, porém de forma
- * reduzida") passou a ter `AdminNavigator` — um recorte deliberadamente
- * pequeno do Painel Web, que continua sendo a ferramenta completa.
+ * separados por papel"). Escola ainda nao tem telas proprias no app —
+ * ver `PainelWebOnlyScreen`. Admin Rotta (pedido do usuário 05/09/2026:
+ * "área do admin no app, porém de forma reduzida") passou a ter
+ * `AdminNavigator`, e Empresa/Gestor (pedido do usuário 11/09/2026:
+ * "veja oq tem na web e traga para o app oficial") passou a ter
+ * `EmpresaNavigator` — ambos recortes deliberadamente pequenos do
+ * Painel Web, que continua sendo a ferramenta completa.
  *
  * PIN de acesso rápido (Dossiê 42, opt-in do Motorista no Perfil) — se
  * ativado, `usePinLock` decide se a tela de PIN aparece por cima de
@@ -45,11 +49,9 @@ export function RootNavigator(): JSX.Element {
   // navegação (só efeito colateral, sem UI própria).
   usePushRegistration({ status });
 
-  // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor
-  // — o único papel de gestão com telas reais neste app; Empresa/Gestor
-  // já caem em `PainelWebOnlyScreen` antes de chegar aqui, e Responsável
-  // não usa este fluxo (backend nem aceita `SELF_VERIFICATION_ROLES`
-  // pra ele). A query nem dispara fora desse papel.
+  // Verificação de identidade (Frente J) só se aplica a Motorista/Monitor;
+  // Responsável não usa este fluxo (backend nem aceita
+  // `SELF_VERIFICATION_ROLES` pra ele). A query nem dispara fora desse papel.
   const isMotoristaOuMonitor =
     status === "authenticated" && (user?.role === "motorista" || user?.role === "monitor");
   const { data: identityVerification, isLoading: isIdentityLoading } = useMyIdentityVerification({
@@ -94,6 +96,17 @@ export function RootNavigator(): JSX.Element {
         </>
       ) : user.role === "admin_rotta" ? (
         <AdminNavigator />
+      ) : user.role === "empresa" || user.role === "gestor" ? (
+        // Faturamento (Dossiê 26) — mesma regra da Web
+        // (`(dashboard)/layout.tsx`, `BillingBlockScreen`): trial
+        // vencido/inadimplente/suspenso/cancelado bloqueia o acesso até
+        // regularizar. `billingBlocked` só é `true` pra este papel
+        // (nunca pros demais), mas o `&&` é defesa em profundidade.
+        user.billingBlocked ? (
+          <EmpresaBillingBlockedScreen reason={user.billingBlockedReason ?? null} />
+        ) : (
+          <EmpresaNavigator />
+        )
       ) : (
         <PainelWebOnlyScreen />
       )}
