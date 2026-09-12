@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Bell, History, Home, User } from "@rotta/icons/native";
 
+import { MarketplaceNavigator } from "./MarketplaceNavigator";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
 import { ParentPerfilNavigator } from "./ParentPerfilNavigator";
 
@@ -8,10 +9,7 @@ import type { ParentTabParamList } from "./types";
 
 import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-transport-state";
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
-import {
-  MarketplaceComingSoonScreen,
-  TransporteInicioScreen,
-} from "@/features/marketplace/screens";
+import { TransporteInicioScreen } from "@/features/marketplace/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
@@ -32,6 +30,15 @@ const Tab = createBottomTabNavigator<ParentTabParamList>();
  * informação real de progresso que a referência não precisa comunicar
  * (ela nunca mostra os estados intermediários do Responsável sem
  * transporte contratado ainda), então mantida só dentro da tela.
+ *
+ * `Mapa` reativado (pedido do usuário 11/09/2026: "TODOS DEVERÃO TER
+ * MAPA") — tinha sido trocado por `MarketplaceComingSoonScreen`
+ * (01/09/2026), agora volta a montar o `MarketplaceNavigator` de
+ * verdade (busca de transportador, mapa, solicitar transporte). Sem
+ * `headerShown`/`title` aqui: o próprio `MarketplaceNavigator` já
+ * gerencia o header de cada tela interna (mesmo padrão de
+ * `EmpresaNavigator`/`AdminNavigator` — a aba nunca sobrepõe header
+ * duplicado em cima de uma stack aninhada).
  */
 export function ParentNavigator(): JSX.Element {
   const { state } = useResponsavelTransportState();
@@ -41,10 +48,8 @@ export function ParentNavigator(): JSX.Element {
     <Tab.Navigator initialRouteName="Mapa" screenOptions={{ headerShown: false }}>
       <Tab.Screen
         name="Mapa"
-        component={MarketplaceComingSoonScreen}
+        component={MarketplaceNavigator}
         options={{
-          headerShown: true,
-          title: "Início",
           tabBarLabel: "Início",
           tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
         }}
