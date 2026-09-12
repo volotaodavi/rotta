@@ -1,7 +1,5 @@
 import { useAuth } from "@rotta/auth/native";
-import { ShieldAlert } from "@rotta/icons/native";
-import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { AuthButton } from "@/features/auth/components";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
@@ -9,94 +7,59 @@ import { DriverIdentityVerificationWebViewScreen } from "@/features/driver/scree
 import { useTheme } from "@/providers/theme-provider";
 
 /**
- * Bloqueio total do app quando `identityVerificationStatus ===
- * "REPROVADA"` (Frente J — mesmo pedido do bloqueio já entregue no
- * Painel Web: "não deixe ele acessar nada. Deixe apenas a opção de
- * tentar verificação no Didit novamente"). `RootNavigator` renderiza
- * esta tela NO LUGAR de `DriverNavigator` inteiro — nenhuma tela do
- * app fica alcançável enquanto bloqueado, só "Tentar novamente" (abre
- * a mesma WebView `/verificacao-identidade` já usada no Perfil) e
- * "Sair".
+ * Bloqueio total do app enquanto `identityVerificationStatus !==
+ * "APROVADA"` (Frente J, ampliado 12/09/2026 — pedido do usuário:
+ * "Mais fácil, pegue oq está na web e traga para o app" — em vez de
+ * reimplementar em React Native a copy por status de
+ * `apps/web/.../identity-verification-block-screen.tsx`
+ * (NAO_INICIADA/EM_ANDAMENTO/EM_ANALISE/REPROVADA/EXPIRADA, cada um com
+ * texto e botão certos), esta tela SEMPRE embute a própria página Web
+ * `/verificacao-identidade` — ela já resolve tudo isso (texto certo por
+ * status, "Verificar agora"/"Tentar novamente"/"Atualizar status", SDK
+ * da Didit) e nunca fica dessincronizada da Web de novo, porque é a
+ * mesma tela.
  *
- * "Tentar novamente" desbloqueia sozinho assim que uma nova sessão é
- * criada — `IdentityVerificationService.createSession` já marca
- * `EM_ANDAMENTO` no banco na mesma chamada (ver
- * `identity-verification-webview-screen.tsx`/página web equivalente),
- * então o próximo refetch deste hook já sai do estado bloqueado, mesmo
- * que a pessoa feche a WebView sem concluir o formulário.
+ * ANTES desta mudança, a tela mostrava sempre a copy fixa de
+ * "REPROVADA" — errado pra quem nunca tinha começado (`NAO_INICIADA`)
+ * ou estava só aguardando análise (`EM_ANALISE`): mostrava "verificação
+ * recusada" pra quem nunca tinha sido recusado.
+ *
+ * `RootNavigator` renderiza esta tela NO LUGAR do navigator do papel
+ * inteiro — nenhuma tela do app fica alcançável enquanto bloqueado. A
+ * barra fixa embaixo é só o que a WebView em si não pode oferecer:
+ * "Atualizar" (refaz a consulta do LADO NATIVO — a WebView é uma sessão
+ * isolada, sem ponte de token com o app; o SDK da Didit e o botão
+ * "Atualizar status" de dentro da WebView mudam o status no banco, mas
+ * só um `refetch()` daqui faz o `RootNavigator` notar e desbloquear) e
+ * "Sair" (única saída, já que não existe pra onde "voltar").
  */
 export function IdentityVerificationBlockedScreen(): JSX.Element {
   const { theme } = useTheme();
   const { logout } = useAuth();
-  const { data, refetch, isFetching } = useMyIdentityVerification();
-  const [tentandoNovamente, setTentandoNovamente] = useState(false);
-
-  if (tentandoNovamente) {
-    return (
-      <View style={styles.flex}>
-        <DriverIdentityVerificationWebViewScreen />
-        <View style={[styles.backBar, { backgroundColor: theme.colors.surfaceElevated }]}>
-          <AuthButton
-            label="Voltar"
-            variant="ghost"
-            onPress={() => {
-              setTentandoNovamente(false);
-              void refetch();
-            }}
-          />
-        </View>
-      </View>
-    );
-  }
+  const { refetch, isFetching } = useMyIdentityVerification();
 
   return (
-    <View
-      style={[
-        styles.container,
-        { backgroundColor: theme.colors.background, padding: theme.spacing[6] },
-      ]}
-    >
-      <View style={[styles.iconWrap, { backgroundColor: `${theme.colors.danger}20` }]}>
-        <ShieldAlert size={28} color={theme.colors.danger} />
+    <View style={[styles.flex, { backgroundColor: theme.colors.background }]}>
+      <DriverIdentityVerificationWebViewScreen />
+      <View style={[styles.bottomBar, { backgroundColor: theme.colors.surfaceElevated }]}>
+        {isFetching ? (
+          <ActivityIndicator color={theme.colors.primary} />
+        ) : (
+          <AuthButton label="Atualizar" variant="ghost" onPress={() => void refetch()} />
+        )}
+        <AuthButton label="Sair" variant="secondary" onPress={() => void logout()} />
       </View>
-      <Text
-        style={[
-          styles.title,
-          { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
-        ]}
-      >
-        Verificação de identidade recusada
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        {data?.motivo ?? "Sua verificação de identidade não foi aprovada."}
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        O acesso ao app fica bloqueado até você refazer a verificação.
-      </Text>
-      {isFetching ? (
-        <ActivityIndicator color={theme.colors.primary} />
-      ) : (
-        <AuthButton
-          label="Tentar verificação novamente"
-          onPress={() => setTentandoNovamente(true)}
-        />
-      )}
-      <AuthButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  backBar: { alignItems: "flex-start", padding: 12 },
-  container: { alignItems: "center", flex: 1, gap: 16, justifyContent: "center" },
-  flex: { flex: 1 },
-  iconWrap: {
+  bottomBar: {
     alignItems: "center",
-    borderRadius: 999,
-    height: 56,
-    justifyContent: "center",
-    width: 56,
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+    padding: 12,
   },
-  subtitle: { fontSize: 14, lineHeight: 20, textAlign: "center" },
-  title: { fontWeight: "600", textAlign: "center" },
+  flex: { flex: 1 },
 });
