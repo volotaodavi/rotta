@@ -299,6 +299,17 @@ export type EmpresaHomeStackParamList = {
   Dashboard: undefined;
   AlunosPreCadastro: undefined;
   Equipe: undefined;
+  /**
+   * Marketplace (Frente A do plano "lacunas Empresa/Gestor no app",
+   * 12/09/2026) — antes desta Frente o app não tinha NENHUMA tela de
+   * Marketplace; uma solicitação de família só era vista abrindo a Web.
+   * Mesmo raciocínio de aninhamento de `AlunosPreCadastro`/`Equipe`
+   * acima — uso esporádico, não diário.
+   */
+  MarketplaceSolicitacoes: undefined;
+  MarketplaceSolicitacaoDetalhe: { transportRequestId: string };
+  MarketplaceContratos: undefined;
+  MarketplaceContratoDetalhe: { contractId: string };
 };
 
 /**

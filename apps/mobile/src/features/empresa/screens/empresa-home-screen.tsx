@@ -1,7 +1,8 @@
 import { useAuth } from "@rotta/auth/native";
-import { GraduationCap, Users } from "@rotta/icons/native";
+import { GraduationCap, ShoppingBag, Users } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useTransportRequestsList } from "../hooks/use-empresa-marketplace";
 import { usePendingJoinRequests } from "../hooks/use-empresa-team";
 
 import type { EmpresaHomeStackParamList } from "@/navigation/types";
@@ -19,11 +20,24 @@ type Props = NativeStackScreenProps<EmpresaHomeStackParamList, "Dashboard">;
  * (Frente 5, aninhada na mesma aba — ver `EmpresaTabParamList`); o de
  * Equipe mostra a contagem de pedidos pendentes, mesmo dado do
  * `tabBarBadge` da aba Início (`EmpresaNavigator`).
+ *
+ * "Solicitações"/"Contratos" (Frente A, 12/09/2026 — pedido do usuário:
+ * "o app é o principal... traga o que tem na Web pro app") — antes
+ * desta Frente o app não tinha NENHUMA tela de Marketplace; uma
+ * solicitação de família só era vista abrindo a Web. O atalho de
+ * Solicitações mostra a contagem de `RECEBIDA` (ainda sem decisão),
+ * mesmo raciocínio do badge de Equipe.
  */
 export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { data: pendentes } = usePendingJoinRequests();
+  // Só o total importa aqui (badge do atalho) — `pageSize: 1` evita
+  // carregar a lista inteira só pra saber a contagem.
+  const { data: solicitacoesRecebidas } = useTransportRequestsList({
+    status: "RECEBIDA",
+    pageSize: 1,
+  });
 
   return (
     <VehicleScreen>
@@ -50,6 +64,22 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
         variant="secondary"
         icon={<Users size={18} color={theme.colors.text} />}
         onPress={() => navigation.navigate("Equipe")}
+      />
+      <VehicleButton
+        label={
+          solicitacoesRecebidas && solicitacoesRecebidas.total > 0
+            ? `Solicitações (${solicitacoesRecebidas.total} novas)`
+            : "Solicitações de transporte"
+        }
+        variant="secondary"
+        icon={<ShoppingBag size={18} color={theme.colors.text} />}
+        onPress={() => navigation.navigate("MarketplaceSolicitacoes")}
+      />
+      <VehicleButton
+        label="Contratos"
+        variant="secondary"
+        icon={<ShoppingBag size={18} color={theme.colors.text} />}
+        onPress={() => navigation.navigate("MarketplaceContratos")}
       />
     </VehicleScreen>
   );

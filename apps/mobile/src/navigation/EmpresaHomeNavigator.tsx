@@ -6,13 +6,18 @@ import {
   EmpresaAlunosPreCadastroScreen,
   EmpresaEquipeScreen,
   EmpresaHomeScreen,
+  EmpresaMarketplaceContratoDetalheScreen,
+  EmpresaMarketplaceContratosScreen,
+  EmpresaMarketplaceSolicitacaoDetalheScreen,
+  EmpresaMarketplaceSolicitacoesScreen,
 } from "@/features/empresa/screens";
 
 const Stack = createNativeStackNavigator<EmpresaHomeStackParamList>();
 
 /**
  * Stack da aba "Início" da Empresa/Gestor — `Dashboard`,
- * `AlunosPreCadastro` (Frente 2) e `Equipe` (Frente 5). Mesmo papel de
+ * `AlunosPreCadastro` (Frente 2), `Equipe` (Frente 5) e Marketplace
+ * (Frente A — solicitações recebidas + contratos). Mesmo papel de
  * aninhamento de `AdminHomeNavigator`: a aba em si nunca muda, só a
  * tela exibida dentro dela.
  */
@@ -26,6 +31,26 @@ export function EmpresaHomeNavigator(): JSX.Element {
         options={{ title: "Alunos" }}
       />
       <Stack.Screen name="Equipe" component={EmpresaEquipeScreen} options={{ title: "Equipe" }} />
+      <Stack.Screen
+        name="MarketplaceSolicitacoes"
+        component={EmpresaMarketplaceSolicitacoesScreen}
+        options={{ title: "Solicitações" }}
+      />
+      <Stack.Screen
+        name="MarketplaceSolicitacaoDetalhe"
+        component={EmpresaMarketplaceSolicitacaoDetalheScreen}
+        options={{ title: "Solicitação" }}
+      />
+      <Stack.Screen
+        name="MarketplaceContratos"
+        component={EmpresaMarketplaceContratosScreen}
+        options={{ title: "Contratos" }}
+      />
+      <Stack.Screen
+        name="MarketplaceContratoDetalhe"
+        component={EmpresaMarketplaceContratoDetalheScreen}
+        options={{ title: "Contrato" }}
+      />
     </Stack.Navigator>
   );
 }

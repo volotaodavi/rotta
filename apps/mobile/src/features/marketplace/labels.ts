@@ -1,6 +1,6 @@
 import type { ResponsavelTransportState } from "./hooks/use-transport-state";
 import type { StatusPillTone } from "@/features/vehicles/components";
-import type { ContractStatus, TransportRequestStatus } from "@rotta/api-client";
+import type { ContractStatus, RatingTargetType, TransportRequestStatus } from "@rotta/api-client";
 
 /** Rótulo da aba "Transporte" do Bottom Navigation, um por estado (briefing "Marketplace" §"NAVEGAÇÃO"). */
 export const TRANSPORT_TAB_LABEL: Record<ResponsavelTransportState, string> = {
@@ -35,4 +35,12 @@ export const CONTRACT_STATUS_TONE: Record<ContractStatus, StatusPillTone> = {
   AGUARDANDO_ASSINATURA: "warning",
   ATIVO: "success",
   ENCERRADO: "neutral",
+};
+
+/** Rótulo do alvo de uma avaliação pós-transporte (Frente A — Marketplace da Empresa/Gestor no app) — mirror de `apps/web/.../marketplace/labels.ts`. */
+export const RATING_TARGET_LABEL: Record<RatingTargetType, string> = {
+  MOTORISTA: "Motorista",
+  EMPRESA: "Transportadora",
+  MONITOR: "Monitor",
+  VEICULO: "Veículo",
 };
