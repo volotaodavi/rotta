@@ -2,14 +2,15 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
 import type { EmpresaRotasStackParamList } from "./types";
 
-import { EmpresaRotaDetalheScreen, EmpresaRotasListaScreen } from "@/features/empresa/screens";
+import {
+  EmpresaRotaDetalheScreen,
+  EmpresaRotaNovaScreen,
+  EmpresaRotasListaScreen,
+} from "@/features/empresa/screens";
 
 const Stack = createNativeStackNavigator<EmpresaRotasStackParamList>();
 
-/**
- * Stack da aba "Rotas" da Empresa/Gestor (Frente 4a — lista e detalhe;
- * `Novo` entra na Frente 4b).
- */
+/** Stack da aba "Rotas" da Empresa/Gestor — lista, detalhe e cadastro. */
 export function EmpresaRotasNavigator(): JSX.Element {
   return (
     <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
@@ -18,6 +19,11 @@ export function EmpresaRotasNavigator(): JSX.Element {
         name="Detalhe"
         component={EmpresaRotaDetalheScreen}
         options={{ title: "Rota" }}
+      />
+      <Stack.Screen
+        name="Novo"
+        component={EmpresaRotaNovaScreen}
+        options={{ title: "Nova rota" }}
       />
     </Stack.Navigator>
   );

@@ -57,7 +57,7 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      {/* "+ Nova rota" entra na Frente 4b, quando a tela `Novo` existir de verdade. */}
+      <VehicleButton label="+ Nova rota" onPress={() => navigation.navigate("Novo")} />
 
       {!data || data.items.length === 0 ? (
         <Text style={{ color: theme.colors.textMuted }}>Nenhuma rota cadastrada ainda.</Text>
