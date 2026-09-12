@@ -5,6 +5,7 @@ import type {
   VehicleDocumentType,
   VehicleMaintenanceType,
   VehicleOccurrenceSeverity,
+  VehicleReminderType,
   VehicleStatus,
   VehicleType,
 } from "@rotta/api-client";
@@ -68,6 +69,16 @@ export const VEHICLE_MAINTENANCE_TYPE_LABEL: Record<VehicleMaintenanceType, stri
   VISTORIA: "Vistoria",
   LIMPEZA: "Limpeza",
   OUTRA: "Outra",
+};
+
+/** Frente C (Empresa/Gestor — Lembretes) — mirror de `apps/web/.../vehicles/labels.ts`. */
+export const VEHICLE_REMINDER_TYPE_LABEL: Record<VehicleReminderType, string> = {
+  LICENCIAMENTO: "Licenciamento",
+  SEGURO: "Seguro",
+  REVISAO: "Revisão",
+  TROCA_OLEO: "Troca de óleo",
+  MANUTENCAO_PREVENTIVA: "Manutenção preventiva",
+  VISTORIA: "Vistoria",
 };
 
 export const VEHICLE_OCCURRENCE_SEVERITY_LABEL: Record<VehicleOccurrenceSeverity, string> = {

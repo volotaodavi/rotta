@@ -5,9 +5,15 @@ import type { EmpresaFrotaStackParamList } from "./types";
 import {
   EmpresaFrotaListaScreen,
   EmpresaFrotaMapaScreen,
+  EmpresaVeiculoAuditoriaScreen,
+  EmpresaVeiculoChecklistScreen,
   EmpresaVeiculoDetalheScreen,
   EmpresaVeiculoDocumentosScreen,
+  EmpresaVeiculoLembretesScreen,
+  EmpresaVeiculoManutencoesScreen,
   EmpresaVeiculoNovoScreen,
+  EmpresaVeiculoOcorrenciasScreen,
+  EmpresaVeiculoVinculosScreen,
 } from "@/features/empresa/screens";
 
 const Stack = createNativeStackNavigator<EmpresaFrotaStackParamList>();
@@ -37,6 +43,36 @@ export function EmpresaFrotaNavigator(): JSX.Element {
         options={{ title: "Documentos" }}
       />
       <Stack.Screen name="Mapa" component={EmpresaFrotaMapaScreen} options={{ title: "Mapa" }} />
+      <Stack.Screen
+        name="Manutencoes"
+        component={EmpresaVeiculoManutencoesScreen}
+        options={{ title: "Manutenção" }}
+      />
+      <Stack.Screen
+        name="Lembretes"
+        component={EmpresaVeiculoLembretesScreen}
+        options={{ title: "Lembretes" }}
+      />
+      <Stack.Screen
+        name="Vinculos"
+        component={EmpresaVeiculoVinculosScreen}
+        options={{ title: "Vínculos" }}
+      />
+      <Stack.Screen
+        name="Checklist"
+        component={EmpresaVeiculoChecklistScreen}
+        options={{ title: "Checklist" }}
+      />
+      <Stack.Screen
+        name="Ocorrencias"
+        component={EmpresaVeiculoOcorrenciasScreen}
+        options={{ title: "Ocorrências" }}
+      />
+      <Stack.Screen
+        name="Auditoria"
+        component={EmpresaVeiculoAuditoriaScreen}
+        options={{ title: "Histórico" }}
+      />
     </Stack.Navigator>
   );
 }

@@ -25,8 +25,11 @@ const TODOS_OS_STATUS = Object.keys(VEHICLE_STATUS_LABEL) as VehicleStatus[];
 
 /**
  * Frota — detalhe — dados do veículo + seletor de status (chips,
- * mesmo truque de `novo-chamado-screen.tsx`) + atalho pra Documentos
- * (Frente 3b).
+ * mesmo truque de `novo-chamado-screen.tsx`) + atalhos pra Documentos
+ * (Frente 3b) e, desde a Frente C (12/09/2026 — "traga o que tem na
+ * Web pro app"), as 6 abas que só existiam em
+ * `apps/web/.../veiculos/[id]`: Manutenção, Lembretes, Vínculos,
+ * Checklist, Ocorrências e Histórico (auditoria).
  */
 export function EmpresaVeiculoDetalheScreen({ route, navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -93,6 +96,36 @@ export function EmpresaVeiculoDetalheScreen({ route, navigation }: Props): JSX.E
         label="Documentos"
         variant="secondary"
         onPress={() => navigation.navigate("Documentos", { vehicleId })}
+      />
+      <VehicleButton
+        label="Manutenção"
+        variant="secondary"
+        onPress={() => navigation.navigate("Manutencoes", { vehicleId })}
+      />
+      <VehicleButton
+        label="Lembretes"
+        variant="secondary"
+        onPress={() => navigation.navigate("Lembretes", { vehicleId })}
+      />
+      <VehicleButton
+        label="Vínculos"
+        variant="secondary"
+        onPress={() => navigation.navigate("Vinculos", { vehicleId })}
+      />
+      <VehicleButton
+        label="Checklist"
+        variant="secondary"
+        onPress={() => navigation.navigate("Checklist", { vehicleId })}
+      />
+      <VehicleButton
+        label="Ocorrências"
+        variant="secondary"
+        onPress={() => navigation.navigate("Ocorrencias", { vehicleId })}
+      />
+      <VehicleButton
+        label="Histórico"
+        variant="secondary"
+        onPress={() => navigation.navigate("Auditoria", { vehicleId })}
       />
     </VehicleScreen>
   );

@@ -326,6 +326,18 @@ export type EmpresaFrotaStackParamList = {
   Documentos: { vehicleId: string };
   /** Mapa da frota em tempo real (Frente B, 12/09/2026) — atalho a partir de `Lista`. */
   Mapa: undefined;
+  /**
+   * Abas que faltavam no detalhe do veículo (Frente C, 12/09/2026) —
+   * mesmas 6 abas que já existem em `apps/web/.../veiculos/[id]`,
+   * reaproveitando ao máximo os hooks/telas já existentes do lado
+   * Motorista/Monitor (`features/vehicles/hooks/use-vehicles.ts`).
+   */
+  Manutencoes: { vehicleId: string };
+  Lembretes: { vehicleId: string };
+  Vinculos: { vehicleId: string };
+  Checklist: { vehicleId: string };
+  Ocorrencias: { vehicleId: string };
+  Auditoria: { vehicleId: string };
 };
 
 /**
