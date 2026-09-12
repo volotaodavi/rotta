@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:e2e": "echo \"[@rotta/mobile] Detox/Maestro sera configurado junto com o primeiro fluxo real\" && exit 0",
-    "clean": "rm -rf .expo dist .turbo"
+    "clean": "rm -rf .expo dist .turbo",
+    "eas-build-post-install": "cd ../.. && pnpm --filter @rotta/validators build"
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",

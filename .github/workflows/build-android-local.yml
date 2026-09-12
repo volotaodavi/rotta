@@ -85,16 +85,20 @@ jobs:
 
       # `@rotta/validators` é o único pacote do monorepo cujo `main`
       # aponta pra um `dist/` compilado (`tsc`) em vez de apontar
-      # direto pro `.ts` fonte — todos os outros pacotes (`@rotta/ui`,
-      # `@rotta/theme`, `@rotta/api-client` etc.) o Metro resolve certo
-      # sem build nenhum, via Babel. No dev local isso nunca dá erro
-      # porque o Turborepo builda e cacheia `@rotta/validators` como
-      # efeito colateral de outros comandos (`pnpm build`/pre-push) —
-      # mas esse job de CI nunca rodou isso, então o Metro falhava com
-      # "could not be resolved (.../dist/index.js" ao empacotar
-      # qualquer tela que importa `@rotta/validators` (ex.:
-      # `empresa-veiculo-novo-screen.tsx`).
-      - run: pnpm --filter @rotta/validators build
+      # direto pro `.ts` fonte (todos os outros — `@rotta/ui`,
+      # `@rotta/theme`, `@rotta/api-client` etc. — o Metro resolve
+      # sem build nenhum, via Babel). Buildar esse pacote AQUI, no
+      # checkout deste job, não resolve nada: o passo "Build local via
+      # EAS CLI" abaixo (`eas build --local`) copia o projeto pra um
+      # diretório isolado próprio (`/tmp/.../eas-build-local-nodejs/...`)
+      # e reinstala as dependências do zero lá dentro — como `dist/` é
+      # ignorado pelo git (.gitignore), esse build daqui nunca
+      # atravessa pra cópia isolada. O build de verdade que resolve
+      # isso é o script `eas-build-post-install` em
+      # `apps/mobile/package.json` — é um hook oficial da EAS,
+      # documentado em https://docs.expo.dev/build-reference/npm-hooks/,
+      # que a própria EAS roda DENTRO do diretório isolado, logo depois
+      # do install dela e antes do bundle (fase `EAGER_BUNDLE`).
 
       # `development`/`preview` usam `distribution: internal` (eas.json)
       # — a EAS gera `.apk` por padrão nesse caso. `production` não
