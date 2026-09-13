@@ -4,6 +4,7 @@ import {
   createBackofficeEndpoints,
   createBillingEndpoints,
   createClientErrorsEndpoints,
+  createCompaniesEndpoints,
   createCompanyJoinPreRegistrationsEndpoints,
   createCompanyJoinRequestsEndpoints,
   createDriversEndpoints,
@@ -47,6 +48,10 @@ const apiClient = createApiClient({
 
 export const authApi = createAuthEndpoints(apiClient);
 export const driversApi = createDriversEndpoints(apiClient);
+// Banner de trial vencendo no app (pedido do usuário 13/09/2026 — mesmo
+// aviso que `apps/web/src/app/(dashboard)/empresa/page.tsx#TrialBanner`
+// já tinha, só faltava no mobile). `GET /companies/:id`, mesmo endpoint.
+export const companiesApi = createCompaniesEndpoints(apiClient);
 export const companyJoinRequestsApi = createCompanyJoinRequestsEndpoints(apiClient);
 // Área Empresa/Gestor no app (pedido do usuário 11/09/2026: "veja oq
 // tem na web e traga para o app oficial") — tela "Convites", mesmo

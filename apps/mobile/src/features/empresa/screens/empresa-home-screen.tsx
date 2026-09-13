@@ -2,6 +2,8 @@ import { useAuth } from "@rotta/auth/native";
 import { GraduationCap, ShoppingBag, Users } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
+import { TrialBanner } from "../components";
+import { useMyCompany } from "../hooks/use-empresa-company";
 import { useTransportRequestsList } from "../hooks/use-empresa-marketplace";
 import { usePendingJoinRequests } from "../hooks/use-empresa-team";
 
@@ -31,6 +33,7 @@ type Props = NativeStackScreenProps<EmpresaHomeStackParamList, "Dashboard">;
 export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { data: company } = useMyCompany(user?.companyId);
   const { data: pendentes } = usePendingJoinRequests();
   // Só o total importa aqui (badge do atalho) — `pageSize: 1` evita
   // carregar a lista inteira só pra saber a contagem.
@@ -50,6 +53,8 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
       <Text style={{ color: theme.colors.textMuted }}>
         Acompanhe sua frota e suas rotas por aqui. Mais áreas de gestão chegam em breve.
       </Text>
+
+      {company ? <TrialBanner company={company} /> : null}
 
       <VehicleButton
         label="Alunos"
