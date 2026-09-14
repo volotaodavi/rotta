@@ -5,8 +5,10 @@ import {
   Car,
   CheckCircle2,
   Compass,
+  FileCheck,
   History,
   LayoutGrid,
+  Lock,
   MapPin,
   MessageCircle,
   Route as RouteIcon,
@@ -16,7 +18,6 @@ import {
 import { Typography } from "@rotta/ui/web";
 import Image from "next/image";
 import Link from "next/link";
-
 
 import type { Metadata, Route } from "next";
 import type { ComponentType } from "react";
@@ -165,6 +166,42 @@ const ROTINA_REAL: { titulo: string; icon: ComponentType<{ className?: string }>
   { titulo: "Gestão de motoristas e monitores", icon: Users },
   { titulo: "Registro de ocorrências", icon: AlertTriangle },
   { titulo: "Histórico de viagens", icon: History },
+];
+
+/**
+ * "Seus dados, protegidos." (pedido do usuário 14/09/2026: mostrar
+ * criptografia + LGPD já na Landing Page, "uma aba para poder
+ * mostrar") — os três itens abaixo são um resumo fiel do que já está
+ * documentado e implementado de verdade em `/legal/seguranca` e
+ * `/legal/privacidade` (nenhuma promessa nova, só resumo do que já
+ * existe): HTTPS em trânsito, hash Argon2id de senha (nunca texto
+ * puro), documentos sensíveis (CNH, foto de aluno) em armazenamento
+ * privado com link assinado e temporário. Antes desta seção, a única
+ * menção do site inteiro a segurança/LGPD era o rodapé (só
+ * "Privacidade", nem "Segurança" estava linkado ali).
+ */
+const SEGURANCA_ITENS: {
+  titulo: string;
+  descricao: string;
+  icon: ComponentType<{ className?: string }>;
+}[] = [
+  {
+    titulo: "Criptografia em trânsito",
+    descricao: "Toda comunicação com a plataforma é protegida por HTTPS, do site ao aplicativo.",
+    icon: Lock,
+  },
+  {
+    titulo: "Conforme a LGPD",
+    descricao:
+      "Tratamos dado pessoal com base legal e finalidade definidas, com os direitos do titular garantidos.",
+    icon: ShieldCheck,
+  },
+  {
+    titulo: "Documentos em local privado",
+    descricao:
+      "CNH, comprovantes e fotos de alunos nunca ficam em URL pública: acesso só por link temporário e assinado.",
+    icon: FileCheck,
+  },
 ];
 
 /**
@@ -515,6 +552,52 @@ export default function LandingPage(): JSX.Element {
             ))}
           </Reveal>
         </div>
+      </section>
+
+      {/* ===== "Seus dados, protegidos." ===== */}
+      <section id="seguranca" className="w-full scroll-mt-20 px-6 py-24">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-4 text-center">
+          <Reveal className="flex flex-col items-center gap-4">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <Lock className="h-5 w-5" />
+            </span>
+            <Typography variant="headline" as="h2" className="[text-wrap:balance]">
+              Seus dados, protegidos.
+            </Typography>
+            <Typography variant="body" color="muted" className="max-w-xl">
+              A Rotta trata dado pessoal em conformidade com a LGPD, com criptografia em trânsito e
+              documentos sensíveis guardados fora de qualquer acesso público.
+            </Typography>
+          </Reveal>
+        </div>
+
+        <div className="mx-auto mt-14 grid w-full max-w-5xl grid-cols-1 gap-8 sm:grid-cols-3">
+          {SEGURANCA_ITENS.map((item, index) => (
+            <Reveal key={item.titulo} delayMs={index * 80}>
+              <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <item.icon className="h-4.5 w-4.5" />
+                </span>
+                <Typography variant="subtitle">{item.titulo}</Typography>
+                <Typography variant="bodySmall" color="muted">
+                  {item.descricao}
+                </Typography>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <Reveal
+          delayMs={200}
+          className="mx-auto mt-14 flex w-full max-w-3xl flex-wrap items-center justify-center gap-3"
+        >
+          <Link href="/legal/seguranca" className={pillGhostLg}>
+            Segurança na Rotta
+          </Link>
+          <Link href="/legal/privacidade" className={pillGhostLg}>
+            Política de Privacidade (LGPD)
+          </Link>
+        </Reveal>
       </section>
 
       {/* ===== "Estamos traçando uma nova rota..." ===== */}

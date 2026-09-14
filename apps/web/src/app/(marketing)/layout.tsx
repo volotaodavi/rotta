@@ -33,6 +33,12 @@ const NAV_LINKS: { href: Route; label: string }[] = [
   // `/planos` já existia (real, no `sitemap.ts`) mas não tinha link
   // nenhum na navegação — só alcançável digitando a URL direto.
   { href: "/planos", label: "Planos" },
+  // Pedido do usuário 14/09/2026: "quero uma aba para poder mostrar"
+  // (criptografia + LGPD) — a Landing Page já tinha a seção `#seguranca`
+  // linkada só pelo rodapé (e nem isso: só "Privacidade" estava lá,
+  // "Segurança" nunca tinha sido adicionado a lugar nenhum do site
+  // público). Agora é uma aba de verdade na navegação principal.
+  { href: "/#seguranca", label: "Segurança" },
   { href: "/#sobre", label: "Sobre a Rotta" },
 ];
 
@@ -57,11 +63,14 @@ function InstagramGlyph({ className }: { className?: string }): JSX.Element {
 }
 
 /**
- * 8 links do rodapé pedidos pelo usuário — todos reais (nenhum
+ * Links do rodapé pedidos pelo usuário — todos reais (nenhum
  * placeholder inventado): as 3 âncoras da própria página, "Empresa"/
  * "Suporte" apontando pras páginas institucionais reais que já existem
- * (`/sobre`, `/suporte`), "Privacidade"/"Termos" pro Legal Center real
- * (`LEGAL_FOOTER_LINKS`, mesma fonte usada no painel autenticado).
+ * (`/sobre`, `/suporte`), "Segurança"/"Privacidade"/"Termos" pro Legal
+ * Center real (`LEGAL_FOOTER_LINKS`, mesma fonte usada no painel
+ * autenticado) — "Segurança" adicionada 14/09/2026 (pedido do usuário,
+ * ver `SEGURANCA_ITENS` em `page.tsx`): a página já existia
+ * (`/legal/seguranca`), mas nunca tinha sido linkada daqui.
  */
 const FOOTER_LINKS: { href: Route; label: string }[] = [
   // Pedido do usuário 11/09/2026: "quando a pessoa clicar em 'produto',
@@ -74,6 +83,10 @@ const FOOTER_LINKS: { href: Route; label: string }[] = [
   { href: "/planos", label: "Planos" },
   { href: "/sobre", label: "Empresa" },
   { href: "/suporte", label: "Suporte" },
+  {
+    href: LEGAL_FOOTER_LINKS.find((link) => link.label === "Segurança")!.href,
+    label: "Segurança",
+  },
   {
     href: LEGAL_FOOTER_LINKS.find((link) => link.label === "Privacidade")!.href,
     label: "Privacidade",
