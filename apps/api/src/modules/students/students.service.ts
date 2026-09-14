@@ -254,7 +254,7 @@ export class StudentsService {
       dadosContexto: { studentId: student.id },
     });
 
-    return toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student));
+    return toStudentResponseDto(student);
   }
 
   /**
@@ -351,7 +351,7 @@ export class StudentsService {
       dadosContexto: { studentId: student.id },
     });
 
-    return toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student));
+    return toStudentResponseDto(student);
   }
 
   private async resolveExistingResponsavel(responsavelId: string): Promise<string> {
@@ -416,11 +416,7 @@ export class StudentsService {
     });
 
     return {
-      items: await Promise.all(
-        result.items.map(async (student) =>
-          toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student)),
-        ),
-      ),
+      items: result.items.map((student) => toStudentResponseDto(student)),
       total: result.total,
       page: query.page,
       pageSize: query.pageSize,
@@ -429,16 +425,7 @@ export class StudentsService {
 
   async findByIdOrThrow(id: string, actor: AuthenticatedUser): Promise<StudentResponseDto> {
     const student = await this.fetchOrThrow(id, actor);
-    return toStudentResponseDto(student, await this.resolvePrivateFotoUrl(student));
-  }
-
-  /** Ver nota em `toStudentResponseDto` (Dossiê 45, achado C3). */
-  private async resolvePrivateFotoUrl(student: {
-    fotoUrl: string | null;
-    fotoPath: string | null;
-  }): Promise<string | null> {
-    if (!student.fotoPath) return student.fotoUrl;
-    return this.storageService.getSignedUrl(student.fotoPath);
+    return toStudentResponseDto(student);
   }
 
   /**
@@ -481,7 +468,7 @@ export class StudentsService {
       userAgent: meta.userAgent,
     });
 
-    return toStudentResponseDto(updated, await this.resolvePrivateFotoUrl(updated));
+    return toStudentResponseDto(updated);
   }
 
   async remove(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<void> {
@@ -500,42 +487,10 @@ export class StudentsService {
     });
   }
 
-  async uploadPhoto(
-    id: string,
-    file: Express.Multer.File,
-    actor: AuthenticatedUser,
-    meta: RequestMeta,
-  ): Promise<StudentResponseDto> {
-    const existing = await this.fetchOrThrow(id, actor);
-    this.assertOwnedByActor(existing, actor);
-
-    if (!file.mimetype.startsWith("image/")) {
-      throw new ForbiddenException("O arquivo enviado precisa ser uma imagem.");
-    }
-
-    const extension = file.originalname.split(".").pop() ?? "png";
-    // uploadPrivate (Dossiê 32): foto de aluno é dado pessoal de criança/
-    // adolescente (LGPD art. 14) — nunca exposta por URL pública
-    // previsível (`students/{id}/foto.png` seria adivinhável só com o id).
-    // `fotoPath` é o que persiste (Dossiê 45, achado C3) — releituras
-    // assinam uma URL nova de curta validade em vez de reusar `url`.
-    const { path, url } = await this.storageService.uploadPrivate(
-      `students/${id}/foto.${extension}`,
-      file.buffer,
-      file.mimetype,
-    );
-    const updated = await this.studentRepository.update(id, { fotoUrl: url, fotoPath: path });
-
-    await this.recordAudit({
-      entidadeId: id,
-      acao: "PHOTO_UPLOADED",
-      atorUserId: actor.sub,
-      ip: meta.ip,
-      userAgent: meta.userAgent,
-    });
-
-    return toStudentResponseDto(updated, url);
-  }
+  // `uploadPhoto` removida 14/09/2026 — pedido do usuário: "a gente NÃO
+  // pede foto de nenhum aluno ou responsável". Confirmado antes de
+  // remover: nenhuma tela (mobile ou web) nunca chamou esta rota, era
+  // capacidade morta desde que existia.
 
   async listAuditLogs(
     id: string,

@@ -59,12 +59,14 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     titulo: "Política de Privacidade / LGPD",
     resumo:
       "Quais dados coletamos, por quê, com quem compartilhamos e como você exerce seus direitos.",
-    // 14/09/2026 — mudança de conteúdo real: Responsável deixou de
-    // informar CPF no cadastro (pedido do usuário). `CURRENT_PRIVACY_VERSION`
-    // em `apps/api/src/modules/auth/legal-versions.ts` precisa acompanhar
+    // 14/09/2026 — duas mudanças de conteúdo real no mesmo dia:
+    // (1.2) Responsável deixou de informar CPF no cadastro; (1.3)
+    // Aluno deixou de ter foto coletada (nunca era usada de verdade —
+    // capacidade morta removida). `CURRENT_PRIVACY_VERSION` em
+    // `apps/api/src/modules/auth/legal-versions.ts` precisa acompanhar
     // este número (ver nota lá) — sem isso, quem já aceitou a versão
     // anterior nunca é avisado pra reaceitar.
-    versao: "1.2",
+    versao: "1.3",
     publicadoEm: "11/08/2026",
     atualizadoEm: "14/09/2026",
     status: "REVISADO",

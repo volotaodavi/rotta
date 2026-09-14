@@ -5,7 +5,6 @@ export class StudentResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() responsavelId!: string;
   @ApiProperty() nome!: string;
-  @ApiPropertyOptional() fotoUrl?: string | null;
   @ApiProperty() dataNascimento!: Date;
   @ApiProperty({ enum: StudentSex }) sexo!: StudentSex;
 

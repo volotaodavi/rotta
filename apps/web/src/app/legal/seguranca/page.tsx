@@ -76,10 +76,10 @@ export default function SegurancaPage(): JSX.Element {
       </LegalSection>
 
       <LegalSection id="documentos" title="5. Proteção de documentos">
-        Documentos enviados à plataforma (CNH, comprovantes, foto de aluno) ficam em um
-        armazenamento privado, nunca em uma URL pública e permanente. O acesso a um documento
-        específico usa um link temporário e assinado, válido só por um curto período e só para quem
-        tem permissão de visualizá-lo.
+        Documentos enviados à plataforma (CNH, comprovantes) ficam em um armazenamento privado,
+        nunca em uma URL pública e permanente. O acesso a um documento específico usa um link
+        temporário e assinado, válido só por um curto período e só para quem tem permissão de
+        visualizá-lo.
       </LegalSection>
 
       <LegalSection id="localizacao" title="6. Proteção de localização">

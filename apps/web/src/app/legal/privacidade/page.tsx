@@ -65,10 +65,11 @@ export default function PrivacidadePage(): JSX.Element {
         ou CPF, endereço, dados de veículos, documentos obrigatórios (CNH, comprovantes, EAR, curso
         de transporte escolar quando aplicável, ver{" "}
         <Link href="/legal/motoristas">Diretrizes para Motoristas e Modalidades de Transporte</Link>
-        ). De alunos cadastrados por responsáveis: nome, data de nascimento, foto, endereço de
-        embarque/desembarque e, quando informado, necessidades especiais/medicamentos. Durante uma
-        viagem ativa, a localização do veículo é registrada para acompanhamento em tempo real pela
-        família (detalhe na seção 9). Dados de pagamento/cobrança são descritos na seção 10.
+        ). <strong>De alunos, não coletamos foto</strong> — só nome, data de nascimento, endereço de
+        embarque/desembarque e, quando informado, necessidades especiais/medicamentos (opcional).
+        Durante uma viagem ativa, a localização do veículo é registrada para acompanhamento em tempo
+        real pela família (detalhe na seção 9). Dados de pagamento/cobrança são descritos na seção
+        10.
       </LegalSection>
 
       <LegalSection id="finalidade" title="3. Por que coletamos">
@@ -90,10 +91,10 @@ export default function PrivacidadePage(): JSX.Element {
 
       <LegalSection id="seguranca" title="5. Como protegemos seus dados">
         Senha nunca é armazenada em texto puro (hash Argon2id). Sessões usam token assinado (JWT) de
-        curta duração. Toda comunicação com a plataforma é criptografada (HTTPS). Documentos e fotos
-        sensíveis (CNH, foto de aluno) ficam num armazenamento privado, nunca público. O detalhe
-        completo das medidas de segurança (autenticação, MFA para administradores, auditoria) está
-        em <Link href="/legal/seguranca">Segurança na Rotta</Link>.
+        curta duração. Toda comunicação com a plataforma é criptografada (HTTPS). Documentos
+        sensíveis (CNH) ficam num armazenamento privado, nunca público. O detalhe completo das
+        medidas de segurança (autenticação, MFA para administradores, auditoria) está em{" "}
+        <Link href="/legal/seguranca">Segurança na Rotta</Link>.
       </LegalSection>
 
       <LegalSection id="direitos" title="6. Seus direitos (LGPD)">

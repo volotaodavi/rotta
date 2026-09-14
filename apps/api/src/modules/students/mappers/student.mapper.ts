@@ -1,16 +1,11 @@
 import type { StudentResponseDto } from "../dto/student-response.dto";
 import type { Student } from "@prisma/client";
 
-/** `freshFotoUrl` — ver nota equivalente em `toDriverDocumentResponseDto` (Dossiê 45, achado C3); foto de aluno é o caso mais sensível dos três (LGPD art. 14). */
-export function toStudentResponseDto(
-  student: Student,
-  freshFotoUrl?: string | null,
-): StudentResponseDto {
+export function toStudentResponseDto(student: Student): StudentResponseDto {
   return {
     id: student.id,
     responsavelId: student.responsavelId,
     nome: student.nome,
-    fotoUrl: freshFotoUrl !== undefined ? freshFotoUrl : student.fotoUrl,
     dataNascimento: student.dataNascimento,
     sexo: student.sexo,
     schoolId: student.schoolId,

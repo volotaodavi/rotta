@@ -12,11 +12,8 @@ import {
   Put,
   Query,
   Req,
-  UploadedFile,
-  UseInterceptors,
 } from "@nestjs/common";
-import { FileInterceptor } from "@nestjs/platform-express";
-import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
+import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { CreateStudentAddressOverrideRecurrenceDto } from "./dto/create-student-address-override-recurrence.dto";
 import { CreateStudentAddressOverrideDto } from "./dto/create-student-address-override.dto";
@@ -54,10 +51,15 @@ function requestMeta(req: Request): RequestMeta {
 
 /**
  * API REST do módulo Alunos (briefing "Marketplace" §"CADASTRO DO
- * ALUNO"). Rotas literais (`:id/photo`, `:id/audit-logs`,
- * `:id/authorized-persons`) declaradas depois de `:id` pois nunca
- * colidem com nenhum verbo reservado (mesma disciplina de
- * `SchoolsController`, ali necessária por causa de `check-duplicates`).
+ * ALUNO"). Rotas literais (`:id/audit-logs`, `:id/authorized-persons`)
+ * declaradas depois de `:id` pois nunca colidem com nenhum verbo
+ * reservado (mesma disciplina de `SchoolsController`, ali necessária
+ * por causa de `check-duplicates`).
+ *
+ * `:id/photo` (upload de foto do aluno) removida 14/09/2026 — pedido
+ * do usuário ("a gente NÃO pede foto de nenhum aluno ou responsável"):
+ * confirmado que nenhuma tela (mobile ou web) nunca chamou essa rota
+ * — era capacidade morta desde que existia, nunca exposta a ninguém.
  */
 @ApiTags("students")
 @ApiBearerAuth()
@@ -126,19 +128,6 @@ export class StudentsController {
     @Req() req: Request,
   ) {
     return this.studentsService.remove(id, actor, requestMeta(req));
-  }
-
-  @Post(":id/photo")
-  @Roles(...OWNER_ROLES)
-  @ApiConsumes("multipart/form-data")
-  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: 5 * 1024 * 1024 } }))
-  uploadPhoto(
-    @Param("id", ParseUUIDPipe) id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @CurrentUser() actor: AuthenticatedUser,
-    @Req() req: Request,
-  ) {
-    return this.studentsService.uploadPhoto(id, file, actor, requestMeta(req));
   }
 
   @Get(":id/audit-logs")

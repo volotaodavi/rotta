@@ -25,7 +25,6 @@ function buildStudent(overrides: Partial<Student> = {}): Student {
     id: "student-1",
     responsavelId: "responsavel-1",
     nome: "Maria Souza",
-    fotoUrl: null,
     dataNascimento: new Date("2015-03-20"),
     sexo: "FEMININO",
     schoolId: "school-1",
@@ -1177,44 +1176,7 @@ describe("StudentsService", () => {
     });
   });
 
-  describe("uploadPhoto", () => {
-    it("rejeita arquivo que não é imagem", async () => {
-      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
-
-      await expect(
-        service.uploadPhoto(
-          "student-1",
-          { mimetype: "application/pdf" } as Express.Multer.File,
-          responsavelActor,
-          {},
-        ),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it("persiste fotoPath e devolve a URL de curta validade recém-assinada, nunca a de 10 anos (Dossiê 45, achado C3)", async () => {
-      studentRepository.findByIdScoped.mockResolvedValue(buildStudent());
-      studentRepository.update.mockResolvedValue(
-        buildStudent({
-          fotoUrl: "https://storage.example.com/foto.png?token=signed",
-          fotoPath: "students/student-1/foto.png",
-        }),
-      );
-
-      const result = await service.uploadPhoto(
-        "student-1",
-        { mimetype: "image/png", originalname: "foto.png" } as Express.Multer.File,
-        responsavelActor,
-        {},
-      );
-
-      expect(studentRepository.update).toHaveBeenCalledWith("student-1", {
-        fotoUrl: "https://storage.example.com/foto.png?token=signed",
-        fotoPath: "students/student-1/foto.png",
-      });
-      // Não é a `getSignedUrl` mockada — a própria resposta do upload já é
-      // de curta validade, então `uploadPhoto` não precisa reassinar de novo.
-      expect(result.fotoUrl).toBe("https://storage.example.com/foto.png?token=signed");
-      expect(storageService.getSignedUrl).not.toHaveBeenCalled();
-    });
-  });
+  // describe("uploadPhoto", ...) removido 14/09/2026 — pedido do
+  // usuário: "a gente NÃO pede foto de nenhum aluno ou responsável".
+  // O método em si já foi removido de students.service.ts.
 });

@@ -18,8 +18,10 @@ import { IsCep } from "@/common/validators";
 /**
  * Cadastro de Aluno (briefing "CADASTRO DO ALUNO") — sempre pelo
  * próprio Responsável autenticado (`actor.sub`, nunca um `responsavelId`
- * vindo do body). `fotoUrl` não é aceita aqui: é definida por
- * `POST /students/:id/photo`, mesmo padrão de `Vehicle.fotoUrl`.
+ * vindo do body). SEM foto (removida 14/09/2026, pedido do usuário: "a
+ * gente NÃO pede foto de nenhum aluno ou responsável" — a rota
+ * `POST /students/:id/photo` que existia pra isso nunca foi chamada por
+ * nenhuma tela, era capacidade morta).
  */
 export class CreateStudentDto {
   @ApiProperty({ example: "Maria Souza" })

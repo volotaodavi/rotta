@@ -78,7 +78,6 @@ export interface Student {
   id: string;
   responsavelId: string;
   nome: string;
-  fotoUrl: string | null;
   dataNascimento: string;
   sexo: StudentSex;
   schoolId: string;
@@ -262,16 +261,10 @@ export function createStudentsEndpoints(apiClient: ApiClient) {
       await apiClient.request(`/students/${id}`, { method: "DELETE" });
     },
 
-    uploadPhoto: async (id: string, file: File | Blob): Promise<Student> => {
-      const formData = new FormData();
-      formData.append("file", file);
-      return (
-        await apiClient.request<ApiEnvelope<Student>>(`/students/${id}/photo`, {
-          method: "POST",
-          body: formData,
-        })
-      ).data;
-    },
+    // `uploadPhoto`/`POST /students/:id/photo` removida 14/09/2026 —
+    // pedido do usuário: "a gente NÃO pede foto de nenhum aluno ou
+    // responsável". Confirmado antes de remover: nenhuma tela (mobile
+    // ou web) nunca chamava este método, era capacidade morta.
 
     listAuditLogs: async (
       id: string,
