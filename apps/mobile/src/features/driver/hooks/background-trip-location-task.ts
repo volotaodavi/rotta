@@ -30,38 +30,56 @@ export function setActiveTripId(tripId: string | null): void {
   activeTripId = tripId;
 }
 
-TaskManager.defineTask(BACKGROUND_TRIP_LOCATION_TASK, async ({ data, error }) => {
-  if (error) {
-    // Erro do próprio SO entregando a task (ex.: permissão revogada
-    // enquanto em segundo plano) — nada a fazer além de descartar este
-    // lote; a próxima chamada tenta de novo naturalmente.
-    return;
-  }
-  if (!activeTripId) {
-    // Viagem já foi finalizada/pausada desde a última vez que o processo
-    // rodou — `stopLocationUpdatesAsync` já deveria ter sido chamado,
-    // mas o SO pode entregar um lote em trânsito; nunca reporta pra uma
-    // viagem que não é mais a ativa.
-    return;
-  }
+// `defineTask` roda no escopo do módulo, importado incondicionalmente
+// em `index.ts` — bem antes de `AppErrorBoundary` existir (achado
+// 14/09/2026, mesma investigação de `@/config/env.ts`). Se lançar (ex.:
+// módulo nativo `expo-task-manager` não linkado corretamente num build
+// específico), o processo inteiro trava com tela branca pra sempre,
+// sem chance de recuperação. `try/catch` aqui é defesa em profundidade:
+// se o registro falhar, o app perde só o rastreamento de GPS em
+// segundo plano (already-known trade-off, mesmo que o em primeiro
+// plano de `useTripGpsReporting` continue funcionando), em vez de
+// travar pra TODO papel de usuário, não só Motorista/Monitor.
+try {
+  TaskManager.defineTask(BACKGROUND_TRIP_LOCATION_TASK, async ({ data, error }) => {
+    if (error) {
+      // Erro do próprio SO entregando a task (ex.: permissão revogada
+      // enquanto em segundo plano) — nada a fazer além de descartar este
+      // lote; a próxima chamada tenta de novo naturalmente.
+      return;
+    }
+    if (!activeTripId) {
+      // Viagem já foi finalizada/pausada desde a última vez que o processo
+      // rodou — `stopLocationUpdatesAsync` já deveria ter sido chamado,
+      // mas o SO pode entregar um lote em trânsito; nunca reporta pra uma
+      // viagem que não é mais a ativa.
+      return;
+    }
 
-  const { locations } = (data ?? {}) as { locations?: Location.LocationObject[] };
-  if (!locations || locations.length === 0) return;
+    const { locations } = (data ?? {}) as { locations?: Location.LocationObject[] };
+    if (!locations || locations.length === 0) return;
 
-  const tripId = activeTripId;
-  await Promise.allSettled(
-    locations.map((position) =>
-      tripsApi.ingestPosition(tripId, {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-        precisaoMetros: position.coords.accuracy ?? undefined,
-        velocidadeKmh:
-          position.coords.speed !== null ? Math.max(position.coords.speed * 3.6, 0) : undefined,
-        capturadaEm: new Date(position.timestamp).toISOString(),
-      }),
-    ),
+    const tripId = activeTripId;
+    await Promise.allSettled(
+      locations.map((position) =>
+        tripsApi.ingestPosition(tripId, {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          precisaoMetros: position.coords.accuracy ?? undefined,
+          velocidadeKmh:
+            position.coords.speed !== null ? Math.max(position.coords.speed * 3.6, 0) : undefined,
+          capturadaEm: new Date(position.timestamp).toISOString(),
+        }),
+      ),
+    );
+    // `Promise.allSettled` nunca rejeita — falha isolada de rede/servidor
+    // (comum em segundo plano, rádio suspensa) nunca derruba a task nem
+    // as próximas entregas; o próximo lote tenta de novo naturalmente.
+  });
+} catch (error) {
+  // eslint-disable-next-line no-console
+  console.error(
+    "[background-trip-location-task] Falha ao registrar a task — GPS em segundo plano ficará indisponível, mas o resto do app continua.",
+    error,
   );
-  // `Promise.allSettled` nunca rejeita — falha isolada de rede/servidor
-  // (comum em segundo plano, rádio suspensa) nunca derruba a task nem
-  // as próximas entregas; o próximo lote tenta de novo naturalmente.
-});
+}
