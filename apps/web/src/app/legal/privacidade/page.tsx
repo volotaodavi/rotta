@@ -81,10 +81,10 @@ export default function PrivacidadePage(): JSX.Element {
       <LegalSection id="compartilhamento" title="4. Com quem compartilhamos">
         Provedores de infraestrutura que processam dados em nosso nome (hospedagem, banco de dados,
         armazenamento de arquivo, envio de e-mail/notificação), mas nunca vendemos dado pessoal a
-        terceiros. Documentos sensíveis (CNH, foto de aluno) ficam em um armazenamento privado,
-        acessível só por link assinado e temporário, nunca por URL pública. Quando uma operação
-        financeira envolve um parceiro de pagamento (Asaas, Lytex), o compartilhamento mínimo
-        necessário para processar aquela operação é descrito na{" "}
+        terceiros. Documentos sensíveis (CNH) ficam em um armazenamento privado, acessível só por
+        link assinado e temporário, nunca por URL pública. Quando uma operação financeira envolve um
+        parceiro de pagamento (Asaas, Lytex), o compartilhamento mínimo necessário para processar
+        aquela operação é descrito na{" "}
         <Link href="/legal/rottapay">Política Financeira RottaPay</Link>.
       </LegalSection>
 
