@@ -59,10 +59,11 @@ export default function PrivacidadePage(): JSX.Element {
       </LegalSection>
 
       <LegalSection id="dados-coletados" title="2. Quais dados coletamos">
-        Nome, e-mail, telefone, CPF e senha (armazenada apenas como hash, nunca em texto legível) de
-        todo usuário. De transportadoras: CNPJ/CPF, endereço, dados de veículos e motoristas,
-        documentos obrigatórios (CNH, comprovantes, EAR, curso de transporte escolar quando
-        aplicável, ver{" "}
+        Nome, e-mail, telefone e senha (armazenada apenas como hash, nunca em texto legível) de todo
+        usuário. <strong>Do Responsável, especificamente, não coletamos CPF</strong> — só nome,
+        e-mail e telefone. De transportadoras e de motoristas/monitores (inclusive autônomos): CNPJ
+        ou CPF, endereço, dados de veículos, documentos obrigatórios (CNH, comprovantes, EAR, curso
+        de transporte escolar quando aplicável, ver{" "}
         <Link href="/legal/motoristas">Diretrizes para Motoristas e Modalidades de Transporte</Link>
         ). De alunos cadastrados por responsáveis: nome, data de nascimento, foto, endereço de
         embarque/desembarque e, quando informado, necessidades especiais/medicamentos. Durante uma

@@ -811,7 +811,16 @@ model User {
   nome         String
   email        String @unique
   telefone     String @unique
-  cpf          String @unique
+  /// Opcional a partir de 14/09/2026 (pedido do usuário: "para os
+  /// responsáveis não pegamos esses dados, apenas o nome e telefone" —
+  /// decisão final: manter e-mail, remover só CPF) — Responsável não
+  /// coleta mais CPF no cadastro (`registerPessoal`/`createResponsavelOnTheFly`).
+  /// Continua obrigatório em todo `CreateUserWithPasswordInput` que
+  /// ainda o exige (Empresa/Autônomo/Admin Rotta, no nível do DTO —
+  /// nunca aqui no schema, que precisa aceitar `null` pros dois casos).
+  /// `@unique` permanece: Postgres aceita múltiplos `NULL` num índice
+  /// único sem conflito entre si.
+  cpf          String? @unique
   passwordHash String
 
   status    UserStatus @default(ATIVO)

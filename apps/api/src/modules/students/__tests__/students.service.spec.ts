@@ -515,7 +515,7 @@ describe("StudentsService", () => {
       await expect(
         service.createForCompany(
           baseForCompanyDto({
-            novoResponsavel: { nome: "Ana", email: "ana@x.com", telefone: "11999999999", cpf: "1" },
+            novoResponsavel: { nome: "Ana", email: "ana@x.com", telefone: "11999999999" },
           }),
           empresaActor,
           {},
@@ -541,7 +541,6 @@ describe("StudentsService", () => {
             nome: "Ana Souza",
             email: "Ana@Email.com",
             telefone: "11999999999",
-            cpf: "52998224725",
           },
         }),
         empresaActor,
@@ -551,7 +550,6 @@ describe("StudentsService", () => {
       expect(usersService.assertNoDuplicateIdentity).toHaveBeenCalledWith(
         "ana@email.com",
         "11999999999",
-        "52998224725",
       );
       expect(usersService.createUserWithPassword).toHaveBeenCalledWith(
         expect.objectContaining({ email: "ana@email.com", isResponsavel: true }),
@@ -574,7 +572,6 @@ describe("StudentsService", () => {
               nome: "Ana Souza",
               email: "ana@email.com",
               telefone: "11999999999",
-              cpf: "52998224725",
             },
           }),
           empresaActor,

@@ -15,4 +15,9 @@
  * (`UsersService.getPendingConsents`).
  */
 export const CURRENT_TERMS_VERSION = "1.1";
-export const CURRENT_PRIVACY_VERSION = "1.0";
+// 14/09/2026 — 1.0 → 1.2: acompanha `LegalDocumentMeta` de "privacidade"
+// em `apps/web/src/features/legal/documents.ts` (que já estava em "1.1"
+// sem esta constante ter sido atualizada junto — divergência anterior
+// corrigida de propósito aqui). Mudança real de conteúdo: Responsável
+// deixou de informar CPF no cadastro.
+export const CURRENT_PRIVACY_VERSION = "1.2";

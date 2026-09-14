@@ -10,7 +10,8 @@ export interface CreateUserInput {
   nome: string;
   email: string;
   telefone: string;
-  cpf: string;
+  /** Opcional desde 14/09/2026 — Responsável não informa mais CPF no cadastro (ver `User.cpf`, `schema.prisma`). */
+  cpf?: string;
   passwordHash: string;
   avatarUrl?: string;
   /** Ver nota em `User.isResponsavel`, `schema.prisma` (módulo Marketplace). */

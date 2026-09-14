@@ -81,7 +81,10 @@ export class TermoCienciaPdfService {
 
       this.secao(doc, "Responsável");
       this.campo(doc, "Nome", responsavel.nome);
-      this.campo(doc, "CPF", responsavel.cpf);
+      // CPF é opcional pro Responsável desde 14/09/2026 (ver `User.cpf`,
+      // schema.prisma) — quando não informado, o termo mostra "Não
+      // informado" em vez de vazar `null`/`undefined` num documento legal.
+      this.campo(doc, "CPF", responsavel.cpf ?? "Não informado");
       doc.moveDown(0.6);
 
       this.secao(doc, "Aluno(a)");

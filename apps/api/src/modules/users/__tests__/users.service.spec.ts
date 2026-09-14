@@ -69,7 +69,7 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
       );
       expect(consentRecordRepository.recordAcceptance).toHaveBeenCalledWith("user-1", [
         { tipo: "TERMOS_DE_USO", versao: "1.1" },
-        { tipo: "POLITICA_PRIVACIDADE", versao: "1.0" },
+        { tipo: "POLITICA_PRIVACIDADE", versao: "1.2" },
       ]);
     });
   });
@@ -79,7 +79,7 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
       await service.recordConsent("user-1", ["POLITICA_PRIVACIDADE"]);
 
       expect(consentRecordRepository.recordAcceptance).toHaveBeenCalledWith("user-1", [
-        { tipo: "POLITICA_PRIVACIDADE", versao: "1.0" },
+        { tipo: "POLITICA_PRIVACIDADE", versao: "1.2" },
       ]);
     });
   });
@@ -128,7 +128,7 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
     it("retorna vazio quando o usuário já aceitou as duas versões vigentes", async () => {
       consentRecordRepository.listByUser.mockResolvedValue([
         buildConsentRecord({ tipo: "TERMOS_DE_USO", versao: "1.1" }),
-        buildConsentRecord({ tipo: "POLITICA_PRIVACIDADE", versao: "1.0" }),
+        buildConsentRecord({ tipo: "POLITICA_PRIVACIDADE", versao: "1.2" }),
       ]);
 
       const pending = await service.getPendingConsents("user-1");
@@ -139,7 +139,7 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
     it("reaparece só o tipo cuja versão aceita ficou desatualizada (reprompt)", async () => {
       consentRecordRepository.listByUser.mockResolvedValue([
         buildConsentRecord({ tipo: "TERMOS_DE_USO", versao: "1.0" }), // versão vigente é 1.1
-        buildConsentRecord({ tipo: "POLITICA_PRIVACIDADE", versao: "1.0" }),
+        buildConsentRecord({ tipo: "POLITICA_PRIVACIDADE", versao: "1.2" }),
       ]);
 
       const pending = await service.getPendingConsents("user-1");
@@ -162,7 +162,7 @@ describe("UsersService — consentimento versionado (Dossiê 45 FRENTE 5)", () =
         }),
         buildConsentRecord({
           tipo: "POLITICA_PRIVACIDADE",
-          versao: "1.0",
+          versao: "1.2",
           aceitoEm: new Date("2026-01-01"),
         }),
       ]);

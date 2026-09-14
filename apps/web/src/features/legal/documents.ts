@@ -59,11 +59,16 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     titulo: "Política de Privacidade / LGPD",
     resumo:
       "Quais dados coletamos, por quê, com quem compartilhamos e como você exerce seus direitos.",
-    versao: "1.1",
+    // 14/09/2026 — mudança de conteúdo real: Responsável deixou de
+    // informar CPF no cadastro (pedido do usuário). `CURRENT_PRIVACY_VERSION`
+    // em `apps/api/src/modules/auth/legal-versions.ts` precisa acompanhar
+    // este número (ver nota lá) — sem isso, quem já aceitou a versão
+    // anterior nunca é avisado pra reaceitar.
+    versao: "1.2",
     publicadoEm: "11/08/2026",
-    atualizadoEm: "19/08/2026",
+    atualizadoEm: "14/09/2026",
     status: "REVISADO",
-    revisadoEm: "19/08/2026",
+    revisadoEm: "14/09/2026",
     palavrasChave: [
       "gps",
       "localização",

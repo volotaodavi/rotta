@@ -9,7 +9,7 @@ import {
   MaxLength,
 } from "class-validator";
 
-import { IsBrazilianPhone, IsCpf, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianPhone, IsStrongPassword } from "@/common/validators";
 
 /**
  * Cadastro self-service da Área Pessoal (briefing "Marketplace" —
@@ -17,6 +17,13 @@ import { IsBrazilianPhone, IsCpf, IsStrongPassword } from "@/common/validators";
  * SEM `Company`/`Membership` (identidade global, mesmo mecanismo de
  * `isAdminRotta`; ver nota em `User`, `schema.prisma`). Bem mais simples
  * que `RegisterEmpresaDto`: não há tenant nenhum para criar junto.
+ *
+ * SEM `cpf` (removido 14/09/2026, pedido do usuário: "para os
+ * responsáveis não pegamos esses dados, apenas o nome e telefone" —
+ * decisão final: manter e-mail, remover só CPF). `User.cpf` virou
+ * opcional no schema pra acomodar isso; os demais cadastros
+ * (`RegisterEmpresaDto`/`RegisterAutonomoDto`) continuam exigindo CPF
+ * normalmente, cada um no próprio DTO.
  */
 export class RegisterPessoalDto {
   @ApiProperty({ example: "Ana Souza" })
@@ -32,10 +39,6 @@ export class RegisterPessoalDto {
   @ApiProperty({ example: "11987654321" })
   @IsBrazilianPhone()
   telefone!: string;
-
-  @ApiProperty({ example: "52998224725" })
-  @IsCpf()
-  cpf!: string;
 
   @ApiProperty({ example: "SenhaForte123", minLength: 8 })
   @IsStrongPassword()

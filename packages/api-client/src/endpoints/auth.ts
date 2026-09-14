@@ -137,11 +137,11 @@ export interface RegisterEmpresaInput {
   turnstileToken?: string;
 }
 
+/** Sem `cpf` (removido 14/09/2026, pedido do usuário: "para os responsáveis não pegamos esses dados, apenas o nome e telefone" — decisão final: manter e-mail, remover só CPF). */
 export interface RegisterPessoalInput {
   nome: string;
   email: string;
   telefone: string;
-  cpf: string;
   senha: string;
   aceiteTermos: true;
   /** Área pública de convite — reivindica automaticamente esse pré-cadastro (`StudentPreRegistration`) logo após criar a conta. */

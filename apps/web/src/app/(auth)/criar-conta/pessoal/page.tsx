@@ -26,7 +26,6 @@ const INITIAL_STATE: RegisterPessoalInput = {
   nome: "",
   email: "",
   telefone: "",
-  cpf: "",
   senha: "",
   aceiteTermos: true,
 };
@@ -38,6 +37,10 @@ const INITIAL_STATE: RegisterPessoalInput = {
  * mobile. Quem já tem um código de convite de uma escola/empresa
  * continua podendo usá-lo (o vínculo é anexado à mesma conta), mas ele
  * deixou de ser a única porta de entrada da Área Pessoal.
+ *
+ * SEM campo de CPF (removido 14/09/2026, pedido do usuário: "para os
+ * responsáveis não pegamos esses dados, apenas o nome e telefone" —
+ * decisão final: manter e-mail, remover só CPF).
  */
 export default function CriarContaPessoalPage(): JSX.Element {
   const { registerPessoal } = useAuth();
@@ -143,13 +146,6 @@ export default function CriarContaPessoalPage(): JSX.Element {
                 required
                 value={form.telefone}
                 onValueChange={(digits) => updateField("telefone", digits)}
-              />
-            </FormField>
-            <FormField label="CPF" isRequired>
-              <Input
-                required
-                value={form.cpf}
-                onChange={(event) => updateField("cpf", event.target.value)}
               />
             </FormField>
             <FormField

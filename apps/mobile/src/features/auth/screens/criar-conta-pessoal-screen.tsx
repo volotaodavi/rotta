@@ -24,6 +24,10 @@ type Props = NativeStackScreenProps<AuthStackParamList, "CriarContaPessoal">;
  * `POST /auth/register/pessoal`). Quem já tem um código de uma escola/empresa
  * continua podendo usá-lo em `ConviteCodigo`; esta tela é a porta de entrada
  * padrão para quem ainda não recebeu nenhum convite.
+ *
+ * SEM campo de CPF (removido 14/09/2026, pedido do usuário: "para os
+ * responsáveis não pegamos esses dados, apenas o nome e telefone" —
+ * decisão final: manter e-mail, remover só CPF).
  */
 export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -32,7 +36,6 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [telefone, setTelefone] = useState("");
-  const [cpf, setCpf] = useState("");
   const [senha, setSenha] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,7 +45,7 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
     setErrorMessage(null);
     setIsSubmitting(true);
     try {
-      await registerPessoal({ nome, email, telefone, cpf, senha, aceiteTermos: true });
+      await registerPessoal({ nome, email, telefone, senha, aceiteTermos: true });
       // RootNavigator troca de tela sozinho assim que `status` vira "authenticated".
     } catch (error) {
       setErrorMessage(
@@ -81,7 +84,6 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
         value={telefone}
         onChangeText={setTelefone}
       />
-      <AuthTextField label="CPF" keyboardType="number-pad" value={cpf} onChangeText={setCpf} />
       <PasswordInput
         label="Senha"
         helperText="Mínimo 8 caracteres, com ao menos 1 letra e 1 número."

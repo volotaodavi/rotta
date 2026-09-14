@@ -1,0 +1,11 @@
+-- Pedido do usuário 14/09/2026: "para os responsáveis não pegamos esses
+-- dados, apenas o nome e telefone" (decisão final: manter e-mail,
+-- remover só CPF) — Responsável deixou de ser obrigado a informar CPF
+-- no cadastro. `cpf` era compartilhado por TODOS os papéis (`User` é
+-- uma única tabela), então a coluna vira opcional pra todos; quem
+-- ainda exige CPF (Empresa/Autônomo/Admin Rotta) continua obrigando
+-- no nível do DTO (`class-validator`), não no schema.
+--
+-- O índice único `users_cpf_key` não precisa mudar: Postgres já aceita
+-- múltiplos valores NULL num índice único sem conflito entre eles.
+ALTER TABLE "users" ALTER COLUMN "cpf" DROP NOT NULL;

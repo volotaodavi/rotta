@@ -196,13 +196,16 @@ export class AuthService {
     await this.assertHumanIfWeb(dto, meta);
 
     const email = dto.email.trim().toLowerCase();
-    await this.usersService.assertNoDuplicateIdentity(email, dto.telefone, dto.cpf);
+    // Responsável não informa CPF no cadastro (pedido do usuário
+    // 14/09/2026: "para os responsáveis não pegamos esses dados, apenas
+    // o nome e telefone" — decisão final: manter e-mail, remover só
+    // CPF) — `RegisterPessoalDto` não tem mais o campo.
+    await this.usersService.assertNoDuplicateIdentity(email, dto.telefone);
 
     const user = await this.usersService.createUserWithPassword({
       nome: dto.nome,
       email,
       telefone: dto.telefone,
-      cpf: dto.cpf,
       senha: dto.senha,
       isResponsavel: true,
     });

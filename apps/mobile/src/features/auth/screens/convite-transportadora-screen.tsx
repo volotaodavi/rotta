@@ -56,7 +56,6 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [cpf, setCpf] = useState("");
   const [senha, setSenha] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,7 +110,6 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
         nome,
         email,
         telefone: celular,
-        cpf,
         senha,
         aceiteTermos: true,
         preRegistrationId: match?.id,
@@ -192,7 +190,6 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
         value={email}
         onChangeText={setEmail}
       />
-      <AuthTextField label="CPF" keyboardType="number-pad" value={cpf} onChangeText={setCpf} />
       <PasswordInput
         label="Crie uma senha"
         helperText="Você vai usar essa senha pra acessar tanto o site quanto o app."

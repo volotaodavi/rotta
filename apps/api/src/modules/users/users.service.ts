@@ -42,7 +42,8 @@ export interface CreateUserWithPasswordInput {
   nome: string;
   email: string;
   telefone: string;
-  cpf: string;
+  /** Opcional desde 14/09/2026 — Responsável não informa mais CPF no cadastro (ver `User.cpf`, `schema.prisma`). */
+  cpf?: string;
   senha: string;
   avatarUrl?: string;
   /** Ver nota em `User.isResponsavel`, `schema.prisma` (módulo Marketplace). */
@@ -90,12 +91,19 @@ export class UsersService {
     return this.userRepository.findByTelefone(digitsOnly);
   }
 
-  /** Lanca `ConflictException` (Dossie 15 `AUTH-01`) se e-mail/telefone/CPF já pertencem a outra conta. */
-  async assertNoDuplicateIdentity(email: string, telefone: string, cpf: string): Promise<void> {
+  /**
+   * Lanca `ConflictException` (Dossie 15 `AUTH-01`) se e-mail/telefone/CPF
+   * já pertencem a outra conta. `cpf` é opcional desde 14/09/2026 (o
+   * cadastro de Responsável não coleta mais CPF) — quando ausente, a
+   * checagem de duplicidade por CPF é simplesmente pulada; continua
+   * obrigatória pra todo chamador que ainda exige CPF no próprio DTO
+   * (Empresa/Autônomo/Admin Rotta).
+   */
+  async assertNoDuplicateIdentity(email: string, telefone: string, cpf?: string): Promise<void> {
     const [byEmail, byTelefone, byCpf] = await Promise.all([
       this.userRepository.findByEmail(email),
       this.userRepository.findByTelefone(telefone),
-      this.userRepository.findByCpf(cpf),
+      cpf ? this.userRepository.findByCpf(cpf) : Promise.resolve(null),
     ]);
 
     if (byEmail) {

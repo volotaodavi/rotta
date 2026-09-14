@@ -4,7 +4,7 @@ import { IsEmail, IsOptional, IsString, MaxLength, ValidateNested } from "class-
 
 import { CreateStudentDto } from "./create-student.dto";
 
-import { IsBrazilianPhone, IsCpf } from "@/common/validators";
+import { IsBrazilianPhone } from "@/common/validators";
 
 /**
  * Dados do Responsável quando ele ainda não tem conta na Rotta (pedido
@@ -15,6 +15,10 @@ import { IsBrazilianPhone, IsCpf } from "@/common/validators";
  * produção, então a família recebe um link de verdade pra escolher a
  * própria senha, em vez de uma senha provisória exposta em algum
  * lugar.
+ *
+ * SEM `cpf` (removido 14/09/2026, mesma decisão de `RegisterPessoalDto`:
+ * o Responsável não informa CPF em nenhum caminho de criação de conta,
+ * nem o self-service, nem este — criado por um terceiro em seu nome).
  */
 export class NovoResponsavelDto {
   @ApiProperty({ example: "Ana Souza" })
@@ -29,10 +33,6 @@ export class NovoResponsavelDto {
   @ApiProperty({ example: "11987654321" })
   @IsBrazilianPhone()
   telefone!: string;
-
-  @ApiProperty({ example: "52998224725" })
-  @IsCpf()
-  cpf!: string;
 }
 
 /**

@@ -18,7 +18,8 @@ export class DataExportUsuarioDto {
   @ApiProperty() nome!: string;
   @ApiProperty() email!: string;
   @ApiProperty() telefone!: string;
-  @ApiProperty() cpf!: string;
+  /** `null` desde 14/09/2026 pra quem se cadastrou sem CPF (Responsável não informa mais — ver `User.cpf`, `schema.prisma`). */
+  @ApiProperty({ nullable: true, type: String }) cpf!: string | null;
   @ApiPropertyOptional() avatarUrl?: string | null;
   @ApiProperty() criadoEm!: Date;
   @ApiPropertyOptional() consentimentoLgpdAceitoEm?: Date | null;

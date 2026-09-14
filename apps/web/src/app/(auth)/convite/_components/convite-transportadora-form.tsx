@@ -65,7 +65,6 @@ export function ConviteTransportadoraForm(): JSX.Element {
 
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [cpf, setCpf] = useState("");
   const [senha, setSenha] = useState("");
   const [aceitouTermos, setAceitouTermos] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -122,7 +121,6 @@ export function ConviteTransportadoraForm(): JSX.Element {
         nome,
         email,
         telefone: celular,
-        cpf,
         senha,
         aceiteTermos: true,
         preRegistrationId: match?.id,
@@ -222,9 +220,6 @@ export function ConviteTransportadoraForm(): JSX.Element {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
-        </FormField>
-        <FormField label="CPF" isRequired>
-          <Input required value={cpf} onChange={(event) => setCpf(event.target.value)} />
         </FormField>
         <FormField
           label="Crie uma senha"

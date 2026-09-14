@@ -372,14 +372,13 @@ export class StudentsService {
    */
   private async createResponsavelOnTheFly(input: NovoResponsavelDto): Promise<string> {
     const email = input.email.trim().toLowerCase();
-    await this.usersService.assertNoDuplicateIdentity(email, input.telefone, input.cpf);
+    await this.usersService.assertNoDuplicateIdentity(email, input.telefone);
 
     const senhaAleatoria = randomBytes(24).toString("hex");
     const user = await this.usersService.createUserWithPassword({
       nome: input.nome,
       email,
       telefone: input.telefone,
-      cpf: input.cpf,
       senha: senhaAleatoria,
       isResponsavel: true,
     });
