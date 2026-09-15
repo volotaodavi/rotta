@@ -54,10 +54,19 @@ export function ParentNavigator(): JSX.Element {
           tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
         }}
       />
+      {/* `headerShown` (achado 15/09/2026, print do usuário): sem
+          cabeçalho, o conteúdo desta aba encostava na barra de status do
+          celular ("Você ainda não tem transporte escolar" colado no
+          relógio) — `VehicleScreen` aplica padding, mas não a margem de
+          segurança do topo, que quem resolve é o cabeçalho do
+          navegador. O título dinâmico (`TRANSPORT_TAB_LABEL[state]`) já
+          existia e nunca aparecia; agora aparece, como na tela 11 da
+          referência ("Viagens", título no topo). */}
       <Tab.Screen
         name="Transporte"
         component={TransporteInicioScreen}
         options={{
+          headerShown: true,
           title: TRANSPORT_TAB_LABEL[state],
           tabBarLabel: "Viagens",
           tabBarIcon: ({ size, color }) => <History size={size} color={color} />,

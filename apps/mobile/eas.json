@@ -11,8 +11,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "http://localhost:3333/v1",
         "EXPO_PUBLIC_WEB_URL": "http://localhost:3000",
-        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w",
-        "EXPO_PUBLIC_CARTO_API_KEY": "cb1_2t4f_1_4c8811ba8e508ce6e6ec4410"
+        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
       }
     },
     "preview": {
@@ -22,8 +21,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://rotta-vt7i.onrender.com/v1",
         "EXPO_PUBLIC_WEB_URL": "https://rotta-web.vercel.app",
-        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w",
-        "EXPO_PUBLIC_CARTO_API_KEY": "cb1_2t4f_1_4c8811ba8e508ce6e6ec4410"
+        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
       },
       "android": { "buildType": "apk" }
     },
@@ -33,8 +31,7 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://rotta-vt7i.onrender.com/v1",
         "EXPO_PUBLIC_WEB_URL": "https://rotta-web.vercel.app",
-        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w",
-        "EXPO_PUBLIC_CARTO_API_KEY": "cb1_2t4f_1_4c8811ba8e508ce6e6ec4410"
+        "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
       }
     }
   },

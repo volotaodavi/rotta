@@ -41,31 +41,49 @@ export function configureRottaMaps(options: {
  * Ver `resolveDefaultStyleUrl` em `../web/index.tsx` — mesmo raciocínio,
  * mesmo histórico de produção (27/08/2026, confirmado pelo usuário):
  * os dois estilos VETORIAIS (OpenFreeMap `liberty`, depois MapTiler
- * `streets-v2`) renderizam em branco em produção; o raster CARTO é o
- * único confirmado funcionando de verdade, mesmo com o carimbo "API KEY
- * REQUIRED" por cima (mapa real por baixo, nunca uma tela vazia).
+ * `streets-v2`) renderizam em branco em produção; só raster é confirmado
+ * funcionando de verdade.
  */
 function resolveDefaultStyleUrl(): object {
   void globalMapTilerApiKey; // aceito (não quebra configureRottaMaps), não usado — ver acima.
-  return buildCartoRasterStyle(globalCartoApiKey);
+  return buildRasterStyle(globalCartoApiKey);
 }
 
 /**
- * Estilo RASTER com tiles do OpenStreetMap via CDN da CARTO — mesma
- * lógica de `../web/index.tsx` (`buildCartoRasterStyle`), aqui
- * retornando `object` puro (sem o tipo `StyleSpecification` do
- * `maplibre-gl`, que não é dependência deste arquivo —
- * `@maplibre/maplibre-react-native` aceita o mesmo formato de estilo
- * JSON, só a prop se chama `mapStyle` em vez de `style`).
+ * Estilo RASTER do mapa base.
  *
- * Com `apiKey` (`configureRottaMaps({ cartoApiKey })`,
- * `EXPO_PUBLIC_CARTO_API_KEY`), o carimbo some — chave GRATUITA (sem
- * cartão) em https://carto.com/basemaps/apikey.
+ * COM chave da CARTO: tiles "Voyager" da CARTO, sem carimbo.
+ *
+ * SEM chave: tiles padrão do OpenStreetMap — NUNCA mais o CARTO sem
+ * chave (achado 15/09/2026, com prints do usuário: "o mapa está coberto
+ * de API KEY REQUIRED"). A versão anterior mandava pro CARTO sem chave
+ * de propósito, assumindo "mapa carimbado é melhor que tela vazia", e a
+ * chave em `EXPO_PUBLIC_CARTO_API_KEY` deveria resolver — mas o teste
+ * direto provou que aquela chave não fazia NADA: o mesmo tile
+ * (`/rastertiles/voyager/12/1583/2293.png`) voltava byte a byte
+ * idêntico com e sem `?api_key=`, mesmo SHA-256, os dois carimbados. Ou
+ * seja: o carimbo ia continuar em produção pra sempre, em todo mapa do
+ * produto, por mais build que se fizesse.
+ *
+ * O tile do OSM foi baixado e conferido visualmente na mesma
+ * investigação: limpo, sem carimbo nenhum. Fica como padrão honesto até
+ * existir uma chave CARTO de verdade — aí `configureRottaMaps({
+ * cartoApiKey })` volta a mandar no estilo, sem mudar mais nada.
+ *
+ * Atenção de operação: a política de uso dos tiles do OSM
+ * (https://operations.osmfoundation.org/policies/tiles/) é voltada a uso
+ * leve e exige User-Agent identificável; num app com muitos usuários o
+ * caminho certo é a chave da CARTO (gratuita, sem cartão, em
+ * https://carto.com/basemaps/apikey) — não deixar o produto nesse
+ * fallback pra sempre.
  */
-function buildCartoRasterStyle(apiKey: string | undefined): object {
+function buildRasterStyle(apiKey: string | undefined): object {
   const tileUrl = apiKey
     ? `https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png?api_key=${encodeURIComponent(apiKey)}`
-    : "https://basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png";
+    : "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
+  const attribution = apiKey
+    ? "&copy; OpenStreetMap contributors &copy; CARTO"
+    : "&copy; OpenStreetMap contributors";
   return {
     version: 8,
     sources: {
@@ -73,7 +91,7 @@ function buildCartoRasterStyle(apiKey: string | undefined): object {
         type: "raster",
         tiles: [tileUrl],
         tileSize: 256,
-        attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
+        attribution,
       },
     },
     layers: [{ id: "carto-raster-layer", type: "raster", source: "carto-raster" }],
