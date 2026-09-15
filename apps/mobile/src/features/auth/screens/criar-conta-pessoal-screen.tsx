@@ -3,9 +3,10 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
+
 import {
   AuthButton,
-  AuthScreen,
+  AuthHeaderScreen,
   AuthTermsCheckbox,
   AuthTextField,
   PasswordInput,
@@ -28,6 +29,8 @@ type Props = NativeStackScreenProps<AuthStackParamList, "CriarContaPessoal">;
  * SEM campo de CPF (removido 14/09/2026, pedido do usuário: "para os
  * responsáveis não pegamos esses dados, apenas o nome e telefone" —
  * decisão final: manter e-mail, remover só CPF).
+ *
+ * Redesign 15/09/2026 — ver nota em `login-screen.tsx`.
  */
 export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -57,19 +60,11 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   }
 
   return (
-    <AuthScreen>
-      <Text
-        style={[
-          styles.title,
-          { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
-        ]}
-      >
-        Criar conta
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        Depois de entrar, você cadastra seus filhos e busca transportadores no Marketplace.
-      </Text>
-
+    <AuthHeaderScreen
+      title="Criar conta"
+      subtitle="Depois de entrar, você cadastra seus filhos e busca transportadores no Marketplace."
+      onBack={() => navigation.goBack()}
+    >
       <AuthTextField label="Nome completo" value={nome} onChangeText={setNome} />
       <AuthTextField
         label="Email"
@@ -110,13 +105,11 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
       >
         Tenho um código de convite
       </Text>
-    </AuthScreen>
+    </AuthHeaderScreen>
   );
 }
 
 const styles = StyleSheet.create({
   error: { fontSize: 13 },
   footerLink: { fontSize: 14, fontWeight: "600", marginTop: 4, textAlign: "center" },
-  subtitle: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
-  title: { fontWeight: "600", marginBottom: 4 },
 });

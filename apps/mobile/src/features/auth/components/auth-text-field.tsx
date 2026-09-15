@@ -48,9 +48,12 @@ export function AuthTextField({
               borderColor: isFocused ? theme.colors.primary : theme.colors.border,
               borderWidth: isFocused ? 2 : 1,
               color: theme.colors.text,
-              borderRadius: theme.radius.md,
+              // `radius.lg` em vez de `radius.md` — redesign 15/09/2026,
+              // acompanha o campo mais arredondado do print de referência
+              // (mesmo raciocínio de escopo isolado de `auth-button.tsx`).
+              borderRadius: theme.radius.lg,
               paddingHorizontal: theme.spacing[4],
-              paddingVertical: theme.spacing[3],
+              paddingVertical: theme.spacing[3] + 2,
               fontSize: theme.typography.body.fontSize,
             },
             rightAccessory ? styles.inputWithAccessory : null,

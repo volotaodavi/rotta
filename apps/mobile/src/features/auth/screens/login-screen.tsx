@@ -9,7 +9,8 @@ import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { AuthButton, AuthScreen, AuthTextField, PasswordInput } from "../components";
+
+import { AuthButton, AuthHeaderScreen, AuthTextField, PasswordInput } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -31,6 +32,10 @@ const ROLE_LABEL: Record<string, string> = {
  * Login único (Dossiê 15, `AUTH-01`) — "Aceitar Telefone, Email, CPF +
  * Senha". Mesma conta compartilhada com `apps/web`/`apps/admin`: uma
  * conta criada no Site já funciona aqui, sem novo cadastro.
+ *
+ * Redesign 15/09/2026 (`AuthHeaderScreen`, ver componente) — a "porta
+ * de entrada" de cada subfluxo ganhou o cabeçalho curvo do print de
+ * referência.
  */
 export function LoginScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -80,18 +85,11 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
 
   if (profiles) {
     return (
-      <AuthScreen>
-        <Text
-          style={[
-            styles.title,
-            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
-          ]}
-        >
-          Escolha uma empresa
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-          Sua conta está vinculada a mais de uma empresa.
-        </Text>
+      <AuthHeaderScreen
+        title="Escolha uma empresa"
+        subtitle="Sua conta está vinculada a mais de uma empresa."
+        onBack={() => setProfiles(null)}
+      >
         <View style={styles.profileList}>
           {profiles.map((profile) => (
             <AuthButton
@@ -106,21 +104,16 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
         {errorMessage ? (
           <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
         ) : null}
-      </AuthScreen>
+      </AuthHeaderScreen>
     );
   }
 
   return (
-    <AuthScreen>
-      <Text
-        style={[
-          styles.title,
-          { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
-        ]}
-      >
-        Entrar
-      </Text>
-
+    <AuthHeaderScreen
+      title="Bem-vindo de volta"
+      subtitle="Entre com sua conta para continuar."
+      onBack={() => navigation.goBack()}
+    >
       <AuthTextField
         label="Telefone, e-mail ou CPF"
         autoCapitalize="none"
@@ -145,13 +138,11 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
         variant="ghost"
         onPress={() => navigation.navigate("CriarConta")}
       />
-    </AuthScreen>
+    </AuthHeaderScreen>
   );
 }
 
 const styles = StyleSheet.create({
   error: { fontSize: 13 },
-  profileList: { gap: 12, marginTop: 8 },
-  subtitle: { fontSize: 14, marginBottom: 8 },
-  title: { fontWeight: "600", marginBottom: 8 },
+  profileList: { gap: 12 },
 });

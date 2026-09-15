@@ -1,8 +1,10 @@
 import { ApiError } from "@rotta/api-client";
+import { MailCheck } from "@rotta/icons/native";
 import { useState } from "react";
 import { StyleSheet, Text } from "react-native";
 
-import { AuthButton, AuthScreen, AuthTextField } from "../components";
+
+import { AuthButton, AuthHeaderScreen, AuthStatusBadge, AuthTextField } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -21,6 +23,10 @@ type Props = NativeStackScreenProps<AuthStackParamList, "EsqueciSenha">;
  * do e-mail, que abre no navegador do celular (`WEB_APP_URL/
  * redefinir-senha?token=...`) — sem precisar de deep link de volta pro
  * app pra este primeiro lançamento.
+ *
+ * Redesign 15/09/2026 — ver nota em `login-screen.tsx`. O estado
+ * "enviado" ganha `AuthStatusBadge` no lugar da ilustração do print de
+ * referência (ver nota de fallback ali).
  */
 export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -46,15 +52,8 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
 
   if (enviado) {
     return (
-      <AuthScreen>
-        <Text
-          style={[
-            styles.title,
-            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
-          ]}
-        >
-          Verifique seu e-mail
-        </Text>
+      <AuthHeaderScreen title="Verifique seu e-mail" onBack={() => navigation.goBack()}>
+        <AuthStatusBadge icon={MailCheck} />
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Se houver uma conta com o e-mail {email}, enviamos um link para redefinir a senha. Confira
           também a caixa de spam.
@@ -64,24 +63,16 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
           variant="ghost"
           onPress={() => navigation.goBack()}
         />
-      </AuthScreen>
+      </AuthHeaderScreen>
     );
   }
 
   return (
-    <AuthScreen>
-      <Text
-        style={[
-          styles.title,
-          { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
-        ]}
-      >
-        Esqueceu sua senha?
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-        Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.
-      </Text>
-
+    <AuthHeaderScreen
+      title="Esqueceu sua senha?"
+      subtitle="Informe o e-mail da sua conta e enviaremos um link para redefinir a senha."
+      onBack={() => navigation.goBack()}
+    >
       <AuthTextField
         label="E-mail"
         autoCapitalize="none"
@@ -100,12 +91,11 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
         onPress={() => void handleSubmit()}
         isLoading={isSubmitting}
       />
-    </AuthScreen>
+    </AuthHeaderScreen>
   );
 }
 
 const styles = StyleSheet.create({
   error: { fontSize: 13 },
-  subtitle: { fontSize: 14, marginBottom: 8 },
-  title: { fontWeight: "600", marginBottom: 8 },
+  subtitle: { fontSize: 14, lineHeight: 20, textAlign: "center" },
 });

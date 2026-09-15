@@ -1,32 +1,23 @@
-import { StyleSheet, Text } from "react-native";
-
-import { AuthButton, AuthScreen } from "../components";
+import { AuthButton, AuthHeaderScreen } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
-
-import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "CriarConta">;
 
 /**
  * "Como deseja utilizar a Rotta?" (Dossiê 15, `AUTH-01`) — Área
  * Profissional (Empresas/MEIs/Autônomos) ou Área Pessoal (Responsável).
+ *
+ * Redesign 15/09/2026 — ver nota em `login-screen.tsx`.
  */
 export function CriarContaScreen({ navigation }: Props): JSX.Element {
-  const { theme } = useTheme();
-
   return (
-    <AuthScreen>
-      <Text
-        style={[
-          styles.title,
-          { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
-        ]}
-      >
-        Como deseja utilizar a Rotta?
-      </Text>
-
+    <AuthHeaderScreen
+      title="Como deseja usar a Rotta?"
+      subtitle="Escolha a opção que combina com você."
+      onBack={() => navigation.goBack()}
+    >
       <AuthButton
         label="Área Profissional"
         onPress={() => navigation.navigate("AreaProfissional")}
@@ -36,10 +27,6 @@ export function CriarContaScreen({ navigation }: Props): JSX.Element {
         variant="secondary"
         onPress={() => navigation.navigate("AreaPessoal")}
       />
-    </AuthScreen>
+    </AuthHeaderScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  title: { fontWeight: "600", marginBottom: 16 },
-});
