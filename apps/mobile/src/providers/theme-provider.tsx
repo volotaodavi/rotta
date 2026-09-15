@@ -1,6 +1,5 @@
 import { themes, type Theme, type ThemeName } from "@rotta/theme";
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import { Appearance } from "react-native";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 
 /**
  * Provider de tema do app mobile via Context API (Dossie 23, Secao 2.4 e
@@ -8,19 +7,21 @@ import { Appearance } from "react-native";
  * Native nao tem DOM): componentes de `@rotta/ui/native` consomem
  * `useTheme().theme` diretamente para resolver cor/tipografia/espacamento.
  *
- * Segue o esquema de cores do sistema operacional (`Appearance`,
- * equivalente nativo do `prefers-color-scheme` do navegador — mesmo
- * princípio de `apps/web/src/providers/theme-provider.tsx`) por
- * padrão, com escuro como fallback (Dossiê 10, Secao 7.1) quando o SO
- * não informa preferência. Reage a mudanças em tempo real (usuário
- * troca o tema do celular com o app aberto). Persistência explícita
- * por conta de usuário (`CFG-02`, Dossiê 20) e uma tela de configuração
- * para sobrepor o SO ficam para quando o módulo de Configurações
- * existir — nenhuma tela hoje chama `setThemeName` diretamente.
- *
- * Exceção de UX prevista para o app do motorista sob luz solar direta
- * (Dossiê 10, Secao 7.2) — a implementar quando o app tiver acesso a
- * leitura de brilho ambiente.
+ * Sempre claro (achado 15/09/2026, corrigindo relato do usuário com
+ * prints mostrando Notificações/Viagens/Início do Responsável em preto
+ * — "isso está errado", "cadê o design que mandei"): a versão anterior
+ * seguia `Appearance.getColorScheme()` do sistema operacional e caía
+ * pro escuro como fallback (decisão antiga do Dossiê 10, Secao 7.1,
+ * de ANTES da referência visual real de 31 telas existir). Essa
+ * referência (a mesma usada nas Frentes de redesign desta sessão) é
+ * inteiramente clara — nenhuma das 31 telas tem variante escura — ou
+ * seja, o produto real não tem um "tema escuro" pra seguir; ele só
+ * existia no código como um artefato de uma decisão pré-referência.
+ * `themes.dark` continua exportado em `@rotta/theme` (não deletado —
+ * pode voltar a ser oferecido como preferência explícita do usuário no
+ * futuro, ver `lightColors`/`darkColors` em `packages/theme`), mas
+ * nenhuma tela hoje pode chegar nele: o SO nunca mais decide isso
+ * sozinho.
  */
 interface ThemeContextValue {
   theme: Theme;
@@ -30,19 +31,8 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function resolveSystemTheme(): ThemeName {
-  return Appearance.getColorScheme() === "light" ? "light" : "dark";
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }): JSX.Element {
-  const [themeName, setThemeName] = useState<ThemeName>(resolveSystemTheme);
-
-  useEffect(() => {
-    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      setThemeName(colorScheme === "light" ? "light" : "dark");
-    });
-    return () => subscription.remove();
-  }, []);
+  const [themeName, setThemeName] = useState<ThemeName>("light");
 
   const value = useMemo<ThemeContextValue>(
     () => ({ theme: themes[themeName], themeName, setThemeName }),

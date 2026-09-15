@@ -31,13 +31,13 @@ export default function App(): JSX.Element {
     <AppErrorBoundary>
       {isEnvConfigValid ? (
         <AppProviders>
-          <StatusBar style="light" />
+          <StatusBar style="dark" />
           <RootNavigator />
         </AppProviders>
       ) : (
         <SafeAreaProvider>
           <ThemeProvider>
-            <StatusBar style="light" />
+            <StatusBar style="dark" />
             <AppConfigErrorScreen />
           </ThemeProvider>
         </SafeAreaProvider>
