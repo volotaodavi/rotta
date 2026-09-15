@@ -38,6 +38,27 @@ const envSchema = z.object({
  * então falham de forma visível (estado de erro já tratado nas telas),
  * em vez do processo inteiro travar antes de desenhar qualquer coisa.
  */
+/**
+ * `true` só quando `envSchema.parse(...)` realmente passou — nunca
+ * inferido comparando `env.EXPO_PUBLIC_API_URL` contra `""` (esse tipo
+ * de checagem por "valor mágico" se perderia se o fallback abaixo
+ * mudasse). `App.tsx` usa esta flag pra mostrar uma tela honesta de
+ * "configuração ausente" ANTES de deixar `RootNavigator` tentar montar
+ * — ver a nota completa dessa decisão logo abaixo, e a tela em
+ * `src/screens/app-config-error-screen.tsx` (achado 15/09/2026,
+ * investigando os relatos "login com erro inesperado" e "erro de
+ * render ao abrir Documentação Rotta": os dois batem exatamente com o
+ * que acontece quando `EXPO_PUBLIC_API_URL`/`EXPO_PUBLIC_WEB_URL`
+ * chegam vazios num build específico — login falha com uma URL de API
+ * vazia e vira "erro inesperado" no catch genérico de `LoginScreen`, e
+ * as 5 telas de WebView que interpolam `env.EXPO_PUBLIC_WEB_URL` numa
+ * `uri` recebem uma URL relativa inválida tipo `/legal`, que o
+ * `react-native-webview` rejeita — sem confirmação por log de
+ * produção, mas é a explicação mais honesta e acionável que a base de
+ * código sustenta hoje).
+ */
+export let isEnvConfigValid = true;
+
 function parseEnv(): z.infer<typeof envSchema> {
   try {
     return envSchema.parse({
@@ -47,6 +68,7 @@ function parseEnv(): z.infer<typeof envSchema> {
       EXPO_PUBLIC_CARTO_API_KEY: process.env.EXPO_PUBLIC_CARTO_API_KEY || undefined,
     });
   } catch (error) {
+    isEnvConfigValid = false;
     // eslint-disable-next-line no-console
     console.error(
       "[env] Configuração de ambiente inválida — o app vai continuar montando, mas chamadas de API vão falhar.",
