@@ -50,6 +50,26 @@ export default (): ExpoConfig => ({
     bundleIdentifier: "br.com.rottabr",
   },
   android: {
+    // Codigo de versao fixo e explicito (15/09/2026) — corrige erro do
+    // Play Console "Este APK nao sera disponibilizado a nenhum usuario,
+    // pois esta completamente sobreposto por um ou mais APKs com codigos
+    // de versao superiores". Causa real: `eas.json` usava
+    // `appVersionSource: "remote"` (contador guardado nos servidores da
+    // EAS, incrementado a cada build), mas esse contador comecou do zero
+    // quando essa estrategia foi adotada — ficou desalinhado com o
+    // historico real do app no Play Console, que ja tinha pacotes com
+    // codigo de versao maior (de antes desse fluxo automatizado existir).
+    // Builds #15/#16 saiam com codigo baixo (~15/16) e o Play Console os
+    // rejeitava por ja existir algo maior la.
+    //
+    // Correcao: parar de depender do contador remoto (`appVersionSource`
+    // agora "local" em `eas.json`) e fixar aqui um numero alto o
+    // suficiente pra nunca colidir com nenhum pacote ja enviado
+    // manualmente antes (bem abaixo do limite de 2100000000 do Android).
+    // Sem `autoIncrement` (nao persiste entre builds nesta CI efemera —
+    // cada checkout comeca do zero), esse numero precisa ser subido a mao
+    // a cada novo build de producao.
+    versionCode: 100000,
     // Corrigido de "br.com.rotta.app" (10/09/2026) — o upload do .aab pra
     // Play Console recusou com dois avisos: (1) "precisa ter o nome de
     // pacote br.com.rottabr" — o app ja tinha sido criado no Console com
