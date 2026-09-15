@@ -80,9 +80,29 @@ export default (): ExpoConfig => ({
     // applicationId) ja estavam em uso por OUTRO desenvolvedor com
     // "br.com.rotta.app" — nome de pacote colidindo globalmente na Play
     // Store, nao so uma preferencia nossa. Nenhum outro lugar do codigo
-    // dependia do nome antigo (sem google-services.json/FCM acoplado a
-    // ele — push usa o servico da Expo).
+    // dependia do nome antigo. (Desde 15/09/2026 existe SIM um
+    // `google-services.json` acoplado a este nome de pacote — ver
+    // `googleServicesFile` logo abaixo; trocar o pacote de novo exigiria
+    // registrar o novo nome no Firebase tambem.)
     package: "br.com.rottabr",
+    // Credencial do Firebase Cloud Messaging (15/09/2026) — o que
+    // FALTAVA pra notificação chegar na bandeja do celular.
+    //
+    // O push da Rotta é enviado pelo serviço do Expo
+    // (`ExpoPushService`, backend), mas no Android o Expo apenas
+    // repassa pro FCM: sem esta credencial no build, o
+    // `getExpoPushTokenAsync` do app nem gera token, e o aviso morre no
+    // caminho sem erro nenhum (o pior tipo de falha — silenciosa). Com
+    // ela, "veículo próximo", "aluno embarcou", ocorrência e emergência
+    // aparecem com o app fechado.
+    //
+    // O arquivo NÃO é segredo: ele vai embutido dentro de todo APK
+    // publicado, e só identifica o app (`project_id`,
+    // `mobilesdk_app_id`, chave de API restrita ao pacote
+    // `br.com.rottabr`). O que é segredo de verdade é a CHAVE PRIVADA
+    // da conta de serviço, usada pra ENVIAR push — essa vive só nas
+    // credenciais do EAS (`eas credentials`), nunca neste repositório.
+    googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
     permissions: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
     adaptiveIcon: {
       foregroundImage: "./assets/adaptive-icon.png",

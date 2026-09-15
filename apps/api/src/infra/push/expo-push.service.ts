@@ -27,8 +27,12 @@ export interface ExpoPushResult {
  * (`app.config.ts`/`eas.json`) só do lado do dispositivo
  * (`getExpoPushTokenAsync`); este serviço nunca precisa dele — envia
  * pro endpoint público do Expo, que entrega via FCM (Android) ou APNs
- * (iOS) por trás, sem exigir nenhum arquivo do Firebase Console
- * (`google-services.json`) nem conta Apple Developer paga aqui.
+ * (iOS) por trás. ESTE serviço não precisa de nada do Firebase — mas o
+ * APP precisa: o Expo só consegue entregar no Android através do FCM,
+ * então o build carrega `google-services.json` (`app.config.ts`) e a
+ * conta EAS guarda a chave privada da conta de serviço. Sem isso, o
+ * `sendToTokens` aqui responde "ok" e o aviso nunca aparece no celular
+ * (correção 15/09/2026 — era exatamente esse o buraco).
  * `EXPO_ACCESS_TOKEN` é só um bônus de rate-limit, nunca obrigatório —
  * sem ele, o Expo aceita a requisição do mesmo jeito.
  */

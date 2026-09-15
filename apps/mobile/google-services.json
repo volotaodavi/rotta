@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "643462188405",
+    "project_id": "rotta-do-brasil",
+    "storage_bucket": "rotta-do-brasil.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:643462188405:android:5723dbb894cd1d47c3573c",
+        "android_client_info": {
+          "package_name": "br.com.rottabr"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCEW_KLt_qFe_mu2C_Av8WDZZvVkBtbJdE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
