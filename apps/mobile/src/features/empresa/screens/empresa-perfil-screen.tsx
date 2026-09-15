@@ -1,5 +1,10 @@
+import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
+import { Bell, Bus, Users } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
+
+import type { EmpresaTabParamList } from "@/navigation/types";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useAppModeContext } from "@/providers/app-mode-provider";
@@ -27,11 +32,21 @@ function iniciais(nome: string | undefined): string {
  * (`canToggle`, mesma regra de `apps/web/.../use-app-mode.ts`) vê o
  * botão pra alternar; Empresa LTDA/SA/Cooperativa/Sociedade Simples e
  * Gestor nunca veem, sempre ficam só na Visão completa.
+ *
+ * Menu de atalhos (achado 15/09/2026 comparando contra a tela 31 da
+ * referência, "Perfil - Gestor") — antes só tinha "Entrar no Modo
+ * Ação"/"Sair", enquanto o Perfil de todo outro papel (Responsável,
+ * Motorista) tem uma lista de atalhos. Só entraram aqui os que já têm
+ * destino real na navegação (Frota/Equipe/Notificações) — "Financeiro"
+ * e "Suporte" aparecem na referência mas foram deixados só na Web numa
+ * decisão de escopo anterior (`EmpresaNavigator.tsx`); não inventamos
+ * tela nova pra preencher a referência, isso é decisão do usuário.
  */
 export function EmpresaPerfilScreen(): JSX.Element {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
   const { canToggle, setMode } = useAppModeContext();
+  const navigation = useNavigation<BottomTabNavigationProp<EmpresaTabParamList>>();
 
   return (
     <VehicleScreen>
@@ -56,6 +71,25 @@ export function EmpresaPerfilScreen(): JSX.Element {
           <Text style={{ color: theme.colors.textMuted }}>{user.telefone}</Text>
         ) : null}
       </VehicleCard>
+
+      <VehicleButton
+        label="Veículos"
+        variant="secondary"
+        icon={<Bus size={18} color={theme.colors.text} />}
+        onPress={() => navigation.navigate("Frota")}
+      />
+      <VehicleButton
+        label="Motoristas"
+        variant="secondary"
+        icon={<Users size={18} color={theme.colors.text} />}
+        onPress={() => navigation.navigate("Inicio")}
+      />
+      <VehicleButton
+        label="Notificações"
+        variant="secondary"
+        icon={<Bell size={18} color={theme.colors.text} />}
+        onPress={() => navigation.navigate("Notificacoes")}
+      />
 
       {/* "Modo Ação" (Frente 6) — só o dono autônomo/MEI vê este botão.
           Troca pro MESMO `DriverNavigator` do Motorista/Monitor, com
