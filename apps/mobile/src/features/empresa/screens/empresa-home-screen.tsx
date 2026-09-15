@@ -87,26 +87,34 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
 
       {company ? <TrialBanner company={company} /> : null}
 
-      <View style={styles.statsRow}>
-        <StatTile
-          icon={Bus}
-          valor={veiculos?.total}
-          label="Veículos"
-          onPress={() => irParaAba("Frota")}
-        />
-        <StatTile
-          icon={GraduationCap}
-          valor={alunosTotal}
-          label="Alunos"
-          onPress={() => navigation.navigate("AlunosPreCadastro")}
-        />
-        <StatTile
-          icon={Users}
-          valor={motoristasCount}
-          label="Motoristas"
-          onPress={() => navigation.navigate("Equipe")}
-        />
-      </View>
+      {/* "Resumo da operação" (achado 15/09/2026 comparando contra a tela
+          28 da referência "Home - Gestor") — os 3 números ficam dentro de
+          UM cartão só, com esse título acima, não como blocos soltos. */}
+      <VehicleCard>
+        <Text style={[styles.secao, { color: theme.colors.text, marginBottom: 4 }]}>
+          Resumo da operação
+        </Text>
+        <View style={styles.statsRow}>
+          <StatTile
+            icon={Bus}
+            valor={veiculos?.total}
+            label="Veículos"
+            onPress={() => irParaAba("Frota")}
+          />
+          <StatTile
+            icon={GraduationCap}
+            valor={alunosTotal}
+            label="Alunos"
+            onPress={() => navigation.navigate("AlunosPreCadastro")}
+          />
+          <StatTile
+            icon={Users}
+            valor={motoristasCount}
+            label="Motoristas"
+            onPress={() => navigation.navigate("Equipe")}
+          />
+        </View>
+      </VehicleCard>
 
       {rotasAtivas && rotasAtivas.items.length > 0 ? (
         <View style={styles.rotasSection}>
@@ -185,18 +193,7 @@ function StatTile({
   const { theme } = useTheme();
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={[
-        styles.statTile,
-        {
-          backgroundColor: theme.colors.surfaceElevated,
-          borderColor: theme.colors.border,
-          borderRadius: theme.radius.lg,
-        },
-      ]}
-    >
+    <Pressable onPress={onPress} accessibilityRole="button" style={styles.statTile}>
       <Icon size={18} color={theme.colors.primary} />
       <Text style={[styles.statValor, { color: theme.colors.text }]}>{valor ?? "—"}</Text>
       <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{label}</Text>
@@ -211,7 +208,7 @@ const styles = StyleSheet.create({
   rotasSection: { gap: 8 },
   saudacao: { fontSize: 18, fontWeight: "700" },
   secao: { fontSize: 15, fontWeight: "700" },
-  statTile: { alignItems: "center", borderWidth: 1, flex: 1, gap: 4, paddingVertical: 14 },
+  statTile: { alignItems: "center", flex: 1, gap: 4 },
   statValor: { fontSize: 20, fontWeight: "700" },
   statsRow: { flexDirection: "row", gap: 8 },
 });
