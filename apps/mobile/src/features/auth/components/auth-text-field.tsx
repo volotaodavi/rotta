@@ -8,6 +8,8 @@ interface AuthTextFieldProps extends TextInputProps {
   helperText?: string;
   /** Conteúdo extra dentro do campo, à direita (Seção 8/9 — usado pelo `PasswordInput` pro botão de mostrar/ocultar senha). */
   rightAccessory?: React.ReactNode;
+  /** Ícone fixo à esquerda, dentro do campo (redesign 15/09/2026 — print de referência do Login). */
+  leftIcon?: React.ReactNode;
 }
 
 /**
@@ -20,6 +22,7 @@ export function AuthTextField({
   label,
   helperText,
   rightAccessory,
+  leftIcon,
   style,
   onFocus,
   onBlur,
@@ -39,6 +42,7 @@ export function AuthTextField({
         {label}
       </Text>
       <View style={styles.inputRow}>
+        {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <TextInput
           placeholderTextColor={theme.colors.placeholder}
           style={[
@@ -56,6 +60,7 @@ export function AuthTextField({
               paddingVertical: theme.spacing[3] + 2,
               fontSize: theme.typography.body.fontSize,
             },
+            leftIcon ? styles.inputWithLeftIcon : null,
             rightAccessory ? styles.inputWithAccessory : null,
             style,
           ]}
@@ -85,5 +90,7 @@ const styles = StyleSheet.create({
   input: { flex: 1 },
   inputRow: { justifyContent: "center" },
   inputWithAccessory: { paddingRight: 44 },
+  inputWithLeftIcon: { paddingLeft: 44 },
   label: { fontWeight: "600" },
+  leftIcon: { left: 14, position: "absolute", zIndex: 1 },
 });

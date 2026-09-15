@@ -6,11 +6,11 @@ import {
   type ProfileOption,
 } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
+import { Lock, Mail } from "@rotta/icons/native";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
-import { AuthButton, AuthHeaderScreen, AuthTextField, PasswordInput } from "../components";
+import { AuthButton, AuthLogoMark, AuthScreen, AuthTextField, PasswordInput } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -33,9 +33,17 @@ const ROLE_LABEL: Record<string, string> = {
  * Senha". Mesma conta compartilhada com `apps/web`/`apps/admin`: uma
  * conta criada no Site já funciona aqui, sem novo cadastro.
  *
- * Redesign 15/09/2026 (`AuthHeaderScreen`, ver componente) — a "porta
- * de entrada" de cada subfluxo ganhou o cabeçalho curvo do print de
- * referência.
+ * Redesign 15/09/2026 (pedido do usuário — anexou um print real da
+ * Rotta e disse "O UX/UI design deverá seguir o design anexado. A
+ * partir de login"): substitui o cabeçalho curvo colorido usado antes
+ * (`AuthHeaderScreen`, inspirado num print genérico de outro app) por
+ * este layout — fundo branco, lockup do ícone real do app
+ * (`AuthLogoMark`) e campos com ícone à esquerda. O botão "Entrar com
+ * Google" do print NÃO entra: pesquisei e não existe nenhuma
+ * integração OAuth no backend hoje — colocar o botão sem funcionar
+ * seria um elemento morto na tela (mesmo raciocínio da foto de aluno
+ * removida hoje mais cedo), confirmado com o usuário via
+ * AskUserQuestion ("Deixar de fora por enquanto").
  */
 export function LoginScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -85,11 +93,19 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
 
   if (profiles) {
     return (
-      <AuthHeaderScreen
-        title="Escolha uma empresa"
-        subtitle="Sua conta está vinculada a mais de uma empresa."
-        onBack={() => setProfiles(null)}
-      >
+      <AuthScreen>
+        <AuthLogoMark />
+        <Text
+          style={[
+            styles.title,
+            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
+          ]}
+        >
+          Escolha uma empresa
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+          Sua conta está vinculada a mais de uma empresa.
+        </Text>
         <View style={styles.profileList}>
           {profiles.map((profile) => (
             <AuthButton
@@ -104,45 +120,77 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
         {errorMessage ? (
           <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
         ) : null}
-      </AuthHeaderScreen>
+        <AuthButton label="Voltar" variant="ghost" onPress={() => setProfiles(null)} />
+      </AuthScreen>
     );
   }
 
   return (
-    <AuthHeaderScreen
-      title="Bem-vindo de volta"
-      subtitle="Entre com sua conta para continuar."
-      onBack={() => navigation.goBack()}
-    >
+    <AuthScreen>
+      <AuthLogoMark />
+
+      <View style={styles.headingBlock}>
+        <Text
+          style={[
+            styles.title,
+            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
+          ]}
+        >
+          Entrar
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+          Acesse sua conta para continuar.
+        </Text>
+      </View>
+
       <AuthTextField
-        label="Telefone, e-mail ou CPF"
+        label="E-mail ou telefone"
         autoCapitalize="none"
         autoCorrect={false}
         value={identificador}
         onChangeText={setIdentificador}
+        leftIcon={<Mail size={18} color={theme.colors.textMuted} />}
       />
-      <PasswordInput label="Senha" value={senha} onChangeText={setSenha} />
+      <PasswordInput
+        label="Senha"
+        value={senha}
+        onChangeText={setSenha}
+        leftIcon={<Lock size={18} color={theme.colors.textMuted} />}
+      />
 
       {errorMessage ? (
         <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
       ) : null}
 
       <AuthButton label="Entrar" onPress={() => void handleLogin()} isLoading={isSubmitting} />
-      <AuthButton
-        label="Esqueci minha senha"
-        variant="ghost"
+
+      <Text
+        style={[styles.link, { color: theme.colors.primary }]}
         onPress={() => navigation.navigate("EsqueciSenha")}
-      />
-      <AuthButton
-        label="Criar conta"
-        variant="ghost"
-        onPress={() => navigation.navigate("CriarConta")}
-      />
-    </AuthHeaderScreen>
+      >
+        Esqueci minha senha
+      </Text>
+
+      <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
+        Não tem uma conta?{" "}
+        <Text
+          style={[styles.footerLink, { color: theme.colors.primary }]}
+          onPress={() => navigation.navigate("CriarConta")}
+        >
+          Criar conta
+        </Text>
+      </Text>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 13 },
+  error: { fontSize: 13, textAlign: "center" },
+  footer: { fontSize: 14, marginTop: 4, textAlign: "center" },
+  footerLink: { fontWeight: "700" },
+  headingBlock: { gap: 4, marginBottom: 4, marginTop: 8 },
+  link: { fontSize: 14, fontWeight: "600", textAlign: "center" },
   profileList: { gap: 12 },
+  subtitle: { fontSize: 14 },
+  title: { fontWeight: "700" },
 });

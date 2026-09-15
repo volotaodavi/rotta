@@ -50,13 +50,13 @@ export function AuthButton({
           opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1,
           paddingVertical: theme.spacing[3] + 2,
           paddingHorizontal: theme.spacing[6],
-          // Botão em formato de pílula (Dossiê 15 — redesign 15/09/2026,
-          // "pegue de exemplo": o print de referência usa botões
-          // totalmente arredondados, não o `radius.md` de cantos discretos
-          // usado no resto do produto). Escopo isolado ao fluxo de
-          // Auth — `AuthButton` não é `@rotta/ui/native`, nunca afeta
-          // botões de outra área do app.
-          borderRadius: theme.radius.full,
+          // `radius.lg` (Dossiê 15 — redesign 15/09/2026, print de
+          // referência real da Rotta anexado pelo usuário: botão
+          // levemente arredondado, não em pílula — troca o print
+          // genérico de app de transporte usado antes). Escopo isolado
+          // ao fluxo de Auth — `AuthButton` não é `@rotta/ui/native`,
+          // nunca afeta botões de outra área do app.
+          borderRadius: theme.radius.lg,
         },
       ]}
     >

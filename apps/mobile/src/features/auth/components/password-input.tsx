@@ -11,6 +11,8 @@ import { useTheme } from "@/providers/theme-provider";
 interface PasswordInputProps extends Omit<TextInputProps, "secureTextEntry"> {
   label: string;
   helperText?: string;
+  /** Repassado pra `AuthTextField` (redesign 15/09/2026 — ícone de cadeado no print de referência). */
+  leftIcon?: React.ReactNode;
 }
 
 /**

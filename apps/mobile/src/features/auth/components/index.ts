@@ -1,6 +1,7 @@
 export * from "./auth-button";
 export * from "./auth-header";
 export * from "./auth-header-screen";
+export * from "./auth-logo-mark";
 export * from "./auth-screen";
 export * from "./auth-status-badge";
 export * from "./auth-terms-checkbox";
