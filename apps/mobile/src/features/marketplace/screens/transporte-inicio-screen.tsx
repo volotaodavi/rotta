@@ -748,7 +748,10 @@ const styles = StyleSheet.create({
   etaRow: { alignItems: "center", flexDirection: "row", gap: 4 },
   eventoRow: { alignItems: "center", flexDirection: "row", gap: 10 },
   header: { flexDirection: "row" },
-  mapa: { borderRadius: 12, height: 180, overflow: "hidden" },
+  // `16` = `theme.radius.lg` (redesign 15/09/2026) — StyleSheet.create
+  // não tem acesso a `theme` aqui, mesmo padrão já usado no resto deste
+  // arquivo pra valores estáticos.
+  mapa: { borderRadius: 16, height: 180, overflow: "hidden" },
   mapaVazioFill: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
@@ -802,7 +805,7 @@ const styles = StyleSheet.create({
   },
   veiculoRow: {
     alignItems: "center",
-    borderRadius: 12,
+    borderRadius: 16,
     flexDirection: "row",
     gap: 12,
     padding: 12,

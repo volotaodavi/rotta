@@ -448,7 +448,9 @@ const styles = StyleSheet.create({
   resultsCard: { marginTop: 8, maxHeight: 260, padding: 8 },
   resultsEmpty: { padding: 12, textAlign: "center" },
   resultsList: {},
-  saudacao: { fontSize: 14, marginBottom: 2 },
+  // Redesign 15/09/2026 — saudação um pouco mais presente (14 → 16),
+  // mais perto da proporção do print real da Rotta ("Olá, Mariana!").
+  saudacao: { fontSize: 16, marginBottom: 2 },
   searchBar: {
     alignItems: "center",
     flexDirection: "row",

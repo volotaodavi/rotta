@@ -16,7 +16,10 @@ interface VehicleButtonProps {
   icon?: ReactNode;
 }
 
-/** Botão base das telas de Veículos — ver nota de escopo em `vehicle-screen.tsx`. */
+/**
+ * Botão base — ver nota de escopo em `vehicle-screen.tsx`. `radius.lg`
+ * (redesign 15/09/2026, mesma troca do `VehicleCard`).
+ */
 export function VehicleButton({
   label,
   onPress,
@@ -51,9 +54,9 @@ export function VehicleButton({
           borderColor,
           borderWidth: variant === "secondary" ? 1 : 0,
           opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1,
-          paddingVertical: theme.spacing[3],
+          paddingVertical: theme.spacing[3] + 2,
           paddingHorizontal: theme.spacing[6],
-          borderRadius: theme.radius.md,
+          borderRadius: theme.radius.lg,
         },
       ]}
     >
