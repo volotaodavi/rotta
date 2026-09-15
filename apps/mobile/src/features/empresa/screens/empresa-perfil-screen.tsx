@@ -1,12 +1,12 @@
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
-import { Bell, Bus, Users } from "@rotta/icons/native";
+import { Bell, Bus, LogOut, Users, Zap } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { EmpresaTabParamList } from "@/navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
-import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { MenuRowList, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useAppModeContext } from "@/providers/app-mode-provider";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -72,37 +72,23 @@ export function EmpresaPerfilScreen(): JSX.Element {
         ) : null}
       </VehicleCard>
 
-      <VehicleButton
-        label="Veículos"
-        variant="secondary"
-        icon={<Bus size={18} color={theme.colors.text} />}
-        onPress={() => navigation.navigate("Frota")}
+      {/* Menu em linhas com ícone + seta e "Sair" em vermelho
+          (referência "PERFIL - GESTOR") — mesmo componente dos outros
+          Perfis. "Modo Ação" (Frente 6) só aparece pro dono
+          autônomo/MEI: troca pro MESMO `DriverNavigator` do
+          Motorista/Monitor, com Financeiro (Rotta Pay) e Escolas já
+          reativados pra este papel. */}
+      <MenuRowList
+        items={[
+          { icon: Bus, label: "Veículos", onPress: () => navigation.navigate("Frota") },
+          { icon: Users, label: "Motoristas", onPress: () => navigation.navigate("Inicio") },
+          { icon: Bell, label: "Notificações", onPress: () => navigation.navigate("Notificacoes") },
+          ...(canToggle
+            ? [{ icon: Zap, label: "Entrar no Modo Ação", onPress: () => setMode("acao") }]
+            : []),
+          { icon: LogOut, label: "Sair", onPress: () => void logout(), destrutivo: true },
+        ]}
       />
-      <VehicleButton
-        label="Motoristas"
-        variant="secondary"
-        icon={<Users size={18} color={theme.colors.text} />}
-        onPress={() => navigation.navigate("Inicio")}
-      />
-      <VehicleButton
-        label="Notificações"
-        variant="secondary"
-        icon={<Bell size={18} color={theme.colors.text} />}
-        onPress={() => navigation.navigate("Notificacoes")}
-      />
-
-      {/* "Modo Ação" (Frente 6) — só o dono autônomo/MEI vê este botão.
-          Troca pro MESMO `DriverNavigator` do Motorista/Monitor, com
-          Financeiro (Rotta Pay) e Escolas já reativados pra este papel. */}
-      {canToggle ? (
-        <VehicleButton
-          label="Entrar no Modo Ação"
-          variant="secondary"
-          onPress={() => setMode("acao")}
-        />
-      ) : null}
-
-      <VehicleButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </VehicleScreen>
   );
 }

@@ -1,4 +1,5 @@
 import { useAuth } from "@rotta/auth/native";
+import { Bus, IdCard, LayoutGrid, LifeBuoy, LogOut, ShieldCheck, Users } from "@rotta/icons/native";
 import { driverShadow } from "@rotta/theme";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -8,7 +9,7 @@ import type { DriverPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { PinSetupCard } from "@/features/auth/components";
-import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { MenuRowList, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useAppModeContext } from "@/providers/app-mode-provider";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -94,46 +95,40 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
         <PinSetupCard />
       ) : null}
 
-      {/* "Modo Ação" (Frente 6) — só o dono autônomo/MEI vê este botão;
-          Motorista/Monitor FUNCIONÁRIO nunca tem `canToggle`. Volta pra
-          `EmpresaNavigator` (Frota/Rotas/Alunos/Equipe) sem deslogar. */}
-      {canToggle ? (
-        <VehicleButton
-          label="Voltar para Visão completa"
-          variant="secondary"
-          onPress={() => setMode("completo")}
-        />
-      ) : null}
-
-      {/* Frente AO — "Veículo" saiu da barra de 4 ícones (a referência não
-          mostra essa aba) e virou um atalho aqui, igual à versão web
-          (`ATALHOS_PERFIL_MOTORISTA`, `apps/web/.../perfil/page.tsx`). */}
-      <VehicleButton
-        label="Meu Veículo"
-        variant="secondary"
-        onPress={() => navigation.navigate("Veiculo")}
+      {/* Menu em linhas com ícone + seta e "Sair" em vermelho
+          (15/09/2026, referência "PERFIL - MOTORISTA") — antes eram
+          `VehicleButton` de largura total empilhados, um por atalho.
+          "Voltar para Visão completa" (Frente 6) só aparece pro dono
+          autônomo/MEI; Motorista/Monitor FUNCIONÁRIO nunca tem
+          `canToggle`. "Meu Veículo" está aqui (e não na barra de abas)
+          desde a Frente AO, igual à versão web. */}
+      <MenuRowList
+        items={[
+          ...(canToggle
+            ? [
+                {
+                  icon: LayoutGrid,
+                  label: "Voltar para Visão completa",
+                  onPress: () => setMode("completo"),
+                },
+              ]
+            : []),
+          { icon: Bus, label: "Meu Veículo", onPress: () => navigation.navigate("Veiculo") },
+          { icon: Users, label: "Meus Alunos", onPress: () => navigation.navigate("Alunos") },
+          {
+            icon: IdCard,
+            label: "Verificar identidade",
+            onPress: () => navigation.navigate("VerificacaoIdentidade"),
+          },
+          { icon: LifeBuoy, label: "Suporte", onPress: () => navigation.navigate("Chamados") },
+          {
+            icon: ShieldCheck,
+            label: "Documentação Rotta",
+            onPress: () => navigation.navigate("Documentacao"),
+          },
+          { icon: LogOut, label: "Sair", onPress: () => void logout(), destrutivo: true },
+        ]}
       />
-      <VehicleButton
-        label="Meus Alunos"
-        variant="secondary"
-        onPress={() => navigation.navigate("Alunos")}
-      />
-      <VehicleButton
-        label="Verificar identidade"
-        variant="secondary"
-        onPress={() => navigation.navigate("VerificacaoIdentidade")}
-      />
-      <VehicleButton
-        label="Chamados"
-        variant="secondary"
-        onPress={() => navigation.navigate("Chamados")}
-      />
-      <VehicleButton
-        label="Documentação Rotta"
-        variant="secondary"
-        onPress={() => navigation.navigate("Documentacao")}
-      />
-      <VehicleButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </VehicleScreen>
   );
 }

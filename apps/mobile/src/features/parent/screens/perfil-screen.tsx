@@ -1,4 +1,5 @@
 import { useAuth } from "@rotta/auth/native";
+import { Bus, LifeBuoy, LogOut, School, ShieldCheck } from "@rotta/icons/native";
 import { View, StyleSheet, Text, Pressable } from "react-native";
 
 import { SCHOOL_SHIFT_LABEL } from "../../schools/labels";
@@ -9,7 +10,12 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { PinSetupCard } from "@/features/auth/components";
 import { useStudentsList } from "@/features/marketplace/hooks/use-students";
-import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import {
+  MenuRowList,
+  VehicleButton,
+  VehicleCard,
+  VehicleScreen,
+} from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<ParentPerfilStackParamList, "PerfilHome">;
@@ -100,23 +106,31 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
           de Motorista/Monitor. */}
       <PinSetupCard />
 
-      <VehicleButton label="Meu transporte" variant="secondary" onPress={handleMeuTransporte} />
-      <VehicleButton
-        label="Escolas"
-        variant="secondary"
-        onPress={() => navigation.navigate("Escolas")}
+      {/* Menu em linhas com ícone + seta, e "Sair" em vermelho
+          (15/09/2026, referência "PERFIL - RESPONSÁVEL") — antes eram
+          `VehicleButton` de largura total empilhados, com peso visual de
+          botão de ação em cima de itens que são só navegação.
+          "Meus dados", "Endereços" e "Métodos de pagamento" aparecem na
+          referência mas não entram aqui: não existe tela pra eles no
+          app (edição de conta segue exclusiva da Web) — linha de menu
+          que não leva a lugar nenhum é pior que linha ausente. */}
+      <MenuRowList
+        items={[
+          { icon: Bus, label: "Meu transporte", onPress: handleMeuTransporte },
+          { icon: School, label: "Escolas", onPress: () => navigation.navigate("Escolas") },
+          {
+            icon: LifeBuoy,
+            label: "Suporte",
+            onPress: () => navigation.navigate("Chamados"),
+          },
+          {
+            icon: ShieldCheck,
+            label: "Privacidade e documentos",
+            onPress: () => navigation.navigate("Documentacao"),
+          },
+          { icon: LogOut, label: "Sair", onPress: () => void logout(), destrutivo: true },
+        ]}
       />
-      <VehicleButton
-        label="Chamados"
-        variant="secondary"
-        onPress={() => navigation.navigate("Chamados")}
-      />
-      <VehicleButton
-        label="Documentação Rotta"
-        variant="secondary"
-        onPress={() => navigation.navigate("Documentacao")}
-      />
-      <VehicleButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </VehicleScreen>
   );
 }
