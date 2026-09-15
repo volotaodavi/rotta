@@ -10,6 +10,15 @@ import type { ApiClient } from "../http";
  */
 
 export type TripStatus = "EM_ANDAMENTO" | "PAUSADA" | "FINALIZADA" | "CANCELADA";
+
+/**
+ * Sentido da viagem (pedido do usuário 15/09/2026: "igual placa de
+ * ônibus mesmo: Ida 🔄 Volta"). É da VIAGEM, não da rota — a mesma rota
+ * roda nos dois sentidos no mesmo dia, e o vínculo aluno↔parada é um
+ * só: na IDA o aluno embarca na parada de embarque (casa) e desce na de
+ * desembarque (escola); na VOLTA as duas trocam de lugar.
+ */
+export type TripSentido = "IDA" | "VOLTA";
 export type TripStudentEventType = "EMBARCOU" | "AUSENTE" | "DESEMBARCOU";
 
 export interface StartTripInput {
@@ -17,6 +26,8 @@ export interface StartTripInput {
   veiculoId?: string;
   motoristaId?: string;
   monitorId?: string;
+  /** Omitir = `"IDA"` no backend — cliente antigo abre a viagem com a semântica que sempre teve. */
+  sentido?: TripSentido;
 }
 
 export interface Trip {
@@ -25,6 +36,7 @@ export interface Trip {
   routeId: string;
   data: string;
   status: TripStatus;
+  sentido: TripSentido;
   /** Código único legível da viagem (pedido do usuário: "o código da viagem - único") — gerado uma vez ao iniciar. */
   codigo: string;
   veiculoId: string;

@@ -50,6 +50,7 @@ import type {
   RouteStudent,
   RouteStudentDetalhado,
   Trip,
+  TripSentido,
   TripStudentEventType,
 } from "@rotta/api-client";
 import type { Route as NextRoute } from "next";
@@ -79,6 +80,11 @@ import { TRIP_STATUS_BADGE } from "@/features/driver/trip-status";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
+import {
+  SentidoSwitch,
+  TRIP_SENTIDO_DESCRICAO,
+  TRIP_SENTIDO_LABEL,
+} from "@/features/routes/components/sentido-switch";
 import { useUpdateRoute } from "@/features/routes/hooks/use-routes";
 import { useStudent } from "@/features/students/hooks/use-students";
 import {
@@ -741,10 +747,23 @@ function RotaOperacional({
   const resumeTrip = useResumeTrip(rota.id);
   const finishTrip = useFinishTrip(rota.id);
 
+  /**
+   * Sentido da PRÓXIMA viagem (pedido do usuário 15/09/2026, "igual
+   * placa de ônibus: Ida 🔄 Volta"). Sugere a volta quando a viagem
+   * anterior de hoje foi a ida e já terminou — a sequência real do dia
+   * —, mas segue sendo sugestão: dá pra trocar antes de deslizar.
+   */
+  const [sentidoEscolhido, setSentidoEscolhido] = useState<TripSentido | null>(null);
+  const sentidoSugerido: TripSentido =
+    trip && trip.sentido === "IDA" && (trip.status === "FINALIZADA" || trip.status === "CANCELADA")
+      ? "VOLTA"
+      : "IDA";
+  const sentidoDaProximaViagem = sentidoEscolhido ?? sentidoSugerido;
+
   /** Reaproveitado tanto pela primeira viagem do dia quanto por "iniciar outra viagem" depois de uma já finalizada/cancelada (ver `viagemEncerrada` abaixo). */
   function handleIniciarViagem(): void {
     startTrip.mutate(
-      { routeId: rota.id },
+      { routeId: rota.id, sentido: sentidoDaProximaViagem },
       {
         // Erro já cai sozinho no toast global (`MutationCache.onError`,
         // `QueryProvider`) — aqui só o feedback positivo, pra ficar
@@ -1105,9 +1124,16 @@ function RotaOperacional({
           </div>
           {/* Código único da viagem (pedido do usuário: "o código da viagem - único") — só existe depois que a viagem já foi iniciada. */}
           {trip ? (
-            <Typography variant="caption" color="muted" className="font-mono tracking-wide">
-              Código da viagem: {trip.codigo}
-            </Typography>
+            <>
+              <Typography variant="caption" color="muted" className="font-mono tracking-wide">
+                Código da viagem: {trip.codigo}
+              </Typography>
+              {/* A "placa" da viagem em andamento — quem dirige precisa
+                  ver em que sentido está, não só escolher no início. */}
+              <Typography variant="caption" color="muted">
+                Sentido: {TRIP_SENTIDO_LABEL[trip.sentido]} · {TRIP_SENTIDO_DESCRICAO[trip.sentido]}
+              </Typography>
+            </>
           ) : null}
           <Typography variant="bodySmall" color="muted">
             {proximaParada
@@ -1217,11 +1243,18 @@ function RotaOperacional({
                   : "Fale com sua transportadora para vincular um veículo a esta rota."}
               </Typography>
             ) : (
-              <SlideToAction
-                label="Deslize para iniciar a viagem"
-                onComplete={handleIniciarViagem}
-                isLoading={startTrip.isPending}
-              />
+              <div className="flex flex-col gap-3">
+                <SentidoSwitch
+                  value={sentidoDaProximaViagem}
+                  onChange={setSentidoEscolhido}
+                  disabled={startTrip.isPending}
+                />
+                <SlideToAction
+                  label={`Deslize para iniciar a ${TRIP_SENTIDO_LABEL[sentidoDaProximaViagem].toLowerCase()}`}
+                  onComplete={handleIniciarViagem}
+                  isLoading={startTrip.isPending}
+                />
+              </div>
             )
           ) : (
             <Typography variant="bodySmall" color="muted" className="py-2 text-center">
@@ -1241,13 +1274,19 @@ function RotaOperacional({
              * viagem pra mesma rota no mesmo dia contanto que a última
              * não esteja mais em andamento/pausada.
              */
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-3">
               <Typography variant="bodySmall" color="muted" className="text-center">
-                A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
-                A rota continua disponível — pode iniciar outra viagem quando precisar.
+                A {TRIP_SENTIDO_LABEL[trip.sentido].toLowerCase()} de hoje já foi{" "}
+                {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}. A rota continua
+                disponível — pode iniciar outra viagem quando precisar.
               </Typography>
+              <SentidoSwitch
+                value={sentidoDaProximaViagem}
+                onChange={setSentidoEscolhido}
+                disabled={startTrip.isPending}
+              />
               <SlideToAction
-                label="Deslize para iniciar outra viagem"
+                label={`Deslize para iniciar a ${TRIP_SENTIDO_LABEL[sentidoDaProximaViagem].toLowerCase()}`}
                 onComplete={handleIniciarViagem}
                 isLoading={startTrip.isPending}
               />

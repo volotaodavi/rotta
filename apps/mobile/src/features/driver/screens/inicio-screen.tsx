@@ -49,7 +49,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
 import { BackgroundLocationDisclosureModal, PanelGreeting } from "../components";
 import { podeAlternarModoAcao } from "../hooks/use-app-mode";
 import {
@@ -83,6 +82,7 @@ import type {
   RouteStudent,
   RouteStudentDetalhado,
   Trip,
+  TripSentido,
   TripStudentEvent,
 } from "@rotta/api-client";
 import type { ReactNode } from "react";
@@ -91,6 +91,11 @@ import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
+import {
+  SentidoSwitch,
+  TRIP_SENTIDO_DESCRICAO,
+  TRIP_SENTIDO_LABEL,
+} from "@/features/routes/components/sentido-switch";
 import {
   StatusPill,
   VehicleButton,
@@ -901,6 +906,17 @@ function RotaOperacional({
       : null;
 
   const startTrip = useStartTrip(rota.id);
+  // Sentido da PRÓXIMA viagem (pedido do usuário 15/09/2026, "igual
+  // placa de ônibus"). Sugere a volta quando a viagem anterior de hoje
+  // já foi a ida e terminou — que é a sequência real do dia — mas
+  // continua sendo só uma sugestão: o motorista pode trocar antes de
+  // deslizar.
+  const [sentidoEscolhido, setSentidoEscolhido] = useState<TripSentido | null>(null);
+  const sentidoSugerido: TripSentido =
+    trip && trip.sentido === "IDA" && (trip.status === "FINALIZADA" || trip.status === "CANCELADA")
+      ? "VOLTA"
+      : "IDA";
+  const sentidoDaProximaViagem = sentidoEscolhido ?? sentidoSugerido;
   const pauseTrip = usePauseTrip(rota.id);
   const resumeTrip = useResumeTrip(rota.id);
   const finishTrip = useFinishTrip(rota.id);
@@ -1190,11 +1206,20 @@ function RotaOperacional({
             </View>
             {/* Código único da viagem (pedido do usuário: "o código da viagem - único") — só existe depois que a viagem já foi iniciada. */}
             {trip ? (
-              <Text
-                style={{ color: theme.colors.textMuted, fontSize: 12, fontFamily: "monospace" }}
-              >
-                Código da viagem: {trip.codigo}
-              </Text>
+              <>
+                <Text
+                  style={{ color: theme.colors.textMuted, fontSize: 12, fontFamily: "monospace" }}
+                >
+                  Código da viagem: {trip.codigo}
+                </Text>
+                {/* A "placa" da viagem em andamento — quem está
+                    dirigindo precisa ver em que sentido está, não só
+                    escolher no início. */}
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  Sentido: {TRIP_SENTIDO_LABEL[trip.sentido]} ·{" "}
+                  {TRIP_SENTIDO_DESCRICAO[trip.sentido]}
+                </Text>
+              </>
             ) : null}
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {proximaParada
@@ -1329,12 +1354,21 @@ function RotaOperacional({
                     : "Fale com sua transportadora para vincular um veículo a esta rota."}
                 </Text>
               ) : (
-                <SlideToAction
-                  label="Deslize para iniciar a viagem"
-                  theme={theme}
-                  onComplete={() => startTrip.mutate({ routeId: rota.id })}
-                  isLoading={startTrip.isPending}
-                />
+                <View style={styles.inicioViagem}>
+                  <SentidoSwitch
+                    value={sentidoDaProximaViagem}
+                    onChange={setSentidoEscolhido}
+                    disabled={startTrip.isPending}
+                  />
+                  <SlideToAction
+                    label={`Deslize para iniciar a ${TRIP_SENTIDO_LABEL[sentidoDaProximaViagem].toLowerCase()}`}
+                    theme={theme}
+                    onComplete={() =>
+                      startTrip.mutate({ routeId: rota.id, sentido: sentidoDaProximaViagem })
+                    }
+                    isLoading={startTrip.isPending}
+                  />
+                </View>
               )
             ) : (
               <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
@@ -1348,16 +1382,23 @@ function RotaOperacional({
               // temporariamente até o transportador acionar de novo" —
               // a rota continua disponível pra outra viagem no mesmo
               // dia (ida de manhã, volta à tarde, por exemplo).
-              <View style={{ gap: 8 }}>
+              <View style={styles.inicioViagem}>
                 <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
-                  A viagem de hoje já foi{" "}
+                  A {TRIP_SENTIDO_LABEL[trip.sentido].toLowerCase()} de hoje já foi{" "}
                   {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}. A rota continua
                   disponível — pode iniciar outra viagem quando precisar.
                 </Text>
+                <SentidoSwitch
+                  value={sentidoDaProximaViagem}
+                  onChange={setSentidoEscolhido}
+                  disabled={startTrip.isPending}
+                />
                 <SlideToAction
-                  label="Deslize para iniciar outra viagem"
+                  label={`Deslize para iniciar a ${TRIP_SENTIDO_LABEL[sentidoDaProximaViagem].toLowerCase()}`}
                   theme={theme}
-                  onComplete={() => startTrip.mutate({ routeId: rota.id })}
+                  onComplete={() =>
+                    startTrip.mutate({ routeId: rota.id, sentido: sentidoDaProximaViagem })
+                  }
                   isLoading={startTrip.isPending}
                 />
               </View>
@@ -2303,6 +2344,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
+  inicioViagem: { gap: 12 },
   mapCard: { borderRadius: 16, borderWidth: 1, margin: 16, overflow: "hidden" },
   mapCardBody: { gap: 4, padding: 12 },
   mapCardBodyRow: {

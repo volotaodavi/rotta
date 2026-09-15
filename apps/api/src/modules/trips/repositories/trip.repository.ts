@@ -1,4 +1,4 @@
-import type { Trip, TripStatus, Vehicle } from "@prisma/client";
+import type { Trip, TripSentido, TripStatus, Vehicle } from "@prisma/client";
 
 export interface CreateTripData {
   companyId: string;
@@ -7,6 +7,8 @@ export interface CreateTripData {
   veiculoId: string;
   motoristaId: string;
   monitorId?: string;
+  /** Ida (casa → escola) ou volta (escola → casa/trabalho do responsável) — ver `enum TripSentido` em `schema.prisma`. */
+  sentido: TripSentido;
   /** Código único legível da viagem (pedido do usuário: "código da viagem - único") — gerado por `TripsService.createTripWithUniqueCode`, nunca pelo repositório. */
   codigo: string;
 }

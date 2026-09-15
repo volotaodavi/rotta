@@ -15,8 +15,10 @@ import {
 
 import type { EmpresaRotasStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { TripSentido } from "@rotta/api-client";
 
 import { useGeocodeAddress } from "@/features/marketplace/hooks/use-geocode-address";
+import { SentidoSwitch } from "@/features/routes/components/sentido-switch";
 import {
   formatRouteWeekdaysAbbrev,
   ROUTE_STATUS_LABEL,
@@ -77,6 +79,11 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
   const addStudent = useAddRouteStudent(routeId);
   const removeStudent = useRemoveRouteStudent(routeId);
 
+  // "Placa de ônibus" (pedido do usuário 15/09/2026) — só VISUALIZAÇÃO
+  // aqui: o sentido pertence à viagem, não à rota, então virar a placa
+  // nesta tela não muda nada no banco; mostra a mesma rota no sentido
+  // em que ela vai ser percorrida.
+  const [sentido, setSentido] = useState<TripSentido>("IDA");
   const [modoParada, setModoParada] = useState<"escola" | "endereco">("escola");
   const [schoolId, setSchoolId] = useState<string | null>(null);
   const [enderecoParada, setEnderecoParada] = useState("");
@@ -116,6 +123,10 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
 
   const proximoStatus = rota.status === "ATIVA" ? "PAUSADA" : "ATIVA";
   const paradasOrdenadas = paradas ? [...paradas].sort((a, b) => a.ordem - b.ordem) : [];
+  // As paradas são cadastradas na ordem da ida. Virar a placa mostra a
+  // MESMA lista na ordem inversa, que é o caminho real da volta —
+  // exatamente o que `TripsService.listParadasPendentes` faz na viagem.
+  const paradasNoSentido = sentido === "VOLTA" ? [...paradasOrdenadas].reverse() : paradasOrdenadas;
   const idsAlunosJaVinculados = new Set((alunos ?? []).map((aluno) => aluno.studentId));
   const candidatosDisponiveis = (candidatos ?? []).filter(
     (candidato) => !idsAlunosJaVinculados.has(candidato.studentId),
@@ -225,10 +236,14 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
         <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
           Paradas
         </Text>
-        {paradasOrdenadas.length === 0 ? (
+        {/* A placa: mesma rota, dois sentidos. Só muda o que está na
+            tela — o sentido pertence à VIAGEM, não à rota. */}
+        <SentidoSwitch value={sentido} onChange={setSentido} />
+
+        {paradasNoSentido.length === 0 ? (
           <Text style={{ color: theme.colors.textMuted }}>Nenhuma parada cadastrada ainda.</Text>
         ) : (
-          paradasOrdenadas.map((parada) => {
+          paradasNoSentido.map((parada, indice) => {
             const direcao = getStopDirection(parada, alunos);
             return (
               <View key={parada.id} style={styles.paradaLinha}>
@@ -238,8 +253,11 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
                   <MapPin size={16} color={theme.colors.primary} />
                 )}
                 <View style={styles.paradaTexto}>
+                  {/* Numerada pela posição NESTE sentido (não por
+                      `parada.ordem`, que é sempre a ordem da ida) — na
+                      volta a escola é a parada 1. */}
                   <Text style={{ color: theme.colors.text }}>
-                    {parada.ordem + 1}. {parada.endereco}
+                    {indice + 1}. {parada.endereco}
                   </Text>
                   <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {parada.horarioPrevisto}

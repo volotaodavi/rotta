@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { TripStatus } from "@prisma/client";
+import { TripSentido, TripStatus } from "@prisma/client";
 
 /** Forma de resposta pública de `Trip` (GPS-01/06). */
 export class TripResponseDto {
@@ -8,6 +8,8 @@ export class TripResponseDto {
   @ApiProperty() routeId!: string;
   @ApiProperty() data!: Date;
   @ApiProperty({ enum: TripStatus }) status!: TripStatus;
+  /** Ida (casa → escola) ou volta (escola → casa/trabalho do responsável) — ver `enum TripSentido`. */
+  @ApiProperty({ enum: TripSentido }) sentido!: TripSentido;
   /** Código único legível da viagem (pedido do usuário: "código da viagem - único") — ver `TripsService.generateTripCode`. */
   @ApiProperty() codigo!: string;
   @ApiProperty() veiculoId!: string;

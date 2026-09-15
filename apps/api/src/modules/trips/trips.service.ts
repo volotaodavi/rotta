@@ -10,7 +10,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { NotificationEventType, Prisma, type Trip } from "@prisma/client";
+import { NotificationEventType, Prisma, TripSentido, type Trip } from "@prisma/client";
 
 import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
 import { toTripPositionResponseDto } from "./mappers/trip-position.mapper";
@@ -197,6 +197,32 @@ export class TripsService {
     throw new Error("Não foi possível gerar um código único de viagem.");
   }
 
+  /**
+   * A parada onde este aluno embarca/desembarca NESTA viagem — o único
+   * lugar do sistema que sabe traduzir sentido em parada.
+   *
+   * `RouteStudent` guarda o par de paradas do aluno uma vez só
+   * (`contractId` é `@unique`: o aluno pertence a UMA rota, não a uma
+   * "rota de ida" e outra "de volta"). Na IDA ele embarca em casa
+   * (`paradaEmbarque`) e desce na escola (`paradaDesembarque`); na
+   * VOLTA é exatamente o inverso — embarca na escola e desce em casa,
+   * no apartamento ou no trabalho do responsável, conforme o endereço
+   * de desembarque que o responsável cadastrou.
+   *
+   * Centralizado aqui de propósito: antes essa escolha estava
+   * duplicada em `createStudentEvent` e em `listPendenciasPorAluno`, e
+   * duas cópias de uma regra assim divergem no primeiro ajuste.
+   */
+  private paradaDoVinculo(
+    sentido: TripSentido,
+    lado: "EMBARQUE" | "DESEMBARQUE",
+    vinculo: { paradaEmbarqueId: string; paradaDesembarqueId: string },
+  ): string {
+    const inverter = sentido === TripSentido.VOLTA;
+    const pegarEmbarque = lado === "EMBARQUE" ? !inverter : inverter;
+    return pegarEmbarque ? vinculo.paradaEmbarqueId : vinculo.paradaDesembarqueId;
+  }
+
   /** 404 (não 403) fora do escopo — mesmo princípio de não-enumeração usado no resto do backend. */
   private async fetchOrThrow(id: string, actor: AuthenticatedUser): Promise<Trip> {
     const trip = await this.tripRepository.findById(id);
@@ -345,6 +371,9 @@ export class TripsService {
       veiculoId,
       motoristaId,
       monitorId,
+      // Omitir = IDA (ver `StartTripDto.sentido`): cliente antigo
+      // continua abrindo a viagem com a semântica que sempre teve.
+      sentido: dto.sentido ?? TripSentido.IDA,
     });
 
     await this.vehiclesService.setCurrentTrip(veiculoId, trip.id);
@@ -354,7 +383,7 @@ export class TripsService {
       entidadeId: trip.id,
       acao: "STARTED",
       atorUserId: actor.sub,
-      dadosDepois: { routeId: dto.routeId, veiculoId, motoristaId },
+      dadosDepois: { routeId: dto.routeId, veiculoId, motoristaId, sentido: trip.sentido },
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
@@ -858,9 +887,14 @@ export class TripsService {
       throw new BadRequestException("Este aluno não está vinculado à rota desta viagem.");
     }
 
-    // `routeStopId` é sempre derivado do vínculo — nunca vem do cliente (ver nota do DTO).
-    const routeStopId =
-      dto.tipo === "DESEMBARCOU" ? vinculo.paradaDesembarqueId : vinculo.paradaEmbarqueId;
+    // `routeStopId` é sempre derivado do vínculo — nunca vem do cliente
+    // (ver nota do DTO) — e agora também do SENTIDO da viagem: na volta,
+    // embarque e desembarque trocam de lugar (ver `paradaDoVinculo`).
+    const routeStopId = this.paradaDoVinculo(
+      trip.sentido,
+      dto.tipo === "DESEMBARCOU" ? "DESEMBARQUE" : "EMBARQUE",
+      vinculo,
+    );
 
     if (dto.tipo === "DESEMBARCOU") {
       const embarque = await this.studentEventRepository.findByTripStudentAndTipo(
@@ -1172,7 +1206,11 @@ export class TripsService {
         (e) => e.studentId === vinculo.studentId && (e.tipo === "EMBARCOU" || e.tipo === "AUSENTE"),
       );
       if (!embarqueOuAusente) {
-        const pendencia = resolverPendencia(vinculo, "EMBARQUE", vinculo.paradaEmbarqueId);
+        const pendencia = resolverPendencia(
+          vinculo,
+          "EMBARQUE",
+          this.paradaDoVinculo(trip.sentido, "EMBARQUE", vinculo),
+        );
         if (pendencia) pendencias.push(pendencia);
         continue;
       }
@@ -1181,7 +1219,11 @@ export class TripsService {
           (e) => e.studentId === vinculo.studentId && e.tipo === "DESEMBARCOU",
         );
         if (!jaDesembarcou) {
-          const pendencia = resolverPendencia(vinculo, "DESEMBARQUE", vinculo.paradaDesembarqueId);
+          const pendencia = resolverPendencia(
+            vinculo,
+            "DESEMBARQUE",
+            this.paradaDoVinculo(trip.sentido, "DESEMBARQUE", vinculo),
+          );
           if (pendencia) pendencias.push(pendencia);
         }
       }
@@ -1221,9 +1263,16 @@ export class TripsService {
       pendenciasPorRouteStop.set(pendencia.routeStopId, lista);
     }
 
+    // As paradas são cadastradas na ordem da IDA (as casas e, no fim, a
+    // escola). Na VOLTA o veículo percorre exatamente o caminho
+    // inverso — sai da escola e vai deixando cada aluno —, então a
+    // ordem de percurso é a lista invertida. É só isso que a "placa de
+    // ônibus" muda no roteiro: as mesmas paradas, na ordem oposta.
+    const stopsNaOrdemDoSentido = trip.sentido === TripSentido.VOLTA ? [...stops].reverse() : stops;
+
     const resultado: RouteStopResponseDto[] = [];
     const waypointsVistos = new Set<string>();
-    for (const stop of stops) {
+    for (const stop of stopsNaOrdemDoSentido) {
       for (const pendencia of pendenciasPorRouteStop.get(stop.id) ?? []) {
         if (waypointsVistos.has(pendencia.waypointId)) continue;
         waypointsVistos.add(pendencia.waypointId);

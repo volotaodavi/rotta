@@ -2558,6 +2558,27 @@ enum TripStatus {
   CANCELADA
 }
 
+/// Sentido da viagem (pedido do usuário 15/09/2026: "pode deixar na
+/// mesma rota um sentido, igual placa de ônibus mesmo: Ida 🔄 Volta").
+///
+/// O sentido é da VIAGEM, nunca da rota: a `Route` guarda o conjunto de
+/// paradas (as casas e a escola) e cada aluno é vinculado a ela uma vez
+/// só — `RouteStudent.contractId` é `@unique`, então um aluno não pode
+/// estar numa "rota de ida" e numa "rota de volta" separadas. Já era
+/// assim que o modelo pensava a operação: ver a nota de `TripStatus`
+/// acima, "mais de uma Trip por rota no mesmo dia é esperado (ida e
+/// volta)". O que faltava era justamente dizer QUAL das duas.
+///
+/// IDA  — o aluno embarca na `RouteStudent.paradaEmbarque` (casa) e
+///        desembarca na `paradaDesembarque` (escola).
+/// VOLTA— exatamente o inverso: embarca na `paradaDesembarque` e
+///        desembarca na `paradaEmbarque`. Nenhum vínculo é duplicado
+///        para isso; quem inverte é `TripsService.paradaDoVinculo`.
+enum TripSentido {
+  IDA
+  VOLTA
+}
+
 /// Execução concreta de uma `Route` em um dia (briefing `GPS-01`). RLS
 /// por `companyId`. `motoristaId`/`veiculoId`/`monitorId` começam iguais
 /// ao padrão da rota, mas podem ser substituídos pontualmente
@@ -2588,6 +2609,13 @@ model Trip {
   /// `iniciadaEm`.
   data   DateTime   @db.Date
   status TripStatus @default(EM_ANDAMENTO)
+
+  /// Ida (casa → escola) ou volta (escola → casa/trabalho do
+  /// responsável) — ver `enum TripSentido`. `@default(IDA)` porque toda
+  /// viagem que já existia no banco antes deste campo foi registrada
+  /// com a semântica de ida (embarque na parada de embarque), então IDA
+  /// é o valor historicamente correto, não um chute.
+  sentido TripSentido @default(IDA)
 
   /// Código único e legível da viagem (pedido do usuário: "o código da
   /// viagem - único"), gerado uma vez ao iniciar (`TripsService.start`) —

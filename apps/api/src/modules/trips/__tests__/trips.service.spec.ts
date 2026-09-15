@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, ForbiddenException } from "@nestjs/common";
-import { NotificationEventType, TripStatus } from "@prisma/client";
+import { NotificationEventType, TripSentido, TripStatus } from "@prisma/client";
 
 import { TripsService } from "../trips.service";
 
@@ -29,6 +29,7 @@ function buildTrip(overrides: Partial<Trip> = {}): Trip {
     routeId: "route-1",
     data: new Date(),
     status: TripStatus.EM_ANDAMENTO,
+    sentido: TripSentido.IDA,
     codigo: "ABC234",
     veiculoId: "vehicle-1",
     motoristaId: "motorista-1",
@@ -663,6 +664,64 @@ describe("TripsService", () => {
         ),
       ).rejects.toThrow(ConflictException);
       expect(studentEventRepository.create).not.toHaveBeenCalled();
+    });
+
+    // Sentido da viagem (pedido do usuário 15/09/2026, "igual placa de
+    // ônibus: Ida 🔄 Volta"). Na volta o aluno embarca NA ESCOLA —
+    // que é a `paradaDesembarque` do vínculo — e desce em casa/no
+    // trabalho do responsável, que é a `paradaEmbarque`. O vínculo é o
+    // MESMO nos dois sentidos; quem inverte é `paradaDoVinculo`.
+    it("na VOLTA, EMBARCOU é registrado na parada de DESEMBARQUE do vínculo (embarca na escola)", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ sentido: TripSentido.VOLTA }));
+      studentEventRepository.findByTripStudentAndTipo.mockResolvedValue(null);
+      studentEventRepository.create.mockResolvedValue({
+        id: "event-1",
+        tripId: "trip-1",
+        studentId: "student-1",
+        routeStopId: "stop-desembarque",
+        tipo: "EMBARCOU",
+        motivoAusencia: null,
+        processadoPorId: "motorista-1",
+        processadoEm: new Date(),
+      } as never);
+
+      await service.addStudentEvent(
+        "trip-1",
+        { studentId: "student-1", tipo: "EMBARCOU" },
+        motoristaActor,
+      );
+
+      expect(studentEventRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ routeStopId: "stop-desembarque", tipo: "EMBARCOU" }),
+      );
+    });
+
+    it("na VOLTA, DESEMBARCOU é registrado na parada de EMBARQUE do vínculo (desce em casa)", async () => {
+      tripRepository.findById.mockResolvedValue(buildTrip({ sentido: TripSentido.VOLTA }));
+      studentEventRepository.findByTripStudentAndTipo.mockImplementation(
+        (_tripId: string, _studentId: string, tipo: string) =>
+          tipo === "EMBARCOU" ? ({ id: "event-embarque" } as never) : (null as never),
+      );
+      studentEventRepository.create.mockResolvedValue({
+        id: "event-2",
+        tripId: "trip-1",
+        studentId: "student-1",
+        routeStopId: "stop-embarque",
+        tipo: "DESEMBARCOU",
+        motivoAusencia: null,
+        processadoPorId: "motorista-1",
+        processadoEm: new Date(),
+      } as never);
+
+      await service.addStudentEvent(
+        "trip-1",
+        { studentId: "student-1", tipo: "DESEMBARCOU" },
+        motoristaActor,
+      );
+
+      expect(studentEventRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ routeStopId: "stop-embarque", tipo: "DESEMBARCOU" }),
+      );
     });
   });
 
