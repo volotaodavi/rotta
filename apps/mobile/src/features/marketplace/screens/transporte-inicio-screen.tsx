@@ -29,6 +29,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+
 import { AusenciaHojeCard } from "../components/ausencia-hoje-card";
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
@@ -386,7 +387,83 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
             começar.
           </Text>
         ) : (
+          /* Layout do cartão "Viagem em andamento" da referência
+             (15/09/2026): antes era o mapa seguido de UMA frase corrida
+             ("Rota 12, motorista Carlos Silva, monitor X") — os mesmos
+             dados, mas sem hierarquia nenhuma. Agora: selo de status,
+             nome da rota, motorista e veículo lado a lado, próximo
+             destino e previsão de chegada em destaque. Tudo já vinha nos
+             hooks que esta tela usava (`useGpsForStudent` +
+             `useProximasEtasResponsavel`) — nenhuma chamada nova, nenhum
+             dado inventado: cada bloco só aparece quando o dado existe
+             de verdade. */
           <>
+            <View style={styles.acompRow}>
+              <StatusPill label="Em deslocamento" tone="success" />
+            </View>
+
+            <Text style={[styles.acompRota, { color: theme.colors.text }]}>{viagem.routeNome}</Text>
+
+            <View style={styles.acompColunas}>
+              <View style={styles.acompColuna}>
+                <Text style={[styles.acompValor, { color: theme.colors.text }]}>
+                  {viagem.motoristaNome}
+                </Text>
+                <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                  Motorista
+                </Text>
+              </View>
+              <View style={styles.acompColuna}>
+                <Text style={[styles.acompValor, { color: theme.colors.text }]}>
+                  {viagem.placa}
+                </Text>
+                <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>Veículo</Text>
+              </View>
+            </View>
+
+            {viagem.monitorNome ? (
+              <View style={styles.acompColuna}>
+                <Text style={[styles.acompValor, { color: theme.colors.text }]}>
+                  {viagem.monitorNome}
+                </Text>
+                <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>Monitor</Text>
+              </View>
+            ) : null}
+
+            {proximaParada ? (
+              <>
+                <View style={styles.acompLinhaIcone}>
+                  <MapPin size={16} color={theme.colors.textMuted} />
+                  <View style={styles.acompLinhaTexto}>
+                    <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                      Próximo destino
+                    </Text>
+                    <Text style={{ color: theme.colors.text }} numberOfLines={2}>
+                      {proximaParada.endereco}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.acompLinhaIcone}>
+                  <Clock size={16} color={theme.colors.textMuted} />
+                  <View style={styles.acompLinhaTexto}>
+                    <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                      Previsão de chegada
+                    </Text>
+                    <Text style={[styles.acompEta, { color: theme.colors.primary }]}>
+                      {new Date(proximaParada.etaPrevista).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                      {proximaParada.etaSegundos > 0
+                        ? ` (${Math.max(1, Math.round(proximaParada.etaSegundos / 60))} min)`
+                        : ""}
+                    </Text>
+                  </View>
+                </View>
+              </>
+            ) : null}
+
             {viagem.latitude && viagem.longitude ? (
               <View style={styles.mapa}>
                 <RottaMap
@@ -409,11 +486,8 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                 />
               </View>
             ) : null}
-            <Text style={{ color: theme.colors.text }}>
-              {viagem.routeNome}, motorista {viagem.motoristaNome}
-              {viagem.monitorNome ? `, monitor ${viagem.monitorNome}` : ""}
-            </Text>
-            <Text style={{ color: theme.colors.textMuted }}>
+
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {viagem.ultimaPosicaoEm
                 ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
                 : "Aguardando a primeira posição do motorista"}
@@ -743,6 +817,15 @@ function RatingForm({
 }
 
 const styles = StyleSheet.create({
+  acompColuna: { flex: 1, gap: 2 },
+  acompColunas: { flexDirection: "row", gap: 12 },
+  acompEta: { fontSize: 16, fontWeight: "700" },
+  acompLinhaIcone: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
+  acompLinhaTexto: { flex: 1, gap: 2 },
+  acompRota: { fontSize: 15, fontWeight: "600" },
+  acompRotulo: { fontSize: 12 },
+  acompRow: { alignItems: "flex-start", flexDirection: "row" },
+  acompValor: { fontSize: 14, fontWeight: "600" },
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },
   etaRow: { alignItems: "center", flexDirection: "row", gap: 4 },
