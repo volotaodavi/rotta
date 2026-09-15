@@ -120,6 +120,18 @@ export interface TripStudentEvent {
   tripId: string;
   studentId: string;
   routeStopId: string;
+  /**
+   * Endereço da parada onde o evento aconteceu (pedido do usuário
+   * 15/09/2026, "a linha de localização aparecerá para os
+   * transportadores e para os responsáveis") — vem do JOIN com
+   * `RouteStop` no backend, nunca deduzido do tipo do evento (deduzir
+   * erraria na volta, onde o embarque é na escola). `null`/ausente
+   * quando não há parada a mostrar: a tela omite a linha, nunca
+   * escreve "—".
+   */
+  local?: string | null;
+  /** `true` quando a parada é uma escola do catálogo — o ícone certo sem adivinhar pelo texto. */
+  localEhEscola?: boolean;
   tipo: TripStudentEventType;
   motivoAusencia: string | null;
   processadoPorId: string;

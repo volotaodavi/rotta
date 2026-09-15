@@ -1,3 +1,4 @@
+import type { TripStudentEventComParada } from "../mappers/trip-student-event.mapper";
 import type { TripStudentEvent, TripStudentEventType } from "@prisma/client";
 
 export interface CreateTripStudentEventData {
@@ -23,7 +24,8 @@ export interface TripStudentEventRepository {
     studentId: string,
     tipo: TripStudentEventType,
   ): Promise<TripStudentEvent | null>;
-  listByTrip(tripId: string): Promise<TripStudentEvent[]>;
+  /** Com a parada embutida (`routeStop`) — é a consulta que alimenta a tela do transportador, que mostra o local de cada evento. */
+  listByTrip(tripId: string): Promise<TripStudentEventComParada[]>;
   /**
    * Histórico de um aluno específico, através de QUALQUER viagem/tenant
    * (Responsável do interior de SP pode ter o filho mais velho numa
@@ -33,7 +35,7 @@ export interface TripStudentEventRepository {
    * já validou a posse do aluno via `StudentsService.findByIdOrThrow`
    * antes — nunca exposto direto sem essa checagem.
    */
-  listByStudentAcrossTenants(studentId: string, since: Date): Promise<TripStudentEvent[]>;
+  listByStudentAcrossTenants(studentId: string, since: Date): Promise<TripStudentEventComParada[]>;
 
   /**
    * Alunos, dentre `studentIds`, que têm um evento `AUSENTE` registrado

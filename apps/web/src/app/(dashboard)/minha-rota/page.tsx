@@ -86,6 +86,7 @@ import {
   TRIP_SENTIDO_LABEL,
 } from "@/features/routes/components/sentido-switch";
 import { useUpdateRoute } from "@/features/routes/hooks/use-routes";
+import { ordenarParadasPorSentido } from "@/features/routes/stop-order";
 import { useStudent } from "@/features/students/hooks/use-students";
 import {
   useStudentsAttendanceToday,
@@ -793,10 +794,16 @@ function RotaOperacional({
   useWakeLock(podeReportarGps && isActive);
   useBeforeUnloadWarning(podeReportarGps && isActive);
 
-  const paradasOrdenadas = [...(stops ?? [])].sort((a, b) => a.ordem - b.ordem);
-  const markers: RottaMapMarker[] = paradasOrdenadas.map((parada) => ({
+  // Ordem de PERCURSO, não a ordem cadastrada: numa viagem de volta as
+  // mesmas paradas são percorridas ao contrário (ver
+  // `ordenarParadasPorSentido`). Isso decide o traçado do mapa, a
+  // numeração dos marcadores e a sequência dos cartões de parada —
+  // tudo em que a ordem É o conteúdo. Sem viagem iniciada não há
+  // sentido a respeitar, e cai na ordem cadastrada.
+  const paradasOrdenadas = ordenarParadasPorSentido(stops ?? [], trip?.sentido);
+  const markers: RottaMapMarker[] = paradasOrdenadas.map((parada, indice) => ({
     id: parada.id,
-    titulo: `${parada.ordem}. ${parada.endereco}`,
+    titulo: `${indice + 1}. ${parada.endereco}`,
     latitude: parada.latitude,
     longitude: parada.longitude,
   }));

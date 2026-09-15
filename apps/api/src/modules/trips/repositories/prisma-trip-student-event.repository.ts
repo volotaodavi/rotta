@@ -4,6 +4,7 @@ import type {
   CreateTripStudentEventData,
   TripStudentEventRepository,
 } from "./trip-student-event.repository";
+import type { TripStudentEventComParada } from "../mappers/trip-student-event.mapper";
 import type { TripStudentEvent, TripStudentEventType } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
@@ -28,19 +29,26 @@ export class PrismaTripStudentEventRepository implements TripStudentEventReposit
     );
   }
 
-  listByTrip(tripId: string): Promise<TripStudentEvent[]> {
+  /**
+   * O `include` da parada é o que permite mostrar o LOCAL de cada
+   * evento (pedido do usuário 15/09/2026) — um JOIN só, nunca uma
+   * consulta por evento.
+   */
+  listByTrip(tripId: string): Promise<TripStudentEventComParada[]> {
     return this.prisma.withTenant(
       this.prisma.tripStudentEvent.findMany({
         where: { tripId },
+        include: { routeStop: { select: { endereco: true, schoolId: true } } },
         orderBy: { processadoEm: "asc" },
       }),
     );
   }
 
-  listByStudentAcrossTenants(studentId: string, since: Date): Promise<TripStudentEvent[]> {
+  listByStudentAcrossTenants(studentId: string, since: Date): Promise<TripStudentEventComParada[]> {
     return this.prisma.withBypass(
       this.prisma.tripStudentEvent.findMany({
         where: { studentId, processadoEm: { gte: since } },
+        include: { routeStop: { select: { endereco: true, schoolId: true } } },
         orderBy: { processadoEm: "desc" },
       }),
     );

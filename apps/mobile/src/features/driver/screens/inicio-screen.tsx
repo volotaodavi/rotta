@@ -96,6 +96,7 @@ import {
   TRIP_SENTIDO_DESCRICAO,
   TRIP_SENTIDO_LABEL,
 } from "@/features/routes/components/sentido-switch";
+import { ordenarParadasPorSentido } from "@/features/routes/stop-direction";
 import {
   StatusPill,
   VehicleButton,
@@ -546,16 +547,30 @@ function AlunosDaViagemCard({
 
   if (alunos.length === 0) return null;
 
+  /**
+   * `local` é o endereço da parada ONDE o evento aconteceu (pedido do
+   * usuário 15/09/2026: "a linha de localização aparecerá para os
+   * transportadores e para os responsáveis") — vem do backend junto do
+   * evento, nunca deduzido do tipo: na volta o embarque é na escola.
+   * `null` enquanto ainda não há evento, ou se a parada sumiu.
+   */
   function statusDoAluno(studentId: string): {
     rotulo: string;
     tone: StatusPillTone;
     embarcado: boolean;
     pendente: boolean;
+    local: string | null;
   } {
     const doAluno = eventos.filter((e) => e.studentId === studentId);
     const ausente = doAluno.find((e) => e.tipo === "AUSENTE");
     if (ausente) {
-      return { rotulo: "Ausente", tone: "danger", embarcado: false, pendente: false };
+      return {
+        rotulo: "Ausente",
+        tone: "danger",
+        embarcado: false,
+        pendente: false,
+        local: ausente.local ?? null,
+      };
     }
     const desembarque = doAluno.find((e) => e.tipo === "DESEMBARCOU");
     if (desembarque) {
@@ -564,6 +579,7 @@ function AlunosDaViagemCard({
         tone: "neutral",
         embarcado: false,
         pendente: false,
+        local: desembarque.local ?? null,
       };
     }
     const embarque = doAluno.find((e) => e.tipo === "EMBARCOU");
@@ -573,9 +589,16 @@ function AlunosDaViagemCard({
         tone: "success",
         embarcado: true,
         pendente: false,
+        local: embarque.local ?? null,
       };
     }
-    return { rotulo: "Aguardando", tone: "warning", embarcado: false, pendente: true };
+    return {
+      rotulo: "Aguardando",
+      tone: "warning",
+      embarcado: false,
+      pendente: true,
+      local: null,
+    };
   }
 
   const comStatus = alunos.map((aluno) => ({ aluno, status: statusDoAluno(aluno.studentId) }));
@@ -639,6 +662,19 @@ function AlunosDaViagemCard({
                 <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
                   {aluno.bairro}
                 </Text>
+              ) : null}
+              {/* Onde o evento aconteceu — só aparece depois que há um
+                  evento com parada; sem isso a linha some, nunca vira "—". */}
+              {status.local ? (
+                <View style={styles.alunoViagemLocal}>
+                  <MapPin size={11} color={theme.colors.textMuted} />
+                  <Text
+                    style={{ color: theme.colors.textMuted, flex: 1, fontSize: 11 }}
+                    numberOfLines={1}
+                  >
+                    {status.local}
+                  </Text>
+                </View>
               ) : null}
             </View>
             <StatusPill label={status.rotulo} tone={status.tone} />
@@ -948,10 +984,16 @@ function RotaOperacional({
     return () => void deactivateKeepAwake(tag);
   }, [podeReportarGps, isActive]);
 
-  const paradasOrdenadas = [...(stops ?? [])].sort((a, b) => a.ordem - b.ordem);
-  const markers: RottaMapMarker[] = paradasOrdenadas.map((parada) => ({
+  // Ordem de PERCURSO, não a ordem cadastrada: numa viagem de volta as
+  // mesmas paradas são percorridas ao contrário (ver
+  // `ordenarParadasPorSentido`). Isso decide o traçado do mapa, a
+  // numeração dos marcadores e a sequência dos cartões de parada —
+  // tudo em que a ordem É o conteúdo. Sem viagem iniciada não há
+  // sentido a respeitar, e cai na ordem cadastrada.
+  const paradasOrdenadas = ordenarParadasPorSentido(stops ?? [], trip?.sentido);
+  const markers: RottaMapMarker[] = paradasOrdenadas.map((parada, indice) => ({
     id: parada.id,
-    titulo: `${parada.ordem}. ${parada.endereco}`,
+    titulo: `${indice + 1}. ${parada.endereco}`,
     latitude: parada.latitude,
     longitude: parada.longitude,
   }));
@@ -2245,6 +2287,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   alunoRowContainer: { gap: 4, paddingVertical: 6 },
+  alunoViagemLocal: { alignItems: "center", flexDirection: "row", gap: 4 },
   alunoViagemRow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 6 },
   alunoViagemTexto: { flex: 1, gap: 2 },
   alunosAba: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },

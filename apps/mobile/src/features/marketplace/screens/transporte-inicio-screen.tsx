@@ -126,11 +126,15 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
           outra: `state` "done" pinta o ponto de verde (evento que já
           aconteceu) e "error" de vermelho pra ausência.
 
-          A referência põe o LOCAL embaixo do evento ("Casa do aluno",
-          "Escola Municipal São José"). Isso não entra porque
-          `TripStudentEvent` não carrega endereço — só `routeStopId` —, e
-          deduzir "casa" do tipo do evento estaria errado na volta, onde
-          o embarque acontece na escola. Fica o horário, que é dado real.
+          A referência põe o LOCAL embaixo do evento, e ele agora entra
+          (pedido do usuário 15/09/2026: "a linha de localização
+          aparecerá para os transportadores e para os responsáveis").
+          Antes ficava de fora porque o evento só trazia `routeStopId`
+          e deduzir "casa"/"escola" pelo TIPO do evento erraria na
+          volta, onde o embarque é na escola. A solução não foi deduzir:
+          o backend passou a devolver `local` com o endereço real da
+          parada (um JOIN, nenhuma consulta por evento). Sem `local`, a
+          linha some — nunca vira "—".
         */
         <Timeline
           theme={theme}
@@ -138,18 +142,25 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
             key: event.id,
             label: EVENT_LABEL[event.tipo],
             description: [
-              range === "hoje"
-                ? formatarHora(event.processadoEm)
-                : new Date(event.processadoEm).toLocaleString("pt-BR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  }),
-              event.motivoAusencia,
+              [
+                range === "hoje"
+                  ? formatarHora(event.processadoEm)
+                  : new Date(event.processadoEm).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }),
+                event.motivoAusencia,
+              ]
+                .filter(Boolean)
+                .join(" · "),
+              // O local em linha própria, como na referência — `Timeline`
+              // não limita linhas, então a quebra funciona.
+              event.local,
             ]
               .filter(Boolean)
-              .join(" · "),
+              .join("\n"),
             state: event.tipo === "AUSENTE" ? ("error" as const) : ("done" as const),
           }))}
         />
