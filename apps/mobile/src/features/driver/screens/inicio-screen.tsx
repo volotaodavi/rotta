@@ -6,6 +6,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
+  School,
   LifeBuoy,
   LogIn,
   LogOut,
@@ -96,6 +97,8 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useTheme } from "@/providers/theme-provider";
+
+
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -709,6 +712,37 @@ function RotaOperacional({
   // condicionais nesta tela.
   const { data: routeStudentsDetalhado } = useRouteStudentsDetalhado(!trip ? rota.id : undefined);
 
+  /*
+   * Resumo do cartão "Próxima viagem" (15/09/2026) — a referência mostra
+   * escola, janela de horário e "N alunos · 1 monitor" ali. Nada disso
+   * vem pronto: `Route` só tem nome/turno/ids, então o resumo é derivado
+   * da MESMA lista de alunos que o cartão já carrega (`schoolNome` e
+   * `horarioPrevisto` por aluno) — nenhuma consulta nova.
+   *
+   * Quando a rota atende mais de uma escola, diz quantas são em vez de
+   * escolher uma e dar a impressão errada de que é a única.
+   */
+  const escolasDaRota = Array.from(
+    new Set((routeStudentsDetalhado ?? []).map((a) => a.schoolNome).filter(Boolean)),
+  ) as string[];
+  const escolaResumo =
+    escolasDaRota.length === 1
+      ? escolasDaRota[0]
+      : escolasDaRota.length > 1
+        ? `${escolasDaRota.length} escolas`
+        : null;
+
+  const horariosDaRota = (routeStudentsDetalhado ?? [])
+    .map((a) => a.horarioPrevisto)
+    .filter((h): h is string => Boolean(h))
+    .sort();
+  const janelaHorario =
+    horariosDaRota.length > 0
+      ? horariosDaRota[0] === horariosDaRota[horariosDaRota.length - 1]
+        ? horariosDaRota[0]
+        : `${horariosDaRota[0]} - ${horariosDaRota[horariosDaRota.length - 1]}`
+      : null;
+
   const startTrip = useStartTrip(rota.id);
   const pauseTrip = usePauseTrip(rota.id);
   const resumeTrip = useResumeTrip(rota.id);
@@ -944,7 +978,7 @@ function RotaOperacional({
       </Modal>
 
       <ScrollView contentContainerStyle={styles.opScrollContent}>
-        <PanelGreeting nome={user?.nome ?? ""} />
+        <PanelGreeting nome={user?.nome ?? ""} subtitulo="Pronto para sua próxima viagem?" />
 
         {/*
           Mapa em CARTÃO, não em tela cheia (3 imagens de referência
@@ -1034,9 +1068,24 @@ function RotaOperacional({
             ]}
           >
             <Text style={{ color: theme.colors.text, fontWeight: "700" }}>Próxima viagem</Text>
+            {escolaResumo ? (
+              <View style={styles.proximaViagemLinha}>
+                <School size={14} color={theme.colors.textMuted} />
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+                  {escolaResumo}
+                </Text>
+              </View>
+            ) : null}
+            {janelaHorario ? (
+              <View style={styles.proximaViagemLinha}>
+                <Clock size={14} color={theme.colors.textMuted} />
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{janelaHorario}</Text>
+              </View>
+            ) : null}
             <View style={styles.mapCardBodyRow}>
               <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {totalAlunos} alunos confirmados
+                {rota.monitorPadraoId ? " · 1 monitor" : ""}
               </Text>
             </View>
             {/*
@@ -2153,6 +2202,7 @@ const styles = StyleSheet.create({
   progressoBarra: { borderRadius: 999, height: "100%" },
   progressoTrilha: { borderRadius: 999, height: 6, overflow: "hidden", width: "100%" },
   proximaViagemCard: { marginHorizontal: 16 },
+  proximaViagemLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
   rosterCompleto: { borderTopWidth: 1, gap: 10, paddingTop: 12 },
   secao: { fontSize: 16, fontWeight: "700" },
   statsCard: { marginHorizontal: 16 },

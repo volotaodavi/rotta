@@ -19,7 +19,14 @@ import { useTheme } from "@/providers/theme-provider";
  * mismatch de hidratação aqui, React Native não faz SSR, mas o mesmo
  * cuidado evita mostrar uma hora capturada no momento errado).
  */
-export function PanelGreeting({ nome }: { nome: string }): JSX.Element {
+export function PanelGreeting({
+  nome,
+  subtitulo,
+}: {
+  nome: string;
+  /** Linha da referência ("Pronto para sua próxima viagem?") — opcional: o Perfil usa o mesmo cabeçalho e não tem subtítulo. */
+  subtitulo?: string;
+}): JSX.Element {
   const { theme } = useTheme();
   const [agora, setAgora] = useState<Date | null>(null);
 
@@ -40,6 +47,9 @@ export function PanelGreeting({ nome }: { nome: string }): JSX.Element {
       <Text style={[styles.saudacao, { color: theme.colors.text }]}>
         {saudacaoPorHora(agora?.getHours() ?? 12)}, {nome}!
       </Text>
+      {subtitulo ? (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{subtitulo}</Text>
+      ) : null}
       {agora ? (
         <View style={styles.horaRow}>
           <Text style={[styles.hora, { color: theme.colors.text }]}>
