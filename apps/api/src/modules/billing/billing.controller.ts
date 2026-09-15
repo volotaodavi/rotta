@@ -79,6 +79,24 @@ export class BillingController {
     return this.billingService.getAsaasCheckoutStatus(id);
   }
 
+  /**
+   * Histórico de pagamentos da PRÓPRIA empresa (15/09/2026, pedido do
+   * usuário: área de assinatura no app do transportador). Mesmo serviço
+   * de `admin/companies/:id/payments`, mas escopado pelo
+   * `actor.tenantId` em vez de um id de rota — o transportador vê o
+   * próprio extrato e não tem como pedir o de outra empresa, mesmo
+   * raciocínio dos checkouts acima.
+   *
+   * A rota de admin continua existindo e continua sendo de admin: ela
+   * atende OUTRA necessidade (suporte financeiro olhando a conta de um
+   * cliente), com `AdminArea.FINANCEIRO`.
+   */
+  @Get("company/payments")
+  @Roles(Role.EMPRESA, Role.GESTOR)
+  getMyCompanyPaymentHistory(@CurrentUser() actor: AuthenticatedUser) {
+    return this.billingService.getCompanyPaymentHistory(actor.tenantId as string);
+  }
+
   /** Painel financeiro (Frente AF) — valores recebidos, taxa retida, empresas/planos ativos (100% Asaas: Pix, cartão/débito/boleto). */
   @Get("admin/overview")
   @Roles(Role.ADMIN_ROTTA)

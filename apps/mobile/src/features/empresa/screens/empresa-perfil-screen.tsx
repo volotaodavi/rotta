@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
-import { Bell, Bus, LogOut, Users, Zap } from "@rotta/icons/native";
+import { Bell, Bus, CreditCard, LogOut, Users, Zap } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { EmpresaTabParamList } from "@/navigation/types";
@@ -81,8 +81,17 @@ export function EmpresaPerfilScreen(): JSX.Element {
       <MenuRowList
         items={[
           { icon: Bus, label: "Veículos", onPress: () => navigation.navigate("Frota") },
-          { icon: Users, label: "Motoristas", onPress: () => navigation.navigate("Inicio") },
+          {
+            icon: Users,
+            label: "Motoristas",
+            onPress: () => navigation.navigate("Inicio", { screen: "Equipe" }),
+          },
           { icon: Bell, label: "Notificações", onPress: () => navigation.navigate("Notificacoes") },
+          {
+            icon: CreditCard,
+            label: "Assinatura",
+            onPress: () => navigation.navigate("Inicio", { screen: "Assinatura" }),
+          },
           ...(canToggle
             ? [{ icon: Zap, label: "Entrar no Modo Ação", onPress: () => setMode("acao") }]
             : []),

@@ -309,6 +309,20 @@ export function createBillingEndpoints(apiClient: ApiClient) {
         )
       ).data,
 
+    /**
+     * Histórico de pagamentos da PRÓPRIA empresa do usuário logado
+     * (`GET /billing/company/payments`, escopado pelo `tenantId` do
+     * token). Não confundir com `getCompanyPaymentHistory` acima, que é
+     * a rota de ADMIN (suporte financeiro olhando a conta de um
+     * cliente) e exige `Role.ADMIN_ROTTA` + área FINANCEIRO.
+     */
+    getMyCompanyPaymentHistory: async (): Promise<BillingCompanyPaymentHistoryResult> =>
+      (
+        await apiClient.request<ApiEnvelope<BillingCompanyPaymentHistoryResult>>(
+          `/billing/company/payments`,
+        )
+      ).data,
+
     /** Checkout próprio da Rotta pra cartão/débito/boleto — processado pela Asaas por trás, sem sair da Rotta. */
     createAsaasCheckout: async (input: CreateAsaasCheckoutInput): Promise<AsaasPayment> =>
       (

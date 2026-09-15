@@ -4,6 +4,7 @@ import type { EmpresaHomeStackParamList } from "./types";
 
 import {
   EmpresaAlunosPreCadastroScreen,
+  EmpresaAssinaturaScreen,
   EmpresaEquipeScreen,
   EmpresaHomeScreen,
   EmpresaMarketplaceContratoDetalheScreen,
@@ -31,6 +32,11 @@ export function EmpresaHomeNavigator(): JSX.Element {
         options={{ title: "Alunos" }}
       />
       <Stack.Screen name="Equipe" component={EmpresaEquipeScreen} options={{ title: "Equipe" }} />
+      <Stack.Screen
+        name="Assinatura"
+        component={EmpresaAssinaturaScreen}
+        options={{ title: "Assinatura" }}
+      />
       <Stack.Screen
         name="MarketplaceSolicitacoes"
         component={EmpresaMarketplaceSolicitacoesScreen}

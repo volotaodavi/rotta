@@ -1,3 +1,5 @@
+import type { NavigatorScreenParams } from "@react-navigation/native";
+
 /**
  * Tipos de parametro de cada navigator (Dossie 23, Secao 4.2). Crescem
  * conforme as telas reais (Dossie 15-18) forem implementadas — apenas o
@@ -291,7 +293,15 @@ export type AdminFinanceiroStackParamList = {
  * agnóstico de papel).
  */
 export type EmpresaTabParamList = {
-  Inicio: undefined;
+  /**
+   * `NavigatorScreenParams` (15/09/2026) — permite navegar direto pra
+   * uma tela DENTRO da stack da aba Início (ex.: Perfil -> Assinatura),
+   * em vez de só trocar de aba e largar a pessoa no Dashboard. Sem isso,
+   * um item de menu como "Assinatura" cairia na tela errada. `|
+   * undefined` mantém `navigate("Inicio")` simples funcionando onde já
+   * era usado assim.
+   */
+  Inicio: NavigatorScreenParams<EmpresaHomeStackParamList> | undefined;
   Frota: undefined;
   Rotas: undefined;
   Notificacoes: undefined;
@@ -306,6 +316,9 @@ export type EmpresaTabParamList = {
  */
 export type EmpresaHomeStackParamList = {
   Dashboard: undefined;
+  /** Assinatura da Rotta (15/09/2026) — status do plano e extrato de pagamentos da
+   * própria empresa; o pagamento em si abre no navegador (ver a tela). */
+  Assinatura: undefined;
   AlunosPreCadastro: undefined;
   Equipe: undefined;
   /**
