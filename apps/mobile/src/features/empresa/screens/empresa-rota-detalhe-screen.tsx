@@ -1,3 +1,4 @@
+import { GraduationCap, MapPin } from "@rotta/icons/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
@@ -15,11 +16,17 @@ import {
 import type { EmpresaRotasStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { useGeocodeAddress } from "@/features/marketplace/hooks/use-geocode-address";
 import {
   formatRouteWeekdaysAbbrev,
   ROUTE_STATUS_LABEL,
   ROUTE_STATUS_TONE,
 } from "@/features/routes/labels";
+import {
+  getStopDirection,
+  STOP_DIRECTION_LABEL,
+  STOP_DIRECTION_TONE,
+} from "@/features/routes/stop-direction";
 import { useSchoolsList } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import {
@@ -35,10 +42,27 @@ type Props = NativeStackScreenProps<EmpresaRotasStackParamList, "Detalhe">;
 
 /**
  * Rotas — detalhe — dados da rota + pausar/ativar + paradas e alunos
- * vinculados. Frente 4b acrescentou "Adicionar parada" (só por escola
- * do catálogo, sem endereço livre na v1) e "Adicionar aluno" (contratos
- * `ATIVO` ainda não vinculados, escolhendo embarque/desembarque entre
- * as paradas já cadastradas).
+ * vinculados. Frente 4b acrescentou "Adicionar parada" e "Adicionar
+ * aluno" (contratos `ATIVO` ainda não vinculados, escolhendo
+ * embarque/desembarque entre as paradas já cadastradas).
+ *
+ * Ida e volta (pergunta do usuário 15/09/2026: "qual a intenção da
+ * rota? Ter a rota de ida (escola) e rota de volta (casa/apartamento/
+ * local de trabalho do responsável). Como que isso não está
+ * funcionando no app?").
+ *
+ * O modelo sempre suportou: cada aluno tem endereço de EMBARQUE e de
+ * DESEMBARQUE separados (`Student.embarque*`/`desembarque*`, cada um
+ * com CEP e coordenada própria — por isso a volta pode ser outro lugar
+ * que não a casa), e o vínculo aluno↔rota aponta as duas paradas
+ * (`paradaEmbarqueId`/`paradaDesembarqueId`). O que faltava era do lado
+ * do APP: esta tela só deixava criar parada NA ESCOLA (`schoolId`),
+ * então a parada do outro lado do trajeto — a casa, o apartamento, o
+ * trabalho do responsável — não tinha como ser criada pelo celular,
+ * embora o backend (`CreateRouteStopDto`) e o Painel Web já aceitassem
+ * endereço livre com coordenada. Agora tem, com a mesma
+ * geocodificação do cadastro de aluno, e cada parada mostra o selo
+ * Ida/Volta derivado dos vínculos.
  */
 export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -53,9 +77,17 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
   const addStudent = useAddRouteStudent(routeId);
   const removeStudent = useRemoveRouteStudent(routeId);
 
+  const [modoParada, setModoParada] = useState<"escola" | "endereco">("escola");
   const [schoolId, setSchoolId] = useState<string | null>(null);
+  const [enderecoParada, setEnderecoParada] = useState("");
   const [horarioPrevisto, setHorarioPrevisto] = useState("");
   const [erroParada, setErroParada] = useState<string | null>(null);
+
+  // Mesmo `POST /geo/geocode` (Rotta Geo Engine/Nominatim no servidor)
+  // que o cadastro de aluno usa — a coordenada nunca é digitada.
+  const enderecoGeocodificado = useGeocodeAddress(
+    modoParada === "endereco" && enderecoParada.trim().length >= 8 ? enderecoParada.trim() : null,
+  );
 
   const [alunoSelecionado, setAlunoSelecionado] = useState<{
     contractId: string;
@@ -90,16 +122,54 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
   );
 
   function handleAdicionarParada(): void {
-    if (!schoolId || horarioPrevisto.trim().length < 4) {
-      setErroParada("Escolha uma escola e informe o horário previsto (ex.: 07:30).");
+    if (horarioPrevisto.trim().length < 4) {
+      setErroParada("Informe o horário previsto (ex.: 07:30).");
+      return;
+    }
+
+    if (modoParada === "escola") {
+      if (!schoolId) {
+        setErroParada("Escolha a escola da parada.");
+        return;
+      }
+      setErroParada(null);
+      addStop.mutate(
+        { ordem: paradasOrdenadas.length, schoolId, horarioPrevisto: horarioPrevisto.trim() },
+        {
+          onSuccess: () => {
+            setSchoolId(null);
+            setHorarioPrevisto("");
+          },
+          onError: () => setErroParada("Não foi possível adicionar a parada. Tente novamente."),
+        },
+      );
+      return;
+    }
+
+    // Parada fora da escola (casa, apartamento, trabalho do
+    // responsável): sem coordenada a parada existiria só como texto e o
+    // motorista nunca a veria no mapa — por isso é bloqueada até a
+    // geocodificação responder, em vez de salvar pela metade.
+    if (!enderecoGeocodificado.coordenada) {
+      setErroParada(
+        enderecoGeocodificado.isGeocoding
+          ? "Localizando o endereço no mapa…"
+          : "Não localizamos esse endereço. Inclua rua, número, bairro e cidade.",
+      );
       return;
     }
     setErroParada(null);
     addStop.mutate(
-      { ordem: paradasOrdenadas.length, schoolId, horarioPrevisto: horarioPrevisto.trim() },
+      {
+        ordem: paradasOrdenadas.length,
+        endereco: enderecoParada.trim(),
+        latitude: enderecoGeocodificado.coordenada.latitude,
+        longitude: enderecoGeocodificado.coordenada.longitude,
+        horarioPrevisto: horarioPrevisto.trim(),
+      },
       {
         onSuccess: () => {
-          setSchoolId(null);
+          setEnderecoParada("");
           setHorarioPrevisto("");
         },
         onError: () => setErroParada("Não foi possível adicionar a parada. Tente novamente."),
@@ -158,26 +228,88 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
         {paradasOrdenadas.length === 0 ? (
           <Text style={{ color: theme.colors.textMuted }}>Nenhuma parada cadastrada ainda.</Text>
         ) : (
-          paradasOrdenadas.map((parada) => (
-            <Text key={parada.id} style={{ color: theme.colors.text }}>
-              {parada.ordem + 1}. {parada.endereco} · {parada.horarioPrevisto}
-            </Text>
-          ))
+          paradasOrdenadas.map((parada) => {
+            const direcao = getStopDirection(parada, alunos);
+            return (
+              <View key={parada.id} style={styles.paradaLinha}>
+                {parada.schoolId ? (
+                  <GraduationCap size={16} color={theme.colors.primary} />
+                ) : (
+                  <MapPin size={16} color={theme.colors.primary} />
+                )}
+                <View style={styles.paradaTexto}>
+                  <Text style={{ color: theme.colors.text }}>
+                    {parada.ordem + 1}. {parada.endereco}
+                  </Text>
+                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    {parada.horarioPrevisto}
+                  </Text>
+                </View>
+                {/* Selo Ida/Volta derivado do vínculo aluno↔parada —
+                    sem aluno vinculado ainda, nenhum selo. */}
+                {direcao ? (
+                  <StatusPill
+                    label={STOP_DIRECTION_LABEL[direcao]}
+                    tone={STOP_DIRECTION_TONE[direcao]}
+                  />
+                ) : null}
+              </View>
+            );
+          })
         )}
 
         <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
           Adicionar parada
         </Text>
+
+        {/* Dois modos, como no Painel Web: "Escola" pro destino da ida
+            (catálogo já importado e geocodificado, nunca digitado) e
+            "Outro endereço" pro destino da volta — casa, apartamento ou
+            o trabalho do responsável. O app só tinha o modo Escola, e
+            sem parada fora da escola não havia como montar a rota de
+            volta pelo celular. */}
         <View style={styles.chips}>
-          {(escolas?.items ?? []).map((escola) => (
-            <VehicleButton
-              key={escola.id}
-              label={escola.nomeFantasia ?? escola.nomeOficial}
-              variant={schoolId === escola.id ? "primary" : "secondary"}
-              onPress={() => setSchoolId(escola.id)}
-            />
-          ))}
+          <VehicleButton
+            label="Escola"
+            variant={modoParada === "escola" ? "primary" : "secondary"}
+            onPress={() => setModoParada("escola")}
+          />
+          <VehicleButton
+            label="Outro endereço"
+            variant={modoParada === "endereco" ? "primary" : "secondary"}
+            onPress={() => setModoParada("endereco")}
+          />
         </View>
+
+        {modoParada === "escola" ? (
+          <View style={styles.chips}>
+            {(escolas?.items ?? []).map((escola) => (
+              <VehicleButton
+                key={escola.id}
+                label={escola.nomeFantasia ?? escola.nomeOficial}
+                variant={schoolId === escola.id ? "primary" : "secondary"}
+                onPress={() => setSchoolId(escola.id)}
+              />
+            ))}
+          </View>
+        ) : (
+          <>
+            <VehicleTextField
+              label="Endereço da parada"
+              value={enderecoParada}
+              onChangeText={setEnderecoParada}
+              placeholder="Rua das Flores, 123 — Centro, Campinas/SP"
+            />
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              {enderecoGeocodificado.isGeocoding
+                ? "Localizando no mapa…"
+                : enderecoGeocodificado.coordenada
+                  ? "Endereço localizado no mapa."
+                  : "A Rotta Geo AI localiza a coordenada sozinha — nunca digitada."}
+            </Text>
+          </>
+        )}
+
         <VehicleTextField
           label="Horário previsto"
           value={horarioPrevisto}
@@ -283,4 +415,6 @@ const styles = StyleSheet.create({
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
   nome: { flex: 1, fontSize: 17, fontWeight: "700" },
+  paradaLinha: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 2 },
+  paradaTexto: { flex: 1 },
 });
