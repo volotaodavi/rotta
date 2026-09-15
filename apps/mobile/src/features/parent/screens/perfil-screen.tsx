@@ -11,6 +11,13 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { PinSetupCard } from "@/features/auth/components";
 import { useStudentsList } from "@/features/marketplace/hooks/use-students";
 import {
+  DadoLinha,
+  DadosCard,
+  SeloVerificado,
+  useVerificacaoResponsavel,
+  VerificacaoCard,
+} from "@/features/perfil";
+import {
   MenuRowList,
   VehicleButton,
   VehicleCard,
@@ -52,6 +59,7 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
   const { data: alunos } = useStudentsList();
+  const verificacao = useVerificacaoResponsavel();
 
   function handleMeuTransporte(): void {
     navigation.getParent<BottomTabNavigationProp<ParentTabParamList>>()?.navigate("Transporte");
@@ -67,15 +75,28 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
             </Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
+            <View style={styles.nomeLinha}>
+              <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
+              {verificacao.verificado ? <SeloVerificado /> : null}
+            </View>
             <Text style={{ color: theme.colors.textMuted }}>Responsável</Text>
           </View>
         </View>
-        <Text style={{ color: theme.colors.textMuted }}>{user?.email}</Text>
-        {user?.telefone ? (
-          <Text style={{ color: theme.colors.textMuted }}>{user.telefone}</Text>
-        ) : null}
       </VehicleCard>
+
+      {/* "Poderá ver TUDO oq foi preenchido" (pedido do usuário
+          15/09/2026) — antes esta tela só mostrava e-mail e telefone, e
+          só quando preenchidos; agora toda linha aparece sempre, e o que
+          falta aparece como "Não informado" em vez de sumir. */}
+      <DadosCard titulo="Meus dados">
+        <DadoLinha rotulo="Nome" valor={user?.nome} />
+        <DadoLinha rotulo="E-mail" valor={user?.email} />
+        <DadoLinha rotulo="Telefone" valor={user?.telefone} />
+        <DadoLinha rotulo="Perfil" valor="Responsável" />
+        <DadoLinha rotulo="Alunos cadastrados" valor={String(alunos?.items.length ?? 0)} />
+      </DadosCard>
+
+      <VerificacaoCard verificacao={verificacao} />
 
       <VehicleCard>
         <Text style={[styles.secao, { color: theme.colors.text }]}>Meus filhos</Text>
@@ -148,5 +169,6 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
   headerInfo: { flex: 1 },
   nome: { fontSize: 16, fontWeight: "700" },
+  nomeLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
   secao: { fontSize: 14, fontWeight: "700", marginBottom: 4 },
 });

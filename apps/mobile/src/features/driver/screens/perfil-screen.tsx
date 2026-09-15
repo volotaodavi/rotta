@@ -9,7 +9,15 @@ import type { DriverPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { PinSetupCard } from "@/features/auth/components";
+import {
+  DadoLinha,
+  DadosCard,
+  SeloVerificado,
+  useVerificacaoMotorista,
+  VerificacaoCard,
+} from "@/features/perfil";
 import { MenuRowList, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { useMyVehicle } from "@/features/vehicles/hooks/use-vehicles";
 import { useAppModeContext } from "@/providers/app-mode-provider";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -53,6 +61,8 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user, logout } = useAuth();
   const { canToggle, setMode } = useAppModeContext();
+  const verificacao = useVerificacaoMotorista();
+  const { data: veiculo } = useMyVehicle();
   const isMonitor = user?.role === "monitor";
   const accentColor = isMonitor ? theme.colors.monitorAccent : theme.colors.driverPrimary;
   const accentMuted = isMonitor ? theme.colors.monitorAccentMuted : theme.colors.driverPrimaryMuted;
@@ -73,17 +83,33 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
             <Text style={[styles.avatarLabel, { color: accentColor }]}>{iniciais(user?.nome)}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
+            <View style={styles.nomeLinha}>
+              <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
+              {verificacao.verificado ? <SeloVerificado /> : null}
+            </View>
             <Text style={{ color: theme.colors.textMuted }}>
               {user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
             </Text>
           </View>
         </View>
-        {user?.companyName ? (
-          <Text style={{ color: theme.colors.textMuted }}>{user.companyName}</Text>
-        ) : null}
-        <Text style={{ color: theme.colors.textMuted }}>{user?.email}</Text>
       </VehicleCard>
+
+      {/* "Poderá ver TUDO oq foi preenchido" (pedido do usuário
+          15/09/2026) — inclui o veículo vinculado, que é o que liga a
+          pessoa aos documentos avaliados logo abaixo. */}
+      <DadosCard titulo="Meus dados">
+        <DadoLinha rotulo="Nome" valor={user?.nome} />
+        <DadoLinha rotulo="E-mail" valor={user?.email} />
+        <DadoLinha rotulo="Telefone" valor={user?.telefone} />
+        <DadoLinha rotulo="Perfil" valor={user ? (ROLE_LABEL[user.role] ?? user.role) : null} />
+        <DadoLinha rotulo="Transportadora" valor={user?.companyName} />
+        <DadoLinha
+          rotulo="Veículo"
+          valor={veiculo ? `${veiculo.placa} · ${veiculo.modelo}` : null}
+        />
+      </DadosCard>
+
+      <VerificacaoCard verificacao={verificacao} />
 
       {/* Pedido do usuário 05/09/2026: "tanto para responsável, quanto para
           monitor/motorista" — antes só `motorista` tinha esta opção, sem
@@ -146,4 +172,5 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
   headerInfo: { flex: 1 },
   nome: { fontSize: 16, fontWeight: "700" },
+  nomeLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
 });

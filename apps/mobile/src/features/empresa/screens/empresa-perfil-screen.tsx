@@ -3,9 +3,18 @@ import { useAuth } from "@rotta/auth/native";
 import { Bell, Bus, CreditCard, LifeBuoy, LogOut, Users, Zap } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
+import { useMyCompany } from "../hooks/use-empresa-company";
+
 import type { EmpresaTabParamList } from "@/navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
+import {
+  DadoLinha,
+  DadosCard,
+  SeloVerificado,
+  useVerificacaoEmpresa,
+  VerificacaoCard,
+} from "@/features/perfil";
 import { MenuRowList, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useAppModeContext } from "@/providers/app-mode-provider";
 import { useTheme } from "@/providers/theme-provider";
@@ -53,6 +62,8 @@ export function EmpresaPerfilScreen(): JSX.Element {
   const { user, logout } = useAuth();
   const { canToggle, setMode } = useAppModeContext();
   const navigation = useNavigation<BottomTabNavigationProp<EmpresaTabParamList>>();
+  const verificacao = useVerificacaoEmpresa();
+  const { data: empresa } = useMyCompany(user?.companyId);
 
   return (
     <VehicleScreen>
@@ -64,7 +75,10 @@ export function EmpresaPerfilScreen(): JSX.Element {
             </Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
+            <View style={styles.nomeLinha}>
+              <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
+              {verificacao.verificado ? <SeloVerificado /> : null}
+            </View>
             {user?.companyName ? (
               <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {user.companyName}
@@ -72,11 +86,37 @@ export function EmpresaPerfilScreen(): JSX.Element {
             ) : null}
           </View>
         </View>
-        <Text style={{ color: theme.colors.textMuted }}>{user?.email}</Text>
-        {user?.telefone ? (
-          <Text style={{ color: theme.colors.textMuted }}>{user.telefone}</Text>
-        ) : null}
       </VehicleCard>
+
+      {/* "Poderá ver TUDO oq foi preenchido" (pedido do usuário
+          15/09/2026) — conta + transportadora na mesma tela. Continua
+          SÓ LEITURA: editar empresa segue exclusivo do Painel Web (ver
+          comentário do cabeçalho), então nenhuma linha aqui é um campo. */}
+      <DadosCard titulo="Meus dados">
+        <DadoLinha rotulo="Nome" valor={user?.nome} />
+        <DadoLinha rotulo="E-mail" valor={user?.email} />
+        <DadoLinha rotulo="Telefone" valor={user?.telefone} />
+        <DadoLinha rotulo="Perfil" valor={user?.role === "gestor" ? "Gestor(a)" : "Empresa"} />
+      </DadosCard>
+
+      <DadosCard titulo="Transportadora">
+        <DadoLinha rotulo="Nome fantasia" valor={empresa?.nomeFantasia ?? user?.companyName} />
+        <DadoLinha rotulo="Razão social" valor={empresa?.razaoSocial} />
+        <DadoLinha rotulo="CNPJ/CPF" valor={empresa?.cpfCnpj} />
+        <DadoLinha rotulo="Código Rotta" valor={empresa?.codigoInterno} />
+        <DadoLinha rotulo="E-mail" valor={empresa?.email} />
+        <DadoLinha rotulo="Telefone" valor={empresa?.telefone} />
+        <DadoLinha
+          rotulo="Endereço"
+          valor={
+            empresa
+              ? `${empresa.endereco}, ${empresa.numero} · ${empresa.bairro}, ${empresa.cidade}/${empresa.estado}`
+              : null
+          }
+        />
+      </DadosCard>
+
+      <VerificacaoCard verificacao={verificacao} />
 
       {/* Menu em linhas com ícone + seta e "Sair" em vermelho
           (referência "PERFIL - GESTOR") — mesmo componente dos outros
@@ -125,4 +165,5 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
   headerInfo: { flex: 1, gap: 4 },
   nome: { fontSize: 16, fontWeight: "700" },
+  nomeLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
 });
