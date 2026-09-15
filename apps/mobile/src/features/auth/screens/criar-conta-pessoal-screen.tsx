@@ -1,12 +1,12 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
+import { Lock, Mail, Phone, User } from "@rotta/icons/native";
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
-
+import { StyleSheet, Text, View } from "react-native";
 
 import {
   AuthButton,
-  AuthHeaderScreen,
+  AuthScreen,
   AuthTermsCheckbox,
   AuthTextField,
   PasswordInput,
@@ -30,7 +30,10 @@ type Props = NativeStackScreenProps<AuthStackParamList, "CriarContaPessoal">;
  * responsáveis não pegamos esses dados, apenas o nome e telefone" —
  * decisão final: manter e-mail, remover só CPF).
  *
- * Redesign 15/09/2026 — ver nota em `login-screen.tsx`.
+ * Redesign 15/09/2026 — print real da Rotta anexado pelo usuário; troca
+ * o cabeçalho curvo colorido usado antes (`AuthHeaderScreen`, print
+ * genérico de outro app) pelo mesmo visual plano do Login (ver nota em
+ * `login-screen.tsx`).
  */
 export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -60,30 +63,48 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   }
 
   return (
-    <AuthHeaderScreen
-      title="Criar conta"
-      subtitle="Depois de entrar, você cadastra seus filhos e busca transportadores no Marketplace."
-      onBack={() => navigation.goBack()}
-    >
-      <AuthTextField label="Nome completo" value={nome} onChangeText={setNome} />
+    <AuthScreen>
+      <View style={styles.headingBlock}>
+        <Text
+          style={[
+            styles.title,
+            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
+          ]}
+        >
+          Criar conta
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+          Depois de entrar, você cadastra seus filhos e busca transportadores no Marketplace.
+        </Text>
+      </View>
+
+      <AuthTextField
+        label="Nome completo"
+        value={nome}
+        onChangeText={setNome}
+        leftIcon={<User size={18} color={theme.colors.textMuted} />}
+      />
       <AuthTextField
         label="Email"
         autoCapitalize="none"
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
+        leftIcon={<Mail size={18} color={theme.colors.textMuted} />}
       />
       <AuthTextField
         label="Telefone"
         keyboardType="phone-pad"
         value={telefone}
         onChangeText={setTelefone}
+        leftIcon={<Phone size={18} color={theme.colors.textMuted} />}
       />
       <PasswordInput
         label="Senha"
         helperText="Mínimo 8 caracteres, com ao menos 1 letra e 1 número."
         value={senha}
         onChangeText={setSenha}
+        leftIcon={<Lock size={18} color={theme.colors.textMuted} />}
       />
 
       <AuthTermsCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
@@ -105,11 +126,14 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
       >
         Tenho um código de convite
       </Text>
-    </AuthHeaderScreen>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 13 },
+  error: { fontSize: 13, textAlign: "center" },
   footerLink: { fontSize: 14, fontWeight: "600", marginTop: 4, textAlign: "center" },
+  headingBlock: { gap: 4, marginBottom: 4 },
+  subtitle: { fontSize: 14, lineHeight: 20 },
+  title: { fontWeight: "700" },
 });

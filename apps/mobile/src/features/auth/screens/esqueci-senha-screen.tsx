@@ -1,10 +1,9 @@
 import { ApiError } from "@rotta/api-client";
-import { MailCheck } from "@rotta/icons/native";
+import { Mail, MailCheck } from "@rotta/icons/native";
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
-
-import { AuthButton, AuthHeaderScreen, AuthStatusBadge, AuthTextField } from "../components";
+import { AuthButton, AuthScreen, AuthStatusBadge, AuthTextField } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -24,9 +23,13 @@ type Props = NativeStackScreenProps<AuthStackParamList, "EsqueciSenha">;
  * redefinir-senha?token=...`) — sem precisar de deep link de volta pro
  * app pra este primeiro lançamento.
  *
- * Redesign 15/09/2026 — ver nota em `login-screen.tsx`. O estado
- * "enviado" ganha `AuthStatusBadge` no lugar da ilustração do print de
- * referência (ver nota de fallback ali).
+ * Redesign 15/09/2026 — print real da Rotta anexado pelo usuário. O
+ * print mostra um fluxo com código de 6 dígitos (Recuperar Senha →
+ * Verificar Código → Nova Senha → Senha Alterada); via AskUserQuestion,
+ * o usuário decidiu manter o fluxo real por LINK de e-mail que já
+ * existe, só trocando o visual das 2 telas (pedir e-mail + confirmação)
+ * pro mesmo estilo plano do Login — sem construir a tela de código, que
+ * exigiria uma feature nova de backend inexistente hoje.
  */
 export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -52,8 +55,16 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
 
   if (enviado) {
     return (
-      <AuthHeaderScreen title="Verifique seu e-mail" onBack={() => navigation.goBack()}>
+      <AuthScreen>
         <AuthStatusBadge icon={MailCheck} />
+        <Text
+          style={[
+            styles.title,
+            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
+          ]}
+        >
+          Verifique seu e-mail
+        </Text>
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Se houver uma conta com o e-mail {email}, enviamos um link para redefinir a senha. Confira
           também a caixa de spam.
@@ -63,16 +74,26 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
           variant="ghost"
           onPress={() => navigation.goBack()}
         />
-      </AuthHeaderScreen>
+      </AuthScreen>
     );
   }
 
   return (
-    <AuthHeaderScreen
-      title="Esqueceu sua senha?"
-      subtitle="Informe o e-mail da sua conta e enviaremos um link para redefinir a senha."
-      onBack={() => navigation.goBack()}
-    >
+    <AuthScreen>
+      <View style={styles.headingBlock}>
+        <Text
+          style={[
+            styles.title,
+            { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
+          ]}
+        >
+          Esqueceu sua senha?
+        </Text>
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+          Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.
+        </Text>
+      </View>
+
       <AuthTextField
         label="E-mail"
         autoCapitalize="none"
@@ -80,6 +101,7 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
         keyboardType="email-address"
         value={email}
         onChangeText={setEmail}
+        leftIcon={<Mail size={18} color={theme.colors.textMuted} />}
       />
 
       {errorMessage ? (
@@ -91,11 +113,13 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
         onPress={() => void handleSubmit()}
         isLoading={isSubmitting}
       />
-    </AuthHeaderScreen>
+    </AuthScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 13 },
+  error: { fontSize: 13, textAlign: "center" },
+  headingBlock: { gap: 4, marginBottom: 4 },
   subtitle: { fontSize: 14, lineHeight: 20, textAlign: "center" },
+  title: { fontWeight: "700", textAlign: "center" },
 });
