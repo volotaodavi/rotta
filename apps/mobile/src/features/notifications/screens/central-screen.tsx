@@ -1,4 +1,12 @@
-import { Star } from "@rotta/icons/native";
+import {
+  Backpack,
+  Bus,
+  CreditCard,
+  LayoutGrid,
+  ShieldCheck,
+  Star,
+  type LucideIcon,
+} from "@rotta/icons/native";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -54,12 +62,12 @@ type Props = NativeStackScreenProps<NotificationsStackParamList, "Central">;
  */
 type FiltroCategoria = "todas" | "viagem" | "aluno" | "seguranca" | "pagamentos";
 
-const FILTROS: { value: FiltroCategoria; label: string }[] = [
-  { value: "todas", label: "Todas" },
-  { value: "viagem", label: "Viagem" },
-  { value: "aluno", label: "Aluno" },
-  { value: "seguranca", label: "Segurança" },
-  { value: "pagamentos", label: "Pagamentos" },
+const FILTROS: { value: FiltroCategoria; label: string; icon: LucideIcon }[] = [
+  { value: "todas", label: "Todas", icon: LayoutGrid },
+  { value: "viagem", label: "Viagem", icon: Bus },
+  { value: "aluno", label: "Aluno", icon: Backpack },
+  { value: "seguranca", label: "Segurança", icon: ShieldCheck },
+  { value: "pagamentos", label: "Pagamentos", icon: CreditCard },
 ];
 
 /**
@@ -163,24 +171,34 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
     >
       {FILTROS.map((option) => {
         const ativo = filtro === option.value;
+        const FiltroIcone = option.icon;
         return (
           <Pressable
             key={option.value}
             onPress={() => setFiltro(option.value)}
             accessibilityRole="button"
             accessibilityState={{ selected: ativo }}
-            style={[
-              styles.filtroPill,
-              {
-                backgroundColor: ativo ? theme.colors.primary : theme.colors.surface,
-                borderColor: ativo ? theme.colors.primary : theme.colors.border,
-              },
-            ]}
+            style={styles.filtroItem}
           >
+            <View
+              style={[
+                styles.filtroQuadrado,
+                {
+                  backgroundColor: ativo ? theme.colors.primary : theme.colors.surface,
+                  borderColor: ativo ? theme.colors.primary : theme.colors.border,
+                  borderRadius: theme.radius.lg,
+                },
+              ]}
+            >
+              <FiltroIcone
+                size={20}
+                color={ativo ? theme.colors.background : theme.colors.textMuted}
+              />
+            </View>
             <Text
               style={[
                 styles.filtroLabel,
-                { color: ativo ? theme.colors.background : theme.colors.textMuted },
+                { color: ativo ? theme.colors.primary : theme.colors.textMuted },
               ]}
             >
               {option.label}
@@ -218,8 +236,9 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      {filtros}
-
+      {/* Ordem da referência (tela "NOTIFICAÇÕES - RESPONSÁVEL"): o link
+          "Marcar todas como lidas" fica ACIMA do título, alinhado à
+          direita — depois o título, depois a faixa de filtros. */}
       <View style={styles.acoesRow}>
         <Pressable
           onPress={() => markAllRead.mutate()}
@@ -231,6 +250,10 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
           </Text>
         </Pressable>
       </View>
+
+      <Text style={[styles.tituloTela, { color: theme.colors.text }]}>Notificações</Text>
+
+      {filtros}
 
       {itens.length === 0 ? (
         <Text style={{ color: theme.colors.textMuted }}>{MENSAGEM_VAZIA[filtro]}</Text>
@@ -311,12 +334,14 @@ const styles = StyleSheet.create({
   acoesRow: { alignItems: "flex-end" },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   corpo: { fontSize: 13, lineHeight: 18 },
-  filtroLabel: { fontSize: 13, fontWeight: "600" },
-  filtroPill: {
-    borderRadius: 999,
+  filtroItem: { alignItems: "center", gap: 6, width: 68 },
+  filtroLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
+  filtroQuadrado: {
+    alignItems: "center",
     borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    height: 48,
+    justifyContent: "center",
+    width: 48,
   },
   filtrosRow: { flexDirection: "row", paddingRight: 4 },
   iconeCirculo: {
@@ -333,4 +358,5 @@ const styles = StyleSheet.create({
   lista: { gap: 0, paddingVertical: 0 },
   pontoNaoLida: { borderRadius: 4, height: 8, width: 8 },
   titulo: { fontSize: 15 },
+  tituloTela: { fontSize: 22, fontWeight: "700" },
 });

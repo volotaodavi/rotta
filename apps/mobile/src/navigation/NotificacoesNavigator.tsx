@@ -27,7 +27,13 @@ export function NotificacoesNavigator(): JSX.Element {
         name="Central"
         component={CentralScreen}
         options={({ navigation }) => ({
-          title: "Notificações",
+          /* Título vazio de propósito (referência "NOTIFICAÇÕES -
+             RESPONSÁVEL"): o "Notificações" grande em negrito é
+             desenhado DENTRO da tela, alinhado à esquerda, não como
+             título centralizado de cabeçalho. O cabeçalho continua
+             existindo (é ele que garante a margem da barra de status e
+             abriga "Preferências"), só sem repetir o mesmo texto. */
+          title: "",
           headerRight: () => (
             <Pressable
               accessibilityRole="button"
