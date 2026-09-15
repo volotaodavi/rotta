@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { SupportNavigator } from "./SupportNavigator";
+
 import type { EmpresaHomeStackParamList } from "./types";
 
 import {
@@ -37,6 +39,7 @@ export function EmpresaHomeNavigator(): JSX.Element {
         component={EmpresaAssinaturaScreen}
         options={{ title: "Assinatura" }}
       />
+      <Stack.Screen name="Chamados" component={SupportNavigator} options={{ headerShown: false }} />
       <Stack.Screen
         name="MarketplaceSolicitacoes"
         component={EmpresaMarketplaceSolicitacoesScreen}

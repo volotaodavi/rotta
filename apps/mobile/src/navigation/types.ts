@@ -319,6 +319,14 @@ export type EmpresaHomeStackParamList = {
   /** Assinatura da Rotta (15/09/2026) — status do plano e extrato de pagamentos da
    * própria empresa; o pagamento em si abre no navegador (ver a tela). */
   Assinatura: undefined;
+  /**
+   * Suporte do Transportador/Gestor (15/09/2026) — a referência mostra
+   * "Suporte" no Perfil do Gestor, e as telas de chamado já existiam
+   * (`SupportNavigator`, usado por Responsável e Motorista/Monitor):
+   * faltava só a navegação. O backend já libera `Role.EMPRESA`/
+   * `Role.GESTOR` nos chamados, nada novo precisou ser aberto lá.
+   */
+  Chamados: undefined;
   AlunosPreCadastro: undefined;
   Equipe: undefined;
   /**

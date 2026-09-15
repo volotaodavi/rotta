@@ -5,6 +5,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Bus,
   Clock,
   School,
   LifeBuoy,
@@ -45,7 +46,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
 
 import { BackgroundLocationDisclosureModal, PanelGreeting } from "../components";
 import { podeAlternarModoAcao } from "../hooks/use-app-mode";
@@ -95,6 +95,7 @@ import {
 } from "@/features/vehicles/components";
 import {
   useCreateVehicleOccurrence,
+  useMyVehicle,
   useVehicleOccurrences,
 } from "@/features/vehicles/hooks/use-vehicles";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
@@ -798,6 +799,15 @@ function RotaOperacional({
   const { data: routeStudentsDetalhado } = useRouteStudentsDetalhado(rota.id);
 
   /*
+   * Placa do veículo no cartão "Próxima viagem" (telas 17/18 da
+   * referência, que destacam "FRC-3B45 · Veículo" antes de iniciar).
+   * `Route` só tem `veiculoPadraoId`, e este hook devolve o veículo da
+   * pessoa logada numa consulta só — não é uma busca por id solta nem
+   * uma por linha. Sem veículo (caso do Monitor), a linha some.
+   */
+  const { data: meuVeiculo } = useMyVehicle();
+
+  /*
    * Resumo do cartão "Próxima viagem" (15/09/2026) — a referência mostra
    * escola, janela de horário e "N alunos · 1 monitor" ali. Nada disso
    * vem pronto: `Route` só tem nome/turno/ids, então o resumo é derivado
@@ -1165,6 +1175,14 @@ function RotaOperacional({
               <View style={styles.proximaViagemLinha}>
                 <Clock size={14} color={theme.colors.textMuted} />
                 <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{janelaHorario}</Text>
+              </View>
+            ) : null}
+            {meuVeiculo?.placa ? (
+              <View style={styles.proximaViagemLinha}>
+                <Bus size={14} color={theme.colors.textMuted} />
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  {meuVeiculo.placa}
+                </Text>
               </View>
             ) : null}
             <View style={styles.mapCardBodyRow}>

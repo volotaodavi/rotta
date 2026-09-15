@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
-import { Bell, Bus, CreditCard, LogOut, Users, Zap } from "@rotta/icons/native";
+import { Bell, Bus, CreditCard, LifeBuoy, LogOut, Users, Zap } from "@rotta/icons/native";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { EmpresaTabParamList } from "@/navigation/types";
@@ -36,11 +36,17 @@ function iniciais(nome: string | undefined): string {
  * Menu de atalhos (achado 15/09/2026 comparando contra a tela 31 da
  * referência, "Perfil - Gestor") — antes só tinha "Entrar no Modo
  * Ação"/"Sair", enquanto o Perfil de todo outro papel (Responsável,
- * Motorista) tem uma lista de atalhos. Só entraram aqui os que já têm
- * destino real na navegação (Frota/Equipe/Notificações) — "Financeiro"
- * e "Suporte" aparecem na referência mas foram deixados só na Web numa
- * decisão de escopo anterior (`EmpresaNavigator.tsx`); não inventamos
- * tela nova pra preencher a referência, isso é decisão do usuário.
+ * Motorista) tem uma lista de atalhos.
+ *
+ * "Financeiro" da referência virou "Assinatura" (o que o transportador
+ * realmente paga à Rotta) e "Suporte" abre os chamados, que já existiam
+ * como tela e só não tinham navegação por aqui — o backend já libera
+ * `Role.EMPRESA`/`Role.GESTOR` nesse módulo.
+ *
+ * "Dados da empresa" e "Documentos" continuam fora: editar a empresa
+ * segue exclusivo da Web, e documento de empresa não existe no produto
+ * (o que existe é documento de VEÍCULO, que vive dentro da Frota).
+ * Linha de menu que não leva a lugar nenhum é pior que linha ausente.
  */
 export function EmpresaPerfilScreen(): JSX.Element {
   const { theme } = useTheme();
@@ -91,6 +97,11 @@ export function EmpresaPerfilScreen(): JSX.Element {
             icon: CreditCard,
             label: "Assinatura",
             onPress: () => navigation.navigate("Inicio", { screen: "Assinatura" }),
+          },
+          {
+            icon: LifeBuoy,
+            label: "Suporte",
+            onPress: () => navigation.navigate("Inicio", { screen: "Chamados" }),
           },
           ...(canToggle
             ? [{ icon: Zap, label: "Entrar no Modo Ação", onPress: () => setMode("acao") }]
