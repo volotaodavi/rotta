@@ -1,4 +1,5 @@
 export * from "./endereco-manual-screen";
+export * from "./inicio-screen";
 export * from "./informar-codigo-screen";
 export * from "./mapa-screen";
 export * from "./marketplace-coming-soon-screen";

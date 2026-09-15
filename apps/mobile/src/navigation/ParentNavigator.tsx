@@ -1,5 +1,5 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { Bell, History, Home, User } from "@rotta/icons/native";
+import { Bell, History, Home, Map, User } from "@rotta/icons/native";
 
 import { MarketplaceNavigator } from "./MarketplaceNavigator";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
@@ -9,7 +9,7 @@ import type { ParentTabParamList } from "./types";
 
 import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-transport-state";
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
-import { TransporteInicioScreen } from "@/features/marketplace/screens";
+import { ParentInicioScreen, TransporteInicioScreen } from "@/features/marketplace/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
@@ -45,11 +45,13 @@ export function ParentNavigator(): JSX.Element {
   const { data: naoLidas } = useUnreadNotificationsCount();
 
   return (
-    <Tab.Navigator initialRouteName="Mapa" screenOptions={{ headerShown: false }}>
+    <Tab.Navigator initialRouteName="Inicio" screenOptions={{ headerShown: false }}>
       <Tab.Screen
-        name="Mapa"
-        component={MarketplaceNavigator}
+        name="Inicio"
+        component={ParentInicioScreen}
         options={{
+          headerShown: true,
+          title: "",
           tabBarLabel: "Início",
           tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
         }}
@@ -70,6 +72,18 @@ export function ParentNavigator(): JSX.Element {
           title: TRANSPORT_TAB_LABEL[state],
           tabBarLabel: "Viagens",
           tabBarIcon: ({ size, color }) => <History size={size} color={color} />,
+        }}
+      />
+      {/* "Mapa" como aba própria (referência: Início · Viagens · Mapa ·
+          Notificações · Perfil). Sem `headerShown`/`title`: o próprio
+          `MarketplaceNavigator` já gerencia o header de cada tela
+          interna. */}
+      <Tab.Screen
+        name="Mapa"
+        component={MarketplaceNavigator}
+        options={{
+          tabBarLabel: "Mapa",
+          tabBarIcon: ({ size, color }) => <Map size={size} color={color} />,
         }}
       />
       <Tab.Screen

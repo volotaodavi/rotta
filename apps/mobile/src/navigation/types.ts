@@ -110,15 +110,24 @@ export type VeiculoStackParamList = {
 };
 
 /**
- * Bottom Navigation do Responsável (briefing "Marketplace" §"NAVEGAÇÃO"):
- * `Mapa` é sempre a tela padrão ao abrir o app; `Transporte` renomeia o
- * próprio rótulo da aba conforme `ResponsavelTransportState` (ver
- * `features/marketplace/labels.ts`), mas a rota em si tem sempre este
- * mesmo nome fixo.
+ * Bottom Navigation do Responsável — CINCO abas, como na referência
+ * visual (Início · Viagens · Mapa · Notificações · Perfil), separação
+ * feita em 15/09/2026.
+ *
+ * `Inicio` é a Home (saudação + estado do transporte + "Acompanhar no
+ * mapa") e `Mapa` é sempre o mapa. Antes as duas eram a MESMA aba: a
+ * `MapaScreen` trocava de conteúdo conforme o estado do transporte, e
+ * essa fusão estava anotada no próprio código como lacuna deliberada
+ * ("mudança maior de navegação... deixada fora desta entrega").
+ *
+ * `Transporte` renomeia o próprio rótulo da aba conforme
+ * `ResponsavelTransportState` (ver `features/marketplace/labels.ts`),
+ * mas a rota em si tem sempre este mesmo nome fixo.
  */
 export type ParentTabParamList = {
-  Mapa: undefined;
+  Inicio: undefined;
   Transporte: undefined;
+  Mapa: undefined;
   Notificacoes: undefined;
   Perfil: undefined;
 };

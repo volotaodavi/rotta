@@ -1,7 +1,6 @@
-import { useAuth } from "@rotta/auth/native";
 import { Check, MapPin, Search, X } from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
-import { BottomSheet, Timeline } from "@rotta/ui/native";
+import { BottomSheet } from "@rotta/ui/native";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,20 +16,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TransporterCard } from "../components/transporter-card";
 import { useLocation } from "../hooks/use-location";
 import { useSchoolsSearch } from "../hooks/use-school-picker";
-import { useStudent } from "../hooks/use-students";
-import { useResponsavelTransportState } from "../hooks/use-transport-state";
 import { useTransportersSearch } from "../hooks/use-transporters";
-import { buildContratoSteps, buildSolicitacaoSteps } from "../timeline-steps";
 
 import { EnderecoManualScreen } from "./endereco-manual-screen";
-import { AcompanhamentoSection, TripTrackingOverlay } from "./transporte-inicio-screen";
 
-import type { ParentTabParamList, MarketplaceStackParamList } from "@/navigation/types";
-import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { MarketplaceStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { School, SearchTransportersParams } from "@rotta/api-client";
 
-import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
+import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<MarketplaceStackParamList, "MapaHome">;
@@ -66,7 +60,6 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { status, coords, requestLocation, setManualCoords } = useLocation();
-  const transportState = useResponsavelTransportState();
   const [sortBy, setSortBy] = useState<SortBy>("distancia");
   const [apenasVerificados, setApenasVerificados] = useState(false);
   const [schoolQuery, setSchoolQuery] = useState("");
@@ -97,20 +90,12 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
       : null;
   const { data, isLoading, isError, refetch } = useTransportersSearch(searchParams);
 
-  // Estado 2 — painel operacional (Prompt "UX/UI Master do Marketplace"
-  // §HOME): quando o Responsável já tem uma solicitação/contrato em
-  // andamento, a aba "Mapa" deixa de ser busca-primeiro e passa a
-  // resumir o estado real do transporte — antes do gate de localização
-  // abaixo, já que acompanhar o transporte não depende da localização
-  // do próprio Responsável.
-  if (
-    !transportState.isLoading &&
-    transportState.state !== "SEM_TRANSPORTE" &&
-    transportState.state !== "CONTRATO_ENCERRADO"
-  ) {
-    return <MapaEstadoOperacional navigation={navigation} />;
-  }
-
+  // O painel operacional (saudação + estado do transporte) saiu daqui
+  // em 15/09/2026: virou a aba "Início" (`inicio-screen.tsx`), como na
+  // referência, que tem Início e Mapa como abas SEPARADAS. Esta aba
+  // agora é sempre o mapa, com um papel só — a fusão anterior das duas
+  // já estava anotada aqui mesmo como lacuna deliberada ("mudança maior
+  // de navegação... deixada fora desta entrega").
   if (status === "idle" || status === "requesting") {
     return (
       <VehicleScreen>
@@ -339,90 +324,6 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
   );
 }
 
-/**
- * Home Estado 2 — "painel operacional" (Prompt "UX/UI Master do
- * Marketplace" §HOME: "quando o Responsável já tem transporte
- * contratado... o mapa mostra veículo/rota/motorista/monitor/ETA em
- * tempo real"). Em vez de fundir literalmente as abas "Mapa" e
- * "Transporte" numa única Home (mudança maior de navegação, registrada
- * como gap no Dossiê 37 §4 e deixada fora desta entrega), o conteúdo da
- * própria aba "Mapa" se adapta ao estado real do Responsável
- * (`useResponsavelTransportState`) e reaproveita a mesma
- * `AcompanhamentoSection`/`Timeline`/`buildSolicitacaoSteps`/
- * `buildContratoSteps` já usadas pela aba "Transporte" — nunca duas
- * fontes de verdade divergentes sobre em que etapa o Responsável está.
- * "Ver detalhes completos" leva para a aba "Transporte" (mesmo padrão
- * de navegação cross-tab de `solicitar-transporte-screen.tsx`).
- */
-function MapaEstadoOperacional({ navigation }: { navigation: Props["navigation"] }): JSX.Element {
-  const { theme } = useTheme();
-  const { user } = useAuth();
-  const {
-    state,
-    contratoAtivo,
-    ultimoContrato,
-    solicitacoesPendentes,
-    solicitacaoAprovadaSemContrato,
-  } = useResponsavelTransportState();
-  const { data: aluno } = useStudent(contratoAtivo?.studentId ?? ultimoContrato?.studentId);
-  const [trackingOpen, setTrackingOpen] = useState(false);
-
-  const primeiroNome = user?.nome?.split(" ")[0];
-
-  function handleVerDetalhes(): void {
-    navigation.getParent<BottomTabNavigationProp<ParentTabParamList>>()?.navigate("Transporte");
-  }
-
-  return (
-    <>
-      <VehicleScreen>
-        <Text style={[styles.saudacao, { color: theme.colors.textMuted }]}>
-          {primeiroNome ? `Olá, ${primeiroNome}` : "Olá"}
-        </Text>
-        <Text style={[styles.tituloEstado, { color: theme.colors.text }]}>
-          {state === "TRANSPORTE_ATIVO"
-            ? "Transporte a caminho"
-            : aluno
-              ? `Transporte de ${aluno.nome.split(" ")[0]}`
-              : "Seu transporte"}
-        </Text>
-
-        {state === "SOLICITACAO_PENDENTE"
-          ? solicitacoesPendentes.map((request) => (
-              <VehicleCard key={request.id}>
-                <Timeline steps={buildSolicitacaoSteps(request)} theme={theme} />
-              </VehicleCard>
-            ))
-          : null}
-
-        {state === "AGUARDANDO_CONTRATO" ? (
-          <VehicleCard>
-            <Timeline steps={buildContratoSteps(ultimoContrato ?? null)} theme={theme} />
-            {solicitacaoAprovadaSemContrato ? (
-              <Text style={{ color: theme.colors.textMuted, marginTop: theme.spacing[2] }}>
-                Sua solicitação foi aprovada. O transportador vai gerar o contrato em breve.
-              </Text>
-            ) : null}
-          </VehicleCard>
-        ) : null}
-
-        {state === "TRANSPORTE_ATIVO" && contratoAtivo ? (
-          <>
-            <AcompanhamentoSection contrato={contratoAtivo} />
-            <VehicleButton label="Acompanhar no mapa" onPress={() => setTrackingOpen(true)} />
-          </>
-        ) : null}
-
-        <VehicleButton label="Ver detalhes completos" onPress={handleVerDetalhes} />
-      </VehicleScreen>
-
-      {trackingOpen && contratoAtivo ? (
-        <TripTrackingOverlay contrato={contratoAtivo} onClose={() => setTrackingOpen(false)} />
-      ) : null}
-    </>
-  );
-}
-
 const styles = StyleSheet.create({
   center: { alignItems: "center" },
   codigoLink: { alignItems: "center", marginTop: 8, paddingVertical: 10 },
@@ -448,9 +349,6 @@ const styles = StyleSheet.create({
   resultsCard: { marginTop: 8, maxHeight: 260, padding: 8 },
   resultsEmpty: { padding: 12, textAlign: "center" },
   resultsList: {},
-  // Redesign 15/09/2026 — saudação um pouco mais presente (14 → 16),
-  // mais perto da proporção do print real da Rotta ("Olá, Mariana!").
-  saudacao: { fontSize: 16, marginBottom: 2 },
   searchBar: {
     alignItems: "center",
     flexDirection: "row",
@@ -459,6 +357,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   searchInput: { flex: 1, fontSize: 15 },
-  tituloEstado: { fontSize: 18, fontWeight: "700" },
   topOverlay: { left: 16, position: "absolute", right: 16, top: 0 },
 });
