@@ -5,16 +5,7 @@ import {
   type StudentEventsHistoryRange,
   type TripStudentEventType,
 } from "@rotta/api-client";
-import {
-  ArrowDownCircle,
-  ArrowUpCircle,
-  ChevronLeft,
-  Clock,
-  MapPin,
-  Navigation,
-  Star,
-  UserX,
-} from "@rotta/icons/native";
+import { ChevronLeft, Clock, MapPin, Navigation, Star } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { Timeline } from "@rotta/ui/native";
 import { useQuery } from "@tanstack/react-query";
@@ -86,12 +77,6 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
   const [range, setRange] = useState<StudentEventsHistoryRange>("hoje");
   const { data: eventos, isLoading } = useStudentEventsHistory(studentId, range);
 
-  const eventIcon: Record<TripStudentEventType, JSX.Element> = {
-    EMBARCOU: <ArrowUpCircle size={18} color={theme.colors.success} />,
-    DESEMBARCOU: <ArrowDownCircle size={18} color={theme.colors.primary} />,
-    AUSENTE: <UserX size={18} color={theme.colors.danger} />,
-  };
-
   return (
     <VehicleCard>
       <View style={styles.viagensHeader}>
@@ -129,24 +114,45 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
           Nenhum embarque ou desembarque registrado neste período.
         </Text>
       ) : (
-        <View style={{ gap: 10 }}>
-          {eventos.map((event) => (
-            <View key={event.id} style={styles.eventoRow}>
-              {eventIcon[event.tipo]}
-              <Text style={{ color: theme.colors.text, flex: 1 }}>{EVENT_LABEL[event.tipo]}</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                {range === "hoje"
-                  ? formatarHora(event.processadoEm)
-                  : new Date(event.processadoEm).toLocaleString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-              </Text>
-            </View>
-          ))}
-        </View>
+        /*
+          Linha do tempo vertical (tela 11 da referência, "VIAGENS -
+          RESPONSÁVEL": pontos ligados por uma linha, com o evento e o
+          horário). Antes era uma lista de linhas soltas com o ícone à
+          esquerda e a hora à direita — a mesma informação, sem a leitura
+          de sequência que a referência dá.
+
+          Reaproveita a `Timeline` de `@rotta/ui/native` (já usada nesta
+          tela pros passos de solicitação/contrato) em vez de desenhar
+          outra: `state` "done" pinta o ponto de verde (evento que já
+          aconteceu) e "error" de vermelho pra ausência.
+
+          A referência põe o LOCAL embaixo do evento ("Casa do aluno",
+          "Escola Municipal São José"). Isso não entra porque
+          `TripStudentEvent` não carrega endereço — só `routeStopId` —, e
+          deduzir "casa" do tipo do evento estaria errado na volta, onde
+          o embarque acontece na escola. Fica o horário, que é dado real.
+        */
+        <Timeline
+          theme={theme}
+          steps={eventos.map((event) => ({
+            key: event.id,
+            label: EVENT_LABEL[event.tipo],
+            description: [
+              range === "hoje"
+                ? formatarHora(event.processadoEm)
+                : new Date(event.processadoEm).toLocaleString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  }),
+              event.motivoAusencia,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+            state: event.tipo === "AUSENTE" ? ("error" as const) : ("done" as const),
+          }))}
+        />
       )}
     </VehicleCard>
   );
@@ -865,7 +871,6 @@ const styles = StyleSheet.create({
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },
   etaRow: { alignItems: "center", flexDirection: "row", gap: 4 },
-  eventoRow: { alignItems: "center", flexDirection: "row", gap: 10 },
   header: { flexDirection: "row" },
   // `16` = `theme.radius.lg` (redesign 15/09/2026) — StyleSheet.create
   // não tem acesso a `theme` aqui, mesmo padrão já usado no resto deste
