@@ -6,8 +6,10 @@ import {
   ChevronDown,
   ChevronUp,
   Bus,
+  CircleEllipsis,
   Clock,
   School,
+  ShieldAlert,
   LifeBuoy,
   LogIn,
   LogOut,
@@ -47,6 +49,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+
 import { BackgroundLocationDisclosureModal, PanelGreeting } from "../components";
 import { podeAlternarModoAcao } from "../hooks/use-app-mode";
 import {
@@ -73,6 +76,7 @@ import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
 import type { StatusPillTone } from "@/features/vehicles/components";
 import type {
+  VehicleOccurrenceSeverity,
   NextEta,
   Route,
   RouteStop,
@@ -646,6 +650,26 @@ function formatarHoraCurta(iso: string): string {
 }
 
 /**
+ * "Escolha o tipo" da tela 21 da referência ("OCORRÊNCIA - MOTORISTA").
+ * A API de ocorrência não tem enum de tipo — aceita `titulo`,
+ * `descricao` e `severidade` —, então cada opção preenche o título e já
+ * sugere a severidade coerente, em vez de inventar um campo novo no
+ * backend. "Outros" deixa o título livre, que era o comportamento
+ * anterior da tela inteira.
+ */
+const TIPOS_OCORRENCIA: {
+  titulo: string;
+  severidade: VehicleOccurrenceSeverity;
+  icon: typeof AlertTriangle;
+}[] = [
+  { titulo: "Atraso", severidade: "BAIXA", icon: Clock },
+  { titulo: "Aluno ausente", severidade: "BAIXA", icon: UserX },
+  { titulo: "Problema no veículo", severidade: "MEDIA", icon: Bus },
+  { titulo: "Situação de segurança", severidade: "ALTA", icon: ShieldAlert },
+  { titulo: "Outros", severidade: "BAIXA", icon: CircleEllipsis },
+];
+
+/**
  * "Registrar ocorrência" (3 imagens de referência anexadas pelo
  * usuário, tela do Monitor — pedido explícito "quero o mesmo design,
  * idêntico") — mesmo endpoint já usado em "Meu Veículo" (`POST
@@ -672,12 +696,22 @@ function RegistrarOcorrenciaButton({
   const [isOpen, setIsOpen] = useState(false);
   const [titulo, setTitulo] = useState("");
   const [descricao, setDescricao] = useState("");
+  const [tipoEscolhido, setTipoEscolhido] = useState<string | null>(null);
+  const severidade =
+    TIPOS_OCORRENCIA.find((t) => t.titulo === tipoEscolhido)?.severidade ?? "BAIXA";
   const createOccurrence = useCreateVehicleOccurrence(veiculoId);
 
   function fechar(): void {
     setIsOpen(false);
     setTitulo("");
     setDescricao("");
+    setTipoEscolhido(null);
+  }
+
+  function escolherTipo(tipo: (typeof TIPOS_OCORRENCIA)[number]): void {
+    setTipoEscolhido(tipo.titulo);
+    // "Outros" continua com título livre — nos demais, o título É o tipo.
+    setTitulo(tipo.titulo === "Outros" ? "" : tipo.titulo);
   }
 
   return (
@@ -701,17 +735,45 @@ function RegistrarOcorrenciaButton({
           </View>
 
           <ScrollView contentContainerStyle={styles.ocorrenciaBody}>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Título</Text>
-            <TextInput
-              value={titulo}
-              onChangeText={setTitulo}
-              placeholder="Ex.: Pneu furado, aluno passou mal…"
-              style={[
-                styles.modalInput,
-                { color: theme.colors.text, borderColor: theme.colors.border },
-              ]}
-              placeholderTextColor={theme.colors.textMuted}
-            />
+            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Escolha o tipo</Text>
+            {TIPOS_OCORRENCIA.map((tipo) => {
+              const TipoIcone = tipo.icon;
+              const ativo = tipoEscolhido === tipo.titulo;
+              return (
+                <Pressable
+                  key={tipo.titulo}
+                  onPress={() => escolherTipo(tipo)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: ativo }}
+                  style={[
+                    styles.tipoOcorrenciaRow,
+                    {
+                      borderColor: ativo ? accentColor : theme.colors.border,
+                      backgroundColor: ativo ? theme.colors.muted : "transparent",
+                    },
+                  ]}
+                >
+                  <TipoIcone size={18} color={ativo ? accentColor : theme.colors.textMuted} />
+                  <Text style={{ color: theme.colors.text, flex: 1 }}>{tipo.titulo}</Text>
+                </Pressable>
+              );
+            })}
+
+            {tipoEscolhido === "Outros" ? (
+              <>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Título</Text>
+                <TextInput
+                  value={titulo}
+                  onChangeText={setTitulo}
+                  placeholder="Ex.: Pneu furado, aluno passou mal…"
+                  style={[
+                    styles.modalInput,
+                    { color: theme.colors.text, borderColor: theme.colors.border },
+                  ]}
+                  placeholderTextColor={theme.colors.textMuted}
+                />
+              </>
+            ) : null}
 
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Descrição</Text>
             <TextInput
@@ -733,7 +795,7 @@ function RegistrarOcorrenciaButton({
               isLoading={createOccurrence.isPending}
               onPress={() => {
                 if (!titulo || !descricao) return;
-                createOccurrence.mutate({ titulo, descricao }, { onSuccess: fechar });
+                createOccurrence.mutate({ titulo, descricao, severidade }, { onSuccess: fechar });
               }}
             />
             <VehicleButton label="Cancelar" variant="secondary" onPress={fechar} />
@@ -2334,5 +2396,14 @@ const styles = StyleSheet.create({
   statsTileHeader: { alignItems: "center", flexDirection: "row", gap: 6 },
   timerRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   timerTexto: { fontSize: 28, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  tipoOcorrenciaRow: {
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
   titulo: { fontSize: 18, fontWeight: "700" },
 });
