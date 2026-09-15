@@ -77,7 +77,19 @@ jobs:
       # (expo-build-properties): compileSdk/targetSdk 36, build-tools
       # 36.0.0. `android-actions/setup-android` já cuida de aceitar as
       # licenças do SDK sozinho.
+      #
+      # `packages: platform-tools` (achado 15/09/2026, builds #13/#14
+      # falhando em ~30s, sempre no mesmo ponto): o padrão da própria
+      # action é `packages: 'tools platform-tools'` — "tools" é o pacote
+      # LEGADO do SDK Tools, removido do repositório oficial da Google
+      # (`sdkmanager tools` responde "Warning: Failed to find package
+      # 'tools'", exit code 1, e a action trata isso como falha fatal).
+      # Nunca precisamos dele — o passo seguinte já instala
+      # `cmdline-tools`/`platforms`/`build-tools` explicitamente, do
+      # jeito que builds Android modernos (Gradle/AGP) sempre fizeram.
       - uses: android-actions/setup-android@v3
+        with:
+          packages: "platform-tools"
       - name: Instalar plataforma/build-tools do Android SDK
         run: sdkmanager --install "platforms;android-36" "build-tools;36.0.0"
 
