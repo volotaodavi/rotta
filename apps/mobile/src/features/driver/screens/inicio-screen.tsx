@@ -46,6 +46,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+
 import { BackgroundLocationDisclosureModal, PanelGreeting } from "../components";
 import { podeAlternarModoAcao } from "../hooks/use-app-mode";
 import {
@@ -70,6 +71,7 @@ import {
 import { useMyLocation, type MyLocation, type MyLocationStatus } from "../hooks/use-my-location";
 import { useTripGpsReporting } from "../hooks/use-trip-gps-reporting";
 
+import type { StatusPillTone } from "@/features/vehicles/components";
 import type {
   NextEta,
   Route,
@@ -97,8 +99,6 @@ import {
 } from "@/features/vehicles/hooks/use-vehicles";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useTheme } from "@/providers/theme-provider";
-
-
 
 /**
  * "Início" real do Motorista/Monitor (Prompt Mestre da Rotta, Seções 7
@@ -509,54 +509,139 @@ function TripStatsGrid({
 }
 
 /**
- * "Alunos a bordo" (paridade com o Painel Web — tela do Monitor) —
- * consolida quem já embarcou e ainda não desembarcou nesta viagem, sem
- * precisar abrir cada parada uma por uma. Dado real
- * (`TripStudentEvent`), nunca inferido.
+ * "Alunos" da viagem (tela 20 da referência, "ALUNOS - MOTORISTA"):
+ * abas Todos / Embarcados / Aguardando, com o status de cada aluno e o
+ * horário do evento. Antes este cartão era só "Alunos a bordo" — listava
+ * quem já tinha embarcado e escondia quem ainda faltava, que é
+ * justamente a informação que o motorista precisa no meio da rota.
+ *
+ * Status vem de `TripStudentEvent` real, nunca inferido. Ausente é um
+ * estado próprio (o responsável avisou), não "aguardando pra sempre".
+ *
+ * Usa a lista DETALHADA da rota (uma consulta com todos os nomes) em vez
+ * de buscar aluno por aluno como a versão anterior fazia — eram N
+ * requisições pra montar N linhas.
  */
-function AlunosABordoCard({
-  routeStudents,
+function AlunosDaViagemCard({
+  alunos,
   eventos,
   accentColor,
 }: {
-  routeStudents: RouteStudent[];
+  alunos: RouteStudentDetalhado[];
   eventos: TripStudentEvent[];
   accentColor: string;
 }): JSX.Element | null {
   const { theme } = useTheme();
-  const aBordo = routeStudents.filter((aluno) => {
-    const doAluno = eventos.filter((e) => e.studentId === aluno.studentId);
-    const embarcou = doAluno.some((e) => e.tipo === "EMBARCOU");
-    const desembarcou = doAluno.some((e) => e.tipo === "DESEMBARCOU");
-    return embarcou && !desembarcou;
-  });
+  const [aba, setAba] = useState<"todos" | "embarcados" | "aguardando">("todos");
 
-  if (aBordo.length === 0) return null;
+  if (alunos.length === 0) return null;
+
+  function statusDoAluno(studentId: string): {
+    rotulo: string;
+    tone: StatusPillTone;
+    embarcado: boolean;
+    pendente: boolean;
+  } {
+    const doAluno = eventos.filter((e) => e.studentId === studentId);
+    const ausente = doAluno.find((e) => e.tipo === "AUSENTE");
+    if (ausente) {
+      return { rotulo: "Ausente", tone: "danger", embarcado: false, pendente: false };
+    }
+    const desembarque = doAluno.find((e) => e.tipo === "DESEMBARCOU");
+    if (desembarque) {
+      return {
+        rotulo: `Desembarcou · ${formatarHoraCurta(desembarque.processadoEm)}`,
+        tone: "neutral",
+        embarcado: false,
+        pendente: false,
+      };
+    }
+    const embarque = doAluno.find((e) => e.tipo === "EMBARCOU");
+    if (embarque) {
+      return {
+        rotulo: `Embarcado · ${formatarHoraCurta(embarque.processadoEm)}`,
+        tone: "success",
+        embarcado: true,
+        pendente: false,
+      };
+    }
+    return { rotulo: "Aguardando", tone: "warning", embarcado: false, pendente: true };
+  }
+
+  const comStatus = alunos.map((aluno) => ({ aluno, status: statusDoAluno(aluno.studentId) }));
+  const embarcados = comStatus.filter((i) => i.status.embarcado);
+  const aguardando = comStatus.filter((i) => i.status.pendente);
+  const visiveis =
+    aba === "embarcados" ? embarcados : aba === "aguardando" ? aguardando : comStatus;
+
+  const abas: { valor: typeof aba; rotulo: string; total: number }[] = [
+    { valor: "todos", rotulo: "Todos", total: comStatus.length },
+    { valor: "embarcados", rotulo: "Embarcados", total: embarcados.length },
+    { valor: "aguardando", rotulo: "Aguardando", total: aguardando.length },
+  ];
 
   return (
     <VehicleCard>
       <View style={styles.paradaHeader}>
         <Users size={16} color={accentColor} />
-        <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
-          Alunos a bordo ({aBordo.length})
-        </Text>
+        <Text style={{ color: theme.colors.text, fontWeight: "600" }}>Alunos</Text>
       </View>
-      {aBordo.map((aluno) => (
-        <AlunoABordoRow key={aluno.id} studentId={aluno.studentId} />
-      ))}
+
+      <View style={styles.alunosAbasRow}>
+        {abas.map((item) => {
+          const ativa = aba === item.valor;
+          return (
+            <Pressable
+              key={item.valor}
+              onPress={() => setAba(item.valor)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: ativa }}
+              style={[
+                styles.alunosAba,
+                { backgroundColor: ativa ? accentColor : theme.colors.muted },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.alunosAbaLabel,
+                  { color: ativa ? theme.colors.background : theme.colors.textMuted },
+                ]}
+              >
+                {item.rotulo} {item.total}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
+      {visiveis.length === 0 ? (
+        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+          {aba === "embarcados" ? "Ninguém embarcou ainda." : "Ninguém aguardando embarque."}
+        </Text>
+      ) : (
+        visiveis.map(({ aluno, status }) => (
+          <View key={aluno.id} style={styles.alunoViagemRow}>
+            <View style={styles.alunoViagemTexto}>
+              <Text style={{ color: theme.colors.text }} numberOfLines={1}>
+                {aluno.studentNome ?? "Aluno"}
+              </Text>
+              {aluno.bairro ? (
+                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+                  {aluno.bairro}
+                </Text>
+              ) : null}
+            </View>
+            <StatusPill label={status.rotulo} tone={status.tone} />
+          </View>
+        ))
+      )}
     </VehicleCard>
   );
 }
 
-function AlunoABordoRow({ studentId }: { studentId: string }): JSX.Element {
-  const { theme } = useTheme();
-  const { data: student } = useStudent(studentId);
-  return (
-    <View style={styles.alunoABordoRow}>
-      <View style={[styles.alunoABordoDot, { backgroundColor: theme.colors.driverSuccess }]} />
-      <Text style={{ color: theme.colors.text }}>{student?.nome ?? "Carregando…"}</Text>
-    </View>
-  );
+/** Hora curta (`07:05`) dos eventos de embarque/desembarque. */
+function formatarHoraCurta(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
 /**
@@ -710,7 +795,7 @@ function RotaOperacional({
   // — nome dos alunos, escolas, horário, bairros, responsáveis") — só
   // busca antes da viagem existir, mesma regra de outros hooks
   // condicionais nesta tela.
-  const { data: routeStudentsDetalhado } = useRouteStudentsDetalhado(!trip ? rota.id : undefined);
+  const { data: routeStudentsDetalhado } = useRouteStudentsDetalhado(rota.id);
 
   /*
    * Resumo do cartão "Próxima viagem" (15/09/2026) — a referência mostra
@@ -1255,8 +1340,8 @@ function RotaOperacional({
 
         {trip && !viagemEncerrada ? (
           <View style={styles.paradasSection}>
-            <AlunosABordoCard
-              routeStudents={routeStudents ?? []}
+            <AlunosDaViagemCard
+              alunos={routeStudentsDetalhado ?? []}
               eventos={studentEvents ?? []}
               accentColor={accentColor}
             />
@@ -2011,8 +2096,6 @@ function AlunoParadaRow({
 
 const styles = StyleSheet.create({
   absoluteFill: { ...StyleSheet.absoluteFillObject },
-  alunoABordoDot: { borderRadius: 999, height: 8, width: 8 },
-  alunoABordoRow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 4 },
   alunoActionButton: {
     alignItems: "center",
     borderRadius: 999,
@@ -2041,6 +2124,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   alunoRowContainer: { gap: 4, paddingVertical: 6 },
+  alunoViagemRow: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 6 },
+  alunoViagemTexto: { flex: 1, gap: 2 },
+  alunosAba: { borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  alunosAbaLabel: { fontSize: 12, fontWeight: "600" },
+  alunosAbasRow: { flexDirection: "row", gap: 8 },
   alunosPreViagemList: { borderTopWidth: 1, gap: 8, paddingTop: 12 },
   ausenciaActionsRow: { alignItems: "center", flexDirection: "row", gap: 16, paddingTop: 2 },
   ausenciaConfirmButton: { paddingVertical: 4 },
