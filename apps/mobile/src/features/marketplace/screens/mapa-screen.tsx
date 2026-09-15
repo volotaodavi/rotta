@@ -16,11 +16,14 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { TransporterCard } from "../components/transporter-card";
 import { useLocation } from "../hooks/use-location";
 import { useSchoolsSearch } from "../hooks/use-school-picker";
+import { useResponsavelTransportState } from "../hooks/use-transport-state";
 import { useTransportersSearch } from "../hooks/use-transporters";
 
 import { EnderecoManualScreen } from "./endereco-manual-screen";
+import { TripTrackingOverlay } from "./transporte-inicio-screen";
 
-import type { MarketplaceStackParamList } from "@/navigation/types";
+import type { MarketplaceStackParamList, ParentTabParamList } from "@/navigation/types";
+import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { School, SearchTransportersParams } from "@rotta/api-client";
 
@@ -60,6 +63,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { status, coords, requestLocation, setManualCoords } = useLocation();
+  const { contratoAtivo } = useResponsavelTransportState();
   const [sortBy, setSortBy] = useState<SortBy>("distancia");
   const [apenasVerificados, setApenasVerificados] = useState(false);
   const [schoolQuery, setSchoolQuery] = useState("");
@@ -93,9 +97,29 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
   // O painel operacional (saudação + estado do transporte) saiu daqui
   // em 15/09/2026: virou a aba "Início" (`inicio-screen.tsx`), como na
   // referência, que tem Início e Mapa como abas SEPARADAS. Esta aba
-  // agora é sempre o mapa, com um papel só — a fusão anterior das duas
+  // agora é sempre um MAPA, com um papel só — a fusão anterior das duas
   // já estava anotada aqui mesmo como lacuna deliberada ("mudança maior
   // de navegação... deixada fora desta entrega").
+  //
+  // Qual mapa depende de ter transporte contratado, e os dois casos são
+  // mapa (não é a troca de cara de antes): com contrato ativo, é o mapa
+  // de ACOMPANHAMENTO da referência ("MAPA - RESPONSÁVEL": veículo,
+  // trajeto, próxima parada com ETA e distância) — a referência só
+  // desenha esse estado, porque pressupõe transporte contratado. Sem
+  // contrato, segue o mapa de BUSCA de transportador, que é a única
+  // coisa que um mapa pode oferecer pra quem ainda não contratou
+  // ninguém.
+  if (contratoAtivo) {
+    return (
+      <TripTrackingOverlay
+        contrato={contratoAtivo}
+        onClose={() =>
+          navigation.getParent<BottomTabNavigationProp<ParentTabParamList>>()?.navigate("Inicio")
+        }
+      />
+    );
+  }
+
   if (status === "idle" || status === "requesting") {
     return (
       <VehicleScreen>

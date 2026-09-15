@@ -29,7 +29,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-
 import { AusenciaHojeCard } from "../components/ausencia-hoje-card";
 import { useAssinarContratoComoResponsavel } from "../hooks/use-contracts";
 import { useCreateRating, useRatings } from "../hooks/use-ratings";
@@ -659,7 +658,44 @@ export function TripTrackingOverlay({
               </View>
             </View>
 
-            {proximasEtas && proximasEtas.length > 0 ? (
+            {/* "Próxima parada" em destaque, com ETA e Distância em duas
+                colunas (15/09/2026, referência "MAPA - RESPONSÁVEL") — a
+                distância (`distanciaMetros`) já vinha da API e não era
+                mostrada em lugar nenhum; só existia a lista corrida de
+                próximas paradas abaixo. */}
+            {proximaParada ? (
+              <View style={[styles.proximaParadaCard, { borderColor: theme.colors.border }]}>
+                <View style={styles.paradaRow}>
+                  <MapPin size={16} color={theme.colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                      Próxima parada
+                    </Text>
+                    <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={2}>
+                      {proximaParada.endereco}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.proximaParadaColunas}>
+                  <View style={styles.proximaParadaColuna}>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>ETA</Text>
+                    <Text style={[styles.proximaParadaValor, { color: theme.colors.text }]}>
+                      {formatarHora(proximaParada.etaPrevista)}
+                    </Text>
+                  </View>
+                  <View style={styles.proximaParadaColuna}>
+                    <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Distância</Text>
+                    <Text style={[styles.proximaParadaValor, { color: theme.colors.text }]}>
+                      {proximaParada.distanciaMetros >= 1000
+                        ? `${(proximaParada.distanciaMetros / 1000).toFixed(1)} km`
+                        : `${Math.round(proximaParada.distanciaMetros)} m`}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {proximasEtas && proximasEtas.length > 1 ? (
               <View style={{ gap: 6 }}>
                 <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
                   Próximas paradas
@@ -844,6 +880,10 @@ const styles = StyleSheet.create({
   mensalidade: { fontWeight: "600" },
   notas: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   paradaRow: { alignItems: "center", flexDirection: "row", gap: 8 },
+  proximaParadaCard: { borderRadius: 12, borderWidth: 1, gap: 10, padding: 12 },
+  proximaParadaColuna: { flex: 1, gap: 2 },
+  proximaParadaColunas: { flexDirection: "row", gap: 12 },
+  proximaParadaValor: { fontSize: 15, fontWeight: "700" },
   rotuloAvaliacao: { fontWeight: "600" },
   secao: { fontSize: 16, fontWeight: "700" },
   titulo: { fontSize: 18, fontWeight: "700" },
