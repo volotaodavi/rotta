@@ -69,7 +69,20 @@ export default (): ExpoConfig => ({
     // Sem `autoIncrement` (nao persiste entre builds nesta CI efemera —
     // cada checkout comeca do zero), esse numero precisa ser subido a mao
     // a cada novo build de producao.
-    versionCode: 100002,
+    //
+    // 16/09/2026 — salto pra 2.000.000.000. Tres tentativas (100000,
+    // 100001, 100002) foram recusadas pela Play Console, a ultima com
+    // "nao permite que os usuarios existentes atualizem para os novos
+    // pacotes": existe la um codigo maior do que qualquer um desses, e
+    // nao da pra descobrir qual sem acesso ao Console (o workflow
+    // `play-version-codes.yml` consultaria a API, mas o secret
+    // GOOGLE_PLAY_SERVICE_ACCOUNT_JSON nao esta configurado).
+    //
+    // Em vez de subir de um em um no escuro, vai pro teto pratico: o
+    // limite do Android e 2100000000, entao este valor supera qualquer
+    // coisa plausivel e ainda deixa 100 milhoes de incrementos futuros —
+    // mais do que este app vai usar em toda a sua vida.
+    versionCode: 2000000000,
     // Corrigido de "br.com.rotta.app" (10/09/2026) — o upload do .aab pra
     // Play Console recusou com dois avisos: (1) "precisa ter o nome de
     // pacote br.com.rottabr" — o app ja tinha sido criado no Console com
