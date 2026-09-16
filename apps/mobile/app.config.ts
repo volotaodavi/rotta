@@ -78,11 +78,31 @@ export default (): ExpoConfig => ({
     // `play-version-codes.yml` consultaria a API, mas o secret
     // GOOGLE_PLAY_SERVICE_ACCOUNT_JSON nao esta configurado).
     //
-    // Em vez de subir de um em um no escuro, vai pro teto pratico: o
-    // limite do Android e 2100000000, entao este valor supera qualquer
-    // coisa plausivel e ainda deixa 100 milhoes de incrementos futuros —
-    // mais do que este app vai usar em toda a sua vida.
-    versionCode: 2000000000,
+    // Em vez de subir de um em um no escuro, foi pro teto pratico: o
+    // limite do Android e 2100000000, entao 2000000000 supera qualquer
+    // coisa plausivel. A Play Console ACEITOU o pacote, mas avisou que o
+    // salto foi grande e que o app pode chegar ao teto "com o tempo".
+    //
+    // O aviso e generico e nao olha quanto sobrou: 100.000.000 de
+    // incrementos, ou 273 mil anos a uma publicacao por dia. O teto nao
+    // e o risco real.
+    //
+    // O risco real era o METODO — numero editado a mao, chutado, sem
+    // ninguem saber o que ja existia na loja. Isso acabou: o valor agora
+    // vem de `ANDROID_VERSION_CODE`, que a CI calcula como
+    // 2000000000 + numero do run (ver `build-android-local.yml`). Como o
+    // numero do run so cresce, o versionCode so cresce, sem estado pra
+    // sincronizar e sem ninguem digitando nada.
+    //
+    // O literal abaixo e so o piso de quando se builda fora da CI. Ele
+    // NUNCA deve ser baixado: a Play Console recusa qualquer pacote com
+    // codigo menor que um ja enviado.
+    //
+    // Unico cuidado: renomear/recriar o arquivo do workflow zera o
+    // contador de run do GitHub, o que faria o versionCode CAIR. Se um
+    // dia for preciso renomear, sobe o piso de 2000000000 pra acima do
+    // ultimo valor ja publicado antes de fazer isso.
+    versionCode: Number(process.env.ANDROID_VERSION_CODE) || 2000000000,
     // Corrigido de "br.com.rotta.app" (10/09/2026) — o upload do .aab pra
     // Play Console recusou com dois avisos: (1) "precisa ter o nome de
     // pacote br.com.rottabr" — o app ja tinha sido criado no Console com

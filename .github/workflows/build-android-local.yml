@@ -125,10 +125,33 @@ jobs:
             echo "ext=apk" >> "$GITHUB_OUTPUT"
           fi
 
+      # `versionCode` do Android, calculado — nunca mais digitado à mão
+      # (16/09/2026). Três builds foram gastos hoje chutando o número, e
+      # o último salto (2.000.000.000) rendeu um aviso da Play Console
+      # por ser grande demais.
+      #
+      # `github.run_number` só cresce para um mesmo arquivo de workflow,
+      # então o versionCode só cresce, de 1 em 1, sem nenhum estado pra
+      # sincronizar. O piso 2000000000 é obrigatório: esse valor JÁ FOI
+      # publicado, e a Play Console recusa qualquer código menor que um
+      # já enviado.
+      #
+      # Cuidado registrado: renomear este arquivo zera o contador de run
+      # e faria o versionCode CAIR. Se for preciso renomear, suba o piso
+      # para acima do último valor publicado antes.
+      - name: Calcular o versionCode do Android
+        id: versioncode
+        run: |
+          PISO=2000000000
+          CODIGO=$((PISO + ${{ github.run_number }}))
+          echo "valor=$CODIGO" >> "$GITHUB_OUTPUT"
+          echo "versionCode desta build: $CODIGO"
+
       - name: Build local via EAS CLI (não consome cota da nuvem)
         working-directory: apps/mobile
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          ANDROID_VERSION_CODE: ${{ steps.versioncode.outputs.valor }}
         run: |
           npx eas-cli@latest build \
             --platform android \
