@@ -7,6 +7,7 @@ import { NotificacoesNavigator } from "./NotificacoesNavigator";
 import type { DriverTabParamList } from "./types";
 import type { LucideIcon } from "@rotta/icons/native";
 
+import { RottaSymbol } from "@/components/rotta-symbol";
 import { DriverHistoricoScreen, DriverInicioScreen } from "@/features/driver/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
@@ -23,6 +24,18 @@ const TAB_ICON: Record<keyof DriverTabParamList, LucideIcon> = {
   Historico: History,
   Notificacoes: Bell,
   Perfil: User,
+};
+
+/**
+ * SF Symbol equivalente de cada aba — usado só no iOS (`RottaSymbol`),
+ * onde o símbolo vem do próprio sistema. No Android continua o ícone
+ * Lucide de `TAB_ICON` acima.
+ */
+const TAB_SF_SYMBOL: Record<keyof DriverTabParamList, string> = {
+  Inicio: "house.fill",
+  Historico: "clock.arrow.circlepath",
+  Notificacoes: "bell.fill",
+  Perfil: "person.fill",
 };
 
 /**
@@ -52,8 +65,15 @@ export function DriverNavigator(): JSX.Element {
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarIcon: ({ size, color }) => {
-          const Icon = TAB_ICON[route.name as keyof DriverTabParamList];
-          return <Icon size={size} color={color} />;
+          const nome = route.name as keyof DriverTabParamList;
+          return (
+            <RottaSymbol
+              ios={TAB_SF_SYMBOL[nome]}
+              fallback={TAB_ICON[nome]}
+              size={size}
+              color={color}
+            />
+          );
         },
       })}
     >

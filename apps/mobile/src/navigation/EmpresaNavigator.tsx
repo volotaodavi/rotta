@@ -8,6 +8,7 @@ import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { EmpresaTabParamList } from "./types";
 
+import { RottaSymbol } from "@/components/rotta-symbol";
 import { usePendingJoinRequests } from "@/features/empresa/hooks/use-empresa-team";
 import { EmpresaPerfilScreen } from "@/features/empresa/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
@@ -48,18 +49,33 @@ export function EmpresaNavigator(): JSX.Element {
           tabBarLabel: "Início",
           tabBarBadge:
             pedidosPendentes && pedidosPendentes.length > 0 ? pedidosPendentes.length : undefined,
-          tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="house.fill" fallback={Home} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Frota"
         component={EmpresaFrotaNavigator}
-        options={{ tabBarIcon: ({ size, color }) => <Bus size={size} color={color} /> }}
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="bus.fill" fallback={Bus} size={size} color={color} />
+          ),
+        }}
       />
       <Tab.Screen
         name="Rotas"
         component={EmpresaRotasNavigator}
-        options={{ tabBarIcon: ({ size, color }) => <Route size={size} color={color} /> }}
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol
+              ios="arrow.triangle.turn.up.right.diamond.fill"
+              fallback={Route}
+              size={size}
+              color={color}
+            />
+          ),
+        }}
       />
       <Tab.Screen
         name="Notificacoes"
@@ -67,7 +83,9 @@ export function EmpresaNavigator(): JSX.Element {
         options={{
           tabBarLabel: "Notificações",
           tabBarBadge: naoLidas ? naoLidas : undefined,
-          tabBarIcon: ({ size, color }) => <Bell size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="bell.fill" fallback={Bell} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -76,7 +94,9 @@ export function EmpresaNavigator(): JSX.Element {
         options={{
           headerShown: true,
           title: "Perfil",
-          tabBarIcon: ({ size, color }) => <User size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="person.fill" fallback={User} size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>

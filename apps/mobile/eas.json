@@ -23,7 +23,12 @@
         "EXPO_PUBLIC_WEB_URL": "https://rotta-web.vercel.app",
         "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
       },
-      "android": { "buildType": "apk" }
+      "android": {
+        "buildType": "apk"
+      },
+      "ios": {
+        "simulator": true
+      }
     },
     "production": {
       "channel": "production",
@@ -32,7 +37,8 @@
         "EXPO_PUBLIC_API_URL": "https://rotta-vt7i.onrender.com/v1",
         "EXPO_PUBLIC_WEB_URL": "https://rotta-web.vercel.app",
         "EXPO_PUBLIC_MAPTILER_API_KEY": "j94bZRdWHQSJbCtQR06w"
-      }
+      },
+      "ios": {}
     }
   },
   "submit": {

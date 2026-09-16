@@ -7,6 +7,7 @@ import { ParentPerfilNavigator } from "./ParentPerfilNavigator";
 
 import type { ParentTabParamList } from "./types";
 
+import { RottaSymbol } from "@/components/rotta-symbol";
 import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-transport-state";
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
 import { ParentInicioScreen, TransporteInicioScreen } from "@/features/marketplace/screens";
@@ -53,7 +54,9 @@ export function ParentNavigator(): JSX.Element {
           headerShown: true,
           title: "",
           tabBarLabel: "Início",
-          tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="house.fill" fallback={Home} size={size} color={color} />
+          ),
         }}
       />
       {/* `headerShown` (achado 15/09/2026, print do usuário): sem
@@ -71,7 +74,14 @@ export function ParentNavigator(): JSX.Element {
           headerShown: true,
           title: TRANSPORT_TAB_LABEL[state],
           tabBarLabel: "Viagens",
-          tabBarIcon: ({ size, color }) => <History size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol
+              ios="clock.arrow.circlepath"
+              fallback={History}
+              size={size}
+              color={color}
+            />
+          ),
         }}
       />
       {/* "Mapa" como aba própria (referência: Início · Viagens · Mapa ·
@@ -83,7 +93,9 @@ export function ParentNavigator(): JSX.Element {
         component={MarketplaceNavigator}
         options={{
           tabBarLabel: "Mapa",
-          tabBarIcon: ({ size, color }) => <Map size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="map.fill" fallback={Map} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -92,13 +104,19 @@ export function ParentNavigator(): JSX.Element {
         options={{
           tabBarLabel: "Notificações",
           tabBarBadge: naoLidas ? naoLidas : undefined,
-          tabBarIcon: ({ size, color }) => <Bell size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="bell.fill" fallback={Bell} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Perfil"
         component={ParentPerfilNavigator}
-        options={{ tabBarIcon: ({ size, color }) => <User size={size} color={color} /> }}
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="person.fill" fallback={User} size={size} color={color} />
+          ),
+        }}
       />
     </Tab.Navigator>
   );

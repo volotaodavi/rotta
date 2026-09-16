@@ -9,6 +9,7 @@ import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { AdminTabParamList } from "./types";
 
+import { RottaSymbol } from "@/components/rotta-symbol";
 import { AdminPerfilScreen } from "@/features/admin/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 
@@ -47,19 +48,29 @@ export function AdminNavigator(): JSX.Element {
         component={AdminHomeNavigator}
         options={{
           tabBarLabel: "Início",
-          tabBarIcon: ({ size, color }) => <Home size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="house.fill" fallback={Home} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
         name="Suporte"
         component={AdminSupportNavigator}
-        options={{ tabBarIcon: ({ size, color }) => <Headset size={size} color={color} /> }}
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="headphones" fallback={Headset} size={size} color={color} />
+          ),
+        }}
       />
       {podeVerFinanceiro ? (
         <Tab.Screen
           name="Financeiro"
           component={AdminFinanceiroNavigator}
-          options={{ tabBarIcon: ({ size, color }) => <Wallet size={size} color={color} /> }}
+          options={{
+            tabBarIcon: ({ size, color }) => (
+              <RottaSymbol ios="creditcard.fill" fallback={Wallet} size={size} color={color} />
+            ),
+          }}
         />
       ) : null}
       <Tab.Screen
@@ -68,7 +79,9 @@ export function AdminNavigator(): JSX.Element {
         options={{
           tabBarLabel: "Notificações",
           tabBarBadge: naoLidas ? naoLidas : undefined,
-          tabBarIcon: ({ size, color }) => <Bell size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="bell.fill" fallback={Bell} size={size} color={color} />
+          ),
         }}
       />
       <Tab.Screen
@@ -77,7 +90,9 @@ export function AdminNavigator(): JSX.Element {
         options={{
           headerShown: true,
           title: "Perfil",
-          tabBarIcon: ({ size, color }) => <User size={size} color={color} />,
+          tabBarIcon: ({ size, color }) => (
+            <RottaSymbol ios="person.fill" fallback={User} size={size} color={color} />
+          ),
         }}
       />
     </Tab.Navigator>
