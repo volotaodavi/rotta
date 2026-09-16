@@ -139,6 +139,91 @@ export class MessagePersonalizationService {
     };
   }
 
+  /**
+   * Mesma ocorrência, escrita pra quem OPERA a frota (Empresa/Gestor) e
+   * não pra quem tem um filho nela — por isso identifica o veículo pela
+   * placa e diz quem reportou, em vez de falar "seu filho". Quem lê
+   * isto precisa decidir mandar outro veículo ou acionar manutenção.
+   */
+  ocorrenciaParaTransportadora(
+    placaVeiculo: string,
+    severidade: string,
+    descricao: string,
+    nomeReportou: string,
+  ): PersonalizedMessage {
+    return {
+      titulo: `Ocorrência ${severidade.toLowerCase()} no veículo ${placaVeiculo}`,
+      corpo: `${nomeReportou} registrou uma ocorrência: ${descricao}`,
+    };
+  }
+
+  /**
+   * "Meu filho não vai hoje" chegando em quem dirige. Hoje o motorista
+   * só descobre olhando a tela; sem este aviso ele vai até a parada à
+   * toa (achado 15/09/2026, pedido do usuário: "lista o que faria
+   * sentido notificar cada cargo").
+   */
+  alunoNaoVaiHoje(nomeAluno: string, motivo: string | null): PersonalizedMessage {
+    return {
+      titulo: "Aluno não vai hoje",
+      corpo: motivo
+        ? `${nomeAluno} não vai usar o transporte hoje. Motivo: ${motivo}`
+        : `${nomeAluno} não vai usar o transporte hoje — pode pular a parada dele.`,
+    };
+  }
+
+  /** Desmarcou a ausência: o aluno voltou pra rota, e quem dirige precisa saber tanto quanto soube da ausência. */
+  alunoVoltouParaHoje(nomeAluno: string): PersonalizedMessage {
+    return {
+      titulo: "Aluno voltou para a rota de hoje",
+      corpo: `A ausência de ${nomeAluno} foi desmarcada — ele deve ser buscado normalmente hoje.`,
+    };
+  }
+
+  /** Endereço só de hoje (`StudentAddressOverride`) — o motorista precisa saber ANTES de sair, não ao chegar no lugar errado. */
+  enderecoDoDiaAlterado(nomeAluno: string, endereco: string): PersonalizedMessage {
+    return {
+      titulo: "Endereço alterado só para hoje",
+      corpo: `Hoje ${nomeAluno} deve ser atendido em: ${endereco}`,
+    };
+  }
+
+  /** Escalado numa viagem — o próprio motorista/monitor, que até hoje só descobria abrindo o app. */
+  escaladoNaViagem(nomeRota: string, papel: "motorista" | "monitor"): PersonalizedMessage {
+    return {
+      titulo: `Você foi escalado como ${papel}`,
+      corpo: `Você é o ${papel} da rota ${nomeRota} a partir de agora.`,
+    };
+  }
+
+  /** Tirado de uma viagem em andamento — igualmente importante: evita que continue dirigindo achando que ainda é dele. */
+  removidoDaViagem(nomeRota: string, papel: "motorista" | "monitor"): PersonalizedMessage {
+    return {
+      titulo: `Você não é mais o ${papel} desta viagem`,
+      corpo: `Outra pessoa assumiu como ${papel} da rota ${nomeRota}.`,
+    };
+  }
+
+  /** Documento do veículo que ESTA pessoa dirige — hoje só a empresa é avisada, e quem é parado na blitz é o motorista. */
+  documentoDoMeuVeiculoVencendo(
+    nomeDocumento: string,
+    placaVeiculo: string,
+    diasRestantes: number,
+  ): PersonalizedMessage {
+    return {
+      titulo: "Documento do seu veículo vencendo",
+      corpo: `O ${nomeDocumento} do veículo ${placaVeiculo} vence em ${diasRestantes} dia(s). Avise sua transportadora.`,
+    };
+  }
+
+  /** Solicitação de transporte nova no Marketplace — hoje ninguém é avisado, e é uma família pedindo serviço. */
+  novaSolicitacaoTransporte(nomeResponsavel: string, nomeAluno: string): PersonalizedMessage {
+    return {
+      titulo: "Nova solicitação de transporte",
+      corpo: `${nomeResponsavel} solicitou transporte para ${nomeAluno}. Responda para não perder o cliente.`,
+    };
+  }
+
   emergencia(descricao: string): PersonalizedMessage {
     return { titulo: "Emergência", corpo: `Emergência na rota: ${descricao}` };
   }

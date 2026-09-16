@@ -18,7 +18,10 @@ import type {
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { StudentsService } from "@/modules/students/students.service";
+import type { UsersService } from "@/modules/users/users.service";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { Role } from "@/shared/enums";
 
 const responsavelActor: AuthenticatedUser = {
@@ -80,6 +83,8 @@ describe("TransportRequestsService", () => {
   let transporterRepository: jest.Mocked<TransporterRepository>;
   let studentsService: jest.Mocked<Pick<StudentsService, "findByIdOrThrow" | "create">>;
   let auditLogService: jest.Mocked<AuditLogService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
+  let usersService: jest.Mocked<UsersService>;
 
   beforeEach(() => {
     transportRequestRepository = {
@@ -106,11 +111,25 @@ describe("TransportRequestsService", () => {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AuditLogService>;
 
+    // Aviso pra transportadora (15/09/2026) — `usersService` devolve
+    // lista vazia por padrão: nenhum teste daqui é sobre notificação, e
+    // o disparo é best-effort, então nunca deve mudar o resultado de
+    // `create`. Os testes de notificação mesmo ficam no módulo de
+    // Notificações.
+    eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    usersService = {
+      listMembershipsByCompany: jest.fn().mockResolvedValue([]),
+      findById: jest.fn().mockResolvedValue(null),
+    } as unknown as jest.Mocked<UsersService>;
+
     service = new TransportRequestsService(
       transportRequestRepository,
       transporterRepository,
       studentsService as unknown as StudentsService,
       auditLogService,
+      eventEmitter,
+      new MessagePersonalizationService(),
+      usersService,
     );
   });
 

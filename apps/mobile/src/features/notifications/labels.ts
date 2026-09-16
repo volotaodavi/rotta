@@ -10,6 +10,7 @@ import {
   Flag,
   IdCard,
   MapPin,
+  Handshake,
   MapPinned,
   School,
   Siren,
@@ -58,6 +59,12 @@ export const NOTIFICATION_TYPE_ICON: Record<NotificationEventType, LucideIcon> =
   NOVA_ESCOLA: School,
   NOVO_ALUNO: Backpack,
   NOVO_RESPONSAVEL: Users,
+  // Avisos por cargo (15/09/2026). Cada ícone é o do ASSUNTO, não o do
+  // destinatário — quem lê reconhece o tema antes de ler o texto.
+  NOVA_SOLICITACAO_TRANSPORTE: Handshake,
+  ALUNO_NAO_VAI_HOJE: Backpack,
+  ENDERECO_DO_DIA_ALTERADO: MapPinned,
+  ESCALA_ALTERADA: UserCog,
 };
 
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {
@@ -83,6 +90,10 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {
   NOVA_ESCOLA: "Nova escola",
   NOVO_ALUNO: "Novo aluno",
   NOVO_RESPONSAVEL: "Novo responsável",
+  NOVA_SOLICITACAO_TRANSPORTE: "Nova solicitação",
+  ALUNO_NAO_VAI_HOJE: "Aluno não vai hoje",
+  ENDERECO_DO_DIA_ALTERADO: "Endereço de hoje",
+  ESCALA_ALTERADA: "Escala alterada",
 };
 
 /**
@@ -119,6 +130,13 @@ export const NOTIFICATION_TYPE_TONE: Record<NotificationEventType, NotificationC
   NOVA_ESCOLA: "info",
   NOVO_ALUNO: "info",
   NOVO_RESPONSAVEL: "info",
+  // Solicitação nova é oportunidade (primary); os outros três mudam o
+  // plano do dia de quem dirige, então warning — chamam atenção sem o
+  // peso de "algo deu errado" que `danger` carregaria.
+  NOVA_SOLICITACAO_TRANSPORTE: "primary",
+  ALUNO_NAO_VAI_HOJE: "warning",
+  ENDERECO_DO_DIA_ALTERADO: "warning",
+  ESCALA_ALTERADA: "warning",
 };
 
 export const NOTIFICATION_PRIORITY_LABEL: Record<NotificationPriorityLevel, string> = {

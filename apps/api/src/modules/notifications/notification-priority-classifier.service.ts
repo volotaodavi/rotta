@@ -48,6 +48,14 @@ export class NotificationPriorityClassifierService {
     SUPORTE_TICKET_ABERTO: IMPORTANTE,
     SUPORTE_NOVA_MENSAGEM: IMPORTANTE,
     AVISO_GERAL: IMPORTANTE,
+    // Os três avisos operacionais do dia são URGENTE, não IMPORTANTE:
+    // perdem o valor inteiro se chegarem depois que a van saiu.
+    ALUNO_NAO_VAI_HOJE: URGENTE,
+    ENDERECO_DO_DIA_ALTERADO: URGENTE,
+    ESCALA_ALTERADA: URGENTE,
+    // Solicitação nova não é urgente no sentido de segurança — é
+    // comercial; IMPORTANTE basta e respeita Quiet Hours.
+    NOVA_SOLICITACAO_TRANSPORTE: IMPORTANTE,
     // Aprovação é só informativa (observação de leitura, nunca bloqueia);
     // reprovação é URGENTE — impede credenciamento numa rota daqui pra
     // frente, mesmo nível de CNH_VENCENDO/PAGAMENTO_RECUSADO.

@@ -108,7 +108,12 @@ describe("TripsService", () => {
       listStudentIdsAusenteToday: jest.fn(),
     };
     routesService = {
-      findByIdOrThrow: jest.fn(),
+      // Default resolvido: `notificarEscalaBestEffort` (avisos de escala
+      // pro motorista/monitor, 15/09/2026) lê a rota pra montar o texto,
+      // e um `jest.fn()` cru devolvia `undefined` — quebrando testes que
+      // nada têm a ver com notificação. Quem precisa de outra rota
+      // sobrescreve no próprio teste.
+      findByIdOrThrow: jest.fn().mockResolvedValue({ id: "route-1", nome: "Rota 1" }),
       listStudents: jest.fn(),
       listStops: jest.fn(),
       findActiveRouteIdsForStudent: jest.fn(),

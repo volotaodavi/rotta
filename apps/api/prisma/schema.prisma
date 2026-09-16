@@ -2896,6 +2896,31 @@ enum NotificationEventType {
   RELATORIO_SEMANAL
   /// Mesmo mecanismo, cadência mensal (item "faturamento mensal").
   RELATORIO_MENSAL
+  /// Solicitação de transporte nova chegando pra uma transportadora
+  /// (`TransportRequestsService.create`) — pedido do usuário 15/09/2026,
+  /// "lista o que faria sentido notificar cada cargo". Era a lacuna mais
+  /// cara da lista: uma família pedindo serviço e NINGUÉM sendo avisado;
+  /// o Gestor só descobria abrindo a tela de solicitações por conta
+  /// própria. Vai pra Empresa/Gestor, nunca pro Responsável (que já
+  /// recebe `NOVO_CONTRATO` quando a proposta vira contrato).
+  NOVA_SOLICITACAO_TRANSPORTE
+  /// Aluno marcado como "não vai hoje" pelo responsável
+  /// (`StudentsService.marcarAusenciaHoje`/`removerAusenciaHoje`) —
+  /// destinatário é o MOTORISTA/MONITOR da rota, não o responsável (que
+  /// foi quem marcou). Sem isto, quem dirige só descobre olhando a tela
+  /// e vai até a parada à toa. Distinto de `ALUNO_AUSENTE`, que é o
+  /// oposto: o motorista registrando, em viagem, que não achou o aluno.
+  ALUNO_NAO_VAI_HOJE
+  /// Endereço válido só para hoje (`StudentAddressOverride`) — mesmo
+  /// destinatário e mesma razão de `ALUNO_NAO_VAI_HOJE`: quem dirige
+  /// precisa saber ANTES de sair, não ao chegar no lugar errado.
+  ENDERECO_DO_DIA_ALTERADO
+  /// Motorista/Monitor escalado (ou tirado) de uma viagem
+  /// (`TripsService.substituirMotorista`/`substituirMonitor`). Os
+  /// eventos `MOTORISTA_ALTERADO`/`MONITOR_ALTERADO` que já existiam
+  /// avisam os RESPONSÁVEIS; este avisa a própria pessoa escalada, que
+  /// até então só descobria abrindo o app.
+  ESCALA_ALTERADA
 }
 
 /// Nível de prioridade (briefing "AGENTE 02 — Notification Priority AI") —

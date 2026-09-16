@@ -7,6 +7,8 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { NotificationEventType } from "@prisma/client";
 
 import { toTransportRequestResponseDto } from "./mappers/transport-request.mapper";
 import { TRANSPORTER_REPOSITORY, TRANSPORT_REQUEST_REPOSITORY } from "./marketplace.constants";
@@ -27,7 +29,10 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { TransportRequest } from "@prisma/client";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
+import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { StudentsService } from "@/modules/students/students.service";
+import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {
@@ -55,7 +60,56 @@ export class TransportRequestsService {
     @Inject(TRANSPORTER_REPOSITORY) private readonly transporterRepository: TransporterRepository,
     private readonly studentsService: StudentsService,
     private readonly auditLogService: AuditLogService,
+    private readonly eventEmitter: EventEmitter2,
+    private readonly messagePersonalizationService: MessagePersonalizationService,
+    private readonly usersService: UsersService,
   ) {}
+
+  /**
+   * Avisa Empresa/Gestor que chegou solicitação (pedido do usuário
+   * 15/09/2026 — "lista o que faria sentido notificar cada cargo").
+   *
+   * Era a lacuna mais cara da lista: uma família pedindo serviço e
+   * ninguém sendo avisado — o Gestor só descobria abrindo a tela de
+   * solicitações por conta própria. Best-effort: a solicitação do
+   * responsável nunca falha porque o aviso falhou.
+   */
+  private notificarTransportadoraBestEffort(input: {
+    companyId: string;
+    transportRequestId: string;
+    nomeAluno: string;
+    responsavelId: string;
+  }): void {
+    void (async () => {
+      const [memberships, responsavel] = await Promise.all([
+        this.usersService.listMembershipsByCompany(input.companyId),
+        this.usersService.findById(input.responsavelId),
+      ]);
+      const { titulo, corpo } = this.messagePersonalizationService.novaSolicitacaoTransporte(
+        responsavel?.nome ?? "Um responsável",
+        input.nomeAluno,
+      );
+
+      for (const membership of memberships) {
+        const role = membership.role as Role;
+        if (role !== Role.EMPRESA && role !== Role.GESTOR) continue;
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId: membership.userId,
+          companyId: input.companyId,
+          tipo: NotificationEventType.NOVA_SOLICITACAO_TRANSPORTE,
+          titulo,
+          corpo,
+          dadosContexto: { transportRequestId: input.transportRequestId },
+        });
+      }
+    })().catch((error: unknown) => {
+      this.logger.warn(
+        `Falha ao avisar a transportadora ${input.companyId} sobre a solicitação ${
+          input.transportRequestId
+        }: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    });
+  }
 
   private async recordAudit(input: {
     entidadeId: string;
@@ -141,6 +195,13 @@ export class TransportRequestsService {
       dadosDepois: { studentId: student.id, companyId: dto.companyId },
       ip: meta.ip,
       userAgent: meta.userAgent,
+    });
+
+    this.notificarTransportadoraBestEffort({
+      companyId: dto.companyId,
+      transportRequestId: transportRequest.id,
+      nomeAluno: student.nome,
+      responsavelId: actor.sub,
     });
 
     return toTransportRequestResponseDto(transportRequest);

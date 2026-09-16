@@ -1095,6 +1095,11 @@ export class VehiclesService {
     });
 
     this.notifyOccurrenceBestEffort(occurrence);
+    // A transportadora também precisa saber (15/09/2026) — até aqui só
+    // os RESPONSÁVEIS eram avisados, e quem tem que agir (mandar outro
+    // veículo, acionar manutenção, tirar o carro de circulação) é
+    // justamente quem não recebia nada.
+    this.notifyOccurrenceToCompanyBestEffort(occurrence, vehicle.placa, actor.sub);
 
     return toVehicleOccurrenceResponseDto(occurrence);
   }
@@ -1122,6 +1127,59 @@ export class VehiclesService {
    * escolar usaria pra um aviso que vale pra todos os alunos daquele
    * veículo.
    */
+  /**
+   * Mesma ocorrência, do outro lado do balcão: Empresa/Gestor do tenant
+   * dono do veículo. Texto próprio (`ocorrenciaParaTransportadora`) —
+   * quem opera a frota precisa da placa e de quem reportou, não de "seu
+   * filho".
+   *
+   * `EMERGENCIA` não é duplicado aqui de propósito: o canal dele inclui
+   * SMS, e severidade ALTA numa frota grande viraria uma conta de SMS
+   * desproporcional pro mesmo aviso que o push já entrega. O
+   * responsável continua recebendo os dois, que é onde o SMS se
+   * justifica.
+   */
+  private notifyOccurrenceToCompanyBestEffort(
+    occurrence: VehicleOccurrence,
+    placa: string,
+    reportadoPorId: string,
+  ): void {
+    void (async () => {
+      const [memberships, reportou] = await Promise.all([
+        this.usersService.listMembershipsByCompany(occurrence.companyId),
+        this.usersService.findById(reportadoPorId),
+      ]);
+      const { titulo, corpo } = this.messagePersonalizationService.ocorrenciaParaTransportadora(
+        placa,
+        occurrence.severidade,
+        occurrence.descricao,
+        reportou?.nome ?? "Um membro da equipe",
+      );
+
+      for (const membership of memberships) {
+        const role = membership.role as Role;
+        if (role !== Role.EMPRESA && role !== Role.GESTOR) continue;
+        // Dono autônomo/MEI que reportou a própria ocorrência não
+        // precisa ser avisado dela — ele acabou de escrevê-la.
+        if (membership.userId === reportadoPorId) continue;
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId: membership.userId,
+          companyId: occurrence.companyId,
+          tipo: NotificationEventType.OCORRENCIA,
+          titulo,
+          corpo,
+          dadosContexto: { vehicleId: occurrence.vehicleId, occurrenceId: occurrence.id },
+        });
+      }
+    })().catch((error: unknown) => {
+      this.logger.warn(
+        `Falha ao avisar a transportadora sobre a ocorrência ${occurrence.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    });
+  }
+
   private notifyOccurrenceBestEffort(occurrence: VehicleOccurrence): void {
     this.vehicleRepository
       .listActiveResponsavelIds(occurrence.vehicleId)

@@ -7,8 +7,11 @@ import {
   Clock,
   FileText,
   GraduationCap,
+  Handshake,
   MapPin,
+  MapPinned,
   RefreshCw,
+  UserCog,
   UserPlus,
   UserX,
   XCircle,
@@ -48,6 +51,10 @@ const NOTIFICATION_TYPE_ICON: Record<NotificationEventType, JSX.Element> = {
   NOVA_ESCOLA: <GraduationCap size={18} className="text-info" />,
   NOVO_ALUNO: <UserPlus size={18} className="text-info" />,
   NOVO_RESPONSAVEL: <UserPlus size={18} className="text-info" />,
+  NOVA_SOLICITACAO_TRANSPORTE: <Handshake size={18} className="text-primary" />,
+  ALUNO_NAO_VAI_HOJE: <UserX size={18} className="text-warning" />,
+  ENDERECO_DO_DIA_ALTERADO: <MapPinned size={18} className="text-warning" />,
+  ESCALA_ALTERADA: <UserCog size={18} className="text-warning" />,
 };
 
 /** Fundo suave (mesma cor do ícone, em tinta mínima) atrás do círculo do ícone — mesmo padrão de `bg-primary-muted`/`text-primary` já usado em cartões de ícone no resto do produto. */
@@ -74,6 +81,10 @@ const NOTIFICATION_TYPE_BG: Record<NotificationEventType, string> = {
   NOVA_ESCOLA: "bg-info/15",
   NOVO_ALUNO: "bg-info/15",
   NOVO_RESPONSAVEL: "bg-info/15",
+  NOVA_SOLICITACAO_TRANSPORTE: "bg-primary/15",
+  ALUNO_NAO_VAI_HOJE: "bg-warning/15",
+  ENDERECO_DO_DIA_ALTERADO: "bg-warning/15",
+  ESCALA_ALTERADA: "bg-warning/15",
 };
 
 export function NotificationTypeIcon({ tipo }: { tipo: NotificationEventType }): JSX.Element {

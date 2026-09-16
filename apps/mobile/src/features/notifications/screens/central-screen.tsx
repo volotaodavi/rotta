@@ -100,6 +100,14 @@ const CATEGORIA_POR_TIPO: Record<NotificationEventType, Exclude<FiltroCategoria,
   PAGAMENTO_PENDENTE: "pagamentos",
   NOVO_CONTRATO: "pagamentos",
   CONTRATO_ASSINADO: "pagamentos",
+  // Avisos por cargo (15/09/2026). Os três operacionais entram em
+  // "Viagem" porque é o que eles mudam — o dia de quem dirige. A
+  // solicitação nova vai pra "Pagamentos" junto de contrato: é o mesmo
+  // funil comercial, do primeiro contato até o dinheiro entrar.
+  ALUNO_NAO_VAI_HOJE: "aluno",
+  ENDERECO_DO_DIA_ALTERADO: "viagem",
+  ESCALA_ALTERADA: "viagem",
+  NOVA_SOLICITACAO_TRANSPORTE: "pagamentos",
 };
 
 /**

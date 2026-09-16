@@ -671,6 +671,29 @@ export class StudentsService {
       userAgent: meta.userAgent,
     });
 
+    // Quem dirige precisa saber ANTES de sair, não ao chegar no lugar
+    // errado. Só avisa quando o desvio é para HOJE: um desvio agendado
+    // pra semana que vem viraria ruído agora e já estaria esquecido no
+    // dia — esse caso o motorista vê na lista de paradas do dia.
+    if (dia.getTime() === this.today().getTime()) {
+      const endereco =
+        localTipo === StudentAddressOverrideLocalTipo.OUTRO && dto.logradouro
+          ? `${dto.logradouro}, ${dto.numero ?? "s/n"}${dto.bairro ? ` - ${dto.bairro}` : ""}`
+          : localTipo === StudentAddressOverrideLocalTipo.ESCOLA
+            ? "a escola"
+            : "o endereço de sempre";
+      const horario = dto.horarioAlternativo ? ` (novo horário: ${dto.horarioAlternativo})` : "";
+      this.notificarOperadoresBestEffort(
+        studentId,
+        NotificationEventType.ENDERECO_DO_DIA_ALTERADO,
+        () =>
+          this.messagePersonalizationService.enderecoDoDiaAlterado(
+            student.nome,
+            `${endereco}${horario}`,
+          ),
+      );
+    }
+
     return toStudentAddressOverrideResponseDto(override);
   }
 
@@ -946,6 +969,81 @@ export class StudentsService {
   // automaticamente a partir do que este bloco grava aqui).
   // ---------------------------------------------------------------------
 
+  /**
+   * Quem OPERA as rotas ativas deste aluno — motorista e monitor
+   * padrão, sem repetição, junto do nome da rota pro texto do aviso.
+   *
+   * `withBypass` pelo mesmo motivo de `listActiveByStudentAcrossTenants`
+   * em `RouteStudentRepository`: o Responsável que dispara isso não
+   * pertence ao tenant da transportadora, então a RLS por `companyId`
+   * esconderia justamente quem precisa ser avisado. Só devolve ids de
+   * operador — nunca expõe nada disso na resposta da API.
+   */
+  private async listOperadoresDasRotasDoAluno(
+    studentId: string,
+  ): Promise<{ userId: string; companyId: string; nomeRota: string }[]> {
+    const vinculos = await this.prisma.withBypass(
+      this.prisma.routeStudent.findMany({
+        where: { studentId, ativo: true, route: { deletedAt: null } },
+        select: {
+          route: {
+            select: {
+              nome: true,
+              companyId: true,
+              motoristaPadraoId: true,
+              monitorPadraoId: true,
+            },
+          },
+        },
+      }),
+    );
+
+    const porUsuario = new Map<string, { userId: string; companyId: string; nomeRota: string }>();
+    for (const { route } of vinculos) {
+      for (const userId of [route.motoristaPadraoId, route.monitorPadraoId]) {
+        // Rota sem motorista/monitor padrão é comum (a transportadora
+        // define na hora) — simplesmente não há ninguém pra avisar.
+        if (!userId || porUsuario.has(userId)) continue;
+        porUsuario.set(userId, { userId, companyId: route.companyId, nomeRota: route.nome });
+      }
+    }
+    return [...porUsuario.values()];
+  }
+
+  /**
+   * Avisa quem dirige sobre uma mudança que o RESPONSÁVEL fez para hoje
+   * (pedido do usuário 15/09/2026 — "lista o que faria sentido
+   * notificar cada cargo"). Best-effort: nunca derruba a ação do
+   * responsável, que é o que importa de verdade — o aviso é um extra.
+   */
+  private notificarOperadoresBestEffort(
+    studentId: string,
+    tipo: NotificationEventType,
+    construir: (nomeRota: string) => { titulo: string; corpo: string },
+  ): void {
+    void this.listOperadoresDasRotasDoAluno(studentId)
+      .then((operadores) => {
+        for (const operador of operadores) {
+          const { titulo, corpo } = construir(operador.nomeRota);
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: operador.userId,
+            companyId: operador.companyId,
+            tipo,
+            titulo,
+            corpo,
+            dadosContexto: { studentId },
+          });
+        }
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Falha ao avisar motorista/monitor sobre mudança do aluno ${studentId}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+  }
+
   /** Início do dia corrente em UTC — mesma convenção de `Trip.data`/`StudentAddressOverride.data`. */
   private today(): Date {
     const now = new Date();
@@ -989,6 +1087,12 @@ export class StudentsService {
       userAgent: meta.userAgent,
     });
 
+    // Antes desta linha, quem dirige só descobria a ausência olhando a
+    // tela — e ia até a parada à toa se não olhasse.
+    this.notificarOperadoresBestEffort(studentId, NotificationEventType.ALUNO_NAO_VAI_HOJE, () =>
+      this.messagePersonalizationService.alunoNaoVaiHoje(student.nome, dto.motivo ?? null),
+    );
+
     return { studentId, data: dia.toISOString().slice(0, 10), motivo: dto.motivo ?? null };
   }
 
@@ -1022,6 +1126,12 @@ export class StudentsService {
       ip: meta.ip,
       userAgent: meta.userAgent,
     });
+
+    // Desmarcar precisa avisar tanto quanto marcar: sem isto o
+    // motorista pularia a parada de um aluno que voltou pra rota.
+    this.notificarOperadoresBestEffort(studentId, NotificationEventType.ALUNO_NAO_VAI_HOJE, () =>
+      this.messagePersonalizationService.alunoVoltouParaHoje(student.nome),
+    );
   }
 
   /** Estado atual (dia corrente) — alimenta o botão "Meu filho não vai hoje" na ficha do aluno. */

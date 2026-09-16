@@ -29,6 +29,13 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {
   NOVA_ESCOLA: "Nova escola",
   NOVO_ALUNO: "Novo aluno",
   NOVO_RESPONSAVEL: "Novo responsável",
+  // Avisos por cargo (15/09/2026) — mesmos rótulos do app, palavra por
+  // palavra: a mesma notificação não pode ter dois nomes dependendo de
+  // onde a pessoa abre.
+  NOVA_SOLICITACAO_TRANSPORTE: "Nova solicitação",
+  ALUNO_NAO_VAI_HOJE: "Aluno não vai hoje",
+  ENDERECO_DO_DIA_ALTERADO: "Endereço de hoje",
+  ESCALA_ALTERADA: "Escala alterada",
 };
 
 export const NOTIFICATION_PRIORITY_LABEL: Record<NotificationPriorityLevel, string> = {

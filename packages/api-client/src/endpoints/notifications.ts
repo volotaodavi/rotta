@@ -38,7 +38,19 @@ export type NotificationEventType =
   | "PAGAMENTO_PENDENTE"
   | "NOVA_ESCOLA"
   | "NOVO_ALUNO"
-  | "NOVO_RESPONSAVEL";
+  | "NOVO_RESPONSAVEL"
+  // Avisos por cargo (15/09/2026) — ver `enum NotificationEventType` no
+  // `schema.prisma`, onde cada um está documentado com destinatário.
+  // ATENÇÃO: esta união está DEFASADA em relação ao enum do banco (o
+  // backend já emite tipos de Suporte, Trial, Identidade e Relatórios
+  // que nunca foram adicionados aqui). Uma notificação de tipo
+  // desconhecido continua aparecendo na Central — só não cai em nenhum
+  // filtro de categoria. Alinhar a união inteira é uma limpeza à parte,
+  // deliberadamente fora desta entrega pra não misturar com ela.
+  | "NOVA_SOLICITACAO_TRANSPORTE"
+  | "ALUNO_NAO_VAI_HOJE"
+  | "ENDERECO_DO_DIA_ALTERADO"
+  | "ESCALA_ALTERADA";
 
 export type NotificationPriorityLevel =
   "INFORMATIVA" | "IMPORTANTE" | "URGENTE" | "CRITICA" | "EMERGENCIA";

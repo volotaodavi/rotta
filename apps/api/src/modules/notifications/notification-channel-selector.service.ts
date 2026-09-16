@@ -78,6 +78,17 @@ export class NotificationChannelSelectorService {
     // app") — só PUSH; o `IN_APP` (sino/Central) já é automático em
     // toda notificação, cobrindo o "aparecer no sino" sem duplicar.
     AVISO_GERAL: [PUSH],
+    // Avisos que faltavam por cargo (15/09/2026). Todos PUSH e nada
+    // além: são operacionais e do MESMO dia — um e-mail chegaria depois
+    // de a viagem já ter saído, e WhatsApp/SMS custam dinheiro por
+    // mensagem num evento que acontece o tempo todo.
+    ALUNO_NAO_VAI_HOJE: [PUSH],
+    ENDERECO_DO_DIA_ALTERADO: [PUSH],
+    ESCALA_ALTERADA: [PUSH],
+    // Esta é a exceção: solicitação de transporte é dinheiro entrando e
+    // a resposta pode levar horas, então o e-mail vale — mesmo par de
+    // `NOVO_CONTRATO`, que é o passo seguinte do mesmo funil.
+    NOVA_SOLICITACAO_TRANSPORTE: [PUSH, EMAIL],
     // Aprovação/reprovação de veículo pelo Admin Rotta (Epic A) — mesmo
     // canal de NOVO_CONTRATO/CONTRATO_ASSINADO: comunicado administrativo,
     // não operacional de viagem do dia a dia.

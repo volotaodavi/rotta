@@ -198,6 +198,65 @@ export class TripsService {
   }
 
   /**
+   * Avisa a própria pessoa escalada (ou tirada) de uma viagem — pedido
+   * do usuário 15/09/2026, "lista o que faria sentido notificar cada
+   * cargo".
+   *
+   * `MOTORISTA_ALTERADO`/`MONITOR_ALTERADO`, que já existiam, avisam os
+   * RESPONSÁVEIS. Ninguém avisava quem passou a dirigir: o motorista só
+   * descobria abrindo o app por conta própria, e o que saiu continuava
+   * achando que a viagem era dele. Best-effort — a substituição em si
+   * nunca falha por causa do aviso.
+   */
+  private notificarEscalaBestEffort(
+    trip: Trip,
+    papel: "motorista" | "monitor",
+    entrouUserId: string,
+    saiuUserId: string | null,
+    actor: AuthenticatedUser,
+  ): void {
+    // Lê a rota com o ATOR REAL (o Gestor/Empresa que está fazendo a
+    // substituição), nunca com um ator admin forjado: quem pode trocar
+    // o motorista da viagem já pode ler a rota dela, então não há nada
+    // a driblar — e um `as AuthenticatedUser` fabricado aqui abriria um
+    // caminho de leitura sem escopo dentro do serviço.
+    void this.routesService
+      .findByIdOrThrow(trip.routeId, actor)
+      .then((rota) => {
+        const entrou = this.messagePersonalizationService.escaladoNaViagem(rota.nome, papel);
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId: entrouUserId,
+          companyId: trip.companyId,
+          tipo: NotificationEventType.ESCALA_ALTERADA,
+          titulo: entrou.titulo,
+          corpo: entrou.corpo,
+          dadosContexto: { tripId: trip.id, routeId: trip.routeId },
+        });
+
+        // `saiuUserId === entrouUserId` não acontece (quem chama já
+        // devolve cedo quando não muda nada), mas a checagem mantém a
+        // garantia local de nunca mandar os dois avisos pra mesma pessoa.
+        if (!saiuUserId || saiuUserId === entrouUserId) return;
+        const saiu = this.messagePersonalizationService.removidoDaViagem(rota.nome, papel);
+        this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+          userId: saiuUserId,
+          companyId: trip.companyId,
+          tipo: NotificationEventType.ESCALA_ALTERADA,
+          titulo: saiu.titulo,
+          corpo: saiu.corpo,
+          dadosContexto: { tripId: trip.id, routeId: trip.routeId },
+        });
+      })
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `Falha ao avisar ${papel} sobre mudança de escala na viagem ${trip.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      });
+  }
+
+  /**
    * A parada onde este aluno embarca/desembarca NESTA viagem — o único
    * lugar do sistema que sabe traduzir sentido em parada.
    *
@@ -648,6 +707,7 @@ export class TripsService {
         actor,
       );
     }
+    this.notificarEscalaBestEffort(trip, "motorista", dto.motoristaId, trip.motoristaId, actor);
 
     return toTripResponseDto(updated);
   }
@@ -746,6 +806,7 @@ export class TripsService {
           actor,
         );
       }
+      this.notificarEscalaBestEffort(trip, "monitor", monitorId, trip.monitorId, actor);
     }
 
     return toTripResponseDto(updated);
