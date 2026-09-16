@@ -121,7 +121,7 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
           <View style={styles.rotasHeader}>
             <Text style={[styles.secao, { color: theme.colors.text }]}>Rotas ativas</Text>
             <Pressable onPress={() => irParaAba("Rotas")} accessibilityRole="button">
-              <Text style={{ color: theme.colors.primary, fontSize: 13, fontWeight: "600" }}>
+              <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: "600" }}>
                 Ver todas
               </Text>
             </Pressable>
@@ -206,8 +206,8 @@ const styles = StyleSheet.create({
   rotaCardFooter: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   rotasHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   rotasSection: { gap: 8 },
-  saudacao: { fontSize: 18, fontWeight: "700" },
-  secao: { fontSize: 15, fontWeight: "700" },
+  saudacao: { fontSize: 20, fontWeight: "700" },
+  secao: { fontSize: 16, fontWeight: "700" },
   statTile: { alignItems: "center", flex: 1, gap: 4 },
   statValor: { fontSize: 20, fontWeight: "700" },
   statsRow: { flexDirection: "row", gap: 8 },

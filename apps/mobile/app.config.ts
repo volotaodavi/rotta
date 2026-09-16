@@ -69,7 +69,7 @@ export default (): ExpoConfig => ({
     // Sem `autoIncrement` (nao persiste entre builds nesta CI efemera —
     // cada checkout comeca do zero), esse numero precisa ser subido a mao
     // a cada novo build de producao.
-    versionCode: 100001,
+    versionCode: 100002,
     // Corrigido de "br.com.rotta.app" (10/09/2026) — o upload do .aab pra
     // Play Console recusou com dois avisos: (1) "precisa ter o nome de
     // pacote br.com.rottabr" — o app ja tinha sido criado no Console com

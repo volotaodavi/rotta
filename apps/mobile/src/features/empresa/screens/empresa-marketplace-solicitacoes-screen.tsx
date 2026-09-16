@@ -62,7 +62,7 @@ export function EmpresaMarketplaceSolicitacoesScreen({ navigation }: Props): JSX
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
         Famílias que solicitaram transporte com a sua empresa pelo Marketplace da Rotta.
       </Text>
 
@@ -106,10 +106,10 @@ export function EmpresaMarketplaceSolicitacoesScreen({ navigation }: Props): JSX
                   tone={TRANSPORT_REQUEST_STATUS_TONE[request.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Responsável: {request.responsavelNome ?? "Não informado"}
               </Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Escola: {request.schoolNome ?? "Não informada"}
               </Text>
               <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
@@ -128,5 +128,5 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  nome: { flexShrink: 1, fontSize: 15, fontWeight: "600" },
+  nome: { flexShrink: 1, fontSize: 16, fontWeight: "600" },
 });

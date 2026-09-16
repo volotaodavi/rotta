@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 52,
   },
-  avatarLabel: { fontSize: 18, fontWeight: "700" },
+  avatarLabel: { fontSize: 20, fontWeight: "700" },
   header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
   headerInfo: { flex: 1, gap: 4 },
   nome: { fontSize: 16, fontWeight: "700" },

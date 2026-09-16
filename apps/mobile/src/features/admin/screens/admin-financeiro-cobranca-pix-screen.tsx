@@ -188,5 +188,5 @@ const styles = StyleSheet.create({
   codigoPix: { borderRadius: 8, borderWidth: 1, fontSize: 11, padding: 10, width: "100%" },
   qrCard: { alignItems: "center", gap: 10 },
   qrImage: { borderRadius: 8, height: 200, width: 200 },
-  valorGrande: { fontSize: 22, fontWeight: "700" },
+  valorGrande: { fontSize: 24, fontWeight: "700" },
 });

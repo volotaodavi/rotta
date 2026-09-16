@@ -67,7 +67,7 @@ export function EmpresaRotaNovaScreen({ navigation }: Props): JSX.Element {
       <VehicleTextField label="Nome da rota" value={nome} onChangeText={setNome} />
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Turno
         </Text>
         <View style={styles.chips}>
@@ -83,7 +83,7 @@ export function EmpresaRotaNovaScreen({ navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Dias da semana
         </Text>
         <View style={styles.chips}>

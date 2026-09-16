@@ -48,7 +48,7 @@ export function AuthTermsCheckbox({
           },
         ]}
       >
-        {checked ? <Check size={13} color="#FFFFFF" strokeWidth={3} /> : null}
+        {checked ? <Check size={13} color={theme.colors.onPrimary} strokeWidth={3} /> : null}
       </Pressable>
       <Text style={[styles.label, { color: theme.colors.textMuted }]}>
         Li e aceito os{" "}
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     width: 20,
   },
   flex: { flex: 1 },
-  label: { flex: 1, fontSize: 13, lineHeight: 18 },
+  label: { flex: 1, fontSize: 14, lineHeight: 18 },
   row: { flexDirection: "row", gap: 8 },
   webviewHeader: {
     alignItems: "center",

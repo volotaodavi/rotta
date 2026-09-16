@@ -103,5 +103,5 @@ export function AusenciaHojeCard({
 }
 
 const styles = StyleSheet.create({
-  titulo: { fontSize: 15, fontWeight: "700" },
+  titulo: { fontSize: 16, fontWeight: "700" },
 });

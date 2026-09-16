@@ -69,14 +69,14 @@ export function EmpresaVeiculoDetalheScreen({ route, navigation }: Props): JSX.E
           {vehicle.marca ? ` · ${vehicle.marca}` : ""}
           {vehicle.ano ? ` · ${vehicle.ano}` : ""}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           {VEHICLE_TYPE_LABEL[vehicle.tipo]} · {vehicle.capacidadePassageiros} passageiros
           {vehicle.cor ? ` · ${vehicle.cor}` : ""}
         </Text>
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Status
         </Text>
         <View style={styles.chips}>
@@ -136,5 +136,5 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  placa: { fontSize: 18, fontWeight: "700", letterSpacing: 0.5 },
+  placa: { fontSize: 20, fontWeight: "700", letterSpacing: 0.5 },
 });

@@ -77,10 +77,10 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
                   tone={ROUTE_STATUS_TONE[route.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {SCHOOL_SHIFT_LABEL[route.turno]} · {formatRouteWeekdaysAbbrev(route.diasSemana)}
               </Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {nomeMotorista(route.motoristaPadraoId)}
               </Text>
             </VehicleCard>
@@ -94,5 +94,5 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  nome: { flex: 1, fontSize: 15, fontWeight: "600" },
+  nome: { flex: 1, fontSize: 16, fontWeight: "600" },
 });

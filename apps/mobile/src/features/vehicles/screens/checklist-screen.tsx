@@ -110,5 +110,5 @@ export function ChecklistScreen(): JSX.Element {
 
 const styles = StyleSheet.create({
   switchRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  title: { fontSize: 15, fontWeight: "700" },
+  title: { fontSize: 16, fontWeight: "700" },
 });

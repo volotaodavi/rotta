@@ -50,7 +50,7 @@ export function ChamadosScreen({ navigation }: Props): JSX.Element {
     <VehicleScreen>
       <VehicleButton
         label="Novo chamado"
-        icon={<Plus size={18} color="#FFFFFF" />}
+        icon={<Plus size={18} color={theme.colors.onPrimary} />}
         onPress={() => navigation.navigate("Novo")}
       />
 
@@ -84,7 +84,7 @@ export function ChamadosScreen({ navigation }: Props): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  assunto: { flex: 1, fontSize: 15, fontWeight: "600" },
+  assunto: { flex: 1, fontSize: 16, fontWeight: "600" },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
 });

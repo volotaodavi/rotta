@@ -77,7 +77,7 @@ function RouteChip({ label, value }: { label: string; value: string }): JSX.Elem
       ]}
     >
       <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{label}</Text>
-      <Text style={{ color: theme.colors.text, fontSize: 13, fontWeight: "700" }}>{value}</Text>
+      <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: "700" }}>{value}</Text>
     </View>
   );
 }
@@ -133,7 +133,7 @@ export function RouteFromToCard({
           <View style={styles.pontoRow}>
             <View style={styles.dotOrigem} />
             <Text
-              style={{ color: "#ffffff", fontSize: 13, fontWeight: "600", flex: 1 }}
+              style={{ color: theme.colors.onPrimary, fontSize: 14, fontWeight: "600", flex: 1 }}
               numberOfLines={1}
             >
               {origemLabel}
@@ -141,9 +141,9 @@ export function RouteFromToCard({
           </View>
           <View style={[styles.linhaConectora, { borderColor: "rgba(255,255,255,0.4)" }]} />
           <View style={styles.pontoRow}>
-            <View style={styles.dotDestino} />
+            <View style={[styles.dotDestino, { backgroundColor: theme.colors.onPrimary }]} />
             <Text
-              style={{ color: "#ffffff", fontSize: 13, fontWeight: "600", flex: 1 }}
+              style={{ color: theme.colors.onPrimary, fontSize: 14, fontWeight: "600", flex: 1 }}
               numberOfLines={1}
             >
               {destinoLabel}
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   chip: { gap: 2, paddingHorizontal: 12, paddingVertical: 8 },
   chipsRow: { flexDirection: "row", gap: 8, marginTop: 10 },
   // Brancas sobre o gradiente azul do cartão (ver `CardGradientBackground`) — não dependem de tema claro/escuro, já que o cartão é sempre azul.
-  dotDestino: { backgroundColor: "#ffffff", borderRadius: 5, height: 10, width: 10 },
+  dotDestino: { borderRadius: 5, height: 10, width: 10 },
   dotOrigem: {
     backgroundColor: "transparent",
     borderColor: "#ffffff",

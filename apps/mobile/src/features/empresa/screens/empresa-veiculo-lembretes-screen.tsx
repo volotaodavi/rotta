@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleReminderType } from "@rotta/api-client";
@@ -48,7 +47,7 @@ export function EmpresaVeiculoLembretesScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo lembrete
         </Text>
         <View style={styles.chips}>
@@ -89,7 +88,7 @@ export function EmpresaVeiculoLembretesScreen({ route }: Props): JSX.Element {
                 tone={r.vencido ? "danger" : r.vencendo ? "warning" : "neutral"}
               />
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Data-alvo: {new Date(r.dataAlvo).toLocaleDateString("pt-BR")}
             </Text>
             {r.status === "PENDENTE" ? (

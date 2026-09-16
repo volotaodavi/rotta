@@ -49,7 +49,7 @@ export function VehicleAdminReviewAcknowledgeSheet(): JSX.Element | null {
 }
 
 const styles = StyleSheet.create({
-  body: { fontSize: 15, lineHeight: 22 },
+  body: { fontSize: 16, lineHeight: 22 },
   content: { flex: 1, gap: 16 },
-  subtitle: { fontSize: 13 },
+  subtitle: { fontSize: 14 },
 });

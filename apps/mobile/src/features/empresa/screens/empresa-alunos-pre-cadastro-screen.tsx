@@ -86,7 +86,7 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.form}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo pré-cadastro
         </Text>
         <VehicleTextField label="Nome do aluno" value={nomeAluno} onChangeText={setNomeAluno} />
@@ -123,7 +123,7 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
                 tone={STUDENT_PRE_REGISTRATION_STATUS_TONE[item.status]}
               />
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {item.nomeResponsavel} · {item.celularResponsavel}
             </Text>
             {item.status === "PENDENTE" ? (
@@ -147,5 +147,5 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   form: { gap: 10 },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  nome: { flex: 1, fontSize: 15, fontWeight: "600" },
+  nome: { flex: 1, fontSize: 16, fontWeight: "600" },
 });

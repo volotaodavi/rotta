@@ -237,7 +237,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 13 },
+  error: { fontSize: 14 },
   fieldLabel: { fontSize: 14, fontWeight: "600", marginBottom: 8 },
   papelOption: { flex: 1 },
   papelRow: { flexDirection: "row", gap: 12, marginBottom: 8 },

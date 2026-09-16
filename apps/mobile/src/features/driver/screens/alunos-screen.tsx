@@ -43,11 +43,11 @@ export function DriverAlunosScreen(): JSX.Element {
               {aluno.studentNome ?? "Aluno"}
             </Text>
             {aluno.schoolNome ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {aluno.schoolNome}
               </Text>
             ) : null}
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Rota: {aluno.routeNome}
               {aluno.horarioPrevisto ? ` · ${aluno.horarioPrevisto}` : ""}
             </Text>
@@ -69,5 +69,5 @@ export function DriverAlunosScreen(): JSX.Element {
 const styles = StyleSheet.create({
   card: { gap: 4 },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  nome: { fontSize: 15, fontWeight: "600" },
+  nome: { fontSize: 16, fontWeight: "600" },
 });

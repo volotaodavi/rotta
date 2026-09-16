@@ -134,19 +134,19 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
             tone={TRANSPORT_REQUEST_STATUS_TONE[request.status]}
           />
         </View>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Responsável: {request.responsavelNome ?? "Não informado"}
           {request.responsavelTelefone ? ` · ${request.responsavelTelefone}` : ""}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Escola: {request.schoolNome ?? "Não informada"}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Turno: {request.turno}</Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>Turno: {request.turno}</Text>
         <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Recebida em {new Date(request.createdAt).toLocaleDateString("pt-BR")}
         </Text>
         {request.status === "RECUSADA" && request.motivoRecusa ? (
-          <Text style={{ color: theme.colors.danger, fontSize: 13 }}>
+          <Text style={{ color: theme.colors.danger, fontSize: 14 }}>
             Motivo da recusa: {request.motivoRecusa}
           </Text>
         ) : null}
@@ -164,7 +164,7 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
 
       {request.status === "RECEBIDA" || request.status === "EM_ANALISE" ? (
         <VehicleCard style={styles.card}>
-          <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+          <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
             Decisão
           </Text>
           <VehicleButton
@@ -190,7 +190,7 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
 
       {request.status === "APROVADA" && !contratoExistente ? (
         <VehicleCard style={styles.card}>
-          <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+          <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
             Gerar contrato
           </Text>
           <VehicleTextField
@@ -286,7 +286,7 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
 
       {contratoExistente ? (
         <VehicleCard style={styles.linha}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
             Contrato já gerado para esta solicitação.
           </Text>
           <VehicleButton

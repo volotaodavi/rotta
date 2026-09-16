@@ -281,7 +281,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
             { backgroundColor: theme.colors.primary, borderRadius: theme.radius.full },
           ]}
         >
-          <Text style={styles.reabrirLabel}>Ver lista</Text>
+          <Text style={[styles.reabrirLabel, { color: theme.colors.onPrimary }]}>Ver lista</Text>
         </Pressable>
       ) : null}
 
@@ -306,7 +306,9 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
               </View>
               <VehicleButton
                 label="Somente verificados"
-                icon={apenasVerificados ? <Check size={16} color="#FFFFFF" /> : undefined}
+                icon={
+                  apenasVerificados ? <Check size={16} color={theme.colors.onPrimary} /> : undefined
+                }
                 variant={apenasVerificados ? "primary" : "secondary"}
                 onPress={() => setApenasVerificados((prev) => !prev)}
               />
@@ -353,7 +355,7 @@ const styles = StyleSheet.create({
   codigoLink: { alignItems: "center", marginTop: 8, paddingVertical: 10 },
   container: { flex: 1 },
   filtrosRow: { flexDirection: "row", flexWrap: "wrap" },
-  reabrirLabel: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  reabrirLabel: { fontSize: 14, fontWeight: "700" },
   reabrirPill: {
     alignSelf: "center",
     bottom: 24,
@@ -380,6 +382,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  searchInput: { flex: 1, fontSize: 15 },
+  searchInput: { flex: 1, fontSize: 16 },
   topOverlay: { left: 16, position: "absolute", right: 16, top: 0 },
 });

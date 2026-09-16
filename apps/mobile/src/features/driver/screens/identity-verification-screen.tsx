@@ -22,7 +22,7 @@ export function DriverIdentityVerificationScreen(): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
         Confirme sua identidade com a Didit: documento + biometria facial, num único formulário
         guiado.
       </Text>

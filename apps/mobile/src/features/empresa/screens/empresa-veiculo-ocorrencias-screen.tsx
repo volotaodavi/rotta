@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Text } from "react-native";
 
-
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -55,7 +54,7 @@ export function EmpresaVeiculoOcorrenciasScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={{ gap: 8 }}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Reportar ocorrência
         </Text>
         <VehicleTextField label="Título" value={titulo} onChangeText={setTitulo} />
@@ -83,7 +82,7 @@ export function EmpresaVeiculoOcorrenciasScreen({ route }: Props): JSX.Element {
               tone={VEHICLE_OCCURRENCE_SEVERITY_TONE[o.severidade]}
             />
             <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{o.titulo}</Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{o.descricao}</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>{o.descricao}</Text>
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {new Date(o.createdAt).toLocaleString("pt-BR")}
             </Text>

@@ -1,6 +1,5 @@
 import { Text } from "react-native";
 
-
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleChecklist } from "@rotta/api-client";
@@ -24,7 +23,7 @@ export function EmpresaVeiculoChecklistScreen({ route }: Props): JSX.Element {
 
   function Item({ label, ok }: { label: string; ok: boolean }): JSX.Element {
     return (
-      <Text style={{ color: ok ? theme.colors.textMuted : theme.colors.danger, fontSize: 13 }}>
+      <Text style={{ color: ok ? theme.colors.textMuted : theme.colors.danger, fontSize: 14 }}>
         {label}: {ok ? "OK" : "Problema"}
       </Text>
     );

@@ -233,7 +233,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Paradas
         </Text>
         {/* A placa: mesma rota, dois sentidos. Só muda o que está na
@@ -276,7 +276,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
           })
         )}
 
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Adicionar parada
         </Text>
 
@@ -344,7 +344,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Alunos vinculados
         </Text>
         {!alunos || alunos.length === 0 ? (
@@ -366,7 +366,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
           ))
         )}
 
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Adicionar aluno
         </Text>
         {candidatosDisponiveis.length === 0 ? (
@@ -390,7 +390,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
 
         {alunoSelecionado ? (
           <>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>Parada de embarque</Text>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>Parada de embarque</Text>
             <View style={styles.chips}>
               {paradasOrdenadas.map((parada) => (
                 <VehicleButton
@@ -401,7 +401,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
                 />
               ))}
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Parada de desembarque
             </Text>
             <View style={styles.chips}>
@@ -432,7 +432,7 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  nome: { flex: 1, fontSize: 17, fontWeight: "700" },
+  nome: { flex: 1, fontSize: 16, fontWeight: "700" },
   paradaLinha: { alignItems: "center", flexDirection: "row", gap: 8, paddingVertical: 2 },
   paradaTexto: { flex: 1 },
 });

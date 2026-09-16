@@ -154,5 +154,5 @@ const styles = StyleSheet.create({
   bolha: { gap: 4, maxWidth: "85%", padding: 12 },
   cabecalho: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  titulo: { fontSize: 18, fontWeight: "700" },
+  titulo: { fontSize: 20, fontWeight: "700" },
 });

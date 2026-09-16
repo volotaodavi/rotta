@@ -53,5 +53,5 @@ export function CriarEmpresaWebViewScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   footer: { borderTopWidth: 1, gap: 12 },
-  helper: { fontSize: 13, lineHeight: 18 },
+  helper: { fontSize: 14, lineHeight: 18 },
 });

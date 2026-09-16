@@ -153,7 +153,7 @@ export function ConvitePreviewScreen({ route }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  error: { fontSize: 13 },
+  error: { fontSize: 14 },
   subtitle: { fontSize: 14, lineHeight: 20, marginBottom: 8 },
   title: { fontWeight: "600", marginBottom: 4 },
 });

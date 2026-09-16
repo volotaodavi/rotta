@@ -164,6 +164,6 @@ export function PreferenciasScreen(): JSX.Element {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  secaoTitulo: { fontSize: 15, fontWeight: "700" },
+  secaoTitulo: { fontSize: 16, fontWeight: "700" },
   switchRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
 });

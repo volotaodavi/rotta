@@ -144,7 +144,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Dados do aluno
         </Text>
         <VehicleTextField label="Nome completo" value={nome} onChangeText={setNome} />
@@ -176,14 +176,14 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Endereços
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Embarque: {student.embarqueLogradouro}, {student.embarqueNumero}, {student.embarqueBairro}
           , {student.embarqueCidade}/{student.embarqueEstado}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Desembarque: {student.desembarqueLogradouro}, {student.desembarqueNumero},{" "}
           {student.desembarqueBairro}, {student.desembarqueCidade}/{student.desembarqueEstado}
         </Text>
@@ -198,7 +198,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Escola
         </Text>
         <VehicleButton
@@ -209,12 +209,12 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Ausência de hoje
         </Text>
         {ausenciaHoje ? (
           <>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {student.nome} está marcado como ausente hoje — o motorista vai pular a parada dele.
             </Text>
             <VehicleButton
@@ -226,7 +226,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
           </>
         ) : (
           <>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Se {student.nome} não vai ter transporte hoje, avise antes da viagem começar.
             </Text>
             <VehicleButton
@@ -241,7 +241,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Informações adicionais
         </Text>
         <VehicleTextField
@@ -273,7 +273,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       />
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.danger, fontWeight: "700", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.danger, fontWeight: "700", fontSize: 14 }}>
           Remover aluno
         </Text>
         <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>

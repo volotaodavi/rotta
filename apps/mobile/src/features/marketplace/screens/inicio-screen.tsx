@@ -80,7 +80,7 @@ export function ParentInicioScreen(): JSX.Element {
             <Text style={[styles.saudacao, { color: theme.colors.text }]}>
               {primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!"}
             </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Acompanhe o transporte do seu filho.
             </Text>
           </View>
@@ -163,5 +163,5 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", flexDirection: "row", gap: 12 },
   headerTexto: { flex: 1, gap: 2 },
   saudacao: { fontSize: 20, fontWeight: "700" },
-  tituloEstado: { fontSize: 17, fontWeight: "700" },
+  tituloEstado: { fontSize: 16, fontWeight: "700" },
 });

@@ -55,5 +55,5 @@ export function DocumentosScreen(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  tipo: { fontSize: 15, fontWeight: "700" },
+  tipo: { fontSize: 16, fontWeight: "700" },
 });

@@ -252,5 +252,5 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   chipsRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   lista: { gap: 8 },
-  secao: { fontSize: 15, fontWeight: "700", marginTop: 8 },
+  secao: { fontSize: 16, fontWeight: "700", marginTop: 8 },
 });

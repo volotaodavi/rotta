@@ -609,7 +609,7 @@ export function TripTrackingOverlay({
           </Pressable>
           <View style={[styles.trackTitlePill, { backgroundColor: theme.colors.surfaceElevated }]}>
             <Text
-              style={{ color: theme.colors.text, fontWeight: "700", fontSize: 13 }}
+              style={{ color: theme.colors.text, fontWeight: "700", fontSize: 14 }}
               numberOfLines={1}
             >
               Viagem em andamento
@@ -647,7 +647,7 @@ export function TripTrackingOverlay({
               {proximaParada ? (
                 <View style={styles.etaRow}>
                   <Clock size={14} color={theme.colors.success} />
-                  <Text style={{ color: theme.colors.success, fontWeight: "600", fontSize: 13 }}>
+                  <Text style={{ color: theme.colors.success, fontWeight: "600", fontSize: 14 }}>
                     Chegando às {formatarHora(proximaParada.etaPrevista)}
                   </Text>
                 </View>
@@ -875,7 +875,7 @@ const styles = StyleSheet.create({
   acompEta: { fontSize: 16, fontWeight: "700" },
   acompLinhaIcone: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
   acompLinhaTexto: { flex: 1, gap: 2 },
-  acompRota: { fontSize: 15, fontWeight: "600" },
+  acompRota: { fontSize: 16, fontWeight: "600" },
   acompRotulo: { fontSize: 12 },
   acompRow: { alignItems: "flex-start", flexDirection: "row" },
   acompValor: { fontSize: 14, fontWeight: "600" },
@@ -899,10 +899,10 @@ const styles = StyleSheet.create({
   proximaParadaCard: { borderRadius: 12, borderWidth: 1, gap: 10, padding: 12 },
   proximaParadaColuna: { flex: 1, gap: 2 },
   proximaParadaColunas: { flexDirection: "row", gap: 12 },
-  proximaParadaValor: { fontSize: 15, fontWeight: "700" },
+  proximaParadaValor: { fontSize: 16, fontWeight: "700" },
   rotuloAvaliacao: { fontWeight: "600" },
   secao: { fontSize: 16, fontWeight: "700" },
-  titulo: { fontSize: 18, fontWeight: "700" },
+  titulo: { fontSize: 20, fontWeight: "700" },
   trackBackButton: {
     alignItems: "center",
     borderRadius: 999,

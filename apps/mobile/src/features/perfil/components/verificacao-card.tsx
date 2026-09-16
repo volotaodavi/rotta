@@ -40,7 +40,7 @@ export function VerificacaoCard({ verificacao }: { verificacao: PerfilVerificaca
       <Text
         style={{
           color: verificacao.verificado ? theme.colors.success : theme.colors.textMuted,
-          fontSize: 13,
+          fontSize: 14,
         }}
       >
         {verificacao.verificado
@@ -134,8 +134,8 @@ export function DadosCard({
 
 const styles = StyleSheet.create({
   dado: { flexDirection: "row", gap: 12, justifyContent: "space-between" },
-  dadoRotulo: { fontSize: 13 },
-  dadoValor: { flexShrink: 1, fontSize: 13, fontWeight: "600", textAlign: "right" },
+  dadoRotulo: { fontSize: 14 },
+  dadoValor: { flexShrink: 1, fontSize: 14, fontWeight: "600", textAlign: "right" },
   dados: { gap: 8 },
   item: { alignItems: "flex-start", flexDirection: "row", gap: 10 },
   itemLabel: { fontSize: 14, fontWeight: "600" },
@@ -150,5 +150,5 @@ const styles = StyleSheet.create({
     width: 20,
   },
   titulo: { alignItems: "center", flexDirection: "row", gap: 6 },
-  tituloTexto: { fontSize: 15, fontWeight: "700" },
+  tituloTexto: { fontSize: 16, fontWeight: "700" },
 });

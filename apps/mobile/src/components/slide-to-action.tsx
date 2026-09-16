@@ -124,11 +124,11 @@ export function SlideToAction({
         ]}
       >
         {isLoading ? (
-          <ActivityIndicator color="#FFFFFF" size="small" />
+          <ActivityIndicator color={theme.colors.onPrimary} size="small" />
         ) : (
           <ChevronsRight
             size={22}
-            color="#FFFFFF"
+            color={theme.colors.onPrimary}
             style={direction === "left" ? styles.chevronFlipped : undefined}
           />
         )}

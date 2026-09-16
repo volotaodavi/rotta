@@ -97,5 +97,5 @@ const styles = StyleSheet.create({
   actions: { gap: 12 },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   headerRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  nome: { flexShrink: 1, fontSize: 18, fontWeight: "700" },
+  nome: { flexShrink: 1, fontSize: 20, fontWeight: "700" },
 });

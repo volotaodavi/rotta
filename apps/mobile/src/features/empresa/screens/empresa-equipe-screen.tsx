@@ -78,7 +78,7 @@ export function EmpresaEquipeScreen(): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Pedidos pendentes
         </Text>
         {carregandoPendentes ? (
@@ -89,7 +89,7 @@ export function EmpresaEquipeScreen(): JSX.Element {
           pendentes.map((pedido) => (
             <View key={pedido.id} style={styles.pedido}>
               <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{pedido.userName}</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {PAPEL_LABEL[pedido.role] ?? pedido.role} · {pedido.userEmail}
               </Text>
               <View style={styles.linhaBotoes}>
@@ -115,7 +115,7 @@ export function EmpresaEquipeScreen(): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Equipe
         </Text>
         {carregandoEquipe ? (
@@ -132,7 +132,7 @@ export function EmpresaEquipeScreen(): JSX.Element {
                   tone={IDENTITY_VERIFICATION_STATUS_TONE[membro.identityVerificationStatus]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {PAPEL_LABEL[membro.papel] ?? membro.papel} · {membro.email}
               </Text>
             </View>
@@ -141,7 +141,7 @@ export function EmpresaEquipeScreen(): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo convite
         </Text>
         <View style={styles.chips}>

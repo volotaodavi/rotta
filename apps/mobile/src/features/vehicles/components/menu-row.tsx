@@ -67,7 +67,7 @@ export function MenuRowList({ items }: { items: MenuRowItem[] }): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  label: { flex: 1, fontSize: 15 },
+  label: { flex: 1, fontSize: 16 },
   linha: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 14 },
   lista: { gap: 0, paddingVertical: 0 },
 });

@@ -4,7 +4,6 @@ import type { ComponentType } from "react";
 
 import { useTheme } from "@/providers/theme-provider";
 
-
 interface AuthStatusBadgeProps {
   /** Qualquer ícone de `@rotta/icons/native` (todos aceitam `size`/`color`/`strokeWidth`). */
   icon: ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
@@ -31,7 +30,7 @@ export function AuthStatusBadge({ icon: Icon }: AuthStatusBadgeProps): JSX.Eleme
     <View style={styles.wrap}>
       <View style={[styles.ring, { backgroundColor: theme.colors.primaryMuted }]}>
         <View style={[styles.core, { backgroundColor: theme.colors.primary }]}>
-          <Icon size={30} color="#FFFFFF" strokeWidth={2.25} />
+          <Icon size={30} color={theme.colors.onPrimary} strokeWidth={2.25} />
         </View>
       </View>
     </View>

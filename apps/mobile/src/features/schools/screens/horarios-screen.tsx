@@ -62,5 +62,5 @@ export function EscolaHorariosScreen({ route }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  titulo: { fontSize: 15, fontWeight: "700" },
+  titulo: { fontSize: 16, fontWeight: "700" },
 });

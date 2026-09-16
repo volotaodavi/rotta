@@ -51,7 +51,9 @@ export function BackgroundLocationDisclosureModal({
             onPress={onConfirmar}
             style={[styles.botao, { backgroundColor: theme.colors.primary }]}
           >
-            <Text style={styles.botaoLabel}>Entendi, continuar</Text>
+            <Text style={[styles.botaoLabel, { color: theme.colors.onPrimary }]}>
+              Entendi, continuar
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -67,7 +69,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     width: "100%",
   },
-  botaoLabel: { color: "#fff", fontSize: 15, fontWeight: "700" },
+  botaoLabel: { fontSize: 16, fontWeight: "700" },
   card: {
     alignItems: "center",
     borderRadius: 20,
@@ -90,5 +92,5 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     padding: 20,
   },
-  titulo: { fontSize: 18, fontWeight: "700", marginBottom: 10, textAlign: "center" },
+  titulo: { fontSize: 20, fontWeight: "700", marginBottom: 10, textAlign: "center" },
 });

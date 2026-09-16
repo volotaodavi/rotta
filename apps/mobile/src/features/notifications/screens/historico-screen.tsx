@@ -93,5 +93,5 @@ export function HistoricoScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   linhaTitulo: { alignItems: "center", flexDirection: "row", gap: 8 },
-  titulo: { flex: 1, fontSize: 15, fontWeight: "700" },
+  titulo: { flex: 1, fontSize: 16, fontWeight: "700" },
 });

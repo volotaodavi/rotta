@@ -230,7 +230,7 @@ export function ConviteTransportadoraLink({ onPress }: { onPress: () => void }):
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 13 },
+  error: { fontSize: 14 },
   linkHighlight: { fontWeight: "600" },
   linkText: { fontSize: 12, textAlign: "center" },
   subtitle: { fontSize: 14, marginBottom: 8 },

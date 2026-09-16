@@ -63,11 +63,11 @@ export function SentidoSwitch({
           },
         ]}
       >
-        <Icone size={16} color={ativo ? theme.colors.background : theme.colors.textMuted} />
+        <Icone size={16} color={ativo ? theme.colors.onPrimary : theme.colors.textMuted} />
         <Text
           style={[
             styles.ladoLabel,
-            { color: ativo ? theme.colors.background : theme.colors.textMuted },
+            { color: ativo ? theme.colors.onPrimary : theme.colors.textMuted },
           ]}
         >
           {TRIP_SENTIDO_LABEL[sentido]}

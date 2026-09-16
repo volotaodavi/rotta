@@ -29,7 +29,7 @@ export function SeloVerificado({ size = 18 }: { size?: number }): JSX.Element {
       accessibilityLabel="Perfil verificado"
       style={[styles.circulo, { backgroundColor: theme.colors.primary, height: size, width: size }]}
     >
-      <Check size={size * 0.62} color="#FFFFFF" strokeWidth={3.5} />
+      <Check size={size * 0.62} color={theme.colors.onPrimary} strokeWidth={3.5} />
     </View>
   );
 }

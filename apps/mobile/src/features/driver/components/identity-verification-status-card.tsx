@@ -126,10 +126,10 @@ export function IdentityVerificationStatusCard(): JSX.Element {
               {COPY[status].titulo}
             </Text>
           </View>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
             {data?.motivo ?? COPY[status].textoPadrao}
           </Text>
-          {erro ? <Text style={{ color: theme.colors.danger, fontSize: 13 }}>{erro}</Text> : null}
+          {erro ? <Text style={{ color: theme.colors.danger, fontSize: 14 }}>{erro}</Text> : null}
           {PODE_INICIAR.includes(status) ? (
             <AuthButton
               label={status === "NAO_INICIADA" ? "Verificar identidade agora" : "Tentar novamente"}
@@ -157,7 +157,7 @@ export function IdentityVerificationStatusCard(): JSX.Element {
             >
               <X size={22} color={theme.colors.text} />
             </Pressable>
-            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 18 }}>
+            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 20 }}>
               Verificação de identidade
             </Text>
             <View style={styles.headerSpacer} />
@@ -183,5 +183,5 @@ const styles = StyleSheet.create({
   },
   modalScreen: { flex: 1 },
   statusRow: { alignItems: "center", flexDirection: "row", gap: 10 },
-  statusTexto: { flex: 1, fontSize: 15, fontWeight: "600" },
+  statusTexto: { flex: 1, fontSize: 16, fontWeight: "600" },
 });

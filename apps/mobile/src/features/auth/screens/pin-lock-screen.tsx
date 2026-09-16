@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 64,
   },
-  avatarLabel: { fontSize: 22, fontWeight: "700" },
+  avatarLabel: { fontSize: 24, fontWeight: "700" },
   biometriaLink: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "center" },
   card: { alignItems: "center", gap: 6, marginBottom: 8 },
   subtitle: { fontSize: 14, marginBottom: 8 },

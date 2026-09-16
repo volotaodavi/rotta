@@ -99,5 +99,5 @@ export function AdminHomeScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  saudacao: { fontSize: 18, fontWeight: "700" },
+  saudacao: { fontSize: 20, fontWeight: "700" },
 });

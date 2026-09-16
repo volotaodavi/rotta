@@ -124,7 +124,7 @@ export function EmpresaVeiculoNovoScreen({ navigation }: Props): JSX.Element {
       />
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>Tipo</Text>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>Tipo</Text>
         <View style={styles.chips}>
           {TIPOS.map((value) => (
             <VehicleButton

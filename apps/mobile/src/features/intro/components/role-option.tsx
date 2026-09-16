@@ -89,7 +89,7 @@ export function RoleOption({
             },
           ]}
         >
-          {selected ? <Check size={14} color="#FFFFFF" /> : null}
+          {selected ? <Check size={14} color={theme.colors.onPrimary} /> : null}
         </View>
       </Pressable>
     </Animated.View>
@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     width: 24,
   },
   container: { alignItems: "center", flexDirection: "row", minHeight: 44 },
-  description: { fontSize: 13, lineHeight: 18, marginTop: 2 },
+  description: { fontSize: 14, lineHeight: 18, marginTop: 2 },
   iconCircle: {
     alignItems: "center",
     borderRadius: 999,

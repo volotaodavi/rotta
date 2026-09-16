@@ -97,7 +97,7 @@ export function EmpresaFrotaListaScreen({ navigation }: Props): JSX.Element {
                   tone={VEHICLE_STATUS_TONE[vehicle.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {vehicle.modelo}
                 {vehicle.marca ? ` · ${vehicle.marca}` : ""}
               </Text>
@@ -112,7 +112,7 @@ export function EmpresaFrotaListaScreen({ navigation }: Props): JSX.Element {
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  placa: { fontSize: 15, fontWeight: "700", letterSpacing: 0.5 },
+  placa: { fontSize: 16, fontWeight: "700", letterSpacing: 0.5 },
   searchField: { flex: 1 },
   searchRow: { alignItems: "flex-end", flexDirection: "row", gap: 8 },
 });

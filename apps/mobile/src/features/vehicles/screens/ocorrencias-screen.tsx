@@ -98,5 +98,5 @@ export function OcorrenciasScreen(): JSX.Element {
 
 const styles = StyleSheet.create({
   headerRow: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
-  title: { fontSize: 15, fontWeight: "700" },
+  title: { fontSize: 16, fontWeight: "700" },
 });

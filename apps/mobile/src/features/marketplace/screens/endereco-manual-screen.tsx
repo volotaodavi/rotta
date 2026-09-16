@@ -92,5 +92,5 @@ export function EnderecoManualScreen({
 }
 
 const styles = StyleSheet.create({
-  titulo: { fontSize: 18, fontWeight: "700" },
+  titulo: { fontSize: 20, fontWeight: "700" },
 });

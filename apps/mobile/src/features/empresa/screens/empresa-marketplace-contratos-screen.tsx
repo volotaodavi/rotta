@@ -57,7 +57,7 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
         Contratos gerados a partir de solicitações de transporte aprovadas.
       </Text>
 
@@ -97,7 +97,7 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
                   tone={CONTRACT_STATUS_TONE[contract.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Vigência: {new Date(contract.vigenciaInicio).toLocaleDateString("pt-BR")}
               </Text>
             </VehicleCard>

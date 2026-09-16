@@ -119,7 +119,7 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
         <VehicleButton
           label="Cancelar assinatura"
           variant="danger"
-          icon={<Undo2 size={16} color="#FFFFFF" />}
+          icon={<Undo2 size={16} color={theme.colors.onPrimary} />}
           isLoading={cancelarAssinatura.isPending}
           onPress={handleCancelarAssinatura}
         />

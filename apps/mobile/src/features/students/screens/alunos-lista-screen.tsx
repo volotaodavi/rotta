@@ -54,7 +54,7 @@ export function AlunosListaScreen({ navigation }: Props): JSX.Element {
           >
             <VehicleCard>
               <Text style={[styles.nome, { color: theme.colors.text }]}>{aluno.nome}</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {SCHOOL_SHIFT_LABEL[aluno.turno]}
               </Text>
             </VehicleCard>
@@ -67,5 +67,5 @@ export function AlunosListaScreen({ navigation }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  nome: { fontSize: 15, fontWeight: "600" },
+  nome: { fontSize: 16, fontWeight: "600" },
 });

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleMaintenanceType } from "@rotta/api-client";
@@ -63,7 +62,7 @@ export function EmpresaVeiculoManutencoesScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Registrar manutenção
         </Text>
         <View style={styles.chips}>
@@ -109,7 +108,7 @@ export function EmpresaVeiculoManutencoesScreen({ route }: Props): JSX.Element {
             <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
               {VEHICLE_MAINTENANCE_TYPE_LABEL[m.tipo]}
             </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {new Date(m.data).toLocaleDateString("pt-BR")}
               {m.quilometragem ? ` · ${m.quilometragem.toLocaleString("pt-BR")} km` : ""}
             </Text>

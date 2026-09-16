@@ -8,7 +8,6 @@ import { useGpsMap } from "@/features/gps/hooks/use-gps";
 import { StatusPill, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
-
 /**
  * "Mapa da frota" — localizador em tempo real (Frente B do plano
  * "lacunas Empresa/Gestor no app" — pedido do usuário 12/09/2026: "o
@@ -57,7 +56,7 @@ export function EmpresaFrotaMapaScreen(): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+      <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
         {data?.length ?? 0} veículo(s) em viagem agora. Atualiza automaticamente a cada poucos
         segundos.
       </Text>
@@ -81,7 +80,7 @@ export function EmpresaFrotaMapaScreen(): JSX.Element {
             <Text style={{ color: theme.colors.text, fontWeight: "700" }}>{selecionado.placa}</Text>
             <StatusPill label="Em viagem" tone="success" />
           </View>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
             {selecionado.routeNome} ({selecionado.turno}), motorista {selecionado.motoristaNome}
             {selecionado.monitorNome ? `, monitor ${selecionado.monitorNome}` : ""}
           </Text>

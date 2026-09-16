@@ -113,5 +113,5 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
 
 const styles = StyleSheet.create({
   secao: { fontSize: 16, fontWeight: "700", marginTop: 8 },
-  titulo: { fontSize: 18, fontWeight: "700" },
+  titulo: { fontSize: 20, fontWeight: "700" },
 });

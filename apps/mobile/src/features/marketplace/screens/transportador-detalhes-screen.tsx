@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
   mensalidade: { fontWeight: "600" },
   modalidades: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  nome: { fontSize: 18, fontWeight: "700" },
+  nome: { fontSize: 20, fontWeight: "700" },
   secao: { fontSize: 16, fontWeight: "700" },
   secaoAvaliacoes: { gap: 8 },
 });

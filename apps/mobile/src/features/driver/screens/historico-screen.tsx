@@ -77,7 +77,7 @@ function FiltroTabs({
               style={{
                 color: ativa ? accentColor : theme.colors.textMuted,
                 fontWeight: ativa ? "700" : "500",
-                fontSize: 13,
+                fontSize: 14,
               }}
             >
               {tab.label}
@@ -232,5 +232,5 @@ const styles = StyleSheet.create({
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   rotaPreview: { borderRadius: 12, height: 100, marginTop: 4, overflow: "hidden" },
   secao: { gap: 8 },
-  tituloRota: { fontSize: 15, fontWeight: "700" },
+  tituloRota: { fontSize: 16, fontWeight: "700" },
 });

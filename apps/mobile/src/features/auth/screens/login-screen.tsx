@@ -185,7 +185,7 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 13, textAlign: "center" },
+  error: { fontSize: 14, textAlign: "center" },
   footer: { fontSize: 14, marginTop: 4, textAlign: "center" },
   footerLink: { fontWeight: "700" },
   headingBlock: { gap: 4, marginBottom: 4, marginTop: 8 },

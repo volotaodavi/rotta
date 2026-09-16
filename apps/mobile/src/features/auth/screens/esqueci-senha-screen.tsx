@@ -118,7 +118,7 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  error: { fontSize: 13, textAlign: "center" },
+  error: { fontSize: 14, textAlign: "center" },
   headingBlock: { gap: 4, marginBottom: 4 },
   subtitle: { fontSize: 14, lineHeight: 20, textAlign: "center" },
   title: { fontWeight: "700", textAlign: "center" },

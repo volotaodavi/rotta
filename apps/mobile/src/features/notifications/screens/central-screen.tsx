@@ -200,7 +200,7 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
             >
               <FiltroIcone
                 size={20}
-                color={ativo ? theme.colors.background : theme.colors.textMuted}
+                color={ativo ? theme.colors.onPrimary : theme.colors.textMuted}
               />
             </View>
             <Text
@@ -338,10 +338,10 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  acaoLink: { fontSize: 13, fontWeight: "600" },
+  acaoLink: { fontSize: 14, fontWeight: "600" },
   acoesRow: { alignItems: "flex-end" },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  corpo: { fontSize: 13, lineHeight: 18 },
+  corpo: { fontSize: 14, lineHeight: 18 },
   filtroItem: { alignItems: "center", gap: 6, width: 68 },
   filtroLabel: { fontSize: 11, fontWeight: "600", textAlign: "center" },
   filtroQuadrado: {
@@ -365,6 +365,6 @@ const styles = StyleSheet.create({
   linhaTexto: { flex: 1, gap: 2 },
   lista: { gap: 0, paddingVertical: 0 },
   pontoNaoLida: { borderRadius: 4, height: 8, width: 8 },
-  titulo: { fontSize: 15 },
-  tituloTela: { fontSize: 22, fontWeight: "700" },
+  titulo: { fontSize: 16 },
+  tituloTela: { fontSize: 24, fontWeight: "700" },
 });

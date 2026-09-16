@@ -75,7 +75,7 @@ export function TrialBanner({ company }: { company: Company }): JSX.Element | nu
               <StatusPill label={contagem.texto} tone={contagem.urgente ? "danger" : "neutral"} />
             ) : null}
           </View>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13, lineHeight: 18 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
             Sua empresa está em período de teste gratuito. Assine o plano Starter (R$ 39,90/mês)
             para continuar usando a plataforma sem interrupções.
           </Text>
@@ -97,5 +97,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 36,
   },
-  titulo: { fontSize: 15, fontWeight: "600" },
+  titulo: { fontSize: 16, fontWeight: "600" },
 });

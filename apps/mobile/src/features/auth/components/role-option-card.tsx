@@ -64,8 +64,8 @@ export function RoleOptionCard({
 
 const styles = StyleSheet.create({
   card: { alignItems: "center", borderWidth: 1, flexDirection: "row" },
-  description: { fontSize: 13, lineHeight: 18 },
+  description: { fontSize: 14, lineHeight: 18 },
   iconWrap: { alignItems: "center", height: 44, justifyContent: "center", width: 44 },
   textBlock: { flex: 1, gap: 2 },
-  title: { fontSize: 15, fontWeight: "700" },
+  title: { fontSize: 16, fontWeight: "700" },
 });

@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   botaoTexto: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "700",
   },
   container: {

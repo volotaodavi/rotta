@@ -33,6 +33,18 @@ export interface ColorTokens {
   primaryHover: string;
   primaryMuted: string;
   secondary: string;
+  /**
+   * Texto/ícone DESENHADO EM CIMA de um preenchimento de cor forte
+   * (`primary`, `success`, `danger`, `driverPrimary`…) — botão
+   * preenchido, pill ativa, aba selecionada.
+   *
+   * Existe porque, sem ele, o app resolvia a mesma necessidade de duas
+   * formas: metade escrevia `"#fff"` cru e a outra metade usava
+   * `background` (que é branco no claro, mas quase preto no escuro —
+   * daria texto escuro sobre azul). Duas respostas pra mesma pergunta
+   * é exatamente o que produz inconsistência visual.
+   */
+  onPrimary: string;
   success: string;
   warning: string;
   danger: string;
@@ -136,6 +148,7 @@ export const darkColors: ColorTokens = {
   primaryHover: "#5A8CFF",
   primaryMuted: "#1B2B4D",
   secondary: "#E5E8EC",
+  onPrimary: "#FFFFFF",
   success: "#22C55E",
   warning: "#F5A623",
   danger: "#EF4444",
@@ -182,6 +195,7 @@ export const lightColors: ColorTokens = {
   primaryHover: "#1E4BC7",
   primaryMuted: "#E8EEFF",
   secondary: "#4B5563",
+  onPrimary: "#FFFFFF",
   success: "#16A34A",
   warning: "#D97706",
   danger: "#DC2626",

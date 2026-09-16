@@ -85,7 +85,7 @@ export function EmpresaVeiculoDocumentosScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo documento
         </Text>
         <View style={styles.chips}>
@@ -136,7 +136,7 @@ export function EmpresaVeiculoDocumentosScreen({ route }: Props): JSX.Element {
               />
             </View>
             {document.vencimentoEm ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Vence em {new Date(document.vencimentoEm).toLocaleDateString("pt-BR")}
               </Text>
             ) : null}
@@ -157,5 +157,5 @@ const styles = StyleSheet.create({
   card: { gap: 10 },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  tipo: { fontSize: 15, fontWeight: "600" },
+  tipo: { fontSize: 16, fontWeight: "600" },
 });

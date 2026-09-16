@@ -39,7 +39,8 @@ export function VehicleButton({
         : variant === "secondary"
           ? theme.colors.surfaceElevated
           : "transparent";
-  const textColor = variant === "primary" || variant === "danger" ? "#FFFFFF" : theme.colors.text;
+  const textColor =
+    variant === "primary" || variant === "danger" ? theme.colors.onPrimary : theme.colors.text;
   const borderColor = variant === "ghost" ? "transparent" : theme.colors.border;
 
   return (

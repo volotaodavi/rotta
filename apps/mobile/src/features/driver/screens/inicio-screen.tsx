@@ -299,7 +299,7 @@ function AlunoPreViagemRow({ aluno }: { aluno: RouteStudentDetalhado }): JSX.Ele
     <View style={[styles.alunoPreViagemRow, { backgroundColor: theme.colors.surface }]}>
       <View style={{ flex: 1 }}>
         <View style={styles.alunoPreViagemHeaderRow}>
-          <Text style={{ color: theme.colors.text, fontWeight: "600", fontSize: 13 }}>
+          <Text style={{ color: theme.colors.text, fontWeight: "600", fontSize: 14 }}>
             {aluno.studentNome ?? "Aluno"}
           </Text>
           {aluno.horarioPrevisto ? (
@@ -368,7 +368,7 @@ function ProximaParadaEtaCard({
       <View style={{ alignItems: "flex-end", gap: 2 }}>
         <View style={styles.etaHorario}>
           <Clock size={12} color={accentColor} />
-          <Text style={{ color: accentColor, fontWeight: "600", fontSize: 13 }}>
+          <Text style={{ color: accentColor, fontWeight: "600", fontSize: 14 }}>
             {horarioPrevisto}
           </Text>
         </View>
@@ -511,7 +511,7 @@ function TripStatsGrid({
         ]}
       >
         <LifeBuoy size={18} color={accentColor} />
-        <Text style={{ color: accentColor, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: accentColor, fontWeight: "600", fontSize: 14 }}>
           Suporte: falar com a central
         </Text>
       </Pressable>
@@ -637,7 +637,7 @@ function AlunosDaViagemCard({
               <Text
                 style={[
                   styles.alunosAbaLabel,
-                  { color: ativa ? theme.colors.background : theme.colors.textMuted },
+                  { color: ativa ? theme.colors.onPrimary : theme.colors.textMuted },
                 ]}
               >
                 {item.rotulo} {item.total}
@@ -648,7 +648,7 @@ function AlunosDaViagemCard({
       </View>
 
       {visiveis.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           {aba === "embarcados" ? "Ninguém embarcou ainda." : "Ninguém aguardando embarque."}
         </Text>
       ) : (
@@ -770,7 +770,7 @@ function RegistrarOcorrenciaButton({
             <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={fechar}>
               <X size={22} color={theme.colors.text} />
             </Pressable>
-            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 18 }}>
+            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 20 }}>
               Ocorrência
             </Text>
           </View>
@@ -1232,7 +1232,7 @@ function RotaOperacional({
           </View>
           <View style={styles.mapCardBody}>
             <View style={styles.mapCardBodyRow}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 15 }}>
+              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
                 {rota.nome}
               </Text>
               {trip ? (
@@ -1270,7 +1270,7 @@ function RotaOperacional({
             </Text>
             {showTrocarRota ? (
               <Pressable onPress={onTrocarRota} accessibilityRole="button">
-                <Text style={{ color: accentColor, fontSize: 13, fontWeight: "600" }}>
+                <Text style={{ color: accentColor, fontSize: 14, fontWeight: "600" }}>
                   Trocar rota
                 </Text>
               </Pressable>
@@ -1779,7 +1779,7 @@ function ModoOperacionalFullScreen({
             />
             <Text
               numberOfLines={1}
-              style={{ color: theme.colors.text, fontWeight: "700", fontSize: 13, maxWidth: 110 }}
+              style={{ color: theme.colors.text, fontWeight: "700", fontSize: 14, maxWidth: 110 }}
             >
               {rota.nome}
             </Text>
@@ -2118,15 +2118,15 @@ function AlunoParadaRow({
               ]}
             >
               {addEvent.isPending ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
+                <ActivityIndicator color={theme.colors.onPrimary} size="small" />
               ) : (
                 <>
                   {isEmbarque ? (
-                    <LogIn size={16} color="#FFFFFF" />
+                    <LogIn size={16} color={theme.colors.onPrimary} />
                   ) : (
-                    <LogOut size={16} color="#FFFFFF" />
+                    <LogOut size={16} color={theme.colors.onPrimary} />
                   )}
-                  <Text style={styles.alunoActionButtonLabel}>
+                  <Text style={[styles.alunoActionButtonLabel, { color: theme.colors.onPrimary }]}>
                     {isEmbarque ? "Embarque" : "Desembarque"}
                   </Text>
                 </>
@@ -2230,7 +2230,7 @@ function AlunoParadaRow({
               {addEvent.isPending ? (
                 <ActivityIndicator size="small" color={theme.colors.driverDanger} />
               ) : (
-                <Text style={{ color: theme.colors.driverDanger, fontSize: 13, fontWeight: "600" }}>
+                <Text style={{ color: theme.colors.driverDanger, fontSize: 14, fontWeight: "600" }}>
                   Confirmar ausência
                 </Text>
               )}
@@ -2267,7 +2267,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  alunoActionButtonLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "600" },
+  alunoActionButtonLabel: { fontSize: 14, fontWeight: "600" },
   alunoActions: { alignItems: "center", flexDirection: "row", gap: 16 },
   alunoPreViagemHeaderRow: {
     alignItems: "center",
@@ -2300,7 +2300,7 @@ const styles = StyleSheet.create({
   ausenciaInput: {
     borderRadius: 8,
     borderWidth: 1,
-    fontSize: 13,
+    fontSize: 14,
     paddingHorizontal: 10,
     paddingVertical: 6,
   },
@@ -2480,7 +2480,7 @@ const styles = StyleSheet.create({
   },
   statsTileHeader: { alignItems: "center", flexDirection: "row", gap: 6 },
   timerRow: { alignItems: "center", flexDirection: "row", gap: 8 },
-  timerTexto: { fontSize: 28, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  timerTexto: { fontSize: 26, fontVariant: ["tabular-nums"], fontWeight: "700" },
   tipoOcorrenciaRow: {
     alignItems: "center",
     borderRadius: 12,
@@ -2490,5 +2490,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
   },
-  titulo: { fontSize: 18, fontWeight: "700" },
+  titulo: { fontSize: 20, fontWeight: "700" },
 });

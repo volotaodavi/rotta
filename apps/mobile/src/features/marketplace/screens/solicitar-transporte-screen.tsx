@@ -350,6 +350,6 @@ const styles = StyleSheet.create({
   lista: { gap: 8 },
   modoRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   nomeAluno: { fontWeight: "600" },
-  secao: { fontSize: 15, fontWeight: "700", marginTop: 8 },
-  titulo: { fontSize: 18, fontWeight: "700" },
+  secao: { fontSize: 16, fontWeight: "700", marginTop: 8 },
+  titulo: { fontSize: 20, fontWeight: "700" },
 });

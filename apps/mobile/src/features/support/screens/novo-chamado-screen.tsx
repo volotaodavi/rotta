@@ -1,13 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import {
-  VehicleButton,
-  VehicleCard,
-  VehicleScreen,
-  VehicleTextField,
-} from "@/features/vehicles/components";
-import { useTheme } from "@/providers/theme-provider";
 
 import { useCreateSupportTicket } from "../hooks/use-support";
 import { SUPPORT_TICKET_CATEGORIA_LABEL } from "../labels";
@@ -16,6 +9,14 @@ import { SUPPORT_QUICK_REPLIES } from "../quick-replies";
 import type { SupportStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SupportTicketCategoria } from "@rotta/api-client";
+
+import {
+  VehicleButton,
+  VehicleCard,
+  VehicleScreen,
+  VehicleTextField,
+} from "@/features/vehicles/components";
+import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<SupportStackParamList, "Novo">;
 
@@ -58,7 +59,7 @@ export function NovoChamadoScreen({ navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={{ gap: 8 }}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Alguma dessas é a sua dúvida? Toque pra preencher.
         </Text>
         <View style={styles.chips}>
@@ -85,7 +86,7 @@ export function NovoChamadoScreen({ navigation }: Props): JSX.Element {
       />
 
       <VehicleCard style={{ gap: 8 }}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Categoria
         </Text>
         <View style={styles.chips}>

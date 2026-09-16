@@ -147,7 +147,7 @@ export function OnboardingScreen({ navigation }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   actions: { gap: 4, marginTop: 8 },
-  description: { fontSize: 15, lineHeight: 22 },
+  description: { fontSize: 16, lineHeight: 22 },
   flex: { flex: 1 },
   footer: { paddingHorizontal: 28 },
   illustration: { alignItems: "center", flex: 1, justifyContent: "center" },

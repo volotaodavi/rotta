@@ -213,5 +213,5 @@ const styles = StyleSheet.create({
   linha: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 12 },
   linhaTexto: { flex: 1, gap: 2 },
   lista: { gap: 0, paddingVertical: 0 },
-  nome: { fontSize: 15, fontWeight: "600" },
+  nome: { fontSize: 16, fontWeight: "600" },
 });

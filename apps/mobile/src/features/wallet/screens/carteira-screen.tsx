@@ -206,6 +206,6 @@ const styles = StyleSheet.create({
   },
   rowEnd: { alignItems: "flex-end", gap: 4 },
   rowText: { gap: 2 },
-  saldo: { fontSize: 28, fontWeight: "700" },
+  saldo: { fontSize: 26, fontWeight: "700" },
   title: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
 });

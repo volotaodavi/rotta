@@ -111,7 +111,7 @@ export function AlunoEnderecoDoDiaScreen({ route }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+      <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
         Já cadastrados
       </Text>
       {!overrides || overrides.length === 0 ? (
@@ -127,7 +127,7 @@ export function AlunoEnderecoDoDiaScreen({ route }: Props): JSX.Element {
                 {STUDENT_ADDRESS_OVERRIDE_TRECHO_LABEL[item.trecho]}
               </Text>
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {item.logradouro}, {item.numero}, {item.bairro}, {item.cidade}/{item.estado}
             </Text>
             <VehicleButton
@@ -141,7 +141,7 @@ export function AlunoEnderecoDoDiaScreen({ route }: Props): JSX.Element {
       )}
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo endereço do dia
         </Text>
         <VehicleTextField

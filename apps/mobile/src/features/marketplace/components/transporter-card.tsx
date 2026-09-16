@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingTop: 8,
   },
-  ctaLabel: { fontSize: 13, fontWeight: "700" },
+  ctaLabel: { fontSize: 14, fontWeight: "700" },
   header: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   mensalidade: { fontWeight: "600" },
   modalidades: { flexDirection: "row", flexWrap: "wrap", gap: 6 },

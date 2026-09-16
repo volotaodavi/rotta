@@ -88,13 +88,13 @@ export function EmpresaMarketplaceContratoDetalheScreen({ route }: Props): JSX.E
         <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
           Mensalidade: {centsToBRL(contract.valorMensalidadeCentavos)}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Plano: {contract.planoDescricao}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Regras: {contract.regras}
         </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Vigência: {new Date(contract.vigenciaInicio).toLocaleDateString("pt-BR")}
           {contract.vigenciaFim
             ? ` até ${new Date(contract.vigenciaFim).toLocaleDateString("pt-BR")}`
@@ -107,7 +107,7 @@ export function EmpresaMarketplaceContratoDetalheScreen({ route }: Props): JSX.E
       {contract.status === "AGUARDANDO_ASSINATURA" ? (
         <VehicleCard>
           {contract.assinadoEmpresaEm ? (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Já assinado pela sua empresa em{" "}
               {new Date(contract.assinadoEmpresaEm).toLocaleDateString("pt-BR")}. Aguardando a
               assinatura da família.
@@ -123,23 +123,23 @@ export function EmpresaMarketplaceContratoDetalheScreen({ route }: Props): JSX.E
       ) : null}
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 13 }}>
+        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Avaliações recebidas
         </Text>
         {!ratings || ratings.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
             Nenhuma avaliação recebida ainda.
           </Text>
         ) : (
           ratings.map((rating) => (
             <View key={rating.id} style={styles.ratingRow}>
               <View style={styles.linha}>
-                <Text style={{ color: theme.colors.text, fontSize: 13 }}>
+                <Text style={{ color: theme.colors.text, fontSize: 14 }}>
                   {RATING_TARGET_LABEL[rating.alvoTipo]}
                 </Text>
                 <View style={styles.notaRow}>
                   <Star size={14} color={theme.colors.warning} fill={theme.colors.warning} />
-                  <Text style={{ color: theme.colors.text, fontSize: 13 }}>{rating.nota}</Text>
+                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>{rating.nota}</Text>
                 </View>
               </View>
               {rating.comentario ? (

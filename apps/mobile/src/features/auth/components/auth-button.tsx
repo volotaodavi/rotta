@@ -33,7 +33,7 @@ export function AuthButton({
       : variant === "secondary"
         ? theme.colors.surfaceElevated
         : "transparent";
-  const textColor = variant === "primary" ? "#FFFFFF" : theme.colors.text;
+  const textColor = variant === "primary" ? theme.colors.onPrimary : theme.colors.text;
   const borderColor = variant === "ghost" ? "transparent" : theme.colors.border;
 
   return (

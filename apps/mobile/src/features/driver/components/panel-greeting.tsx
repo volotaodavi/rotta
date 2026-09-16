@@ -48,7 +48,7 @@ export function PanelGreeting({
         {saudacaoPorHora(agora?.getHours() ?? 12)}, {nome}!
       </Text>
       {subtitulo ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{subtitulo}</Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>{subtitulo}</Text>
       ) : null}
       {agora ? (
         <View style={styles.horaRow}>
@@ -66,7 +66,7 @@ export function PanelGreeting({
 
 const styles = StyleSheet.create({
   container: { gap: 4 },
-  hora: { fontSize: 15, fontWeight: "600" },
+  hora: { fontSize: 16, fontWeight: "600" },
   horaRow: { alignItems: "baseline", flexDirection: "row", gap: 8 },
-  saudacao: { fontSize: 18, fontWeight: "700" },
+  saudacao: { fontSize: 20, fontWeight: "700" },
 });
