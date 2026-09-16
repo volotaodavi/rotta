@@ -42,6 +42,30 @@
     }
   },
   "submit": {
+    "interno": {
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "internal"
+      }
+    },
+    "alpha": {
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "alpha"
+      }
+    },
+    "beta": {
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "beta"
+      }
+    },
+    "producao": {
+      "android": {
+        "serviceAccountKeyPath": "./google-play-service-account.json",
+        "track": "production"
+      }
+    },
     "production": {
       "android": {
         "serviceAccountKeyPath": "./google-play-service-account.json",
