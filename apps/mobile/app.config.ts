@@ -34,7 +34,7 @@ export default (): ExpoConfig => ({
   // gerenciado à parte pelo EAS (`eas.json` -> `appVersionSource:
   // "remote"` + `autoIncrement: true` no perfil de produção) — este
   // campo é só o "versionName" exibido ao usuário.
-  version: "1.0.0",
+  version: "1.1.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
@@ -69,7 +69,7 @@ export default (): ExpoConfig => ({
     // Sem `autoIncrement` (nao persiste entre builds nesta CI efemera —
     // cada checkout comeca do zero), esse numero precisa ser subido a mao
     // a cada novo build de producao.
-    versionCode: 100000,
+    versionCode: 100001,
     // Corrigido de "br.com.rotta.app" (10/09/2026) — o upload do .aab pra
     // Play Console recusou com dois avisos: (1) "precisa ter o nome de
     // pacote br.com.rottabr" — o app ja tinha sido criado no Console com
