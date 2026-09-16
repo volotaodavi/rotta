@@ -1,0 +1,94 @@
+name: Consultar versionCodes na Google Play
+
+# Diagnóstico SOMENTE LEITURA (16/09/2026) — a Play Console recusou o
+# envio com "não permite que os usuários existentes atualizem para os
+# novos pacotes", que significa que já existe lá um `versionCode` maior
+# ou igual ao que estamos enviando. Sem ver o Console, a alternativa
+# seria chutar um número cada vez maior até passar; este workflow
+# pergunta direto pra API qual é o número real.
+#
+# NÃO altera nada: abre um "edit" (rascunho obrigatório pra qualquer
+# leitura na API do Play), lista as faixas e DESCARTA o rascunho no
+# fim. Nenhum `commit` é chamado, então nada é publicado.
+#
+# A assinatura do JWT usa o `openssl` do runner, não a biblioteca
+# `cryptography` do Python — ela não vem instalada por padrão no
+# ubuntu-latest, e o openssl vem.
+on:
+  workflow_dispatch:
+
+jobs:
+  consultar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Consultar faixas e versionCodes
+        env:
+          KEY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          PACOTE: br.com.rottabr
+        run: |
+          set -euo pipefail
+
+          if [ -z "${KEY_JSON:-}" ]; then
+            echo "::error::Secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON nao configurado — sem ele nao da pra consultar a Play Console por aqui."
+            exit 1
+          fi
+
+          printf '%s' "$KEY_JSON" > /tmp/sa.json
+          python3 -c "import json;print(json.load(open('/tmp/sa.json'))['private_key'])" > /tmp/sa.pem
+          CLIENT_EMAIL=$(python3 -c "import json;print(json.load(open('/tmp/sa.json'))['client_email'])")
+          echo "Conta de servico: $CLIENT_EMAIL"
+
+          b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+
+          AGORA=$(date +%s)
+          EXP=$((AGORA + 3600))
+          CABECALHO=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
+          CORPO=$(printf '{"iss":"%s","scope":"https://www.googleapis.com/auth/androidpublisher","aud":"https://oauth2.googleapis.com/token","iat":%s,"exp":%s}' \
+            "$CLIENT_EMAIL" "$AGORA" "$EXP" | b64url)
+          ASSINATURA=$(printf '%s.%s' "$CABECALHO" "$CORPO" \
+            | openssl dgst -sha256 -sign /tmp/sa.pem | b64url)
+          JWT="$CABECALHO.$CORPO.$ASSINATURA"
+
+          TOKEN=$(curl -sS -X POST https://oauth2.googleapis.com/token \
+            -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
+            --data-urlencode "assertion=$JWT" \
+            | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('access_token') or ('ERRO: '+json.dumps(d)))")
+
+          case "$TOKEN" in
+            ERRO*) echo "::error::Falha ao autenticar na Google Play: $TOKEN"; exit 1 ;;
+          esac
+
+          BASE="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$PACOTE"
+
+          EDIT=$(curl -sS -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Length: 0" \
+            "$BASE/edits" \
+            | python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('id') or ('ERRO: '+json.dumps(d)))")
+
+          case "$EDIT" in
+            ERRO*) echo "::error::Nao consegui abrir o rascunho de leitura: $EDIT"; exit 1 ;;
+          esac
+          echo "Rascunho de leitura: $EDIT"
+
+          echo ""
+          echo "=========== FAIXAS E VERSIONCODES NA PLAY CONSOLE ==========="
+          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/edits/$EDIT/tracks" > /tmp/tracks.json
+          python3 - <<'PY'
+          import json
+          d = json.load(open("/tmp/tracks.json"))
+          maior = 0
+          for t in d.get("tracks", []):
+              print(f"faixa: {t['track']}")
+              for r in t.get("releases", []):
+                  vcs = [int(v) for v in (r.get("versionCodes") or [])]
+                  print(f"   status={r.get('status')}  nome={r.get('name')}  versionCodes={vcs}")
+                  if vcs:
+                      maior = max(maior, max(vcs))
+          print("")
+          print(f"MAIOR VERSIONCODE EM USO: {maior}")
+          print(f"USAR NO PROXIMO ENVIO:    {maior + 1}")
+          PY
+
+          # Descarta o rascunho — garante que nada foi alterado.
+          curl -sS -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/edits/$EDIT" >/dev/null || true
+          echo "Rascunho descartado (nada foi publicado)."
