@@ -1,12 +1,14 @@
 import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 
+
 import { AsaasWebhookGuard } from "./asaas-webhook.guard";
 import { BillingService } from "./billing.service";
 
 import type { AsaasWebhookEnvelope } from "./types/asaas.types";
 
 import { Public } from "@/common/decorators/public.decorator";
+import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 
 /**
  * Endpoint público que a Asaas chama a cada evento de pagamento/assinatura
@@ -18,6 +20,9 @@ import { Public } from "@/common/decorators/public.decorator";
  * permanente, então nunca força retry nesse caso.
  */
 @ApiExcludeController()
+// Webhook do Asaas — chega de IP próprio e já é validado por assinatura.
+// Ver `sem-rate-limit.decorator.ts`.
+@SemRateLimit()
 @Controller("webhooks/asaas")
 @Public()
 @UseGuards(AsaasWebhookGuard)

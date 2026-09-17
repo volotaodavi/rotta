@@ -10,10 +10,10 @@ import {
   Patch,
   Post,
   Req,
-  UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
+
 
 import { AuthService, type AuthRequestMeta } from "./auth.service";
 import { AcceptConsentDto } from "./dto/accept-consent.dto";
@@ -51,14 +51,14 @@ function requestMeta(req: Request, deviceName?: string): AuthRequestMeta {
 /**
  * API REST do módulo Auth (Dossiê 15) — login único compartilhado por
  * Landing Page/Site/Painel Web/App (briefing: "Todas as plataformas
- * compartilharão exatamente a mesma conta"). `ThrottlerGuard` aplicado a
- * todo o controller (Dossiê 12 §7.4 — força bruta); limites mais
- * apertados em rotas sensíveis via `@Throttle(...)` por método.
+ * compartilharão exatamente a mesma conta"). Rate limiting (Dossiê 12
+ * §7.4 — força bruta) vem do guard global registrado em
+ * `app.module.ts`; os `@Throttle(...)` por método abaixo apertam a
+ * faixa `default` nas rotas sensíveis.
  */
 @ApiTags("auth")
 @ApiBearerAuth()
 @Controller("auth")
-@UseGuards(ThrottlerGuard)
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -97,8 +97,8 @@ export class AuthController {
    * propósito: rodam ANTES de qualquer sessão existir, autenticados só
    * pelo `mfaSetupToken`/`mfaChallengeToken` de curta duração (o próprio
    * corpo do DTO), nunca por um JWT de acesso no header `Authorization`.
-   * `ThrottlerGuard` do controller já cobre — mais apertado aqui por
-   * serem, junto de `login`, os alvos mais óbvios de força bruta.
+   * O limite global já cobre — mais apertado aqui por serem, junto de
+   * `login`, os alvos mais óbvios de força bruta.
    */
   @Public()
   @Post("mfa/setup")

@@ -2,12 +2,15 @@ import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from "@nestjs/core";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { ThrottlerModule } from "@nestjs/throttler";
 
 import { AllExceptionsFilter } from "@/common/filters/all-exceptions.filter";
 import { AdminAreaGuard } from "@/common/guards/admin-area.guard";
 import { JwtAuthGuard } from "@/common/guards/jwt-auth.guard";
 import { RolesGuard } from "@/common/guards/roles.guard";
+import { RottaThrottlerGuard } from "@/common/guards/rotta-throttler.guard";
 import { TenantGuard } from "@/common/guards/tenant.guard";
+import { throttlerOptions } from "@/common/guards/throttler.options";
 import { TrialGuard } from "@/common/guards/trial.guard";
 import { LoggingInterceptor } from "@/common/interceptors/logging.interceptor";
 import { TenantContextInterceptor } from "@/common/interceptors/tenant-context.interceptor";
@@ -119,6 +122,17 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     // --- Event bus interno (Dossie 12, Secao 1.5 / Dossie 14, Secao 4) ---
     EventEmitterModule.forRoot(),
 
+    // --- Rate limiting (Dossie 12, Secao 7.4) ---
+    // Registrado AQUI, e só aqui. Até 17/09/2026 cada módulo que
+    // precisava de limite chamava o seu próprio `ThrottlerModule
+    // .forRoot` (`AuthModule`, `StudentPreRegistrationsModule`) — mas o
+    // `ThrottlerModule` é `@Global()`, então os dois disputavam o mesmo
+    // token `THROTTLER_OPTIONS` no escopo global e qual vencia dependia
+    // da ordem de resolução do container. Um `forRoot` só, com o guard
+    // global logo abaixo, acaba com a ambiguidade e passa a cobrir os
+    // 44 controllers em vez dos 5 que tinham o decorator na mão.
+    ThrottlerModule.forRoot(throttlerOptions),
+
     // --- Health checks (Dossie 12, Secao 10.1) ---
     HealthModule,
 
@@ -170,6 +184,13 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     // --- Guards globais (Dossie 12, Secao 5.1) ---
     // Ordem: autenticacao -> isolamento de tenant -> autorizacao por papel.
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Rate limiting logo depois da autenticação, nunca antes: o
+    // contador é por usuário (`sub` do JWT), e o `sub` só é confiável
+    // depois que o `JwtAuthGuard` verificou a assinatura do token — um
+    // `sub` lido de token não verificado seria trocado a cada
+    // requisição e o limite viraria enfeite. Rota `@Public()` passa
+    // pelo JwtAuthGuard sem `req.user` e cai no limite por IP.
+    { provide: APP_GUARD, useClass: RottaThrottlerGuard },
     { provide: APP_GUARD, useClass: TenantGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
     // Sub-papéis DENTRO de Role.ADMIN_ROTTA (pedido do usuário

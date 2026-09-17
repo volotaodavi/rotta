@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
-import { ThrottlerModule } from "@nestjs/throttler";
+
 
 import {
   INVITE_REPOSITORY,
@@ -47,12 +47,14 @@ import { UsersModule } from "@/modules/users/users.module";
  * — evento `NOVO_RESPONSAVEL`) é injetado sem import extra, já global em
  * `AppModule`. Nunca chama `NotificationsService` diretamente.
  *
- * `ThrottlerModule` registrado aqui (não em `app.module.ts`) porque,
- * hoje, só as rotas deste módulo precisam de rate limiting dedicado
- * (login/registro/recuperação de senha/resgate de convite — Dossiê 12
- * §7.4); aplicado por controller via `@UseGuards(ThrottlerGuard)`, nunca
- * como guard global (evitaria interferir na ordem já testada de
- * Guards de `app.module.ts`).
+ * O rate limiting das rotas deste módulo (login/registro/recuperação de
+ * senha/resgate de convite — Dossiê 12 §7.4) continua valendo, e mais
+ * apertado que o resto da API, mas desde 17/09/2026 não é mais
+ * configurado aqui: o `ThrottlerModule` é registrado uma única vez em
+ * `app.module.ts` e aplicado a toda a API por um guard global. O que
+ * sobra neste módulo são os `@Throttle(...)` por rota do
+ * `AuthController`/`InvitesController`, que apertam a faixa `default`
+ * de 120/min para 5 ou 10/min onde faz diferença.
  */
 @Module({
   imports: [
@@ -70,15 +72,6 @@ import { UsersModule } from "@/modules/users/users.module";
           },
         };
       },
-    }),
-    ThrottlerModule.forRoot({
-      throttlers: [{ name: "default", ttl: 60_000, limit: 30 }],
-      // Suites E2E disparam dezenas de requisições/minuto contra o mesmo
-      // processo de propósito (Dossiê 23 §10) — rate limiting é uma
-      // preocupação de produção, nunca deveria fazer um teste falhar por
-      // ser "rápido demais". Nenhum código de produção lê `NODE_ENV`
-      // para decidir comportamento de negócio, só este guard técnico.
-      skipIf: () => process.env.NODE_ENV === "test",
     }),
     SecurityModule,
     UsersModule,

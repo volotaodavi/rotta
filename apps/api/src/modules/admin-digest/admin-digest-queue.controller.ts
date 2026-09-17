@@ -4,7 +4,9 @@ import { ApiExcludeController } from "@nestjs/swagger";
 import { AdminDigestService } from "./admin-digest.service";
 
 import { Public } from "@/common/decorators/public.decorator";
+import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guard";
+
 
 /**
  * "Worker" dos jobs assíncronos do resumo do Admin Rotta — mesmo papel
@@ -14,6 +16,9 @@ import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guar
  * `QstashSignatureGuard` — única defesa real destes endpoints.
  */
 @ApiExcludeController()
+// Callback do QStash — rajada é o comportamento normal de uma fila.
+// Ver `sem-rate-limit.decorator.ts`.
+@SemRateLimit()
 @Controller("internal/queue/admin-digest")
 @Public()
 @UseGuards(QstashSignatureGuard)

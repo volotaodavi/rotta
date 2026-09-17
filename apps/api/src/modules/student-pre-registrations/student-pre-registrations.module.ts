@@ -1,5 +1,5 @@
 import { Module } from "@nestjs/common";
-import { ThrottlerModule } from "@nestjs/throttler";
+
 
 import { PrismaStudentPreRegistrationRepository } from "./repositories/prisma-student-pre-registration.repository";
 import { STUDENT_PRE_REGISTRATION_REPOSITORY } from "./student-pre-registrations.constants";
@@ -17,18 +17,14 @@ import { CompaniesModule } from "@/modules/companies/companies.module";
  * dentro de `registerPessoal`, cadastro público via código da
  * transportadora — ver `student-pre-registrations.controller.ts`).
  *
- * `ThrottlerModule.forRoot` próprio (mesmo padrão de `AuthModule`, cada
- * módulo com seu próprio guard/storage) porque `lookup`/`company-preview`
- * agora são `@Public()`.
+ * O rate limiting de `lookup`/`company-preview` (rotas `@Public()`)
+ * continua valendo, mas não é mais configurado aqui: desde 17/09/2026 o
+ * `ThrottlerModule` é registrado uma única vez em `app.module.ts` e
+ * aplicado a toda a API por um guard global. Os `@Throttle(...)` do
+ * controller continuam apertando a faixa `default` rota a rota.
  */
 @Module({
-  imports: [
-    CompaniesModule,
-    ThrottlerModule.forRoot({
-      throttlers: [{ name: "default", ttl: 60_000, limit: 30 }],
-      skipIf: () => process.env.NODE_ENV === "test",
-    }),
-  ],
+  imports: [CompaniesModule],
   controllers: [StudentPreRegistrationsController],
   providers: [
     StudentPreRegistrationsService,

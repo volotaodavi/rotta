@@ -1,4 +1,4 @@
-import { ApiError } from "@rotta/api-client";
+import { ApiError, deveRepetirLeitura } from "@rotta/api-client";
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { Alert } from "react-native";
@@ -34,7 +34,9 @@ export function QueryProvider({ children }: { children: ReactNode }): JSX.Elemen
         }),
         defaultOptions: {
           queries: {
-            retry: 3,
+            // Nunca repete 4xx — e repetir um 429 seria responder
+            // "pare" com mais três requisições. Ver `retry-policy.ts`.
+            retry: deveRepetirLeitura,
             staleTime: 30_000,
           },
           mutations: {

@@ -38,3 +38,4 @@ export * from "./endpoints/trips";
 export * from "./endpoints/vehicles";
 export * from "./endpoints/wallet";
 export * from "./http";
+export * from "./retry-policy";

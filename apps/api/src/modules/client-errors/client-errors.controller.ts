@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Headers, Post, Query, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Post, Query, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { ThrottlerGuard } from "@nestjs/throttler";
+
 
 import { ClientErrorsService } from "./client-errors.service";
 import { CreateClientErrorReportDto } from "./dto/create-client-error-report.dto";
@@ -15,8 +15,8 @@ import { Role } from "@/shared/enums";
 /**
  * `POST /client-errors` — ver a nota completa em `ClientErrorReport`
  * (schema.prisma) e `ClientErrorsService`. Público de propósito
- * (`@Public()`), com `ThrottlerGuard` (mesmo padrão documentado em
- * `AuthModule`) porque é escrita sem autenticação obrigatória — sem
+ * (`@Public()`), mas coberto pelo rate limiting global registrado em
+ * `app.module.ts` porque é escrita sem autenticação obrigatória — sem
  * limite de taxa, viraria um jeito barato de encher a tabela.
  *
  * `GET /client-errors` — só Admin Rotta: painel de diagnóstico
@@ -32,7 +32,6 @@ export class ClientErrorsController {
   constructor(private readonly service: ClientErrorsService) {}
 
   @Public()
-  @UseGuards(ThrottlerGuard)
   @Post()
   create(
     @Body() dto: CreateClientErrorReportDto,

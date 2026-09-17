@@ -8,10 +8,9 @@ import {
   Param,
   Post,
   Query,
-  UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
 
 import { CreateStudentPreRegistrationDto } from "./dto/create-student-pre-registration.dto";
 import { LookupStudentPreRegistrationQueryDto } from "./dto/lookup-student-pre-registration-query.dto";
@@ -21,6 +20,7 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
+
 
 /**
  * API REST de `student-pre-registrations` (pedido do usuário: "no
@@ -69,7 +69,6 @@ export class StudentPreRegistrationsController {
 
   @Get("company-preview")
   @Public()
-  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   previewCompany(@Query("codigoInterno") codigoInterno: string) {
     return this.service.previewCompanyByCodigo(codigoInterno ?? "");
@@ -77,7 +76,6 @@ export class StudentPreRegistrationsController {
 
   @Get("lookup")
   @Public()
-  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 8, ttl: 60_000 } })
   lookup(@Query() query: LookupStudentPreRegistrationQueryDto) {
     return this.service.lookup(query);

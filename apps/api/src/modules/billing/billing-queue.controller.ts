@@ -4,7 +4,9 @@ import { ApiExcludeController } from "@nestjs/swagger";
 import { BillingService } from "./billing.service";
 
 import { Public } from "@/common/decorators/public.decorator";
+import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guard";
+
 
 /**
  * "Worker" do job assíncrono de Billing (Dossiê 26) — mesmo papel de
@@ -14,6 +16,9 @@ import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guar
  * — única defesa real deste endpoint (ver o Guard para o porquê).
  */
 @ApiExcludeController()
+// Callback do QStash — rajada é o comportamento normal de uma fila.
+// Ver `sem-rate-limit.decorator.ts`.
+@SemRateLimit()
 @Controller("internal/queue/billing")
 @Public()
 @UseGuards(QstashSignatureGuard)

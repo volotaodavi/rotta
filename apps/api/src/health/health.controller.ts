@@ -5,6 +5,7 @@ import type { IntegrationHealthSnapshot } from "@/infra/observability/integratio
 
 import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
+import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { RedisService } from "@/infra/cache/redis.service";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { DIDIT_INTEGRATION_NAME } from "@/infra/didit/didit.service";
@@ -16,6 +17,7 @@ import {
 } from "@/modules/geo/geo-engine.service";
 import { LYTEX_INTEGRATION_NAME } from "@/modules/wallet/rotta-pay-provider.service";
 import { Role } from "@/shared/enums";
+
 
 /**
  * As integrações externas com instrumentação real de saúde (Dossiê 44
@@ -108,6 +110,9 @@ function computeScore(
  * fora da equipe da Rotta.
  */
 @ApiTags("health")
+// Monitoramento do Render — um 429 aqui viraria "serviço caiu".
+// Ver `sem-rate-limit.decorator.ts`.
+@SemRateLimit()
 @Controller("health")
 export class HealthController {
   constructor(

@@ -6,8 +6,11 @@ import { NotificationDeliveryRunnerService } from "./processors/notification-del
 import type { ChannelDeliveryJobData } from "./processors/channel-delivery-job";
 
 import { Public } from "@/common/decorators/public.decorator";
+import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { PermanentDeliveryError } from "@/infra/queue/qstash/permanent-delivery-error";
 import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guard";
+
+
 
 /**
  * "Worker" de entrega de notificações via QStash (Dossiê 14) — substitui
@@ -22,6 +25,9 @@ import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guar
  * ver o Guard para o porquê).
  */
 @ApiExcludeController()
+// Callback do QStash — rajada é o comportamento normal de uma fila.
+// Ver `sem-rate-limit.decorator.ts`.
+@SemRateLimit()
 @Controller("internal/queue/notifications")
 @Public()
 @UseGuards(QstashSignatureGuard)

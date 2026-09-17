@@ -1,6 +1,6 @@
 "use client";
 
-import { ApiError } from "@rotta/api-client";
+import { ApiError, deveRepetirLeitura } from "@rotta/api-client";
 import { openTrialLockModalFromOutsideReact, pushToastFromOutsideReact } from "@rotta/ui/web";
 import { MutationCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -49,7 +49,9 @@ export function QueryProvider({ children }: { children: ReactNode }): JSX.Elemen
         }),
         defaultOptions: {
           queries: {
-            retry: 3,
+            // Nunca repete 4xx — e repetir um 429 seria responder
+            // "pare" com mais três requisições. Ver `retry-policy.ts`.
+            retry: deveRepetirLeitura,
             staleTime: 30_000,
             refetchOnWindowFocus: true,
           },

@@ -13,12 +13,12 @@ import {
   Query,
   Req,
   UploadedFile,
-  UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
-import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
+
 
 import { CompaniesService, type RequestMeta } from "./companies.service";
 import { ChangePlanDto } from "./dto/change-plan.dto";
@@ -74,13 +74,12 @@ export class CompaniesController {
    * Federal, ver se está ativo"). `@Public()` de propósito: roda ANTES
    * de existir qualquer conta (tela de cadastro de Empresa/MEI, sem
    * login ainda) — mesmo padrão de `mfa/setup`/`mfa/enable` em
-   * `AuthController`: sem token, mas com `ThrottlerGuard` mais apertado
+   * `AuthController`: sem token, mas com rate limiting mais apertado
    * que o padrão global, único jeito de restringir alvo tão óbvio de
    * scraping (varrer CNPJs em sequência) sem exigir login.
    */
   @Get("cnpj/:cnpj")
   @Public()
-  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   previewCnpj(@Param("cnpj") cnpj: string) {
     const digits = cnpj.replace(/\D/g, "");

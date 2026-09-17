@@ -11,9 +11,11 @@ import {
 import { DiditWebhookGuard } from "./didit-webhook.guard";
 
 import { Public } from "@/common/decorators/public.decorator";
+import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { PrismaService } from "@/infra/database/prisma.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
+
 
 /**
  * Envelope comum a todo webhook da Didit (Business Console → API &
@@ -59,6 +61,9 @@ interface DiditWebhookEnvelope {
  * persistir.
  */
 @ApiExcludeController()
+// Webhook da Didit — chega de IP próprio e já é validado por assinatura.
+// Ver `sem-rate-limit.decorator.ts`.
+@SemRateLimit()
 @Controller("webhooks/didit")
 @Public()
 @UseGuards(DiditWebhookGuard)

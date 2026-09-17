@@ -10,10 +10,10 @@ import {
   ParseUUIDPipe,
   Post,
   Req,
-  UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
-import { Throttle, ThrottlerGuard } from "@nestjs/throttler";
+import { Throttle } from "@nestjs/throttler";
+
 
 import { type AuthRequestMeta } from "./auth.service";
 import { CreateInviteDto } from "./dto/create-invite.dto";
@@ -86,7 +86,6 @@ export class InvitesController {
 
   @Public()
   @Post("invites/redeem")
-  @UseGuards(ThrottlerGuard)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   redeemInvite(@Body() dto: RedeemInviteDto, @Req() req: Request) {
     return this.invitesService.redeem(dto, requestMeta(req));
