@@ -264,6 +264,22 @@ jobs:
 
       # Bloqueia o merge em caso de vulnerabilidade critica sem patch
       # (Dossie 12, Secao 19.5).
+      #
+      # Existe UMA excecao registrada, em `pnpm.auditConfig.ignoreGhsas`
+      # (package.json): GHSA-23hp-3jrh-7fpw, o DoS de descompressao do
+      # `tar@6`. Ela nao e "ignorar vulnerabilidade", e um risco medido e
+      # aceito: `@expo/cli@0.22.28` declara `tar: ^6.2.1` e quebra com
+      # tar@7 (`Cannot read properties of undefined (reading 'extract')`
+      # no `expo prebuild` — causa raiz reproduzida no commit ff2282b),
+      # entao o override `@expo/cli>tar` mantem o 6 so ali dentro. O
+      # unico caminho que exercita esse codigo extrai o pacote oficial
+      # `expo-template-bare-minimum` do registry do npm — fonte
+      # confiavel, nunca entrada de usuario — e nada disso vai para o
+      # binario publicado nem para a API.
+      #
+      # A excecao e por ID de advisory, nao um passe livre: qualquer
+      # OUTRA vulnerabilidade critica continua derrubando este job.
+      # Revisar quando o Expo SDK subir para uma versao que aceite tar@7.
       - name: Audit
         run: pnpm audit --audit-level=critical
         continue-on-error: false
