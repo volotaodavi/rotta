@@ -7,7 +7,6 @@ import { Public } from "@/common/decorators/public.decorator";
 import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guard";
 
-
 /**
  * "Worker" dos jobs assíncronos do resumo do Admin Rotta — mesmo papel
  * de `BillingQueueController`: o QStash invoca estes endpoints

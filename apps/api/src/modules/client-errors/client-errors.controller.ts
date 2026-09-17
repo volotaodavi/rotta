@@ -1,7 +1,6 @@
 import { Body, Controller, Get, Headers, Post, Query, Req } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-
 import { ClientErrorsService } from "./client-errors.service";
 import { CreateClientErrorReportDto } from "./dto/create-client-error-report.dto";
 import { ListClientErrorReportsQueryDto } from "./dto/list-client-error-reports-query.dto";

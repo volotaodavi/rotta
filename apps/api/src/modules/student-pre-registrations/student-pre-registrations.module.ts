@@ -1,6 +1,5 @@
 import { Module } from "@nestjs/common";
 
-
 import { PrismaStudentPreRegistrationRepository } from "./repositories/prisma-student-pre-registration.repository";
 import { STUDENT_PRE_REGISTRATION_REPOSITORY } from "./student-pre-registrations.constants";
 import { StudentPreRegistrationsController } from "./student-pre-registrations.controller";

@@ -14,7 +14,6 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 
-
 import { AuthService, type AuthRequestMeta } from "./auth.service";
 import { AcceptConsentDto } from "./dto/accept-consent.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";

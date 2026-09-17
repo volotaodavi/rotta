@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-
 import { useCreateSupportTicket } from "../hooks/use-support";
 import { SUPPORT_TICKET_CATEGORIA_LABEL } from "../labels";
 import { SUPPORT_QUICK_REPLIES } from "../quick-replies";

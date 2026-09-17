@@ -12,7 +12,6 @@ import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { RottaThrottlerGuard } from "@/common/guards/rotta-throttler.guard";
 import { faixasRateLimit, LIMITES_RATE_LIMIT } from "@/common/guards/throttler.options";
 
-
 /**
  * Sobe um NestJS de verdade (sem banco, sem Redis) só com o
  * `RottaThrottlerGuard` global, para provar as coisas que teste de

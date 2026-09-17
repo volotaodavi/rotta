@@ -10,7 +10,6 @@ import {
 } from "@nestjs/common";
 import { ApiExcludeController } from "@nestjs/swagger";
 
-
 import { InepSyncService } from "./agents/inep-sync.service";
 import { GeoPipelineService } from "./geo-pipeline.service";
 import { SCHOOL_COORDINATE_REPOSITORY, SCHOOL_GEOCODE_QUEUE } from "./geo.constants";

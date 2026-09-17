@@ -21,7 +21,6 @@ import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { Role } from "@/shared/enums";
 
-
 /**
  * API REST de `student-pre-registrations` (pedido do usuário: "no
  * painel do admin deverá ter essa opção de cadastrar alunos por

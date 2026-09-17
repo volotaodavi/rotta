@@ -16,7 +16,6 @@ import { PrismaService } from "@/infra/database/prisma.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 
-
 /**
  * Envelope comum a todo webhook da Didit (Business Console → API &
  * Webhooks → destino cadastrado). Só os campos que este controller de

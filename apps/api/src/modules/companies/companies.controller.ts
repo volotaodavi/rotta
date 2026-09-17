@@ -19,7 +19,6 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 
-
 import { CompaniesService, type RequestMeta } from "./companies.service";
 import { ChangePlanDto } from "./dto/change-plan.dto";
 import { CreateCompanyDto } from "./dto/create-company.dto";

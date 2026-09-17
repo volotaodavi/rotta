@@ -18,7 +18,6 @@ import {
 import { LYTEX_INTEGRATION_NAME } from "@/modules/wallet/rotta-pay-provider.service";
 import { Role } from "@/shared/enums";
 
-
 /**
  * As integrações externas com instrumentação real de saúde (Dossiê 44
  * — PROMPT ROTTA INTEGRATION & INTELLIGENCE AUDIT ENGINE, Seção 34:

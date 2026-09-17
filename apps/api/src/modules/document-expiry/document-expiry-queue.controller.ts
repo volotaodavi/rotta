@@ -7,7 +7,6 @@ import { Public } from "@/common/decorators/public.decorator";
 import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guard";
 
-
 /**
  * "Worker" do job diário de vencimento de documento — mesmo papel de
  * `TrialNotificationsQueueController`/`AdminDigestQueueController`: o

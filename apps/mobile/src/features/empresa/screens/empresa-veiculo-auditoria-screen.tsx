@@ -1,6 +1,5 @@
 import { Text } from "react-native";
 
-
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 

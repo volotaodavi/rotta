@@ -10,8 +10,6 @@ import { SemRateLimit } from "@/common/decorators/sem-rate-limit.decorator";
 import { PermanentDeliveryError } from "@/infra/queue/qstash/permanent-delivery-error";
 import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guard";
 
-
-
 /**
  * "Worker" de entrega de notificações via QStash (Dossiê 14) — substitui
  * os 5 processors BullMQ (`@Processor`/`WorkerHost`) por um único

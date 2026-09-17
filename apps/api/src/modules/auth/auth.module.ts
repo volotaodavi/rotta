@@ -3,7 +3,6 @@ import { ConfigService } from "@nestjs/config";
 import { JwtModule } from "@nestjs/jwt";
 import { PassportModule } from "@nestjs/passport";
 
-
 import {
   INVITE_REPOSITORY,
   PASSWORD_RESET_TOKEN_REPOSITORY,

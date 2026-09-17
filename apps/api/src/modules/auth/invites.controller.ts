@@ -14,7 +14,6 @@ import {
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 
-
 import { type AuthRequestMeta } from "./auth.service";
 import { CreateInviteDto } from "./dto/create-invite.dto";
 import { RedeemInviteDto } from "./dto/redeem-invite.dto";
