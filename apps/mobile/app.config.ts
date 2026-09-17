@@ -88,20 +88,24 @@ export default (): ExpoConfig => ({
     // e o risco real.
     //
     // O risco real era o METODO — numero editado a mao, chutado, sem
-    // ninguem saber o que ja existia na loja. Isso acabou: o valor agora
-    // vem de `ANDROID_VERSION_CODE`, que a CI calcula como
-    // 2000000000 + numero do run (ver `build-android-local.yml`). Como o
-    // numero do run so cresce, o versionCode so cresce, sem estado pra
-    // sincronizar e sem ninguem digitando nada.
+    // ninguem saber o que ja existia na loja. O valor vem de
+    // `ANDROID_VERSION_CODE`, calculado pela CI.
     //
-    // O literal abaixo e so o piso de quando se builda fora da CI. Ele
-    // NUNCA deve ser baixado: a Play Console recusa qualquer pacote com
-    // codigo menor que um ja enviado.
+    // 17/09/2026 — a formula mudou, e por um motivo concreto. Ela era
+    // `2000000000 + github.run_number`, e o `run_number` conta TODA
+    // execucao do workflow, inclusive as que falharam e as que nunca
+    // viraram publicacao: com o contador em 36, a proxima build sairia
+    // 2.000.000.037, um pulo de 37 sobre o que esta publicado — de novo
+    // o oposto de "de 1 em 1". Agora a CI pergunta a propria Play
+    // Console qual o maior versionCode que ela conhece e soma 1 (ver
+    // `.github/actions/play-maior-versioncode`). Nao existe mais
+    // contador local, entao nao existe mais salto.
     //
-    // Unico cuidado: renomear/recriar o arquivo do workflow zera o
-    // contador de run do GitHub, o que faria o versionCode CAIR. Se um
-    // dia for preciso renomear, sobe o piso de 2000000000 pra acima do
-    // ultimo valor ja publicado antes de fazer isso.
+    // O literal abaixo e so o piso de quando se builda fora da CI, e o
+    // plano B de quando a consulta a Play falha. Ele NUNCA deve ser
+    // baixado: a Play Console recusa qualquer pacote com codigo menor ou
+    // igual a um ja enviado, mesmo que aquele envio tenha sido excluido
+    // depois.
     versionCode: Number(process.env.ANDROID_VERSION_CODE) || 2000000000,
     // Corrigido de "br.com.rotta.app" (10/09/2026) — o upload do .aab pra
     // Play Console recusou com dois avisos: (1) "precisa ter o nome de

@@ -125,25 +125,58 @@ jobs:
             echo "ext=apk" >> "$GITHUB_OUTPUT"
           fi
 
-      # `versionCode` do Android, calculado — nunca mais digitado à mão
-      # (16/09/2026). Três builds foram gastos hoje chutando o número, e
-      # o último salto (2.000.000.000) rendeu um aviso da Play Console
-      # por ser grande demais.
+      # `versionCode` do Android — perguntado à Play Console, nunca
+      # digitado à mão.
       #
-      # `github.run_number` só cresce para um mesmo arquivo de workflow,
-      # então o versionCode só cresce, de 1 em 1, sem nenhum estado pra
-      # sincronizar. O piso 2000000000 é obrigatório: esse valor JÁ FOI
-      # publicado, e a Play Console recusa qualquer código menor que um
-      # já enviado.
+      # Corrigido em 17/09/2026 ("Pq 37? Se vc ficou em 2.000.000.000?").
+      # A primeira automação usava `2000000000 + github.run_number`, e o
+      # `run_number` conta TODA execução deste workflow — inclusive as
+      # que falharam e as que nunca viraram publicação. Com o contador
+      # em 36, a próxima build sairia 2.000.000.037: um salto de 37 sobre
+      # o que está publicado, quando o pedido era "de 1 em 1".
       #
-      # Cuidado registrado: renomear este arquivo zera o contador de run
-      # e faria o versionCode CAIR. Se for preciso renomear, suba o piso
-      # para acima do último valor publicado antes.
+      # Agora o número vem da fonte que decide de verdade: o maior
+      # versionCode que a Play Console já conhece, mais 1. É o menor
+      # valor que ela aceita, então nenhum número é queimado à toa.
+      - name: Consultar o maior versionCode já na Play Console
+        id: play
+        uses: ./.github/actions/play-maior-versioncode
+        with:
+          service_account_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+
       - name: Calcular o versionCode do Android
         id: versioncode
+        env:
+          MAIOR_NA_PLAY: ${{ steps.play.outputs.maior }}
+          CONSULTA_OK: ${{ steps.play.outputs.ok }}
         run: |
+          set -euo pipefail
+
+          # Plano B de quando a consulta falha (API fora do ar, secret
+          # ausente). `2000000000 + run_number` é grosseiro, mas tem a
+          # única propriedade inegociável: nunca cai e nunca fica abaixo
+          # do que já foi publicado — a Play Console recusa qualquer
+          # código menor ou igual a um já enviado, e isso vale mesmo para
+          # versão excluída depois.
           PISO=2000000000
-          CODIGO=$((PISO + ${{ github.run_number }}))
+
+          if [ "$CONSULTA_OK" = "true" ]; then
+            CODIGO=$((MAIOR_NA_PLAY + 1))
+            echo "Maior na Play: $MAIOR_NA_PLAY -> esta build: $CODIGO (+1)"
+          else
+            CODIGO=$((PISO + ${{ github.run_number }}))
+            echo "::warning::Sem resposta da Play Console — usando o plano B, $CODIGO."
+          fi
+
+          # Cinto de segurança contra o modo de falha mais caro: se a
+          # consulta um dia devolver um número velho, um versionCode
+          # abaixo do piso seria recusado no envio depois de 40 minutos
+          # de build gastos.
+          if [ "$CODIGO" -le "$PISO" ]; then
+            CODIGO=$((PISO + ${{ github.run_number }}))
+            echo "::warning::Número consultado não passou do piso publicado — usando $CODIGO."
+          fi
+
           echo "valor=$CODIGO" >> "$GITHUB_OUTPUT"
           echo "versionCode desta build: $CODIGO"
 

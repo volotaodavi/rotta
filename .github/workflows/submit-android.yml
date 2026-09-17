@@ -46,18 +46,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Consultar o maior versionCode já na Play Console
+        id: play
+        uses: ./.github/actions/play-maior-versioncode
+        with:
+          service_account_json: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+
       # Trava de segurança (ver nota 2 no topo). Só falha quando o envio
       # FALHARIA de qualquer jeito — nunca bloqueia um envio válido.
-      - name: Conferir o versionCode contra o que já está na Play Console
+      - name: Conferir o versionCode do pacote
         env:
-          KEY_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          PACOTE: br.com.rottabr
           AAB_URL: ${{ inputs.aab_url }}
+          MAIOR_NA_PLAY: ${{ steps.play.outputs.maior }}
+          CONSULTA_OK: ${{ steps.play.outputs.ok }}
         run: |
           set -euo pipefail
 
-          if [ -z "${KEY_JSON:-}" ]; then
-            echo "::warning::Secret GOOGLE_PLAY_SERVICE_ACCOUNT_JSON ausente — seguindo sem a conferência prévia."
+          if [ "$CONSULTA_OK" != "true" ]; then
+            echo "::warning::Sem resposta da Play Console — seguindo sem a conferência prévia."
             exit 0
           fi
 
@@ -81,50 +87,15 @@ jobs:
             echo "::warning::Não consegui ler o versionCode do .aab — seguindo sem a conferência."
             exit 0
           fi
-          echo "versionCode do pacote: $DO_PACOTE"
 
-          printf '%s' "$KEY_JSON" > /tmp/sa.json
-          python3 -c "import json;print(json.load(open('/tmp/sa.json'))['private_key'])" > /tmp/sa.pem
-          EMAIL=$(python3 -c "import json;print(json.load(open('/tmp/sa.json'))['client_email'])")
+          echo "versionCode do pacote:        $DO_PACOTE"
+          echo "maior já na Play Console:     $MAIOR_NA_PLAY"
 
-          b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
-          AGORA=$(date +%s)
-          H=$(printf '{"alg":"RS256","typ":"JWT"}' | b64url)
-          C=$(printf '{"iss":"%s","scope":"https://www.googleapis.com/auth/androidpublisher","aud":"https://oauth2.googleapis.com/token","iat":%s,"exp":%s}' "$EMAIL" "$AGORA" "$((AGORA+3600))" | b64url)
-          S=$(printf '%s.%s' "$H" "$C" | openssl dgst -sha256 -sign /tmp/sa.pem | b64url)
-          TOKEN=$(curl -sS -X POST https://oauth2.googleapis.com/token \
-            -d grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer \
-            --data-urlencode "assertion=$H.$C.$S" \
-            | python3 -c "import sys,json;print(json.load(sys.stdin).get('access_token',''))")
-
-          if [ -z "$TOKEN" ]; then
-            echo "::warning::Não consegui autenticar na Play Console — seguindo sem a conferência."
-            exit 0
-          fi
-
-          BASE="https://androidpublisher.googleapis.com/androidpublisher/v3/applications/$PACOTE"
-          EDIT=$(curl -sS -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Length: 0" "$BASE/edits" \
-            | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))")
-          if [ -z "$EDIT" ]; then
-            echo "::warning::Não consegui consultar as faixas — seguindo sem a conferência."
-            exit 0
-          fi
-
-          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/edits/$EDIT/tracks" > /tmp/tracks.json
-          curl -sS -X DELETE -H "Authorization: Bearer $TOKEN" "$BASE/edits/$EDIT" >/dev/null || true
-
-          MAIOR=$(python3 -c "
-          import json
-          d = json.load(open('/tmp/tracks.json'))
-          print(max([int(v) for t in d.get('tracks', []) for r in t.get('releases', []) for v in (r.get('versionCodes') or [])] + [0]))
-          ")
-          echo "maior versionCode já na Play Console: $MAIOR"
-
-          if [ "$DO_PACOTE" -le "$MAIOR" ]; then
-            echo "::error::O pacote tem versionCode $DO_PACOTE, e a Play Console já tem $MAIOR. Ela recusaria o envio. Rode um build novo — a CI calcula o próximo número sozinha."
+          if [ "$DO_PACOTE" -le "$MAIOR_NA_PLAY" ]; then
+            echo "::error::O pacote tem versionCode $DO_PACOTE, e a Play Console já tem $MAIOR_NA_PLAY. Ela recusaria o envio. Rode um build novo — a CI calcula o próximo número sozinha."
             exit 1
           fi
-          echo "OK: $DO_PACOTE é maior que $MAIOR, o envio pode seguir."
+          echo "OK: $DO_PACOTE é maior que $MAIOR_NA_PLAY, o envio pode seguir."
 
       - uses: pnpm/action-setup@v4
 
