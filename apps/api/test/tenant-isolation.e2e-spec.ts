@@ -114,7 +114,12 @@ describe("PrismaService.withTenant — isolamento multi-tenant sob concorrência
     results.forEach((rows, index) => {
       const expectedTenantId = index % 2 === 0 ? companyAId : companyBId;
       expect(rows).toHaveLength(1);
-      expect(rows[0].id).toBe(expectedTenantId);
+      // `?.` e não `!`: o `toHaveLength(1)` acima garante o elemento em
+      // tempo de execução, mas não para o compilador — e o `ts-jest`
+      // deste projeto roda com diagnostics ligado, então um erro de tipo
+      // aqui não "só avisa": a suíte inteira deixa de compilar e o job
+      // de E2E cai antes de executar um teste sequer.
+      expect(rows[0]?.id).toBe(expectedTenantId);
     });
   });
 
