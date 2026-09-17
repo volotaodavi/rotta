@@ -59,11 +59,16 @@ describe("Auth (e2e)", () => {
     ...overrides,
   });
 
+  // SEM `cpf`, de propósito. O `RegisterPessoalDto` deixou de aceitar o
+  // campo em 14/09/2026 (pedido do usuário: "para os responsáveis não
+  // pegamos esses dados, apenas o nome e telefone"), e o
+  // `ValidationPipe` global roda com `forbidNonWhitelisted: true` — um
+  // campo a mais não é ignorado, devolve 400. Os outros cadastros
+  // (empresa/autônomo) continuam exigindo CPF e mantêm o seu.
   const registerPessoalPayload = (overrides: Record<string, unknown> = {}) => ({
     nome: "Beatriz Responsável",
     email: `beatriz-${randomUUID()}@email.com`,
     telefone: randomValidPhone(),
-    cpf: randomValidCpf(),
     senha: "SenhaForte@123",
     aceiteTermos: true,
     ...overrides,
