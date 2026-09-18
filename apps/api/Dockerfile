@@ -39,8 +39,27 @@ COPY --from=installer --chown=rotta:rotta /app .
 USER rotta
 EXPOSE 3333
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3333/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
+# Corrigido em 18/09/2026, investigando "a conta do transportador nao
+# esta entrando" + "demorando muito". Este healthcheck NUNCA passou, por
+# dois motivos somados:
+#
+#  1. Batia em `/health`, que e 404. A aplicacao registra um prefixo
+#     global (`app.setGlobalPrefix(config.apiPrefix)`, main.ts), entao o
+#     caminho real e `/v1/health` — confirmado contra producao: `/health`
+#     devolve 404 e `/v1/health` devolve 200.
+#  2. Fixava a porta 3333, que e so o default local. Em producao quem
+#     manda e a env `PORT` (`app.config.ts`), injetada pelo Render.
+#
+# Um healthcheck que nunca passa e pior que nenhum: o orquestrador
+# conclui que o container esta doente e reinicia — e num plano com cold
+# start lento isso vira um ciclo de reinicio, exatamente o sintoma
+# relatado. Forma shell (nao exec) de proposito: e o shell que expande
+# `${PORT}`/`${API_PREFIX}` em tempo de execucao.
+# `--start-period=90s` porque a porta so abre depois de migrate + seed
+# (ver o CMD abaixo) — com 10s o container era declarado doente antes de
+# terminar de subir.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:'+(process.env.PORT||3333)+'/'+(process.env.API_PREFIX||'v1')+'/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
 # Migra o schema e garante o catalogo de planos (prisma/seed.ts — upsert
 # idempotente do plano STARTER) ANTES de subir o processo. Sem o seed,
