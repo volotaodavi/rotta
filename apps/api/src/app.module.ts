@@ -57,6 +57,7 @@ import { CompanyJoinPreRegistrationsModule } from "@/modules/company-join-pre-re
 import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
 import { ConversationsModule } from "@/modules/conversations/conversations.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
+import { DataRetentionModule } from "@/modules/data-retention/data-retention.module";
 import { DocumentExpiryModule } from "@/modules/document-expiry/document-expiry.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
@@ -164,6 +165,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     NotificationsModule,
     AgendaModule,
     DashboardModule,
+    DataRetentionModule,
     SupportModule,
     ConversationsModule,
     AnnouncementsModule,
