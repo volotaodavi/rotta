@@ -1,4 +1,4 @@
-import { ApiError } from "./http";
+import { ApiError, STATUS_TEMPO_ESGOTADO } from "./http";
 
 /**
  * Política de retry compartilhada pelo `QueryClient` do web, do mobile e
@@ -26,7 +26,18 @@ import { ApiError } from "./http";
 export const MAX_TENTATIVAS_LEITURA = 3;
 
 export function deveRepetirLeitura(tentativasFalhas: number, erro: unknown): boolean {
-  if (erro instanceof ApiError && erro.status >= 400 && erro.status < 500) {
+  const ehApiError = erro instanceof ApiError;
+
+  // Tempo esgotado é a exceção entre os 4xx: ele não diz "seu pedido
+  // está errado", diz "o servidor não respondeu a tempo" — que é
+  // transitório por definição, e o caso mais comum é a API acordando de
+  // um cold start. Repetir aqui é o que faz a segunda tentativa pegar a
+  // API já de pé. Ver `TIMEOUT_PADRAO_MS` em `http.ts`.
+  if (ehApiError && erro.status === STATUS_TEMPO_ESGOTADO) {
+    return tentativasFalhas < MAX_TENTATIVAS_LEITURA;
+  }
+
+  if (ehApiError && erro.status >= 400 && erro.status < 500) {
     return false;
   }
 

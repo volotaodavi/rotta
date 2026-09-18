@@ -82,7 +82,45 @@ export interface RequestOptions extends Omit<RequestInit, "body"> {
    * que o wrapper tente `response.json()` num arquivo. Padrão `"json"`.
    */
   responseType?: "json" | "blob";
+  /**
+   * Teto de tempo desta requisição. Padrão `TIMEOUT_PADRAO_MS`; upload
+   * (`FormData`) usa `TIMEOUT_UPLOAD_MS`. Ver `performFetch`.
+   */
+  timeoutMs?: number;
 }
+
+/**
+ * BUG REAL de produção (18/09/2026, relato do usuário: "a conta do
+ * transportador não está entrando (nenhuma)" — e a tela era a splash
+ * azul do app, parada para sempre).
+ *
+ * Causa raiz: `fetch` não tem timeout embutido, nem no navegador nem no
+ * React Native. Uma requisição para uma API em cold start (o plano
+ * gratuito do Render leva mais de 90s para acordar) não falha — ela
+ * simplesmente nunca resolve. E código que trata falha com `try/catch`
+ * NUNCA roda, porque não há rejeição nenhuma:
+ *
+ *     try { await authApi.refresh(...) } catch { setStatus("unauth") }
+ *
+ * O `catch` acima (`auth-context.tsx`) é exatamente o caminho que leva
+ * o usuário para a tela de login quando a sessão não pode ser renovada
+ * — e ele ficava inalcançável, deixando `status` em `"loading"` para
+ * sempre. Daí a splash eterna.
+ *
+ * Com um teto de tempo, a requisição vira uma rejeição normal, o
+ * `catch` roda, e o app segue para a tela de login em vez de congelar.
+ */
+export const TIMEOUT_PADRAO_MS = 60_000;
+
+/**
+ * Upload de foto/documento em rede móvel é legitimamente lento — um teto
+ * curto aqui transformaria "conexão ruim" em "não consigo enviar meus
+ * documentos". Vale o dobro do padrão.
+ */
+export const TIMEOUT_UPLOAD_MS = 120_000;
+
+/** `ApiError.status` usado quando a requisição estourou o tempo. */
+export const STATUS_TEMPO_ESGOTADO = 408;
 
 export interface ApiClient {
   request: <T>(path: string, options?: RequestOptions) => Promise<T>;
@@ -114,21 +152,53 @@ export function createApiClient(config: ApiClientConfig): ApiClient {
     // multipart sozinho a partir do corpo.
     const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
 
-    return fetch(`${config.baseUrl}${path}`, {
-      ...options,
-      headers: {
-        ...(isFormData ? {} : { "Content-Type": "application/json" }),
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        "X-Rotta-Platform": config.platform,
-        ...options.headers,
-      },
-      body:
-        options.body === undefined
-          ? undefined
-          : isFormData
-            ? (options.body as FormData)
-            : JSON.stringify(options.body),
-    });
+    // Teto de tempo — ver a nota em `TIMEOUT_PADRAO_MS` para o bug que
+    // isto conserta. `AbortController` + `setTimeout` em vez de
+    // `AbortSignal.timeout()`: o segundo não existe em todas as versões
+    // do Hermes (React Native), o primeiro existe em toda parte.
+    //
+    // Um `signal` passado por quem chama vence o nosso: quem já controla
+    // o cancelamento sabe melhor quando abortar, e sobrescrever seria
+    // quebrar esse controle silenciosamente.
+    const timeoutMs = options.timeoutMs ?? (isFormData ? TIMEOUT_UPLOAD_MS : TIMEOUT_PADRAO_MS);
+    const controller = options.signal ? null : new AbortController();
+    const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+
+    try {
+      return await fetch(`${config.baseUrl}${path}`, {
+        ...options,
+        ...(controller ? { signal: controller.signal } : {}),
+        headers: {
+          ...(isFormData ? {} : { "Content-Type": "application/json" }),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "X-Rotta-Platform": config.platform,
+          ...options.headers,
+        },
+        body:
+          options.body === undefined
+            ? undefined
+            : isFormData
+              ? (options.body as FormData)
+              : JSON.stringify(options.body),
+      });
+    } catch (erro) {
+      // Só traduz o NOSSO abort. Um abort de quem chamou (troca de tela,
+      // busca digitada) é cancelamento intencional e deve continuar
+      // sendo o que era, não virar "erro de tempo esgotado" na cara do
+      // usuário.
+      if (controller?.signal.aborted) {
+        throw new ApiError(STATUS_TEMPO_ESGOTADO, {
+          code: "TEMPO_ESGOTADO",
+          message:
+            "O servidor demorou demais para responder. Verifique sua conexão e tente de novo.",
+        });
+      }
+      throw erro;
+    } finally {
+      if (timer) {
+        clearTimeout(timer);
+      }
+    }
   }
 
   async function parseResponse<T>(response: Response, options: RequestOptions): Promise<T> {
