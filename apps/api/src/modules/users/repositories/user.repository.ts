@@ -29,6 +29,8 @@ export interface UpdateUserAuthStateInput {
   passwordHash?: string;
   tentativasLoginFalhas?: number;
   bloqueadoAte?: Date | null;
+  /** `RN-AUTH-02` — contador de bloqueios consecutivos, base da progressão. */
+  bloqueiosConsecutivos?: number;
   consentimentoLgpdAceitoEm?: Date;
   /** MFA/2FA por TOTP (Dossiê 43) — ver nota completa em `schema.prisma`, model `User`. */
   totpSecretCriptografado?: string | null;

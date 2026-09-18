@@ -12,6 +12,7 @@ import {
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { NotificationEventType, Prisma, TripSentido, type Trip } from "@prisma/client";
 
+import { saltoIncoerente } from "./gps-coerencia.util";
 import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
 import { toTripPositionResponseDto } from "./mappers/trip-position.mapper";
 import { toTripStudentEventResponseDto } from "./mappers/trip-student-event.mapper";
@@ -845,6 +846,34 @@ export class TripsService {
     }
 
     const capturadaEm = new Date(dto.capturadaEm);
+
+    // `GPS-06` — quem decide se a leitura é suspeita é o SERVIDOR, não o
+    // cliente. Antes desta linha o código fazia
+    // `simuladoSuspeito: dto.simuladoSuspeito`, ou seja, perguntava ao
+    // aplicativo se o GPS do próprio aplicativo era confiável — um app
+    // com localização falsificada nunca marcaria a flag, e a proteção
+    // era decorativa (achado da auditoria de 18/09/2026).
+    //
+    // O `dto.simuladoSuspeito` continua sendo respeitado quando vem
+    // `true`: o cliente PODE levantar a mão (ex. o Android avisa que a
+    // localização é simulada), só não pode mais baixá-la.
+    //
+    // Custo: uma consulta indexada por posição — a cadência real de
+    // escrita é uma leitura a cada 15s por motorista
+    // (`use-trip-gps-reporting.ts`), então são ~4 consultas/minuto por
+    // motorista em viagem.
+    const anterior = await this.positionRepository.findLatestByTrip(tripId);
+    const suspeitaDoServidor = saltoIncoerente(
+      anterior
+        ? {
+            latitude: Number(anterior.latitude),
+            longitude: Number(anterior.longitude),
+            capturadaEm: anterior.capturadaEm,
+          }
+        : null,
+      { latitude: dto.latitude, longitude: dto.longitude, capturadaEm },
+    );
+
     const position = await this.positionRepository.create({
       tripId,
       companyId: trip.companyId,
@@ -853,7 +882,7 @@ export class TripsService {
       precisaoMetros: dto.precisaoMetros,
       velocidadeKmh: dto.velocidadeKmh,
       capturadaEm,
-      simuladoSuspeito: dto.simuladoSuspeito,
+      simuladoSuspeito: dto.simuladoSuspeito === true || suspeitaDoServidor,
     });
 
     await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {

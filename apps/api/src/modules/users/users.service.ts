@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Inject, Injectable } from "@nes
 import { CompanyType } from "@prisma/client";
 import { passwordEqualsIdentifier } from "@rotta/validators";
 
+import { duracaoDoBloqueioMs } from "./lockout.util";
 import {
   CONSENT_RECORD_REPOSITORY,
   MEMBERSHIP_REPOSITORY,
@@ -36,7 +37,8 @@ const CURRENT_CONSENT_VERSION: Record<ConsentType, string> = {
 
 /** `RN-AUTH-02` (Dossiê 15) — bloqueio temporário após tentativas malsucedidas. */
 const MAX_FAILED_LOGIN_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+// A duração deixou de ser fixa: `RN-AUTH-02` pede bloqueio progressivo.
+// Ver `lockout.util.ts` para a escala e o porquê do teto.
 
 export interface CreateUserWithPasswordInput {
   nome: string;
@@ -263,9 +265,11 @@ export class UsersService {
   async recordLoginFailure(user: User): Promise<void> {
     const attempts = user.tentativasLoginFalhas + 1;
     if (attempts >= MAX_FAILED_LOGIN_ATTEMPTS) {
+      const bloqueiosConsecutivos = user.bloqueiosConsecutivos + 1;
       await this.userRepository.updateAuthState(user.id, {
         tentativasLoginFalhas: 0,
-        bloqueadoAte: new Date(Date.now() + LOCKOUT_DURATION_MS),
+        bloqueiosConsecutivos,
+        bloqueadoAte: new Date(Date.now() + duracaoDoBloqueioMs(bloqueiosConsecutivos)),
       });
       return;
     }
@@ -275,6 +279,10 @@ export class UsersService {
   async resetLoginFailures(userId: string): Promise<void> {
     await this.userRepository.updateAuthState(userId, {
       tentativasLoginFalhas: 0,
+      // Zera a PROGRESSÃO também: quem entrou de verdade provou ser o
+      // dono da conta, e não deve herdar a punição de uma tentativa de
+      // invasão que sofreu antes.
+      bloqueiosConsecutivos: 0,
       bloqueadoAte: null,
     });
   }

@@ -828,6 +828,8 @@ model User {
 
   tentativasLoginFalhas     Int       @default(0)
   bloqueadoAte              DateTime?
+  /// `RN-AUTH-02` — quantos bloqueios CONSECUTIVOS esta conta já sofreu, para o bloqueio ser progressivo (15min → 30 → 60 → …, teto de 24h) em vez de sempre 15 minutos. Zerado por qualquer login bem-sucedido. Sem este contador o segundo ataque custa ao atacante exatamente o mesmo que o primeiro.
+  bloqueiosConsecutivos     Int       @default(0)
   consentimentoLgpdAceitoEm DateTime?
 
   /// MFA/2FA por TOTP (Dossie 43 — campos ja previstos desde o Dossie 12
