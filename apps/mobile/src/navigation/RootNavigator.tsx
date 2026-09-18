@@ -6,6 +6,7 @@ import { AuthNavigator } from "./AuthNavigator";
 import { DriverNavigator } from "./DriverNavigator";
 import { EmpresaNavigator } from "./EmpresaNavigator";
 import { ParentNavigator } from "./ParentNavigator";
+import { LIMITE_DE_ESPERA_DA_SPLASH_MS, useLimiteDeEspera } from "./use-limite-de-espera";
 import { VinculoPendenteNavigator } from "./VinculoPendenteNavigator";
 
 import { AppSplashScreen } from "@/components/app-splash-screen";
@@ -78,10 +79,22 @@ export function RootNavigator(): JSX.Element {
     enabled: isMotoristaOuMonitor,
   });
 
+  // A espera por esta consulta é LIMITADA (18/09/2026 — ver
+  // `use-limite-de-espera.ts` para o relato e a causa raiz). Sem o
+  // limite, uma API em cold start prendia o app na splash por minutos:
+  // a consulta não tem timeout e ainda repete em falha de rede. Como só
+  // Motorista/Monitor/Modo Ação disparam esta consulta, o sintoma
+  // atingia exatamente os papéis de transportador, e nunca o
+  // Responsável.
+  const esperouDemaisPelaIdentidade = useLimiteDeEspera(
+    isMotoristaOuMonitor && isIdentityLoading,
+    LIMITE_DE_ESPERA_DA_SPLASH_MS,
+  );
+
   if (
     status === "loading" ||
     (appMode.canToggle && !appMode.isModeResolved) ||
-    (isMotoristaOuMonitor && isIdentityLoading)
+    (isMotoristaOuMonitor && isIdentityLoading && !esperouDemaisPelaIdentidade)
   ) {
     return <AppSplashScreen />;
   }
