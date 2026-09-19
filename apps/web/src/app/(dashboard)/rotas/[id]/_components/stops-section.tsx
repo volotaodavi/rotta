@@ -1,13 +1,19 @@
 "use client";
 
-import { ApiError } from "@rotta/api-client";
+// `ROT-07` — a regra de direção/ordem das paradas é compartilhada com o
+// aplicativo desde 19/09/2026 (`@rotta/api-client`, `rules/paradas.ts`).
+import { ApiError, getStopDirection, STOP_DIRECTION_LABEL } from "@rotta/api-client";
 import { Check, GraduationCap, MapPin, Trash2 } from "@rotta/icons";
 import { Badge, Button, Card, FormField, Input, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
-import { getStopDirection, STOP_DIRECTION_LABEL, type StopDirection } from "./stop-direction";
-
-import type { GeocodeResult, RouteStop, RouteStudent, School } from "@rotta/api-client";
+import type {
+  GeocodeResult,
+  RouteStop,
+  RouteStudent,
+  School,
+  StopDirection,
+} from "@rotta/api-client";
 
 import { useAddRouteStop, useRemoveRouteStop } from "@/features/routes/hooks/use-routes";
 import { useSuggestSchools } from "@/features/schools/hooks/use-schools";

@@ -1,6 +1,8 @@
 "use client";
 
-import { MOTIVO_AUSENCIA_PRESETS } from "@rotta/api-client";
+// `ROT-07` — `ordenarParadasPorSentido` mora em `@rotta/api-client`
+// (`rules/paradas.ts`) desde 19/09/2026, compartilhado com o aplicativo.
+import { MOTIVO_AUSENCIA_PRESETS, ordenarParadasPorSentido } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import {
   AlertTriangle,
@@ -86,7 +88,6 @@ import {
   TRIP_SENTIDO_LABEL,
 } from "@/features/routes/components/sentido-switch";
 import { useUpdateRoute } from "@/features/routes/hooks/use-routes";
-import { ordenarParadasPorSentido } from "@/features/routes/stop-order";
 import { useStudent } from "@/features/students/hooks/use-students";
 import {
   useStudentsAttendanceToday,

@@ -1,5 +1,8 @@
 "use client";
 
+// `ROT-07` — a regra de direção das paradas é compartilhada com o
+// aplicativo desde 19/09/2026 (`@rotta/api-client`, `rules/paradas.ts`).
+import { getStopDirection, STOP_DIRECTION_LABEL } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
 import { Navigation } from "@rotta/icons";
 import { buildNavigationUrl, detectNavigationApp } from "@rotta/maps/navigation";
@@ -8,7 +11,6 @@ import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/
 import { Suspense, useState } from "react";
 
 import { RouteOptimizationSection } from "./route-optimization-section";
-import { getStopDirection, STOP_DIRECTION_LABEL } from "./stop-direction";
 import { StopsSection } from "./stops-section";
 import { StudentsSection } from "./students-section";
 
