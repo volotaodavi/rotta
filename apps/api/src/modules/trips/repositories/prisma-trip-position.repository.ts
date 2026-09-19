@@ -41,4 +41,19 @@ export class PrismaTripPositionRepository implements TripPositionRepository {
       this.prisma.tripPosition.findFirst({ where: { tripId }, orderBy: { capturadaEm: "desc" } }),
     );
   }
+
+  async findCapturasExistentes(tripId: string, capturadas: Date[]): Promise<Date[]> {
+    if (capturadas.length === 0) {
+      return [];
+    }
+
+    const encontradas = await this.prisma.withTenant(
+      this.prisma.tripPosition.findMany({
+        where: { tripId, capturadaEm: { in: capturadas } },
+        select: { capturadaEm: true },
+      }),
+    );
+
+    return encontradas.map((item) => item.capturadaEm);
+  }
 }

@@ -36,6 +36,7 @@ import type { SubstituirVeiculoDto } from "./dto/substituir-veiculo.dto";
 import type { TripPositionResponseDto } from "./dto/trip-position-response.dto";
 import type { ListTripsResponseDto, TripResponseDto } from "./dto/trip-response.dto";
 import type { TripStudentEventResponseDto } from "./dto/trip-student-event-response.dto";
+import type { PontoDeTrajeto } from "./gps-coerencia.util";
 import type { TripPositionRepository } from "./repositories/trip-position.repository";
 import type { TripStudentEventRepository } from "./repositories/trip-student-event.repository";
 import type { CreateTripData, TripRepository } from "./repositories/trip.repository";
@@ -898,11 +899,21 @@ export class TripsService {
   }
 
   /**
-   * Ingestão em lote (GPS-04 — reconciliação da fila offline do app
-   * mobile, ainda não implementado no cliente, mas já suportado aqui).
-   * Só a posição de MAIOR `capturadaEm` do lote atualiza a última
-   * posição conhecida do veículo — as demais só entram no histórico
-   * bruto (`TripPosition`, nunca sobrescrito).
+   * Ingestão em lote (GPS-04/GPS-05 — reconciliação da fila offline do
+   * app mobile). Só a posição de MAIOR `capturadaEm` do lote atualiza a
+   * última posição conhecida do veículo — as demais só entram no
+   * histórico bruto (`TripPosition`, nunca sobrescrito).
+   *
+   * É IDEMPOTENTE por `capturadaEm` (19/09/2026). A fila do app só apaga
+   * o que o servidor confirmou, então um lote que chegou mas cuja
+   * resposta se perdeu na volta é reenviado inteiro. Sem isto, cada
+   * reenvio duplicaria o trecho — e um trajeto duplicado no mapa do
+   * responsável é pior que um trecho faltando, porque parece movimento
+   * que não aconteceu.
+   *
+   * Também aplica `GPS-06` aqui, e não só em `ingestPosition`: se a
+   * verificação de coerência existisse apenas no envio ao vivo, bastaria
+   * mandar tudo por este endpoint para contorná-la.
    */
   async ingestPositionsBatch(
     tripId: string,
@@ -915,18 +926,52 @@ export class TripsService {
       throw new BadRequestException("Só é possível registrar posição de uma viagem em andamento.");
     }
 
-    const positions = await this.positionRepository.createMany(
-      dto.posicoes.map((item) => ({
+    const novas = await this.descartarPosicoesJaRegistradas(tripId, dto.posicoes);
+
+    // Lote inteiro já registrado: responde 200 com lista vazia, e não
+    // 4xx. O app PRECISA tratar isto como sucesso para apagar as linhas
+    // da fila — um erro aqui deixaria a fila presa nas mesmas posições
+    // para sempre.
+    if (novas.length === 0) {
+      return [];
+    }
+
+    // Encadeia a coerência ao longo do lote, partindo da última posição
+    // já gravada. `saltoIncoerente` devolve `false` para leituras fora
+    // de ordem, que é o caso normal de uma fila drenando depois de um
+    // envio ao vivo mais recente — a fila não vira fonte de falso
+    // positivo.
+    const ultimaGravada = await this.positionRepository.findLatestByTrip(tripId);
+    let referencia: PontoDeTrajeto | null = ultimaGravada
+      ? {
+          latitude: Number(ultimaGravada.latitude),
+          longitude: Number(ultimaGravada.longitude),
+          capturadaEm: ultimaGravada.capturadaEm,
+        }
+      : null;
+
+    const paraCriar = novas.map((item) => {
+      const atual = {
+        latitude: item.latitude,
+        longitude: item.longitude,
+        capturadaEm: new Date(item.capturadaEm),
+      };
+      const suspeita = saltoIncoerente(referencia, atual);
+      referencia = atual;
+
+      return {
         tripId,
         companyId: trip.companyId,
         latitude: item.latitude,
         longitude: item.longitude,
         precisaoMetros: item.precisaoMetros,
         velocidadeKmh: item.velocidadeKmh,
-        capturadaEm: new Date(item.capturadaEm),
-        simuladoSuspeito: item.simuladoSuspeito,
-      })),
-    );
+        capturadaEm: atual.capturadaEm,
+        simuladoSuspeito: item.simuladoSuspeito === true || suspeita,
+      };
+    });
+
+    const positions = await this.positionRepository.createMany(paraCriar);
 
     const latest = positions.reduce((a, b) => (a.capturadaEm > b.capturadaEm ? a : b));
     await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {
@@ -944,6 +989,39 @@ export class TripsService {
     );
 
     return positions.map(toTripPositionResponseDto);
+  }
+
+  /**
+   * Tira do lote o que já está gravado, em duas etapas.
+   *
+   * Primeiro dentro do próprio lote (duas linhas da fila com o mesmo
+   * instante), depois contra o banco (o lote inteiro sendo reenviado
+   * porque a resposta anterior se perdeu). A ordem final é crescente por
+   * `capturadaEm`, que é o que a verificação de coerência encadeada mais
+   * abaixo assume.
+   */
+  private async descartarPosicoesJaRegistradas(
+    tripId: string,
+    posicoes: IngestPositionDto[],
+  ): Promise<IngestPositionDto[]> {
+    const porInstante = new Map<number, IngestPositionDto>();
+    for (const posicao of posicoes) {
+      const instante = new Date(posicao.capturadaEm).getTime();
+      if (!porInstante.has(instante)) {
+        porInstante.set(instante, posicao);
+      }
+    }
+
+    const instantes = [...porInstante.keys()].sort((a, b) => a - b);
+    const existentes = await this.positionRepository.findCapturasExistentes(
+      tripId,
+      instantes.map((instante) => new Date(instante)),
+    );
+    const jaGravados = new Set(existentes.map((data) => data.getTime()));
+
+    return instantes
+      .filter((instante) => !jaGravados.has(instante))
+      .map((instante) => porInstante.get(instante) as IngestPositionDto);
   }
 
   async listPositions(

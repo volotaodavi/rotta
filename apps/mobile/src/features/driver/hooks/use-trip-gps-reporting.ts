@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { BACKGROUND_TRIP_LOCATION_TASK, setActiveTripId } from "./background-trip-location-task";
 
-import { tripsApi } from "@/lib/api-client";
+import { drenar, enfileirar } from "@/features/driver/fila-gps/fila-gps";
 
 export type GpsReportingStatus =
   | "idle"
@@ -79,8 +79,18 @@ export function useTripGpsReporting(tripId: string | null): {
       const subscription = await Location.watchPositionAsync(
         { accuracy: Location.Accuracy.Balanced, timeInterval: 15_000, distanceInterval: 25 },
         (position) => {
-          void tripsApi
-            .ingestPosition(tripId as string, {
+          // `GPS-04`/`GPS-05` — mesma fila da task de segundo plano
+          // (19/09/2026). Este caminho também enfileirava nada: mandava
+          // direto e engolia a falha com "a próxima posição tenta de
+          // novo", o que confunde CONTINUAR reportando com RECUPERAR o
+          // que se perdeu. A posição perdida não voltava nunca.
+          //
+          // Vale mais aqui do que na task de segundo plano, não menos:
+          // este é o caminho de quem NEGOU a permissão "sempre", que
+          // costuma ser a maioria.
+          void (async () => {
+            await enfileirar({
+              tripId: tripId as string,
               latitude: position.coords.latitude,
               longitude: position.coords.longitude,
               precisaoMetros: position.coords.accuracy ?? undefined,
@@ -89,11 +99,13 @@ export function useTripGpsReporting(tripId: string | null): {
                   ? Math.max(position.coords.speed * 3.6, 0)
                   : undefined,
               capturadaEm: new Date(position.timestamp).toISOString(),
-            })
-            .catch(() => {
-              // Falha isolada de rede/servidor não derruba o acompanhamento —
-              // a próxima posição do watch tenta de novo naturalmente.
             });
+            try {
+              await drenar();
+            } catch {
+              // Sem rede: a fila guarda e a próxima leitura tenta de novo.
+            }
+          })();
         },
       );
       if (cancelled) {

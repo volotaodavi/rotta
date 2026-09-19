@@ -3,7 +3,10 @@ import { NotificationEventType, TripSentido, TripStatus } from "@prisma/client";
 
 import { TripsService } from "../trips.service";
 
-import type { TripPositionRepository } from "../repositories/trip-position.repository";
+import type {
+  CreateTripPositionData,
+  TripPositionRepository,
+} from "../repositories/trip-position.repository";
 import type { TripStudentEventRepository } from "../repositories/trip-student-event.repository";
 import type { TripRepository } from "../repositories/trip.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
@@ -99,6 +102,7 @@ describe("TripsService", () => {
       createMany: jest.fn(),
       listByTrip: jest.fn(),
       findLatestByTrip: jest.fn(),
+      findCapturasExistentes: jest.fn(),
     };
     studentEventRepository = {
       create: jest.fn(),
@@ -165,6 +169,7 @@ describe("TripsService", () => {
     routesService.listStudents.mockResolvedValue([]);
     routesService.listStops.mockResolvedValue([]);
     positionRepository.findLatestByTrip.mockResolvedValue(null);
+    positionRepository.findCapturasExistentes.mockResolvedValue([]);
     studentEventRepository.listByTrip.mockResolvedValue([]);
 
     service = new TripsService(
@@ -1604,6 +1609,149 @@ describe("TripsService", () => {
       expect(tripRepository.update).toHaveBeenCalledWith("trip-1", {
         ultimaParadaProximaNotificadaId: paradaPerto.id,
       });
+    });
+  });
+
+  /**
+   * `GPS-04`/`GPS-05` — reenvio da fila offline do app (19/09/2026).
+   *
+   * A fila do aparelho só apaga o que o servidor confirmou. Isso é o que
+   * garante que nada se perde quando a rede cai, e é também o que torna
+   * o reenvio inevitável: se o lote chegou mas a resposta se perdeu na
+   * volta, o aparelho manda tudo de novo. O servidor precisa aguentar
+   * isso sem duplicar o trajeto.
+   */
+  describe("ingestPositionsBatch — idempotência da fila offline", () => {
+    const criarPosicao = (capturadaEm: string, latitude = -23.0, longitude = -46.0) => ({
+      latitude,
+      longitude,
+      capturadaEm,
+    });
+
+    /** O que de fato foi mandado gravar — falha alto se nada foi. */
+    const gravadas = (): CreateTripPositionData[] => {
+      const chamada = positionRepository.createMany.mock.calls[0];
+      if (!chamada) {
+        throw new Error("`createMany` não foi chamado.");
+      }
+      return chamada[0];
+    };
+
+    beforeEach(() => {
+      tripRepository.findById.mockResolvedValue(buildTrip());
+      vehiclesService.updateLocationFromTrip.mockResolvedValue(undefined);
+      routesService.listStops.mockResolvedValue([]);
+      routesService.listStudents.mockResolvedValue([]);
+      positionRepository.createMany.mockImplementation((data) =>
+        Promise.resolve(
+          data.map((item, indice) => ({
+            id: `position-${indice}`,
+            ...item,
+            precisaoMetros: item.precisaoMetros ?? null,
+            velocidadeKmh: item.velocidadeKmh ?? null,
+            simuladoSuspeito: item.simuladoSuspeito ?? false,
+            createdAt: new Date(),
+          })) as never,
+        ),
+      );
+    });
+
+    it("grava só o que ainda não existe quando o lote é reenviado", async () => {
+      positionRepository.findCapturasExistentes.mockResolvedValue([
+        new Date("2026-08-10T10:00:00Z"),
+        new Date("2026-08-10T10:00:15Z"),
+      ]);
+
+      await service.ingestPositionsBatch(
+        "trip-1",
+        {
+          posicoes: [
+            criarPosicao("2026-08-10T10:00:00Z"),
+            criarPosicao("2026-08-10T10:00:15Z"),
+            criarPosicao("2026-08-10T10:00:30Z"),
+          ],
+        },
+        motoristaActor,
+      );
+
+      expect(gravadas()).toEqual([
+        expect.objectContaining({ capturadaEm: new Date("2026-08-10T10:00:30Z") }),
+      ]);
+    });
+
+    it("devolve lista vazia sem erro quando o lote INTEIRO já foi gravado", async () => {
+      // Precisa ser 200, não 4xx: o app só apaga a fila quando o envio
+      // dá certo. Um erro aqui prenderia a fila nas mesmas posições para
+      // sempre — o aparelho tentaria reenviar o mesmo lote indefinidamente.
+      positionRepository.findCapturasExistentes.mockResolvedValue([
+        new Date("2026-08-10T10:00:00Z"),
+      ]);
+
+      const resultado = await service.ingestPositionsBatch(
+        "trip-1",
+        { posicoes: [criarPosicao("2026-08-10T10:00:00Z")] },
+        motoristaActor,
+      );
+
+      expect(resultado).toEqual([]);
+      expect(positionRepository.createMany).not.toHaveBeenCalled();
+      expect(vehiclesService.updateLocationFromTrip).not.toHaveBeenCalled();
+    });
+
+    it("descarta repetição dentro do próprio lote", async () => {
+      const resultado = await service.ingestPositionsBatch(
+        "trip-1",
+        {
+          posicoes: [
+            criarPosicao("2026-08-10T10:00:00Z"),
+            criarPosicao("2026-08-10T10:00:00Z"),
+            criarPosicao("2026-08-10T10:00:15Z"),
+          ],
+        },
+        motoristaActor,
+      );
+
+      expect(gravadas()).toHaveLength(2);
+      expect(resultado).toHaveLength(2);
+    });
+
+    it("aplica GPS-06 no lote — o endpoint de fila não é rota de fuga da coerência", async () => {
+      // Se a verificação só existisse no envio ao vivo, bastaria mandar
+      // tudo por aqui para contorná-la. ~1.100 km entre as duas leituras,
+      // com 15 segundos de intervalo.
+      await service.ingestPositionsBatch(
+        "trip-1",
+        {
+          posicoes: [
+            criarPosicao("2026-08-10T10:00:00Z", -23.0, -46.0),
+            criarPosicao("2026-08-10T10:00:15Z", -13.0, -46.0),
+          ],
+        },
+        motoristaActor,
+      );
+
+      expect(gravadas()).toEqual([
+        expect.objectContaining({ simuladoSuspeito: false }),
+        expect.objectContaining({ simuladoSuspeito: true }),
+      ]);
+    });
+
+    it("atualiza a posição do veículo pela leitura de MAIOR `capturadaEm`, não pela última do array", async () => {
+      await service.ingestPositionsBatch(
+        "trip-1",
+        {
+          posicoes: [
+            criarPosicao("2026-08-10T10:00:30Z", -23.3, -46.3),
+            criarPosicao("2026-08-10T10:00:00Z", -23.0, -46.0),
+          ],
+        },
+        motoristaActor,
+      );
+
+      expect(vehiclesService.updateLocationFromTrip).toHaveBeenCalledWith(
+        "vehicle-1",
+        expect.objectContaining({ capturadaEm: new Date("2026-08-10T10:00:30Z") }),
+      );
     });
   });
 

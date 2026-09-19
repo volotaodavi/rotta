@@ -2,7 +2,7 @@ import * as TaskManager from "expo-task-manager";
 
 import type * as Location from "expo-location";
 
-import { tripsApi } from "@/lib/api-client";
+import { drenar, enfileirar } from "@/features/driver/fila-gps/fila-gps";
 
 /**
  * Item 4 do pedido do usuário: "GPS continuar rodando de verdade em
@@ -60,21 +60,43 @@ try {
     if (!locations || locations.length === 0) return;
 
     const tripId = activeTripId;
-    await Promise.allSettled(
-      locations.map((position) =>
-        tripsApi.ingestPosition(tripId, {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-          precisaoMetros: position.coords.accuracy ?? undefined,
-          velocidadeKmh:
-            position.coords.speed !== null ? Math.max(position.coords.speed * 3.6, 0) : undefined,
-          capturadaEm: new Date(position.timestamp).toISOString(),
-        }),
-      ),
-    );
-    // `Promise.allSettled` nunca rejeita — falha isolada de rede/servidor
-    // (comum em segundo plano, rádio suspensa) nunca derruba a task nem
-    // as próximas entregas; o próximo lote tenta de novo naturalmente.
+
+    // `GPS-04`/`GPS-05` — ENFILEIRA SEMPRE, depois drena.
+    //
+    // Antes de 19/09/2026 este trecho chamava `ingestPosition` direto e
+    // engolia a falha com `Promise.allSettled`, sob o comentário de que
+    // "o próximo lote tenta de novo naturalmente" — mas não havia lote
+    // nenhum: cada posição era enviada uma única vez, e o que falhava
+    // sumia. Túnel, viaduto e zona rural apagavam aquele trecho do
+    // histórico para sempre, e o histórico é o que prova para a família
+    // onde o veículo esteve.
+    //
+    // Gravar primeiro e enviar depois é o que torna a perda impossível:
+    // a escrita local não depende de rede.
+    for (const position of locations) {
+      await enfileirar({
+        tripId,
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        precisaoMetros: position.coords.accuracy ?? undefined,
+        velocidadeKmh:
+          position.coords.speed !== null ? Math.max(position.coords.speed * 3.6, 0) : undefined,
+        capturadaEm: new Date(position.timestamp).toISOString(),
+      });
+    }
+
+    // Drena o que der. Com rede, a fila esvazia no mesmo ciclo e o
+    // comportamento é indistinguível do anterior. Sem rede, `drenar`
+    // apenas não apaga nada — e o acúmulo sai na primeira entrega que
+    // o SO fizer depois do sinal voltar (`GPS-05`).
+    //
+    // `catch` mudo de propósito: a task de GPS nunca pode morrer por
+    // causa da drenagem. O que importa — a posição — já está gravado.
+    try {
+      await drenar();
+    } catch {
+      // Próxima entrega tenta de novo.
+    }
   });
 } catch (error) {
   // eslint-disable-next-line no-console
