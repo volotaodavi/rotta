@@ -30,6 +30,18 @@ export function setActiveTripId(tripId: string | null): void {
   activeTripId = tripId;
 }
 
+/**
+ * Qual viagem este aparelho está rastreando agora, ou `null`.
+ *
+ * Usado por `RN-AUTH-05` (confirmar antes de sair com viagem em
+ * andamento). É o sinal mais direto que existe: só é preenchido
+ * enquanto o rastreamento está de pé, e zerado assim que para — sem
+ * rede, sem cache, sem depender de qual tela a pessoa visitou.
+ */
+export function getActiveTripId(): string | null {
+  return activeTripId;
+}
+
 // `defineTask` roda no escopo do módulo, importado incondicionalmente
 // em `index.ts` — bem antes de `AppErrorBoundary` existir (achado
 // 14/09/2026, mesma investigação de `@/config/env.ts`). Se lançar (ex.:

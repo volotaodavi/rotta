@@ -4,6 +4,7 @@ import { driverShadow } from "@rotta/theme";
 import { StyleSheet, Text, View } from "react-native";
 
 import { PanelGreeting } from "../components";
+import { useSairDaConta } from "../hooks/use-sair-com-viagem";
 
 import type { DriverPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -59,7 +60,8 @@ function iniciais(nome: string | undefined): string {
  */
 export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const sairDaConta = useSairDaConta();
   const { canToggle, setMode } = useAppModeContext();
   const verificacao = useVerificacaoMotorista();
   const { data: veiculo } = useMyVehicle();
@@ -152,7 +154,12 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
             label: "Documentação Rotta",
             onPress: () => navigation.navigate("Documentacao"),
           },
-          { icon: LogOut, label: "Sair", onPress: () => void logout(), destrutivo: true },
+          // `RN-AUTH-05` — com viagem em andamento, pergunta antes
+          // (`useSairDaConta`). Sair no meio da rota derruba o
+          // rastreamento de um veículo com crianças dentro, e ninguém
+          // fica sabendo: do lado da família, o ponto no mapa só para
+          // de se mexer.
+          { icon: LogOut, label: "Sair", onPress: sairDaConta, destrutivo: true },
         ]}
       />
     </VehicleScreen>

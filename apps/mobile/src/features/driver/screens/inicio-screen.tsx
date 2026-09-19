@@ -89,6 +89,7 @@ import type { ReactNode } from "react";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
 import { SlideToAction } from "@/components/slide-to-action";
+import { confirmarEncerramento } from "@/features/driver/encerramento/confirmar-encerramento";
 import { useGpsTrack } from "@/features/gps/hooks/use-gps";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import {
@@ -1103,6 +1104,20 @@ function RotaOperacional({
 
   const viagemEncerrada = trip && (trip.status === "FINALIZADA" || trip.status === "CANCELADA");
   const totalAlunos = (routeStudents ?? []).length;
+
+  /**
+   * `EMB-01` — encerrar passa pelo checklist antes (ver
+   * `encerramento/pendencias-de-encerramento.ts`). Prefere a lista
+   * detalhada porque ela tem o nome do aluno: um aviso que diz "2
+   * alunos pendentes" obriga o motorista a fechar o alerta e ir
+   * procurar quem são, e ele está dirigindo.
+   */
+  const encerrarViagem = (tripId: string): void =>
+    confirmarEncerramento({
+      alunos: routeStudentsDetalhado ?? routeStudents ?? [],
+      eventos: studentEvents ?? [],
+      onEncerrar: () => finishTrip.mutate(tripId),
+    });
   const progressoEmbarquePct = totalAlunos > 0 ? (alunosEmbarcados / totalAlunos) * 100 : 0;
 
   // Frente AP (paridade com o Painel Web, pedido do usuário: "quando a
@@ -1151,6 +1166,7 @@ function RotaOperacional({
           pauseTrip={pauseTrip}
           resumeTrip={resumeTrip}
           finishTrip={finishTrip}
+          onEncerrar={() => encerrarViagem(trip.id)}
           mapKey={mapKey}
           onRecenter={() => setMapKey((k) => k + 1)}
         />
@@ -1467,7 +1483,7 @@ function RotaOperacional({
                     <SlideToAction
                       label="Deslize para encerrar"
                       theme={theme}
-                      onComplete={() => finishTrip.mutate(trip.id)}
+                      onComplete={() => encerrarViagem(trip.id)}
                       isLoading={finishTrip.isPending}
                       danger
                     />
@@ -1486,7 +1502,7 @@ function RotaOperacional({
                     <SlideToAction
                       label="Deslize para finalizar"
                       theme={theme}
-                      onComplete={() => finishTrip.mutate(trip.id)}
+                      onComplete={() => encerrarViagem(trip.id)}
                       isLoading={finishTrip.isPending}
                       danger
                     />
@@ -1633,6 +1649,7 @@ function ModoOperacionalFullScreen({
   pauseTrip,
   resumeTrip,
   finishTrip,
+  onEncerrar,
   mapKey,
   onRecenter,
 }: {
@@ -1653,6 +1670,8 @@ function ModoOperacionalFullScreen({
   pauseTrip: ReturnType<typeof usePauseTrip>;
   resumeTrip: ReturnType<typeof useResumeTrip>;
   finishTrip: ReturnType<typeof useFinishTrip>;
+  /** `EMB-01` — encerrar passando pela conferência do checklist, nunca `finishTrip.mutate` direto. */
+  onEncerrar: () => void;
   mapKey: number;
   onRecenter: () => void;
 }): JSX.Element {
@@ -1903,7 +1922,7 @@ function ModoOperacionalFullScreen({
                 <SlideToAction
                   label="Deslize para finalizar"
                   theme={theme}
-                  onComplete={() => finishTrip.mutate(trip.id)}
+                  onComplete={onEncerrar}
                   isLoading={finishTrip.isPending}
                   danger
                 />
