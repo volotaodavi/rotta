@@ -3,9 +3,12 @@ import {
   ConflictException,
   Inject,
   Injectable,
+  Logger,
   NotFoundException,
+  type OnModuleInit,
 } from "@nestjs/common";
 
+import { LEGAL_DOCUMENT_CATALOG } from "./legal-documents.catalog";
 import { LEGAL_DOCUMENT_REPOSITORY } from "./legal-documents.constants";
 
 import type { CreateLegalDocumentVersionDto } from "./dto/create-legal-document-version.dto";
@@ -32,10 +35,39 @@ import type { LegalDocument, LegalDocumentVersion } from "@prisma/client";
  * é uma segunda camada, específica deste fluxo, não substitui o RBAC.
  */
 @Injectable()
-export class LegalDocumentsService {
+export class LegalDocumentsService implements OnModuleInit {
+  private readonly logger = new Logger(LegalDocumentsService.name);
+
   constructor(
     @Inject(LEGAL_DOCUMENT_REPOSITORY) private readonly repository: LegalDocumentRepository,
   ) {}
+
+  /**
+   * Garante o catálogo de documentos legais no boot — mesmo padrão que
+   * `CompaniesService.onModuleInit` já usava para o catálogo de planos.
+   *
+   * Isto saiu do `prisma db seed` que rodava a cada partida do
+   * container (ver `legal-documents.catalog.ts` para a medição do cold
+   * start que motivou a mudança). Aqui o processo Node e o Prisma
+   * Client já estão de pé, então os `upsert` custam milissegundos em
+   * vez de dezenas de segundos de boot de ferramenta.
+   *
+   * `try/catch` pelo mesmo motivo de `CompaniesService`: uma falha aqui
+   * (banco ainda não aceitando conexão no exato instante do boot) nunca
+   * pode derrubar a aplicação inteira — no pior caso o catálogo fica
+   * para o próximo boot, e o CMS continua funcionando para os
+   * documentos que já existem.
+   */
+  async onModuleInit(): Promise<void> {
+    try {
+      for (const documento of LEGAL_DOCUMENT_CATALOG) {
+        await this.repository.upsertDocumentBySlug(documento);
+      }
+    } catch (error) {
+      const motivo = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Não foi possível provisionar o catálogo de documentos legais: ${motivo}`);
+    }
+  }
 
   createDocument(dto: CreateLegalDocumentDto): Promise<LegalDocument> {
     return this.repository.createDocument(dto);

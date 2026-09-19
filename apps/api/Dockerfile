@@ -61,9 +61,34 @@ EXPOSE 3333
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
   CMD node -e "require('http').get('http://localhost:'+(process.env.PORT||3333)+'/'+(process.env.API_PREFIX||'v1')+'/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"
 
-# Migra o schema e garante o catalogo de planos (prisma/seed.ts — upsert
-# idempotente do plano STARTER) ANTES de subir o processo. Sem o seed,
-# todo cadastro de Empresa falha com "Plano STARTER nao encontrado"
-# (CompaniesService.resolvePlanOrThrow) — bug real encontrado em
-# producao porque só a migration rodava, nunca o seed.
-CMD ["sh", "-c", "pnpm --filter=@rotta/api prisma:migrate:deploy && pnpm --filter=@rotta/api prisma:seed && node apps/api/dist/main.js"]
+# Migra o schema ANTES de subir o processo — nunca servir trafego sobre
+# um banco fora de versao. O `&&` e deliberado: migration falhou, nao
+# sobe.
+#
+# 19/09/2026 — o `prisma db seed` SAIU daqui, e o `pnpm` tambem. Porque:
+#
+# No plano gratuito do Render o container dorme e e RECRIADO a cada
+# acordada, entao tudo que roda antes de `node main.js` e pago de novo
+# a cada cold start. Media: a API levava mais de 90 segundos para
+# devolver o primeiro byte (`curl: (28) timed out after 90s with 0
+# bytes received`, em 15 das 20 ultimas execucoes do keep-warm), e o
+# app do celular desistia antes — era a origem da tela azul travada que
+# os transportadores viam.
+#
+# O trabalho de banco do seed era trivial (11 upserts). O caro era o
+# BOOT DE FERRAMENTA: dois `pnpm` resolvendo workspace, o CLI do Prisma,
+# e o `ts-node` compilando TypeScript em tempo de execucao.
+#
+# O seed agora acontece dentro da propria aplicacao, no boot, onde o
+# Node e o Prisma Client ja estao de pe:
+#   - catalogo de planos: `CompaniesService.onModuleInit` (ja fazia)
+#   - documentos legais:  `LegalDocumentsService.onModuleInit` (novo)
+# `pnpm prisma:seed` continua funcionando para dev local e banco novo.
+#
+# A migration continua aqui, mas chamando o binario direto em vez de
+# passar pelo `pnpm`. Os fallbacks existem porque nao da para testar
+# build de imagem Docker no ambiente onde isto foi escrito: se o layout
+# do `turbo prune` colocar o binario em outro lugar, cai no caminho
+# alternativo e, por ultimo, no `pnpm` de antes. Escolha de caminho nao
+# pode ser o motivo de a API nao subir.
+CMD ["sh", "-c", "P=apps/api/node_modules/.bin/prisma; [ -x \"$P\" ] || P=node_modules/.bin/prisma; if [ -x \"$P\" ]; then \"$P\" migrate deploy --schema apps/api/prisma/schema.prisma; else echo '[boot] binario do prisma nao encontrado, usando pnpm'; pnpm --filter=@rotta/api prisma:migrate:deploy; fi && node apps/api/dist/main.js"]

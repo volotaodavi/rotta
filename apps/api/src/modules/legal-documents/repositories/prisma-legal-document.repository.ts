@@ -25,6 +25,17 @@ export class PrismaLegalDocumentRepository implements LegalDocumentRepository {
     return this.prisma.legalDocument.create({ data });
   }
 
+  upsertDocumentBySlug(data: { slug: string; titulo: string }): Promise<LegalDocument> {
+    return this.prisma.legalDocument.upsert({
+      where: { slug: data.slug },
+      // Só o título é atualizado: versões e conteúdo pertencem a quem
+      // redige pelo CMS, e um provisionamento de boot nunca pode
+      // sobrescrever trabalho humano.
+      update: { titulo: data.titulo },
+      create: data,
+    });
+  }
+
   findDocumentById(id: string): Promise<LegalDocumentWithVersions | null> {
     return this.prisma.legalDocument.findUnique({
       where: { id },

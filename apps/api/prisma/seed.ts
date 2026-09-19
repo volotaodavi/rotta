@@ -1,6 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 import { DEFAULT_PLAN } from "../src/modules/companies/companies.constants";
+import { LEGAL_DOCUMENT_CATALOG } from "../src/modules/legal-documents/legal-documents.catalog";
 
 /**
  * Seed de dados de catalogo (nunca de dados transacionais/de tenant) —
@@ -16,27 +17,20 @@ import { DEFAULT_PLAN } from "../src/modules/companies/companies.constants";
 const prisma = new PrismaClient();
 
 /**
- * Catálogo inicial do CMS de documentos legais (Dossiê 45 FRENTE 4,
- * tarefa #205) — os 10 documentos REAIS já publicados como componentes
- * React estáticos em `apps/web/src/app/legal/*`
- * (`apps/web/src/features/legal/documents.ts` é a fonte de slug/título
- * canônica do lado público). Só cria o registro `LegalDocument`
- * (slug+título) — nenhuma versão/conteúdo é semeado aqui: cada versão
- * de verdade nasce quando alguém do time redige pelo CMS.
+ * A lista de documentos legais MUDOU DE LUGAR (19/09/2026): mora em
+ * `src/modules/legal-documents/legal-documents.catalog.ts`, e a própria
+ * aplicação a provisiona no boot (`LegalDocumentsService.onModuleInit`).
+ *
+ * Motivo: este seed rodava a CADA partida do container, via
+ * `ts-node` — compilando TypeScript em tempo de execução, antes de a
+ * porta abrir. No plano gratuito do Render, onde o container dorme e é
+ * recriado a cada acordada, isso era uma fatia grande dos 90+ segundos
+ * de cold start que derrubavam o login do app.
+ *
+ * Este arquivo continua servindo desenvolvimento local e banco novo
+ * (`pnpm prisma:seed`), agora importando a MESMA lista — nunca uma
+ * segunda cópia que pode divergir.
  */
-const LEGAL_DOCUMENT_CATALOG: { slug: string; titulo: string }[] = [
-  { slug: "privacidade", titulo: "Política de Privacidade / LGPD" },
-  { slug: "termos", titulo: "Termos de Uso" },
-  { slug: "seguranca", titulo: "Segurança na Rotta" },
-  { slug: "comunidade", titulo: "Política da Comunidade Rotta" },
-  { slug: "rottapay", titulo: "Política Financeira RottaPay" },
-  { slug: "motoristas", titulo: "Diretrizes para Motoristas e Modalidades de Transporte" },
-  { slug: "marketplace", titulo: "Política de Contratação e Marketplace" },
-  { slug: "cookies", titulo: "Política de Cookies" },
-  { slug: "comunicacoes", titulo: "Política de Comunicações" },
-  { slug: "ajuda", titulo: "Central de Ajuda / Transparência" },
-];
-
 async function main(): Promise<void> {
   await prisma.plan.upsert({
     where: { code: DEFAULT_PLAN.code },

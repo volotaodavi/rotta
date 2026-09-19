@@ -28,6 +28,13 @@ export type LegalDocumentWithVersions = LegalDocument & { versoes: LegalDocument
 
 export interface LegalDocumentRepository {
   createDocument(data: CreateLegalDocumentData): Promise<LegalDocument>;
+  /**
+   * Cria ou atualiza pelo `slug` (que é `@unique`). Usado pelo
+   * provisionamento de catálogo no boot — ver
+   * `legal-documents.catalog.ts` para o porquê de isso não morar mais
+   * só no `prisma/seed.ts`.
+   */
+  upsertDocumentBySlug(data: { slug: string; titulo: string }): Promise<LegalDocument>;
   findDocumentById(id: string): Promise<LegalDocumentWithVersions | null>;
   findDocumentBySlug(slug: string): Promise<LegalDocument | null>;
   listDocuments(): Promise<LegalDocumentWithVersions[]>;
