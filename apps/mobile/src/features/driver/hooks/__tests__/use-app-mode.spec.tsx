@@ -113,3 +113,50 @@ describe("chave do cofre", () => {
     }
   });
 });
+
+/**
+ * O PISCAR — relato de 21/09/2026: "ROTTA, com o logotipo + tela azul e
+ * fica piscando toda hora. NÃO CARREGA."
+ *
+ * O efeito fazia `setIsModeResolved(false)` em TODA execução, e ele roda
+ * de novo sempre que `canToggle` oscila — o que acontece porque o objeto
+ * do usuário é reemitido a cada renovação de sessão. Enquanto o
+ * `RootNavigator` usava esse estado para segurar a splash, cada
+ * oscilação devolvia o app para a tela azul e tirava de novo: o laço.
+ *
+ * O conserto estrutural é o `RootNavigator` não olhar mais para
+ * `isModeResolved`. Este teste guarda a segunda defesa: reprocessar a
+ * MESMA sessão não pode desfazer o que já estava resolvido.
+ */
+describe("não volta a 'não resolvido' na mesma sessão", () => {
+  it("mantém resolvido quando o objeto do usuário é reemitido", async () => {
+    const { result, rerender } = renderHook(({ u }) => useAppMode(u), {
+      initialProps: { u: transportador },
+    });
+
+    await waitFor(() => expect(result.current.isModeResolved).toBe(true));
+
+    // Mesma pessoa, objeto novo — exatamente o que a renovação de
+    // sessão produz.
+    rerender({ u: { ...transportador } as MeResponse });
+    expect(result.current.isModeResolved).toBe(true);
+
+    // E de novo, com `companyType` oscilando (o que faz `canToggle`
+    // oscilar e era o gatilho do laço).
+    rerender({ u: { ...transportador, companyType: undefined } as unknown as MeResponse });
+    expect(result.current.isModeResolved).toBe(true);
+  });
+
+  it("volta a resolver do zero quando troca de usuário de verdade", async () => {
+    const { result, rerender } = renderHook(({ u }) => useAppMode(u), {
+      initialProps: { u: transportador },
+    });
+    await waitFor(() => expect(result.current.isModeResolved).toBe(true));
+
+    rerender({ u: { ...transportador, id: "outro-usuario" } as MeResponse });
+
+    // Outra conta tem outra preferência — aqui reiniciar é o certo.
+    await waitFor(() => expect(result.current.isModeResolved).toBe(true));
+    expect(mockLer).toHaveBeenLastCalledWith(chaveDoModo("outro-usuario"));
+  });
+});

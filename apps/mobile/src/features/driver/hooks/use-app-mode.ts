@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { MeResponse } from "@rotta/api-client";
 
@@ -124,13 +124,35 @@ export function useAppMode(user: MeResponse | null): AppModeState {
    *  1. A leitura passou a ser `lerDoCofre`, que devolve `null` em vez
    *     de lançar.
    *  2. `setIsModeResolved(true)` mora num `finally`. Mesmo que algo
-   *     aqui dentro lance por um motivo que eu não previ, o app SAI da
-   *     splash. Uma preferência de exibição não resolvida vale, no pior
-   *     caso, abrir na "Visão completa" — nunca não abrir.
+   *     aqui dentro lance por um motivo que eu não previ, este estado
+   *     resolve. Uma preferência de exibição não resolvida vale, no
+   *     pior caso, abrir na "Visão completa" — nunca não abrir.
+   *
+   * E O PISCAR (mesmo dia, relato seguinte: "fica piscando toda hora,
+   * não carrega"): este efeito fazia `setIsModeResolved(false)` em TODA
+   * execução. Ele roda de novo sempre que `canToggle` oscila, e
+   * `canToggle` é derivado do objeto do usuário, que é reemitido a cada
+   * renovação de sessão. Enquanto `RootNavigator` usava este estado
+   * para segurar a splash, cada oscilação devolvia o app para a tela
+   * azul e tirava de novo — o piscar em laço.
+   *
+   * Duas defesas, porque uma só não basta:
+   *
+   *  - `RootNavigator` não olha mais para `isModeResolved` (o conserto
+   *    estrutural: preferência não decide se o app renderiza);
+   *  - e aqui, o estado só volta a "não resolvido" quando muda o
+   *    USUÁRIO de fato. Reprocessar a mesma sessão não desfaz o que já
+   *    estava resolvido.
    */
+  const usuarioResolvido = useRef<string | null>(null);
+
   useEffect(() => {
     let cancelado = false;
-    setIsModeResolved(false);
+    const alvo = userId ?? null;
+    if (usuarioResolvido.current !== alvo) {
+      usuarioResolvido.current = alvo;
+      setIsModeResolved(false);
+    }
 
     async function carregar(): Promise<void> {
       try {

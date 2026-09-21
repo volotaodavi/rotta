@@ -100,27 +100,31 @@ export function RootNavigator(): JSX.Element {
     LIMITE_DE_ESPERA_DA_SPLASH_MS,
   );
 
-  // INCIDENTE 21/09/2026 — "a conta do transportador não está entrando
-  // (nenhuma), fica na tela azul escrito ROTTA".
+  // INCIDENTE 21/09/2026 — o transportador via a splash PISCANDO em laço
+  // ("ROTTA + tela azul e fica piscando toda hora, não carrega").
   //
-  // Duas das três condições abaixo NÃO tinham limite de tempo, e cada
-  // uma era capaz de prender o app aqui para sempre:
+  // A condição `appMode.canToggle && !appMode.isModeResolved` SAIU
+  // daqui, e é o conserto de verdade: ela fazia uma PREFERÊNCIA DE
+  // EXIBIÇÃO decidir se o app renderiza.
   //
-  //   - `status === "loading"`: preso quando a leitura do cofre lançava
-  //     (`packages/auth/.../token-store.ts`);
-  //   - `!appMode.isModeResolved`: preso pelo mesmo motivo em
-  //     `use-app-mode.ts` — e essa condição só existe para
-  //     `role === "empresa"` AUTONOMO/MEI, que é exatamente o
-  //     transportador. Daí "nenhuma" conta dele entrar enquanto a do
-  //     Responsável entrava normalmente.
+  // O piscar vinha disso: `useAppMode` marca o modo como "não
+  // resolvido" toda vez que seu efeito roda, e o efeito roda de novo
+  // sempre que `canToggle` oscila — o que acontece porque o objeto do
+  // usuário é reemitido a cada renovação de sessão. Cada oscilação
+  // devolvia o app para a splash e tirava de novo: splash, app, splash,
+  // app.
   //
-  // As duas causas foram consertadas na origem. Esta tela, porém, não
-  // pode voltar a depender disso: ela é o último ponto antes de a
-  // pessoa ficar sem nada. Passado o limite, ela ganha uma saída —
-  // tentar de novo ou entrar com outra conta.
+  // Escolher entre "Visão completa" e "Modo Ação" não é permissão, é
+  // preferência. O certo é abrir na Visão completa (o padrão) e aplicar
+  // a preferência guardada quando ela chegar — nunca segurar a tela por
+  // causa dela. Hoje isso nem é visível para ninguém: a chave do cofre
+  // estava inválida desde sempre (ver `use-app-mode.ts`), então não
+  // existe preferência guardada em aparelho nenhum.
+  //
+  // Sobram só as duas esperas que de fato precisam de resposta antes de
+  // decidir a árvore de navegação — e as duas são limitadas no tempo.
   const aindaResolvendoSessao =
     status === "loading" ||
-    (appMode.canToggle && !appMode.isModeResolved) ||
     (isMotoristaOuMonitor && isIdentityLoading && !esperouDemaisPelaIdentidade);
 
   const esperouDemaisPelaSessao = useLimiteDeEspera(
