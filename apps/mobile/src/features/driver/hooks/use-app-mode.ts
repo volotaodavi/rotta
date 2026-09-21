@@ -8,9 +8,49 @@ export type AppMode = "completo" | "acao";
 
 const DEFAULT_MODE: AppMode = "completo";
 
+/**
+ * CAUSA RAIZ do incidente de 21/09/2026 — "a conta do transportador não
+ * está entrando (nenhuma), fica na tela azul escrito ROTTA", inclusive
+ * em conta recém-criada.
+ *
+ * Esta chave usava DOIS-PONTOS: `rotta_app_mode:${userId}`. O
+ * `expo-secure-store` valida a chave antes de qualquer coisa e LANÇA
+ * quando ela não casa com `/^[\w.-]+$/` — e `\w` é `[A-Za-z0-9_]`, sem
+ * dois-pontos:
+ *
+ *     Invalid key provided to SecureStore. Keys must not be empty and
+ *     contain only alphanumeric characters, ".", "-", and "_".
+ *
+ * Ou seja: não era um aparelho ruim, nem dado corrompido, nem rede.
+ * Era TODA leitura, em TODO aparelho, para TODO usuário, sempre.
+ *
+ * E o estrago caía exatamente num papel: `RootNavigator` só espera por
+ * `isModeResolved` quando `canToggle` é verdadeiro, e `canToggle` é
+ * `role === "empresa"` com `companyType` AUTONOMO/MEI — o
+ * transportador. O Responsável nunca chamava esta função, e por isso a
+ * conta dele sempre abriu normalmente enquanto "nenhuma" do
+ * transportador abria.
+ *
+ * Era também a única chave do app com dois-pontos; todas as outras
+ * (`rotta_pin_*`, `rotta_biometric_*`, `rotta_onboarding_seen`,
+ * `rotta_refresh_token`, `rotta_cached_user`) já usavam sublinhado.
+ *
+ * Não há migração a fazer: como a leitura E a escrita sempre lançaram,
+ * nunca existiu um valor guardado sob a chave antiga em aparelho nenhum.
+ */
 function storageKey(userId: string): string {
-  return `rotta_app_mode:${userId}`;
+  return `rotta_app_mode_${userId}`;
 }
+
+/**
+ * A mesma validação que o `expo-secure-store` aplica internamente
+ * (`isValidKey`). Existe aqui para o teste poder afirmar a regra em vez
+ * de confiar na memória de quem escreve a próxima chave.
+ */
+export const CHAVE_VALIDA_NO_COFRE = /^[\w.-]+$/;
+
+/** Só para teste — ver `CHAVE_VALIDA_NO_COFRE`. */
+export const chaveDoModo = storageKey;
 
 /**
  * Quem pode alternar entre "Visão completa" (gestão, `EmpresaNavigator`)

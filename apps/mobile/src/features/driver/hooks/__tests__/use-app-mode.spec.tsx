@@ -1,6 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react-native";
 
-import { useAppMode } from "../use-app-mode";
+import { CHAVE_VALIDA_NO_COFRE, chaveDoModo, useAppMode } from "../use-app-mode";
 
 import type { MeResponse } from "@rotta/api-client";
 
@@ -83,4 +83,33 @@ it("valor guardado inválido não trava nem vira modo inventado", async () => {
 
   await waitFor(() => expect(result.current.isModeResolved).toBe(true));
   expect(result.current.mode).toBe("completo");
+});
+
+/**
+ * CAUSA RAIZ do incidente de 21/09/2026.
+ *
+ * A chave era `rotta_app_mode:${userId}`, com dois-pontos. O
+ * `expo-secure-store` valida a chave ANTES de qualquer acesso e lança
+ * quando ela não casa com `/^[\w.-]+$/`. Não era aparelho ruim nem dado
+ * corrompido: era toda leitura, em todo aparelho, para todo usuário,
+ * sempre. E o travamento caía só no transportador, porque só ele faz
+ * `RootNavigator` esperar por `isModeResolved`.
+ */
+describe("chave do cofre", () => {
+  it("é aceita pelo expo-secure-store", () => {
+    // Mesma expressão que o `isValidKey` do pacote usa.
+    expect(chaveDoModo("9f8c1d2e-aaaa-4bbb-8ccc-1234567890ab")).toMatch(CHAVE_VALIDA_NO_COFRE);
+  });
+
+  it("a chave ANTIGA seria recusada — é isto que travava o app", () => {
+    expect("rotta_app_mode:9f8c1d2e-aaaa-4bbb-8ccc-1234567890ab").not.toMatch(
+      CHAVE_VALIDA_NO_COFRE,
+    );
+  });
+
+  it("continua válida para qualquer formato de id", () => {
+    for (const id of ["1", "abc", "a-b-c", "A1B2C3", "9f8c1d2e-aaaa-4bbb-8ccc-1234567890ab"]) {
+      expect(chaveDoModo(id)).toMatch(CHAVE_VALIDA_NO_COFRE);
+    }
+  });
 });
