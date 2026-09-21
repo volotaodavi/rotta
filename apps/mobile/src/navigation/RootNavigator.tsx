@@ -1,5 +1,6 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
+import { useRef } from "react";
 
 import { AdminNavigator } from "./AdminNavigator";
 import { AuthNavigator } from "./AuthNavigator";
@@ -139,9 +140,28 @@ export function RootNavigator(): JSX.Element {
   // A espera continua existindo para o caso normal — meio segundo de
   // splash enquanto a sessão resolve é o certo, e é o que acontece
   // quando tudo vai bem.
-  if (aindaResolvendoSessao && !esperouDemaisPelaSessao) {
+  //
+  // TRAVA DE IDA ÚNICA. O teto acima, sozinho, não bastava, e o furo
+  // era meu: `useLimiteDeEspera` ZERA a contagem toda vez que a espera
+  // termina. Numa condição que oscila, o cronômetro reinicia a cada
+  // volta e nunca estoura — exatamente o "fica piscando toda hora", com
+  // o teto no lugar e tudo.
+  //
+  // Então a splash passa a ser de IDA ÚNICA: depois que o app mostrou a
+  // árvore de navegação uma vez, ele NUNCA volta para a tela azul nesta
+  // execução. Não importa o que oscile depois — cada tela cuida do seu
+  // próprio carregamento, como já fazem.
+  //
+  // Isto vale para toda categoria societária (MEI, autônomo, LTDA,
+  // cooperativa, S.A., S/S): a trava não olha papel nem tipo de
+  // empresa.
+  const jaMostrouOApp = useRef(false);
+  const deveMostrarSplash = aindaResolvendoSessao && !esperouDemaisPelaSessao;
+
+  if (deveMostrarSplash && !jaMostrouOApp.current) {
     return <AppSplashScreen />;
   }
+  jaMostrouOApp.current = true;
 
   if (status === "authenticated" && user && isLocked) {
     return <PinLockScreen onUnlock={unlock} />;

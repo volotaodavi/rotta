@@ -104,9 +104,17 @@ afterEach(() => {
   mockUser.atual = null;
 });
 
+/**
+ * Toda categoria societária que um transportador pode ter. Elas seguem
+ * caminhos diferentes no `RootNavigator` (`canToggle` só é verdadeiro
+ * para AUTONOMO/MEI), e foi por não separar isso que eu errei o
+ * diagnóstico antes.
+ */
+const CATEGORIAS = ["MEI", "AUTONOMO", "LTDA", "COOPERATIVA", "SA", "SS"];
+
 describe("RootNavigator — entrada do transportador", () => {
-  it("LTDA: monta a árvore da Empresa, não a splash", async () => {
-    mockUser.atual = transportador("LTDA");
+  it.each(CATEGORIAS)("%s: entra no app, não fica na tela azul", async (categoria) => {
+    mockUser.atual = transportador(categoria);
 
     render(
       <Envolvido>
@@ -121,17 +129,35 @@ describe("RootNavigator — entrada do transportador", () => {
     });
   });
 
-  it("MEI: monta a árvore da Empresa, não a splash", async () => {
-    mockUser.atual = transportador("MEI");
+  it.each(CATEGORIAS)(
+    "%s: NÃO volta para a tela azul quando a sessão é reemitida (o piscar)",
+    async (categoria) => {
+      // O relato foi "fica piscando toda hora". O gatilho real é o
+      // objeto do usuário ser reemitido a cada renovação de sessão. A
+      // trava de ida única garante que, uma vez dentro, não se volta.
+      mockUser.atual = transportador(categoria);
 
-    render(
-      <Envolvido>
-        <RootNavigator />
-      </Envolvido>,
-    );
+      const { rerender } = render(
+        <Envolvido>
+          <RootNavigator />
+        </Envolvido>,
+      );
 
-    await waitFor(() => {
-      expect(screen.queryByLabelText("Carregando a Rotta")).toBeNull();
-    });
-  });
+      await waitFor(() => {
+        expect(screen.queryByLabelText("Carregando a Rotta")).toBeNull();
+      });
+
+      for (let volta = 0; volta < 5; volta += 1) {
+        // Mesma pessoa, objeto novo — e `companyType` sumindo e
+        // voltando, que é o que fazia `canToggle` oscilar.
+        mockUser.atual = transportador(volta % 2 === 0 ? categoria : "");
+        rerender(
+          <Envolvido>
+            <RootNavigator />
+          </Envolvido>,
+        );
+        expect(screen.queryByLabelText("Carregando a Rotta")).toBeNull();
+      }
+    },
+  );
 });
