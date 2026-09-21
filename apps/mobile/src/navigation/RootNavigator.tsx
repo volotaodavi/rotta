@@ -1,6 +1,5 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
-import { useCallback } from "react";
 
 import { AdminNavigator } from "./AdminNavigator";
 import { AuthNavigator } from "./AuthNavigator";
@@ -53,15 +52,7 @@ import { AppModeProvider } from "@/providers/app-mode-provider";
  * `AppModeProvider`.
  */
 export function RootNavigator(): JSX.Element {
-  const { status, user, logout } = useAuth();
-
-  // Saída de emergência da splash (ver o bloco do incidente abaixo):
-  // limpa a sessão guardada e leva para o login. É também o conserto
-  // definitivo de um cofre ilegível, porque `clearSession` APAGA o dado
-  // que não pôde ser lido — depois disso o app volta ao normal sozinho.
-  const forcarLogout = useCallback(() => {
-    void logout();
-  }, [logout]);
+  const { status, user } = useAuth();
   const { isLocked, unlock } = usePinLock({ userId: user?.id ?? null, status });
   // Push real (Frente 0) — registra o token do Expo Push Service assim que
   // a sessão fica autenticada; nunca bloqueia nem altera esta árvore de
@@ -132,8 +123,24 @@ export function RootNavigator(): JSX.Element {
     LIMITE_DE_ESPERA_DA_SPLASH_MS,
   );
 
-  if (aindaResolvendoSessao) {
-    return <AppSplashScreen travado={esperouDemaisPelaSessao} onSair={forcarLogout} />;
+  // TETO ABSOLUTO DA SPLASH (21/09/2026).
+  //
+  // Eu errei a causa desta tela azul duas vezes, e o usuário pagou por
+  // isso nas duas. Então esta linha não depende de eu ter acertado a
+  // terceira: passado o limite, o app SEGUE, qualquer que seja o estado
+  // pendente. Não existe mais caminho — conhecido ou não — que mantenha
+  // esta tela no ar para sempre.
+  //
+  // Seguir é seguro em todos os casos: sem usuário resolvido, a árvore
+  // abaixo cai em `AuthNavigator` (a tela de login), que é uma tela onde
+  // a pessoa consegue agir. Pedir a senha de novo é um incômodo; ficar
+  // olhando um logo é o dia de trabalho perdido.
+  //
+  // A espera continua existindo para o caso normal — meio segundo de
+  // splash enquanto a sessão resolve é o certo, e é o que acontece
+  // quando tudo vai bem.
+  if (aindaResolvendoSessao && !esperouDemaisPelaSessao) {
+    return <AppSplashScreen />;
   }
 
   if (status === "authenticated" && user && isLocked) {

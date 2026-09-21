@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { AccessibilityInfo, Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { AccessibilityInfo, Animated, StyleSheet, View } from "react-native";
 
 import { RottaLogo } from "./rotta-logo";
 
@@ -20,18 +20,14 @@ import { useTheme } from "@/providers/theme-provider";
  * abaixo"), com um fade + scale muito sutil (nunca giro/3D/partículas) —
  * respeita `prefers-reduced-motion` (`AccessibilityInfo.isReduceMotionEnabled`,
  * equivalente nativo) pulando direto pro estado final quando ativado.
+ *
+ * Não tem estado de "travado" nem botão de saída, e isso é deliberado
+ * (21/09/2026): o `RootNavigator` passou a ter um TETO ABSOLUTO de
+ * tempo, então esta tela é sempre passageira. Uma saída de emergência
+ * aqui seria interface que ninguém alcança — e daria a entender que
+ * ficar preso continua sendo possível.
  */
-export interface AppSplashScreenProps {
-  /**
-   * A espera passou do limite razoável. Mostra uma saída em vez de
-   * deixar a pessoa olhando para um logo parado.
-   */
-  travado?: boolean;
-  /** Limpa a sessão guardada e leva para o login. */
-  onSair?: () => void;
-}
-
-export function AppSplashScreen({ travado, onSair }: AppSplashScreenProps = {}): JSX.Element {
+export function AppSplashScreen(): JSX.Element {
   const { theme } = useTheme();
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.96)).current;
@@ -70,53 +66,10 @@ export function AppSplashScreen({ travado, onSair }: AppSplashScreenProps = {}):
       <Animated.View style={{ opacity, transform: [{ scale }] }}>
         <RottaLogo size={88} variant="full" textColor="#FFFFFF" />
       </Animated.View>
-
-      {/* Incidente de 21/09/2026: transportadores ficaram presos nesta
-          tela sem nenhuma saída — sem erro, sem botão, e voltando igual
-          a cada vez que abriam o app. As causas foram consertadas na
-          origem, mas uma tela de carregamento nunca mais pode ser um
-          beco sem saída: se a espera passar do limite, existe um jeito
-          de sair daqui sem desinstalar o aplicativo. */}
-      {travado ? (
-        <View style={styles.saida}>
-          <Text style={styles.aviso}>Está demorando mais que o normal para abrir sua conta.</Text>
-          {onSair ? (
-            <Pressable
-              onPress={onSair}
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.botao, pressed && styles.botaoPressionado]}
-            >
-              <Text style={styles.botaoTexto}>Entrar de novo</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  aviso: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    lineHeight: 20,
-    opacity: 0.9,
-    textAlign: "center",
-  },
-  botao: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 999,
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-  },
-  botaoPressionado: { opacity: 0.85 },
-  botaoTexto: { color: "#0B3C8D", fontSize: 15, fontWeight: "700" },
   container: { alignItems: "center", flex: 1, justifyContent: "center" },
-  saida: {
-    alignItems: "center",
-    gap: 16,
-    marginTop: 40,
-    maxWidth: 300,
-    paddingHorizontal: 24,
-  },
 });
