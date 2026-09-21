@@ -1,5 +1,6 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
+import { useCallback } from "react";
 
 import { AdminNavigator } from "./AdminNavigator";
 import { AuthNavigator } from "./AuthNavigator";
@@ -52,7 +53,15 @@ import { AppModeProvider } from "@/providers/app-mode-provider";
  * `AppModeProvider`.
  */
 export function RootNavigator(): JSX.Element {
-  const { status, user } = useAuth();
+  const { status, user, logout } = useAuth();
+
+  // Saída de emergência da splash (ver o bloco do incidente abaixo):
+  // limpa a sessão guardada e leva para o login. É também o conserto
+  // definitivo de um cofre ilegível, porque `clearSession` APAGA o dado
+  // que não pôde ser lido — depois disso o app volta ao normal sozinho.
+  const forcarLogout = useCallback(() => {
+    void logout();
+  }, [logout]);
   const { isLocked, unlock } = usePinLock({ userId: user?.id ?? null, status });
   // Push real (Frente 0) — registra o token do Expo Push Service assim que
   // a sessão fica autenticada; nunca bloqueia nem altera esta árvore de
@@ -91,12 +100,36 @@ export function RootNavigator(): JSX.Element {
     LIMITE_DE_ESPERA_DA_SPLASH_MS,
   );
 
-  if (
+  // INCIDENTE 21/09/2026 — "a conta do transportador não está entrando
+  // (nenhuma), fica na tela azul escrito ROTTA".
+  //
+  // Duas das três condições abaixo NÃO tinham limite de tempo, e cada
+  // uma era capaz de prender o app aqui para sempre:
+  //
+  //   - `status === "loading"`: preso quando a leitura do cofre lançava
+  //     (`packages/auth/.../token-store.ts`);
+  //   - `!appMode.isModeResolved`: preso pelo mesmo motivo em
+  //     `use-app-mode.ts` — e essa condição só existe para
+  //     `role === "empresa"` AUTONOMO/MEI, que é exatamente o
+  //     transportador. Daí "nenhuma" conta dele entrar enquanto a do
+  //     Responsável entrava normalmente.
+  //
+  // As duas causas foram consertadas na origem. Esta tela, porém, não
+  // pode voltar a depender disso: ela é o último ponto antes de a
+  // pessoa ficar sem nada. Passado o limite, ela ganha uma saída —
+  // tentar de novo ou entrar com outra conta.
+  const aindaResolvendoSessao =
     status === "loading" ||
     (appMode.canToggle && !appMode.isModeResolved) ||
-    (isMotoristaOuMonitor && isIdentityLoading && !esperouDemaisPelaIdentidade)
-  ) {
-    return <AppSplashScreen />;
+    (isMotoristaOuMonitor && isIdentityLoading && !esperouDemaisPelaIdentidade);
+
+  const esperouDemaisPelaSessao = useLimiteDeEspera(
+    aindaResolvendoSessao,
+    LIMITE_DE_ESPERA_DA_SPLASH_MS,
+  );
+
+  if (aindaResolvendoSessao) {
+    return <AppSplashScreen travado={esperouDemaisPelaSessao} onSair={forcarLogout} />;
   }
 
   if (status === "authenticated" && user && isLocked) {

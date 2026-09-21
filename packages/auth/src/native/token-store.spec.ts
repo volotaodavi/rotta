@@ -125,3 +125,51 @@ describe("persistSession / getCachedUser / getPersistedRefreshToken / clearSessi
     expect(await getCachedUser()).toBeNull();
   });
 });
+
+/**
+ * INCIDENTE 21/09/2026 — "a conta do transportador não está entrando
+ * (nenhuma), fica na tela azul escrito ROTTA".
+ *
+ * O `SecureStore` do Android descriptografa com uma chave do Keystore
+ * do aparelho e LANÇA (não devolve `null`) quando o dado guardado e a
+ * chave saem de sincronia: backup restaurado num aparelho novo,
+ * biometria/bloqueio de tela cadastrado ou removido, troca de aparelho.
+ *
+ * Nenhuma destas leituras tinha proteção. O throw subia até
+ * `performRefresh`, que deixava o `status` em `"loading"` para sempre —
+ * e `RootNavigator` mostra a splash enquanto `status === "loading"`. Sem
+ * erro na tela, sem botão, e igual a cada vez que o app abria, porque o
+ * dado ilegível continuava lá.
+ */
+describe("cofre ilegível — nunca pode travar o app", () => {
+  const comFalhaDeLeitura = (): void => {
+    (SecureStore.getItemAsync as jest.Mock).mockRejectedValueOnce(
+      new Error("Could not decrypt the item in SecureStore"),
+    );
+  };
+
+  it("getPersistedRefreshToken devolve null em vez de lançar", async () => {
+    comFalhaDeLeitura();
+    await expect(getPersistedRefreshToken()).resolves.toBeNull();
+  });
+
+  it("getCachedUser devolve null em vez de lançar", async () => {
+    comFalhaDeLeitura();
+    await expect(getCachedUser()).resolves.toBeNull();
+  });
+
+  it("persistSession devolve false em vez de derrubar um login que deu certo", async () => {
+    // O servidor JÁ autenticou. Lançar aqui jogaria fora uma sessão
+    // válida por causa do armazenamento local.
+    (SecureStore.setItemAsync as jest.Mock).mockRejectedValueOnce(new Error("keystore"));
+    await expect(persistSession("refresh-abc", USUARIO)).resolves.toBe(false);
+  });
+
+  it("clearSession não lança nem quando apagar falha", async () => {
+    // `clearSession` é o caminho de RECUPERAÇÃO de um cofre ilegível —
+    // é a última coisa que pode travar.
+    (SecureStore.deleteItemAsync as jest.Mock).mockRejectedValueOnce(new Error("keystore"));
+    await expect(clearSession()).resolves.toBeUndefined();
+    expect(getAccessToken()).toBeNull();
+  });
+});

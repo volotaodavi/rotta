@@ -38,12 +38,39 @@ export async function requestTokenRefresh(): Promise<string | null> {
   return (await refreshHandler?.()) ?? null;
 }
 
+/**
+ * INCIDENTE 21/09/2026 — o app ficava preso na splash azul.
+ *
+ * `SecureStore` no Android descriptografa usando uma chave do Keystore
+ * do aparelho, e LANÇA (não devolve `null`) quando o dado guardado e a
+ * chave saem de sincronia — backup automático restaurado num aparelho
+ * novo, biometria/bloqueio de tela cadastrado ou removido, troca de
+ * aparelho com o mesmo login. Nenhuma destas leituras tinha proteção:
+ * um throw aqui subia até `performRefresh`, que deixava o `status` em
+ * `"loading"` para sempre, e `RootNavigator` mostra a splash enquanto
+ * `status === "loading"`.
+ *
+ * O detalhe cruel é que o dado ilegível FICA no aparelho: fechar e
+ * reabrir o app repetia o mesmo travamento, sem nenhuma saída.
+ *
+ * A partir daqui, ler o cofre nunca lança. Falha de leitura vira
+ * "não há sessão guardada", que leva à tela de login — pedir a senha de
+ * novo é um incômodo; não abrir o app é perder o dia de trabalho.
+ */
+async function lerDoCofre(chave: string): Promise<string | null> {
+  try {
+    return await SecureStore.getItemAsync(chave);
+  } catch {
+    return null;
+  }
+}
+
 export async function getPersistedRefreshToken(): Promise<string | null> {
-  return SecureStore.getItemAsync(REFRESH_STORAGE_KEY);
+  return lerDoCofre(REFRESH_STORAGE_KEY);
 }
 
 export async function getCachedUser(): Promise<MeResponse | null> {
-  const raw = await SecureStore.getItemAsync(USER_STORAGE_KEY);
+  const raw = await lerDoCofre(USER_STORAGE_KEY);
   if (!raw) {
     return null;
   }
@@ -54,15 +81,38 @@ export async function getCachedUser(): Promise<MeResponse | null> {
   }
 }
 
-export async function persistSession(refreshToken: string, user: MeResponse): Promise<void> {
-  await SecureStore.setItemAsync(REFRESH_STORAGE_KEY, refreshToken);
-  await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
+/**
+ * Devolve `false` quando não foi possível guardar.
+ *
+ * Quem chama decide o que fazer: a sessão em memória continua válida
+ * nesta execução, só não sobrevive a fechar o app. Lançar aqui
+ * derrubaria um login que ACABOU de dar certo no servidor.
+ */
+export async function persistSession(refreshToken: string, user: MeResponse): Promise<boolean> {
+  try {
+    await SecureStore.setItemAsync(REFRESH_STORAGE_KEY, refreshToken);
+    await SecureStore.setItemAsync(USER_STORAGE_KEY, JSON.stringify(user));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function clearSession(): Promise<void> {
   inMemoryAccessToken = null;
-  await SecureStore.deleteItemAsync(REFRESH_STORAGE_KEY);
-  await SecureStore.deleteItemAsync(USER_STORAGE_KEY);
+  // Apagar é justamente o que conserta um cofre ilegível — mas se nem
+  // apagar der, sair daqui sem lançar importa mais: `clearSession` é o
+  // caminho de recuperação, e ele não pode ser o que trava.
+  await apagarDoCofre(REFRESH_STORAGE_KEY);
+  await apagarDoCofre(USER_STORAGE_KEY);
+}
+
+async function apagarDoCofre(chave: string): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(chave);
+  } catch {
+    // Ver nota em `clearSession`.
+  }
 }
 
 /** Lê o `exp` (segundos desde epoch) de um JWT sem validar assinatura — só para agendar o refresh proativo. */

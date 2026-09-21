@@ -111,18 +111,34 @@ export function AuthProvider({
     [scheduleProactiveRefresh],
   );
 
+  /**
+   * INCIDENTE 21/09/2026 — "fica na tela azul escrito ROTTA".
+   *
+   * A leitura do cofre estava FORA do `try`. Quando ela lançava (ver a
+   * nota em `token-store.ts` — o `SecureStore` do Android lança de
+   * verdade), esta função rejeitava, o `void refreshSession()` lá
+   * embaixo engolia a rejeição, e o `status` ficava em `"loading"` para
+   * sempre. `RootNavigator` mostra a splash enquanto `status ===
+   * "loading"` — então era splash azul permanente, sem erro visível,
+   * sem botão, sem saída, e voltava igual a cada vez que o app abria.
+   *
+   * Agora TUDO está dentro do `try`, e todo caminho de saída define um
+   * `status` terminal. É a regra desta função: ela pode falhar, mas não
+   * pode terminar sem decidir. Um erro que não sabemos tratar leva à
+   * tela de login, que é uma tela de onde a pessoa consegue sair.
+   */
   const performRefresh = useCallback(async (): Promise<boolean> => {
-    const persistedRefreshToken = await getPersistedRefreshToken();
-    if (!persistedRefreshToken) {
-      setStatus("unauthenticated");
-      return false;
-    }
     try {
+      const persistedRefreshToken = await getPersistedRefreshToken();
+      if (!persistedRefreshToken) {
+        setStatus("unauthenticated");
+        return false;
+      }
       const tokens = await authApi.refresh(persistedRefreshToken);
       await applySession(tokens);
       return true;
     } catch {
-      await clearSession();
+      await clearSession().catch(() => undefined);
       setUser(null);
       setStatus("unauthenticated");
       return false;
@@ -151,7 +167,15 @@ export function AuthProvider({
   }, [performRefresh]);
 
   useEffect(() => {
-    void refreshSession();
+    // Rede de segurança do boot: `performRefresh` já promete definir um
+    // `status` terminal sempre, mas esta é a ÚNICA chamada que decide
+    // se o app sai da splash na abertura. Se ela rejeitar por um motivo
+    // que ninguém previu, o app ainda assim vai parar na tela de login
+    // — nunca na splash azul sem saída (incidente de 21/09/2026).
+    refreshSession().catch(() => {
+      setUser(null);
+      setStatus("unauthenticated");
+    });
     return () => {
       if (refreshTimer.current) {
         clearTimeout(refreshTimer.current);

@@ -1,7 +1,8 @@
-import * as SecureStore from "expo-secure-store";
 import { useCallback, useEffect, useState } from "react";
 
 import type { MeResponse } from "@rotta/api-client";
+
+import { gravarNoCofre, lerDoCofre } from "@/lib/cofre-seguro";
 
 export type AppMode = "completo" | "acao";
 
@@ -61,22 +62,57 @@ export function useAppMode(user: MeResponse | null): AppModeState {
   const [mode, setModeState] = useState<AppMode>(DEFAULT_MODE);
   const [isModeResolved, setIsModeResolved] = useState(false);
 
+  /**
+   * INCIDENTE 21/09/2026 — "a conta do transportador não está entrando
+   * (nenhuma), fica na tela azul escrito ROTTA".
+   *
+   * `RootNavigator` mostra a splash enquanto `canToggle &&
+   * !isModeResolved`. Este efeito era a ÚNICA coisa capaz de virar
+   * `isModeResolved` para `true`, e a leitura do cofre estava sem
+   * proteção nenhuma: bastava `getItemAsync` lançar (ver
+   * `lib/cofre-seguro.ts` — acontece de verdade no Android) para
+   * `carregar()` rejeitar, o `void` engolir a rejeição em silêncio e o
+   * app ficar na splash PARA SEMPRE.
+   *
+   * Quem `canToggle` pega? Exatamente `role === "empresa"` com
+   * `companyType` AUTONOMO/MEI — o transportador. O Responsável nunca
+   * entrava nesta condição, e por isso a conta dele continuava abrindo
+   * normalmente enquanto "nenhuma" do transportador abria.
+   *
+   * Duas mudanças, e as duas importam:
+   *
+   *  1. A leitura passou a ser `lerDoCofre`, que devolve `null` em vez
+   *     de lançar.
+   *  2. `setIsModeResolved(true)` mora num `finally`. Mesmo que algo
+   *     aqui dentro lance por um motivo que eu não previ, o app SAI da
+   *     splash. Uma preferência de exibição não resolvida vale, no pior
+   *     caso, abrir na "Visão completa" — nunca não abrir.
+   */
   useEffect(() => {
     let cancelado = false;
     setIsModeResolved(false);
 
     async function carregar(): Promise<void> {
-      if (!canToggle || !userId) {
-        if (!cancelado) {
-          setModeState(DEFAULT_MODE);
-          setIsModeResolved(true);
+      try {
+        if (!canToggle || !userId) {
+          if (!cancelado) setModeState(DEFAULT_MODE);
+          return;
         }
-        return;
+        const salvo = await lerDoCofre(storageKey(userId));
+        if (cancelado) return;
+        setModeState(salvo === "acao" || salvo === "completo" ? salvo : DEFAULT_MODE);
+      } catch (error) {
+        // `lerDoCofre` já promete não lançar. Este `catch` é para o que
+        // eu NÃO previ: sem ele a promessa rejeitaria, o `void` abaixo
+        // engoliria a rejeição em silêncio, e ficaria só um aviso solto
+        // no console — que foi exatamente como o travamento original
+        // passou despercebido.
+        if (!cancelado) setModeState(DEFAULT_MODE);
+        // eslint-disable-next-line no-console
+        console.warn("[app-mode] Não consegui ler a preferência de modo.", error);
+      } finally {
+        if (!cancelado) setIsModeResolved(true);
       }
-      const salvo = await SecureStore.getItemAsync(storageKey(userId));
-      if (cancelado) return;
-      setModeState(salvo === "acao" || salvo === "completo" ? salvo : DEFAULT_MODE);
-      setIsModeResolved(true);
     }
 
     void carregar();
@@ -88,7 +124,10 @@ export function useAppMode(user: MeResponse | null): AppModeState {
   const setMode = useCallback(
     (next: AppMode) => {
       setModeState(next);
-      if (userId) void SecureStore.setItemAsync(storageKey(userId), next);
+      // `gravarNoCofre` não lança — no pior caso a escolha não
+      // sobrevive ao fechamento do app, o que é um incômodo, não um
+      // travamento.
+      if (userId) void gravarNoCofre(storageKey(userId), next);
     },
     [userId],
   );
