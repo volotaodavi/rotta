@@ -28,6 +28,14 @@ export interface ListRoutesFilter {
   /** Só relevante para Admin Rotta (bypass de RLS) — mesma convenção de `ListVehiclesFilter.companyId`. */
   companyId?: string;
   /**
+   * Restringe às rotas cujo veículo padrão é este. Diferente de
+   * `atribuidaAUserId`, este filtro é ESCOLHIDO pelo cliente — e pode
+   * ser, porque não afrouxa isolamento nenhum: ele só estreita um
+   * `where` que já está preso ao `companyId` do ator. Um veículo de
+   * outra empresa simplesmente não casa com nenhuma linha.
+   */
+  veiculoId?: string;
+  /**
    * Prompt Mestre da Rotta, Seções 5/9 ("o app do Motorista não deve
    * virar um painel administrativo"/"o Monitor deve visualizar apenas o
    * necessário") — quando presente, restringe a listagem às rotas onde

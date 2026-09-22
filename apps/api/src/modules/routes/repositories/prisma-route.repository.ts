@@ -34,6 +34,7 @@ export class PrismaRouteRepository implements RouteRepository {
       ...(filter.status ? { status: filter.status } : {}),
       ...(filter.turno ? { turno: filter.turno } : {}),
       ...(filter.search ? { nome: { contains: filter.search, mode: "insensitive" } } : {}),
+      ...(filter.veiculoId ? { veiculoPadraoId: filter.veiculoId } : {}),
       ...(filter.atribuidaAUserId
         ? {
             OR: [

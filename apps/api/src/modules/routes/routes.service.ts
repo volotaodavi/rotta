@@ -315,6 +315,7 @@ export class RoutesService {
       status: query.status,
       turno: query.turno,
       companyId,
+      veiculoId: query.veiculoId,
       atribuidaAUserId: isDriverOrMonitor ? actor.sub : undefined,
       page: query.page,
       pageSize: query.pageSize,

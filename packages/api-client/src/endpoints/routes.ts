@@ -48,6 +48,12 @@ export interface ListRoutesParams {
   turno?: SchoolShift;
   /** Somente Admin Rotta: filtra a visão cross-tenant por uma empresa específica. */
   companyId?: string;
+  /**
+   * Rotas cujo veículo PADRÃO é este. Usado pelo Painel do Despachante,
+   * que começa a busca pelo ônibus (placa/número), não pelo nome da
+   * rota — é o carro que o despachante tem em mãos quando algo muda.
+   */
+  veiculoId?: string;
   page?: number;
   pageSize?: number;
 }

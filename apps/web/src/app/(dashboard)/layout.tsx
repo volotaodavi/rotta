@@ -48,6 +48,10 @@ const PROFISSIONAL_NAV: NavLink[] = [
   { href: "/veiculos", label: "Veículos" },
   { href: "/escolas", label: "Escolas" },
   { href: "/rotas", label: "Rotas" },
+  // Painel do Despachante (22/09/2026) — logo depois de "Rotas" de
+  // propósito: é a mesma operação, vista pelo outro lado (parte do
+  // ônibus, não da rota).
+  { href: "/despachante", label: "Despachante" },
   { href: "/marketplace/solicitacoes", label: "Marketplace" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
   { href: "/chamados", label: "Chamados" },

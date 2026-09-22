@@ -372,6 +372,20 @@ describe("RoutesService", () => {
       );
     });
 
+    // Painel do Despachante (22/09/2026): a busca começa no ônibus, não
+    // na rota. Este filtro é o único da listagem que o cliente escolhe
+    // livremente — e pode, porque ele só ESTREITA um `where` já preso
+    // ao `companyId` do ator (testado logo abaixo).
+    it("repassa veiculoId ao repositório quando o despachante busca pelo ônibus", async () => {
+      routeRepository.list.mockResolvedValue({ items: [], total: 0 });
+
+      await service.list({ page: 1, pageSize: 20, veiculoId: "veiculo-1" }, empresaActor);
+
+      expect(routeRepository.list).toHaveBeenCalledWith(
+        expect.objectContaining({ veiculoId: "veiculo-1", companyId: "company-1" }),
+      );
+    });
+
     it("nunca aceita companyId vindo do cliente para ator não-Admin Rotta (ignora query.companyId)", async () => {
       routeRepository.list.mockResolvedValue({ items: [], total: 0 });
 

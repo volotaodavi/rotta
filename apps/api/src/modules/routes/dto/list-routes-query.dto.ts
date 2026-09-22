@@ -27,6 +27,14 @@ export class ListRoutesQueryDto {
   @IsUUID()
   companyId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      "Rotas cujo veículo PADRÃO é este (`veiculoPadraoId`). Existe para o Painel do Despachante, que parte do ônibus — o despachante conhece o carro que quebrou/entrou no rodízio, não o nome da rota.",
+  })
+  @IsOptional()
+  @IsUUID()
+  veiculoId?: string;
+
   @ApiPropertyOptional({ default: 1, minimum: 1 })
   @IsOptional()
   @Type(() => Number)
