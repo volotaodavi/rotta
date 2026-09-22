@@ -22,6 +22,13 @@ export interface CreateUserInput {
   isAdminRotta?: boolean;
   /** Ver `AdminRottaPapel`/`AdminAreaGuard` — só relevante junto de `isAdminRotta: true`. */
   adminRottaPapel?: AdminRottaPapel;
+  /**
+   * Portal da Escola — a escola de que esta conta é funcionária. Só é
+   * preenchido pelo resgate de um convite `Role.ESCOLA`, nunca por
+   * cadastro público: é ele que define TUDO o que a conta enxerga em
+   * `SchoolPortalService` (que lê com a RLS desligada).
+   */
+  escolaId?: string;
 }
 
 /** Campos de estado de autenticação atualizáveis (Dossiê 15, `AUTH-*`) — nunca um passthrough genérico de `Prisma.UserUpdateInput`. */
@@ -49,6 +56,16 @@ export interface UserRepository {
   findByTelefone(telefone: string): Promise<User | null>;
   findByCpf(cpf: string): Promise<User | null>;
   updateAuthState(id: string, data: UpdateUserAuthStateInput): Promise<User>;
+  /**
+   * Portal da Escola — liga uma conta JÁ EXISTENTE a uma escola, no
+   * resgate de um convite `Role.ESCOLA` (o caso de quem já era, por
+   * exemplo, responsável na Rotta e também trabalha na secretaria).
+   * Método próprio, e não um campo em `UpdateUserAuthStateInput`,
+   * porque isto não é estado de autenticação: é uma concessão de
+   * acesso a dados de crianças, e merece um ponto de entrada único e
+   * fácil de auditar.
+   */
+  linkToSchool(id: string, escolaId: string, tx?: Prisma.TransactionClient): Promise<User>;
   /** IDs de todo Admin Rotta ativo (`User.isAdminRotta`) — usado pra fan-out cross-tenant (Suporte, Avisos). */
   listAdminRottaIds(): Promise<string[]>;
   /** IDs de todo `User` ativo, sem filtro de papel — usado pelo público `TODOS` de um `Announcement`. */

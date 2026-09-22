@@ -207,6 +207,13 @@ export interface DataExportResponse {
 export interface InvitePreview {
   companyName: string;
   role: Role;
+  /**
+   * Só em convite `escola`. Quem trabalha na secretaria precisa ver a
+   * ESCOLA antes de aceitar — o nome da transportadora que convidou não
+   * diz nada a ele, e aceitar o convite errado significaria ver as
+   * crianças de outra escola.
+   */
+  schoolName?: string | null;
 }
 
 export interface RedeemInviteInput {
@@ -335,14 +342,24 @@ export function createAuthEndpoints(apiClient: ApiClient) {
       await apiClient.request("/auth/sessions/other", { method: "DELETE" });
     },
 
+    /**
+     * `schoolId` é obrigatório quando `role === "escola"` e proibido nos
+     * demais papéis (o backend recusa os dois desvios) — é ele que, no
+     * resgate, vira o `escolaId` da conta e define tudo o que ela
+     * enxerga no Portal da Escola.
+     */
     createInvite: async (
       companyId: string,
       role: Role,
+      schoolId?: string,
     ): Promise<{ id: string; codigo: string; role: Role; expiresAt: string }> =>
       (
         await apiClient.request<
           ApiEnvelope<{ id: string; codigo: string; role: Role; expiresAt: string }>
-        >(`/companies/${companyId}/invites`, { method: "POST", body: { role } })
+        >(`/companies/${companyId}/invites`, {
+          method: "POST",
+          body: schoolId ? { role, schoolId } : { role },
+        })
       ).data,
 
     listInvites: async (

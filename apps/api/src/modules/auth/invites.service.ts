@@ -57,6 +57,7 @@ export class InvitesService {
     criadoPorId: string,
   ): Promise<InviteResponseDto> {
     const expiresAt = new Date(Date.now() + INVITE_TTL_MS);
+    const schoolId = await this.resolverEscolaDoConvite(companyId, dto);
 
     for (let attempt = 0; attempt < MAX_CODE_GENERATION_ATTEMPTS; attempt++) {
       try {
@@ -66,6 +67,7 @@ export class InvitesService {
           codigo: this.generateCode(),
           criadoPorId,
           expiresAt,
+          schoolId,
         });
         return this.toResponse(invite);
       } catch (error) {
@@ -95,7 +97,63 @@ export class InvitesService {
       this.inviteRepository.findByCodigo(codigo, tx),
     );
     this.assertInviteValid(invite);
-    return { companyName: invite.company.nomeFantasia, role: invite.role as Role };
+    return {
+      companyName: invite.company.nomeFantasia,
+      role: invite.role as Role,
+      // Quem trabalha na secretaria precisa ver a ESCOLA antes de
+      // aceitar: o nome da transportadora não diz nada a ele, e aceitar
+      // o convite errado significaria ver as crianças de outra escola.
+      schoolName: invite.school ? (invite.school.nomeFantasia ?? invite.school.nomeOficial) : null,
+    };
+  }
+
+  /**
+   * Regra de emissão de convite de escola.
+   *
+   * Duas checagens, e as duas são de segurança, não de conveniência:
+   *
+   * 1. Papel e escopo têm de concordar — `ESCOLA` exige `schoolId`, e
+   *    qualquer outro papel o proíbe. Um `schoolId` sobrando num
+   *    convite de MOTORISTA seria um campo que ninguém lê hoje e que
+   *    alguém acabaria lendo amanhã.
+   * 2. A escola tem de estar VINCULADA a esta transportadora, e o
+   *    vínculo tem de estar vivo (`desvinculadoEm: null`). Sem isso,
+   *    qualquer empresa poderia emitir um convite para qualquer escola
+   *    do catálogo — que é compartilhado entre todas — e criar uma
+   *    conta que enxerga as crianças de uma escola com a qual ela não
+   *    tem relação nenhuma.
+   */
+  private async resolverEscolaDoConvite(
+    companyId: string,
+    dto: CreateInviteDto,
+  ): Promise<string | null> {
+    if (dto.role !== Role.ESCOLA) {
+      if (dto.schoolId) {
+        throw new BadRequestException("schoolId só é aceito em convite de Escola.");
+      }
+      return null;
+    }
+
+    if (!dto.schoolId) {
+      throw new BadRequestException("Informe a escola para a qual este convite será emitido.");
+    }
+
+    // `withBypass`: `schools` é catálogo compartilhado (sem `companyId`
+    // próprio) — o isolamento aqui é o vínculo ativo exigido logo
+    // abaixo, não a RLS.
+    const vinculo = await this.prisma.withBypass(
+      this.prisma.schoolCompanyLink.findFirst({
+        where: { companyId, schoolId: dto.schoolId, desvinculadoEm: null },
+        select: { id: true },
+      }),
+    );
+    if (!vinculo) {
+      throw new BadRequestException(
+        "Esta escola não está vinculada à sua transportadora. Vincule-a antes de convidar.",
+      );
+    }
+
+    return dto.schoolId;
   }
 
   /**
@@ -120,16 +178,57 @@ export class InvitesService {
         (await this.usersService.findByIdentifier(telefoneDigits)) ??
         (await this.usersService.findByIdentifier(cpfDigits));
 
+      // Convite de escola: a conta nasce ligada à escola já na criação,
+      // dentro da mesma transação — nunca "cria e depois liga", que
+      // deixaria, se a segunda escrita falhasse, uma conta de escola
+      // capaz de logar e incapaz de ver qualquer coisa.
+      // `Invite.role` é `String` no schema (nunca virou enum do Prisma),
+      // daí o cast — mesma convenção do `invite.role as Role` já usado
+      // no retorno logo abaixo.
+      const escolaDoConvite = (invite.role as Role) === Role.ESCOLA ? invite.schoolId : null;
+
       let isNewUser = false;
       const user = existingUser
         ? await this.assertOwnership(existingUser, dto.senha)
         : await (async () => {
             isNewUser = true;
             return this.usersService.createUserWithPassword(
-              { nome: dto.nome, email, telefone: telefoneDigits, cpf: cpfDigits, senha: dto.senha },
+              {
+                nome: dto.nome,
+                email,
+                telefone: telefoneDigits,
+                cpf: cpfDigits,
+                senha: dto.senha,
+                ...(escolaDoConvite ? { escolaId: escolaDoConvite } : {}),
+              },
               tx,
             );
           })();
+
+      if (escolaDoConvite) {
+        // Conta que JÁ existia (o caso real: quem é responsável na
+        // Rotta e também trabalha na secretaria) — aqui o vínculo com
+        // a escola é uma segunda escrita, ainda dentro da transação.
+        if (!isNewUser) {
+          await this.usersService.vincularAEscola(user.id, escolaDoConvite, tx);
+        }
+
+        await this.inviteRepository.markUsed(invite.id, user.id, tx);
+
+        // Nenhum `Membership`, de propósito: a escola NÃO é funcionária
+        // da transportadora. Ela é atendida por várias ao mesmo tempo,
+        // e um `Membership` a prenderia ao tenant de quem convidou —
+        // exatamente o contrário do que o Portal da Escola precisa.
+        // Sem tenant, o `vinculoId` do token é o próprio usuário, igual
+        // ao ramo de login de escola em `AuthService.login`.
+        return {
+          user: { ...user, escolaId: escolaDoConvite },
+          tenantId: null,
+          role: Role.ESCOLA,
+          membershipId: user.id,
+          isNewUser,
+        };
+      }
 
       const membership = await this.usersService.createMembership(
         {

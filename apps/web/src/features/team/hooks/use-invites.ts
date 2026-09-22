@@ -16,12 +16,23 @@ import { authApi } from "@/lib/api-client";
  * "pré-cadastro" no sentido de que o vínculo só existe de fato depois
  * que ela completar o próprio cadastro com o código.
  */
+/**
+ * `schoolId` só existe para o convite de `escola` (Portal da Escola,
+ * 22/09/2026) — o backend exige em `ESCOLA` e recusa nos demais papéis,
+ * então passá-lo por engano falha alto em vez de criar um convite
+ * silenciosamente errado.
+ */
+export interface CriarConviteInput {
+  role: Role;
+  schoolId?: string;
+}
+
 export function useCreateInvite(companyId: string | null | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (role: Role) => {
+    mutationFn: ({ role, schoolId }: CriarConviteInput) => {
       if (!companyId) throw new Error("Empresa não identificada.");
-      return authApi.createInvite(companyId, role);
+      return authApi.createInvite(companyId, role, schoolId);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["team", "invites", companyId] });

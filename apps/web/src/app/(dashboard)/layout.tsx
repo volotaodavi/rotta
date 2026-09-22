@@ -60,6 +60,21 @@ const PROFISSIONAL_NAV: NavLink[] = [
 const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
 
 /**
+ * Portal da Escola (22/09/2026) — a conta `Role.ESCOLA` NÃO é
+ * funcionária de nenhuma transportadora: ela não tem tenant, e o
+ * backend recusa (403) praticamente toda rota de `PROFISSIONAL_NAV`.
+ * Mostrar aquela lista para ela seria um menu inteiro de erros. A
+ * escola tem duas telas, e só: a lista de hoje e o próprio perfil.
+ */
+const ESCOLA_NAV: NavLink[] = [
+  { href: "/minha-escola", label: "Minha Escola" },
+  { href: "/perfil", label: "Perfil" },
+];
+
+/** Único destino permitido a uma conta de escola — mesmo mecanismo de `DRIVER_MODE_ALLOWED_PREFIXES`. */
+const ESCOLA_ALLOWED_PREFIXES = ["/minha-escola", "/perfil", "/legal"] as const;
+
+/**
  * Faturamento (Dossiê 26) — únicas rotas que continuam 100% acessíveis
  * quando `user.billingBlocked` (pedido do usuário: "exceto no suporte,
  * que aí eles podem acionar o suporte"; `/assinatura` precisa ficar
@@ -192,6 +207,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   }, [status, router]);
 
   const isResponsavel = user?.role === "responsavel";
+  const isEscola = user?.role === "escola";
   const isEmployeeDriver = user?.role === "motorista" || user?.role === "monitor";
   // `GET /billing/notices` só libera EMPRESA/GESTOR (ver
   // `BillingController`) — nunca chama pra outros papéis.
@@ -229,10 +245,24 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
     if (!isAllowed) router.replace("/minha-rota");
   }, [showDriverNavBar, pathname, router]);
 
+  // Mesmo guard para a conta de escola: sem tenant, qualquer rota de
+  // gestão devolve 403 do backend. Em vez de deixar a escola cair numa
+  // tela de erro (por URL digitada, por link salvo ou por um `<Link>`
+  // que sobrou), devolve para a lista de hoje, que é a razão de a conta
+  // existir.
+  useEffect(() => {
+    if (!isEscola || !pathname) return;
+    const isAllowed = ESCOLA_ALLOWED_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+    if (!isAllowed) router.replace("/minha-escola");
+  }, [isEscola, pathname, router]);
+
   // Responsável não usa este fluxo (`SELF_VERIFICATION_ROLES` no
   // backend não inclui `responsavel`) — a query nem dispara pra ele,
   // pra nunca gerar um 403 à toa nem atrasar a home dele.
-  const shouldCheckIdentity = status === "authenticated" && !isResponsavel;
+  // `SELF_VERIFICATION_ROLES` no backend é [EMPRESA, GESTOR, MOTORISTA,
+  // MONITOR] — nem Responsável nem Escola entram, então a query nem
+  // dispara para eles (403 à toa e home mais lenta, sem nenhum ganho).
+  const shouldCheckIdentity = status === "authenticated" && !isResponsavel && !isEscola;
   const { data: identityVerification, isLoading: isIdentityLoading } = useMyIdentityVerification({
     enabled: shouldCheckIdentity,
   });
@@ -347,11 +377,13 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   // Autônomo desde a Frente O.
   const navLinks = isResponsavel
     ? []
-    : showDriverNavBar
-      ? []
-      : canToggle
-        ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
-        : PROFISSIONAL_NAV;
+    : isEscola
+      ? ESCOLA_NAV
+      : showDriverNavBar
+        ? []
+        : canToggle
+          ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
+          : PROFISSIONAL_NAV;
   const showBottomNav = showDriverNavBar || isResponsavel;
   recordCheckpoint("dashboard-layout:antes-do-jsx-final");
 

@@ -38,6 +38,10 @@ export class PrismaUserRepository implements UserRepository {
     return this.prisma.user.update({ where: { id }, data });
   }
 
+  linkToSchool(id: string, escolaId: string, tx?: Prisma.TransactionClient): Promise<User> {
+    return (tx ?? this.prisma).user.update({ where: { id }, data: { escolaId } });
+  }
+
   async listAdminRottaIds(): Promise<string[]> {
     const admins = await this.prisma.user.findMany({
       where: { isAdminRotta: true, status: "ATIVO" },

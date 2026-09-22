@@ -1,4 +1,4 @@
-import type { Company, Invite, Prisma } from "@prisma/client";
+import type { Company, Invite, Prisma, School } from "@prisma/client";
 
 /**
  * Repository Pattern (Dossie 12, Secao 6.1) — `invites` tem RLS por
@@ -14,9 +14,17 @@ export interface CreateInviteInput {
   codigo: string;
   criadoPorId: string;
   expiresAt: Date;
+  /** Portal da Escola — presente só em convite `Role.ESCOLA` (ver `InvitesService.createInvite`). */
+  schoolId?: string | null;
 }
 
-export type InviteWithCompany = Invite & { company: Company };
+/**
+ * `school` vem junto porque o preview de um convite `Role.ESCOLA`
+ * precisa mostrar o nome da ESCOLA, não o da transportadora que
+ * convidou — ver `InvitePreviewResponseDto.schoolName`. É `null` em
+ * todo convite que não seja de escola.
+ */
+export type InviteWithCompany = Invite & { company: Company; school: School | null };
 
 export interface InviteRepository {
   create(input: CreateInviteInput, tx?: Prisma.TransactionClient): Promise<Invite>;

@@ -242,9 +242,24 @@ function ResgatarConvite({ codigo }: { codigo: string }): JSX.Element {
     <div className="mx-auto flex w-full max-w-md flex-col gap-6">
       <div className="flex flex-col gap-1 text-center">
         <Typography variant="title">Complete seu cadastro</Typography>
+        {/*
+          Convite de escola mostra a ESCOLA em primeiro plano: quem
+          trabalha na secretaria reconhece o nome da própria escola, não
+          o da transportadora que emitiu o código — e aceitar o convite
+          errado significaria ver a lista de crianças de outra escola.
+        */}
         <Typography variant="bodySmall" color="muted">
-          Convite de <strong>{preview.companyName}</strong> para atuar como{" "}
-          {ROLE_LABEL[preview.role] ?? preview.role}.
+          {preview.schoolName ? (
+            <>
+              Acesso da secretaria de <strong>{preview.schoolName}</strong>, enviado por{" "}
+              {preview.companyName}.
+            </>
+          ) : (
+            <>
+              Convite de <strong>{preview.companyName}</strong> para atuar como{" "}
+              {ROLE_LABEL[preview.role] ?? preview.role}.
+            </>
+          )}
         </Typography>
       </div>
 

@@ -55,6 +55,8 @@ export interface CreateUserWithPasswordInput {
   /** Ver `AdminAccountsService` — só setado ali, nunca por nenhuma rota de cadastro pública. */
   isAdminRotta?: boolean;
   adminRottaPapel?: AdminRottaPapel;
+  /** Portal da Escola — só vem do resgate de um convite `Role.ESCOLA` (ver `InvitesService.redeem`). */
+  escolaId?: string;
 }
 
 /**
@@ -150,9 +152,21 @@ export class UsersService {
         autonomoRole: input.autonomoRole,
         isAdminRotta: input.isAdminRotta,
         adminRottaPapel: input.adminRottaPapel,
+        escolaId: input.escolaId,
       },
       tx,
     );
+  }
+
+  /**
+   * Portal da Escola — liga uma conta existente a uma escola no resgate
+   * de um convite `Role.ESCOLA`. Não é "melhor esforço" como
+   * `clearAutonomoRole`: sem este campo a conta loga e não enxerga
+   * nada, então a falha tem de derrubar o resgate inteiro (por isso é
+   * chamado DENTRO da transação de `InvitesService.redeem`).
+   */
+  vincularAEscola(userId: string, escolaId: string, tx?: Prisma.TransactionClient): Promise<User> {
+    return this.userRepository.linkToSchool(userId, escolaId, tx);
   }
 
   /** Ver `AdminAccountsService` (GERAL-only) — tela "Contas Admin". */

@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth } from "@rotta/auth/web";
 import {
   Button,
   Card,
@@ -22,6 +23,7 @@ import type {
   SchoolType,
 } from "@rotta/api-client";
 
+import { ConvidarSecretariaPanel } from "@/features/schools/components/convidar-secretaria-panel";
 import { SchoolStatusBadge } from "@/features/schools/components/school-status-badge";
 import {
   useImportSchools,
@@ -63,6 +65,11 @@ export default function EscolasPage(): JSX.Element {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importFormat, setImportFormat] = useState<"csv" | "excel" | "json">("csv");
   const [importResultMessage, setImportResultMessage] = useState<string | null>(null);
+  // Portal da Escola (22/09/2026) — a escola cujo acesso de secretaria
+  // está sendo gerado. Painel embutido, sem navegar: mesma precaução do
+  // resto do painel contra o bug de segmento dinâmico do App Router.
+  const { user } = useAuth();
+  const [escolaConvidada, setEscolaConvidada] = useState<School | null>(null);
 
   async function handleExport(format: "csv" | "excel" | "pdf"): Promise<void> {
     const blob = await schoolsApi.exportList({ ...params, page: 1, pageSize: 10_000, format });
@@ -126,6 +133,15 @@ export default function EscolasPage(): JSX.Element {
             </Card>
           ))}
         </div>
+      )}
+
+      {escolaConvidada && (
+        <ConvidarSecretariaPanel
+          schoolId={escolaConvidada.id}
+          schoolNome={escolaConvidada.nomeFantasia ?? escolaConvidada.nomeOficial}
+          companyId={user?.companyId}
+          onClose={() => setEscolaConvidada(null)}
+        />
       )}
 
       <Card>
@@ -258,6 +274,22 @@ export default function EscolasPage(): JSX.Element {
                     key: "status",
                     header: "Status",
                     render: (school) => <SchoolStatusBadge status={school.status} />,
+                  },
+                  {
+                    key: "secretaria",
+                    header: "",
+                    render: (school) => (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setEscolaConvidada(school);
+                        }}
+                      >
+                        Acesso da secretaria
+                      </Button>
+                    ),
                   },
                 ]}
                 rows={data.items}

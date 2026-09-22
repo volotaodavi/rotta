@@ -30,6 +30,7 @@ export * from "./endpoints/notifications";
 export * from "./endpoints/plan-notices";
 export * from "./endpoints/rotta-ai";
 export * from "./endpoints/routes";
+export * from "./endpoints/school-portal";
 export * from "./endpoints/schools";
 export * from "./endpoints/student-pre-registrations";
 export * from "./endpoints/students";

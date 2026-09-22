@@ -47,7 +47,7 @@ export function InviteTeamMemberPanel({
 
   async function handleGerar(): Promise<void> {
     try {
-      const result = await createInvite.mutateAsync(role);
+      const result = await createInvite.mutateAsync({ role });
       setCodigo(result.codigo);
     } catch {
       toast.error(`Não foi possível gerar o convite de ${label.toLowerCase()}.`);

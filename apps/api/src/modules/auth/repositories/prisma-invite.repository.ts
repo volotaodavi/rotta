@@ -23,10 +23,13 @@ export class PrismaInviteRepository implements InviteRepository {
    */
   findByCodigo(codigo: string, tx?: Prisma.TransactionClient): Promise<InviteWithCompany | null> {
     if (tx) {
-      return tx.invite.findUnique({ where: { codigo }, include: { company: true } });
+      return tx.invite.findUnique({ where: { codigo }, include: { company: true, school: true } });
     }
     return this.prisma.withTenant(
-      this.prisma.invite.findUnique({ where: { codigo }, include: { company: true } }),
+      this.prisma.invite.findUnique({
+        where: { codigo },
+        include: { company: true, school: true },
+      }),
     );
   }
 

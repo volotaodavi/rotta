@@ -9,8 +9,11 @@ import type { Route } from "next";
  * autônomo/MEI, que tem seu próprio fluxo via `useAppMode`) só tem uma
  * função de verdade no painel: rodar a rota — manda direto pra "Minha
  * Rota" (`/minha-rota`), não pro painel de gestão que ele nem enxerga
- * no menu (`(dashboard)/layout.tsx`). Qualquer outro papel profissional
- * (Empresa, Gestor, Escola) continua indo pra "Minha Empresa".
+ * no menu (`(dashboard)/layout.tsx`). A conta de ESCOLA (Portal da
+ * Escola, 22/09/2026) não tem tenant nenhum — `/empresa` devolveria 403
+ * pra ela; vai direto pra "Minha Escola", que é a razão de a conta
+ * existir. Qualquer outro papel profissional (Empresa, Gestor) continua
+ * indo pra "Minha Empresa".
  *
  * Extraído porque antes desta função cada tela reimplementava esse
  * `if` (e uma delas — resgate de convite — nem tratava Motorista/
@@ -19,5 +22,6 @@ import type { Route } from "next";
 export function defaultRouteForRole(role: Role): Route {
   if (role === "responsavel") return "/alunos";
   if (role === "motorista" || role === "monitor") return "/minha-rota";
+  if (role === "escola") return "/minha-escola";
   return "/empresa";
 }
