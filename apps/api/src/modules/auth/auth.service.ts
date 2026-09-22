@@ -440,6 +440,17 @@ export class AuthService {
       return this.issueTokensWithLoginAudit(user, null, user.autonomoRole, user.id, meta);
     }
 
+    // Portal da Escola (22/09/2026) — mesmo mecanismo do Responsável e
+    // do autônomo acima: papel sem `Membership`, porque uma escola NÃO
+    // pertence a uma transportadora (`School` não tem `companyId` no
+    // schema justamente por isso — a mesma escola costuma ser atendida
+    // por várias, e no transporte público isso é a regra).
+    //
+    // `tenantId` nulo, e o escopo viaja em `escolaId` dentro do token.
+    if (memberships.length === 0 && user.escolaId) {
+      return this.issueTokensWithLoginAudit(user, null, Role.ESCOLA, user.id, meta);
+    }
+
     if (memberships.length === 0) {
       throw new ForbiddenException("Esta conta ainda não possui nenhum vínculo ativo.");
     }
@@ -999,6 +1010,12 @@ export class AuthService {
       // Ver `AdminAreaGuard`/`AdminArea` — só relevante pra ADMIN_ROTTA,
       // `undefined` (nunca gravado no JWT) pra todo outro papel.
       adminPapel: role === Role.ADMIN_ROTTA ? user.adminRottaPapel : undefined,
+      // Portal da Escola (22/09/2026) — o escopo de isolamento deste
+      // papel, pelo mesmo motivo que `tenantId` viaja aqui e não no
+      // corpo da requisição. Condicionado a `role === ESCOLA` de
+      // propósito: uma conta que também é Responsável não leva
+      // `escolaId` no token do perfil de Responsável.
+      escolaId: role === Role.ESCOLA ? (user.escolaId ?? undefined) : undefined,
     };
     const accessToken = await this.jwtService.signAsync(payload);
 

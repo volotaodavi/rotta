@@ -74,6 +74,7 @@ import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
 import { ReportsModule } from "@/modules/reports/reports.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
+import { SchoolPortalModule } from "@/modules/school-portal/school-portal.module";
 import { SchoolsModule } from "@/modules/schools/schools.module";
 import { SettingsModule } from "@/modules/settings/settings.module";
 import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
@@ -148,6 +149,9 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     TrialNotificationsModule,
     DocumentExpiryModule,
     SchoolsModule,
+    // Portal da Escola (22/09/2026) — leitura por `escolaId`, fora do
+    // isolamento por `companyId` do resto do sistema. Ver o módulo.
+    SchoolPortalModule,
     GeoModule,
     DriversModule,
     MonitorsModule,

@@ -891,6 +891,25 @@ model User {
   /// passa a ler o papel de lá).
   autonomoRole String?
 
+  /// Portal da Escola (pedido do usuário 22/09/2026: "criar a categoria
+  /// de escolas, que aí vão poder ver quais alunos irão nos ônibus e se
+  /// eles já foram, para maior controle").
+  ///
+  /// Mesmo mecanismo de `isAdminRotta`/`isResponsavel`/`autonomoRole`: o
+  /// login lê este campo quando não encontra `Membership` ativo, e emite
+  /// `Role.ESCOLA` com `tenantId` NULO.
+  ///
+  /// Nulo é o caminho certo aqui, e não um `Membership`, porque uma
+  /// escola NÃO pertence a uma transportadora: `School` não tem
+  /// `companyId` no schema justamente porque a mesma escola costuma ser
+  /// atendida por várias transportadoras ao mesmo tempo (e, no
+  /// transporte público, isso é a regra, não a exceção). O escopo desta
+  /// conta é a ESCOLA, não a empresa — e é `escolaId` que o
+  /// `SchoolPortalService` usa para filtrar tudo, sempre lido do token,
+  /// nunca de parâmetro do cliente.
+  escolaId String? @db.Uuid
+  escola   School? @relation("SchoolUsuarios", fields: [escolaId], references: [id], onDelete: SetNull)
+
   /// Verificação de identidade hospedada via Didit (sessão v3) — cobre
   /// Motorista e dono de Empresa/Gestor (Responsável/Escola/Admin Rotta
   /// não usam este fluxo hoje). Diferente do fluxo standalone existente
@@ -1071,6 +1090,9 @@ model User {
   /// usuário estava logado — ver nota completa em `ClientErrorReport`.
   clientErrorReports ClientErrorReport[]
 
+  /// Portal da Escola — toda consulta do portal comeca por "quem e esta
+  /// pessoa e qual escola ela enxerga".
+  @@index([escolaId])
   @@map("users")
 }
 
@@ -1224,6 +1246,17 @@ model Invite {
   /// Valor de `Role` (mesma convencao de `Membership.role`) — papel que
   /// o convidado assumira ao resgatar.
   role String
+
+  /// QUAL escola, quando `role === "escola"` (Portal da Escola,
+  /// 22/09/2026). Obrigatório nesse caso e proibido nos demais — a
+  /// checagem vive em `InvitesService`, porque o Prisma não expressa
+  /// "obrigatório se outro campo tiver certo valor".
+  ///
+  /// Sem isto, resgatar um convite de escola não teria como saber qual
+  /// escola a pessoa passa a enxergar — e adivinhar seria o mesmo que
+  /// deixar ela ver a escola errada.
+  schoolId String? @db.Uuid
+  school   School? @relation("SchoolConvites", fields: [schoolId], references: [id], onDelete: Cascade)
 
   codigo String @unique
 
@@ -1965,6 +1998,9 @@ model School {
   contratos              Contract[]
   coordenadas            SchoolCoordinate[]
   paradasRota            RouteStop[]
+  /// Portal da Escola (22/09/2026) — contas que enxergam ESTA escola.
+  usuarios               User[]             @relation("SchoolUsuarios")
+  convites               Invite[]           @relation("SchoolConvites")
 
   @@index([status])
   @@index([cidade, estado])

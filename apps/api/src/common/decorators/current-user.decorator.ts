@@ -34,6 +34,18 @@ export interface AuthenticatedUser {
    * `role === Role.ADMIN_ROTTA`; `undefined` pra todo outro papel.
    */
   adminPapel?: AdminRottaPapel;
+  /**
+   * Portal da Escola (22/09/2026) — QUAL escola esta conta enxerga. Só
+   * presente quando `role === Role.ESCOLA`.
+   *
+   * Vive no token, e não em parâmetro de requisição, pelo mesmo motivo
+   * que `tenantId`: é o escopo de isolamento do papel. Uma escola lê
+   * aluno de VÁRIAS transportadoras (por isso `tenantId` é nulo aqui),
+   * então este campo é a ÚNICA coisa que a separa das outras escolas.
+   * Aceitar um `schoolId` vindo do cliente seria entregar a lista de
+   * alunos de qualquer escola do país a quem trocasse o parâmetro.
+   */
+  escolaId?: string;
 }
 
 /**
