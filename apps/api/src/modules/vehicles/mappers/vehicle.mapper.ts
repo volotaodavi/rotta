@@ -6,6 +6,7 @@ export function toVehicleResponseDto(vehicle: Vehicle): VehicleResponseDto {
   return {
     id: vehicle.id,
     companyId: vehicle.companyId,
+    numeroFrota: vehicle.numeroFrota,
     placa: vehicle.placa,
     modelo: vehicle.modelo,
     marca: vehicle.marca,
@@ -37,6 +38,8 @@ export function toVehicleResponseDto(vehicle: Vehicle): VehicleResponseDto {
     viagemAtualId: vehicle.viagemAtualId,
     ultimoMotoristaId: vehicle.ultimoMotoristaId,
     ultimoMonitorId: vehicle.ultimoMonitorId,
+    rastreadorImei: vehicle.rastreadorImei,
+    rastreadorVinculadoEm: vehicle.rastreadorVinculadoEm,
     createdAt: vehicle.createdAt,
     updatedAt: vehicle.updatedAt,
   };

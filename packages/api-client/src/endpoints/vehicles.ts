@@ -47,6 +47,8 @@ export interface VehiclePlateLookupResult {
 }
 
 export interface CreateVehicleInput {
+  /** Número/prefixo do ônibus. Único dentro da empresa; opcional na frota privada. */
+  numeroFrota?: string;
   placa: string;
   modelo: string;
   marca?: string;
@@ -65,6 +67,12 @@ export type UpdateVehicleInput = Partial<Omit<CreateVehicleInput, "placa">>;
 export interface Vehicle {
   id: string;
   companyId: string;
+  /**
+   * Número/prefixo do ônibus (transporte público). É por ele que o
+   * despachante procura — "o 412 quebrou". `null` na frota privada,
+   * onde a placa é a identidade.
+   */
+  numeroFrota: string | null;
   placa: string;
   modelo: string;
   marca: string | null;
@@ -100,6 +108,9 @@ export interface Vehicle {
   viagemAtualId: string | null;
   ultimoMotoristaId: string | null;
   ultimoMonitorId: string | null;
+  /** IMEI do rastreador credenciado neste ônibus (credenciamento do Admin da Rotta). */
+  rastreadorImei: string | null;
+  rastreadorVinculadoEm: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -442,6 +453,19 @@ export function createVehiclesEndpoints(apiClient: ApiClient) {
         await apiClient.request<ApiEnvelope<Vehicle>>(`/vehicles/${id}/revisao-admin`, {
           method: "PATCH",
           body: input,
+        })
+      ).data,
+
+    /**
+     * Credenciamento inicial do rastreador (só Admin Rotta). Omitir
+     * `imei` DESVINCULA o aparelho deste ônibus — é assim que ele é
+     * movido para outro carro.
+     */
+    credenciarRastreador: async (id: string, imei?: string): Promise<Vehicle> =>
+      (
+        await apiClient.request<ApiEnvelope<Vehicle>>(`/vehicles/${id}/rastreador`, {
+          method: "PATCH",
+          body: imei ? { imei } : {},
         })
       ).data,
 

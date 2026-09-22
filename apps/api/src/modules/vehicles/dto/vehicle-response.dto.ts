@@ -12,6 +12,13 @@ import {
 export class VehicleResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() companyId!: string;
+  @ApiPropertyOptional({
+    example: "412",
+    description:
+      "Número/prefixo do ônibus. No transporte público é por ele que o despachante procura — placa ninguém decora.",
+    nullable: true,
+  })
+  numeroFrota?: string | null;
   @ApiProperty() placa!: string;
   @ApiProperty() modelo!: string;
   @ApiPropertyOptional() marca?: string | null;
@@ -61,6 +68,13 @@ export class VehicleResponseDto {
   @ApiPropertyOptional() viagemAtualId?: string | null;
   @ApiPropertyOptional() ultimoMotoristaId?: string | null;
   @ApiPropertyOptional() ultimoMonitorId?: string | null;
+  @ApiPropertyOptional({
+    description:
+      "IMEI do rastreador credenciado neste ônibus. Credenciamento inicial é do Admin da Rotta.",
+    nullable: true,
+  })
+  rastreadorImei?: string | null;
+  @ApiPropertyOptional({ nullable: true }) rastreadorVinculadoEm?: Date | null;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

@@ -22,6 +22,7 @@ import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
  * qualquer momento.
  */
 const INITIAL_STATE: CreateVehicleInput = {
+  numeroFrota: "",
   placa: "",
   modelo: "",
   marca: "",
@@ -112,6 +113,16 @@ export default function NovoVeiculoPage(): JSX.Element {
         <Card>
           <Card.Header title="Dados do veículo" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <FormField
+              label="Número do ônibus"
+              helperText="Só no transporte público. É por ele que o despachante procura o carro."
+            >
+              <Input
+                placeholder="412"
+                value={form.numeroFrota ?? ""}
+                onChange={(event) => updateField("numeroFrota", event.target.value)}
+              />
+            </FormField>
             <FormField label="Placa" isRequired>
               <Input
                 required

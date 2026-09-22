@@ -1509,6 +1509,20 @@ model Vehicle {
   companyId String  @db.Uuid
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
+  /// Número do ônibus (prefixo de frota) — pedido do usuário
+  /// 22/09/2026: "os ônibus serão cadastrados através da numeração do
+  /// ônibus (os ônibus tem uma numeração específica). Aí o despachante
+  /// vai credenciar através disso".
+  ///
+  /// No transporte público é ESTE número que todo mundo usa: o
+  /// despachante fala "o 412 quebrou", o fiscal anota o 412, o pai
+  /// reconhece o 412 no ponto. Placa ninguém decora. Por isso ele é
+  /// único dentro da empresa e é por ele que o Painel do Despachante
+  /// busca.
+  ///
+  /// Opcional porque o fluxo privado (van escolar, autônomo) não tem
+  /// numeração de frota — lá a placa continua sendo a identidade.
+  numeroFrota           String?
   placa                 String
   modelo                String
   marca                 String?
@@ -1571,6 +1585,21 @@ model Vehicle {
   viagemAtualId   String?   @db.Uuid
   viagemAtual     Trip?     @relation("VehicleViagemAtual", fields: [viagemAtualId], references: [id], onDelete: SetNull)
 
+  /// Credenciamento inicial do rastreador (pedido do usuário
+  /// 22/09/2026: "o credenciamento inicial — configuração do rastreador
+  /// — deverá partir daqui + admin. Aí depois... o resto ficará com o
+  /// despachante").
+  ///
+  /// O IMEI é a identidade do aparelho: é ele que o rastreador manda no
+  /// primeiro pacote, e é por ele que a posição recebida vira "ônibus
+  /// 412". Único global porque IMEI é global — o mesmo aparelho não
+  /// pode estar em dois ônibus.
+  ///
+  /// Escrito só pelo Admin da Rotta. Trocar o aparelho de ônibus é
+  /// limpar aqui e gravar no outro; o histórico fica no `AuditLog`.
+  rastreadorImei        String?   @unique
+  rastreadorVinculadoEm DateTime?
+
   ultimoMotoristaId String? @db.Uuid
   ultimoMotorista   User?   @relation("VehicleUltimoMotorista", fields: [ultimoMotoristaId], references: [id], onDelete: SetNull)
   ultimoMonitorId   String? @db.Uuid
@@ -1594,6 +1623,9 @@ model Vehicle {
   reconhecimentosRevisaoAdmin VehicleAdminReviewAcknowledgement[]
 
   @@unique([placa])
+  /// Número de frota é único DENTRO da empresa, nunca global: duas
+  /// transportadoras diferentes podem ter, cada uma, o seu "412".
+  @@unique([companyId, numeroFrota])
   @@index([companyId, status])
   @@index([companyId, tipo])
   @@index([companyId, deletedAt])

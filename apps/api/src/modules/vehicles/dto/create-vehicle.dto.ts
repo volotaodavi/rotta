@@ -7,6 +7,16 @@ import { IsPlate } from "@/common/validators";
 
 /** Cadastro de Veículo (briefing "CADASTRO") — sempre pertence ao tenant do ator autenticado. */
 export class CreateVehicleDto {
+  @ApiPropertyOptional({
+    example: "412",
+    description:
+      "Número/prefixo do ônibus (transporte público). Único dentro da empresa. Frota privada pode deixar vazio — lá a placa é a identidade.",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  numeroFrota?: string;
+
   @ApiProperty({ example: "ABC1D23", description: "Formato antigo ou Mercosul" })
   @IsPlate()
   placa!: string;

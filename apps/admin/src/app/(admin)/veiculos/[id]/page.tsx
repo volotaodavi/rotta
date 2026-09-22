@@ -1,7 +1,17 @@
 "use client";
 
-import { Badge, Card, Select, Spinner, Table, Typography } from "@rotta/ui/web";
-import { use } from "react";
+import {
+  Badge,
+  Button,
+  Card,
+  FormField,
+  Input,
+  Select,
+  Spinner,
+  Table,
+  Typography,
+} from "@rotta/ui/web";
+import { use, useState } from "react";
 
 import type {
   VehicleAuditLog,
@@ -12,6 +22,7 @@ import type {
 
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import {
+  useCredenciarRastreador,
   useUpdateVehicleStatus,
   useVehicle,
   useVehicleAuditLogs,
@@ -161,6 +172,12 @@ export default function VeiculoAdminDetalhesPage({
         </Card.Body>
       </Card>
 
+      <CredenciamentoDoRastreador
+        vehicleId={vehicle.id}
+        imeiAtual={vehicle.rastreadorImei}
+        vinculadoEm={vehicle.rastreadorVinculadoEm}
+      />
+
       <Card>
         <Card.Header title="Auditoria" />
         <Card.Body>
@@ -248,5 +265,92 @@ function InfoItem({ label, value }: { label: string; value: string }): JSX.Eleme
       </Typography>
       <Typography variant="body">{value}</Typography>
     </div>
+  );
+}
+
+/**
+ * Credenciamento inicial do rastreador (pedido do usuário 22/09/2026,
+ * fluxo público: "o credenciamento inicial — configuração do rastreador
+ * — deverá partir daqui + admin. Aí depois do credenciamento inicial
+ * ser finalizado, o resto ficará com o despachante").
+ *
+ * Esta é a única etapa do rastreador que passa pela Rotta. Depois dela,
+ * quem opera é o despachante da transportadora: põe ônibus na rota,
+ * troca motorista, troca carro. Nada disso volta para cá.
+ *
+ * O cuidado da tela é um só: errar o IMEI significa mostrar um ônibus
+ * no lugar de outro para as famílias. Por isso o campo fica sempre
+ * visível com o valor atual — nunca um formulário vazio que esconde o
+ * que já está credenciado — e desvincular é uma ação separada do botão
+ * de salvar.
+ */
+function CredenciamentoDoRastreador({
+  vehicleId,
+  imeiAtual,
+  vinculadoEm,
+}: {
+  vehicleId: string;
+  imeiAtual: string | null;
+  vinculadoEm: string | null;
+}): JSX.Element {
+  const credenciar = useCredenciarRastreador(vehicleId);
+  const [imei, setImei] = useState(imeiAtual ?? "");
+
+  return (
+    <Card>
+      <Card.Header title="Rastreador" />
+      <Card.Body className="flex flex-col gap-4">
+        <Typography variant="bodySmall" color="muted">
+          Amarra o aparelho a este ônibus. A partir daqui, toda posição que chegar com este IMEI
+          aparece como sendo deste carro — inclusive no app dos responsáveis.
+        </Typography>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <FormField
+            label="IMEI do rastreador"
+            helperText={
+              vinculadoEm
+                ? `Credenciado em ${new Date(vinculadoEm).toLocaleString("pt-BR")}.`
+                : "Só dígitos, 14 a 17 caracteres. Está na etiqueta do aparelho."
+            }
+          >
+            <Input
+              value={imei}
+              onChange={(event) => setImei(event.target.value.replace(/\D/g, ""))}
+              placeholder="863719060123456"
+              inputMode="numeric"
+            />
+          </FormField>
+          <div className="flex gap-2">
+            <Button
+              variant="primary"
+              disabled={!imei || imei === imeiAtual || credenciar.isPending}
+              onClick={() => credenciar.mutate(imei)}
+            >
+              {credenciar.isPending ? "Salvando…" : "Credenciar"}
+            </Button>
+            {imeiAtual ? (
+              <Button
+                variant="secondary"
+                disabled={credenciar.isPending}
+                onClick={() => {
+                  setImei("");
+                  credenciar.mutate(undefined);
+                }}
+              >
+                Desvincular
+              </Button>
+            ) : null}
+          </div>
+        </div>
+
+        {!imeiAtual ? (
+          <Typography variant="caption" color="muted">
+            Sem rastreador credenciado. Este ônibus só aparece no mapa se alguém rodar a viagem pelo
+            aplicativo.
+          </Typography>
+        ) : null}
+      </Card.Body>
+    </Card>
   );
 }

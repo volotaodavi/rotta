@@ -11,6 +11,8 @@ import type {
 
 export interface CreateVehicleData {
   companyId: string;
+  /** Número/prefixo do ônibus — ver `Vehicle.numeroFrota`, schema.prisma. */
+  numeroFrota?: string | null;
   placa: string;
   modelo: string;
   marca?: string;
@@ -30,6 +32,10 @@ export interface CreateVehicleData {
 }
 
 export interface UpdateVehicleData {
+  numeroFrota?: string | null;
+  /** Credenciamento do rastreador (só Admin Rotta) — ver `Vehicle.rastreadorImei`. */
+  rastreadorImei?: string | null;
+  rastreadorVinculadoEm?: Date | null;
   modelo?: string;
   marca?: string;
   ano?: number | null;
@@ -96,6 +102,13 @@ export interface VehicleRepository {
   create(data: CreateVehicleData, tx?: Prisma.TransactionClient): Promise<Vehicle>;
   findById(id: string): Promise<Vehicle | null>;
   findByPlaca(placa: string): Promise<Vehicle | null>;
+  /**
+   * Credenciamento do rastreador — cross-tenant (IMEI é único GLOBAL:
+   * o mesmo aparelho não pode estar em dois ônibus, nem que sejam de
+   * empresas diferentes). Também é por aqui que o receptor TCP vai
+   * traduzir "IMEI X" em "ônibus 412" quando a posição chegar.
+   */
+  findByRastreadorImei(imei: string): Promise<Vehicle | null>;
   update(id: string, data: UpdateVehicleData): Promise<Vehicle>;
   list(filter: ListVehiclesFilter): Promise<ListVehiclesResult>;
   /** Todos os veículos ativos do tenant, sem paginação — usado pelo Dashboard/Mapa/Exportação. */

@@ -39,8 +39,9 @@ import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
  * Toda outra tela da Rotta começa na ROTA. Esta começa no ÔNIBUS,
  * porque é assim que o problema chega para quem despacha: "o 412
  * quebrou", "o 118 vai para a oficina hoje". Ninguém liga para dizer o
- * nome da rota. Por isso a busca é por placa/modelo e, a partir do
- * carro, a tela mostra as rotas que ele atende hoje.
+ * nome da rota. Por isso a busca é pelo NÚMERO do ônibus (e também
+ * placa/modelo, para a frota privada que não usa numeração) e, a
+ * partir do carro, a tela mostra as rotas que ele atende hoje.
  *
  * ## As duas trocas são coisas diferentes, e a tela não deixa confundir
  *
@@ -81,7 +82,7 @@ export default function DespachantePage(): JSX.Element {
       <div>
         <Typography variant="title">Despachante</Typography>
         <Typography variant="bodySmall" color="muted">
-          Busque o ônibus pela placa e altere a rota dele. A troca de hoje avisa os responsáveis na
+          Busque o ônibus pelo número e altere a rota dele. A troca de hoje avisa os responsáveis na
           hora; a troca do padrão vale a partir da próxima viagem.
         </Typography>
       </div>
@@ -90,7 +91,7 @@ export default function DespachantePage(): JSX.Element {
         <Card.Body className="flex flex-col gap-4">
           <FormField
             label="Ônibus"
-            helperText="Placa ou modelo — a partir de 2 caracteres a busca começa sozinha."
+            helperText="Número do ônibus, placa ou modelo — a partir de 2 caracteres a busca começa sozinha."
           >
             <Input
               value={termo}
@@ -98,7 +99,7 @@ export default function DespachantePage(): JSX.Element {
                 setTermo(event.target.value);
                 setVeiculo(null);
               }}
-              placeholder="ABC1D23"
+              placeholder="412"
             />
           </FormField>
 
@@ -115,7 +116,7 @@ export default function DespachantePage(): JSX.Element {
               />
             ) : (busca.data?.items.length ?? 0) === 0 ? (
               <Typography variant="body" color="muted">
-                Nenhum ônibus com esse texto na placa ou no modelo.
+                Nenhum ônibus com esse número, placa ou modelo.
               </Typography>
             ) : (
               <ul className="flex flex-col gap-2">
@@ -127,12 +128,19 @@ export default function DespachantePage(): JSX.Element {
                       className="flex w-full items-center justify-between gap-4 rounded-md border border-border px-4 py-3 text-left transition-colors hover:bg-secondary/10"
                     >
                       <span className="flex flex-col">
-                        <span className="font-semibold text-text">{item.placa}</span>
+                        <span className="font-semibold text-text">{identificar(item)}</span>
                         <span className="text-sm text-text-muted">
                           {item.modelo} · {item.capacidadePassageiros} lugares
                         </span>
                       </span>
-                      {item.viagemAtualId ? <Badge variant="info">Em viagem</Badge> : null}
+                      <span className="flex items-center gap-2">
+                        {item.rastreadorImei ? (
+                          <Badge variant="success">Rastreador</Badge>
+                        ) : (
+                          <Badge variant="neutral">Sem rastreador</Badge>
+                        )}
+                        {item.viagemAtualId ? <Badge variant="info">Em viagem</Badge> : null}
+                      </span>
                     </button>
                   </li>
                 ))}
@@ -146,7 +154,7 @@ export default function DespachantePage(): JSX.Element {
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between gap-4">
             <Typography variant="subtitle">
-              Rotas do {veiculo.placa} ({veiculo.modelo})
+              Rotas do {identificar(veiculo)} ({veiculo.modelo})
             </Typography>
             <Button variant="ghost" size="sm" onClick={() => setVeiculo(null)}>
               Trocar de ônibus
@@ -177,6 +185,18 @@ export default function DespachantePage(): JSX.Element {
       ) : null}
     </div>
   );
+}
+
+/**
+ * Como o despachante chama este ônibus.
+ *
+ * No transporte público é o NÚMERO ("o 412"), e a placa vira detalhe —
+ * ninguém decora placa. Na frota privada não há número, então a placa
+ * volta a ser a identidade. Uma função só, usada em todo lugar da tela,
+ * para os dois públicos nunca verem rótulos diferentes do mesmo carro.
+ */
+function identificar(veiculo: Vehicle): string {
+  return veiculo.numeroFrota ? `Ônibus ${veiculo.numeroFrota}` : veiculo.placa;
 }
 
 /**
@@ -211,8 +231,8 @@ function RotaDoDespachante({
   const viagemTrocavel = tripDeHoje?.status === "EM_ANDAMENTO" || tripDeHoje?.status === "PAUSADA";
 
   const substitutos = (frota.data?.items ?? []).filter((item) => item.id !== veiculoAtual.id);
-  const placaDoSubstituto =
-    substitutos.find((item) => item.id === substitutoId)?.placa ?? "o ônibus escolhido";
+  const substituto = substitutos.find((item) => item.id === substitutoId);
+  const nomeDoSubstituto = substituto ? identificar(substituto) : "o ônibus escolhido";
 
   return (
     <Card>
@@ -259,7 +279,7 @@ function RotaDoDespachante({
             <option value="">Selecione o ônibus</option>
             {substitutos.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.placa} — {item.modelo} ({item.capacidadePassageiros} lugares)
+                {identificar(item)} — {item.modelo} ({item.capacidadePassageiros} lugares)
               </option>
             ))}
           </Select>
@@ -293,7 +313,7 @@ function RotaDoDespachante({
                       setMotivo("");
                       setSubstitutoId("");
                       toast.success(
-                        `A viagem de hoje passou para ${placaDoSubstituto}. Os responsáveis já foram avisados.`,
+                        `A viagem de hoje passou para ${nomeDoSubstituto}. Os responsáveis já foram avisados.`,
                       );
                     },
                   },
@@ -320,7 +340,7 @@ function RotaDoDespachante({
                     onSuccess: () => {
                       setSubstitutoId("");
                       toast.success(
-                        `${rota.nome} passa a sair com ${placaDoSubstituto} a partir da próxima viagem.`,
+                        `${rota.nome} passa a sair com ${nomeDoSubstituto} a partir da próxima viagem.`,
                       );
                     },
                   },

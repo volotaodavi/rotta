@@ -68,6 +68,7 @@ import type { CreateVehicleMaintenanceDto } from "./dto/create-vehicle-maintenan
 import type { CreateVehicleOccurrenceDto } from "./dto/create-vehicle-occurrence.dto";
 import type { CreateVehicleReminderDto } from "./dto/create-vehicle-reminder.dto";
 import type { CreateVehicleDto } from "./dto/create-vehicle.dto";
+import type { CredenciarRastreadorDto } from "./dto/credenciar-rastreador.dto";
 import type { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import type { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
 import type { ResolveVehicleCategoryReviewDto } from "./dto/resolve-vehicle-category-review.dto";
@@ -344,6 +345,10 @@ export class VehiclesService {
     // controller já exclui `ADMIN_ROTTA` (que não tem tenant próprio).
     const vehicle = await this.vehicleRepository.create({
       companyId: actor.tenantId!,
+      // Número do ônibus (transporte público). A unicidade dentro da
+      // empresa é garantida pelo índice do banco — aqui só normalizo
+      // espaço sobrando, para "412 " não virar um 412 diferente.
+      numeroFrota: dto.numeroFrota?.trim() || null,
       placa,
       modelo: dto.modelo,
       marca: dto.marca,
@@ -1446,6 +1451,61 @@ export class VehiclesService {
    * `IdentityVerificationService.decideForAdmin`). Notificação é
    * best-effort — a decisão em si nunca falha por causa dela.
    */
+  /**
+   * Credenciamento inicial do rastreador (pedido do usuário 22/09/2026,
+   * fluxo público: "o credenciamento inicial — configuração do
+   * rastreador — deverá partir daqui + admin. Aí depois... o resto
+   * ficará com o despachante").
+   *
+   * Só Admin Rotta. É a etapa que casa o aparelho físico ao ônibus: a
+   * partir daqui, toda posição que chegar com este IMEI vira posição
+   * deste ônibus. Errar aqui significa mostrar um ônibus no lugar de
+   * outro para as famílias, então a checagem de IMEI já em uso é
+   * cross-tenant e bloqueia antes de gravar.
+   *
+   * `imei` vazio DESVINCULA — é assim que o aparelho é movido de um
+   * ônibus para outro.
+   */
+  async credenciarRastreador(
+    id: string,
+    dto: CredenciarRastreadorDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<VehicleResponseDto> {
+    const existing = await this.fetchOrThrow(id, actor);
+    const imei = dto.imei?.trim() || null;
+
+    if (imei) {
+      const emUso = await this.vehicleRepository.findByRastreadorImei(imei);
+      if (emUso && emUso.id !== id) {
+        // Mensagem sem vazar de QUAL empresa é o outro ônibus — o Admin
+        // vê o suficiente para agir, e nada além disso.
+        throw new ConflictException(
+          "Este IMEI já está credenciado em outro ônibus. Desvincule de lá antes de credenciar aqui.",
+        );
+      }
+    }
+
+    const updated = await this.vehicleRepository.update(id, {
+      rastreadorImei: imei,
+      rastreadorVinculadoEm: imei ? new Date() : null,
+    });
+
+    await this.recordAudit({
+      companyId: existing.companyId,
+      entidadeTipo: "Vehicle",
+      entidadeId: id,
+      acao: imei ? "RASTREADOR_CREDENCIADO" : "RASTREADOR_DESVINCULADO",
+      atorUserId: actor.sub,
+      dadosAntes: { rastreadorImei: existing.rastreadorImei },
+      dadosDepois: { rastreadorImei: imei },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toVehicleResponseDto(updated);
+  }
+
   async reviewVehicle(
     id: string,
     dto: ReviewVehicleDto,

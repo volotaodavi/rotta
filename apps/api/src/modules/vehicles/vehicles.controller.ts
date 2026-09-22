@@ -26,6 +26,7 @@ import { CreateVehicleMaintenanceDto } from "./dto/create-vehicle-maintenance.dt
 import { CreateVehicleOccurrenceDto } from "./dto/create-vehicle-occurrence.dto";
 import { CreateVehicleReminderDto } from "./dto/create-vehicle-reminder.dto";
 import { CreateVehicleDto } from "./dto/create-vehicle.dto";
+import { CredenciarRastreadorDto } from "./dto/credenciar-rastreador.dto";
 import { ExportVehiclesQueryDto } from "./dto/export-vehicles-query.dto";
 import { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
@@ -226,6 +227,23 @@ export class VehiclesController {
     @Req() req: Request,
   ) {
     return this.vehiclesService.reviewVehicle(id, dto, actor, requestMeta(req));
+  }
+
+  /**
+   * Credenciamento inicial do rastreador — só Admin Rotta (fluxo
+   * público, 22/09/2026). Corpo sem `imei` DESVINCULA o aparelho deste
+   * ônibus, que é como ele é movido para outro carro.
+   */
+  @Patch(":id/rastreador")
+  @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.VEICULOS)
+  credenciarRastreador(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: CredenciarRastreadorDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.vehiclesService.credenciarRastreador(id, dto, actor, requestMeta(req));
   }
 
   /** "Li e concordo" — de propósito NUNCA existe "recusar" aqui (pedido explícito do usuário). */

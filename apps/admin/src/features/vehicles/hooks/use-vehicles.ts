@@ -105,6 +105,32 @@ export function useResolveVehicleCategoryReview(id: string) {
 }
 
 /**
+ * Credenciamento inicial do rastreador (fluxo público, 22/09/2026).
+ *
+ * É a etapa que casa o aparelho físico ao ônibus: a partir daqui, toda
+ * posição que chegar com este IMEI vira posição deste ônibus. Só o
+ * Admin da Rotta faz — depois disso o despachante opera sozinho.
+ * `imei` vazio DESVINCULA, que é como o aparelho muda de carro.
+ */
+export function useCredenciarRastreador(id: string) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: (imei?: string) => vehiclesApi.credenciarRastreador(id, imei),
+    onSuccess: (_data, imei) => {
+      void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      toast.success(imei ? "Rastreador credenciado." : "Rastreador desvinculado.");
+    },
+    onError: (error) => {
+      toast.error(
+        errorMessage(error, "Não foi possível credenciar o rastreador."),
+        "Falha no credenciamento",
+      );
+    },
+  });
+}
+
+/**
  * Epic A — aprova/reprova um veículo (camada ADICIONAL sobre o
  * "pré-aprovado" automático). Invalida tanto a lista da empresa quanto o
  * veículo individual, já que os dois lugares mostram `revisaoAdminStatus`.

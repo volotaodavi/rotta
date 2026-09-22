@@ -40,6 +40,18 @@ export class PrismaVehicleRepository implements VehicleRepository {
     return this.prisma.withBypass(this.prisma.vehicle.findFirst({ where: { placa } }));
   }
 
+  /**
+   * `withBypass` pelo mesmo motivo de `findByPlaca`: a unicidade do
+   * IMEI é global, então a checagem precisa enxergar além do tenant —
+   * senão o mesmo rastreador entraria em dois ônibus de empresas
+   * diferentes e as duas veriam a posição uma da outra.
+   */
+  findByRastreadorImei(imei: string): Promise<Vehicle | null> {
+    return this.prisma.withBypass(
+      this.prisma.vehicle.findFirst({ where: { rastreadorImei: imei, deletedAt: null } }),
+    );
+  }
+
   update(id: string, data: UpdateVehicleData): Promise<Vehicle> {
     return this.prisma.withTenant(this.prisma.vehicle.update({ where: { id }, data }));
   }
@@ -60,6 +72,9 @@ export class PrismaVehicleRepository implements VehicleRepository {
       ...(filter.search
         ? {
             OR: [
+              // Número do ônibus vem PRIMEIRO: no transporte público é
+              // por ele que o despachante procura ("o 412 quebrou").
+              { numeroFrota: { contains: filter.search, mode: "insensitive" } },
               { placa: { contains: filter.search, mode: "insensitive" } },
               { modelo: { contains: filter.search, mode: "insensitive" } },
               { marca: { contains: filter.search, mode: "insensitive" } },
