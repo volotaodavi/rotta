@@ -21,6 +21,7 @@ import type {
   ConsentType,
   Membership,
   Prisma,
+  SchoolStaffRole,
   User,
   UserStatus,
 } from "@prisma/client";
@@ -167,6 +168,21 @@ export class UsersService {
    */
   vincularAEscola(userId: string, escolaId: string, tx?: Prisma.TransactionClient): Promise<User> {
     return this.userRepository.linkToSchool(userId, escolaId, tx);
+  }
+
+  /** Portal da Escola — cargo interno. Ver `SchoolPortalService.criarConta`. */
+  definirPapelNaEscola(userId: string, papel: SchoolStaffRole): Promise<User> {
+    return this.userRepository.updateSchoolStaffRole(userId, papel);
+  }
+
+  /**
+   * Ativa/desativa uma conta qualquer. Mesma escrita que
+   * `updateAdminAccountStatus` faz para conta Admin — nome próprio
+   * porque o Portal da Escola também precisa dela, e "AdminAccount" na
+   * chamada faria o leitor achar que está mexendo em outra coisa.
+   */
+  definirStatusDeConta(userId: string, status: UserStatus): Promise<User> {
+    return this.userRepository.updateStatus(userId, status);
   }
 
   /** Ver `AdminAccountsService` (GERAL-only) — tela "Contas Admin". */

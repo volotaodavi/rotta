@@ -1016,6 +1016,9 @@ export class AuthService {
       // propósito: uma conta que também é Responsável não leva
       // `escolaId` no token do perfil de Responsável.
       escolaId: role === Role.ESCOLA ? (user.escolaId ?? undefined) : undefined,
+      // Cargo na escola — não isola dado nenhum (os três cargos leem a
+      // mesma lista); decide só quem pode abrir acesso para os colegas.
+      escolaPapel: role === Role.ESCOLA ? (user.escolaPapel ?? undefined) : undefined,
     };
     const accessToken = await this.jwtService.signAsync(payload);
 

@@ -3,6 +3,8 @@ import { Module } from "@nestjs/common";
 import { SchoolPortalController } from "./school-portal.controller";
 import { SchoolPortalService } from "./school-portal.service";
 
+import { UsersModule } from "@/modules/users/users.module";
+
 /**
  * Portal da Escola (22/09/2026) — área somente leitura de `Role.ESCOLA`.
  *
@@ -15,6 +17,13 @@ import { SchoolPortalService } from "./school-portal.service";
  * costuma nascer.
  */
 @Module({
+  // `UsersModule` entrou em 22/09/2026 com a criação direta de contas
+  // do portal (fluxo público — o Admin da Rotta abre o acesso de cada
+  // escola do município, e o diretor abre o dos colegas). É a única
+  // dependência deste módulo, e é de ESCRITA de usuário, não de
+  // leitura de aluno: a consulta do portal continua indo direto ao
+  // Prisma com `withBypass`.
+  imports: [UsersModule],
   controllers: [SchoolPortalController],
   providers: [SchoolPortalService],
   exports: [SchoolPortalService],

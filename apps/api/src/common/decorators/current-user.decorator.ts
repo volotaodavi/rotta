@@ -1,7 +1,7 @@
 import { createParamDecorator, type ExecutionContext } from "@nestjs/common";
 
 import type { Role } from "@/shared/enums";
-import type { AdminRottaPapel } from "@prisma/client";
+import type { AdminRottaPapel, SchoolStaffRole } from "@prisma/client";
 
 /**
  * Payload minimo carregado pelo JWT de acesso (Dossie 12, Secao 4.2):
@@ -46,6 +46,12 @@ export interface AuthenticatedUser {
    * alunos de qualquer escola do país a quem trocasse o parâmetro.
    */
   escolaId?: string;
+  /**
+   * Cargo dentro da escola. Diferente de `escolaId`, não isola dados —
+   * os três cargos leem exatamente a mesma lista de alunos. Ele decide
+   * uma coisa só: quem pode ABRIR ACESSO para os colegas (`DIRETOR`).
+   */
+  escolaPapel?: SchoolStaffRole;
 }
 
 /**

@@ -12,6 +12,7 @@ import { SchoolsController } from "./schools.controller";
 import { SchoolsService } from "./schools.service";
 
 import { AuditModule } from "@/modules/audit/audit.module";
+import { CompanyServiceAreasModule } from "@/modules/company-service-areas/company-service-areas.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 
 /**
@@ -47,7 +48,12 @@ import { MessagePersonalizationModule } from "@/modules/notifications/message-pe
  * `NotificationsService` diretamente.
  */
 @Module({
-  imports: [AuditModule, MessagePersonalizationModule],
+  // `CompanyServiceAreasModule` não importa ninguém, de propósito — é o
+  // que permite importá-lo aqui sem fechar o ciclo
+  // `CompaniesModule -> VehiclesModule -> RottaAiModule -> GeoModule ->
+  // SchoolsModule` que existiria se a cerca de atuação morasse dentro
+  // de `CompaniesModule`.
+  imports: [AuditModule, MessagePersonalizationModule, CompanyServiceAreasModule],
   controllers: [SchoolsController],
   providers: [
     SchoolsService,

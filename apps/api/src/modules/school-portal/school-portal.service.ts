@@ -1,9 +1,18 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
+import { SchoolStaffRole, UserStatus } from "@prisma/client";
 
 import type { AlunoDoDiaResponseDto, StatusDoAlunoNoDia } from "./dto/aluno-do-dia-response.dto";
+import type { ContaDaEscolaResponseDto } from "./dto/conta-da-escola-response.dto";
+import type { CriarContaDaEscolaDto } from "./dto/criar-conta-da-escola.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
 import { PrismaService } from "@/infra/database/prisma.service";
+import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
 import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
 
@@ -42,7 +51,234 @@ import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
  */
 @Injectable()
 export class SchoolPortalService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+  ) {}
+
+  // ---------------------------------------------------------------------
+  // Contas do portal — quem entra, e quem pode abrir a porta para quem
+  // ---------------------------------------------------------------------
+
+  /**
+   * Cria uma conta do Portal da Escola, sem convite.
+   *
+   * Pedido do usuário 22/09/2026, fluxo de transporte público: "não irei
+   * criar escolas, irei pegar escolas existentes na planilha e irei
+   * fazer com que as escolas tenham o devido painel... só terminar o
+   * quesito de e-mail e senha".
+   *
+   * ## As duas portas, e por que a segunda existe
+   *
+   * - **Admin Rotta** cria o DIRETOR de qualquer escola do catálogo,
+   *   informando `escolaId`.
+   * - **DIRETOR** cria COORDENADOR e AJUDANTE da PRÓPRIA escola, e o
+   *   `escolaId` vem do token dele, nunca do corpo da requisição.
+   *
+   * A segunda porta existe por aritmética: numa rede municipal com 40
+   * escolas e 3 pessoas por escola são 120 contas. Se todas passassem
+   * pelo Admin, o cadastro viraria o gargalo da adoção.
+   *
+   * ## As duas regras que sustentam o isolamento
+   *
+   * 1. O diretor NUNCA escolhe a escola — se escolhesse, abriria acesso
+   *    às crianças de outra escola com um UUID trocado.
+   * 2. O diretor NUNCA cria outro diretor — senão o cargo que controla
+   *    o acesso se autoconcederia, e a distinção entre "quem o Admin
+   *    nomeou" e "quem entrou depois" deixaria de existir.
+   */
+  async criarConta(
+    dto: CriarContaDaEscolaDto,
+    actor: AuthenticatedUser,
+  ): Promise<ContaDaEscolaResponseDto> {
+    const escolaId = this.resolverEscolaParaCriacao(dto, actor);
+
+    const escola = await this.prisma.withBypass(
+      this.prisma.school.findFirst({
+        where: { id: escolaId, deletedAt: null },
+        select: { id: true, nomeOficial: true, nomeFantasia: true },
+      }),
+    );
+    if (!escola) {
+      throw new NotFoundException("Escola não encontrada.");
+    }
+
+    const email = dto.email.trim().toLowerCase();
+    const telefone = dto.telefone.replace(/\D/g, "");
+
+    // Mesma checagem do cadastro público — a mensagem de conflito é a
+    // mesma que a pessoa veria se tentasse se cadastrar sozinha, em vez
+    // de um erro de constraint do banco.
+    await this.usersService.assertNoDuplicateIdentity(email, telefone);
+
+    const user = await this.usersService.createUserWithPassword({
+      nome: dto.nome.trim(),
+      email,
+      telefone,
+      senha: dto.senha,
+      escolaId,
+    });
+
+    // O cargo é gravado à parte porque `createUserWithPassword` é o
+    // cadastro genérico de qualquer papel — só o Portal da Escola tem
+    // cargo interno.
+    const comPapel = await this.usersService.definirPapelNaEscola(user.id, dto.papel);
+
+    return this.toContaResponse(comPapel, escola);
+  }
+
+  /**
+   * As contas de uma escola. Admin Rotta vê a de qualquer escola
+   * (informando `escolaId`); uma conta de escola vê só as da própria,
+   * e o parâmetro é ignorado para ela.
+   */
+  async listarContas(
+    actor: AuthenticatedUser,
+    escolaIdQuery?: string,
+  ): Promise<ContaDaEscolaResponseDto[]> {
+    const escolaId =
+      actor.role === Role.ADMIN_ROTTA ? escolaIdQuery : this.exigirEscolaDoToken(actor);
+
+    if (!escolaId) {
+      throw new BadRequestException(
+        "Informe `escolaId` para listar as contas como Admin da Rotta.",
+      );
+    }
+
+    const contas = await this.prisma.withBypass(
+      this.prisma.user.findMany({
+        where: { escolaId, deletedAt: null },
+        select: {
+          id: true,
+          nome: true,
+          email: true,
+          telefone: true,
+          escolaPapel: true,
+          status: true,
+          escolaId: true,
+          createdAt: true,
+          escola: { select: { nomeOficial: true, nomeFantasia: true } },
+        },
+        orderBy: [{ escolaPapel: "asc" }, { nome: "asc" }],
+      }),
+    );
+
+    return contas.map((conta) => this.toContaResponse(conta, conta.escola));
+  }
+
+  /**
+   * Ativa/desativa uma conta do portal. Nunca apaga: a pessoa que
+   * conferiu a saída das crianças ontem tem de continuar existindo no
+   * histórico de hoje.
+   */
+  async definirStatusDaConta(
+    contaId: string,
+    ativo: boolean,
+    actor: AuthenticatedUser,
+  ): Promise<ContaDaEscolaResponseDto> {
+    const conta = await this.prisma.withBypass(
+      this.prisma.user.findUnique({
+        where: { id: contaId },
+        select: {
+          id: true,
+          escolaId: true,
+          escolaPapel: true,
+          escola: { select: { nomeOficial: true, nomeFantasia: true } },
+        },
+      }),
+    );
+    if (!conta?.escolaId) {
+      throw new NotFoundException("Conta de escola não encontrada.");
+    }
+
+    if (actor.role !== Role.ADMIN_ROTTA) {
+      const minhaEscola = this.exigirEscolaDoToken(actor);
+      if (conta.escolaId !== minhaEscola) {
+        // 404, não 403: um diretor não precisa descobrir que uma conta
+        // de outra escola existe.
+        throw new NotFoundException("Conta de escola não encontrada.");
+      }
+      this.exigirDiretor(actor);
+      if (conta.escolaPapel === SchoolStaffRole.DIRETOR) {
+        throw new ForbiddenException(
+          "Um diretor não pode desativar outro diretor. Peça ao Admin da Rotta.",
+        );
+      }
+      if (conta.id === actor.sub) {
+        throw new BadRequestException("Você não pode desativar a própria conta.");
+      }
+    }
+
+    const atualizada = await this.usersService.definirStatusDeConta(
+      contaId,
+      ativo ? UserStatus.ATIVO : UserStatus.INATIVO,
+    );
+
+    return this.toContaResponse({ ...atualizada, escolaId: conta.escolaId }, conta.escola);
+  }
+
+  /**
+   * De qual escola será a conta nova — e é aqui que mora toda a
+   * segurança desta parte.
+   */
+  private resolverEscolaParaCriacao(dto: CriarContaDaEscolaDto, actor: AuthenticatedUser): string {
+    if (actor.role === Role.ADMIN_ROTTA) {
+      if (!dto.escolaId) {
+        throw new BadRequestException("Informe a escola para a qual esta conta será criada.");
+      }
+      return dto.escolaId;
+    }
+
+    const minhaEscola = this.exigirEscolaDoToken(actor);
+    this.exigirDiretor(actor);
+
+    // O diretor não escolhe escola. Aceitar `escolaId` do corpo aqui —
+    // mesmo que coincidisse com a dele — normalizaria um parâmetro que
+    // um dia alguém deixaria de validar.
+    if (dto.escolaId && dto.escolaId !== minhaEscola) {
+      throw new ForbiddenException("Você só pode abrir acesso para a sua própria escola.");
+    }
+
+    if (dto.papel === SchoolStaffRole.DIRETOR) {
+      throw new ForbiddenException(
+        "Só o Admin da Rotta nomeia um diretor. Você pode criar coordenador e ajudante.",
+      );
+    }
+
+    return minhaEscola;
+  }
+
+  private exigirDiretor(actor: AuthenticatedUser): void {
+    if (actor.escolaPapel !== SchoolStaffRole.DIRETOR) {
+      throw new ForbiddenException("Só a direção da escola pode abrir acesso para a equipe.");
+    }
+  }
+
+  private toContaResponse(
+    user: {
+      id: string;
+      nome: string;
+      email: string;
+      telefone: string;
+      escolaPapel: SchoolStaffRole | null;
+      status: UserStatus;
+      escolaId: string | null;
+      createdAt: Date;
+    },
+    escola: { nomeOficial: string; nomeFantasia: string | null } | null,
+  ): ContaDaEscolaResponseDto {
+    return {
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      telefone: user.telefone,
+      papel: user.escolaPapel,
+      status: user.status,
+      escolaId: user.escolaId!,
+      escolaNome: escola ? (escola.nomeFantasia ?? escola.nomeOficial) : null,
+      createdAt: user.createdAt.toISOString(),
+    };
+  }
 
   /**
    * O `escolaId` desta sessão, ou erro.

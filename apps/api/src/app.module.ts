@@ -55,6 +55,7 @@ import { ClientErrorsModule } from "@/modules/client-errors/client-errors.module
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { CompanyJoinPreRegistrationsModule } from "@/modules/company-join-pre-registrations/company-join-pre-registrations.module";
 import { CompanyJoinRequestsModule } from "@/modules/company-join-requests/company-join-requests.module";
+import { CompanyServiceAreasModule } from "@/modules/company-service-areas/company-service-areas.module";
 import { ConversationsModule } from "@/modules/conversations/conversations.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { DataRetentionModule } from "@/modules/data-retention/data-retention.module";
@@ -149,6 +150,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     TrialNotificationsModule,
     DocumentExpiryModule,
     SchoolsModule,
+    CompanyServiceAreasModule,
     // Portal da Escola (22/09/2026) — leitura por `escolaId`, fora do
     // isolamento por `companyId` do resto do sistema. Ver o módulo.
     SchoolPortalModule,

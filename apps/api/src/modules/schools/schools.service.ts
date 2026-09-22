@@ -77,6 +77,7 @@ import {
   type ExportColumn,
 } from "@/common/utils/tabular-export.util";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { CompanyServiceAreasService } from "@/modules/company-service-areas/company-service-areas.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { Role } from "@/shared/enums";
@@ -119,6 +120,8 @@ export class SchoolsService {
     private readonly auditLogService: AuditLogService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
+    /** Cerca do transporte público — ver `linkCompany`. */
+    private readonly companyServiceAreas: CompanyServiceAreasService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -759,12 +762,21 @@ export class SchoolsService {
     actor: AuthenticatedUser,
     meta: RequestMeta,
   ): Promise<SchoolCompanyLinkResponseDto> {
-    await this.fetchOrThrow(schoolId, actor);
+    const school = await this.fetchOrThrow(schoolId, actor);
 
     const companyId = actor.role === Role.ADMIN_ROTTA ? dto.companyId : actor.tenantId;
     if (!companyId) {
       throw new BadRequestException("Informe `companyId` para vincular como Admin Rotta.");
     }
+
+    // Cerca do transporte público (22/09/2026): a transportadora só se
+    // credencia dentro da área que o Admin da Rotta definiu para ela.
+    // Empresa SEM área cadastrada passa direto — é o que mantém o fluxo
+    // privado de hoje intacto. Vale inclusive para o Admin Rotta: se
+    // ele definiu a cerca, é porque ela vale, e um credenciamento fora
+    // dela feito por engano é justamente o erro que a cerca existe para
+    // impedir.
+    await this.companyServiceAreas.assertPodeCredenciar(companyId, school);
 
     const existing = await this.companyLinkRepository.findActiveByCompanyAndSchool(
       companyId,

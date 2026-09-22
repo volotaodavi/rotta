@@ -1,4 +1,4 @@
-import type { AdminRottaPapel, Prisma, User, UserStatus } from "@prisma/client";
+import type { AdminRottaPapel, Prisma, SchoolStaffRole, User, UserStatus } from "@prisma/client";
 
 /**
  * Interface de repositorio (Repository Pattern, Dossie 12 Secao 6.1) —
@@ -66,6 +66,8 @@ export interface UserRepository {
    * fácil de auditar.
    */
   linkToSchool(id: string, escolaId: string, tx?: Prisma.TransactionClient): Promise<User>;
+  /** Portal da Escola — cargo interno (`DIRETOR`/`COORDENADOR`/`AJUDANTE`), ver `User.escolaPapel`. */
+  updateSchoolStaffRole(id: string, papel: SchoolStaffRole): Promise<User>;
   /** IDs de todo Admin Rotta ativo (`User.isAdminRotta`) — usado pra fan-out cross-tenant (Suporte, Avisos). */
   listAdminRottaIds(): Promise<string[]>;
   /** IDs de todo `User` ativo, sem filtro de papel — usado pelo público `TODOS` de um `Announcement`. */

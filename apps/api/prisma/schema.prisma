@@ -306,6 +306,18 @@ enum SchoolType {
 /// ADMINISTRATIVA") — mesma classificação usada pelo Censo Escolar do
 /// INEP, para que a sincronização futura (`School.codigoInep`) mapeie
 /// 1:1 sem tradução.
+/// Cargo de uma conta do Portal da Escola (`User.escolaPapel`) — pedido
+/// do usuário 22/09/2026 ("diretores, coordenadores e ajudantes").
+/// Enum fechado, ao contrário de `School.redeEnsino`: aqui a lista NÃO
+/// é nomenclatura variável, é uma decisão de autorização (só `DIRETOR`
+/// abre acesso para os colegas), e uma decisão de autorização nunca
+/// deve depender de texto livre digitado por alguém.
+enum SchoolStaffRole {
+  DIRETOR
+  COORDENADOR
+  AJUDANTE
+}
+
 enum SchoolAdministrativeDependency {
   FEDERAL
   ESTADUAL
@@ -716,6 +728,9 @@ model Company {
   preRegistrosAlunos     StudentPreRegistration[]
   vehicles               Vehicle[]
   escolasVinculadas      SchoolCompanyLink[]
+  /// Onde esta transportadora PODE se credenciar (fluxo público,
+  /// 22/09/2026). Vazio = sem cerca, o comportamento de sempre.
+  areasDeAtuacao         CompanyServiceArea[]
   solicitacoesTransporte TransportRequest[]
   contratos              Contract[]
   avaliacoesRecebidas    Rating[]
@@ -805,12 +820,13 @@ enum AdminRottaPapel {
   /// Só as áreas financeiras, sempre leitura — nunca transferências.
   FINANCEIRO
 }
+
 model User {
   id String @id @default(uuid()) @db.Uuid
 
   nome         String
-  email        String @unique
-  telefone     String @unique
+  email        String  @unique
+  telefone     String  @unique
   /// Opcional a partir de 14/09/2026 (pedido do usuário: "para os
   /// responsáveis não pegamos esses dados, apenas o nome e telefone" —
   /// decisão final: manter e-mail, remover só CPF) — Responsável não
@@ -909,6 +925,25 @@ model User {
   /// nunca de parâmetro do cliente.
   escolaId String? @db.Uuid
   escola   School? @relation("SchoolUsuarios", fields: [escolaId], references: [id], onDelete: SetNull)
+
+  /// Cargo desta conta DENTRO da escola (pedido do usuário 22/09/2026:
+  /// "para os diretores, coordenadores e ajudantes nas escolas poderem
+  /// acessar"). Só faz sentido junto de `escolaId`.
+  ///
+  /// Existe por uma razão só, e é de autorização: `DIRETOR` pode criar
+  /// as contas dos colegas da PRÓPRIA escola, `COORDENADOR`/`AJUDANTE`
+  /// não. Sem este campo, ou o Admin da Rotta digitaria 120 contas à
+  /// mão numa rede municipal de 40 escolas, ou qualquer ajudante
+  /// poderia abrir acesso para quem quisesse.
+  ///
+  /// Quem enxerga O QUÊ não muda com o cargo: os três veem a mesma
+  /// lista de alunos da mesma escola, porque é a mesma pergunta
+  /// operacional ("quem já embarcou?") que os três precisam responder
+  /// no portão.
+  escolaPapel SchoolStaffRole?
+
+  /// Areas de atuacao que este Admin Rotta cadastrou.
+  areasDeAtuacaoCadastradas CompanyServiceArea[] @relation("CompanyServiceAreaCriadoPor")
 
   /// Verificação de identidade hospedada via Didit (sessão v3) — cobre
   /// Motorista e dono de Empresa/Gestor (Responsável/Escola/Admin Rotta
@@ -1999,8 +2034,10 @@ model School {
   coordenadas            SchoolCoordinate[]
   paradasRota            RouteStop[]
   /// Portal da Escola (22/09/2026) — contas que enxergam ESTA escola.
-  usuarios               User[]             @relation("SchoolUsuarios")
-  convites               Invite[]           @relation("SchoolConvites")
+  usuarios               User[]               @relation("SchoolUsuarios")
+  /// Areas de atuacao que apontam para ESTA escola especificamente.
+  areasDeAtuacao         CompanyServiceArea[] @relation("SchoolAreasDeAtuacao")
+  convites               Invite[]             @relation("SchoolConvites")
 
   @@index([status])
   @@index([cidade, estado])
@@ -2032,6 +2069,74 @@ model SchoolAccessPoint {
 
   @@index([schoolId, tipo])
   @@map("school_access_points")
+}
+
+/// Área de atuação de uma transportadora (pedido do usuário
+/// 22/09/2026, fluxo de transporte PÚBLICO: "irei cadastrar a
+/// transportadora e colocar em qual município ela atuará ou quais
+/// escolas ela atuará... aí a transportadora só poderá se credenciar
+/// nas escolas daquele município").
+///
+/// ## A regra que faz isto ser ADITIVO, e não uma ruptura
+///
+/// Empresa SEM nenhuma linha aqui = comportamento de hoje, intacto:
+/// pode se credenciar em qualquer escola do catálogo. É assim que o
+/// fluxo privado (a transportadora se cadastra sozinha e procura
+/// escolas) continua funcionando sem nenhuma mudança, enquanto o fluxo
+/// público ganha a cerca. O usuário foi explícito: "o fluxo existente
+/// poderá permanecer o mesmo, só muda que terá essa vertente também".
+///
+/// Empresa COM pelo menos uma linha = só se credencia no que couber em
+/// alguma delas (`SchoolsService.linkCompany`).
+///
+/// ## Delimita, não dá exclusividade
+///
+/// Duas transportadoras podem ter o MESMO município na área, e as duas
+/// se credenciam. A área responde "onde esta empresa pode atuar", nunca
+/// "quem mais pode atuar aqui" — decisão explícita do usuário. Um
+/// município de fornecedor único (Maricá) é modelado simplesmente
+/// cadastrando uma transportadora só.
+///
+/// ## Quem escreve
+///
+/// Só Admin Rotta. É uma decisão de contrato público, não de
+/// autoatendimento: se a própria empresa pudesse editar a área, a cerca
+/// não cercaria nada.
+model CompanyServiceArea {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  /// Município inteiro. `cidade`+`estado` andam juntos — ou os dois
+  /// estão presentes, ou a área é de escola específica (`schoolId`).
+  /// Comparação sempre normalizada (sem acento, minúsculas) em
+  /// `CompanyServiceAreasService`: "Maricá" digitado pelo Admin tem de
+  /// casar com "MARICA" vindo da planilha do INEP.
+  cidade String?
+  estado String?
+
+  /// Escola específica — a outra forma de área ("quais escolas ela
+  /// atuará"). Mutuamente exclusiva com `cidade`/`estado`; a regra é
+  /// validada no serviço, porque o Postgres não expressa "exatamente um
+  /// dos dois" sem um CHECK que o Prisma não modela.
+  schoolId String? @db.Uuid
+  school   School? @relation("SchoolAreasDeAtuacao", fields: [schoolId], references: [id], onDelete: Cascade)
+
+  /// Filtro por rede, só faz sentido em área de município ("se é
+  /// repartição pública ou privada"). Vazio = todas as redes daquele
+  /// município. Ex.: `[MUNICIPAL, ESTADUAL]` para a transportadora que
+  /// só atende a rede pública de Maricá.
+  dependencias SchoolAdministrativeDependency[]
+
+  criadoPorId String? @db.Uuid
+  criadoPor   User?   @relation("CompanyServiceAreaCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([companyId])
+  @@index([cidade, estado])
+  @@index([schoolId])
+  @@map("company_service_areas")
 }
 
 /// Vínculo Empresa<->Escola ("esta empresa atende esta escola") — ESTA

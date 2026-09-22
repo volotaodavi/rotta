@@ -9,6 +9,7 @@ import type { SchoolCompanyLinkRepository } from "../repositories/school-company
 import type { SchoolRepository } from "../repositories/school.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { CompanyServiceAreasService } from "@/modules/company-service-areas/company-service-areas.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 import type { School, SchoolAccessPoint, SchoolCompanyLink } from "@prisma/client";
@@ -110,6 +111,7 @@ describe("SchoolsService", () => {
   let auditLogService: jest.Mocked<AuditLogService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let messagePersonalizationService: jest.Mocked<Pick<MessagePersonalizationService, "novaEscola">>;
+  let companyServiceAreas: jest.Mocked<CompanyServiceAreasService>;
 
   beforeEach(() => {
     schoolRepository = {
@@ -150,6 +152,14 @@ describe("SchoolsService", () => {
       novaEscola: jest.fn().mockReturnValue({ titulo: "Nova escola cadastrada", corpo: "..." }),
     };
 
+    // Cerca de atuação (22/09/2026): por padrão LIBERA, replicando o
+    // caso de uma empresa sem área cadastrada — que é o comportamento
+    // de sempre e o que o resto desta suíte exercita. Os testes da
+    // cerca em si vivem em `company-service-areas.service.spec.ts`.
+    companyServiceAreas = {
+      assertPodeCredenciar: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<CompanyServiceAreasService>;
+
     service = new SchoolsService(
       schoolRepository,
       accessPointRepository,
@@ -157,6 +167,7 @@ describe("SchoolsService", () => {
       auditLogService,
       eventEmitter,
       messagePersonalizationService as unknown as MessagePersonalizationService,
+      companyServiceAreas,
     );
 
     schoolRepository.nextCodigoInternoSequence.mockResolvedValue(1);
