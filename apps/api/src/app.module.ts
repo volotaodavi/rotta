@@ -33,6 +33,7 @@ import redisConfig from "@/config/redis.config";
 import smsConfig from "@/config/sms.config";
 import storageConfig from "@/config/storage.config";
 import supportAiConfig from "@/config/support-ai.config";
+import trackersConfig from "@/config/trackers.config";
 import turnstileConfig from "@/config/turnstile.config";
 import vehiclePlateLookupConfig from "@/config/vehicle-plate-lookup.config";
 import whatsappConfig from "@/config/whatsapp.config";
@@ -81,6 +82,7 @@ import { SettingsModule } from "@/modules/settings/settings.module";
 import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { SupportModule } from "@/modules/support/support.module";
+import { TrackersModule } from "@/modules/trackers/trackers.module";
 import { TrialNotificationsModule } from "@/modules/trial-notifications/trial-notifications.module";
 import { TripsModule } from "@/modules/trips/trips.module";
 import { UsersModule } from "@/modules/users/users.module";
@@ -104,6 +106,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
         fcmConfig,
         pushConfig,
         supportAiConfig,
+        trackersConfig,
         whatsappConfig,
         smsConfig,
         emailConfig,
@@ -151,6 +154,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     DocumentExpiryModule,
     SchoolsModule,
     CompanyServiceAreasModule,
+    TrackersModule,
     // Portal da Escola (22/09/2026) — leitura por `escolaId`, fora do
     // isolamento por `companyId` do resto do sistema. Ver o módulo.
     SchoolPortalModule,

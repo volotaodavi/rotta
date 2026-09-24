@@ -41,6 +41,13 @@ export const envSchema = z.object({
   // alcançável pela internet, nunca `localhost`.
   QSTASH_TOKEN: z.string().optional(),
   QSTASH_CURRENT_SIGNING_KEY: z.string().optional(),
+
+  // Rastreadores físicos (24/09/2026). Opcional: vazio = ingestão
+  // desligada, e o guard recusa tudo. É o estado certo enquanto ninguém
+  // subiu o receptor — melhor recusar do que aceitar posição de origem
+  // desconhecida.
+  TRACKER_INGEST_SECRET: z.string().optional(),
+  TRACKER_TIMEOUT_MINUTOS: z.coerce.number().int().positive().optional(),
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
   API_PUBLIC_URL: z.string().url().or(z.literal("")).optional(),
 

@@ -554,6 +554,29 @@ export class VehiclesService {
    * fonte de verdade da viagem em curso, que pode usar um veículo
    * diferente do vínculo "padrão" (ex. substituição pontual).
    */
+  /**
+   * Posição vinda de um rastreador físico, FORA de viagem (24/09/2026).
+   *
+   * Separado de `updateLocationFromTrip` por uma diferença que importa:
+   * aqui `viagemAtualId` NÃO é tocado. O ônibus pode estar manobrando na
+   * garagem, indo para o posto ou voltando vazio — tem posição, não tem
+   * viagem. Escrever `viagemAtualId` aqui abriria viagem por acidente;
+   * apagar apagaria a que está em andamento.
+   *
+   * Sem ator, como todo o módulo de rastreadores: quem fala é o
+   * aparelho, e o veículo já foi resolvido pelo IMEI credenciado.
+   */
+  async registrarPosicaoDeRastreador(
+    vehicleId: string,
+    data: { latitude: number; longitude: number; capturadaEm: Date },
+  ): Promise<void> {
+    await this.vehicleRepository.update(vehicleId, {
+      ultimaLatitude: data.latitude,
+      ultimaLongitude: data.longitude,
+      ultimaPosicaoEm: data.capturadaEm,
+    });
+  }
+
   async updateLocationFromTrip(
     vehicleId: string,
     data: { latitude: number; longitude: number; capturadaEm: Date; viagemId: string },
