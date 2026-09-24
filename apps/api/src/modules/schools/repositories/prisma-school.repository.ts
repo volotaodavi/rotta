@@ -4,12 +4,14 @@ import type {
   CreateSchoolData,
   ListSchoolsFilter,
   ListSchoolsResult,
+  MunicipioDoCatalogo,
   SchoolRepository,
   UpdateSchoolData,
 } from "./school.repository";
 import type { Prisma, School, SchoolStatus } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
+import { normalizarMunicipio } from "@/shared/utils/municipio.util";
 
 /**
  * `schools` não tem RLS (catálogo compartilhado — ver nota de
@@ -146,6 +148,78 @@ export class PrismaSchoolRepository implements SchoolRepository {
     return companyId
       ? this.prisma.withBypass(this.prisma.school.findMany({ where }))
       : this.prisma.school.findMany({ where });
+  }
+
+  /**
+   * Os municípios da UF que têm escola ativa, com a contagem de cada
+   * um — em UMA consulta agregada, nunca trazendo as escolas.
+   *
+   * ## O tamanho real do problema
+   *
+   * O catálogo passa de 100 mil escolas. Trazer as linhas para contar
+   * municípios seria carregar até ~50 mil registros só para descobrir
+   * que SP tem 645 municípios. O `groupBy` devolve no máximo uma linha
+   * por grafia distinta — 853 em Minas, que é a pior UF do país.
+   *
+   * ## Por que agrupa por DUAS colunas
+   *
+   * `cidadeNormalizada` é a chave (é ela que casa "Maricá" com
+   * "MARICA"), mas quem aparece na tela é `cidade`, com acento. Como a
+   * mesma cidade pode ter várias grafias na base (planilhas diferentes,
+   * anos diferentes do Censo), o agrupamento traz as duas e a fusão
+   * abaixo escolhe a grafia mais comum como rótulo — somando as
+   * contagens, para que o total exibido seja o total que o
+   * credenciamento vai pegar.
+   */
+  async listMunicipios(estado: string): Promise<MunicipioDoCatalogo[]> {
+    const uf = estado.trim().toUpperCase();
+
+    const grupos = await this.prisma.school.groupBy({
+      by: ["cidade", "cidadeNormalizada"],
+      where: { estado: uf, deletedAt: null, status: "ATIVA" },
+      _count: { _all: true },
+    });
+
+    // `escolasDaGrafia` guarda quantas escolas tem a grafia ESCOLHIDA
+    // como rótulo, separado de `escolas`, que é o total somado de todas
+    // as grafias. Sem essa separação não dá para comparar uma grafia
+    // nova contra a campeã atual — só contra a soma, que cresce a cada
+    // iteração e faria a última grafia lida vencer sempre.
+    const porChave = new Map<string, MunicipioDoCatalogo & { escolasDaGrafia: number }>();
+
+    for (const grupo of grupos) {
+      // A coluna é gerada pelo banco e nunca deveria vir nula, mas o
+      // tipo é anulável — e recalcular aqui custa nada. Os dois
+      // cálculos concordam por construção (ver `municipio.util.ts`).
+      const chave = grupo.cidadeNormalizada ?? normalizarMunicipio(grupo.cidade);
+      if (!chave) continue;
+
+      const escolas = grupo._count._all;
+      const atual = porChave.get(chave);
+
+      if (!atual) {
+        porChave.set(chave, {
+          cidade: grupo.cidade,
+          estado: uf,
+          cidadeNormalizada: chave,
+          escolas,
+          escolasDaGrafia: escolas,
+        });
+        continue;
+      }
+
+      atual.escolas += escolas;
+      // A grafia que aparece em mais escolas vence — é a que o Admin
+      // reconhece como "o nome da cidade".
+      if (escolas > atual.escolasDaGrafia) {
+        atual.cidade = grupo.cidade;
+        atual.escolasDaGrafia = escolas;
+      }
+    }
+
+    return [...porChave.values()]
+      .map(({ escolasDaGrafia: _ignorado, ...municipio }) => municipio)
+      .sort((a, b) => a.cidade.localeCompare(b.cidade, "pt-BR"));
   }
 
   async nextCodigoInternoSequence(): Promise<number> {

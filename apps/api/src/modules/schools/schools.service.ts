@@ -44,7 +44,9 @@ import type { CreateSchoolAccessPointDto } from "./dto/create-school-access-poin
 import type { CreateSchoolCompanyLinkDto } from "./dto/create-school-company-link.dto";
 import type { CreateSchoolDto } from "./dto/create-school.dto";
 import type { ImportSchoolsResultDto } from "./dto/import-schools-result.dto";
+import type { ListMunicipiosQueryDto } from "./dto/list-municipios-query.dto";
 import type { ListSchoolsQueryDto } from "./dto/list-schools-query.dto";
+import type { MunicipioResponseDto } from "./dto/municipio-response.dto";
 import type { SchoolAccessPointResponseDto } from "./dto/school-access-point-response.dto";
 import type {
   ListSchoolCompanyLinksResponseDto,
@@ -474,6 +476,26 @@ export class SchoolsService {
       .map(({ school, distanciaKm }) => toSchoolSuggestionResponseDto(school, distanciaKm));
 
     return { items: ordenadas };
+  }
+
+  /**
+   * Os municípios de uma UF que já têm escola no catálogo.
+   *
+   * Nasceu de uma correção do usuário (24/09/2026): *"quando selecionar
+   * o município (qualquer um) ele vai buscar todas as escolas já
+   * existentes no app. São mais de 100 mil"*. O Admin não deve DIGITAR
+   * o município — deve escolhê-lo de uma lista tirada do próprio
+   * catálogo, com a contagem de escolas ao lado. Escolher elimina de
+   * uma vez a classe de erro em que um acento ou uma letra trocada
+   * devolve "0 escolas" num município cheio delas.
+   *
+   * A consulta é agregada no banco (`groupBy` sobre o índice
+   * `[estado, cidadeNormalizada]`) e nunca traz as escolas: a resposta
+   * tem no máximo uma linha por município da UF — 853 em Minas, que é o
+   * pior caso do país.
+   */
+  listarMunicipios(query: ListMunicipiosQueryDto): Promise<MunicipioResponseDto[]> {
+    return this.schoolRepository.listMunicipios(query.estado);
   }
 
   /** Detecção de duplicidade (briefing "ROTTA AI") — implementação real, não depende de provedor externo (ver `school-duplicate.util.ts`). */

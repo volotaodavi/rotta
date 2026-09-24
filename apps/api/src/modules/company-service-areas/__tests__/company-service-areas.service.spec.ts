@@ -236,27 +236,46 @@ describe("quem lê a cerca", () => {
  * deste bloco: "não deverá inventar ou faltar".
  */
 describe("credenciar município inteiro", () => {
-  const escolasDeMarica = [
-    { id: "e1", cidade: "MARICA" },
-    { id: "e2", cidade: "Maricá" },
-    { id: "e3", cidade: "Niterói" },
-  ];
+  // O que o BANCO devolve — já filtrado pelo `where`, porque desde a
+  // migration `20260924210000_municipio_indexado` a comparação de
+  // município é indexada e não acontece mais em memória.
+  const escolasDeMarica = [{ id: "e1" }, { id: "e2" }];
 
-  it("NÃO FALTAR — pega a escola mesmo com acento e caixa diferentes da planilha", async () => {
-    // "Maricá" digitado pelo Admin contra "MARICA" do INEP. Sem
-    // normalizar, metade do município ficaria de fora em silêncio.
-    const { service, linkCreateMany } = criarServico([], escolasDeMarica, []);
+  it("NÃO FALTAR — busca pelo município NORMALIZADO, não pelo texto digitado", async () => {
+    // "Maricá" digitado pelo Admin contra "MARICA" vindo do INEP. Se o
+    // `where` levasse o texto cru, metade do município ficaria de fora
+    // em silêncio — e "0 escolas" é indistinguível de "a planilha não
+    // tinha essa escola".
+    const { service, schoolFindMany, linkCreateMany } = criarServico([], escolasDeMarica, []);
 
     const resultado = await service.credenciarMunicipio(
       "company-1",
-      { cidade: "Maricá", estado: "RJ" },
+      { cidade: "  Maricá ", estado: "rj" },
       adminActor,
     );
 
+    expect(schoolFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ estado: "RJ", cidadeNormalizada: "marica" }),
+      }),
+    );
     expect(resultado.encontradas).toBe(2);
     expect(resultado.credenciadas).toBe(2);
     const criados = linkCreateMany.mock.calls[0][0].data;
     expect(criados.map((v: { schoolId: string }) => v.schoolId).sort()).toEqual(["e1", "e2"]);
+  });
+
+  it("NÃO VARRE A UF INTEIRA — o filtro de município vai no banco", async () => {
+    // Guarda contra a regressão que o usuário apontou em 24/09/2026:
+    // "são mais de 100 mil [escolas], não é possível que o sistema não
+    // aguenta". A versão anterior carregava toda a UF em memória para
+    // comparar o nome em JavaScript — em SP, ~50 mil linhas por clique.
+    const { service, schoolFindMany } = criarServico([], escolasDeMarica, []);
+
+    await service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, adminActor);
+
+    const where = schoolFindMany.mock.calls[0][0].where;
+    expect(where.cidadeNormalizada).toBeDefined();
   });
 
   it("NÃO INVENTAR — nunca cria escola, só vincula as que já existem", async () => {
@@ -274,6 +293,9 @@ describe("credenciar município inteiro", () => {
   });
 
   it("reexecutar é seguro — o que já estava vinculado não duplica", async () => {
+    // O vínculo vigente de `e1` vem da consulta de vínculos da empresa,
+    // que traz TODOS (a lista é limitada pelo tamanho da
+    // transportadora) em vez de um `IN` com milhares de UUIDs.
     const { service, linkCreateMany } = criarServico([], escolasDeMarica, [{ schoolId: "e1" }]);
 
     const resultado = await service.credenciarMunicipio(

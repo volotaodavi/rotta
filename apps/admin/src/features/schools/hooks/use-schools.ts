@@ -74,6 +74,30 @@ export function useSchool(id: string) {
   });
 }
 
+/**
+ * Os municípios de uma UF que já têm escola no catálogo, com a contagem
+ * de cada um.
+ *
+ * É o que faz o Admin ESCOLHER o município em vez de digitá-lo (pedido
+ * do usuário 24/09/2026: "quando selecionar o município (qualquer um)
+ * ele vai buscar todas as escolas já existentes no app"). Digitar
+ * "Maricá" com um acento diferente do que a planilha gravou devolvia
+ * zero escolas — um erro que parece dado faltando e some por completo
+ * quando a lista vem do próprio catálogo.
+ *
+ * `staleTime` longo: o catálogo de escolas muda quando alguém importa
+ * uma planilha, não a cada minuto. Não faz sentido refazer uma
+ * agregação de UF inteira enquanto o Admin decide a rede.
+ */
+export function useMunicipios(estado: string) {
+  return useQuery({
+    queryKey: ["schools", "municipios", estado.toUpperCase()],
+    queryFn: () => schoolsApi.listarMunicipios(estado.toUpperCase()),
+    enabled: estado.trim().length === 2,
+    staleTime: 10 * 60_000,
+  });
+}
+
 export function useSchoolDashboard(companyId?: string) {
   return useQuery({
     queryKey: ["schools", "dashboard", companyId],

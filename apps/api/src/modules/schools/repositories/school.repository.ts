@@ -64,6 +64,23 @@ export interface ListSchoolsResult {
 }
 
 /**
+ * Um município do catálogo, com quantas escolas ativas ele tem.
+ *
+ * O `escolas` não é enfeite: é o número que o Admin confere contra o
+ * que ele sabe que subiu na planilha ANTES de credenciar a
+ * transportadora. "Maricá — 62 escolas" responde à pergunta "vai pegar
+ * todas?" no momento de escolher, não depois.
+ */
+export interface MunicipioDoCatalogo {
+  /** Como se escreve, com acento e caixa — é isto que a tela mostra. */
+  cidade: string;
+  estado: string;
+  /** A chave de busca (sem acento, sem caixa) — é isto que o filtro usa. */
+  cidadeNormalizada: string;
+  escolas: number;
+}
+
+/**
  * `schools` NÃO tem RLS (catálogo compartilhado — ver nota de
  * arquitetura no model `School`, `schema.prisma`) — nenhum método aqui
  * usa `withTenant`/`withBypass` para isolar por tenant; o escopo por
@@ -99,5 +116,18 @@ export interface SchoolRepository {
    * que pode digitar errado.
    */
   searchCandidates(tokens: string[], limit: number): Promise<School[]>;
+  /**
+   * Os municípios de uma UF que TÊM escola ativa no catálogo, com a
+   * contagem de cada um.
+   *
+   * Existe para o Admin ESCOLHER o município em vez de digitá-lo
+   * (pedido do usuário 24/09/2026: "quando selecionar o município
+   * (qualquer um) ele vai buscar todas as escolas já existentes no
+   * app"). Escolher de uma lista tirada do próprio catálogo elimina de
+   * uma vez a classe inteira de erro em que o Admin digita "Maricá" e o
+   * sistema devolve zero porque a planilha grafou "MARICÁ DE BAIXO" ou
+   * porque ele errou uma letra.
+   */
+  listMunicipios(estado: string): Promise<MunicipioDoCatalogo[]>;
   nextCodigoInternoSequence(): Promise<number>;
 }

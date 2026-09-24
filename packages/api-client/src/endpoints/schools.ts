@@ -124,6 +124,24 @@ export interface SuggestSchoolsResult {
   items: SchoolSuggestion[];
 }
 
+/**
+ * Um município do catálogo (`GET /schools/municipios?estado=UF`).
+ *
+ * Existe para o Admin ESCOLHER o município em vez de digitá-lo. O
+ * `escolas` é o número que ele confere contra a planilha que subiu:
+ * "Maricá — 62 escolas" responde "vai pegar todas?" ANTES do
+ * credenciamento em massa, e não depois.
+ */
+export interface Municipio {
+  /** Nome com acento e caixa — é o que aparece na tela. */
+  cidade: string;
+  estado: string;
+  /** Chave sem acento nem caixa — é o que o backend usa no filtro indexado. */
+  cidadeNormalizada: string;
+  /** Escolas ATIVAS neste município. */
+  escolas: number;
+}
+
 export interface SchoolDashboard {
   totalEscolas: number;
   escolasPublicas: number;
@@ -226,6 +244,18 @@ export function createSchoolsEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<SuggestSchoolsResult>>(
           `/schools/sugestoes${buildQueryString(params)}`,
+        )
+      ).data,
+
+    /**
+     * Os municípios de uma UF que já têm escola no catálogo, com a
+     * contagem de cada um — agregado no banco, nunca trazendo as
+     * escolas (o catálogo passa de 100 mil).
+     */
+    listarMunicipios: async (estado: string): Promise<Municipio[]> =>
+      (
+        await apiClient.request<ApiEnvelope<Municipio[]>>(
+          `/schools/municipios${buildQueryString({ estado })}`,
         )
       ).data,
 

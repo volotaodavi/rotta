@@ -12,11 +12,12 @@ import {
   Table,
   Typography,
 } from "@rotta/ui/web";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type {
   CompanyServiceArea,
   CredenciamentoDeMunicipio,
+  Municipio,
   SchoolAdministrativeDependency,
 } from "@rotta/api-client";
 
@@ -26,6 +27,7 @@ import {
   useRemoveServiceArea,
   useServiceAreas,
 } from "@/features/companies/hooks/use-service-areas";
+import { useMunicipios } from "@/features/schools/hooks/use-schools";
 
 /**
  * Onde esta transportadora pode atuar (fluxo de transporte público,
@@ -65,11 +67,10 @@ export function CompanyServiceAreasTab({
   const criarArea = useCreateServiceArea(companyId);
   const removerArea = useRemoveServiceArea(companyId);
 
-  // Pré-preenchido com a cidade da própria transportadora: é o caso
-  // esmagadoramente comum, e digitar de novo o que o sistema já sabe é
-  // convite a erro de digitação.
-  const [cidadeAlvo, setCidadeAlvo] = useState(cidade);
+  // A UF começa na da própria transportadora: é o caso esmagadoramente
+  // comum, e é ela que carrega a lista de municípios.
   const [estadoAlvo, setEstadoAlvo] = useState(estado);
+  const [municipioAlvo, setMunicipioAlvo] = useState<Municipio | null>(null);
   const [rede, setRede] = useState<"TODAS" | "PUBLICA" | "PRIVADA">("TODAS");
   const [resultado, setResultado] = useState<CredenciamentoDeMunicipio | null>(null);
 
@@ -87,16 +88,32 @@ export function CompanyServiceAreasTab({
           </Typography>
 
           <div className="grid gap-3 sm:grid-cols-4">
-            <FormField label="Município" isRequired>
-              <Input value={cidadeAlvo} onChange={(e) => setCidadeAlvo(e.target.value)} />
-            </FormField>
             <FormField label="UF" isRequired>
               <Input
                 value={estadoAlvo}
                 maxLength={2}
-                onChange={(e) => setEstadoAlvo(e.target.value.toUpperCase())}
+                onChange={(e) => {
+                  setEstadoAlvo(e.target.value.toUpperCase());
+                  // Município de outra UF não faz sentido — limpar
+                  // evita credenciar "Maricá" tendo trocado para SP.
+                  setMunicipioAlvo(null);
+                  setResultado(null);
+                }}
               />
             </FormField>
+
+            <div className="sm:col-span-2">
+              <SeletorDeMunicipio
+                estado={estadoAlvo}
+                cidadeSugerida={cidade}
+                selecionado={municipioAlvo}
+                onSelecionar={(municipio) => {
+                  setMunicipioAlvo(municipio);
+                  setResultado(null);
+                }}
+              />
+            </div>
+
             <FormField label="Rede">
               <Select value={rede} onChange={(e) => setRede(e.target.value as typeof rede)}>
                 <option value="TODAS">Todas as redes</option>
@@ -104,21 +121,34 @@ export function CompanyServiceAreasTab({
                 <option value="PRIVADA">Só privada</option>
               </Select>
             </FormField>
-            <div className="flex items-end">
-              <Button
-                variant="primary"
-                disabled={!cidadeAlvo || estadoAlvo.length !== 2 || credenciar.isPending}
-                onClick={() => {
-                  setResultado(null);
-                  credenciar.mutate(
-                    { cidade: cidadeAlvo.trim(), estado: estadoAlvo, dependencias },
-                    { onSuccess: setResultado },
-                  );
-                }}
-              >
-                {credenciar.isPending ? "Credenciando…" : "Credenciar"}
-              </Button>
-            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              variant="primary"
+              disabled={!municipioAlvo || credenciar.isPending}
+              onClick={() => {
+                if (!municipioAlvo) return;
+                setResultado(null);
+                credenciar.mutate(
+                  {
+                    cidade: municipioAlvo.cidade,
+                    estado: municipioAlvo.estado,
+                    dependencias,
+                  },
+                  { onSuccess: setResultado },
+                );
+              }}
+            >
+              {credenciar.isPending ? "Credenciando…" : "Credenciar"}
+            </Button>
+            {municipioAlvo && !credenciar.isPending && (
+              <Typography variant="bodySmall" color="muted">
+                {municipioAlvo.escolas} escola(s) ativa(s) em {municipioAlvo.cidade}/
+                {municipioAlvo.estado}
+                {rede === "TODAS" ? "" : " — o filtro de rede pode reduzir esse número"}.
+              </Typography>
+            )}
           </div>
 
           {resultado && <ResultadoDoCredenciamento resultado={resultado} />}
@@ -188,6 +218,110 @@ export function CompanyServiceAreasTab({
       </Card>
     </div>
   );
+}
+
+/**
+ * Escolher o município, nunca digitá-lo.
+ *
+ * ## O bug que este componente apaga
+ *
+ * Antes, o Admin digitava a cidade num campo livre. Digitar "Marica"
+ * sem acento, "Maríca" com o acento na letra errada, ou simplesmente
+ * uma cidade cuja planilha ainda não subiu, devolvia a mesma coisa:
+ * **0 escolas encontradas**. E "0 escolas" é indistinguível de "a
+ * planilha não tinha essa escola" — o Admin iria procurar o erro no
+ * lugar errado.
+ *
+ * Tirando a lista do próprio catálogo, o município que aparece aqui é,
+ * por construção, um município que TEM escola. Não dá para escolher um
+ * que devolva zero.
+ *
+ * ## Por que tem um campo de filtro em cima de uma lista
+ *
+ * Minas Gerais tem 853 municípios. Um `select` com 853 opções funciona,
+ * mas achar "Sete Lagoas" rolando é pior do que digitar três letras. O
+ * filtro é só isso: um atalho para a mesma lista fechada — ele estreita
+ * as opções e nunca cria uma.
+ */
+function SeletorDeMunicipio({
+  estado,
+  cidadeSugerida,
+  selecionado,
+  onSelecionar,
+}: {
+  estado: string;
+  /** A cidade da própria transportadora — o palpite mais provável. */
+  cidadeSugerida: string;
+  selecionado: Municipio | null;
+  onSelecionar: (municipio: Municipio | null) => void;
+}): JSX.Element {
+  const { data: municipios, isLoading, isError } = useMunicipios(estado);
+  const [filtro, setFiltro] = useState("");
+
+  const visiveis = useMemo(() => {
+    const todos = municipios ?? [];
+    const busca = semAcento(filtro);
+    if (!busca) return todos;
+    return todos.filter((municipio) => semAcento(municipio.cidade).includes(busca));
+  }, [municipios, filtro]);
+
+  return (
+    <FormField label="Município" isRequired>
+      <div className="flex flex-col gap-2">
+        <Input
+          value={filtro}
+          placeholder={
+            isLoading
+              ? "Carregando municípios…"
+              : `Filtrar entre ${(municipios ?? []).length} município(s)`
+          }
+          disabled={isLoading || isError}
+          onChange={(e) => setFiltro(e.target.value)}
+        />
+        <Select
+          value={selecionado?.cidadeNormalizada ?? ""}
+          disabled={isLoading || isError}
+          onChange={(e) =>
+            onSelecionar(visiveis.find((m) => m.cidadeNormalizada === e.target.value) ?? null)
+          }
+        >
+          <option value="">
+            {/* A cidade da própria transportadora entra no texto como
+                dica, não como valor pré-selecionado: credenciar um
+                município inteiro é irreversível com um clique, e não
+                deve acontecer por o Admin não ter mexido no campo. */}
+            {cidadeSugerida ? `Selecione (provavelmente ${cidadeSugerida})` : "Selecione"}
+          </option>
+          {visiveis.map((municipio) => (
+            <option key={municipio.cidadeNormalizada} value={municipio.cidadeNormalizada}>
+              {municipio.cidade} — {municipio.escolas} escola(s)
+            </option>
+          ))}
+        </Select>
+
+        {isError && (
+          <Typography variant="bodySmall" color="danger">
+            Não foi possível carregar os municípios desta UF.
+          </Typography>
+        )}
+        {!isLoading && !isError && (municipios ?? []).length === 0 && estado.length === 2 && (
+          <Typography variant="bodySmall" color="danger">
+            Nenhuma escola de {estado} está no catálogo. Importe a planilha em Escolas antes de
+            credenciar.
+          </Typography>
+        )}
+      </div>
+    </FormField>
+  );
+}
+
+/**
+ * O mesmo tratamento que o banco dá ao nome do município — para que
+ * digitar "marica" no filtro ache "Maricá". Só de exibição: o valor que
+ * vai para a API é sempre a `cidade` que veio do catálogo.
+ */
+function semAcento(valor: string): string {
+  return valor.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
 }
 
 /**

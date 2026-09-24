@@ -9,6 +9,14 @@ import type { School, SchoolAdministrativeDependency } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { Role } from "@/shared/enums";
+import { normalizarMunicipio } from "@/shared/utils/municipio.util";
+
+/**
+ * Lotes do `createMany` de vínculos. O Postgres aceita 65535 parâmetros
+ * por statement e cada vínculo gasta 3 colunas — mil linhas por lote
+ * ficam com folga enorme e ainda são uma ida só ao banco.
+ */
+const TAMANHO_DO_LOTE = 1000;
 
 /**
  * Área de atuação da transportadora — a vertente de transporte PÚBLICO
@@ -153,39 +161,48 @@ export class CompanyServiceAreasService {
     const estado = dto.estado.trim().toUpperCase();
     const dependencias = dto.dependencias ?? [];
 
-    // A comparação de município é feita em memória, e não no `where`,
-    // porque precisa ignorar acento: "Maricá" digitado pelo Admin tem
-    // de casar com "MARICA" vindo da planilha do INEP, e o Postgres só
-    // faria isso com `unaccent` instalado — dependência de extensão que
-    // esta operação não justifica. O `where` estreita por UF (barato e
-    // exato) e o resto é filtrado aqui.
-    const candidatas = await this.prisma.withBypass(
+    // Busca INDEXADA, exata, pela coluna gerada `cidadeNormalizada`
+    // (migration `20260924210000_municipio_indexado`). A versão anterior
+    // carregava a UF inteira em memória para comparar o nome ignorando
+    // acento — em SP são ~50 mil escolas por clique. O banco resolve o
+    // acento sozinho agora, porque a coluna já nasce sem ele.
+    const alvo = await this.prisma.withBypass(
       this.prisma.school.findMany({
         where: {
           estado,
+          cidadeNormalizada: normalizarMunicipio(cidade),
           deletedAt: null,
           status: "ATIVA",
           ...(dependencias.length > 0 ? { dependenciaAdministrativa: { in: dependencias } } : {}),
         },
-        select: { id: true, cidade: true },
+        select: { id: true },
       }),
     );
 
-    const alvo = candidatas.filter((escola) => normalizar(escola.cidade) === normalizar(cidade));
-
+    // Os vínculos VIGENTES desta empresa, sem `IN (...)` com os ids das
+    // escolas: num município grande o `IN` teria milhares de UUIDs. A
+    // lista de vínculos de uma transportadora é limitada pelo tamanho
+    // dela (centenas, no pior caso), então é mais barato trazê-la
+    // inteira e cruzar aqui.
     const jaVinculadas = await this.prisma.withBypass(
       this.prisma.schoolCompanyLink.findMany({
-        where: { companyId, desvinculadoEm: null, schoolId: { in: alvo.map((e) => e.id) } },
+        where: { companyId, desvinculadoEm: null },
         select: { schoolId: true },
       }),
     );
-    const idsJaVinculados = new Set(jaVinculadas.map((v) => v.schoolId));
-    const novas = alvo.filter((escola) => !idsJaVinculados.has(escola.id));
+    const vinculosVigentes = new Set(jaVinculadas.map((v) => v.schoolId));
+    const novas = alvo.filter((escola) => !vinculosVigentes.has(escola.id));
+    const jaCredenciadas = alvo.length - novas.length;
 
-    if (novas.length > 0) {
+    // Em lotes: um `createMany` com 5 mil linhas estoura o limite de
+    // parâmetros do Postgres (65535 por statement, e aqui são 3 colunas
+    // por linha). Lotes de mil ficam com folga e ainda são uma ida só
+    // ao banco cada.
+    for (let inicio = 0; inicio < novas.length; inicio += TAMANHO_DO_LOTE) {
+      const lote = novas.slice(inicio, inicio + TAMANHO_DO_LOTE);
       await this.prisma.withBypass(
         this.prisma.schoolCompanyLink.createMany({
-          data: novas.map((escola) => ({
+          data: lote.map((escola) => ({
             schoolId: escola.id,
             companyId,
             vinculadoPorId: actor.sub,
@@ -205,7 +222,7 @@ export class CompanyServiceAreasService {
     return {
       encontradas: alvo.length,
       credenciadas: novas.length,
-      jaCredenciadas: idsJaVinculados.size,
+      jaCredenciadas,
       areaDeAtuacaoRegistrada,
     };
   }
@@ -224,7 +241,9 @@ export class CompanyServiceAreasService {
     const existentes = await this.prisma.withBypass(
       this.prisma.companyServiceArea.findMany({ where: { companyId, estado } }),
     );
-    const jaTem = existentes.some((area) => normalizar(area.cidade) === normalizar(cidade));
+    const jaTem = existentes.some(
+      (area) => normalizarMunicipio(area.cidade) === normalizarMunicipio(cidade),
+    );
     if (jaTem) return true;
 
     await this.prisma.withBypass(
@@ -272,8 +291,8 @@ export class CompanyServiceAreasService {
     }
 
     const mesmoMunicipio =
-      normalizar(area.cidade) === normalizar(school.cidade) &&
-      normalizar(area.estado) === normalizar(school.estado);
+      normalizarMunicipio(area.cidade) === normalizarMunicipio(school.cidade) &&
+      normalizarMunicipio(area.estado) === normalizarMunicipio(school.estado);
     if (!mesmoMunicipio) return false;
 
     // Lista vazia = todas as redes daquele município.
@@ -310,15 +329,4 @@ export class CompanyServiceAreasService {
       createdAt: area.createdAt.toISOString(),
     };
   }
-}
-
-/**
- * "Maricá" digitado pelo Admin tem de casar com "MARICA" vindo da
- * planilha do INEP. Sem acento, sem caixa, sem espaço sobrando — a
- * comparação de município é a única coisa entre uma transportadora e o
- * credenciamento dela, e não pode falhar por cedilha.
- */
-function normalizar(valor: string | null): string {
-  if (!valor) return "";
-  return valor.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
 }

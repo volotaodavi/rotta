@@ -24,6 +24,7 @@ import { CreateSchoolCompanyLinkDto } from "./dto/create-school-company-link.dto
 import { CreateSchoolDto } from "./dto/create-school.dto";
 import { ExportSchoolsQueryDto } from "./dto/export-schools-query.dto";
 import { ImportSchoolsDto } from "./dto/import-schools.dto";
+import { ListMunicipiosQueryDto } from "./dto/list-municipios-query.dto";
 import { ListSchoolsQueryDto } from "./dto/list-schools-query.dto";
 import { SuggestSchoolsQueryDto } from "./dto/suggest-schools-query.dto";
 import { UpdateSchoolAccessPointDto } from "./dto/update-school-access-point.dto";
@@ -82,6 +83,21 @@ export class SchoolsController {
   @Roles(...READ_ROLES)
   sugerirEscolas(@Query() query: SuggestSchoolsQueryDto) {
     return this.schoolsService.sugerirEscolas(query);
+  }
+
+  /**
+   * Os municípios da UF que já têm escola no catálogo, com a contagem
+   * de cada um — a lista de onde o Admin ESCOLHE o município antes de
+   * credenciar uma transportadora nele.
+   *
+   * Rota literal declarada antes de `:id` (mesma precaução das outras
+   * literais deste controller): sem isso, `/schools/municipios` cairia
+   * no handler de `/schools/:id` e o `ParseUUIDPipe` devolveria 400.
+   */
+  @Get("municipios")
+  @Roles(...MANAGE_ROLES)
+  listarMunicipios(@Query() query: ListMunicipiosQueryDto) {
+    return this.schoolsService.listarMunicipios(query);
   }
 
   @Get("check-duplicates")

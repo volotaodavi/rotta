@@ -2033,6 +2033,22 @@ model School {
   complemento            String?
   bairro                 String
   cidade                 String
+  /// Coluna GERADA pelo Postgres (`GENERATED ALWAYS AS ... STORED`,
+  /// migration `20260924210000_municipio_indexado`): `cidade` sem acento,
+  /// sem caixa e sem espaço nas pontas. Existe porque o catálogo passou
+  /// de 100 mil escolas e "pegar todas as escolas do município" não pode
+  /// varrer a UF inteira em memória — com `@@index([estado, cidadeNormalizada])`
+  /// vira uma busca indexada exata.
+  ///
+  /// NUNCA escreva nesta coluna: o Postgres recusa `INSERT`/`UPDATE` em
+  /// coluna gerada. Ela é derivada de `cidade` e se corrige sozinha
+  /// quando `cidade` muda — que é justamente a garantia que uma coluna
+  /// mantida pela aplicação não teria (bastaria um caminho de escrita
+  /// esquecer de atualizar para o município sumir da busca).
+  ///
+  /// O par em TypeScript é `normalizarMunicipio()`
+  /// (`shared/utils/municipio.util.ts`) — os dois TÊM de concordar.
+  cidadeNormalizada      String?
   estado                 String
   pais                   String                                 @default("Brasil")
   latitude               Decimal?                               @db.Decimal(9, 6)
@@ -2080,6 +2096,11 @@ model School {
 
   @@index([status])
   @@index([cidade, estado])
+  /// O índice que sustenta "credenciar o município inteiro" em um
+  /// catálogo de 100 mil+ escolas. `estado` primeiro porque é sempre
+  /// informado junto (não existe "Maricá" sem "RJ" — há município
+  /// homônimo em UFs diferentes).
+  @@index([estado, cidadeNormalizada])
   @@index([dependenciaAdministrativa])
   @@index([deletedAt])
   @@map("schools")
