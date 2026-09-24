@@ -2,6 +2,8 @@ import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/com
 
 import type { CompanyServiceAreaResponseDto } from "./dto/company-service-area-response.dto";
 import type { CreateCompanyServiceAreaDto } from "./dto/create-company-service-area.dto";
+import type { CredenciarMunicipioResponseDto } from "./dto/credenciar-municipio-response.dto";
+import type { CredenciarMunicipioDto } from "./dto/credenciar-municipio.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { School, SchoolAdministrativeDependency } from "@prisma/client";
 
@@ -115,6 +117,122 @@ export class CompanyServiceAreasService {
     await this.prisma.withBypass(
       this.prisma.companyServiceArea.deleteMany({ where: { id: areaId, companyId } }),
     );
+  }
+
+  /**
+   * Credencia a transportadora em TODAS as escolas de um município, de
+   * uma vez (pedido do usuário 24/09/2026: "escolhendo a cidade da
+   * prestadora de serviço, pegará TODAS as escolas daquele município já
+   * colocadas no site pela planilha. Não deverá inventar ou faltar").
+   *
+   * As duas palavras finais do pedido são as duas garantias:
+   *
+   * - **Não inventar.** Só vincula escola que JÁ existe no catálogo.
+   *   Nenhuma escola é criada aqui — se faltou alguma, o caminho é
+   *   corrigir a planilha e reimportar, nunca deixar o sistema chutar.
+   * - **Não faltar.** Pega todas as que casam com o município, sem
+   *   paginação, e devolve a contagem para o Admin conferir contra o
+   *   que ele sabe que subiu.
+   *
+   * Cria também a ÁREA DE ATUAÇÃO do município na mesma operação. Sem
+   * isso, a empresa sairia credenciada nas 62 escolas de hoje mas sem
+   * cerca nenhuma — e amanhã poderia se credenciar em qualquer escola
+   * do país. Credenciar e delimitar são o mesmo gesto.
+   *
+   * Reexecutar é seguro: o que já estava vinculado é contado à parte,
+   * não duplicado.
+   */
+  async credenciarMunicipio(
+    companyId: string,
+    dto: CredenciarMunicipioDto,
+    actor: AuthenticatedUser,
+  ): Promise<CredenciarMunicipioResponseDto> {
+    this.exigirAdminRotta(actor);
+
+    const cidade = dto.cidade.trim();
+    const estado = dto.estado.trim().toUpperCase();
+    const dependencias = dto.dependencias ?? [];
+
+    // A comparação de município é feita em memória, e não no `where`,
+    // porque precisa ignorar acento: "Maricá" digitado pelo Admin tem
+    // de casar com "MARICA" vindo da planilha do INEP, e o Postgres só
+    // faria isso com `unaccent` instalado — dependência de extensão que
+    // esta operação não justifica. O `where` estreita por UF (barato e
+    // exato) e o resto é filtrado aqui.
+    const candidatas = await this.prisma.withBypass(
+      this.prisma.school.findMany({
+        where: {
+          estado,
+          deletedAt: null,
+          status: "ATIVA",
+          ...(dependencias.length > 0 ? { dependenciaAdministrativa: { in: dependencias } } : {}),
+        },
+        select: { id: true, cidade: true },
+      }),
+    );
+
+    const alvo = candidatas.filter((escola) => normalizar(escola.cidade) === normalizar(cidade));
+
+    const jaVinculadas = await this.prisma.withBypass(
+      this.prisma.schoolCompanyLink.findMany({
+        where: { companyId, desvinculadoEm: null, schoolId: { in: alvo.map((e) => e.id) } },
+        select: { schoolId: true },
+      }),
+    );
+    const idsJaVinculados = new Set(jaVinculadas.map((v) => v.schoolId));
+    const novas = alvo.filter((escola) => !idsJaVinculados.has(escola.id));
+
+    if (novas.length > 0) {
+      await this.prisma.withBypass(
+        this.prisma.schoolCompanyLink.createMany({
+          data: novas.map((escola) => ({
+            schoolId: escola.id,
+            companyId,
+            vinculadoPorId: actor.sub,
+          })),
+        }),
+      );
+    }
+
+    const areaDeAtuacaoRegistrada = await this.garantirAreaDoMunicipio(
+      companyId,
+      cidade,
+      estado,
+      dependencias,
+      actor.sub,
+    );
+
+    return {
+      encontradas: alvo.length,
+      credenciadas: novas.length,
+      jaCredenciadas: idsJaVinculados.size,
+      areaDeAtuacaoRegistrada,
+    };
+  }
+
+  /**
+   * Garante que existe a área de atuação deste município, sem duplicar
+   * se o Admin rodar o credenciamento duas vezes.
+   */
+  private async garantirAreaDoMunicipio(
+    companyId: string,
+    cidade: string,
+    estado: string,
+    dependencias: SchoolAdministrativeDependency[],
+    criadoPorId: string,
+  ): Promise<boolean> {
+    const existentes = await this.prisma.withBypass(
+      this.prisma.companyServiceArea.findMany({ where: { companyId, estado } }),
+    );
+    const jaTem = existentes.some((area) => normalizar(area.cidade) === normalizar(cidade));
+    if (jaTem) return true;
+
+    await this.prisma.withBypass(
+      this.prisma.companyServiceArea.create({
+        data: { companyId, cidade, estado, dependencias, criadoPorId },
+      }),
+    );
+    return true;
   }
 
   /**

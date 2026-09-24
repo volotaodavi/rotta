@@ -68,6 +68,10 @@ const MINHA_ROTA_LINK: NavLink = { href: "/minha-rota", label: "Minha Rota" };
  */
 const ESCOLA_NAV: NavLink[] = [
   { href: "/minha-escola", label: "Minha Escola" },
+  // Quem abre acesso para os colegas é a direção — mas a lista de quem
+  // tem acesso à lista das crianças é legítima para os três cargos, e a
+  // própria tela esconde os botões de quem não é diretor.
+  { href: "/minha-escola/equipe", label: "Equipe" },
   { href: "/perfil", label: "Perfil" },
 ];
 

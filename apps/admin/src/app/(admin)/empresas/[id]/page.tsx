@@ -16,6 +16,10 @@ import Link from "next/link";
 import { use, useState } from "react";
 
 import { useAccessAsSupport } from "@/features/backoffice/hooks/use-backoffice";
+
+/** Abas da tela de empresa. `atuacao` entrou com o fluxo público (24/09/2026). */
+type AbaDaEmpresa = "dados" | "alunos" | "rotas" | "veiculos" | "atuacao";
+import { CompanyServiceAreasTab } from "@/features/companies/components/company-service-areas-tab";
 import { CompanyStatusBadge } from "@/features/companies/components/company-status-badge";
 import {
   useCompany,
@@ -55,7 +59,7 @@ export default function EmpresaDetalhesPage({
   const [supportError, setSupportError] = useState("");
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [suspendMotivo, setSuspendMotivo] = useState(motivo);
-  const [activeTab, setActiveTab] = useState<"dados" | "alunos" | "rotas" | "veiculos">("dados");
+  const [activeTab, setActiveTab] = useState<AbaDaEmpresa>("dados");
 
   function handleConfirmarAcessoSuporte(): void {
     if (supportMotivo.trim().length < 10) {
@@ -228,9 +232,13 @@ export default function EmpresaDetalhesPage({
           { id: "alunos", label: "Alunos" },
           { id: "rotas", label: "Rotas" },
           { id: "veiculos", label: "Veículos" },
+          // Fluxo de transporte público (24/09/2026): onde esta
+          // transportadora pode atuar, e o credenciamento do município
+          // inteiro de uma vez.
+          { id: "atuacao", label: "Área de atuação" },
         ]}
         activeId={activeTab}
-        onChange={(id) => setActiveTab(id as "dados" | "alunos" | "rotas" | "veiculos")}
+        onChange={(id) => setActiveTab(id as AbaDaEmpresa)}
       />
 
       {activeTab === "dados" ? (
@@ -261,6 +269,8 @@ export default function EmpresaDetalhesPage({
             )}
           </Card.Body>
         </Card>
+      ) : activeTab === "atuacao" ? (
+        <CompanyServiceAreasTab companyId={id} cidade={company.cidade} estado={company.estado} />
       ) : activeTab === "alunos" ? (
         <CompanyStudentsTab companyId={id} />
       ) : activeTab === "rotas" ? (

@@ -13,13 +13,14 @@ import {
   TableSkeleton,
   Typography,
 } from "@rotta/ui/web";
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 
 import type { ListSchoolsParams, School, SchoolStatus, SchoolType } from "@rotta/api-client";
 
 import { SchoolStatusBadge } from "@/features/schools/components/school-status-badge";
 import {
   useBulkUpdateSchoolStatus,
+  useImportSchools,
   useInepSyncStatus,
   useSchoolDashboard,
   useSchoolsList,
@@ -90,6 +91,8 @@ export default function EscolasAdminPage(): JSX.Element {
       <Typography variant="bodySmall" color="muted">
         Catálogo compartilhado de escolas atendidas por todas as empresas da plataforma.
       </Typography>
+
+      <ImportarPlanilhaDeEscolas />
 
       {/*
         Education Sync Agent (Dossiê 14) — sem clicar aqui pelo menos
@@ -359,5 +362,90 @@ export default function EscolasAdminPage(): JSX.Element {
         </Card.Body>
       </Card>
     </div>
+  );
+}
+
+/**
+ * Sobe a planilha de escolas de um município inteiro (24/09/2026).
+ *
+ * Pedido do usuário: "não irei criar escolas, irei pegar escolas
+ * existentes na planilha". Numa rede municipal são dezenas de escolas —
+ * cadastrar uma a uma não é opção, e o fluxo público começa justamente
+ * por ter o catálogo do município dentro do sistema.
+ *
+ * Isto já existia no painel da transportadora. Faltava aqui, que é onde
+ * o Admin da Rotta trabalha — sem esta tela, subir Maricá exigiria
+ * entrar numa conta de transportadora, o contrário do fluxo.
+ *
+ * O resultado é mostrado com o número de linhas e de erros, nunca só
+ * "importado com sucesso": numa planilha de 60 escolas, saber que 4
+ * linhas falharam é a única informação que importa.
+ */
+function ImportarPlanilhaDeEscolas(): JSX.Element {
+  const importar = useImportSchools();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [formato, setFormato] = useState<"csv" | "excel" | "json">("csv");
+  const [resultado, setResultado] = useState<string | null>(null);
+
+  function aoEscolherArquivo(event: ChangeEvent<HTMLInputElement>): void {
+    const arquivo = event.target.files?.[0];
+    if (!arquivo) return;
+    setResultado(null);
+    importar.mutate(
+      { format: formato, file: arquivo },
+      {
+        onSuccess: (dados) => {
+          setResultado(
+            `${dados.importadas} de ${dados.totalLinhas} linha(s) importada(s)` +
+              (dados.erros.length > 0 ? `, ${dados.erros.length} com erro.` : "."),
+          );
+        },
+        onError: () => setResultado("Erro inesperado ao importar o arquivo."),
+      },
+    );
+    // Zera para que escolher o MESMO arquivo de novo dispare o evento
+    // (o navegador não emite `change` se o valor não mudou).
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  return (
+    <Card>
+      <Card.Header title="Importar planilha de escolas" />
+      <Card.Body className="flex flex-col gap-3">
+        <Typography variant="bodySmall" color="muted">
+          Sobe o catálogo de um município inteiro de uma vez. As escolas entram no catálogo
+          compartilhado — depois cada transportadora se credencia nas que atende.
+        </Typography>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={formato}
+            onChange={(event) => setFormato(event.target.value as "csv" | "excel" | "json")}
+          >
+            <option value="csv">CSV</option>
+            <option value="excel">Excel</option>
+            <option value="json">JSON</option>
+          </Select>
+          <Button
+            variant="primary"
+            isLoading={importar.isPending}
+            onClick={() => inputRef.current?.click()}
+          >
+            Escolher arquivo
+          </Button>
+          <input
+            ref={inputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls,.json"
+            className="hidden"
+            onChange={aoEscolherArquivo}
+          />
+          {resultado && (
+            <Typography variant="bodySmall" color="muted">
+              {resultado}
+            </Typography>
+          )}
+        </div>
+      </Card.Body>
+    </Card>
   );
 }

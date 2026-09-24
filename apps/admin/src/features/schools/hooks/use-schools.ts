@@ -25,6 +25,29 @@ export function useSchoolsList(params: ListSchoolsParams) {
 }
 
 /**
+ * Importação da planilha de escolas (24/09/2026).
+ *
+ * Já existia no painel da transportadora, mas quem sobe a rede
+ * municipal inteira é o Admin da Rotta — pedido do usuário: "não irei
+ * criar escolas, irei pegar escolas existentes na planilha". Sem isto
+ * aqui, subir Maricá exigiria entrar numa conta de transportadora, que
+ * é justamente o contrário do fluxo público.
+ *
+ * O endpoint é o mesmo (`POST /schools/import`, já liberado para
+ * `ADMIN_ROTTA`) — nenhuma regra nova, só a porta que faltava.
+ */
+export function useImportSchools() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ format, file }: { format: "csv" | "excel" | "json"; file: File }) =>
+      schoolsApi.importFile(format, file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["schools"] });
+    },
+  });
+}
+
+/**
  * Cadastro de escola pontual, direto de dentro do fluxo "Novo aluno"
  * (pedido do usuário 02/09/2026, item 2: "vincular escola no fluxo de
  * criação de aluno" — antes, se a escola não existisse no catálogo, o

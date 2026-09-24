@@ -46,8 +46,11 @@ function escola(overrides: Partial<School> = {}): School {
   } as School;
 }
 
-function criarServico(areas: unknown[] = []) {
+function criarServico(areas: unknown[] = [], escolas: unknown[] = [], vinculos: unknown[] = []) {
   const findMany = jest.fn().mockResolvedValue(areas);
+  const schoolFindMany = jest.fn().mockResolvedValue(escolas);
+  const linkFindMany = jest.fn().mockResolvedValue(vinculos);
+  const linkCreateMany = jest.fn().mockResolvedValue({ count: 0 });
   const create = jest.fn().mockResolvedValue({
     id: "area-1",
     companyId: "company-1",
@@ -63,9 +66,18 @@ function criarServico(areas: unknown[] = []) {
   const prisma = {
     withBypass: jest.fn((op: unknown) => op),
     companyServiceArea: { findMany, create, deleteMany },
+    school: { findMany: schoolFindMany },
+    schoolCompanyLink: { findMany: linkFindMany, createMany: linkCreateMany },
   } as unknown as PrismaService;
 
-  return { service: new CompanyServiceAreasService(prisma), findMany, create, deleteMany };
+  return {
+    service: new CompanyServiceAreasService(prisma),
+    findMany,
+    create,
+    deleteMany,
+    schoolFindMany,
+    linkCreateMany,
+  };
 }
 
 describe("aditividade — o fluxo privado não pode ter quebrado", () => {
@@ -214,5 +226,107 @@ describe("quem lê a cerca", () => {
 
     await expect(service.listar("company-9", empresaActor)).rejects.toThrow(ForbiddenException);
     expect(findMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Credenciamento por município (24/09/2026).
+ *
+ * O pedido do usuário terminava em cinco palavras que viraram os testes
+ * deste bloco: "não deverá inventar ou faltar".
+ */
+describe("credenciar município inteiro", () => {
+  const escolasDeMarica = [
+    { id: "e1", cidade: "MARICA" },
+    { id: "e2", cidade: "Maricá" },
+    { id: "e3", cidade: "Niterói" },
+  ];
+
+  it("NÃO FALTAR — pega a escola mesmo com acento e caixa diferentes da planilha", async () => {
+    // "Maricá" digitado pelo Admin contra "MARICA" do INEP. Sem
+    // normalizar, metade do município ficaria de fora em silêncio.
+    const { service, linkCreateMany } = criarServico([], escolasDeMarica, []);
+
+    const resultado = await service.credenciarMunicipio(
+      "company-1",
+      { cidade: "Maricá", estado: "RJ" },
+      adminActor,
+    );
+
+    expect(resultado.encontradas).toBe(2);
+    expect(resultado.credenciadas).toBe(2);
+    const criados = linkCreateMany.mock.calls[0][0].data;
+    expect(criados.map((v: { schoolId: string }) => v.schoolId).sort()).toEqual(["e1", "e2"]);
+  });
+
+  it("NÃO INVENTAR — nunca cria escola, só vincula as que já existem", async () => {
+    const { service, linkCreateMany } = criarServico([], [], []);
+
+    const resultado = await service.credenciarMunicipio(
+      "company-1",
+      { cidade: "Maricá", estado: "RJ" },
+      adminActor,
+    );
+
+    expect(resultado.encontradas).toBe(0);
+    expect(resultado.credenciadas).toBe(0);
+    expect(linkCreateMany).not.toHaveBeenCalled();
+  });
+
+  it("reexecutar é seguro — o que já estava vinculado não duplica", async () => {
+    const { service, linkCreateMany } = criarServico([], escolasDeMarica, [{ schoolId: "e1" }]);
+
+    const resultado = await service.credenciarMunicipio(
+      "company-1",
+      { cidade: "Maricá", estado: "RJ" },
+      adminActor,
+    );
+
+    expect(resultado.jaCredenciadas).toBe(1);
+    expect(resultado.credenciadas).toBe(1);
+    const criados = linkCreateMany.mock.calls[0][0].data;
+    expect(criados).toHaveLength(1);
+    expect(criados[0].schoolId).toBe("e2");
+  });
+
+  it("registra a área de atuação junto — credenciar e delimitar são o mesmo gesto", async () => {
+    // Sem isto, a empresa sairia credenciada nas escolas de hoje mas
+    // sem cerca nenhuma, livre para se credenciar em qualquer escola do
+    // país amanhã.
+    const { service, create } = criarServico([], escolasDeMarica, []);
+
+    const resultado = await service.credenciarMunicipio(
+      "company-1",
+      { cidade: "Maricá", estado: "RJ" },
+      adminActor,
+    );
+
+    expect(resultado.areaDeAtuacaoRegistrada).toBe(true);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ cidade: "Maricá", estado: "RJ" }),
+      }),
+    );
+  });
+
+  it("não duplica a área de atuação ao rodar duas vezes", async () => {
+    const { service, create } = criarServico(
+      [{ cidade: "MARICA", estado: "RJ", schoolId: null, dependencias: [] }],
+      escolasDeMarica,
+      [],
+    );
+
+    await service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, adminActor);
+
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("só Admin Rotta credencia município", async () => {
+    const { service, linkCreateMany } = criarServico([], escolasDeMarica, []);
+
+    await expect(
+      service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, empresaActor),
+    ).rejects.toThrow(ForbiddenException);
+    expect(linkCreateMany).not.toHaveBeenCalled();
   });
 });

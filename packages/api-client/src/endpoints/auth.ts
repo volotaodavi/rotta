@@ -43,6 +43,13 @@ export interface MeResponse {
   pendingConsents: ConsentType[];
   /** Sub-papel do Admin Rotta (pedido do usuário 03/09/2026) — só presente pra role "admin_rotta", undefined pra todo outro papel. */
   adminPapel?: AdminRottaPapel;
+  /**
+   * Cargo dentro da escola — só presente pra role "escola". NÃO isola
+   * dado nenhum: os três cargos leem a mesma lista de alunos, porque é
+   * a mesma pergunta que os três respondem no portão. Decide uma coisa
+   * só, quem abre acesso para os colegas (`DIRETOR`).
+   */
+  escolaPapel?: "DIRETOR" | "COORDENADOR" | "AJUDANTE";
 }
 
 export interface AuthTokensResponse {

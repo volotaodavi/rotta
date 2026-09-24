@@ -16,6 +16,7 @@ import {
   createPlanNoticesEndpoints,
   createRottaAiEndpoints,
   createRoutesEndpoints,
+  createSchoolPortalContasEndpoints,
   createSchoolPortalEndpoints,
   createSchoolsEndpoints,
   createStudentPreRegistrationsEndpoints,
@@ -58,6 +59,7 @@ export const companyJoinPreRegistrationsApi = createCompanyJoinPreRegistrationsE
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const schoolPortalApi = createSchoolPortalEndpoints(apiClient);
+export const schoolPortalContasApi = createSchoolPortalContasEndpoints(apiClient);
 export const studentsApi = createStudentsEndpoints(apiClient);
 export const studentPreRegistrationsApi = createStudentPreRegistrationsEndpoints(apiClient);
 export const marketplaceApi = createMarketplaceEndpoints(apiClient);

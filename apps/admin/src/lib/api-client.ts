@@ -8,6 +8,8 @@ import {
   createBillingEndpoints,
   createClientErrorsEndpoints,
   createCompaniesEndpoints,
+  createCompanyServiceAreasEndpoints,
+  createSchoolPortalContasEndpoints,
   createGeoEndpoints,
   createGpsEndpoints,
   createHealthEndpoints,
@@ -49,6 +51,8 @@ const apiClient = createApiClient({
 export const authApi = createAuthEndpoints(apiClient);
 export const clientErrorsApi = createClientErrorsEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);
+export const companyServiceAreasApi = createCompanyServiceAreasEndpoints(apiClient);
+export const schoolPortalContasApi = createSchoolPortalContasEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);
 export const studentsApi = createStudentsEndpoints(apiClient);

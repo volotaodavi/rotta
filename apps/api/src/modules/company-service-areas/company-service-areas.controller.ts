@@ -13,6 +13,7 @@ import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { CompanyServiceAreasService } from "./company-service-areas.service";
 import { CreateCompanyServiceAreaDto } from "./dto/create-company-service-area.dto";
+import { CredenciarMunicipioDto } from "./dto/credenciar-municipio.dto";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
@@ -40,6 +41,21 @@ export class CompanyServiceAreasController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.service.criar(companyId, dto, actor);
+  }
+
+  /**
+   * Credencia a transportadora em TODAS as escolas de um município e
+   * registra a área de atuação na mesma operação — credenciar e
+   * delimitar são o mesmo gesto (24/09/2026).
+   */
+  @Post("municipio")
+  @Roles(Role.ADMIN_ROTTA)
+  credenciarMunicipio(
+    @Param("companyId", ParseUUIDPipe) companyId: string,
+    @Body() dto: CredenciarMunicipioDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.service.credenciarMunicipio(companyId, dto, actor);
   }
 
   @Get()

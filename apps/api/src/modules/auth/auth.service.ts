@@ -1085,6 +1085,11 @@ export class AuthService {
       billingBlocked,
       billingBlockedReason,
       adminPapel: role === Role.ADMIN_ROTTA ? user.adminRottaPapel : undefined,
+      // Cargo na escola — a tela "Equipe da escola" usa para decidir
+      // quem vê o botão de abrir acesso. Condicionado a `role ===
+      // ESCOLA` pelo mesmo motivo de `escolaId`: uma conta que também é
+      // Responsável não leva isto no token do outro perfil.
+      escolaPapel: role === Role.ESCOLA ? (user.escolaPapel ?? undefined) : undefined,
     };
   }
 }

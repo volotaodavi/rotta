@@ -5,6 +5,7 @@ import { use } from "react";
 
 import type { SchoolAuditLog, SchoolStatus } from "@rotta/api-client";
 
+import { SchoolAccountsCard } from "@/features/schools/components/school-accounts-card";
 import { SchoolStatusBadge } from "@/features/schools/components/school-status-badge";
 import {
   useSchool,
@@ -81,6 +82,17 @@ export default function EscolaAdminDetalhesPage({
           ))}
         </Select>
       </div>
+
+      {/*
+        Acesso ao Portal da Escola (24/09/2026) — vem ANTES dos dados
+        cadastrais de propósito: no fluxo público, abrir o acesso é a
+        ação que o Admin vem fazer aqui, e os dados da escola são só
+        conferência.
+      */}
+      <SchoolAccountsCard
+        escolaId={school.id}
+        escolaNome={school.nomeFantasia ?? school.nomeOficial}
+      />
 
       <Card>
         <Card.Header

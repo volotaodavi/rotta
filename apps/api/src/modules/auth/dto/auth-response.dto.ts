@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { AdminRottaPapel, CompanyType, ConsentType } from "@prisma/client";
+import { AdminRottaPapel, SchoolStaffRole, CompanyType, ConsentType } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
 
@@ -48,6 +48,12 @@ export class MeResponseDto {
       "Sub-papel dentro de Role.ADMIN_ROTTA (pedido do usuário 03/09/2026 — suporte@/financeiro@/admin geral com áreas diferentes) — só presente pra ADMIN_ROTTA, undefined pra todo outro papel. Front usa isto pra decidir o que mostrar na navegação (ver Dossiê do painel Admin).",
   })
   adminPapel?: AdminRottaPapel;
+  @ApiPropertyOptional({
+    enum: SchoolStaffRole,
+    description:
+      "Cargo dentro da escola — só presente pra Role.ESCOLA. NÃO isola dado: os três cargos leem a mesma lista de alunos. Decide só quem abre acesso para os colegas (DIRETOR).",
+  })
+  escolaPapel?: SchoolStaffRole;
 }
 
 /** Resposta de login/registro/refresh/resgate de convite bem-sucedidos (Dossiê 15). */
