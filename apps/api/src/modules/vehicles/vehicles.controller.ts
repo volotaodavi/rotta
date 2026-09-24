@@ -28,6 +28,7 @@ import { CreateVehicleReminderDto } from "./dto/create-vehicle-reminder.dto";
 import { CreateVehicleDto } from "./dto/create-vehicle.dto";
 import { CredenciarRastreadorDto } from "./dto/credenciar-rastreador.dto";
 import { ExportVehiclesQueryDto } from "./dto/export-vehicles-query.dto";
+import { ImportarRastreadoresDto } from "./dto/importar-rastreadores.dto";
 import { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
 import { ResolveVehicleCategoryReviewDto } from "./dto/resolve-vehicle-category-review.dto";
@@ -227,6 +228,22 @@ export class VehiclesController {
     @Req() req: Request,
   ) {
     return this.vehiclesService.reviewVehicle(id, dto, actor, requestMeta(req));
+  }
+
+  /**
+   * Credenciamento de um LOTE de rastreadores (24/09/2026) — rota
+   * literal, registrada antes de qualquer `:id`. É o caminho de
+   * primeira instalação: a planilha do instalador inteira de uma vez.
+   */
+  @Post("rastreadores/importar")
+  @Roles(Role.ADMIN_ROTTA)
+  @AdminAreas(AdminArea.VEICULOS)
+  importarRastreadores(
+    @Body() dto: ImportarRastreadoresDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.vehiclesService.importarRastreadores(dto, actor, requestMeta(req));
   }
 
   /**

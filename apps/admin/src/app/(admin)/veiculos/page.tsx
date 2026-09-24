@@ -67,6 +67,14 @@ export default function VeiculosAdminPage(): JSX.Element {
           <Link href="/veiculos/mapa" className={buttonVariants({ variant: "secondary" })}>
             Ver mapa nacional
           </Link>
+          {/*
+            Primeira instalação de um lote de rastreadores (24/09/2026).
+            Fica aqui, ao lado da frota, porque é onde o Admin já está
+            quando a planilha do instalador chega.
+          */}
+          <Link href="/veiculos/rastreadores" className={buttonVariants({ variant: "primary" })}>
+            Credenciar rastreadores
+          </Link>
         </div>
       </div>
       <Typography variant="bodySmall" color="muted">

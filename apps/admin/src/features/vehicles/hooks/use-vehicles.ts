@@ -4,6 +4,7 @@ import { useToast } from "@rotta/ui/web";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type {
+  ItemRastreador,
   ListVehicleCategoryReviewParams,
   ListVehiclesParams,
   ResolveVehicleCategoryReviewInput,
@@ -100,6 +101,33 @@ export function useResolveVehicleCategoryReview(id: string) {
     },
     onError: (error) => {
       toast.error(errorMessage(error, "Não foi possível registrar a revisão."), "Falha ao revisar");
+    },
+  });
+}
+
+/**
+ * Credenciamento de um LOTE de rastreadores (24/09/2026) — primeira
+ * instalação, a planilha do instalador inteira de uma vez.
+ *
+ * Sem `toast` de sucesso aqui de propósito: o resultado é PARCIAL, e
+ * quem sabe se houve linha recusada é a tela, que mostra a lista. Um
+ * "importado com sucesso" automático mentiria quando 3 das 40 linhas
+ * ficaram de fora.
+ */
+export function useImportarRastreadores() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  return useMutation({
+    mutationFn: ({ companyId, itens }: { companyId: string; itens: ItemRastreador[] }) =>
+      vehiclesApi.importarRastreadores(companyId, itens),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+    onError: (error) => {
+      toast.error(
+        errorMessage(error, "Não foi possível credenciar o lote."),
+        "Falha na importação",
+      );
     },
   });
 }

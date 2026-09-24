@@ -109,6 +109,14 @@ export interface VehicleRepository {
    * traduzir "IMEI X" em "ônibus 412" quando a posição chegar.
    */
   findByRastreadorImei(imei: string): Promise<Vehicle | null>;
+  /**
+   * Acha o ônibus pelo NÚMERO dentro de uma empresa — a chave que o
+   * Admin tem em mãos ao importar um lote de rastreadores (a planilha
+   * do fornecedor traz "412", nunca o UUID). Cross-tenant na
+   * implementação porque o Admin não tem tenant próprio; o `companyId`
+   * explícito é o que mantém o escopo.
+   */
+  findByNumeroFrota(companyId: string, numeroFrota: string): Promise<Vehicle | null>;
   update(id: string, data: UpdateVehicleData): Promise<Vehicle>;
   list(filter: ListVehiclesFilter): Promise<ListVehiclesResult>;
   /** Todos os veículos ativos do tenant, sem paginação — usado pelo Dashboard/Mapa/Exportação. */

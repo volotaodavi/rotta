@@ -46,6 +46,25 @@ export interface VehiclePlateLookupResult {
   cor: string | null;
 }
 
+/** Uma linha da planilha do fornecedor: ônibus (número ou placa) + IMEI. */
+export interface ItemRastreador {
+  identificador: string;
+  imei: string;
+}
+
+export interface LinhaRecusada {
+  /** Posição na planilha, começando em 1 — é assim que a pessoa acha a linha. */
+  linha: number;
+  identificador: string;
+  motivo: string;
+}
+
+export interface ImportacaoDeRastreadores {
+  total: number;
+  credenciados: number;
+  recusadas: LinhaRecusada[];
+}
+
 export interface CreateVehicleInput {
   /** Número/prefixo do ônibus. Único dentro da empresa; opcional na frota privada. */
   numeroFrota?: string;
@@ -467,6 +486,23 @@ export function createVehiclesEndpoints(apiClient: ApiClient) {
           method: "PATCH",
           body: imei ? { imei } : {},
         })
+      ).data,
+
+    /**
+     * Credencia um LOTE de rastreadores (só Admin Rotta) — o caminho de
+     * primeira instalação, a planilha do instalador inteira de uma vez.
+     * Parcial de propósito: linhas erradas voltam em `recusadas` sem
+     * derrubar as que entraram.
+     */
+    importarRastreadores: async (
+      companyId: string,
+      itens: ItemRastreador[],
+    ): Promise<ImportacaoDeRastreadores> =>
+      (
+        await apiClient.request<ApiEnvelope<ImportacaoDeRastreadores>>(
+          "/vehicles/rastreadores/importar",
+          { method: "POST", body: { companyId, itens } },
+        )
       ).data,
 
     /** "Li e concordo" (Responsável) — de propósito nunca existe "recusar". */

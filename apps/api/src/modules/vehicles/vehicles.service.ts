@@ -69,6 +69,11 @@ import type { CreateVehicleOccurrenceDto } from "./dto/create-vehicle-occurrence
 import type { CreateVehicleReminderDto } from "./dto/create-vehicle-reminder.dto";
 import type { CreateVehicleDto } from "./dto/create-vehicle.dto";
 import type { CredenciarRastreadorDto } from "./dto/credenciar-rastreador.dto";
+import type {
+  ImportarRastreadoresResponseDto,
+  LinhaRecusadaDto,
+} from "./dto/importar-rastreadores-response.dto";
+import type { ImportarRastreadoresDto } from "./dto/importar-rastreadores.dto";
 import type { ListVehicleCategoryReviewQueryDto } from "./dto/list-vehicle-category-review-query.dto";
 import type { ListVehiclesQueryDto } from "./dto/list-vehicles-query.dto";
 import type { ResolveVehicleCategoryReviewDto } from "./dto/resolve-vehicle-category-review.dto";
@@ -1504,6 +1509,115 @@ export class VehiclesService {
     });
 
     return toVehicleResponseDto(updated);
+  }
+
+  /**
+   * Credencia um LOTE de rastreadores de uma vez (pedido do usuário
+   * 24/09/2026: "comprei um lote de rastreador... como irei cadastrar
+   * pela primeira vez?").
+   *
+   * Um a um não escala: a planilha do instalador já vem com ônibus e
+   * IMEI lado a lado, e numa rede municipal são dezenas de linhas.
+   *
+   * ## Por que NÃO é uma transação
+   *
+   * Um IMEI repetido na linha 7 não pode desfazer as 6 linhas que
+   * entraram certas. Cada linha é independente, e a resposta diz o que
+   * ficou de fora e por quê — o Admin corrige só aquelas e reimporta.
+   * Reimportar uma linha já correta é inofensivo (grava o mesmo IMEI no
+   * mesmo ônibus).
+   *
+   * ## As três recusas, e por que cada uma existe
+   *
+   * 1. **Ônibus não encontrado** — a planilha tem um número que não
+   *    existe nesta transportadora. Silenciar isso deixaria um
+   *    rastreador comprado e nunca credenciado.
+   * 2. **IMEI repetido dentro do próprio lote** — duas linhas mandando
+   *    o mesmo aparelho para ônibus diferentes. Sem esta checagem, a
+   *    última linha venceria e a primeira ficaria sem rastreador, em
+   *    silêncio.
+   * 3. **IMEI já em uso em outro ônibus** — o mesmo aparelho em dois
+   *    carros faria as duas famílias verem a posição errada.
+   */
+  async importarRastreadores(
+    dto: ImportarRastreadoresDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<ImportarRastreadoresResponseDto> {
+    const recusadas: LinhaRecusadaDto[] = [];
+    const imeisDoLote = new Map<string, number>();
+    let credenciados = 0;
+
+    for (const [indice, item] of dto.itens.entries()) {
+      const linha = indice + 1;
+      const identificador = item.identificador.trim();
+      const imei = item.imei.trim();
+
+      if (!/^\d{14,17}$/.test(imei)) {
+        recusadas.push({ linha, identificador, motivo: "IMEI inválido — são 14 a 17 dígitos." });
+        continue;
+      }
+
+      const linhaAnterior = imeisDoLote.get(imei);
+      if (linhaAnterior) {
+        recusadas.push({
+          linha,
+          identificador,
+          motivo: `IMEI repetido na planilha (já usado na linha ${linhaAnterior}).`,
+        });
+        continue;
+      }
+
+      // Número do ônibus primeiro — é o que a planilha do instalador
+      // traz. A placa é o caminho alternativo, para a frota que não usa
+      // numeração.
+      const porNumero = await this.vehicleRepository.findByNumeroFrota(
+        dto.companyId,
+        identificador,
+      );
+      const veiculo = porNumero ?? (await this.vehicleRepository.findByPlaca(identificador));
+
+      if (!veiculo || veiculo.companyId !== dto.companyId) {
+        recusadas.push({
+          linha,
+          identificador,
+          motivo: "Nenhum ônibus com este número ou placa nesta transportadora.",
+        });
+        continue;
+      }
+
+      const emUso = await this.vehicleRepository.findByRastreadorImei(imei);
+      if (emUso && emUso.id !== veiculo.id) {
+        recusadas.push({
+          linha,
+          identificador,
+          motivo: "Este IMEI já está credenciado em outro ônibus.",
+        });
+        continue;
+      }
+
+      await this.vehicleRepository.update(veiculo.id, {
+        rastreadorImei: imei,
+        rastreadorVinculadoEm: new Date(),
+      });
+
+      await this.recordAudit({
+        companyId: veiculo.companyId,
+        entidadeTipo: "Vehicle",
+        entidadeId: veiculo.id,
+        acao: "RASTREADOR_CREDENCIADO",
+        atorUserId: actor.sub,
+        dadosAntes: { rastreadorImei: veiculo.rastreadorImei },
+        dadosDepois: { rastreadorImei: imei, origem: "IMPORTACAO_LOTE" },
+        ip: meta.ip,
+        userAgent: meta.userAgent,
+      });
+
+      imeisDoLote.set(imei, linha);
+      credenciados += 1;
+    }
+
+    return { total: dto.itens.length, credenciados, recusadas };
   }
 
   async reviewVehicle(

@@ -52,6 +52,14 @@ export class PrismaVehicleRepository implements VehicleRepository {
     );
   }
 
+  findByNumeroFrota(companyId: string, numeroFrota: string): Promise<Vehicle | null> {
+    return this.prisma.withBypass(
+      this.prisma.vehicle.findFirst({
+        where: { companyId, numeroFrota, deletedAt: null },
+      }),
+    );
+  }
+
   update(id: string, data: UpdateVehicleData): Promise<Vehicle> {
     return this.prisma.withTenant(this.prisma.vehicle.update({ where: { id }, data }));
   }

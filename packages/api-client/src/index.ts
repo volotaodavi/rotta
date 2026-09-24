@@ -41,3 +41,4 @@ export * from "./endpoints/wallet";
 export * from "./http";
 export * from "./retry-policy";
 export * from "./rules/paradas";
+export * from "./rules/rastreadores";
