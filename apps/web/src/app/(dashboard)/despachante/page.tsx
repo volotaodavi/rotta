@@ -11,8 +11,10 @@ import {
   Select,
   Spinner,
   Typography,
+  buttonVariants,
   useToast,
 } from "@rotta/ui/web";
+import Link from "next/link";
 import { useState } from "react";
 
 import type { Route, Vehicle } from "@rotta/api-client";
@@ -79,12 +81,21 @@ export default function DespachantePage(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <Typography variant="title">Despachante</Typography>
-        <Typography variant="bodySmall" color="muted">
-          Busque o ônibus pelo número e altere a rota dele. A troca de hoje avisa os responsáveis na
-          hora; a troca do padrão vale a partir da próxima viagem.
-        </Typography>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <Typography variant="title">Despachante</Typography>
+          <Typography variant="bodySmall" color="muted">
+            Busque o ônibus pelo número e altere a rota dele. A troca de hoje avisa os responsáveis
+            na hora; a troca do padrão vale a partir da próxima viagem.
+          </Typography>
+        </div>
+        {/*
+          A escala é o outro gesto: planejar o dia seguinte. Aqui se
+          mexe no que já está rodando; lá se monta o que ainda vai sair.
+        */}
+        <Link href="/despachante/escala" className={buttonVariants({ variant: "secondary" })}>
+          Escala do dia →
+        </Link>
       </div>
 
       <Card>

@@ -75,6 +75,7 @@ import { ParentsModule } from "@/modules/parents/parents.module";
 import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
 import { ReportsModule } from "@/modules/reports/reports.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
+import { RouteAssignmentsModule } from "@/modules/route-assignments/route-assignments.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
 import { SchoolPortalModule } from "@/modules/school-portal/school-portal.module";
 import { SchoolsModule } from "@/modules/schools/schools.module";
@@ -154,6 +155,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     DocumentExpiryModule,
     SchoolsModule,
     CompanyServiceAreasModule,
+    RouteAssignmentsModule,
     TrackersModule,
     // Portal da Escola (22/09/2026) — leitura por `escolaId`, fora do
     // isolamento por `companyId` do resto do sistema. Ver o módulo.

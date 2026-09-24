@@ -731,6 +731,7 @@ model Company {
   /// Onde esta transportadora PODE se credenciar (fluxo público,
   /// 22/09/2026). Vazio = sem cerca, o comportamento de sempre.
   areasDeAtuacao         CompanyServiceArea[]
+  escalas                RouteAssignment[]
   solicitacoesTransporte TransportRequest[]
   contratos              Contract[]
   avaliacoesRecebidas    Rating[]
@@ -944,6 +945,11 @@ model User {
 
   /// Areas de atuacao que este Admin Rotta cadastrou.
   areasDeAtuacaoCadastradas CompanyServiceArea[] @relation("CompanyServiceAreaCriadoPor")
+
+  /// Escalas do dia (fluxo público, 24/09/2026) — ver `RouteAssignment`.
+  escalasComoMotorista RouteAssignment[] @relation("RouteAssignmentMotorista")
+  escalasComoMonitor   RouteAssignment[] @relation("RouteAssignmentMonitor")
+  escalasCadastradas   RouteAssignment[] @relation("RouteAssignmentCriadoPor")
 
   /// Verificação de identidade hospedada via Didit (sessão v3) — cobre
   /// Motorista e dono de Empresa/Gestor (Responsável/Escola/Admin Rotta
@@ -1597,7 +1603,8 @@ model Vehicle {
   ///
   /// Escrito só pelo Admin da Rotta. Trocar o aparelho de ônibus é
   /// limpar aqui e gravar no outro; o histórico fica no `AuditLog`.
-  rastreadorImei        String?   @unique
+  escalas               RouteAssignment[] @relation("RouteAssignmentVeiculo")
+  rastreadorImei        String?           @unique
   rastreadorVinculadoEm DateTime?
 
   ultimoMotoristaId String? @db.Uuid
@@ -2639,10 +2646,78 @@ model Route {
   paradas RouteStop[]
   alunos  RouteStudent[]
   viagens Trip[]
+  escalas RouteAssignment[]
 
   @@index([companyId, status])
   @@index([companyId, deletedAt])
   @@map("routes")
+}
+
+/// Escala do dia — qual ônibus, com qual motorista, faz esta rota nesta
+/// data (pedido do usuário 24/09/2026: "a cada dia que for trabalhar, o
+/// despachante poderá designar os veículos para rotas... se quiser
+/// colocar motorista rotativo ou trocar sempre de rota, também
+/// poderá").
+///
+/// ## Por que uma tabela nova, e não `TripStatus.AGENDADA`
+///
+/// `Trip` é o registro do que ACONTECEU: tem código, hora de início,
+/// posições, eventos de embarque. Uma viagem "agendada" seria uma Trip
+/// sem nada disso, e cada consulta que hoje lista viagens teria de
+/// aprender a ignorá-la — dezenas de lugares, cada um uma chance de
+/// esquecer e mostrar ao responsável uma viagem que nunca saiu.
+///
+/// A escala é outra coisa: é uma INTENÇÃO, e vive antes da viagem
+/// existir. Quando a ignição liga (ou o motorista aperta iniciar), a
+/// escala vira uma `Trip` de verdade.
+///
+/// ## Como convive com o veículo/motorista padrão da rota
+///
+/// `Route.veiculoPadraoId`/`motoristaPadraoId` continuam sendo o caso
+/// "fixo": rota que sempre sai com o mesmo carro e o mesmo motorista
+/// não precisa de escala nenhuma. A escala existe só para o dia que
+/// foge do padrão — é o rodízio. Sem escala do dia, vale o padrão.
+///
+/// ## Por que NÃO é única por veículo+data
+///
+/// O mesmo ônibus faz a rota da manhã e a da tarde. Único é
+/// `[routeId, data]`: uma rota tem uma escala por dia.
+model RouteAssignment {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  routeId String @db.Uuid
+  route   Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  /// Dia da escala, sem hora — mesma convenção de `Trip.data`.
+  data DateTime @db.Date
+
+  veiculoId String  @db.Uuid
+  veiculo   Vehicle @relation("RouteAssignmentVeiculo", fields: [veiculoId], references: [id], onDelete: Restrict)
+
+  motoristaId String @db.Uuid
+  motorista   User   @relation("RouteAssignmentMotorista", fields: [motoristaId], references: [id], onDelete: Restrict)
+
+  monitorId String? @db.Uuid
+  monitor   User?   @relation("RouteAssignmentMonitor", fields: [monitorId], references: [id], onDelete: SetNull)
+
+  observacao String?
+
+  criadoPorId String? @db.Uuid
+  criadoPor   User?   @relation("RouteAssignmentCriadoPor", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// Uma escala por rota por dia. Regravar a mesma rota no mesmo dia é
+  /// EDITAR a escala, nunca criar uma segunda — é assim que o
+  /// despachante troca o motorista de última hora.
+  @@unique([routeId, data])
+  /// A consulta do rastreador: "que escala este ônibus tem hoje?".
+  @@index([companyId, data, veiculoId])
+  @@index([motoristaId, data])
+  @@map("route_assignments")
 }
 
 /// Parada física de uma rota, em ordem (briefing `ROT-07`). `companyId`

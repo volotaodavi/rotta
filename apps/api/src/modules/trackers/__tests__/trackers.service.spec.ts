@@ -57,18 +57,29 @@ function posicao(overrides: Partial<TraccarForwardDto> = {}): TraccarForwardDto 
   };
 }
 
-function criarServico(opcoes: { veiculo?: typeof veiculo | null; rota?: typeof rota | null } = {}) {
+function criarServico(
+  opcoes: {
+    veiculo?: typeof veiculo | null;
+    rota?: typeof rota | null;
+    escalas?: unknown[];
+    viagensEncerradas?: { routeId: string }[];
+  } = {},
+) {
   const vehicleFindFirst = jest
     .fn()
     .mockResolvedValue(opcoes.veiculo === undefined ? veiculo : opcoes.veiculo);
   const routeFindFirst = jest
     .fn()
     .mockResolvedValue(opcoes.rota === undefined ? rota : opcoes.rota);
+  const escalaFindMany = jest.fn().mockResolvedValue(opcoes.escalas ?? []);
+  const tripFindMany = jest.fn().mockResolvedValue(opcoes.viagensEncerradas ?? []);
 
   const prisma = {
     withBypass: jest.fn((op: unknown) => op),
     vehicle: { findFirst: vehicleFindFirst },
     route: { findFirst: routeFindFirst },
+    routeAssignment: { findMany: escalaFindMany },
+    trip: { findMany: tripFindMany },
   } as unknown as PrismaService;
 
   const vehiclesService = {
@@ -101,6 +112,17 @@ function criarServico(opcoes: { veiculo?: typeof veiculo | null; rota?: typeof r
     tripsService,
     positionRepository,
     routeFindFirst,
+    escalaFindMany,
+  };
+}
+
+/** Uma escala do dia, como o Prisma devolve com `include: { route }`. */
+function escala(routeId: string, motoristaId: string, ativa = true) {
+  return {
+    routeId,
+    motoristaId,
+    monitorId: null,
+    route: { id: routeId, status: ativa ? "ATIVA" : "PAUSADA", deletedAt: null },
   };
 }
 
@@ -249,5 +271,104 @@ describe("onde a posição é gravada", () => {
       longitude: -42.8186,
       capturadaEm: new Date("2026-09-24T11:00:00.000Z"),
     });
+  });
+});
+
+/**
+ * Escala do dia mandando na viagem (24/09/2026).
+ *
+ * A precedência é a regra central do fluxo do despachante: escala do
+ * dia vence o padrão da rota. Se isso inverter, o rodízio deixa de
+ * funcionar em silêncio — o ônibus emprestado abriria a rota de sempre,
+ * com o motorista de sempre, e ninguém veria o erro até uma família
+ * cobrar.
+ */
+describe("escala do dia manda na viagem", () => {
+  it("escala do dia VENCE o veículo/motorista padrão da rota", async () => {
+    const { service, tripsService, routeFindFirst } = criarServico({
+      escalas: [escala("rota-hoje", "motorista-escalado")],
+    });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(tripsService.start).toHaveBeenCalledWith(
+      expect.objectContaining({ routeId: "rota-hoje" }),
+      expect.objectContaining({ sub: "motorista-escalado" }),
+      {},
+    );
+    // Nem chega a consultar o padrão da rota quando há escala.
+    expect(routeFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("sem escala, cai no padrão da rota — o caso 'ônibus fixo' segue intacto", async () => {
+    const { service, tripsService } = criarServico({ escalas: [] });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(tripsService.start).toHaveBeenCalledWith(
+      expect.objectContaining({ routeId: "rota-1" }),
+      expect.objectContaining({ sub: "motorista-1" }),
+      {},
+    );
+  });
+
+  it("duas escalas no dia: abre a da manhã primeiro", async () => {
+    // O mesmo ônibus faz manhã e tarde. A chave virada às 6h abre a
+    // primeira; ninguém escolhe nada.
+    const { service, tripsService } = criarServico({
+      escalas: [escala("rota-manha", "motorista-a"), escala("rota-tarde", "motorista-b")],
+      viagensEncerradas: [],
+    });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(tripsService.start).toHaveBeenCalledWith(
+      expect.objectContaining({ routeId: "rota-manha" }),
+      expect.anything(),
+      {},
+    );
+  });
+
+  it("com a da manhã já encerrada, a chave do meio-dia abre a da tarde", async () => {
+    const { service, tripsService } = criarServico({
+      escalas: [escala("rota-manha", "motorista-a"), escala("rota-tarde", "motorista-b")],
+      viagensEncerradas: [{ routeId: "rota-manha" }],
+    });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(tripsService.start).toHaveBeenCalledWith(
+      expect.objectContaining({ routeId: "rota-tarde" }),
+      expect.objectContaining({ sub: "motorista-b" }),
+      {},
+    );
+  });
+
+  it("todas as escalas do dia já rodaram: manobrar na garagem não reabre viagem", async () => {
+    const { service, tripsService } = criarServico({
+      escalas: [escala("rota-manha", "motorista-a")],
+      viagensEncerradas: [{ routeId: "rota-manha" }],
+    });
+
+    const resultado = await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(tripsService.start).not.toHaveBeenCalled();
+    expect(resultado.aceita).toBe(true);
+  });
+
+  it("escala apontando para rota pausada é ignorada", async () => {
+    // Rota pausada não roda. Cair no padrão é o comportamento certo —
+    // e se não houver padrão, nada abre, que é melhor que abrir errado.
+    const { service, tripsService } = criarServico({
+      escalas: [escala("rota-pausada", "motorista-x", false)],
+    });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(tripsService.start).toHaveBeenCalledWith(
+      expect.objectContaining({ routeId: "rota-1" }),
+      expect.anything(),
+      {},
+    );
   });
 });

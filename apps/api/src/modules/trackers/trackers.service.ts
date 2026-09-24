@@ -5,13 +5,14 @@ import type { TraccarForwardDto } from "./dto/traccar-forward.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { TrackersConfig } from "@/config/trackers.config";
 import type { TripPositionRepository } from "@/modules/trips/repositories/trip-position.repository";
-import type { Route, Vehicle } from "@prisma/client";
+import type { Vehicle } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 import { TRIP_POSITION_REPOSITORY } from "@/modules/trips/trips.constants";
 import { TripsService } from "@/modules/trips/trips.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
+import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
 
 /** Um nó é 1,852 km/h — o Traccar encaminha velocidade em nós, sem converter. */
 const KMH_POR_NO = 1.852;
@@ -22,6 +23,13 @@ const KMH_POR_NO = 1.852;
  * estiver depurando uma instalação precisa ver por que a posição não
  * virou nada.
  */
+/** Rota + pessoas que este ônibus faz hoje — da escala ou do padrão. */
+interface DesignacaoDoDia {
+  routeId: string;
+  motoristaId: string;
+  monitorId: string | null;
+}
+
 export interface ResultadoDaPosicao {
   aceita: boolean;
   motivo: string;
@@ -193,22 +201,22 @@ export class TrackersService {
    * acabariam divergindo.
    */
   private async abrirViagemDoDia(veiculo: Vehicle): Promise<string | null> {
-    const rota = await this.acharRotaDoVeiculo(veiculo);
-    if (!rota) {
+    const designacao = await this.acharDesignacaoDoDia(veiculo);
+    if (!designacao) {
       this.logger.warn(
         `Ônibus ${veiculo.numeroFrota ?? veiculo.placa} ligou a ignição sem rota designada.`,
       );
       return null;
     }
-    if (!rota.motoristaPadraoId) {
-      this.logger.warn(`Rota ${rota.nome} sem motorista designado — viagem não aberta.`);
-      return null;
-    }
 
     try {
       const trip = await this.tripsService.start(
-        { routeId: rota.id, veiculoId: veiculo.id },
-        this.atorDoRastreador(rota.companyId, rota.motoristaPadraoId),
+        {
+          routeId: designacao.routeId,
+          veiculoId: veiculo.id,
+          ...(designacao.monitorId ? { monitorId: designacao.monitorId } : {}),
+        },
+        this.atorDoRastreador(veiculo.companyId, designacao.motoristaId),
         {},
       );
       return trip.id;
@@ -226,14 +234,13 @@ export class TrackersService {
   }
 
   private async encerrarViagem(veiculo: Vehicle, tripId: string): Promise<void> {
-    const rota = await this.acharRotaDoVeiculo(veiculo);
-    const motoristaId = rota?.motoristaPadraoId;
-    if (!motoristaId) return;
+    const designacao = await this.acharDesignacaoDoDia(veiculo);
+    if (!designacao) return;
 
     try {
       await this.tripsService.finish(
         tripId,
-        this.atorDoRastreador(veiculo.companyId, motoristaId),
+        this.atorDoRastreador(veiculo.companyId, designacao.motoristaId),
         {},
       );
     } catch (erro) {
@@ -245,8 +252,53 @@ export class TrackersService {
     }
   }
 
-  private acharRotaDoVeiculo(veiculo: Vehicle): Promise<Route | null> {
-    return this.prisma.withBypass(
+  /**
+   * Qual rota este ônibus faz hoje, com quem.
+   *
+   * A precedência é a regra central do fluxo do despachante:
+   *
+   * 1. **Escala do dia** (`RouteAssignment`) — o rodízio. Se o
+   *    despachante designou este ônibus para uma rota hoje, é essa,
+   *    com o motorista que ELE escolheu.
+   * 2. **Padrão da rota** (`Route.veiculoPadraoId`) — o caso fixo, que
+   *    dispensa escala e continua funcionando exatamente como antes.
+   *
+   * Se o ônibus tem mais de uma escala hoje (manhã e tarde, o caso
+   * normal), vale a primeira cuja viagem ainda não foi encerrada — é o
+   * que faz a chave virada às 6h abrir a rota da manhã e a virada ao
+   * meio-dia abrir a da tarde, sem ninguém escolher nada.
+   */
+  private async acharDesignacaoDoDia(veiculo: Vehicle): Promise<DesignacaoDoDia | null> {
+    const hoje = inicioDoDiaUtc();
+
+    const escalas = await this.prisma.withBypass(
+      this.prisma.routeAssignment.findMany({
+        where: { companyId: veiculo.companyId, data: hoje, veiculoId: veiculo.id },
+        include: { route: { select: { id: true, status: true, deletedAt: true } } },
+        orderBy: { createdAt: "asc" },
+      }),
+    );
+
+    const viaveis = escalas.filter(
+      (escala) => escala.route.status === "ATIVA" && !escala.route.deletedAt,
+    );
+
+    if (viaveis.length > 0) {
+      const pendente = await this.primeiraEscalaSemViagemEncerrada(viaveis, hoje);
+      if (pendente) {
+        return {
+          routeId: pendente.routeId,
+          motoristaId: pendente.motoristaId,
+          monitorId: pendente.monitorId,
+        };
+      }
+      // Todas as escalas do dia já rodaram. Ligar a chave de novo
+      // (manobra na garagem depois do expediente) não pode reabrir uma
+      // viagem que já terminou.
+      return null;
+    }
+
+    const rota = await this.prisma.withBypass(
       this.prisma.route.findFirst({
         where: {
           companyId: veiculo.companyId,
@@ -256,6 +308,37 @@ export class TrackersService {
         },
       }),
     );
+    if (!rota?.motoristaPadraoId) {
+      if (rota) {
+        this.logger.warn(`Rota ${rota.nome} sem motorista designado — viagem não aberta.`);
+      }
+      return null;
+    }
+
+    return {
+      routeId: rota.id,
+      motoristaId: rota.motoristaPadraoId,
+      monitorId: rota.monitorPadraoId,
+    };
+  }
+
+  /** A primeira escala do dia cuja viagem ainda não foi encerrada. */
+  private async primeiraEscalaSemViagemEncerrada(
+    escalas: { routeId: string; motoristaId: string; monitorId: string | null }[],
+    hoje: Date,
+  ): Promise<{ routeId: string; motoristaId: string; monitorId: string | null } | null> {
+    const encerradas = await this.prisma.withBypass(
+      this.prisma.trip.findMany({
+        where: {
+          data: hoje,
+          routeId: { in: escalas.map((e) => e.routeId) },
+          status: { in: ["FINALIZADA", "CANCELADA"] },
+        },
+        select: { routeId: true },
+      }),
+    );
+    const jaRodaram = new Set(encerradas.map((t) => t.routeId));
+    return escalas.find((escala) => !jaRodaram.has(escala.routeId)) ?? null;
   }
 
   private async gravarNaViagem(
