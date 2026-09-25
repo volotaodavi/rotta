@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import { ServiceTag } from "@prisma/client";
 
 import type { CompanyServiceAreaResponseDto } from "./dto/company-service-area-response.dto";
 import type { CreateCompanyServiceAreaDto } from "./dto/create-company-service-area.dto";
@@ -8,6 +9,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { School, SchoolAdministrativeDependency } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
+import { CompanyTagsService } from "@/modules/companies/company-tags.service";
 import { Role } from "@/shared/enums";
 import { normalizarMunicipio } from "@/shared/utils/municipio.util";
 
@@ -44,7 +46,10 @@ const TAMANHO_DO_LOTE = 1000;
  */
 @Injectable()
 export class CompanyServiceAreasService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly companyTagsService: CompanyTagsService,
+  ) {}
 
   /**
    * Cadastra uma área. Só Admin Rotta: é decisão de contrato público,
@@ -57,6 +62,7 @@ export class CompanyServiceAreasService {
     actor: AuthenticatedUser,
   ): Promise<CompanyServiceAreaResponseDto> {
     this.exigirAdminRotta(actor);
+    await this.exigirHabilitacaoLicitada(companyId, "Definir área de atuação");
 
     const porMunicipio = Boolean(dto.cidade && dto.estado);
     const porEscola = Boolean(dto.schoolId);
@@ -156,6 +162,7 @@ export class CompanyServiceAreasService {
     actor: AuthenticatedUser,
   ): Promise<CredenciarMunicipioResponseDto> {
     this.exigirAdminRotta(actor);
+    await this.exigirHabilitacaoLicitada(companyId, "Credenciar um município inteiro");
 
     const cidade = dto.cidade.trim();
     const estado = dto.estado.trim().toUpperCase();
@@ -298,6 +305,30 @@ export class CompanyServiceAreasService {
     // Lista vazia = todas as redes daquele município.
     if (area.dependencias.length === 0) return true;
     return area.dependencias.includes(school.dependenciaAdministrativa);
+  }
+
+  /**
+   * Área de atuação é da vertente LICITADA (25/09/2026).
+   *
+   * Delimitar um município e credenciar as escolas dele de uma vez é o
+   * gesto do contrato público. Numa empresa só particular isso não faz
+   * sentido: ela encontra as escolas pelo Marketplace, uma a uma,
+   * conforme as famílias a contratam.
+   *
+   * ## O que este bloqueio deliberadamente NÃO toca
+   *
+   * - `listar` — a empresa precisa enxergar a própria cerca para
+   *   entender por que um credenciamento foi recusado, mesmo depois de
+   *   perder a habilitação.
+   * - `remover` — se o Admin tirou a tag LICITADA, ele ainda precisa
+   *   poder limpar as áreas que sobraram. Bloquear prenderia a cerca
+   *   no lugar, sem ninguém para abri-la.
+   * - `assertPodeCredenciar` — é o guard que já existe, e tem regra
+   *   própria (sem área = passa direto). Misturar as duas faria toda
+   *   empresa particular parar de credenciar escola.
+   */
+  private async exigirHabilitacaoLicitada(companyId: string, acao: string): Promise<void> {
+    await this.companyTagsService.assertTag(companyId, ServiceTag.LICITADA, acao);
   }
 
   private exigirAdminRotta(actor: AuthenticatedUser): void {

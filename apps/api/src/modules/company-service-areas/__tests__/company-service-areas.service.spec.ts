@@ -4,6 +4,7 @@ import { CompanyServiceAreasService } from "../company-service-areas.service";
 
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { PrismaService } from "@/infra/database/prisma.service";
+import type { CompanyTagsService } from "@/modules/companies/company-tags.service";
 import type { School } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
@@ -70,8 +71,16 @@ function criarServico(areas: unknown[] = [], escolas: unknown[] = [], vinculos: 
     schoolCompanyLink: { findMany: linkFindMany, createMany: linkCreateMany },
   } as unknown as PrismaService;
 
+  // Empresa LICITADA por padrão: área de atuação é da vertente
+  // pública, e é esse o caso normal destes testes.
+  const companyTagsService = {
+    assertTag: jest.fn().mockResolvedValue(undefined),
+    temTag: jest.fn().mockResolvedValue(true),
+  } as unknown as CompanyTagsService;
+
   return {
-    service: new CompanyServiceAreasService(prisma),
+    service: new CompanyServiceAreasService(prisma, companyTagsService),
+    companyTagsService,
     findMany,
     create,
     deleteMany,
@@ -350,5 +359,77 @@ describe("credenciar município inteiro", () => {
       service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, empresaActor),
     ).rejects.toThrow(ForbiddenException);
     expect(linkCreateMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * Área de atuação é da vertente LICITADA (25/09/2026).
+ *
+ * Delimitar um município e credenciar as escolas dele de uma vez é o
+ * gesto do contrato público. Numa empresa só particular isso não faz
+ * sentido: ela encontra as escolas pelo Marketplace, uma a uma,
+ * conforme as famílias a contratam.
+ */
+describe("área de atuação só existe com a habilitação LICITADA", () => {
+  it("recusa credenciar município numa empresa sem a tag", async () => {
+    const { service, linkCreateMany, companyTagsService } = criarServico([], [{ id: "e1" }], []);
+    (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
+      new ForbiddenException("Credenciar um município inteiro depende da habilitação..."),
+    );
+
+    await expect(
+      service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, adminActor),
+    ).rejects.toThrow(ForbiddenException);
+    expect(linkCreateMany).not.toHaveBeenCalled();
+  });
+
+  it("recusa cadastrar área numa empresa sem a tag", async () => {
+    const { service, create, companyTagsService } = criarServico();
+    (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
+      new ForbiddenException("Definir área de atuação depende da habilitação..."),
+    );
+
+    await expect(
+      service.criar("company-1", { cidade: "Maricá", estado: "RJ" }, adminActor),
+    ).rejects.toThrow(ForbiddenException);
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("LER a cerca continua liberado mesmo sem a tag", async () => {
+    // A empresa precisa enxergar a própria cerca para entender por que
+    // um credenciamento foi recusado — inclusive depois de perder a
+    // habilitação. Bloquear a leitura esconderia a explicação.
+    const { service, findMany, companyTagsService } = criarServico([]);
+    (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
+      new ForbiddenException("sem tag"),
+    );
+
+    await expect(service.listar("company-1", adminActor)).resolves.toEqual([]);
+    expect(findMany).toHaveBeenCalled();
+  });
+
+  it("APAGAR a cerca continua liberado mesmo sem a tag", async () => {
+    // Se o Admin tirou a tag LICITADA, ele ainda precisa poder limpar
+    // as áreas que sobraram. Bloquear prenderia a cerca no lugar, sem
+    // ninguém para abri-la.
+    const { service, deleteMany, companyTagsService } = criarServico();
+    (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
+      new ForbiddenException("sem tag"),
+    );
+
+    await expect(service.remover("company-1", "area-9", adminActor)).resolves.toBeUndefined();
+    expect(deleteMany).toHaveBeenCalled();
+  });
+
+  it("o guard de credenciamento de escola NÃO depende da tag", async () => {
+    // `assertPodeCredenciar` é chamado por `SchoolsService.linkCompany`
+    // em TODA empresa. Se dependesse da tag LICITADA, toda
+    // transportadora particular pararia de credenciar escola.
+    const { service, companyTagsService } = criarServico([]);
+    (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
+      new ForbiddenException("sem tag"),
+    );
+
+    await expect(service.assertPodeCredenciar("company-1", escola())).resolves.toBeUndefined();
   });
 });

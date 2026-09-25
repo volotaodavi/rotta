@@ -8,7 +8,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { NotificationEventType } from "@prisma/client";
+import { NotificationEventType, ServiceTag } from "@prisma/client";
 
 import { toTransportRequestResponseDto } from "./mappers/transport-request.mapper";
 import { TRANSPORTER_REPOSITORY, TRANSPORT_REQUEST_REPOSITORY } from "./marketplace.constants";
@@ -29,6 +29,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { TransportRequest } from "@prisma/client";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
+import { CompanyTagsService } from "@/modules/companies/company-tags.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { StudentsService } from "@/modules/students/students.service";
@@ -63,6 +64,7 @@ export class TransportRequestsService {
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
     private readonly usersService: UsersService,
+    private readonly companyTagsService: CompanyTagsService,
   ) {}
 
   /**
@@ -165,6 +167,23 @@ export class TransportRequestsService {
     if (!company) {
       throw new NotFoundException("Transportador não encontrado.");
     }
+
+    // O Marketplace é da vertente PARTICULAR (25/09/2026). Este método
+    // é a família CONTRATANDO uma transportadora — escolher, solicitar,
+    // negociar. Numa empresa só licitada isso não existe: quem define
+    // quem ela atende é o contrato com o município, não a família.
+    //
+    // ATENÇÃO ao que este bloqueio NÃO pega, e não deve pegar: o
+    // credenciamento pelo "código do transporte" e o cadastro de aluno
+    // feito pela própria transportadora criam a `TransportRequest`
+    // direto pelo REPOSITÓRIO (`StudentCredentialedListener`), sem
+    // passar por aqui. É por ali que o aluno de Maricá entra, e
+    // continua funcionando igual.
+    await this.companyTagsService.assertTag(
+      dto.companyId,
+      ServiceTag.PRIVADA,
+      "Solicitar transporte pelo Marketplace",
+    );
 
     const student = dto.studentId
       ? await this.studentsService.findByIdOrThrow(dto.studentId, actor)

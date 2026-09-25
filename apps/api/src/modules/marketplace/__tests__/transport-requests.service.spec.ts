@@ -17,6 +17,7 @@ import type {
 } from "../repositories/transporter.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
+import type { CompanyTagsService } from "@/modules/companies/company-tags.service";
 import type { StudentsService } from "@/modules/students/students.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
@@ -85,6 +86,7 @@ describe("TransportRequestsService", () => {
   let auditLogService: jest.Mocked<AuditLogService>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let usersService: jest.Mocked<UsersService>;
+  let companyTagsService: jest.Mocked<CompanyTagsService>;
 
   beforeEach(() => {
     transportRequestRepository = {
@@ -122,6 +124,13 @@ describe("TransportRequestsService", () => {
       findById: jest.fn().mockResolvedValue(null),
     } as unknown as jest.Mocked<UsersService>;
 
+    // Empresa com a habilitação PARTICULAR: o Marketplace é dela, e é
+    // esse o caso normal destes testes.
+    companyTagsService = {
+      assertTag: jest.fn().mockResolvedValue(undefined),
+      temTag: jest.fn().mockResolvedValue(true),
+    } as unknown as jest.Mocked<CompanyTagsService>;
+
     service = new TransportRequestsService(
       transportRequestRepository,
       transporterRepository,
@@ -130,7 +139,51 @@ describe("TransportRequestsService", () => {
       eventEmitter,
       new MessagePersonalizationService(),
       usersService,
+      companyTagsService,
     );
+  });
+
+  /**
+   * O Marketplace é da vertente PARTICULAR (25/09/2026).
+   *
+   * `create` é a família CONTRATANDO uma transportadora — escolher,
+   * solicitar, negociar. Numa empresa só licitada isso não existe: quem
+   * define quem ela atende é o contrato com o município.
+   */
+  describe("create › só empresa com a habilitação PARTICULAR", () => {
+    it("recusa solicitação a uma transportadora só licitada", async () => {
+      transporterRepository.findCandidateById.mockResolvedValue(buildCandidate());
+      (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
+        new ForbiddenException("Solicitar transporte pelo Marketplace depende da habilitação..."),
+      );
+
+      await expect(
+        service.create({ studentId: "aluno-1", companyId: "company-1" }, responsavelActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+      expect(transportRequestRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("checa a tag da empresa ALVO da solicitação", async () => {
+      transporterRepository.findCandidateById.mockResolvedValue(buildCandidate());
+      studentsService.findByIdOrThrow.mockResolvedValue({
+        id: "aluno-1",
+        schoolId: "school-1",
+        turno: "MANHA",
+      } as never);
+      transportRequestRepository.findOpenByStudentAndCompany.mockResolvedValue(null);
+      transportRequestRepository.create.mockResolvedValue(buildTransportRequest());
+
+      // O `companyId` vem do DTO — é a transportadora que a família
+      // escolheu. Ler qualquer outro id deixaria o bloqueio olhando
+      // para a empresa errada.
+      await service.create({ studentId: "aluno-1", companyId: "company-1" }, responsavelActor, {});
+
+      expect(companyTagsService.assertTag).toHaveBeenCalledWith(
+        "company-1",
+        "PRIVADA",
+        expect.any(String),
+      );
+    });
   });
 
   describe("create", () => {

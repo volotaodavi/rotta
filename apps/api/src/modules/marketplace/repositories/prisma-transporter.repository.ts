@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { ServiceTag } from "@prisma/client";
 
 import type {
   PublicSchoolLink,
@@ -76,6 +77,16 @@ export class PrismaTransporterRepository implements TransporterRepository {
     const where: Prisma.CompanyWhereInput = {
       status: "ATIVO",
       deletedAt: null,
+      // Só quem tem a habilitação PARTICULAR aparece na busca
+      // (25/09/2026). O Marketplace é a família escolhendo quem
+      // contratar; uma transportadora exclusivamente licitada não é
+      // contratável — quem define quem ela atende é o contrato com o
+      // município. Listá-la produziria uma solicitação que o backend
+      // recusa depois, com a família já tendo preenchido tudo.
+      //
+      // `hasSome` e não `has`: a empresa com AS DUAS tags aparece aqui
+      // normalmente, que é o caso que o usuário descreveu como normal.
+      tags: { hasSome: [ServiceTag.PRIVADA] },
       latitude: { not: null },
       longitude: { not: null },
       ...(filter.tipoEmpresa ? { tipo: filter.tipoEmpresa } : {}),
