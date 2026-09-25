@@ -92,6 +92,7 @@ export default function EscolaAdminDetalhesPage({
       <SchoolAccountsCard
         escolaId={school.id}
         escolaNome={school.nomeFantasia ?? school.nomeOficial}
+        dependenciaAdministrativa={school.dependenciaAdministrativa}
       />
 
       <Card>

@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { SchoolStaffRole, UserStatus } from "@prisma/client";
+import { SchoolAdministrativeDependency, SchoolStaffRole, UserStatus } from "@prisma/client";
 
 import type { AlunoDoDiaResponseDto, StatusDoAlunoNoDia } from "./dto/aluno-do-dia-response.dto";
 import type { ContaDaEscolaResponseDto } from "./dto/conta-da-escola-response.dto";
@@ -96,12 +96,19 @@ export class SchoolPortalService {
     const escola = await this.prisma.withBypass(
       this.prisma.school.findFirst({
         where: { id: escolaId, deletedAt: null },
-        select: { id: true, nomeOficial: true, nomeFantasia: true },
+        select: {
+          id: true,
+          nomeOficial: true,
+          nomeFantasia: true,
+          dependenciaAdministrativa: true,
+        },
       }),
     );
     if (!escola) {
       throw new NotFoundException("Escola não encontrada.");
     }
+
+    assertEscolaPublica(escola.dependenciaAdministrativa);
 
     const email = dto.email.trim().toLowerCase();
     const telefone = dto.telefone.replace(/\D/g, "");
@@ -384,4 +391,52 @@ export class SchoolPortalService {
       };
     });
   }
+}
+
+/**
+ * As redes que a secretaria de educação trata como públicas.
+ *
+ * Filantrópica e comunitária ficam de fora junto com a privada: são a
+ * mesma coisa na prática para quem opera o transporte — não é a
+ * prefeitura quem manda nelas.
+ */
+const REDES_PUBLICAS: SchoolAdministrativeDependency[] = [
+  SchoolAdministrativeDependency.FEDERAL,
+  SchoolAdministrativeDependency.ESTADUAL,
+  SchoolAdministrativeDependency.MUNICIPAL,
+];
+
+/**
+ * O Portal da Escola existe só para escola da rede PÚBLICA — pedido do
+ * usuário (25/09/2026): "portal da escola quero apenas das públicas".
+ *
+ * ## Por que a regra mora na ESCOLA, e não na tag da transportadora
+ *
+ * O portal é da escola: são o diretor, os coordenadores e os ajudantes
+ * DELA que entram. E a mesma escola pode ser atendida por várias
+ * transportadoras ao mesmo tempo — é a regra do transporte público,
+ * não a exceção. Amarrar o portal à habilitação da empresa obrigaria a
+ * inventar qual empresa decide: a primeira credenciada? qualquer uma
+ * licitada? todas? Qualquer resposta seria arbitrária, e o portal da
+ * escola apareceria e sumiria conforme a lista de transportadoras dela
+ * mudasse — sem ninguém ter mexido na escola.
+ *
+ * `dependenciaAdministrativa` é do próprio registro da escola, vem
+ * preenchida do Censo Escolar para as 100 mil escolas já importadas, e
+ * não muda quando um contrato de transporte muda.
+ *
+ * ## Só barra a CRIAÇÃO
+ *
+ * Contas que já existem continuam entrando e trabalhando. Uma regra
+ * nova não pode derrubar do sistema um diretor que já usa o painel —
+ * para tirar alguém do ar existe o status da conta, que é o gesto
+ * certo e tem quem o audite.
+ */
+function assertEscolaPublica(dependencia: SchoolAdministrativeDependency): void {
+  if (REDES_PUBLICAS.includes(dependencia)) return;
+
+  throw new ForbiddenException(
+    "O Portal da Escola existe apenas para escolas da rede pública (federal, estadual ou municipal). " +
+      "Esta escola é da rede privada — o acompanhamento das famílias dela é feito pelo app do responsável.",
+  );
 }

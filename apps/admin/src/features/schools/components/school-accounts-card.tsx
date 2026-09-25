@@ -1,9 +1,19 @@
 "use client";
 
-import { Badge, Button, Card, FormField, Input, Spinner, Table, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  FormField,
+  Input,
+  Spinner,
+  Table,
+  Typography,
+} from "@rotta/ui/web";
 import { useState } from "react";
 
-import type { ContaDaEscola } from "@rotta/api-client";
+import type { ContaDaEscola, SchoolAdministrativeDependency } from "@rotta/api-client";
 
 import {
   useCreateSchoolAccount,
@@ -33,6 +43,43 @@ import {
  * campos em vez de 2, e a tela diz por quê.
  */
 export function SchoolAccountsCard({
+  escolaId,
+  escolaNome,
+  dependenciaAdministrativa,
+}: {
+  escolaId: string;
+  escolaNome: string;
+  dependenciaAdministrativa: SchoolAdministrativeDependency;
+}): JSX.Element {
+  // O Portal da Escola é só da rede PÚBLICA (25/09/2026: "portal da
+  // escola quero apenas das públicas"). O backend recusa, mas deixar o
+  // formulário à mostra faria o Admin preencher nome, e-mail e senha
+  // para só então descobrir — e desconfiar do sistema, não da regra.
+  //
+  // A decisão fica NESTE componente e o conteúdo real vive em outro, em
+  // vez de um `if` antes dos hooks: hook não pode ser condicional, e um
+  // early return aqui dentro mudaria a ordem deles entre renders. De
+  // quebra, a escola particular não dispara a busca das contas — que
+  // viria vazia de qualquer jeito.
+  if (!REDES_PUBLICAS.includes(dependenciaAdministrativa)) {
+    return (
+      <Card>
+        <Card.Header title="Acesso da escola" />
+        <Card.Body>
+          <EmptyState
+            title="Portal da Escola indisponível nesta rede"
+            description="O Portal da Escola existe apenas para escolas das redes federal, estadual e municipal. Nas particulares, as famílias acompanham o transporte pelo app do responsável."
+          />
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  return <ContasDaEscola escolaId={escolaId} escolaNome={escolaNome} />;
+}
+
+/** O cartão de verdade — só montado para escola da rede pública. */
+function ContasDaEscola({
   escolaId,
   escolaNome,
 }: {
@@ -241,3 +288,13 @@ const PAPEL_LABEL: Record<"DIRETOR" | "COORDENADOR" | "AJUDANTE", string> = {
   COORDENADOR: "Coordenação",
   AJUDANTE: "Apoio",
 };
+
+/**
+ * As redes que a secretaria de educação trata como públicas — mesma
+ * lista do backend (`school-portal.service.ts`).
+ *
+ * Filantrópica e comunitária caem junto com a privada: na prática são
+ * a mesma coisa para quem opera o transporte, não é a prefeitura quem
+ * manda nelas.
+ */
+const REDES_PUBLICAS: SchoolAdministrativeDependency[] = ["FEDERAL", "ESTADUAL", "MUNICIPAL"];

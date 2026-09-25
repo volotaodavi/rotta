@@ -99,6 +99,11 @@ describe("InvitesService", () => {
       // Vínculo escola↔transportadora — por padrão existe; os testes de
       // recusa sobrescrevem para `null`.
       schoolCompanyLink: { findFirst: jest.fn().mockResolvedValue({ id: "link-1" }) },
+      // Escola MUNICIPAL por padrão: o Portal da Escola só existe na
+      // rede pública (25/09/2026), e é esse o caso normal do convite.
+      school: {
+        findFirst: jest.fn().mockResolvedValue({ dependenciaAdministrativa: "MUNICIPAL" }),
+      },
     } as unknown as jest.Mocked<PrismaService>;
 
     authService = {
@@ -314,6 +319,22 @@ describe("InvitesService", () => {
           { role: Role.MOTORISTA, schoolId: "escola-1" },
           "admin-1",
         ),
+      ).rejects.toThrow(BadRequestException);
+      expect(inviteRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("recusa convite de escola da rede PRIVADA — o portal é só da pública", async () => {
+      // A segunda porta do Portal da Escola (25/09/2026: "portal da
+      // escola quero apenas das públicas"). A primeira é
+      // `SchoolPortalService.criarConta`. Bloquear só uma deixaria a
+      // regra valendo pela metade — e é sempre a porta esquecida que
+      // vira o caminho usado.
+      (prisma.school.findFirst as jest.Mock).mockResolvedValue({
+        dependenciaAdministrativa: "PRIVADA",
+      });
+
+      await expect(
+        service.createInvite("company-1", { role: Role.ESCOLA, schoolId: "escola-1" }, "admin-1"),
       ).rejects.toThrow(BadRequestException);
       expect(inviteRepository.create).not.toHaveBeenCalled();
     });

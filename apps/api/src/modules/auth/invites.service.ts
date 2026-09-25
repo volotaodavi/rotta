@@ -8,7 +8,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
+import { Prisma, SchoolAdministrativeDependency } from "@prisma/client";
 
 import { INVITE_REPOSITORY } from "./auth.constants";
 import { AuthService, type AuthRequestMeta } from "./auth.service";
@@ -150,6 +150,28 @@ export class InvitesService {
     if (!vinculo) {
       throw new BadRequestException(
         "Esta escola não está vinculada à sua transportadora. Vincule-a antes de convidar.",
+      );
+    }
+
+    // A SEGUNDA PORTA do Portal da Escola (25/09/2026: "portal da
+    // escola quero apenas das públicas"). A primeira é
+    // `SchoolPortalService.criarConta`, onde o Admin cria a conta do
+    // diretor; esta é o convite emitido pela transportadora. Bloquear
+    // só uma deixaria a regra valendo pela metade — e é sempre a porta
+    // esquecida que vira o caminho usado.
+    const escola = await this.prisma.withBypass(
+      this.prisma.school.findFirst({
+        where: { id: dto.schoolId, deletedAt: null },
+        select: { dependenciaAdministrativa: true },
+      }),
+    );
+    if (!escola) {
+      throw new BadRequestException("Escola não encontrada.");
+    }
+    if (!REDES_PUBLICAS_DO_PORTAL.includes(escola.dependenciaAdministrativa)) {
+      throw new BadRequestException(
+        "O Portal da Escola existe apenas para escolas da rede pública (federal, estadual ou municipal). " +
+          "Nas escolas particulares, o acompanhamento é feito pelo app do responsável.",
       );
     }
 
@@ -309,3 +331,18 @@ export class InvitesService {
     };
   }
 }
+
+/**
+ * As redes que a secretaria de educação trata como públicas — mesma
+ * lista de `school-portal.service.ts` (o Portal da Escola tem duas
+ * portas de entrada e as duas checam o mesmo).
+ *
+ * Filantrópica e comunitária ficam de fora junto com a privada: na
+ * prática são a mesma coisa para quem opera o transporte, não é a
+ * prefeitura quem manda nelas.
+ */
+const REDES_PUBLICAS_DO_PORTAL: SchoolAdministrativeDependency[] = [
+  SchoolAdministrativeDependency.FEDERAL,
+  SchoolAdministrativeDependency.ESTADUAL,
+  SchoolAdministrativeDependency.MUNICIPAL,
+];

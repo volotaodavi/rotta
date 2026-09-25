@@ -35,9 +35,14 @@ function criarServico() {
     withBypass,
     student: { findMany },
     school: {
-      findFirst: jest
-        .fn()
-        .mockResolvedValue({ id: escolaId, nomeOficial: "EMEF Teste", nomeFantasia: null }),
+      // Escola MUNICIPAL: o Portal da Escola só existe na rede pública
+      // (25/09/2026). O fixture é o caso real — a EMEF de Maricá.
+      findFirst: jest.fn().mockResolvedValue({
+        id: escolaId,
+        nomeOficial: "EMEF Teste",
+        nomeFantasia: null,
+        dependenciaAdministrativa: "MUNICIPAL",
+      }),
     },
     user: { findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() },
   } as unknown as PrismaService;
@@ -287,5 +292,76 @@ describe("contas do portal — quem pode abrir a porta para quem", () => {
 
     const findMany = prisma.user.findMany as jest.Mock;
     expect(findMany.mock.calls[0][0].where.escolaId).toBe(escolaId);
+  });
+});
+
+/**
+ * O Portal da Escola é só da rede PÚBLICA — pedido do usuário
+ * (25/09/2026): "portal da escola quero apenas das públicas".
+ *
+ * A regra mora na ESCOLA, e não na habilitação da transportadora, por
+ * um motivo concreto: a mesma escola pode ser atendida por várias
+ * transportadoras ao mesmo tempo. Amarrar o portal à empresa obrigaria
+ * a escolher qual delas decide, e o portal da escola apareceria e
+ * sumiria conforme a lista de transportadoras mudasse — sem ninguém ter
+ * mexido na escola.
+ */
+describe("o Portal da Escola é só da rede pública", () => {
+  const adminActor: AuthenticatedUser = {
+    sub: "admin-1",
+    tenantId: null,
+    role: Role.ADMIN_ROTTA,
+    vinculoId: "vinculo-admin",
+  };
+
+  const dadosBase = {
+    nome: "Ana Coordenadora",
+    email: "ana@colegio.com",
+    telefone: "(21) 99999-0000",
+    senha: "SenhaForte123",
+    papel: "COORDENADOR" as const,
+  };
+
+  function comRede(dependenciaAdministrativa: string) {
+    const { service, prisma, usersService } = criarServico();
+    (prisma.school.findFirst as jest.Mock).mockResolvedValue({
+      id: escolaId,
+      nomeOficial: "Colégio Teste",
+      nomeFantasia: null,
+      dependenciaAdministrativa,
+    });
+    return { service, usersService };
+  }
+
+  it.each(["MUNICIPAL", "ESTADUAL", "FEDERAL"])("rede %s tem portal", async (rede) => {
+    const { service, usersService } = comRede(rede);
+
+    await service.criarConta({ ...dadosBase, escolaId }, adminActor);
+
+    expect(usersService.createUserWithPassword).toHaveBeenCalled();
+  });
+
+  it.each(["PRIVADA", "FILANTROPICA", "COMUNITARIA"])(
+    "rede %s NÃO tem portal, e nenhuma conta é criada",
+    async (rede) => {
+      // Filantrópica e comunitária caem junto com a privada: na prática
+      // são a mesma coisa para quem opera o transporte — não é a
+      // prefeitura quem manda nelas.
+      const { service, usersService } = comRede(rede);
+
+      await expect(service.criarConta({ ...dadosBase, escolaId }, adminActor)).rejects.toThrow(
+        ForbiddenException,
+      );
+      expect(usersService.createUserWithPassword).not.toHaveBeenCalled();
+    },
+  );
+
+  it("a recusa explica onde a família da escola particular acompanha", async () => {
+    // Sem isso, o Admin acharia que é bug e abriria chamado.
+    const { service } = comRede("PRIVADA");
+
+    await expect(service.criarConta({ ...dadosBase, escolaId }, adminActor)).rejects.toThrow(
+      /rede pública.*app do responsável/s,
+    );
   });
 });
