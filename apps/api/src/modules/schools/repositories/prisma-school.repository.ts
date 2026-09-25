@@ -167,9 +167,9 @@ export class PrismaSchoolRepository implements SchoolRepository {
    * "MARICA"), mas quem aparece na tela é `cidade`, com acento. Como a
    * mesma cidade pode ter várias grafias na base (planilhas diferentes,
    * anos diferentes do Censo), o agrupamento traz as duas e a fusão
-   * abaixo escolhe a grafia mais comum como rótulo — somando as
-   * contagens, para que o total exibido seja o total que o
-   * credenciamento vai pegar.
+   * abaixo escolhe a MELHOR grafia como rótulo — somando as contagens,
+   * para que o total exibido seja o total que o credenciamento vai
+   * pegar.
    */
   async listMunicipios(estado: string): Promise<MunicipioDoCatalogo[]> {
     const uf = estado.trim().toUpperCase();
@@ -195,11 +195,17 @@ export class PrismaSchoolRepository implements SchoolRepository {
       if (!chave) continue;
 
       const escolas = grupo._count._all;
+
+      // `trim()` porque a planilha do INEP traz espaço sobrando com
+      // alguma frequência ("  MARICÁ  "). O banco já ignora isso na
+      // CHAVE (a coluna gerada usa `btrim`), mas o rótulo vem da coluna
+      // `cidade` crua — sem aparar aqui, a tela mostraria o espaço.
+      const grafia = grupo.cidade.trim();
       const atual = porChave.get(chave);
 
       if (!atual) {
         porChave.set(chave, {
-          cidade: grupo.cidade,
+          cidade: grafia,
           estado: uf,
           cidadeNormalizada: chave,
           escolas,
@@ -209,10 +215,8 @@ export class PrismaSchoolRepository implements SchoolRepository {
       }
 
       atual.escolas += escolas;
-      // A grafia que aparece em mais escolas vence — é a que o Admin
-      // reconhece como "o nome da cidade".
-      if (escolas > atual.escolasDaGrafia) {
-        atual.cidade = grupo.cidade;
+      if (venceComoRotulo(grafia, escolas, atual.cidade, atual.escolasDaGrafia)) {
+        atual.cidade = grafia;
         atual.escolasDaGrafia = escolas;
       }
     }
@@ -231,4 +235,49 @@ export class PrismaSchoolRepository implements SchoolRepository {
     }
     return Number(result.nextval);
   }
+}
+
+/**
+ * Qual grafia do município vira o rótulo da tela.
+ *
+ * O catálogo tem a mesma cidade escrita de vários jeitos — "MARICA",
+ * "Maricá", "maricá", "  MARICÁ  " — porque veio de planilhas de anos
+ * diferentes do Censo. Para o credenciamento tanto faz: todas casam
+ * pela chave normalizada. Para o Admin que vai ESCOLHER na lista, não:
+ * ele precisa reconhecer o nome da cidade.
+ *
+ * A ordem de desempate, do mais forte para o mais fraco:
+ *
+ * 1. **Mais escolas.** É a grafia dominante na base.
+ * 2. **Melhor apresentação.** "Maricá" ganha de "MARICA" e de "maricá":
+ *    caixa alta grita e caixa baixa parece erro. Isso importa quando as
+ *    grafias empatam — o que é comum em município pequeno, e foi
+ *    exatamente o que apareceu ao testar contra um Postgres de verdade
+ *    (quatro grafias com uma escola cada, e o rótulo saía com os
+ *    espaços da planilha).
+ * 3. **Ordem alfabética.** Só para o resultado não depender da ordem em
+ *    que o banco devolveu as linhas — a mesma UF tem de produzir a
+ *    mesma lista sempre.
+ */
+function venceComoRotulo(
+  candidata: string,
+  escolasDaCandidata: number,
+  atual: string,
+  escolasDaAtual: number,
+): boolean {
+  if (escolasDaCandidata !== escolasDaAtual) return escolasDaCandidata > escolasDaAtual;
+
+  const notaCandidata = apresentacao(candidata);
+  const notaAtual = apresentacao(atual);
+  if (notaCandidata !== notaAtual) return notaCandidata > notaAtual;
+
+  return candidata.localeCompare(atual, "pt-BR") < 0;
+}
+
+/** 2 = "Maricá" (como se escreve), 1 = "maricá", 0 = "MARICA". */
+function apresentacao(grafia: string): number {
+  const temMinuscula = grafia !== grafia.toUpperCase();
+  if (!temMinuscula) return 0;
+  const primeira = grafia.charAt(0);
+  return primeira === primeira.toUpperCase() ? 2 : 1;
 }

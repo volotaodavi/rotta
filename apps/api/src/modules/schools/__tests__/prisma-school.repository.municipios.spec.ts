@@ -72,6 +72,51 @@ describe("listMunicipios", () => {
     expect(marica?.escolas).toBe(62);
   });
 
+  it("apara o espaço da planilha — o rótulo nunca sai '  MARICÁ  '", async () => {
+    // Caso real, encontrado rodando contra um Postgres de verdade: a
+    // planilha do INEP traz espaço sobrando com alguma frequência. O
+    // banco já ignora isso na CHAVE (a coluna gerada usa `btrim`), mas
+    // o rótulo vem da coluna `cidade` crua.
+    const { repo } = criarRepositorio([
+      { cidade: "  MARICÁ  ", cidadeNormalizada: "marica", _count: { _all: 1 } },
+    ]);
+
+    const [marica] = await repo.listMunicipios("RJ");
+
+    expect(marica?.cidade).toBe("MARICÁ");
+  });
+
+  it("empate em contagem: 'Maricá' vence 'MARICA' e 'maricá'", async () => {
+    // Também veio do teste contra o banco real: em município pequeno as
+    // grafias empatam em uma escola cada, e sem critério o rótulo saía
+    // aleatório — quem o banco devolvesse primeiro. O Admin precisa
+    // RECONHECER o nome da cidade na lista.
+    const { repo } = criarRepositorio([
+      { cidade: "MARICA", cidadeNormalizada: "marica", _count: { _all: 1 } },
+      { cidade: "maricá", cidadeNormalizada: "marica", _count: { _all: 1 } },
+      { cidade: "Maricá", cidadeNormalizada: "marica", _count: { _all: 1 } },
+      { cidade: "  MARICÁ  ", cidadeNormalizada: "marica", _count: { _all: 1 } },
+    ]);
+
+    const [marica] = await repo.listMunicipios("RJ");
+
+    expect(marica?.cidade).toBe("Maricá");
+    expect(marica?.escolas).toBe(4);
+  });
+
+  it("contagem ainda vence a apresentação — 'MARICA' com 50 ganha de 'Maricá' com 1", async () => {
+    // A ordem de desempate importa: a grafia dominante na base é o que
+    // o Admin vê no resto do sistema.
+    const { repo } = criarRepositorio([
+      { cidade: "Maricá", cidadeNormalizada: "marica", _count: { _all: 1 } },
+      { cidade: "MARICA", cidadeNormalizada: "marica", _count: { _all: 50 } },
+    ]);
+
+    const [marica] = await repo.listMunicipios("RJ");
+
+    expect(marica?.cidade).toBe("MARICA");
+  });
+
   it("ordena por nome, em português — acento não joga a cidade para o fim", async () => {
     const { repo } = criarRepositorio([
       { cidade: "Zé Doca", cidadeNormalizada: "ze doca", _count: { _all: 3 } },
