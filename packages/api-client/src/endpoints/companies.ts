@@ -15,32 +15,6 @@ export type CompanyType =
 export type CompanyStatus = "TRIAL" | "ATIVO" | "SUSPENSO" | "CANCELADO" | "INADIMPLENTE";
 
 /**
- * Quem PAGA pelo transporte — a separação entre as duas verticais
- * (25/09/2026: "faça a distinção, por favor. Não quero mistura").
- *
- * Não confundir com a área de atuação (`CompanyServiceArea`), que diz
- * ONDE a empresa pode se credenciar. Uma transportadora privada pode
- * atender um município só e continuar sendo privada.
- */
-export type ServiceNature = "PRIVADO" | "PUBLICO_LICITADO";
-
-export const SERVICE_NATURE_LABEL: Record<ServiceNature, string> = {
-  PRIVADO: "Particular — o responsável paga",
-  PUBLICO_LICITADO: "Público licitado — o município paga",
-};
-
-/**
- * O que muda para quem opera, em uma frase por vertente. Usado onde a
- * tela precisa explicar a escolha em vez de só nomeá-la.
- */
-export const SERVICE_NATURE_DESCRICAO: Record<ServiceNature, string> = {
-  PRIVADO:
-    "A família contrata a transportadora pelo marketplace, negocia a mensalidade e assina o contrato. É o fluxo padrão da Rotta.",
-  PUBLICO_LICITADO:
-    "O município custeia o transporte por licitação. Não há mensalidade, o responsável nunca é cobrado e a empresa não gera contrato comercial — ela só credencia os alunos e opera as rotas.",
-};
-
-/**
  * Rótulo exibido do tipo societário — reaproveitado pelos dois
  * formulários de cadastro (`apps/web/.../criar-conta/empresa`,
  * `apps/admin/.../empresas/nova`) e pela exibição no detalhe do Admin
@@ -108,8 +82,6 @@ export interface Company {
   nomeFantasia: string;
   cpfCnpj: string;
   tipo: CompanyType;
-  /** Quem paga pelo transporte — ver `ServiceNature`. Só o Admin da Rotta muda. */
-  naturezaServico: ServiceNature;
   email: string;
   telefone: string;
   whatsapp: string | null;
@@ -159,13 +131,7 @@ export interface CompanyDashboard {
   veiculos: number;
   rotas: number;
   viagens: number;
-  /**
-   * `null` em empresa `PUBLICO_LICITADO`: a receita dela vem do
-   * contrato com o município, que a Rotta não conhece. Mostrar R$ 0,00
-   * seria a plataforma afirmando que a transportadora não fatura nada.
-   */
-  receitaEstimadaCentavos: number | null;
-  naturezaServico: ServiceNature;
+  receitaEstimadaCentavos: number;
   documentosVencendo: number;
   alertas: string[];
 }
@@ -240,22 +206,6 @@ export function createCompaniesEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<Company>>(`/companies/${id}/reactivate`, {
           method: "POST",
-        })
-      ).data,
-
-    /**
-     * Declara quem paga pelo transporte desta transportadora.
-     *
-     * Endpoint SEPARADO do `update` genérico de propósito: aquele é
-     * aberto a EMPRESA/GESTOR para editarem os próprios dados; este é
-     * só do Admin da Rotta, porque marcar `PUBLICO_LICITADO` desliga
-     * toda a cobrança do responsável.
-     */
-    definirNaturezaServico: async (id: string, naturezaServico: ServiceNature): Promise<Company> =>
-      (
-        await apiClient.request<ApiEnvelope<Company>>(`/companies/${id}/natureza-servico`, {
-          method: "PATCH",
-          body: { naturezaServico },
         })
       ).data,
 

@@ -46,40 +46,6 @@ export class PrismaContractRepository implements ContractRepository {
     );
   }
 
-  /**
-   * A autorização de embarque do transporte PÚBLICO LICITADO
-   * (25/09/2026, "não quero mistura").
-   *
-   * Um irmão do termo de ciência, e deliberadamente NÃO o mesmo método
-   * com um parâmetro: os dois textos dizem coisas opostas ao
-   * responsável. O termo de ciência promete que "a mensalidade ainda
-   * será definida pela transportadora" — uma cobrança que vem depois.
-   * Aqui não há cobrança nenhuma, nem agora nem depois, porque o
-   * município já pagou. Um pai de Maricá lendo a frase do termo teria
-   * todo motivo para achar que vai receber um boleto.
-   *
-   * O valor zero, que no termo de ciência é um placeholder à espera de
-   * um número real, aqui é o número real.
-   */
-  createAutorizacaoPublica(data: CreateTermoCienciaData): Promise<Contract> {
-    const agora = new Date();
-    return this.prisma.withBypass(
-      this.prisma.contract.create({
-        data: {
-          ...data,
-          origem: "PUBLICO_LICITADO",
-          status: "ATIVO",
-          valorMensalidadeCentavos: 0,
-          planoDescricao: "Transporte escolar custeado pelo município — sem mensalidade",
-          regras:
-            "Autorização de embarque no transporte escolar público. O serviço é custeado pelo município por contrato de licitação: não há mensalidade, taxa de adesão ou qualquer cobrança ao responsável, agora ou no futuro.",
-          vigenciaInicio: agora,
-          ativadoEm: agora,
-        },
-      }),
-    );
-  }
-
   findByTransportRequestId(transportRequestId: string): Promise<Contract | null> {
     return this.prisma.withTenant(
       this.prisma.contract.findFirst({ where: { transportRequestId } }),

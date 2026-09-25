@@ -332,15 +332,6 @@ export class WalletService {
    * causa de uma falha aqui (mesmo padrão de `resolveNomeEmpresa`).
    */
   async registrarMensalidadePendente(contract: Contract): Promise<void> {
-    // Contrato sem mensalidade não gera lançamento nenhum (25/09/2026,
-    // "não quero mistura"). No transporte público licitado o valor é
-    // zero porque o município já pagou — creditar R$ 0,00 na carteira
-    // encheria o extrato da transportadora de linhas que não são
-    // dinheiro, e cada uma delas seria uma pergunta do gestor sobre uma
-    // cobrança que não existe. Vale igual para o termo de ciência
-    // privado enquanto a mensalidade real ainda não foi definida.
-    if (contract.valorMensalidadeCentavos <= 0) return;
-
     try {
       const wallet = await this.walletRepository.getOrCreate({
         ownerType: "EMPRESA",

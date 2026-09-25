@@ -247,22 +247,6 @@ export class MessagePersonalizationService {
     };
   }
 
-  /**
-   * O mesmo momento, na vertente pública licitada (25/09/2026).
-   *
-   * Diz de saída que não há cobrança, e isso não é firula: o aviso
-   * anterior manda "conferir o termo", e o termo privado fala em
-   * mensalidade a definir. Um pai de Maricá que recebesse aquele texto
-   * passaria a esperar um boleto que nunca vem — ou pior, acreditaria
-   * num boleto falso se alguém mandasse.
-   */
-  autorizacaoPublicaGerada(nomeEmpresa: string): PersonalizedMessage {
-    return {
-      titulo: "Transporte credenciado",
-      corpo: `O transporte com ${nomeEmpresa} foi credenciado. É o transporte escolar do município: não há mensalidade nem qualquer cobrança.`,
-    };
-  }
-
   cnhVencendo(nomeMotorista: string, diasRestantes: number): PersonalizedMessage {
     return {
       titulo: "CNH vencendo",

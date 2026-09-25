@@ -14,7 +14,6 @@ import {
   MembershipStatus,
   NotificationEventType,
   PendingSubscriptionStatus,
-  ServiceNature,
   type PendingSubscription,
 } from "@prisma/client";
 
@@ -38,7 +37,6 @@ import type {
   UpdateCompanySettingsDto,
 } from "./dto/update-company-settings.dto";
 import type { UpdateCompanyDto } from "./dto/update-company.dto";
-import type { UpdateServiceNatureDto } from "./dto/update-service-nature.dto";
 import type { CompanySettingRepository } from "./repositories/company-setting.repository";
 import type { CompanyRepository, UpdateCompanyData } from "./repositories/company.repository";
 import type { PlanRepository } from "./repositories/plan.repository";
@@ -698,57 +696,6 @@ export class CompaniesService implements OnModuleInit {
     return toCompanyResponseDto(updated);
   }
 
-  /**
-   * Declara quem paga pelo transporte desta transportadora
-   * (25/09/2026, "faça a distinção, por favor. Não quero mistura").
-   *
-   * ## Por que só o Admin da Rotta
-   *
-   * Marcar `PUBLICO_LICITADO` desliga toda a máquina de cobrança:
-   * a empresa deixa de poder gerar contrato com mensalidade e o
-   * responsável passa a receber um documento que afirma que não há
-   * cobrança. Na mão da própria empresa, isso seria ela escolhendo
-   * quando para de faturar — ou, no caminho inverso, religando cobrança
-   * para pais de um município que já pagou pelo serviço.
-   *
-   * ## O que NÃO acontece aqui
-   *
-   * Os contratos que já existem não são reescritos. Um contrato privado
-   * assinado continua valendo com o valor que tem: a família combinou
-   * aquilo, e desfazer sozinho seria pior que a mistura. A natureza vale
-   * do próximo credenciamento em diante, e a auditoria guarda o antes e
-   * o depois justamente para essa conversa.
-   */
-  async definirNaturezaServico(
-    id: string,
-    dto: UpdateServiceNatureDto,
-    actor: AuthenticatedUser,
-    meta: RequestMeta,
-  ): Promise<CompanyResponseDto> {
-    const existing = await this.companyRepository.findById(id);
-    if (!existing) {
-      throw new NotFoundException("Empresa não encontrada.");
-    }
-
-    const updated = await this.companyRepository.update(id, {
-      naturezaServico: dto.naturezaServico,
-    });
-
-    await this.recordAudit({
-      companyId: id,
-      entidadeTipo: "Company",
-      entidadeId: id,
-      acao: "UPDATED",
-      atorUserId: actor.sub,
-      dadosAntes: { naturezaServico: existing.naturezaServico },
-      dadosDepois: { naturezaServico: updated.naturezaServico },
-      ip: meta.ip,
-      userAgent: meta.userAgent,
-    });
-
-    return toCompanyResponseDto(updated);
-  }
-
   async reactivate(
     id: string,
     actor: AuthenticatedUser,
@@ -839,7 +786,6 @@ export class CompaniesService implements OnModuleInit {
       this.usersService.listMembershipsByCompany(id),
       this.dashboardService.getCompanyDashboardById(id),
     ]);
-    const ehPublico = company.naturezaServico === ServiceNature.PUBLICO_LICITADO;
     const isActive = (role: Role): number =>
       memberships.filter((m) => (m.role as Role) === role && m.status === MembershipStatus.ATIVO)
         .length;
@@ -861,13 +807,7 @@ export class CompaniesService implements OnModuleInit {
       veiculos: await this.vehiclesService.countActive(id),
       rotas: agregado.rotasTotal,
       viagens: agregado.viagensHoje.total,
-      // `null`, e não `0`, em empresa licitada (25/09/2026, "não quero
-      // mistura"). A receita dela vem do contrato com a prefeitura, que
-      // a Rotta não conhece — R$ 0,00 no painel seria a plataforma
-      // afirmando que a transportadora não fatura nada, que é falso.
-      // `null` diz "não se aplica", e a tela some com o cartão.
-      receitaEstimadaCentavos: ehPublico ? null : agregado.receitaEstimadaCentavos,
-      naturezaServico: company.naturezaServico,
+      receitaEstimadaCentavos: agregado.receitaEstimadaCentavos,
       documentosVencendo,
       alertas,
     };

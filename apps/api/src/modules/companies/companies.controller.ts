@@ -26,7 +26,6 @@ import { ListCompaniesQueryDto } from "./dto/list-companies-query.dto";
 import { SuspendCompanyDto } from "./dto/suspend-company.dto";
 import { UpdateCompanySettingsDto } from "./dto/update-company-settings.dto";
 import { UpdateCompanyDto } from "./dto/update-company.dto";
-import { UpdateServiceNatureDto } from "./dto/update-service-nature.dto";
 
 import type { Request } from "express";
 
@@ -142,28 +141,6 @@ export class CompaniesController {
     @Req() req: Request,
   ) {
     return this.companiesService.reactivate(id, actor, requestMeta(req));
-  }
-
-  /**
-   * Declara quem paga pelo transporte desta transportadora — a
-   * separação entre a vertente privada e a pública licitada
-   * (25/09/2026, "não quero mistura").
-   *
-   * Endpoint SEPARADO de `PATCH /companies/:id` de propósito: aquele é
-   * aberto a `EMPRESA`/`GESTOR` para a empresa editar os próprios
-   * dados. A natureza do serviço não é dado cadastral dela — é a
-   * declaração de um contrato com o poder público, e decide se o
-   * responsável pode ser cobrado. Fica com o Admin da Rotta.
-   */
-  @Patch(":id/natureza-servico")
-  @Roles(Role.ADMIN_ROTTA)
-  definirNaturezaServico(
-    @Param("id", ParseUUIDPipe) id: string,
-    @Body() dto: UpdateServiceNatureDto,
-    @CurrentUser() actor: AuthenticatedUser,
-    @Req() req: Request,
-  ) {
-    return this.companiesService.definirNaturezaServico(id, dto, actor, requestMeta(req));
   }
 
   @Patch(":id/plan")

@@ -261,34 +261,16 @@ export default function EmpresaDetalhesPage({
               value={`${company.bairro}, ${company.cidade}/${company.estado}`}
             />
             <InfoItem label="CEP" value={company.cep} />
-            {/* Receita estimada só existe na vertente PARTICULAR
-                (25/09/2026, "não quero mistura"). Numa transportadora
-                licitada o faturamento vem do contrato com a prefeitura,
-                que a Rotta não conhece — e mostrar "R$ 0,00" seria o
-                painel afirmando que a empresa não fatura nada. O
-                backend manda `null` justamente para a tela saber que
-                não é zero, é "não se aplica". */}
-            {dashboard && dashboard.receitaEstimadaCentavos !== null && (
+            {dashboard && (
               <InfoItem
                 label="Receita estimada"
                 value={centsToBRL(dashboard.receitaEstimadaCentavos)}
               />
             )}
-            {dashboard?.naturezaServico === "PUBLICO_LICITADO" && (
-              <InfoItem
-                label="Natureza do serviço"
-                value="Público licitado — o município custeia, sem mensalidade"
-              />
-            )}
           </Card.Body>
         </Card>
       ) : activeTab === "atuacao" ? (
-        <CompanyServiceAreasTab
-          companyId={id}
-          cidade={company.cidade}
-          estado={company.estado}
-          naturezaServico={company.naturezaServico}
-        />
+        <CompanyServiceAreasTab companyId={id} cidade={company.cidade} estado={company.estado} />
       ) : activeTab === "alunos" ? (
         <CompanyStudentsTab companyId={id} />
       ) : activeTab === "rotas" ? (

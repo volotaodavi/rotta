@@ -1,6 +1,5 @@
 "use client";
 
-import { SERVICE_NATURE_DESCRICAO, SERVICE_NATURE_LABEL } from "@rotta/api-client";
 import {
   Badge,
   Button,
@@ -20,10 +19,8 @@ import type {
   CredenciamentoDeMunicipio,
   Municipio,
   SchoolAdministrativeDependency,
-  ServiceNature,
 } from "@rotta/api-client";
 
-import { useDefinirNaturezaServico } from "@/features/companies/hooks/use-companies";
 import {
   useCreateServiceArea,
   useCredenciarMunicipio,
@@ -60,12 +57,10 @@ export function CompanyServiceAreasTab({
   companyId,
   cidade,
   estado,
-  naturezaServico,
 }: {
   companyId: string;
   cidade: string;
   estado: string;
-  naturezaServico: ServiceNature;
 }): JSX.Element {
   const { data: areas, isLoading } = useServiceAreas(companyId);
   const credenciar = useCredenciarMunicipio(companyId);
@@ -83,8 +78,6 @@ export function CompanyServiceAreasTab({
 
   return (
     <div className="flex flex-col gap-6">
-      <NaturezaDoServicoCard companyId={companyId} atual={naturezaServico} />
-
       <Card>
         <Card.Header title="Credenciar município inteiro" />
         <Card.Body className="flex flex-col gap-4">
@@ -224,87 +217,6 @@ export function CompanyServiceAreasTab({
         </Card.Body>
       </Card>
     </div>
-  );
-}
-
-/**
- * Quem PAGA pelo transporte desta transportadora — a separação entre as
- * duas verticais (25/09/2026: "faça a distinção, por favor. Não quero
- * mistura").
- *
- * ## Por que fica junto da área de atuação, e não nos dados da empresa
- *
- * São perguntas diferentes — a área diz ONDE ela atua, esta diz QUEM
- * custeia — mas quem responde as duas é a mesma pessoa no mesmo
- * momento: o Admin da Rotta montando o contrato de um município. Separar
- * em duas telas faria a segunda ser esquecida, e uma empresa licitada
- * sem a marcação volta a cobrar mensalidade dos pais.
- *
- * ## Por que a confirmação
- *
- * Trocar para licitado desliga a cobrança de toda a base de
- * responsáveis daquela empresa. Trocar de volta a religa. Nenhuma das
- * duas direções é algo para acontecer por um clique errado num select.
- */
-function NaturezaDoServicoCard({
-  companyId,
-  atual,
-}: {
-  companyId: string;
-  atual: ServiceNature;
-}): JSX.Element {
-  const definir = useDefinirNaturezaServico(companyId);
-  const [escolhida, setEscolhida] = useState<ServiceNature>(atual);
-
-  const mudou = escolhida !== atual;
-  const publica = atual === "PUBLICO_LICITADO";
-
-  return (
-    <Card>
-      <Card.Header title="Natureza do serviço" />
-      <Card.Body className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={publica ? "info" : "neutral"}>{SERVICE_NATURE_LABEL[atual]}</Badge>
-        </div>
-
-        <Typography variant="bodySmall" color="muted">
-          {SERVICE_NATURE_DESCRICAO[atual]}
-        </Typography>
-
-        <div className="flex flex-wrap items-end gap-3">
-          <FormField label="Mudar para">
-            <Select
-              value={escolhida}
-              onChange={(e) => setEscolhida(e.target.value as ServiceNature)}
-            >
-              <option value="PRIVADO">{SERVICE_NATURE_LABEL.PRIVADO}</option>
-              <option value="PUBLICO_LICITADO">{SERVICE_NATURE_LABEL.PUBLICO_LICITADO}</option>
-            </Select>
-          </FormField>
-          <Button
-            variant="primary"
-            disabled={!mudou || definir.isPending}
-            onClick={() => {
-              const indo = SERVICE_NATURE_LABEL[escolhida];
-              const aviso =
-                escolhida === "PUBLICO_LICITADO"
-                  ? "Mudar para público licitado DESLIGA a cobrança: esta transportadora deixa de poder gerar contrato com mensalidade, e os responsáveis dela passam a receber um documento dizendo que não há cobrança nenhuma. Os contratos já assinados não mudam.\n\nConfirmar?"
-                  : "Mudar para particular RELIGA a cobrança: esta transportadora volta a poder negociar mensalidade com os responsáveis.\n\nConfirmar?";
-              if (!window.confirm(`${indo}\n\n${aviso}`)) return;
-              definir.mutate(escolhida);
-            }}
-          >
-            {definir.isPending ? "Salvando…" : "Salvar"}
-          </Button>
-        </div>
-
-        {mudou && (
-          <Typography variant="bodySmall" color="muted">
-            {SERVICE_NATURE_DESCRICAO[escolhida]}
-          </Typography>
-        )}
-      </Card.Body>
-    </Card>
   );
 }
 

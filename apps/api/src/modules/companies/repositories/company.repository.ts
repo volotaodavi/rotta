@@ -1,11 +1,4 @@
-import type {
-  Company,
-  CompanyStatus,
-  CompanyType,
-  Plan,
-  Prisma,
-  ServiceNature,
-} from "@prisma/client";
+import type { Company, CompanyStatus, CompanyType, Plan, Prisma } from "@prisma/client";
 
 export type CompanyWithPlan = Company & { plan: Plan };
 
@@ -70,13 +63,6 @@ export interface UpdateCompanyData {
   fusoHorario?: string;
   status?: CompanyStatus;
   planId?: string;
-  /**
-   * Quem paga pelo transporte. Escrito SÓ por
-   * `CompaniesService.definirNaturezaServico` (endpoint exclusivo do
-   * Admin da Rotta) — nunca pelo `update` genérico da empresa, que é
-   * aberto a `EMPRESA`/`GESTOR`. Ver a nota daquele método.
-   */
-  naturezaServico?: ServiceNature;
   /** ID do cliente na Asaas (`cus_...`) — ver nota no schema Prisma. */
   asaasCustomerId?: string | null;
   /** ID da assinatura ativa na Asaas (`sub_...`) — ver nota no schema Prisma. */
