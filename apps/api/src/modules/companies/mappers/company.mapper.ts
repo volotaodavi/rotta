@@ -10,6 +10,7 @@ export function toCompanyResponseDto(company: CompanyWithPlan): CompanyResponseD
     nomeFantasia: company.nomeFantasia,
     cpfCnpj: company.cpfCnpj,
     tipo: company.tipo,
+    tags: company.tags,
     email: company.email,
     telefone: company.telefone,
     whatsapp: company.whatsapp,

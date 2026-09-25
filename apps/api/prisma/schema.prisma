@@ -60,6 +60,37 @@ enum CompanyType {
   OUTRO
 }
 
+/// Tags de habilitação da transportadora — pedido do usuário
+/// (25/09/2026): "empresa licitada deverá ter uma tag, para ter as
+/// funcionalidades que somente a empresa licitada deve ter... toda e
+/// qualquer empresa pode ter as duas tags, aí fica com todas as
+/// funcionalidades existentes".
+///
+/// ## Tag, e não classificação
+///
+/// São ACUMULATIVAS, e essa é a regra inteira: a mesma transportadora
+/// pode atender o contrato da prefeitura pela manhã e famílias
+/// particulares à tarde. Um campo de valor único obrigaria a escolher
+/// uma das duas e, na prática, obrigaria a cadastrar a mesma empresa
+/// duas vezes — com duas frotas, duas equipes e dois códigos, para um
+/// carro que é o mesmo.
+///
+/// Por isso é `ServiceTag[]` e não `ServiceTag`. Ter as duas é um caso
+/// normal, não uma exceção: significa simplesmente acesso a tudo.
+///
+/// ## O que ela NÃO é
+///
+/// Não tem nada a ver com dinheiro. Quem paga a Rotta é sempre a
+/// transportadora, nas duas tags, e a estrutura de receita é a RottaPay
+/// — que o usuário vai desenhar. Tag aqui habilita FUNCIONALIDADE.
+enum ServiceTag {
+  /// Transporte escolar sob contrato de licitação com o município.
+  LICITADA
+
+  /// Transporte escolar particular, contratado pelas famílias.
+  PRIVADA
+}
+
 /// Ciclo de vida comercial da Empresa/Tenant (Dossie 16, `EMP-04`/`EMP-05`).
 enum CompanyStatus {
   TRIAL
@@ -623,6 +654,20 @@ model Company {
   /// no formato (dígito verificador real).
   cpfCnpj      String      @unique
   tipo         CompanyType
+
+  /// Quais funcionalidades esta transportadora enxerga (ver
+  /// `ServiceTag`). ACUMULATIVAS — com as duas, ela tem acesso a tudo.
+  ///
+  /// `[PRIVADA]` por padrão porque é o que toda empresa cadastrada até
+  /// hoje é: ela se inscreveu sozinha e atende famílias. A tag
+  /// `LICITADA` é acrescentada pelo Admin da Rotta quando a empresa
+  /// ganha um contrato de município — nunca por autoatendimento, mesma
+  /// razão da área de atuação.
+  ///
+  /// Nunca vazia: uma empresa sem tag nenhuma não teria funcionalidade
+  /// alguma, o que é um estado sem uso (para tirar uma empresa do ar
+  /// existe `status`, que é o campo certo para isso).
+  tags ServiceTag[] @default([PRIVADA])
 
   email    String
   telefone String

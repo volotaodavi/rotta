@@ -7,6 +7,7 @@ import {
 } from "./companies.constants";
 import { CompaniesController } from "./companies.controller";
 import { CompaniesService } from "./companies.service";
+import { CompanyTagsService } from "./company-tags.service";
 import { PrismaCompanySettingRepository } from "./repositories/prisma-company-setting.repository";
 import { PrismaCompanyRepository } from "./repositories/prisma-company.repository";
 import { PrismaPlanRepository } from "./repositories/prisma-plan.repository";
@@ -61,6 +62,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
   controllers: [CompaniesController],
   providers: [
     CompaniesService,
+    CompanyTagsService,
     { provide: COMPANY_REPOSITORY, useClass: PrismaCompanyRepository },
     { provide: COMPANY_SETTING_REPOSITORY, useClass: PrismaCompanySettingRepository },
     { provide: PLAN_REPOSITORY, useClass: PrismaPlanRepository },
@@ -70,6 +72,9 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
   // `asaasSubscriptionId` a partir do webhook da Asaas sem
   // reimplementar acesso a `Prisma.company` — o próprio Repository
   // Pattern deste módulo, reusado por outro módulo de domínio.
-  exports: [CompaniesService, COMPANY_REPOSITORY],
+  // `CompanyTagsService` é exportado porque a pergunta "esta empresa
+  // tem a tag X?" vai ser feita de telas e endpoints fora daqui, e
+  // precisa ter UMA resposta só (ver a nota do próprio serviço).
+  exports: [CompaniesService, CompanyTagsService, COMPANY_REPOSITORY],
 })
 export class CompaniesModule {}

@@ -1,4 +1,4 @@
-import type { Company, CompanyStatus, CompanyType, Plan, Prisma } from "@prisma/client";
+import type { Company, CompanyStatus, CompanyType, Plan, Prisma, ServiceTag } from "@prisma/client";
 
 export type CompanyWithPlan = Company & { plan: Plan };
 
@@ -63,6 +63,13 @@ export interface UpdateCompanyData {
   fusoHorario?: string;
   status?: CompanyStatus;
   planId?: string;
+  /**
+   * Habilitações da empresa. Escrito SÓ por
+   * `CompaniesService.definirTags` (endpoint exclusivo do Admin da
+   * Rotta) — nunca pelo `update` genérico, que é aberto a
+   * `EMPRESA`/`GESTOR`.
+   */
+  tags?: ServiceTag[];
   /** ID do cliente na Asaas (`cus_...`) — ver nota no schema Prisma. */
   asaasCustomerId?: string | null;
   /** ID da assinatura ativa na Asaas (`sub_...`) — ver nota no schema Prisma. */

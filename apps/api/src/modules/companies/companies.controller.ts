@@ -25,6 +25,7 @@ import { CreateCompanyDto } from "./dto/create-company.dto";
 import { ListCompaniesQueryDto } from "./dto/list-companies-query.dto";
 import { SuspendCompanyDto } from "./dto/suspend-company.dto";
 import { UpdateCompanySettingsDto } from "./dto/update-company-settings.dto";
+import { UpdateCompanyTagsDto } from "./dto/update-company-tags.dto";
 import { UpdateCompanyDto } from "./dto/update-company.dto";
 
 import type { Request } from "express";
@@ -141,6 +142,25 @@ export class CompaniesController {
     @Req() req: Request,
   ) {
     return this.companiesService.reactivate(id, actor, requestMeta(req));
+  }
+
+  /**
+   * Habilitações desta transportadora — quais funcionalidades ela
+   * enxerga (25/09/2026). Acumulativas: com as duas, acesso a tudo.
+   *
+   * Endpoint SEPARADO de `PATCH /companies/:id` de propósito: aquele é
+   * aberto a `EMPRESA`/`GESTOR` para a empresa editar os próprios
+   * dados. Habilitação não é dado cadastral dela.
+   */
+  @Patch(":id/tags")
+  @Roles(Role.ADMIN_ROTTA)
+  definirTags(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCompanyTagsDto,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.companiesService.definirTags(id, dto, actor, requestMeta(req));
   }
 
   @Patch(":id/plan")

@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { CompanyStatus, CompanyType } from "@prisma/client";
+import { CompanyStatus, CompanyType, ServiceTag } from "@prisma/client";
 
 export class PlanResponseDto {
   @ApiProperty() id!: string;
@@ -20,6 +20,14 @@ export class CompanyResponseDto {
   @ApiProperty() nomeFantasia!: string;
   @ApiProperty() cpfCnpj!: string;
   @ApiProperty({ enum: CompanyType }) tipo!: CompanyType;
+
+  @ApiProperty({
+    enum: ServiceTag,
+    isArray: true,
+    description:
+      "Habilitações da empresa — quais funcionalidades ela enxerga. Acumulativas: com as duas, tem acesso a tudo.",
+  })
+  tags!: ServiceTag[];
   @ApiProperty() email!: string;
   @ApiProperty() telefone!: string;
   @ApiPropertyOptional() whatsapp?: string | null;

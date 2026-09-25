@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateCompanyInput,
   ListCompaniesParams,
+  ServiceTag,
   UpdateCompanyInput,
 } from "@rotta/api-client";
 
@@ -50,6 +51,21 @@ export function useUpdateCompany(id: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: UpdateCompanyInput) => companiesApi.update(id, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["companies", id] });
+      void queryClient.invalidateQueries({ queryKey: ["companies"] });
+    },
+  });
+}
+
+/**
+ * Define as habilitações da transportadora (25/09/2026). A lista
+ * SUBSTITUI a anterior — é o gesto de uma tela de caixinhas.
+ */
+export function useDefinirTags(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (tags: ServiceTag[]) => companiesApi.definirTags(id, tags),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["companies", id] });
       void queryClient.invalidateQueries({ queryKey: ["companies"] });

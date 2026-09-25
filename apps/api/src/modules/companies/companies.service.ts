@@ -36,6 +36,7 @@ import type {
   NotificationChannel,
   UpdateCompanySettingsDto,
 } from "./dto/update-company-settings.dto";
+import type { UpdateCompanyTagsDto } from "./dto/update-company-tags.dto";
 import type { UpdateCompanyDto } from "./dto/update-company.dto";
 import type { CompanySettingRepository } from "./repositories/company-setting.repository";
 import type { CompanyRepository, UpdateCompanyData } from "./repositories/company.repository";
@@ -689,6 +690,62 @@ export class CompaniesService implements OnModuleInit {
       atorUserId: actor.sub,
       dadosAntes: { status: existing.status },
       dadosDepois: { status: updated.status, motivo: dto.motivo },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(updated);
+  }
+
+  /**
+   * Define as habilitações desta transportadora (25/09/2026: "empresa
+   * licitada deverá ter uma tag... toda e qualquer empresa pode ter as
+   * duas tags, aí fica com todas as funcionalidades existentes").
+   *
+   * ## Substitui, não acrescenta
+   *
+   * A lista recebida vira a lista da empresa. É o gesto que o Admin
+   * espera de uma tela de caixinhas: ele marca as que valem e salva.
+   * Um método que só adicionasse exigiria um segundo para remover, e a
+   * tela teria de calcular a diferença.
+   *
+   * ## Por que só o Admin da Rotta
+   *
+   * Habilitar-se como licitada é uma afirmação sobre um contrato com o
+   * poder público. Na mão da própria empresa, seria autodeclaração.
+   *
+   * ## O que NÃO acontece aqui
+   *
+   * Nada é apagado ao tirar uma tag. As rotas, os alunos e os vínculos
+   * que a empresa criou sob aquela habilitação continuam existindo —
+   * tirar a tag esconde a funcionalidade dali em diante, e devolvê-la
+   * traz tudo de volta. A auditoria guarda o antes e o depois
+   * justamente para essa conversa.
+   */
+  async definirTags(
+    id: string,
+    dto: UpdateCompanyTagsDto,
+    actor: AuthenticatedUser,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    const existing = await this.companyRepository.findById(id);
+    if (!existing) {
+      throw new NotFoundException("Empresa não encontrada.");
+    }
+
+    // `Set` para o mesmo conjunto gravar igual independentemente da
+    // ordem em que o Admin clicou nas caixinhas.
+    const tags = [...new Set(dto.tags)];
+    const updated = await this.companyRepository.update(id, { tags });
+
+    await this.recordAudit({
+      companyId: id,
+      entidadeTipo: "Company",
+      entidadeId: id,
+      acao: "UPDATED",
+      atorUserId: actor.sub,
+      dadosAntes: { tags: existing.tags },
+      dadosDepois: { tags: updated.tags },
       ip: meta.ip,
       userAgent: meta.userAgent,
     });

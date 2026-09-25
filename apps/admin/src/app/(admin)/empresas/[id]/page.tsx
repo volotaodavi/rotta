@@ -21,6 +21,7 @@ import { useAccessAsSupport } from "@/features/backoffice/hooks/use-backoffice";
 type AbaDaEmpresa = "dados" | "alunos" | "rotas" | "veiculos" | "atuacao";
 import { CompanyServiceAreasTab } from "@/features/companies/components/company-service-areas-tab";
 import { CompanyStatusBadge } from "@/features/companies/components/company-status-badge";
+import { CompanyTagsCard } from "@/features/companies/components/company-tags-card";
 import {
   useCompany,
   useCompanyDashboard,
@@ -270,7 +271,10 @@ export default function EmpresaDetalhesPage({
           </Card.Body>
         </Card>
       ) : activeTab === "atuacao" ? (
-        <CompanyServiceAreasTab companyId={id} cidade={company.cidade} estado={company.estado} />
+        <div className="flex flex-col gap-6">
+          <CompanyTagsCard companyId={id} atuais={company.tags} />
+          <CompanyServiceAreasTab companyId={id} cidade={company.cidade} estado={company.estado} />
+        </div>
       ) : activeTab === "alunos" ? (
         <CompanyStudentsTab companyId={id} />
       ) : activeTab === "rotas" ? (

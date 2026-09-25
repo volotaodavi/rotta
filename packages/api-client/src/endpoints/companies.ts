@@ -15,6 +15,33 @@ export type CompanyType =
 export type CompanyStatus = "TRIAL" | "ATIVO" | "SUSPENSO" | "CANCELADO" | "INADIMPLENTE";
 
 /**
+ * Habilitações da transportadora — quais funcionalidades ela enxerga
+ * (25/09/2026: "empresa licitada deverá ter uma tag... toda e qualquer
+ * empresa pode ter as duas tags, aí fica com todas as funcionalidades
+ * existentes").
+ *
+ * São ACUMULATIVAS. A mesma transportadora pode atender o contrato da
+ * prefeitura pela manhã e famílias particulares à tarde — por isso é
+ * uma lista, nunca um valor só.
+ *
+ * Nada a ver com dinheiro: quem paga a Rotta é sempre a transportadora,
+ * nas duas tags. Tag habilita FUNCIONALIDADE.
+ */
+export type ServiceTag = "LICITADA" | "PRIVADA";
+
+export const SERVICE_TAG_LABEL: Record<ServiceTag, string> = {
+  LICITADA: "Licitada",
+  PRIVADA: "Particular",
+};
+
+export const SERVICE_TAG_DESCRICAO: Record<ServiceTag, string> = {
+  LICITADA:
+    "Atende contrato de licitação com o município — o Admin da Rotta cadastra e delimita a área de atuação dela.",
+  PRIVADA:
+    "Atende famílias que a contratam diretamente — ela se cadastra sozinha e se credencia nas escolas.",
+};
+
+/**
  * Rótulo exibido do tipo societário — reaproveitado pelos dois
  * formulários de cadastro (`apps/web/.../criar-conta/empresa`,
  * `apps/admin/.../empresas/nova`) e pela exibição no detalhe do Admin
@@ -82,6 +109,11 @@ export interface Company {
   nomeFantasia: string;
   cpfCnpj: string;
   tipo: CompanyType;
+  /**
+   * Habilitações da empresa — quais funcionalidades ela enxerga.
+   * ACUMULATIVAS: com as duas, acesso a tudo. Só o Admin da Rotta muda.
+   */
+  tags: ServiceTag[];
   email: string;
   telefone: string;
   whatsapp: string | null;
@@ -206,6 +238,23 @@ export function createCompaniesEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<Company>>(`/companies/${id}/reactivate`, {
           method: "POST",
+        })
+      ).data,
+
+    /**
+     * Define as habilitações da transportadora. A lista SUBSTITUI a
+     * anterior — é o gesto de uma tela de caixinhas.
+     *
+     * Endpoint SEPARADO do `update` genérico: aquele é aberto a
+     * EMPRESA/GESTOR para editarem os próprios dados; este é só do
+     * Admin da Rotta, porque habilitar-se como licitada é uma
+     * afirmação sobre um contrato com o poder público.
+     */
+    definirTags: async (id: string, tags: ServiceTag[]): Promise<Company> =>
+      (
+        await apiClient.request<ApiEnvelope<Company>>(`/companies/${id}/tags`, {
+          method: "PATCH",
+          body: { tags },
         })
       ).data,
 
