@@ -320,5 +320,19 @@ describe("WalletService", () => {
 
       await expect(service.registrarMensalidadePendente(buildContract())).resolves.toBeUndefined();
     });
+
+    it("contrato SEM mensalidade não gera lançamento nenhum", async () => {
+      // Transporte público licitado (25/09/2026, "não quero mistura"):
+      // o valor é zero porque o município já pagou. Creditar R$ 0,00
+      // encheria o extrato da transportadora de linhas que não são
+      // dinheiro, e cada uma seria uma pergunta do gestor sobre uma
+      // cobrança que não existe.
+      await service.registrarMensalidadePendente(
+        buildContract({ valorMensalidadeCentavos: 0, origem: "PUBLICO_LICITADO" }),
+      );
+
+      expect(repository.getOrCreate).not.toHaveBeenCalled();
+      expect(repository.applyTransaction).not.toHaveBeenCalled();
+    });
   });
 });

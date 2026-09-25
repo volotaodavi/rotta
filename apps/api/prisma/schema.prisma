@@ -60,6 +60,29 @@ enum CompanyType {
   OUTRO
 }
 
+/// Quem PAGA pelo transporte — a distinção que o usuário pediu em
+/// 25/09/2026: "faça a distinção, por favor. Não quero mistura".
+///
+/// Não confundir com `CompanyServiceArea`, que responde outra pergunta.
+/// A área de atuação diz ONDE a transportadora pode se credenciar; esta
+/// enum diz QUEM custeia o serviço. São independentes de propósito: uma
+/// transportadora privada pode ter cerca de município (atende só uma
+/// cidade por opção dela), e isso não a torna licitada.
+///
+/// - `PRIVADO` — o responsável contrata e paga a mensalidade. É todo o
+///   fluxo que já existia: solicitação no marketplace, negociação,
+///   contrato com valor, assinatura, carteira. É o DEFAULT, e é o que
+///   mantém esta mudança aditiva: nenhuma empresa de hoje muda de
+///   comportamento.
+/// - `PUBLICO_LICITADO` — o município custeia via contrato de licitação.
+///   Não há mensalidade, não há negociação e o responsável NUNCA é
+///   cobrado. Ele continua criando conta e acompanhando o filho no mapa
+///   — o que muda é só quem paga a conta.
+enum ServiceNature {
+  PRIVADO
+  PUBLICO_LICITADO
+}
+
 /// Ciclo de vida comercial da Empresa/Tenant (Dossie 16, `EMP-04`/`EMP-05`).
 enum CompanyStatus {
   TRIAL
@@ -465,6 +488,19 @@ enum ContractStatus {
 enum ContractOrigin {
   NEGOCIADO
   TERMO_CIENCIA_AUTOMATICO
+  /// Transporte custeado pelo município (empresa `PUBLICO_LICITADO`).
+  ///
+  /// Existe como origem PRÓPRIA, e não como um `TERMO_CIENCIA_AUTOMATICO`
+  /// de valor zero, porque os dois dizem coisas opostas ao responsável:
+  /// o termo de ciência diz "a mensalidade ainda será definida pela
+  /// transportadora" — uma promessa de cobrança futura. No transporte
+  /// público não há mensalidade a definir, nem agora nem depois, e
+  /// deixar os dois casos no mesmo balde é exatamente a mistura que o
+  /// usuário pediu para acabar (25/09/2026).
+  ///
+  /// `valorMensalidadeCentavos` é sempre 0 aqui, e isso é uma verdade
+  /// do negócio, não um placeholder.
+  PUBLICO_LICITADO
 }
 
 /// Alvo de uma avaliação (briefing "AVALIAÇÕES") — ver nota de
@@ -623,6 +659,20 @@ model Company {
   /// no formato (dígito verificador real).
   cpfCnpj      String      @unique
   tipo         CompanyType
+
+  /// Quem PAGA pelo transporte (ver `ServiceNature`). `PRIVADO` por
+  /// padrão — toda empresa que já existe continua exatamente como está,
+  /// que é o que torna esta separação aditiva.
+  ///
+  /// Só o Admin da Rotta muda este campo: é uma declaração sobre o
+  /// contrato com o poder público, não autoatendimento. Se a própria
+  /// empresa pudesse se declarar licitada, ela desligaria a cobrança do
+  /// responsável por conta própria.
+  ///
+  /// NÃO confundir com `areasDeAtuacao`: aquela diz ONDE a empresa pode
+  /// se credenciar, esta diz QUEM custeia. Uma transportadora privada
+  /// pode ter cerca de município sem ser licitada.
+  naturezaServico ServiceNature @default(PRIVADO)
 
   email    String
   telefone String

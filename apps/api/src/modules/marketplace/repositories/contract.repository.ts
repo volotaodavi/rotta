@@ -63,6 +63,14 @@ export interface ContractRepository {
    * `TransportRequestRepository.create`.
    */
   createTermoCienciaAutomatico(data: CreateTermoCienciaData): Promise<Contract>;
+  /**
+   * A mesma porta, para a vertente PÚBLICA LICITADA: o município
+   * custeia, o responsável não é cobrado, e o texto do documento diz
+   * isso em vez de prometer uma mensalidade futura (ver a nota da
+   * implementação). Método próprio, e não um parâmetro do anterior,
+   * porque a diferença é o que o responsável lê.
+   */
+  createAutorizacaoPublica(data: CreateTermoCienciaData): Promise<Contract>;
   findByTransportRequestId(transportRequestId: string): Promise<Contract | null>;
   findByIdScoped(id: string, scope: ContractAccessScope): Promise<Contract | null>;
   /** Sem escopo — só Admin Rotta. */

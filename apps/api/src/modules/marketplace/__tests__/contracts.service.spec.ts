@@ -13,6 +13,7 @@ import type { AuditLogService } from "@/modules/audit/audit-log.service";
 import type { AuthentiqueService } from "@/modules/authentique/authentique.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
+import type { ServiceNatureService } from "@/modules/companies/service-nature.service";
 import type { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import type { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
@@ -196,6 +197,7 @@ describe("ContractsService", () => {
   let schoolRepository: jest.Mocked<Pick<SchoolRepository, "findById">>;
   let companyRepository: jest.Mocked<Pick<CompanyRepository, "findById">>;
   let termoCienciaPdfService: jest.Mocked<Pick<TermoCienciaPdfService, "gerar">>;
+  let serviceNatureService: jest.Mocked<Pick<ServiceNatureService, "assertCobrancaPermitida">>;
 
   beforeEach(() => {
     contractRepository = {
@@ -244,6 +246,9 @@ describe("ContractsService", () => {
     schoolRepository = { findById: jest.fn().mockResolvedValue(buildSchool()) };
     companyRepository = { findById: jest.fn().mockResolvedValue(buildCompany()) };
     termoCienciaPdfService = { gerar: jest.fn().mockResolvedValue(Buffer.from("pdf")) };
+    // Privado por padrão — o guard deixa passar, que é o comportamento
+    // de toda empresa que já existe.
+    serviceNatureService = { assertCobrancaPermitida: jest.fn().mockResolvedValue(undefined) };
 
     service = new ContractsService(
       contractRepository,
@@ -260,7 +265,47 @@ describe("ContractsService", () => {
       schoolRepository as unknown as SchoolRepository,
       companyRepository as unknown as CompanyRepository,
       termoCienciaPdfService as unknown as TermoCienciaPdfService,
+      serviceNatureService as unknown as ServiceNatureService,
     );
+  });
+
+  /**
+   * A porta da vertente privada (25/09/2026, "não quero mistura").
+   *
+   * `gerarContrato` negocia MENSALIDADE: pede valor, plano e regras
+   * comerciais, e no fim credita a carteira da empresa. Numa empresa
+   * licitada o município já pagou, e seguir por aqui terminaria numa
+   * cobrança a um responsável que não deve nada.
+   */
+  describe("gerarContrato › não existe no transporte público licitado", () => {
+    it("recusa gerar contrato com mensalidade em empresa licitada", async () => {
+      transportRequestRepository.findByIdScoped.mockResolvedValue(buildTransportRequest());
+      contractRepository.findByTransportRequestId.mockResolvedValue(null);
+      serviceNatureService.assertCobrancaPermitida.mockRejectedValue(
+        new ForbiddenException("Gerar contrato com mensalidade não existe..."),
+      );
+
+      await expect(
+        service.gerarContrato("request-1", buildCreateContractDto(), empresaActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+      expect(contractRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("checa a natureza da empresa DONA da solicitação, não a do ator", async () => {
+      // O `companyId` vem da `TransportRequest`. Ler o do ator abriria
+      // a porta para um Admin da Rotta gerar mensalidade numa empresa
+      // licitada sem que o guard percebesse.
+      transportRequestRepository.findByIdScoped.mockResolvedValue(buildTransportRequest());
+      contractRepository.findByTransportRequestId.mockResolvedValue(null);
+      contractRepository.create.mockResolvedValue(buildContract());
+
+      await service.gerarContrato("request-1", buildCreateContractDto(), empresaActor, {});
+
+      expect(serviceNatureService.assertCobrancaPermitida).toHaveBeenCalledWith(
+        "company-1",
+        expect.any(String),
+      );
+    });
   });
 
   describe("gerarContrato", () => {

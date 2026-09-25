@@ -9,6 +9,7 @@ import type { TransportRequestRepository } from "../repositories/transport-reque
 import type { StudentCredentialedEvent } from "@/modules/students/events/student-credentialed.event";
 
 import { CompaniesService } from "@/modules/companies/companies.service";
+import { ServiceNatureService } from "@/modules/companies/service-nature.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { STUDENT_CREDENTIALED_EVENT } from "@/modules/students/events/student-credentialed.event";
@@ -54,6 +55,7 @@ export class StudentCredentialedListener {
     @Inject(CONTRACT_REPOSITORY)
     private readonly contractRepository: ContractRepository,
     private readonly companiesService: CompaniesService,
+    private readonly serviceNatureService: ServiceNatureService,
     private readonly eventEmitter: EventEmitter2,
     private readonly messagePersonalizationService: MessagePersonalizationService,
   ) {}
@@ -92,18 +94,32 @@ export class StudentCredentialedListener {
     // Termo de ciência: falha aqui não desfaz a TransportRequest acima —
     // a Empresa ainda pode gerar o contrato negociado manualmente pelo
     // caminho de sempre (`/marketplace/solicitacoes`).
+    //
+    // A BIFURCAÇÃO DAS DUAS VERTENTES (25/09/2026, "não quero mistura")
+    // acontece aqui, e é o único ponto do credenciamento que precisa
+    // saber quem paga. Tudo o que vem antes — solicitação, aprovação —
+    // e tudo o que vem depois — rota, embarque, mapa — é idêntico nas
+    // duas: o pai de Maricá acompanha o filho exatamente como o pai de
+    // um contrato particular.
     try {
-      const contract = await this.contractRepository.createTermoCienciaAutomatico({
+      const publico = await this.serviceNatureService.ehPublicoLicitado(event.companyId);
+      const dados = {
         transportRequestId,
         studentId: event.studentId,
         responsavelId: event.responsavelId,
         companyId: event.companyId,
         schoolId: event.schoolId,
-      });
+      };
+
+      const contract = publico
+        ? await this.contractRepository.createAutorizacaoPublica(dados)
+        : await this.contractRepository.createTermoCienciaAutomatico(dados);
 
       const nomeEmpresa =
         (await this.companiesService.getNomeFantasia(event.companyId)) ?? "a transportadora";
-      const { titulo, corpo } = this.messagePersonalizationService.termoCienciaGerado(nomeEmpresa);
+      const { titulo, corpo } = publico
+        ? this.messagePersonalizationService.autorizacaoPublicaGerada(nomeEmpresa)
+        : this.messagePersonalizationService.termoCienciaGerado(nomeEmpresa);
       this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
         userId: contract.responsavelId,
         companyId: contract.companyId,

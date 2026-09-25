@@ -1,4 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
+import { ServiceNature } from "@prisma/client";
 
 /**
  * Dashboard da Empresa (Dossiê 16 — "quantidade de motoristas/alunos/
@@ -21,10 +22,18 @@ export class CompanyDashboardResponseDto {
   @ApiProperty({ description: "Total de rotas cadastradas (não deletadas)" }) rotas!: number;
   @ApiProperty({ description: "Viagens de hoje (todos os status)" }) viagens!: number;
   @ApiProperty({
+    nullable: true,
     description:
-      'Soma de Contract.valorMensalidadeCentavos dos contratos ATIVO — sempre "estimada" (RN-34), nunca receita reconhecida. Corrigido no Prompt 22: antes lia o preço da assinatura da própria empresa com a Rotta (Plan.priceCents), que não é a receita do transporte escolar.',
+      'Soma de Contract.valorMensalidadeCentavos dos contratos ATIVO — sempre "estimada" (RN-34), nunca receita reconhecida. Corrigido no Prompt 22: antes lia o preço da assinatura da própria empresa com a Rotta (Plan.priceCents), que não é a receita do transporte escolar. `null` em empresa PUBLICO_LICITADO: a receita dela vem do contrato com o município, que a Rotta não conhece — mostrar R$ 0,00 seria afirmar que ela não fatura nada.',
   })
-  receitaEstimadaCentavos!: number;
+  receitaEstimadaCentavos!: number | null;
+
+  @ApiProperty({
+    enum: ServiceNature,
+    description:
+      "Quem paga pelo transporte. A tela usa isto para decidir se mostra receita e mensalidade — em PUBLICO_LICITADO não existe nenhuma das duas.",
+  })
+  naturezaServico!: ServiceNature;
   @ApiProperty({ description: "Documentos de motorista + veículo vencendo nos próximos 7 dias" })
   documentosVencendo!: number;
   @ApiProperty({

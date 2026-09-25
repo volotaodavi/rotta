@@ -27,6 +27,7 @@ import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { AuthentiqueService } from "@/modules/authentique/authentique.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import { CompaniesService } from "@/modules/companies/companies.service";
+import { ServiceNatureService } from "@/modules/companies/service-nature.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
@@ -77,6 +78,7 @@ export class ContractsService {
     @Inject(SCHOOL_REPOSITORY) private readonly schoolRepository: SchoolRepository,
     @Inject(COMPANY_REPOSITORY) private readonly companyRepository: CompanyRepository,
     private readonly termoCienciaPdfService: TermoCienciaPdfService,
+    private readonly serviceNatureService: ServiceNatureService,
   ) {}
 
   /** Best-effort — nunca bloqueia a emissão do evento de comunicação por causa de uma falha ao resolver `nomeFantasia`. */
@@ -150,6 +152,16 @@ export class ContractsService {
     if (existing) {
       throw new ConflictException("Esta solicitação já tem um contrato gerado.");
     }
+
+    // A porta da vertente privada (25/09/2026, "não quero mistura").
+    // Este método negocia MENSALIDADE — pede valor, plano e regras
+    // comerciais, e no fim credita a carteira da empresa. Numa empresa
+    // licitada o serviço já foi pago pelo município, e seguir daqui
+    // terminaria numa cobrança a um responsável que não deve nada.
+    await this.serviceNatureService.assertCobrancaPermitida(
+      transportRequest.companyId,
+      "Gerar contrato com mensalidade",
+    );
 
     const contract = await this.contractRepository.create({
       transportRequestId,

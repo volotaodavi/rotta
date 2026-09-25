@@ -445,16 +445,41 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <FrotaEmOperacaoCard ativos={fleet?.length ?? 0} total={dashboard?.veiculos ?? 0} />
-            <Card>
-              <Card.Body className="flex flex-col justify-center gap-1">
-                <Typography variant="bodySmall" color="muted">
-                  Receita estimada
-                </Typography>
-                <Typography variant="title">
-                  {centsToBRL(dashboard?.receitaEstimadaCentavos ?? 0)}
-                </Typography>
-              </Card.Body>
-            </Card>
+            {/* Receita estimada some no transporte público licitado
+                (25/09/2026, "não quero mistura"). Ela soma a mensalidade
+                dos contratos ativos — numa transportadora licitada todos
+                valem zero, porque quem paga é a prefeitura. O cartão
+                mostraria "R$ 0,00" para uma empresa que fatura um
+                contrato municipal inteiro.
+
+                O backend manda `null` (e não 0) exatamente para esta
+                tela conseguir distinguir "não faturou nada" de "não se
+                aplica". No lugar entra o número que importa para quem
+                opera transporte público: quantas crianças ele carrega. */}
+            {dashboard?.receitaEstimadaCentavos === null ? (
+              <Card>
+                <Card.Body className="flex flex-col justify-center gap-1">
+                  <Typography variant="bodySmall" color="muted">
+                    Alunos transportados
+                  </Typography>
+                  <Typography variant="title">{dashboard.alunos}</Typography>
+                  <Typography variant="bodySmall" color="muted">
+                    Transporte custeado pelo município
+                  </Typography>
+                </Card.Body>
+              </Card>
+            ) : (
+              <Card>
+                <Card.Body className="flex flex-col justify-center gap-1">
+                  <Typography variant="bodySmall" color="muted">
+                    Receita estimada
+                  </Typography>
+                  <Typography variant="title">
+                    {centsToBRL(dashboard?.receitaEstimadaCentavos ?? 0)}
+                  </Typography>
+                </Card.Body>
+              </Card>
+            )}
             <Card>
               <Card.Body className="flex flex-col justify-center gap-1">
                 <Typography variant="bodySmall" color="muted">

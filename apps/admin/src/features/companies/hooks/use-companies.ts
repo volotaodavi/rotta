@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   CreateCompanyInput,
   ListCompaniesParams,
+  ServiceNature,
   UpdateCompanyInput,
 } from "@rotta/api-client";
 
@@ -52,6 +53,26 @@ export function useUpdateCompany(id: string) {
     mutationFn: (input: UpdateCompanyInput) => companiesApi.update(id, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["companies", id] });
+      void queryClient.invalidateQueries({ queryKey: ["companies"] });
+    },
+  });
+}
+
+/**
+ * Declara quem paga pelo transporte desta transportadora
+ * (25/09/2026, "faça a distinção, por favor. Não quero mistura").
+ *
+ * Invalida o dashboard junto porque a receita estimada muda de sentido
+ * com a natureza: em empresa licitada ela vira `null` e o cartão some.
+ */
+export function useDefinirNaturezaServico(id: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (naturezaServico: ServiceNature) =>
+      companiesApi.definirNaturezaServico(id, naturezaServico),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["companies", id] });
+      void queryClient.invalidateQueries({ queryKey: ["companies", id, "dashboard"] });
       void queryClient.invalidateQueries({ queryKey: ["companies"] });
     },
   });

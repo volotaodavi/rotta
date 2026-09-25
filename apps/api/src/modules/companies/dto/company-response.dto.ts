@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { CompanyStatus, CompanyType } from "@prisma/client";
+import { CompanyStatus, CompanyType, ServiceNature } from "@prisma/client";
 
 export class PlanResponseDto {
   @ApiProperty() id!: string;
@@ -20,6 +20,13 @@ export class CompanyResponseDto {
   @ApiProperty() nomeFantasia!: string;
   @ApiProperty() cpfCnpj!: string;
   @ApiProperty({ enum: CompanyType }) tipo!: CompanyType;
+
+  @ApiProperty({
+    enum: ServiceNature,
+    description:
+      "Quem paga pelo transporte. PRIVADO: o responsável contrata e paga. PUBLICO_LICITADO: o município custeia e o responsável nunca é cobrado — a empresa não gera contrato com mensalidade nem aparece receita no painel dela.",
+  })
+  naturezaServico!: ServiceNature;
   @ApiProperty() email!: string;
   @ApiProperty() telefone!: string;
   @ApiPropertyOptional() whatsapp?: string | null;

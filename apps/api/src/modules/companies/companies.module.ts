@@ -10,6 +10,7 @@ import { CompaniesService } from "./companies.service";
 import { PrismaCompanySettingRepository } from "./repositories/prisma-company-setting.repository";
 import { PrismaCompanyRepository } from "./repositories/prisma-company.repository";
 import { PrismaPlanRepository } from "./repositories/prisma-plan.repository";
+import { ServiceNatureService } from "./service-nature.service";
 
 import { EmailModule } from "@/infra/email/email.module";
 import { ReceitaFederalModule } from "@/infra/receita-federal/receita-federal.module";
@@ -61,6 +62,7 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
   controllers: [CompaniesController],
   providers: [
     CompaniesService,
+    ServiceNatureService,
     { provide: COMPANY_REPOSITORY, useClass: PrismaCompanyRepository },
     { provide: COMPANY_SETTING_REPOSITORY, useClass: PrismaCompanySettingRepository },
     { provide: PLAN_REPOSITORY, useClass: PrismaPlanRepository },
@@ -70,6 +72,10 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
   // `asaasSubscriptionId` a partir do webhook da Asaas sem
   // reimplementar acesso a `Prisma.company` — o próprio Repository
   // Pattern deste módulo, reusado por outro módulo de domínio.
-  exports: [CompaniesService, COMPANY_REPOSITORY],
+  // `ServiceNatureService` é exportado porque a pergunta "esta
+  // empresa cobra do responsável?" é feita de fora daqui — marketplace,
+  // carteira e credenciamento de aluno — e precisa ter UMA resposta só
+  // (ver a nota do próprio serviço).
+  exports: [CompaniesService, ServiceNatureService, COMPANY_REPOSITORY],
 })
 export class CompaniesModule {}
