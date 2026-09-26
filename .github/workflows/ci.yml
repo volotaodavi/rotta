@@ -227,6 +227,13 @@ jobs:
     # aqui também.
     env:
       NEXT_PUBLIC_API_URL: "https://rotta-vt7i.onrender.com/v1"
+      # O bundle do @rotta/mobile (`expo export`, ver abaixo) lê estas
+      # duas. `src/config/env.ts` degrada em vez de lançar quando elas
+      # faltam, então o export passaria vazio — mas passaria empacotando
+      # um app que não fala com API nenhuma. Com valores de verdade, o
+      # que o CI valida é o mesmo grafo que o EAS vai empacotar.
+      EXPO_PUBLIC_API_URL: "https://rotta-vt7i.onrender.com/v1"
+      EXPO_PUBLIC_WEB_URL: "https://rotta.com.br"
     steps:
       - uses: actions/checkout@v4
 
@@ -244,6 +251,17 @@ jobs:
       - name: Gerar Prisma Client (@rotta/api)
         run: pnpm --filter=@rotta/api prisma:generate
 
+      # Inclui o bundle REAL do app nativo desde 26/09/2026. Até então o
+      # `build` do @rotta/mobile era `echo ... && exit 0`, então este
+      # passo passava verde sem nunca empacotar o app: qualquer erro de
+      # Metro (import quebrado, asset faltando, dependência nativa
+      # incompatível) só aparecia no EAS ou no celular de alguém.
+      #
+      # `expo export` roda o Metro de ponta a ponta e produz o bundle
+      # Hermes — é a mesma transformação do build de produção, sem a
+      # parte nativa (essa continua no EAS, que precisa de toolchain
+      # Android/iOS). Leva ~4 min na primeira vez e é cacheado pelo
+      # turbo depois.
       - name: Build
         run: pnpm turbo run build
 

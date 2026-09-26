@@ -9,7 +9,7 @@
     "dev": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "build": "echo \"[@rotta/mobile] build de producao via EAS — ver Dossie 9, Secao 6.1\" && exit 0",
+    "build": "expo export --platform android --output-dir dist",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
