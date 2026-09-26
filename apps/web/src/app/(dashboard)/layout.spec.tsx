@@ -47,6 +47,15 @@ vi.mock("@/features/driver/hooks/use-my-active-trip", () => ({
   useMyActiveTrip: () => null,
 }));
 
+// Habilitações da empresa (25/09/2026) — o layout filtra o menu por
+// elas. Mockado porque `useMyCompanyTags` roda um `useQuery`, e este
+// spec não monta `QueryClientProvider`. `temTag` sempre `true`: o alvo
+// aqui é o guard de rota do Modo Ação, não o filtro do menu (esse tem
+// spec próprio em `layout-nav-tags.spec.tsx`).
+vi.mock("@/features/company/hooks/use-company", () => ({
+  useMyCompanyTags: () => ({ tags: ["PRIVADA"], isLoading: false, temTag: () => true }),
+}));
+
 vi.mock("@/features/identity-verification/hooks/use-identity-verification", () => ({
   useMyIdentityVerification: () => ({ data: undefined, isLoading: false }),
 }));

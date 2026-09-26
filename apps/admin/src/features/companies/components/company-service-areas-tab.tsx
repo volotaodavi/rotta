@@ -19,6 +19,7 @@ import type {
   CredenciamentoDeMunicipio,
   Municipio,
   SchoolAdministrativeDependency,
+  ServiceTag,
 } from "@rotta/api-client";
 
 import {
@@ -54,6 +55,43 @@ import { useMunicipios } from "@/features/schools/hooks/use-schools";
  * quem olha.
  */
 export function CompanyServiceAreasTab({
+  companyId,
+  cidade,
+  estado,
+  tags,
+}: {
+  companyId: string;
+  cidade: string;
+  estado: string;
+  tags: ServiceTag[];
+}): JSX.Element {
+  // Área de atuação é da vertente LICITADA (25/09/2026). Delimitar um
+  // município e credenciar as escolas dele de uma vez é o gesto do
+  // contrato público — o backend recusa numa empresa sem a tag, e
+  // deixar o formulário à mostra faria o Admin escolher a cidade, ver
+  // a contagem de escolas e só então tomar 403.
+  //
+  // A aba em si NÃO desaparece: é nela que a tag é concedida (o cartão
+  // de habilitações fica fora deste componente, montado sempre).
+  if (!tags.includes("LICITADA")) {
+    return (
+      <Card>
+        <Card.Header title="Área de atuação" />
+        <Card.Body>
+          <EmptyState
+            title="Disponível para transportadora licitada"
+            description="Delimitar um município e credenciar todas as escolas dele de uma vez é do contrato público. Marque a habilitação “Licitada” acima para liberar. Uma transportadora particular encontra as escolas pelo Marketplace, uma a uma, conforme as famílias a contratam."
+          />
+        </Card.Body>
+      </Card>
+    );
+  }
+
+  return <AreaDeAtuacao companyId={companyId} cidade={cidade} estado={estado} />;
+}
+
+/** O conteúdo de verdade — só montado para empresa com a tag LICITADA. */
+function AreaDeAtuacao({
   companyId,
   cidade,
   estado,

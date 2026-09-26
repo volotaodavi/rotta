@@ -233,10 +233,12 @@ export default function EmpresaDetalhesPage({
           { id: "alunos", label: "Alunos" },
           { id: "rotas", label: "Rotas" },
           { id: "veiculos", label: "Veículos" },
-          // Fluxo de transporte público (24/09/2026): onde esta
-          // transportadora pode atuar, e o credenciamento do município
-          // inteiro de uma vez.
-          { id: "atuacao", label: "Área de atuação" },
+          // Habilitações + área de atuação (24-25/09/2026). A aba
+          // aparece SEMPRE, mesmo para empresa sem a tag LICITADA: é
+          // aqui que o Admin CONCEDE a habilitação. Esconder a aba de
+          // quem não a tem tornaria impossível concedê-la — o conteúdo
+          // de área de atuação é que se adapta, dentro do componente.
+          { id: "atuacao", label: "Habilitações e atuação" },
         ]}
         activeId={activeTab}
         onChange={(id) => setActiveTab(id as AbaDaEmpresa)}
@@ -273,7 +275,12 @@ export default function EmpresaDetalhesPage({
       ) : activeTab === "atuacao" ? (
         <div className="flex flex-col gap-6">
           <CompanyTagsCard companyId={id} atuais={company.tags} />
-          <CompanyServiceAreasTab companyId={id} cidade={company.cidade} estado={company.estado} />
+          <CompanyServiceAreasTab
+            companyId={id}
+            cidade={company.cidade}
+            estado={company.estado}
+            tags={company.tags}
+          />
         </div>
       ) : activeTab === "alunos" ? (
         <CompanyStudentsTab companyId={id} />

@@ -58,6 +58,9 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { data: company } = useMyCompany(user?.companyId);
+  // Habilitações da empresa (25/09/2026) — `undefined` enquanto carrega,
+  // e nesse estado os atalhos do Marketplace continuam visíveis.
+  const temTagParticular = company ? company.tags.includes("PRIVADA") : undefined;
   const { data: pendentes } = usePendingJoinRequests();
   // Só o total importa aqui (badge do atalho) — `pageSize: 1` evita
   // carregar a lista inteira só pra saber a contagem.
@@ -147,22 +150,35 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
         </View>
       ) : null}
 
-      <VehicleButton
-        label={
-          solicitacoesRecebidas && solicitacoesRecebidas.total > 0
-            ? `Solicitações (${solicitacoesRecebidas.total} novas)`
-            : "Solicitações de transporte"
-        }
-        variant="secondary"
-        icon={<ShoppingBag size={18} color={theme.colors.text} />}
-        onPress={() => navigation.navigate("MarketplaceSolicitacoes")}
-      />
-      <VehicleButton
-        label="Contratos"
-        variant="secondary"
-        icon={<ShoppingBag size={18} color={theme.colors.text} />}
-        onPress={() => navigation.navigate("MarketplaceContratos")}
-      />
+      {/* Marketplace é da vertente PARTICULAR (25/09/2026): é a família
+          procurando e contratando a transportadora. Numa empresa só
+          licitada quem define quem ela atende é o contrato com o
+          município — os dois atalhos levariam a telas vazias, e a
+          solicitação seria recusada pelo backend.
+
+          `!== false` e não `=== true`: enquanto a empresa não carregou,
+          os atalhos continuam aparecendo. Um botão que pisca é pior que
+          um botão que abre uma tela vazia. */}
+      {temTagParticular !== false ? (
+        <>
+          <VehicleButton
+            label={
+              solicitacoesRecebidas && solicitacoesRecebidas.total > 0
+                ? `Solicitações (${solicitacoesRecebidas.total} novas)`
+                : "Solicitações de transporte"
+            }
+            variant="secondary"
+            icon={<ShoppingBag size={18} color={theme.colors.text} />}
+            onPress={() => navigation.navigate("MarketplaceSolicitacoes")}
+          />
+          <VehicleButton
+            label="Contratos"
+            variant="secondary"
+            icon={<ShoppingBag size={18} color={theme.colors.text} />}
+            onPress={() => navigation.navigate("MarketplaceContratos")}
+          />
+        </>
+      ) : null}
       <VehicleButton
         label={
           pendentes && pendentes.length > 0 ? `Equipe (${pendentes.length} pendentes)` : "Equipe"

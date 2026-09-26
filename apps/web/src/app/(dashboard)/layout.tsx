@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
+import type { ServiceTag } from "@rotta/api-client";
 import type { Route } from "next";
 
 import { DriverBottomNav } from "@/components/driver-bottom-nav";
@@ -16,6 +17,7 @@ import { PlanNoticesBanner } from "@/components/plan-notices-banner";
 import { ResponsavelBottomNav } from "@/components/responsavel-bottom-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { BillingBlockScreen } from "@/features/billing/components/billing-block-screen";
+import { useMyCompanyTags } from "@/features/company/hooks/use-company";
 import { useAppMode } from "@/features/driver/hooks/use-app-mode";
 import { useMyActiveTrip } from "@/features/driver/hooks/use-my-active-trip";
 import { IdentityVerificationBlockScreen } from "@/features/identity-verification/components/identity-verification-block-screen";
@@ -31,6 +33,12 @@ import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
 interface NavLink {
   href: Route;
   label: string;
+  /**
+   * Habilitação da transportadora que este item exige (25/09/2026).
+   * Ausente = todo mundo vê, que é o caso da grande maioria: operação
+   * (rotas, frota, equipe, despachante) é igual nas duas verticais.
+   */
+  exigeTag?: ServiceTag;
 }
 
 /**
@@ -52,7 +60,12 @@ const PROFISSIONAL_NAV: NavLink[] = [
   // propósito: é a mesma operação, vista pelo outro lado (parte do
   // ônibus, não da rota).
   { href: "/despachante", label: "Despachante" },
-  { href: "/marketplace/solicitacoes", label: "Marketplace" },
+  // O Marketplace é da vertente PARTICULAR (25/09/2026): é a família
+  // procurando e contratando uma transportadora. Numa empresa só
+  // licitada quem define quem ela atende é o contrato com o município,
+  // então a tela não tem o que mostrar — e o backend recusa a
+  // solicitação de qualquer jeito.
+  { href: "/marketplace/solicitacoes", label: "Marketplace", exigeTag: "PRIVADA" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
   { href: "/chamados", label: "Chamados" },
 ];
@@ -217,6 +230,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   // `BillingController`) — nunca chama pra outros papéis.
   const podeVerAvisosDePlano = user?.role === "empresa" || user?.role === "gestor";
   const { mode, canToggle, setMode, isModeResolved } = useAppMode(user);
+  // Habilitações da própria empresa — decide quais itens do menu
+  // existem para ela (ver o filtro de `navLinks` abaixo). Compartilha a
+  // `queryKey` de `useMyCompany`, então não custa uma segunda busca.
+  const { temTag } = useMyCompanyTags(user?.companyId ?? "");
 
   // Quem roda a rota no dia a dia (Frente K/O) — dono autônomo/MEI em
   // "Modo Ação" e Motorista/Monitor funcionário (esse nunca tem
@@ -379,7 +396,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   // então o cabeçalho de texto (`RESPONSAVEL_NAV`) sai daqui — mesmo
   // tratamento que `showDriverNavBar` já dava pro Motorista/Monitor/
   // Autônomo desde a Frente O.
-  const navLinks = isResponsavel
+  const navLinksBrutos = isResponsavel
     ? []
     : isEscola
       ? ESCOLA_NAV
@@ -388,6 +405,17 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
         : canToggle
           ? [MINHA_ROTA_LINK, ...PROFISSIONAL_NAV]
           : PROFISSIONAL_NAV;
+
+  // Esconde o que a habilitação da empresa não inclui (25/09/2026). Sem
+  // isto, o gestor de uma transportadora só licitada clicaria em
+  // "Marketplace", veria a tela montar e só descobriria a recusa ao
+  // tentar usar — desconfiando do sistema em vez da habilitação.
+  //
+  // `temTag` devolve `true` enquanto a empresa não carregou: um item que
+  // pisca aparecendo e desaparecendo é pior que um item que o backend
+  // recusa. Errar para o lado de MOSTRAR é seguro porque quem barra de
+  // verdade é o backend.
+  const navLinks = navLinksBrutos.filter((link) => !link.exigeTag || temTag(link.exigeTag));
   const showBottomNav = showDriverNavBar || isResponsavel;
   recordCheckpoint("dashboard-layout:antes-do-jsx-final");
 

@@ -11,6 +11,7 @@ import type {
   PixCheckout,
   PreSignupCheckoutResult,
   PreSignupStatus,
+  ServiceTag,
   UpdateCompanyInput,
 } from "@rotta/api-client";
 
@@ -27,6 +28,34 @@ export function useMyCompany(companyId: string) {
     queryFn: () => companiesApi.getById(companyId),
     enabled: Boolean(companyId),
   });
+}
+
+/**
+ * As habilitações da própria transportadora (25/09/2026) — quais
+ * funcionalidades ela enxerga.
+ *
+ * ## Por que existe, em vez de ler `useMyCompany` direto
+ *
+ * A navegação inteira precisa da resposta, e o layout monta antes de
+ * qualquer página. Um hook próprio deixa a `queryKey` compartilhada
+ * (`["my-company", id]`, a MESMA de `useMyCompany`), então o painel não
+ * faz duas buscas: quem chegar primeiro preenche o cache do outro.
+ *
+ * ## Enquanto carrega, o menu NÃO esconde nada
+ *
+ * `temTag` devolve `true` enquanto a resposta não chegou. Um item que
+ * aparece e desaparece a cada navegação é pior que um item que o
+ * backend recusa: o gestor acha que o sistema está quebrado. Errar para
+ * o lado de mostrar é seguro porque o backend é quem barra de verdade.
+ */
+export function useMyCompanyTags(companyId: string) {
+  const { data, isLoading } = useMyCompany(companyId);
+
+  return {
+    tags: data?.tags ?? [],
+    isLoading,
+    temTag: (tag: ServiceTag): boolean => (data ? data.tags.includes(tag) : true),
+  };
 }
 
 export function useMyCompanyDashboard(companyId: string) {
