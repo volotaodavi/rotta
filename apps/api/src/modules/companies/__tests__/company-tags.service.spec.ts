@@ -3,7 +3,7 @@ import { ServiceTag } from "@prisma/client";
 
 import { CompanyTagsService } from "../company-tags.service";
 
-import type { PrismaService } from "@/infra/database/prisma.service";
+import type { CompanyRepository } from "../repositories/company.repository";
 
 /**
  * Tags de habilitação (25/09/2026: "empresa licitada deverá ter uma
@@ -17,12 +17,13 @@ import type { PrismaService } from "@/infra/database/prisma.service";
  * com duas frotas e duas equipes para o mesmo carro.
  */
 function criarServico(tags: ServiceTag[] | null) {
-  const findUnique = jest.fn().mockResolvedValue(tags === null ? null : { tags });
-  const prisma = {
-    withBypass: jest.fn((op: unknown) => op),
-    company: { findUnique },
-  } as unknown as PrismaService;
-  return { service: new CompanyTagsService(prisma), findUnique };
+  // `findTags` devolve `null` para empresa inexistente, e não `[]` — é
+  // o serviço que decide o que isso significa (ver "os padrões
+  // seguros" abaixo). O bypass de RLS e o `where` explícito ficam do
+  // lado do repositório, e são guardados lá.
+  const findTags = jest.fn().mockResolvedValue(tags);
+  const companies = { findTags } as unknown as CompanyRepository;
+  return { service: new CompanyTagsService(companies), findTags };
 }
 
 describe("tags de habilitação são acumulativas", () => {
@@ -81,16 +82,14 @@ describe("os padrões seguros", () => {
     );
   });
 
-  it("lê pelo companyId pedido, nunca pelo tenant ambiente", async () => {
+  it("pergunta pelo companyId pedido, nunca pelo tenant ambiente", async () => {
     // `companies` tem RLS pela própria id, e este serviço roda de
-    // dentro de listeners sem tenant nenhum. O `where` explícito é o
-    // que garante que o bypass não alarga nada.
-    const { service, findUnique } = criarServico([ServiceTag.PRIVADA]);
+    // dentro de listeners sem tenant nenhum. Passar o id adiante é o
+    // que permite ao repositório fazer o bypass sem alargar nada.
+    const { service, findTags } = criarServico([ServiceTag.PRIVADA]);
 
     await service.tags("company-9");
 
-    expect(findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "company-9" } }),
-    );
+    expect(findTags).toHaveBeenCalledWith("company-9");
   });
 });

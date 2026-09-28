@@ -129,5 +129,30 @@ export interface SchoolRepository {
    * porque ele errou uma letra.
    */
   listMunicipios(estado: string): Promise<MunicipioDoCatalogo[]>;
+  /**
+   * Os ids das escolas ATIVAS de um município — o alvo do
+   * credenciamento em massa (`CompanyServiceAreasService.credenciarMunicipio`).
+   *
+   * Recebe a cidade como o Admin a escolheu e resolve o acento aqui
+   * dentro, contra a coluna gerada `cidadeNormalizada` (migration
+   * `20260924210000_municipio_indexado`). Quem chama não precisa saber
+   * que essa coluna existe — normalizar é decisão de armazenamento.
+   *
+   * Sem paginação, de propósito: o pedido do usuário foi "pegará TODAS
+   * as escolas daquele município... não deverá inventar ou faltar". A
+   * busca é indexada e traz só o `id`, então mesmo um município grande
+   * cabe. Devolve ids, e não `School` inteira, porque é o que o
+   * chamador usa — e é a diferença entre alguns KB e alguns MB.
+   */
+  listActiveIdsNoMunicipio(filtro: EscolasDoMunicipioFilter): Promise<string[]>;
   nextCodigoInternoSequence(): Promise<number>;
+}
+
+export interface EscolasDoMunicipioFilter {
+  /** Como o Admin escolheu — com acento, com a caixa que vier. */
+  cidade: string;
+  /** Sigla da UF; a implementação normaliza a caixa. */
+  estado: string;
+  /** Vazio = todas as redes daquele município. */
+  dependencias: SchoolAdministrativeDependency[];
 }

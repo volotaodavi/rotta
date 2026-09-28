@@ -129,3 +129,85 @@ describe("listMunicipios", () => {
     expect(municipios.map((m) => m.cidade)).toEqual(["Águia Branca", "Barra Mansa", "Zé Doca"]);
   });
 });
+
+/**
+ * Credenciamento por município (24/09/2026) — a consulta que o
+ * `CompanyServiceAreasService.credenciarMunicipio` dispara.
+ *
+ * Estes testes moraram no spec do serviço até a auditoria de
+ * 26/09/2026 (item 5), quando o serviço deixou de falar com o Prisma
+ * direto. A garantia que eles guardam não mudou de valor, só de
+ * endereço: ela é sobre o `where` que vai ao banco, e o `where` agora
+ * é escrito aqui.
+ */
+function criarRepositorioDeBusca(escolas: { id: string }[]) {
+  const findMany = jest.fn().mockResolvedValue(escolas);
+  const prisma = { school: { findMany } } as unknown as PrismaService;
+  return { repo: new PrismaSchoolRepository(prisma), findMany };
+}
+
+describe("listActiveIdsNoMunicipio", () => {
+  it("NÃO FALTAR — busca pelo município NORMALIZADO, não pelo texto digitado", async () => {
+    // "Maricá" digitado pelo Admin contra "MARICA" vindo do INEP. Se o
+    // `where` levasse o texto cru, metade do município ficaria de fora
+    // em silêncio — e "0 escolas" é indistinguível de "a planilha não
+    // tinha essa escola".
+    const { repo, findMany } = criarRepositorioDeBusca([{ id: "e1" }, { id: "e2" }]);
+
+    const ids = await repo.listActiveIdsNoMunicipio({
+      cidade: "  Maricá ",
+      estado: "rj",
+      dependencias: [],
+    });
+
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          estado: "RJ",
+          cidadeNormalizada: "marica",
+          deletedAt: null,
+          status: "ATIVA",
+        }),
+      }),
+    );
+    expect(ids).toEqual(["e1", "e2"]);
+  });
+
+  it("NÃO VARRE A UF INTEIRA — o filtro de município vai no banco", async () => {
+    // Guarda contra a regressão que o usuário apontou em 24/09/2026:
+    // "são mais de 100 mil [escolas], não é possível que o sistema não
+    // aguenta". A versão anterior carregava toda a UF em memória para
+    // comparar o nome em JavaScript — em SP, ~50 mil linhas por clique.
+    const { repo, findMany } = criarRepositorioDeBusca([]);
+
+    await repo.listActiveIdsNoMunicipio({ cidade: "Maricá", estado: "RJ", dependencias: [] });
+
+    const where = findMany.mock.calls[0][0].where;
+    expect(where.cidadeNormalizada).toBeDefined();
+    // E só os ids saem do banco: o chamador cruza ids, nunca precisa
+    // da escola inteira.
+    expect(findMany.mock.calls[0][0].select).toEqual({ id: true });
+  });
+
+  it("lista de redes vazia não vira filtro — significa TODAS as redes", async () => {
+    const { repo, findMany } = criarRepositorioDeBusca([]);
+
+    await repo.listActiveIdsNoMunicipio({ cidade: "Maricá", estado: "RJ", dependencias: [] });
+
+    expect(findMany.mock.calls[0][0].where.dependenciaAdministrativa).toBeUndefined();
+  });
+
+  it("lista de redes preenchida filtra por elas", async () => {
+    const { repo, findMany } = criarRepositorioDeBusca([]);
+
+    await repo.listActiveIdsNoMunicipio({
+      cidade: "Maricá",
+      estado: "RJ",
+      dependencias: ["MUNICIPAL", "ESTADUAL"],
+    });
+
+    expect(findMany.mock.calls[0][0].where.dependenciaAdministrativa).toEqual({
+      in: ["MUNICIPAL", "ESTADUAL"],
+    });
+  });
+});

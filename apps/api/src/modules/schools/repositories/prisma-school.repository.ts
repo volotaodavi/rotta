@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 
 import type {
   CreateSchoolData,
+  EscolasDoMunicipioFilter,
   ListSchoolsFilter,
   ListSchoolsResult,
   MunicipioDoCatalogo,
@@ -171,6 +172,28 @@ export class PrismaSchoolRepository implements SchoolRepository {
    * para que o total exibido seja o total que o credenciamento vai
    * pegar.
    */
+  async listActiveIdsNoMunicipio(filtro: EscolasDoMunicipioFilter): Promise<string[]> {
+    // Busca INDEXADA, exata, pela coluna gerada `cidadeNormalizada`
+    // (migration `20260924210000_municipio_indexado`). A versão
+    // anterior desta consulta carregava a UF inteira em memória para
+    // comparar o nome ignorando acento — em SP são ~50 mil escolas por
+    // clique. O banco resolve o acento sozinho agora, porque a coluna
+    // já nasce sem ele.
+    const escolas = await this.prisma.school.findMany({
+      where: {
+        estado: filtro.estado.trim().toUpperCase(),
+        cidadeNormalizada: normalizarMunicipio(filtro.cidade),
+        deletedAt: null,
+        status: "ATIVA",
+        ...(filtro.dependencias.length > 0
+          ? { dependenciaAdministrativa: { in: filtro.dependencias } }
+          : {}),
+      },
+      select: { id: true },
+    });
+    return escolas.map((escola) => escola.id);
+  }
+
   async listMunicipios(estado: string): Promise<MunicipioDoCatalogo[]> {
     const uf = estado.trim().toUpperCase();
 

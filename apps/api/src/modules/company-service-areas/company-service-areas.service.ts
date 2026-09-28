@@ -1,24 +1,25 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ServiceTag } from "@prisma/client";
+
+import { COMPANY_SERVICE_AREA_REPOSITORY } from "./company-service-areas.constants";
 
 import type { CompanyServiceAreaResponseDto } from "./dto/company-service-area-response.dto";
 import type { CreateCompanyServiceAreaDto } from "./dto/create-company-service-area.dto";
 import type { CredenciarMunicipioResponseDto } from "./dto/credenciar-municipio-response.dto";
 import type { CredenciarMunicipioDto } from "./dto/credenciar-municipio.dto";
+import type { CompanyServiceAreaRepository } from "./repositories/company-service-area.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { SchoolCompanyLinkRepository } from "@/modules/schools/repositories/school-company-link.repository";
+import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School, SchoolAdministrativeDependency } from "@prisma/client";
 
-import { PrismaService } from "@/infra/database/prisma.service";
 import { CompanyTagsService } from "@/modules/companies/company-tags.service";
+import {
+  SCHOOL_COMPANY_LINK_REPOSITORY,
+  SCHOOL_REPOSITORY,
+} from "@/modules/schools/schools.constants";
 import { Role } from "@/shared/enums";
 import { normalizarMunicipio } from "@/shared/utils/municipio.util";
-
-/**
- * Lotes do `createMany` de vínculos. O Postgres aceita 65535 parâmetros
- * por statement e cada vínculo gasta 3 colunas — mil linhas por lote
- * ficam com folga enorme e ainda são uma ida só ao banco.
- */
-const TAMANHO_DO_LOTE = 1000;
 
 /**
  * Área de atuação da transportadora — a vertente de transporte PÚBLICO
@@ -47,7 +48,11 @@ const TAMANHO_DO_LOTE = 1000;
 @Injectable()
 export class CompanyServiceAreasService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(COMPANY_SERVICE_AREA_REPOSITORY)
+    private readonly areas: CompanyServiceAreaRepository,
+    @Inject(SCHOOL_REPOSITORY) private readonly schools: SchoolRepository,
+    @Inject(SCHOOL_COMPANY_LINK_REPOSITORY)
+    private readonly schoolLinks: SchoolCompanyLinkRepository,
     private readonly companyTagsService: CompanyTagsService,
   ) {}
 
@@ -83,19 +88,14 @@ export class CompanyServiceAreasService {
       );
     }
 
-    const area = await this.prisma.withBypass(
-      this.prisma.companyServiceArea.create({
-        data: {
-          companyId,
-          cidade: dto.cidade ?? null,
-          estado: dto.estado ? dto.estado.toUpperCase() : null,
-          schoolId: dto.schoolId ?? null,
-          dependencias: dto.dependencias ?? [],
-          criadoPorId: actor.sub,
-        },
-        include: { school: { select: { nomeOficial: true, nomeFantasia: true } } },
-      }),
-    );
+    const area = await this.areas.create({
+      companyId,
+      cidade: dto.cidade ?? null,
+      estado: dto.estado ? dto.estado.toUpperCase() : null,
+      schoolId: dto.schoolId ?? null,
+      dependencias: dto.dependencias ?? [],
+      criadoPorId: actor.sub,
+    });
 
     return this.toResponse(area);
   }
@@ -111,13 +111,7 @@ export class CompanyServiceAreasService {
       throw new ForbiddenException("Área de atuação de outra transportadora.");
     }
 
-    const areas = await this.prisma.withBypass(
-      this.prisma.companyServiceArea.findMany({
-        where: { companyId },
-        include: { school: { select: { nomeOficial: true, nomeFantasia: true } } },
-        orderBy: { createdAt: "asc" },
-      }),
-    );
+    const areas = await this.areas.listByCompany(companyId);
 
     return areas.map((area) => this.toResponse(area));
   }
@@ -125,12 +119,10 @@ export class CompanyServiceAreasService {
   async remover(companyId: string, areaId: string, actor: AuthenticatedUser): Promise<void> {
     this.exigirAdminRotta(actor);
 
-    // `deleteMany` com o `companyId` no `where`, e não `delete` por id:
-    // um id de área de OUTRA empresa simplesmente não apaga nada, em
-    // vez de apagar a área errada.
-    await this.prisma.withBypass(
-      this.prisma.companyServiceArea.deleteMany({ where: { id: areaId, companyId } }),
-    );
+    // Os dois ids juntos, e não só o da área: um id de área de OUTRA
+    // empresa simplesmente não apaga nada, em vez de apagar a área
+    // errada (ver a nota do repositório).
+    await this.areas.deleteByIdAndCompany(areaId, companyId);
   }
 
   /**
@@ -168,55 +160,21 @@ export class CompanyServiceAreasService {
     const estado = dto.estado.trim().toUpperCase();
     const dependencias = dto.dependencias ?? [];
 
-    // Busca INDEXADA, exata, pela coluna gerada `cidadeNormalizada`
-    // (migration `20260924210000_municipio_indexado`). A versão anterior
-    // carregava a UF inteira em memória para comparar o nome ignorando
-    // acento — em SP são ~50 mil escolas por clique. O banco resolve o
-    // acento sozinho agora, porque a coluna já nasce sem ele.
-    const alvo = await this.prisma.withBypass(
-      this.prisma.school.findMany({
-        where: {
-          estado,
-          cidadeNormalizada: normalizarMunicipio(cidade),
-          deletedAt: null,
-          status: "ATIVA",
-          ...(dependencias.length > 0 ? { dependenciaAdministrativa: { in: dependencias } } : {}),
-        },
-        select: { id: true },
-      }),
-    );
+    const alvo = await this.schools.listActiveIdsNoMunicipio({ cidade, estado, dependencias });
 
-    // Os vínculos VIGENTES desta empresa, sem `IN (...)` com os ids das
-    // escolas: num município grande o `IN` teria milhares de UUIDs. A
-    // lista de vínculos de uma transportadora é limitada pelo tamanho
-    // dela (centenas, no pior caso), então é mais barato trazê-la
-    // inteira e cruzar aqui.
-    const jaVinculadas = await this.prisma.withBypass(
-      this.prisma.schoolCompanyLink.findMany({
-        where: { companyId, desvinculadoEm: null },
-        select: { schoolId: true },
-      }),
+    // Cruza aqui, e não com um `IN (...)` no banco: num município
+    // grande o `IN` teria milhares de UUIDs, enquanto a lista de
+    // vínculos de UMA transportadora é limitada pelo tamanho dela
+    // (centenas, no pior caso).
+    const vinculosVigentes = new Set(
+      await this.schoolLinks.listActiveSchoolIdsByCompany(companyId),
     );
-    const vinculosVigentes = new Set(jaVinculadas.map((v) => v.schoolId));
-    const novas = alvo.filter((escola) => !vinculosVigentes.has(escola.id));
+    const novas = alvo.filter((schoolId) => !vinculosVigentes.has(schoolId));
     const jaCredenciadas = alvo.length - novas.length;
 
-    // Em lotes: um `createMany` com 5 mil linhas estoura o limite de
-    // parâmetros do Postgres (65535 por statement, e aqui são 3 colunas
-    // por linha). Lotes de mil ficam com folga e ainda são uma ida só
-    // ao banco cada.
-    for (let inicio = 0; inicio < novas.length; inicio += TAMANHO_DO_LOTE) {
-      const lote = novas.slice(inicio, inicio + TAMANHO_DO_LOTE);
-      await this.prisma.withBypass(
-        this.prisma.schoolCompanyLink.createMany({
-          data: lote.map((escola) => ({
-            schoolId: escola.id,
-            companyId,
-            vinculadoPorId: actor.sub,
-          })),
-        }),
-      );
-    }
+    await this.schoolLinks.createManyEmLotes(
+      novas.map((schoolId) => ({ schoolId, companyId, vinculadoPorId: actor.sub })),
+    );
 
     const areaDeAtuacaoRegistrada = await this.garantirAreaDoMunicipio(
       companyId,
@@ -245,19 +203,20 @@ export class CompanyServiceAreasService {
     dependencias: SchoolAdministrativeDependency[],
     criadoPorId: string,
   ): Promise<boolean> {
-    const existentes = await this.prisma.withBypass(
-      this.prisma.companyServiceArea.findMany({ where: { companyId, estado } }),
-    );
-    const jaTem = existentes.some(
-      (area) => normalizarMunicipio(area.cidade) === normalizarMunicipio(cidade),
+    const cidadesDaUf = await this.areas.listCidadesByCompanyAndEstado(companyId, estado);
+    const jaTem = cidadesDaUf.some(
+      (existente) => normalizarMunicipio(existente) === normalizarMunicipio(cidade),
     );
     if (jaTem) return true;
 
-    await this.prisma.withBypass(
-      this.prisma.companyServiceArea.create({
-        data: { companyId, cidade, estado, dependencias, criadoPorId },
-      }),
-    );
+    await this.areas.create({
+      companyId,
+      cidade,
+      estado,
+      schoolId: null,
+      dependencias,
+      criadoPorId,
+    });
     return true;
   }
 
@@ -268,9 +227,7 @@ export class CompanyServiceAreasService {
    * área, a escola precisa caber em pelo menos uma delas.
    */
   async assertPodeCredenciar(companyId: string, school: School): Promise<void> {
-    const areas = await this.prisma.withBypass(
-      this.prisma.companyServiceArea.findMany({ where: { companyId } }),
-    );
+    const areas = await this.areas.listCercasByCompany(companyId);
 
     // Sem cerca = comportamento de sempre. Esta linha é o que torna a
     // vertente pública ADITIVA em vez de uma ruptura.

@@ -136,4 +136,21 @@ export interface CompanyRepository {
    * transportadoras pagantes pra Responsável NOVO descobrir).
    */
   findActiveByCodigoInterno(codigoInterno: string): Promise<Company | null>;
+  /**
+   * Só as habilitações da empresa, para `CompanyTagsService` responder
+   * "esta empresa tem a tag X?".
+   *
+   * Bypass de RLS, ao contrário de `findById`: a pergunta é feita de
+   * dentro de fluxos que já rodam sob o tenant da empresa consultada e
+   * também de listeners sem contexto de tenant nenhum (o do aluno
+   * credenciado, por exemplo). O `where` já restringe ao `companyId`
+   * pedido, então o bypass não alarga nada — só permite a leitura
+   * acontecer.
+   *
+   * `null` quando a empresa não existe, e não uma lista vazia: quem
+   * chama precisa poder distinguir "não tem nenhuma tag" de "não tem
+   * empresa", e é `CompanyTagsService` que decide o que fazer com cada
+   * caso (ver a nota de lá).
+   */
+  findTags(companyId: string): Promise<ServiceTag[] | null>;
 }

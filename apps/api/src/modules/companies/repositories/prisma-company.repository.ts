@@ -8,7 +8,7 @@ import type {
   ListCompaniesResult,
   UpdateCompanyData,
 } from "./company.repository";
-import type { Company, Prisma } from "@prisma/client";
+import type { Company, Prisma, ServiceTag } from "@prisma/client";
 
 import { PrismaService } from "@/infra/database/prisma.service";
 
@@ -59,6 +59,14 @@ export class PrismaCompanyRepository implements CompanyRepository {
         where: { codigoInterno, status: { notIn: ["SUSPENSO", "CANCELADO"] }, deletedAt: null },
       }),
     );
+  }
+
+  async findTags(companyId: string): Promise<ServiceTag[] | null> {
+    // Bypass deliberado — o motivo está na interface.
+    const empresa = await this.prisma.withBypass(
+      this.prisma.company.findUnique({ where: { id: companyId }, select: { tags: true } }),
+    );
+    return empresa?.tags ?? null;
   }
 
   update(id: string, data: UpdateCompanyData): Promise<CompanyWithPlan> {

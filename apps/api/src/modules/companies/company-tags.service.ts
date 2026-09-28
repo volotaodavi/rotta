@@ -1,7 +1,9 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
 import { ServiceTag } from "@prisma/client";
 
-import { PrismaService } from "@/infra/database/prisma.service";
+import { COMPANY_REPOSITORY } from "./companies.constants";
+
+import type { CompanyRepository } from "./repositories/company.repository";
 
 /**
  * Tags de habilitação da transportadora — pedido do usuário
@@ -31,26 +33,19 @@ import { PrismaService } from "@/infra/database/prisma.service";
  */
 @Injectable()
 export class CompanyTagsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(COMPANY_REPOSITORY) private readonly companies: CompanyRepository) {}
 
   /**
    * As tags da empresa.
    *
-   * `withBypass` porque isto é lido de dentro de fluxos que rodam sob o
-   * tenant da própria empresa consultada (`companies` tem RLS) e também
-   * de listeners sem contexto de tenant nenhum. O `where` já restringe
-   * ao `companyId` pedido, então o bypass não alarga nada — só permite
-   * a leitura acontecer.
-   *
    * Empresa inexistente devolve lista vazia, e não `[PRIVADA]`: quem
    * chama está prestes a decidir se LIBERA algo, e o padrão seguro
-   * diante de uma empresa que não existe é não liberar.
+   * diante de uma empresa que não existe é não liberar. É por isso que
+   * o repositório devolve `null` nesse caso em vez de já achatar para
+   * `[]` — a decisão é daqui, não da camada de dados.
    */
   async tags(companyId: string): Promise<ServiceTag[]> {
-    const empresa = await this.prisma.withBypass(
-      this.prisma.company.findUnique({ where: { id: companyId }, select: { tags: true } }),
-    );
-    return empresa?.tags ?? [];
+    return (await this.companies.findTags(companyId)) ?? [];
   }
 
   async temTag(companyId: string, tag: ServiceTag): Promise<boolean> {

@@ -2,9 +2,11 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
 import { CompanyServiceAreasService } from "../company-service-areas.service";
 
+import type { CompanyServiceAreaRepository } from "../repositories/company-service-area.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { PrismaService } from "@/infra/database/prisma.service";
 import type { CompanyTagsService } from "@/modules/companies/company-tags.service";
+import type { SchoolCompanyLinkRepository } from "@/modules/schools/repositories/school-company-link.repository";
+import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { School } from "@prisma/client";
 
 import { Role } from "@/shared/enums";
@@ -21,6 +23,14 @@ import { Role } from "@/shared/enums";
  * 2. **A cerca em si** — inclusive o caso do acento, que é o que
  *    separa uma transportadora do credenciamento na prática: "Maricá"
  *    digitado pelo Admin contra "MARICA" vindo da planilha do INEP.
+ *
+ * O `where` que vai ao banco na busca do município deixou de ser
+ * assunto daqui na auditoria de 26/09/2026 (item 5), quando o serviço
+ * passou a falar com repositórios. Os dois testes que guardavam a
+ * normalização e o "não varre a UF inteira" migraram para
+ * `schools/__tests__/prisma-school.repository.municipios.spec.ts`, onde
+ * o `where` agora é escrito — nenhuma garantia foi perdida, só mudou
+ * de endereço.
  */
 
 const adminActor: AuthenticatedUser = {
@@ -47,11 +57,23 @@ function escola(overrides: Partial<School> = {}): School {
   } as School;
 }
 
-function criarServico(areas: unknown[] = [], escolas: unknown[] = [], vinculos: unknown[] = []) {
-  const findMany = jest.fn().mockResolvedValue(areas);
-  const schoolFindMany = jest.fn().mockResolvedValue(escolas);
-  const linkFindMany = jest.fn().mockResolvedValue(vinculos);
-  const linkCreateMany = jest.fn().mockResolvedValue({ count: 0 });
+type Cerca = {
+  cidade: string | null;
+  estado: string | null;
+  schoolId: string | null;
+  dependencias: string[];
+};
+
+function criarServico(
+  cercas: Cerca[] = [],
+  escolasDoMunicipio: string[] = [],
+  jaVinculadas: string[] = [],
+) {
+  const listCercasByCompany = jest.fn().mockResolvedValue(cercas);
+  const listByCompany = jest.fn().mockResolvedValue([]);
+  const listCidadesByCompanyAndEstado = jest
+    .fn()
+    .mockResolvedValue(cercas.map((cerca) => cerca.cidade));
   const create = jest.fn().mockResolvedValue({
     id: "area-1",
     companyId: "company-1",
@@ -62,14 +84,24 @@ function criarServico(areas: unknown[] = [], escolas: unknown[] = [], vinculos: 
     createdAt: new Date("2026-09-22T12:00:00Z"),
     school: null,
   });
-  const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
+  const deleteByIdAndCompany = jest.fn().mockResolvedValue(undefined);
+  const areas = {
+    create,
+    listByCompany,
+    listCercasByCompany,
+    listCidadesByCompanyAndEstado,
+    deleteByIdAndCompany,
+  } as unknown as CompanyServiceAreaRepository;
 
-  const prisma = {
-    withBypass: jest.fn((op: unknown) => op),
-    companyServiceArea: { findMany, create, deleteMany },
-    school: { findMany: schoolFindMany },
-    schoolCompanyLink: { findMany: linkFindMany, createMany: linkCreateMany },
-  } as unknown as PrismaService;
+  const listActiveIdsNoMunicipio = jest.fn().mockResolvedValue(escolasDoMunicipio);
+  const schools = { listActiveIdsNoMunicipio } as unknown as SchoolRepository;
+
+  const listActiveSchoolIdsByCompany = jest.fn().mockResolvedValue(jaVinculadas);
+  const createManyEmLotes = jest.fn().mockResolvedValue(undefined);
+  const schoolLinks = {
+    listActiveSchoolIdsByCompany,
+    createManyEmLotes,
+  } as unknown as SchoolCompanyLinkRepository;
 
   // Empresa LICITADA por padrão: área de atuação é da vertente
   // pública, e é esse o caso normal destes testes.
@@ -79,13 +111,14 @@ function criarServico(areas: unknown[] = [], escolas: unknown[] = [], vinculos: 
   } as unknown as CompanyTagsService;
 
   return {
-    service: new CompanyServiceAreasService(prisma, companyTagsService),
+    service: new CompanyServiceAreasService(areas, schools, schoolLinks, companyTagsService),
     companyTagsService,
-    findMany,
+    listByCompany,
+    listCercasByCompany,
     create,
-    deleteMany,
-    schoolFindMany,
-    linkCreateMany,
+    deleteByIdAndCompany,
+    listActiveIdsNoMunicipio,
+    createManyEmLotes,
   };
 }
 
@@ -205,36 +238,35 @@ describe("quem escreve a cerca", () => {
 
     await service.criar("company-1", { cidade: "Maricá", estado: "rj" }, adminActor);
 
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ estado: "RJ" }) }),
-    );
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ estado: "RJ" }));
   });
 
   it("apagar área filtra pelo companyId junto do id", async () => {
-    // `deleteMany` com os dois no `where`: um id de outra empresa não
-    // apaga nada, em vez de apagar a área errada.
-    const { service, deleteMany } = criarServico();
+    // Os dois ids juntos: um id de outra empresa não apaga nada, em
+    // vez de apagar a área errada (o `deleteMany` que garante isso
+    // está no repositório).
+    const { service, deleteByIdAndCompany } = criarServico();
 
     await service.remover("company-1", "area-9", adminActor);
 
-    expect(deleteMany).toHaveBeenCalledWith({ where: { id: "area-9", companyId: "company-1" } });
+    expect(deleteByIdAndCompany).toHaveBeenCalledWith("area-9", "company-1");
   });
 });
 
 describe("quem lê a cerca", () => {
   it("a própria empresa vê a própria área — precisa entender por que foi recusada", async () => {
-    const { service, findMany } = criarServico([]);
+    const { service, listByCompany } = criarServico([]);
 
     await service.listar("company-1", empresaActor);
 
-    expect(findMany).toHaveBeenCalled();
+    expect(listByCompany).toHaveBeenCalledWith("company-1");
   });
 
   it("ninguém vê a área de outra empresa", async () => {
-    const { service, findMany } = criarServico([]);
+    const { service, listByCompany } = criarServico([]);
 
     await expect(service.listar("company-9", empresaActor)).rejects.toThrow(ForbiddenException);
-    expect(findMany).not.toHaveBeenCalled();
+    expect(listByCompany).not.toHaveBeenCalled();
   });
 });
 
@@ -245,17 +277,18 @@ describe("quem lê a cerca", () => {
  * deste bloco: "não deverá inventar ou faltar".
  */
 describe("credenciar município inteiro", () => {
-  // O que o BANCO devolve — já filtrado pelo `where`, porque desde a
-  // migration `20260924210000_municipio_indexado` a comparação de
-  // município é indexada e não acontece mais em memória.
-  const escolasDeMarica = [{ id: "e1" }, { id: "e2" }];
+  const escolasDeMarica = ["e1", "e2"];
 
-  it("NÃO FALTAR — busca pelo município NORMALIZADO, não pelo texto digitado", async () => {
-    // "Maricá" digitado pelo Admin contra "MARICA" vindo do INEP. Se o
-    // `where` levasse o texto cru, metade do município ficaria de fora
-    // em silêncio — e "0 escolas" é indistinguível de "a planilha não
-    // tinha essa escola".
-    const { service, schoolFindMany, linkCreateMany } = criarServico([], escolasDeMarica, []);
+  it("passa a cidade e a UF adiante — quem normaliza é o repositório", async () => {
+    // "Maricá" digitado pelo Admin contra "MARICA" vindo do INEP. O
+    // `where` normalizado é guardado no spec do repositório; aqui o
+    // que importa é que o serviço não engula nem reescreva o que o
+    // Admin escolheu.
+    const { service, listActiveIdsNoMunicipio, createManyEmLotes } = criarServico(
+      [],
+      escolasDeMarica,
+      [],
+    );
 
     const resultado = await service.credenciarMunicipio(
       "company-1",
@@ -263,32 +296,19 @@ describe("credenciar município inteiro", () => {
       adminActor,
     );
 
-    expect(schoolFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ estado: "RJ", cidadeNormalizada: "marica" }),
-      }),
-    );
+    expect(listActiveIdsNoMunicipio).toHaveBeenCalledWith({
+      cidade: "Maricá",
+      estado: "RJ",
+      dependencias: [],
+    });
     expect(resultado.encontradas).toBe(2);
     expect(resultado.credenciadas).toBe(2);
-    const criados = linkCreateMany.mock.calls[0][0].data;
+    const criados = createManyEmLotes.mock.calls[0][0];
     expect(criados.map((v: { schoolId: string }) => v.schoolId).sort()).toEqual(["e1", "e2"]);
   });
 
-  it("NÃO VARRE A UF INTEIRA — o filtro de município vai no banco", async () => {
-    // Guarda contra a regressão que o usuário apontou em 24/09/2026:
-    // "são mais de 100 mil [escolas], não é possível que o sistema não
-    // aguenta". A versão anterior carregava toda a UF em memória para
-    // comparar o nome em JavaScript — em SP, ~50 mil linhas por clique.
-    const { service, schoolFindMany } = criarServico([], escolasDeMarica, []);
-
-    await service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, adminActor);
-
-    const where = schoolFindMany.mock.calls[0][0].where;
-    expect(where.cidadeNormalizada).toBeDefined();
-  });
-
   it("NÃO INVENTAR — nunca cria escola, só vincula as que já existem", async () => {
-    const { service, linkCreateMany } = criarServico([], [], []);
+    const { service, createManyEmLotes } = criarServico([], [], []);
 
     const resultado = await service.credenciarMunicipio(
       "company-1",
@@ -298,14 +318,14 @@ describe("credenciar município inteiro", () => {
 
     expect(resultado.encontradas).toBe(0);
     expect(resultado.credenciadas).toBe(0);
-    expect(linkCreateMany).not.toHaveBeenCalled();
+    expect(createManyEmLotes).toHaveBeenCalledWith([]);
   });
 
   it("reexecutar é seguro — o que já estava vinculado não duplica", async () => {
     // O vínculo vigente de `e1` vem da consulta de vínculos da empresa,
     // que traz TODOS (a lista é limitada pelo tamanho da
     // transportadora) em vez de um `IN` com milhares de UUIDs.
-    const { service, linkCreateMany } = criarServico([], escolasDeMarica, [{ schoolId: "e1" }]);
+    const { service, createManyEmLotes } = criarServico([], escolasDeMarica, ["e1"]);
 
     const resultado = await service.credenciarMunicipio(
       "company-1",
@@ -315,7 +335,7 @@ describe("credenciar município inteiro", () => {
 
     expect(resultado.jaCredenciadas).toBe(1);
     expect(resultado.credenciadas).toBe(1);
-    const criados = linkCreateMany.mock.calls[0][0].data;
+    const criados = createManyEmLotes.mock.calls[0][0];
     expect(criados).toHaveLength(1);
     expect(criados[0].schoolId).toBe("e2");
   });
@@ -334,9 +354,7 @@ describe("credenciar município inteiro", () => {
 
     expect(resultado.areaDeAtuacaoRegistrada).toBe(true);
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ cidade: "Maricá", estado: "RJ" }),
-      }),
+      expect.objectContaining({ cidade: "Maricá", estado: "RJ" }),
     );
   });
 
@@ -353,12 +371,12 @@ describe("credenciar município inteiro", () => {
   });
 
   it("só Admin Rotta credencia município", async () => {
-    const { service, linkCreateMany } = criarServico([], escolasDeMarica, []);
+    const { service, createManyEmLotes } = criarServico([], escolasDeMarica, []);
 
     await expect(
       service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, empresaActor),
     ).rejects.toThrow(ForbiddenException);
-    expect(linkCreateMany).not.toHaveBeenCalled();
+    expect(createManyEmLotes).not.toHaveBeenCalled();
   });
 });
 
@@ -372,7 +390,7 @@ describe("credenciar município inteiro", () => {
  */
 describe("área de atuação só existe com a habilitação LICITADA", () => {
   it("recusa credenciar município numa empresa sem a tag", async () => {
-    const { service, linkCreateMany, companyTagsService } = criarServico([], [{ id: "e1" }], []);
+    const { service, createManyEmLotes, companyTagsService } = criarServico([], ["e1"], []);
     (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
       new ForbiddenException("Credenciar um município inteiro depende da habilitação..."),
     );
@@ -380,7 +398,7 @@ describe("área de atuação só existe com a habilitação LICITADA", () => {
     await expect(
       service.credenciarMunicipio("company-1", { cidade: "Maricá", estado: "RJ" }, adminActor),
     ).rejects.toThrow(ForbiddenException);
-    expect(linkCreateMany).not.toHaveBeenCalled();
+    expect(createManyEmLotes).not.toHaveBeenCalled();
   });
 
   it("recusa cadastrar área numa empresa sem a tag", async () => {
@@ -399,26 +417,26 @@ describe("área de atuação só existe com a habilitação LICITADA", () => {
     // A empresa precisa enxergar a própria cerca para entender por que
     // um credenciamento foi recusado — inclusive depois de perder a
     // habilitação. Bloquear a leitura esconderia a explicação.
-    const { service, findMany, companyTagsService } = criarServico([]);
+    const { service, listByCompany, companyTagsService } = criarServico([]);
     (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
       new ForbiddenException("sem tag"),
     );
 
     await expect(service.listar("company-1", adminActor)).resolves.toEqual([]);
-    expect(findMany).toHaveBeenCalled();
+    expect(listByCompany).toHaveBeenCalled();
   });
 
   it("APAGAR a cerca continua liberado mesmo sem a tag", async () => {
     // Se o Admin tirou a tag LICITADA, ele ainda precisa poder limpar
     // as áreas que sobraram. Bloquear prenderia a cerca no lugar, sem
     // ninguém para abri-la.
-    const { service, deleteMany, companyTagsService } = criarServico();
+    const { service, deleteByIdAndCompany, companyTagsService } = criarServico();
     (companyTagsService.assertTag as jest.Mock).mockRejectedValue(
       new ForbiddenException("sem tag"),
     );
 
     await expect(service.remover("company-1", "area-9", adminActor)).resolves.toBeUndefined();
-    expect(deleteMany).toHaveBeenCalled();
+    expect(deleteByIdAndCompany).toHaveBeenCalled();
   });
 
   it("o guard de credenciamento de escola NÃO depende da tag", async () => {

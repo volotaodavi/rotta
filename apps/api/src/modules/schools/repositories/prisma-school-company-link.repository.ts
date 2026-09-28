@@ -58,4 +58,33 @@ export class PrismaSchoolCompanyLinkRepository implements SchoolCompanyLinkRepos
       }),
     );
   }
+
+  /** Bypass deliberado — o motivo está na interface. */
+  async listActiveSchoolIdsByCompany(companyId: string): Promise<string[]> {
+    const vinculos = await this.prisma.withBypass(
+      this.prisma.schoolCompanyLink.findMany({
+        where: { companyId, desvinculadoEm: null },
+        select: { schoolId: true },
+      }),
+    );
+    return vinculos.map((vinculo) => vinculo.schoolId);
+  }
+
+  /** Bypass deliberado — o motivo e o porquê dos lotes estão na interface. */
+  async createManyEmLotes(data: CreateSchoolCompanyLinkData[]): Promise<void> {
+    for (let inicio = 0; inicio < data.length; inicio += TAMANHO_DO_LOTE) {
+      await this.prisma.withBypass(
+        this.prisma.schoolCompanyLink.createMany({
+          data: data.slice(inicio, inicio + TAMANHO_DO_LOTE),
+        }),
+      );
+    }
+  }
 }
+
+/**
+ * Mil linhas por lote: com 3 colunas por vínculo isso dá 3 mil
+ * parâmetros, bem abaixo dos 65535 que o Postgres aceita por statement,
+ * e ainda é uma ida só ao banco por lote.
+ */
+const TAMANHO_DO_LOTE = 1000;
