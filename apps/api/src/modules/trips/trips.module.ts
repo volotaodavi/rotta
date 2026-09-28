@@ -62,6 +62,6 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
   // rastreadores gravar posição de aparelho físico na MESMA tabela que o
   // GPS do celular usa — é o que faz o mapa do responsável funcionar
   // igual nos dois casos, sem uma segunda fonte de verdade.
-  exports: [TripsService, TRIP_POSITION_REPOSITORY],
+  exports: [TripsService, TRIP_POSITION_REPOSITORY, TRIP_REPOSITORY],
 })
 export class TripsModule {}

@@ -2,8 +2,8 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
 import { SchoolPortalService } from "../school-portal.service";
 
+import type { SchoolPortalRepository } from "../repositories/school-portal.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { PrismaService } from "@/infra/database/prisma.service";
 import type { UsersService } from "@/modules/users/users.service";
 
 import { Role } from "@/shared/enums";
@@ -16,6 +16,12 @@ import { Role } from "@/shared/enums";
  * da Rotta que lê com `withBypass`, ou seja, com a RLS do Postgres
  * desligada. Se o filtro por `escolaId` falhar, uma escola enxerga as
  * crianças de outra — e não existe erro pior neste produto.
+ *
+ * Desde a auditoria de 26/09/2026 (item 5) o isolamento tem dois
+ * guardiões, porque tem dois lugares onde pode quebrar: aqui se guarda
+ * que o serviço só passa adiante o `escolaId` DO TOKEN, nunca um
+ * vindo de fora; e em `prisma-school-portal.repository.spec.ts` se
+ * guarda que esse id de fato vai para o `where` de toda consulta.
  */
 
 const escolaId = "escola-1";
@@ -29,23 +35,23 @@ const actorEscola: AuthenticatedUser = {
 };
 
 function criarServico() {
-  const findMany = jest.fn().mockResolvedValue([]);
-  const withBypass = jest.fn((operacao: unknown) => operacao);
-  const prisma = {
-    withBypass,
-    student: { findMany },
-    school: {
-      // Escola MUNICIPAL: o Portal da Escola só existe na rede pública
-      // (25/09/2026). O fixture é o caso real — a EMEF de Maricá.
-      findFirst: jest.fn().mockResolvedValue({
-        id: escolaId,
-        nomeOficial: "EMEF Teste",
-        nomeFantasia: null,
-        dependenciaAdministrativa: "MUNICIPAL",
-      }),
-    },
-    user: { findMany: jest.fn().mockResolvedValue([]), findUnique: jest.fn() },
-  } as unknown as PrismaService;
+  const listAlunosComEventosDoDia = jest.fn().mockResolvedValue([]);
+  // Escola MUNICIPAL: o Portal da Escola só existe na rede pública
+  // (25/09/2026). O fixture é o caso real — a EMEF de Maricá.
+  const findEscola = jest.fn().mockResolvedValue({
+    id: escolaId,
+    nomeOficial: "EMEF Teste",
+    nomeFantasia: null,
+    dependenciaAdministrativa: "MUNICIPAL",
+  });
+  const listContas = jest.fn().mockResolvedValue([]);
+  const findContaById = jest.fn();
+  const portal = {
+    findEscola,
+    listContas,
+    findContaById,
+    listAlunosComEventosDoDia,
+  } as unknown as SchoolPortalRepository;
 
   const usersService = {
     assertNoDuplicateIdentity: jest.fn().mockResolvedValue(undefined),
@@ -64,10 +70,10 @@ function criarServico() {
   } as unknown as UsersService;
 
   return {
-    service: new SchoolPortalService(prisma, usersService),
-    findMany,
-    withBypass,
-    prisma,
+    service: new SchoolPortalService(portal, usersService),
+    findMany: listAlunosComEventosDoDia,
+    findEscola,
+    listContas,
     usersService,
   };
 }
@@ -78,8 +84,7 @@ describe("isolamento — o que impede uma escola de ver a outra", () => {
 
     await service.listarAlunosDoDia(actorEscola);
 
-    const where = findMany.mock.calls[0][0].where;
-    expect(where.schoolId).toBe(escolaId);
+    expect(findMany).toHaveBeenCalledWith(escolaId, expect.any(Date));
   });
 
   it("recusa quem não é escola, mesmo carregando escolaId no token", async () => {
@@ -109,12 +114,15 @@ describe("isolamento — o que impede uma escola de ver a outra", () => {
     expect(SchoolPortalService.prototype.listarAlunosDoDia).toHaveLength(1);
   });
 
-  it("só traz aluno não excluído", async () => {
+  it("pede sempre o dia de HOJE, nunca uma data vinda de fora", async () => {
+    // Quem escolhe o dia é o servidor. O filtro `deletedAt: null` e o
+    // `schoolId` no `where` são guardados no spec do repositório.
     const { service, findMany } = criarServico();
 
     await service.listarAlunosDoDia(actorEscola);
 
-    expect(findMany.mock.calls[0][0].where.deletedAt).toBeNull();
+    const dia = findMany.mock.calls[0][1] as Date;
+    expect(dia.toISOString()).toMatch(/T00:00:00\.000Z$/);
   });
 });
 
@@ -285,13 +293,12 @@ describe("contas do portal — quem pode abrir a porta para quem", () => {
   });
 
   it("conta de escola lista só as contas da própria escola", async () => {
-    const { service, prisma } = criarServico();
+    const { service, listContas } = criarServico();
 
     // Mesmo mandando outra escola na query, a do token é que vale.
     await service.listarContas(diretor, "escola-de-outro");
 
-    const findMany = prisma.user.findMany as jest.Mock;
-    expect(findMany.mock.calls[0][0].where.escolaId).toBe(escolaId);
+    expect(listContas).toHaveBeenCalledWith(escolaId);
   });
 });
 
@@ -323,8 +330,8 @@ describe("o Portal da Escola é só da rede pública", () => {
   };
 
   function comRede(dependenciaAdministrativa: string) {
-    const { service, prisma, usersService } = criarServico();
-    (prisma.school.findFirst as jest.Mock).mockResolvedValue({
+    const { service, findEscola, usersService } = criarServico();
+    findEscola.mockResolvedValue({
       id: escolaId,
       nomeOficial: "Colégio Teste",
       nomeFantasia: null,

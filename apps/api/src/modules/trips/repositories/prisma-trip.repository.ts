@@ -124,4 +124,20 @@ export class PrismaTripRepository implements TripRepository {
     ]);
     return { items, total };
   }
+
+  /** Bypass deliberado — o motivo está na interface. */
+  async listRouteIdsComViagemEncerrada(routeIds: string[], dia: Date): Promise<string[]> {
+    if (routeIds.length === 0) return [];
+    const encerradas = await this.prisma.withBypass(
+      this.prisma.trip.findMany({
+        where: {
+          data: dia,
+          routeId: { in: routeIds },
+          status: { in: ["FINALIZADA", "CANCELADA"] },
+        },
+        select: { routeId: true },
+      }),
+    );
+    return encerradas.map((viagem) => viagem.routeId);
+  }
 }

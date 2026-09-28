@@ -1,18 +1,19 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Inject, Injectable } from "@nestjs/common";
+
+import { ROUTE_ASSIGNMENT_REPOSITORY } from "./route-assignments.constants";
 
 import type { DefinirEscalaDto } from "./dto/definir-escala.dto";
 import type { EscalaResponseDto } from "./dto/escala-response.dto";
+import type {
+  EscalaCompleta,
+  RouteAssignmentRepository,
+} from "./repositories/route-assignment.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+import type { RouteRepository } from "@/modules/routes/repositories/route.repository";
+import type { VehicleRepository } from "@/modules/vehicles/repositories/vehicle.repository";
 
-import { PrismaService } from "@/infra/database/prisma.service";
-
-/** A escala já com rota, veículo e pessoas carregadas — é sempre assim que ela é lida. */
-const INCLUDE_COMPLETO = {
-  route: { select: { nome: true, turno: true } },
-  veiculo: { select: { numeroFrota: true, placa: true } },
-  motorista: { select: { nome: true } },
-  monitor: { select: { nome: true } },
-} as const;
+import { ROUTE_REPOSITORY } from "@/modules/routes/routes.constants";
+import { VEHICLE_REPOSITORY } from "@/modules/vehicles/vehicles.constants";
 
 /**
  * Escala do dia — quem faz qual rota, com qual ônibus, em cada data
@@ -40,7 +41,12 @@ const INCLUDE_COMPLETO = {
  */
 @Injectable()
 export class RouteAssignmentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    @Inject(ROUTE_ASSIGNMENT_REPOSITORY)
+    private readonly escalas: RouteAssignmentRepository,
+    @Inject(ROUTE_REPOSITORY) private readonly routes: RouteRepository,
+    @Inject(VEHICLE_REPOSITORY) private readonly vehicles: VehicleRepository,
+  ) {}
 
   /**
    * Cria ou atualiza a escala de uma rota num dia.
@@ -56,26 +62,19 @@ export class RouteAssignmentsService {
     const companyId = this.exigirTenant(actor);
     const data = this.diaSemHora(dto.data);
 
-    // A rota tem de ser desta empresa. Sem esta checagem, um `routeId`
-    // de outra transportadora criaria uma escala no tenant errado — e a
-    // RLS não pegaria, porque o `companyId` gravado seria o do ator.
-    const rota = await this.prisma.withTenant(
-      this.prisma.route.findFirst({
-        where: { id: dto.routeId, companyId, deletedAt: null },
-        select: { id: true },
-      }),
-    );
-    if (!rota) {
+    // A rota e o ônibus têm de ser DESTA empresa. `findById` já roda
+    // sob `withTenant`, então a RLS sozinha bastaria — a comparação
+    // explícita de `companyId` logo abaixo é defesa em profundidade
+    // (Dossiê 8, Seção 1.2), a mesma que existia antes desta consulta
+    // virar repositório. Sem ela, um `routeId` de outra transportadora
+    // criaria uma escala no tenant errado com o `companyId` do ator.
+    const rota = await this.routes.findById(dto.routeId);
+    if (!rota || rota.companyId !== companyId) {
       throw new BadRequestException("Rota não encontrada nesta transportadora.");
     }
 
-    const veiculo = await this.prisma.withTenant(
-      this.prisma.vehicle.findFirst({
-        where: { id: dto.veiculoId, companyId, deletedAt: null },
-        select: { id: true },
-      }),
-    );
-    if (!veiculo) {
+    const veiculo = await this.vehicles.findById(dto.veiculoId);
+    if (!veiculo || veiculo.companyId !== companyId) {
       throw new BadRequestException("Ônibus não encontrado nesta transportadora.");
     }
 
@@ -84,28 +83,16 @@ export class RouteAssignmentsService {
     // caso normal (manhã e tarde). Então o que se checa aqui é só o
     // conflito ÓBVIO: mesma rota já tem escala, o que o upsert resolve;
     // e o mesmo ônibus na MESMA rota, que é o próprio registro.
-    const escala = await this.prisma.withTenant(
-      this.prisma.routeAssignment.upsert({
-        where: { routeId_data: { routeId: dto.routeId, data } },
-        create: {
-          companyId,
-          routeId: dto.routeId,
-          data,
-          veiculoId: dto.veiculoId,
-          motoristaId: dto.motoristaId,
-          monitorId: dto.monitorId ?? null,
-          observacao: dto.observacao?.trim() || null,
-          criadoPorId: actor.sub,
-        },
-        update: {
-          veiculoId: dto.veiculoId,
-          motoristaId: dto.motoristaId,
-          monitorId: dto.monitorId ?? null,
-          observacao: dto.observacao?.trim() || null,
-        },
-        include: INCLUDE_COMPLETO,
-      }),
-    );
+    const escala = await this.escalas.definir({
+      companyId,
+      routeId: dto.routeId,
+      data,
+      veiculoId: dto.veiculoId,
+      motoristaId: dto.motoristaId,
+      monitorId: dto.monitorId ?? null,
+      observacao: dto.observacao?.trim() || null,
+      criadoPorId: actor.sub,
+    });
 
     return this.toResponse(escala);
   }
@@ -115,13 +102,7 @@ export class RouteAssignmentsService {
     this.exigirTenant(actor);
     const data = this.diaSemHora(dataISO);
 
-    const escalas = await this.prisma.withTenant(
-      this.prisma.routeAssignment.findMany({
-        where: { data },
-        include: INCLUDE_COMPLETO,
-        orderBy: { route: { nome: "asc" } },
-      }),
-    );
+    const escalas = await this.escalas.listByData(data);
 
     return escalas.map((escala) => this.toResponse(escala));
   }
@@ -141,29 +122,18 @@ export class RouteAssignmentsService {
     const limite = new Date(hoje);
     limite.setUTCDate(limite.getUTCDate() + dias);
 
-    const escalas = await this.prisma.withTenant(
-      this.prisma.routeAssignment.findMany({
-        where: {
-          data: { gte: hoje, lt: limite },
-          // Monitor vê a escala em que ELE é o monitor; motorista, a
-          // dele. Ninguém vê a escala dos colegas por esta rota.
-          OR: [{ motoristaId: actor.sub }, { monitorId: actor.sub }],
-        },
-        include: INCLUDE_COMPLETO,
-        orderBy: [{ data: "asc" }, { route: { nome: "asc" } }],
-      }),
-    );
+    // Ninguém vê a escala dos colegas por esta rota — o filtro por
+    // pessoa é contrato do repositório.
+    const escalas = await this.escalas.listDaPessoaNoPeriodo(actor.sub, hoje, limite);
 
     return escalas.map((escala) => this.toResponse(escala));
   }
 
   async remover(id: string, actor: AuthenticatedUser): Promise<void> {
     const companyId = this.exigirTenant(actor);
-    // `deleteMany` com o `companyId` junto do id: uma escala de outra
-    // empresa simplesmente não apaga nada, em vez de apagar a errada.
-    await this.prisma.withTenant(
-      this.prisma.routeAssignment.deleteMany({ where: { id, companyId } }),
-    );
+    // Os dois ids juntos: uma escala de outra empresa simplesmente não
+    // apaga nada, em vez de apagar a errada (ver o repositório).
+    await this.escalas.deleteByIdAndCompany(id, companyId);
   }
 
   private exigirTenant(actor: AuthenticatedUser): string {
@@ -188,19 +158,7 @@ export class RouteAssignmentsService {
     return new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()));
   }
 
-  private toResponse(escala: {
-    id: string;
-    data: Date;
-    routeId: string;
-    veiculoId: string;
-    motoristaId: string;
-    monitorId: string | null;
-    observacao: string | null;
-    route: { nome: string; turno: string };
-    veiculo: { numeroFrota: string | null; placa: string };
-    motorista: { nome: string };
-    monitor: { nome: string } | null;
-  }): EscalaResponseDto {
+  private toResponse(escala: EscalaCompleta): EscalaResponseDto {
     return {
       id: escala.id,
       data: escala.data.toISOString().slice(0, 10),

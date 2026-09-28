@@ -1,9 +1,12 @@
 import { TrackersService } from "../trackers.service";
 
 import type { TraccarForwardDto } from "../dto/traccar-forward.dto";
-import type { PrismaService } from "@/infra/database/prisma.service";
+import type { RouteAssignmentRepository } from "@/modules/route-assignments/repositories/route-assignment.repository";
+import type { RouteRepository } from "@/modules/routes/repositories/route.repository";
 import type { TripPositionRepository } from "@/modules/trips/repositories/trip-position.repository";
+import type { TripRepository } from "@/modules/trips/repositories/trip.repository";
 import type { TripsService } from "@/modules/trips/trips.service";
+import type { VehicleRepository } from "@/modules/vehicles/repositories/vehicle.repository";
 import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import type { ConfigService } from "@nestjs/config";
 
@@ -65,22 +68,25 @@ function criarServico(
     viagensEncerradas?: { routeId: string }[];
   } = {},
 ) {
-  const vehicleFindFirst = jest
+  const findByRastreadorImei = jest
     .fn()
     .mockResolvedValue(opcoes.veiculo === undefined ? veiculo : opcoes.veiculo);
-  const routeFindFirst = jest
+  const findAtivaPorVeiculoPadrao = jest
     .fn()
     .mockResolvedValue(opcoes.rota === undefined ? rota : opcoes.rota);
-  const escalaFindMany = jest.fn().mockResolvedValue(opcoes.escalas ?? []);
-  const tripFindMany = jest.fn().mockResolvedValue(opcoes.viagensEncerradas ?? []);
+  // O repositório já devolve só as escalas de rota viável (`ATIVA`,
+  // não excluída) — esse filtro é condição da consulta desde a
+  // auditoria de 26/09/2026 (item 5), e é guardado no `where` do
+  // `PrismaRouteAssignmentRepository`.
+  const listDoDiaPorVeiculo = jest.fn().mockResolvedValue(opcoes.escalas ?? []);
+  const listRouteIdsComViagemEncerrada = jest
+    .fn()
+    .mockResolvedValue((opcoes.viagensEncerradas ?? []).map((v) => v.routeId));
 
-  const prisma = {
-    withBypass: jest.fn((op: unknown) => op),
-    vehicle: { findFirst: vehicleFindFirst },
-    route: { findFirst: routeFindFirst },
-    routeAssignment: { findMany: escalaFindMany },
-    trip: { findMany: tripFindMany },
-  } as unknown as PrismaService;
+  const vehicleRepository = { findByRastreadorImei } as unknown as VehicleRepository;
+  const routeRepository = { findAtivaPorVeiculoPadrao } as unknown as RouteRepository;
+  const escalaRepository = { listDoDiaPorVeiculo } as unknown as RouteAssignmentRepository;
+  const tripRepository = { listRouteIdsComViagemEncerrada } as unknown as TripRepository;
 
   const vehiclesService = {
     registrarPosicaoDeRastreador: jest.fn().mockResolvedValue(undefined),
@@ -102,28 +108,26 @@ function criarServico(
 
   return {
     service: new TrackersService(
-      prisma,
       vehiclesService,
       tripsService,
       positionRepository,
+      vehicleRepository,
+      routeRepository,
+      escalaRepository,
+      tripRepository,
       configService,
     ),
     vehiclesService,
     tripsService,
     positionRepository,
-    routeFindFirst,
-    escalaFindMany,
+    findAtivaPorVeiculoPadrao,
+    listDoDiaPorVeiculo,
   };
 }
 
-/** Uma escala do dia, como o Prisma devolve com `include: { route }`. */
-function escala(routeId: string, motoristaId: string, ativa = true) {
-  return {
-    routeId,
-    motoristaId,
-    monitorId: null,
-    route: { id: routeId, status: ativa ? "ATIVA" : "PAUSADA", deletedAt: null },
-  };
+/** Uma escala do dia, como o repositório a devolve. */
+function escala(routeId: string, motoristaId: string) {
+  return { routeId, motoristaId, monitorId: null };
 }
 
 describe("nunca falhar barulhento — o Traccar reentrega o que falha", () => {
@@ -285,7 +289,7 @@ describe("onde a posição é gravada", () => {
  */
 describe("escala do dia manda na viagem", () => {
   it("escala do dia VENCE o veículo/motorista padrão da rota", async () => {
-    const { service, tripsService, routeFindFirst } = criarServico({
+    const { service, tripsService, findAtivaPorVeiculoPadrao } = criarServico({
       escalas: [escala("rota-hoje", "motorista-escalado")],
     });
 
@@ -297,7 +301,7 @@ describe("escala do dia manda na viagem", () => {
       {},
     );
     // Nem chega a consultar o padrão da rota quando há escala.
-    expect(routeFindFirst).not.toHaveBeenCalled();
+    expect(findAtivaPorVeiculoPadrao).not.toHaveBeenCalled();
   });
 
   it("sem escala, cai no padrão da rota — o caso 'ônibus fixo' segue intacto", async () => {
@@ -356,12 +360,13 @@ describe("escala do dia manda na viagem", () => {
     expect(resultado.aceita).toBe(true);
   });
 
-  it("escala apontando para rota pausada é ignorada", async () => {
-    // Rota pausada não roda. Cair no padrão é o comportamento certo —
-    // e se não houver padrão, nada abre, que é melhor que abrir errado.
-    const { service, tripsService } = criarServico({
-      escalas: [escala("rota-pausada", "motorista-x", false)],
-    });
+  it("escala de rota pausada não chega até aqui — e o padrão assume", async () => {
+    // Rota pausada não roda, e o repositório já não a devolve (o
+    // `where` de `listDoDiaPorVeiculo` exige `status: ATIVA`). Do
+    // ponto de vista do serviço é o mesmo que não haver escala: cai no
+    // padrão, que é o comportamento certo — e se não houver padrão,
+    // nada abre, que é melhor que abrir errado.
+    const { service, tripsService } = criarServico({ escalas: [] });
 
     await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
 
@@ -370,5 +375,16 @@ describe("escala do dia manda na viagem", () => {
       expect.anything(),
       {},
     );
+  });
+
+  it("pergunta a escala pelo ônibus e pelo dia, nunca só pela empresa", async () => {
+    // O `companyId` vem do próprio ônibus já resolvido pelo IMEI — é
+    // ele que mantém restrito o bypass de RLS que a consulta faz (não
+    // há ator: quem fala é um aparelho).
+    const { service, listDoDiaPorVeiculo } = criarServico({ escalas: [] });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(listDoDiaPorVeiculo).toHaveBeenCalledWith("company-1", "veiculo-1", expect.any(Date));
   });
 });

@@ -60,6 +60,6 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
     { provide: ROUTE_STOP_REPOSITORY, useClass: PrismaRouteStopRepository },
     { provide: ROUTE_STUDENT_REPOSITORY, useClass: PrismaRouteStudentRepository },
   ],
-  exports: [RoutesService],
+  exports: [RoutesService, ROUTE_REPOSITORY],
 })
 export class RoutesModule {}

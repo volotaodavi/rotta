@@ -72,6 +72,6 @@ import { UsersModule } from "@/modules/users/users.module";
     { provide: VEHICLE_CHECKLIST_REPOSITORY, useClass: PrismaVehicleChecklistRepository },
     { provide: VEHICLE_OCCURRENCE_REPOSITORY, useClass: PrismaVehicleOccurrenceRepository },
   ],
-  exports: [VehiclesService],
+  exports: [VehiclesService, VEHICLE_REPOSITORY],
 })
 export class VehiclesModule {}

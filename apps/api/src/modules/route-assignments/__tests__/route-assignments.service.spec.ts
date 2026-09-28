@@ -2,8 +2,10 @@ import { BadRequestException, ForbiddenException } from "@nestjs/common";
 
 import { RouteAssignmentsService } from "../route-assignments.service";
 
+import type { RouteAssignmentRepository } from "../repositories/route-assignment.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { PrismaService } from "@/infra/database/prisma.service";
+import type { RouteRepository } from "@/modules/routes/repositories/route.repository";
+import type { VehicleRepository } from "@/modules/vehicles/repositories/vehicle.repository";
 
 import { Role } from "@/shared/enums";
 
@@ -46,24 +48,39 @@ const escalaGravada = {
 };
 
 function criarServico(opcoes: { rota?: unknown; veiculo?: unknown } = {}) {
-  const routeFindFirst = jest
+  // `undefined` = o caso normal (rota/ônibus desta empresa). Passar
+  // `null` simula "não existe"; passar um objeto com outro `companyId`
+  // simula o de outra transportadora.
+  const findRoute = jest
     .fn()
-    .mockResolvedValue(opcoes.rota === undefined ? { id: "rota-1" } : opcoes.rota);
-  const vehicleFindFirst = jest
+    .mockResolvedValue(
+      opcoes.rota === undefined ? { id: "rota-1", companyId: "company-1" } : opcoes.rota,
+    );
+  const findVehicle = jest
     .fn()
-    .mockResolvedValue(opcoes.veiculo === undefined ? { id: "veiculo-1" } : opcoes.veiculo);
-  const upsert = jest.fn().mockResolvedValue(escalaGravada);
-  const findMany = jest.fn().mockResolvedValue([escalaGravada]);
-  const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
+    .mockResolvedValue(
+      opcoes.veiculo === undefined ? { id: "veiculo-1", companyId: "company-1" } : opcoes.veiculo,
+    );
+  const definir = jest.fn().mockResolvedValue(escalaGravada);
+  const listByData = jest.fn().mockResolvedValue([escalaGravada]);
+  const listDaPessoaNoPeriodo = jest.fn().mockResolvedValue([escalaGravada]);
+  const deleteByIdAndCompany = jest.fn().mockResolvedValue(undefined);
 
-  const prisma = {
-    withTenant: jest.fn((op: unknown) => op),
-    route: { findFirst: routeFindFirst },
-    vehicle: { findFirst: vehicleFindFirst },
-    routeAssignment: { upsert, findMany, deleteMany },
-  } as unknown as PrismaService;
+  const escalas = {
+    definir,
+    listByData,
+    listDaPessoaNoPeriodo,
+    deleteByIdAndCompany,
+  } as unknown as RouteAssignmentRepository;
+  const routes = { findById: findRoute } as unknown as RouteRepository;
+  const vehicles = { findById: findVehicle } as unknown as VehicleRepository;
 
-  return { service: new RouteAssignmentsService(prisma), upsert, findMany, deleteMany };
+  return {
+    service: new RouteAssignmentsService(escalas, routes, vehicles),
+    definir,
+    listDaPessoaNoPeriodo,
+    deleteByIdAndCompany,
+  };
 }
 
 const entrada = {
@@ -77,68 +94,82 @@ describe("designar é upsert, nunca uma segunda escala", () => {
   it("grava por [routeId, data] — designar de novo EDITA", async () => {
     // É assim que o despachante troca o motorista às 5h da manhã: o
     // gesto é o mesmo de designar.
-    const { service, upsert } = criarServico();
+    // O `upsert` por `[routeId, data]` em si é contrato do
+    // repositório; o que se guarda aqui é que o serviço entrega a
+    // chave certa — rota e dia truncado.
+    const { service, definir } = criarServico();
 
     await service.definir(entrada, empresaActor);
 
-    expect(upsert).toHaveBeenCalledWith(
+    expect(definir).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { routeId_data: { routeId: "rota-1", data: new Date("2026-09-25T00:00:00.000Z") } },
+        routeId: "rota-1",
+        data: new Date("2026-09-25T00:00:00.000Z"),
+        companyId: "company-1",
       }),
     );
   });
 
   it("trunca a data em UTC — escalar às 21h não empurra para o dia seguinte", async () => {
-    const { service, upsert } = criarServico();
+    const { service, definir } = criarServico();
 
     await service.definir({ ...entrada, data: "2026-09-25T23:45:00.000Z" }, empresaActor);
 
-    const gravado = upsert.mock.calls[0][0];
-    expect(gravado.create.data.toISOString()).toBe("2026-09-25T00:00:00.000Z");
+    expect(definir.mock.calls[0][0].data.toISOString()).toBe("2026-09-25T00:00:00.000Z");
   });
 
   it("observação em branco vira null, nunca string vazia", async () => {
-    const { service, upsert } = criarServico();
+    const { service, definir } = criarServico();
 
     await service.definir({ ...entrada, observacao: "   " }, empresaActor);
 
-    expect(upsert.mock.calls[0][0].create.observacao).toBeNull();
+    expect(definir.mock.calls[0][0].observacao).toBeNull();
   });
 });
 
 describe("a escala nunca sai do tenant do ator", () => {
-  it("recusa rota de outra transportadora", async () => {
-    // A RLS não pega este caso: o `companyId` gravado seria o do ator,
-    // então a rota alheia entraria no tenant errado.
-    const { service, upsert } = criarServico({ rota: null });
+  it("recusa rota que não existe", async () => {
+    const { service, definir } = criarServico({ rota: null });
 
     await expect(service.definir(entrada, empresaActor)).rejects.toThrow(BadRequestException);
-    expect(upsert).not.toHaveBeenCalled();
+    expect(definir).not.toHaveBeenCalled();
+  });
+
+  it("recusa rota de OUTRA transportadora, mesmo existindo", async () => {
+    // Defesa em profundidade: a RLS já filtraria por tenant no
+    // repositório, mas se algum dia ela falhar, o `companyId` gravado
+    // seria o do ator e a rota alheia entraria no tenant errado.
+    const { service, definir } = criarServico({
+      rota: { id: "rota-1", companyId: "company-9" },
+    });
+
+    await expect(service.definir(entrada, empresaActor)).rejects.toThrow(BadRequestException);
+    expect(definir).not.toHaveBeenCalled();
   });
 
   it("recusa ônibus de outra transportadora", async () => {
-    const { service, upsert } = criarServico({ veiculo: null });
+    const { service, definir } = criarServico({
+      veiculo: { id: "veiculo-1", companyId: "company-9" },
+    });
 
     await expect(service.definir(entrada, empresaActor)).rejects.toThrow(BadRequestException);
-    expect(upsert).not.toHaveBeenCalled();
+    expect(definir).not.toHaveBeenCalled();
   });
 
   it("recusa ator sem transportadora", async () => {
-    const { service, upsert } = criarServico();
+    const { service, definir } = criarServico();
     const semTenant = { ...empresaActor, tenantId: null };
 
     await expect(service.definir(entrada, semTenant)).rejects.toThrow(ForbiddenException);
-    expect(upsert).not.toHaveBeenCalled();
+    expect(definir).not.toHaveBeenCalled();
   });
 
-  it("apagar filtra pelo companyId junto do id", async () => {
-    const { service, deleteMany } = criarServico();
+  it("apagar leva o companyId junto do id", async () => {
+    const { service, deleteByIdAndCompany } = criarServico();
 
     await service.remover("escala-9", empresaActor);
 
-    expect(deleteMany).toHaveBeenCalledWith({
-      where: { id: "escala-9", companyId: "company-1" },
-    });
+    expect(deleteByIdAndCompany).toHaveBeenCalledWith("escala-9", "company-1");
   });
 });
 
@@ -162,7 +193,10 @@ describe("o que a escala devolve para a tela", () => {
   });
 
   it("motorista vê só a PRÓPRIA escala, nunca a dos colegas", async () => {
-    const { service, findMany } = criarServico();
+    // O `OR` entre motoristaId e monitorId é contrato do repositório;
+    // o que se guarda aqui é que o serviço pede a escala DE QUEM está
+    // logado, nunca de um id vindo de fora.
+    const { service, listDaPessoaNoPeriodo } = criarServico();
     const motorista: AuthenticatedUser = {
       sub: "motorista-1",
       tenantId: "company-1",
@@ -172,7 +206,10 @@ describe("o que a escala devolve para a tela", () => {
 
     await service.minhasEscalas(motorista);
 
-    const where = findMany.mock.calls[0][0].where;
-    expect(where.OR).toEqual([{ motoristaId: "motorista-1" }, { monitorId: "motorista-1" }]);
+    expect(listDaPessoaNoPeriodo).toHaveBeenCalledWith(
+      "motorista-1",
+      expect.any(Date),
+      expect.any(Date),
+    );
   });
 });

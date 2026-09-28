@@ -1,17 +1,20 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
 import { SchoolAdministrativeDependency, SchoolStaffRole, UserStatus } from "@prisma/client";
 
+import { SCHOOL_PORTAL_REPOSITORY } from "./school-portal.constants";
+
 import type { AlunoDoDiaResponseDto, StatusDoAlunoNoDia } from "./dto/aluno-do-dia-response.dto";
 import type { ContaDaEscolaResponseDto } from "./dto/conta-da-escola-response.dto";
 import type { CriarContaDaEscolaDto } from "./dto/criar-conta-da-escola.dto";
+import type { SchoolPortalRepository } from "./repositories/school-portal.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
-import { PrismaService } from "@/infra/database/prisma.service";
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
 import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
@@ -52,7 +55,8 @@ import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
 @Injectable()
 export class SchoolPortalService {
   constructor(
-    private readonly prisma: PrismaService,
+    @Inject(SCHOOL_PORTAL_REPOSITORY)
+    private readonly portal: SchoolPortalRepository,
     private readonly usersService: UsersService,
   ) {}
 
@@ -93,17 +97,7 @@ export class SchoolPortalService {
   ): Promise<ContaDaEscolaResponseDto> {
     const escolaId = this.resolverEscolaParaCriacao(dto, actor);
 
-    const escola = await this.prisma.withBypass(
-      this.prisma.school.findFirst({
-        where: { id: escolaId, deletedAt: null },
-        select: {
-          id: true,
-          nomeOficial: true,
-          nomeFantasia: true,
-          dependenciaAdministrativa: true,
-        },
-      }),
-    );
+    const escola = await this.portal.findEscola(escolaId);
     if (!escola) {
       throw new NotFoundException("Escola não encontrada.");
     }
@@ -152,23 +146,7 @@ export class SchoolPortalService {
       );
     }
 
-    const contas = await this.prisma.withBypass(
-      this.prisma.user.findMany({
-        where: { escolaId, deletedAt: null },
-        select: {
-          id: true,
-          nome: true,
-          email: true,
-          telefone: true,
-          escolaPapel: true,
-          status: true,
-          escolaId: true,
-          createdAt: true,
-          escola: { select: { nomeOficial: true, nomeFantasia: true } },
-        },
-        orderBy: [{ escolaPapel: "asc" }, { nome: "asc" }],
-      }),
-    );
+    const contas = await this.portal.listContas(escolaId);
 
     return contas.map((conta) => this.toContaResponse(conta, conta.escola));
   }
@@ -183,17 +161,7 @@ export class SchoolPortalService {
     ativo: boolean,
     actor: AuthenticatedUser,
   ): Promise<ContaDaEscolaResponseDto> {
-    const conta = await this.prisma.withBypass(
-      this.prisma.user.findUnique({
-        where: { id: contaId },
-        select: {
-          id: true,
-          escolaId: true,
-          escolaPapel: true,
-          escola: { select: { nomeOficial: true, nomeFantasia: true } },
-        },
-      }),
-    );
+    const conta = await this.portal.findContaById(contaId);
     if (!conta?.escolaId) {
       throw new NotFoundException("Conta de escola não encontrada.");
     }
@@ -313,44 +281,11 @@ export class SchoolPortalService {
     const escolaId = this.exigirEscolaDoToken(actor);
     const hoje = inicioDoDiaUtc();
 
-    // Um `findMany` só: alunos DESTA escola, com a viagem de hoje de
-    // cada vínculo de rota e os eventos de hoje. Evita o N+1 de buscar
-    // aluno por aluno — numa escola grande isso seriam centenas de
-    // consultas na hora de pico da saída.
-    const alunos = await this.prisma.withBypass(
-      this.prisma.student.findMany({
-        where: {
-          // O filtro que sustenta o isolamento inteiro deste módulo.
-          schoolId: escolaId,
-          deletedAt: null,
-        },
-        select: {
-          id: true,
-          nome: true,
-          dataNascimento: true,
-          turno: true,
-          eventosViagem: {
-            where: { trip: { data: hoje } },
-            select: {
-              tipo: true,
-              processadoEm: true,
-              trip: {
-                select: {
-                  id: true,
-                  status: true,
-                  sentido: true,
-                  route: { select: { id: true, nome: true } },
-                  veiculo: { select: { placa: true, modelo: true } },
-                  company: { select: { nomeFantasia: true } },
-                },
-              },
-            },
-            orderBy: { processadoEm: "asc" },
-          },
-        },
-        orderBy: { nome: "asc" },
-      }),
-    );
+    // Uma consulta só, com os eventos e a viagem embutidos — buscar
+    // aluno por aluno seriam centenas de idas ao banco na hora de pico
+    // da saída. O `escolaId` é o que sustenta o isolamento inteiro do
+    // módulo, e vem do token, nunca do corpo da requisição.
+    const alunos = await this.portal.listAlunosComEventosDoDia(escolaId, hoje);
 
     return alunos.map((aluno) => {
       // O evento mais recente do dia manda: AUSENTE encerra o assunto,

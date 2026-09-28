@@ -23,6 +23,20 @@ export class PrismaRouteRepository implements RouteRepository {
     return this.prisma.withTenant(this.prisma.route.findFirst({ where: { id, deletedAt: null } }));
   }
 
+  /** Bypass deliberado — o motivo está na interface. */
+  findAtivaPorVeiculoPadrao(companyId: string, veiculoId: string): Promise<Route | null> {
+    return this.prisma.withBypass(
+      this.prisma.route.findFirst({
+        where: {
+          companyId,
+          veiculoPadraoId: veiculoId,
+          status: "ATIVA",
+          deletedAt: null,
+        },
+      }),
+    );
+  }
+
   update(id: string, data: UpdateRouteData): Promise<Route> {
     return this.prisma.withTenant(this.prisma.route.update({ where: { id }, data }));
   }

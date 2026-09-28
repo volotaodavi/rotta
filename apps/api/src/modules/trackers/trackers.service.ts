@@ -4,12 +4,18 @@ import { ConfigService } from "@nestjs/config";
 import type { TraccarForwardDto } from "./dto/traccar-forward.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { TrackersConfig } from "@/config/trackers.config";
+import type { RouteAssignmentRepository } from "@/modules/route-assignments/repositories/route-assignment.repository";
+import type { RouteRepository } from "@/modules/routes/repositories/route.repository";
 import type { TripPositionRepository } from "@/modules/trips/repositories/trip-position.repository";
+import type { TripRepository } from "@/modules/trips/repositories/trip.repository";
+import type { VehicleRepository } from "@/modules/vehicles/repositories/vehicle.repository";
 import type { Vehicle } from "@prisma/client";
 
-import { PrismaService } from "@/infra/database/prisma.service";
-import { TRIP_POSITION_REPOSITORY } from "@/modules/trips/trips.constants";
+import { ROUTE_ASSIGNMENT_REPOSITORY } from "@/modules/route-assignments/route-assignments.constants";
+import { ROUTE_REPOSITORY } from "@/modules/routes/routes.constants";
+import { TRIP_POSITION_REPOSITORY, TRIP_REPOSITORY } from "@/modules/trips/trips.constants";
 import { TripsService } from "@/modules/trips/trips.service";
+import { VEHICLE_REPOSITORY } from "@/modules/vehicles/vehicles.constants";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
 import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
@@ -74,11 +80,15 @@ export class TrackersService {
   private readonly config: TrackersConfig;
 
   constructor(
-    private readonly prisma: PrismaService,
     private readonly vehiclesService: VehiclesService,
     private readonly tripsService: TripsService,
     @Inject(TRIP_POSITION_REPOSITORY)
     private readonly positionRepository: TripPositionRepository,
+    @Inject(VEHICLE_REPOSITORY) private readonly vehicles: VehicleRepository,
+    @Inject(ROUTE_REPOSITORY) private readonly routes: RouteRepository,
+    @Inject(ROUTE_ASSIGNMENT_REPOSITORY)
+    private readonly escalas: RouteAssignmentRepository,
+    @Inject(TRIP_REPOSITORY) private readonly trips: TripRepository,
     configService: ConfigService,
   ) {
     this.config = configService.get<TrackersConfig>("trackers")!;
@@ -166,15 +176,15 @@ export class TrackersService {
   }
 
   /**
-   * `withBypass` porque não existe ator: quem fala aqui é um aparelho, e
-   * o tenant só é descoberto DEPOIS de achar o ônibus. Mesmo caso já
+   * O IMEI é único GLOBAL (o mesmo aparelho não pode estar em dois
+   * ônibus, nem de empresas diferentes), e a busca por ele faz bypass
+   * de RLS porque não existe ator: quem fala aqui é um aparelho, e o
+   * tenant só é descoberto DEPOIS de achar o ônibus. Mesmo caso já
    * documentado no login, que resolve `Membership` antes de haver
-   * tenant.
+   * tenant. Tudo isso é contrato de `findByRastreadorImei`.
    */
   private acharVeiculoPorImei(imei: string): Promise<Vehicle | null> {
-    return this.prisma.withBypass(
-      this.prisma.vehicle.findFirst({ where: { rastreadorImei: imei, deletedAt: null } }),
-    );
+    return this.vehicles.findByRastreadorImei(imei);
   }
 
   /**
@@ -271,17 +281,9 @@ export class TrackersService {
   private async acharDesignacaoDoDia(veiculo: Vehicle): Promise<DesignacaoDoDia | null> {
     const hoje = inicioDoDiaUtc();
 
-    const escalas = await this.prisma.withBypass(
-      this.prisma.routeAssignment.findMany({
-        where: { companyId: veiculo.companyId, data: hoje, veiculoId: veiculo.id },
-        include: { route: { select: { id: true, status: true, deletedAt: true } } },
-        orderBy: { createdAt: "asc" },
-      }),
-    );
-
-    const viaveis = escalas.filter(
-      (escala) => escala.route.status === "ATIVA" && !escala.route.deletedAt,
-    );
+    // Já vem sem as escalas que apontam para rota arquivada — filtrar
+    // rota viável é condição da consulta, não regra daqui.
+    const viaveis = await this.escalas.listDoDiaPorVeiculo(veiculo.companyId, veiculo.id, hoje);
 
     if (viaveis.length > 0) {
       const pendente = await this.primeiraEscalaSemViagemEncerrada(viaveis, hoje);
@@ -298,16 +300,7 @@ export class TrackersService {
       return null;
     }
 
-    const rota = await this.prisma.withBypass(
-      this.prisma.route.findFirst({
-        where: {
-          companyId: veiculo.companyId,
-          veiculoPadraoId: veiculo.id,
-          status: "ATIVA",
-          deletedAt: null,
-        },
-      }),
-    );
+    const rota = await this.routes.findAtivaPorVeiculoPadrao(veiculo.companyId, veiculo.id);
     if (!rota?.motoristaPadraoId) {
       if (rota) {
         this.logger.warn(`Rota ${rota.nome} sem motorista designado — viagem não aberta.`);
@@ -327,17 +320,12 @@ export class TrackersService {
     escalas: { routeId: string; motoristaId: string; monitorId: string | null }[],
     hoje: Date,
   ): Promise<{ routeId: string; motoristaId: string; monitorId: string | null } | null> {
-    const encerradas = await this.prisma.withBypass(
-      this.prisma.trip.findMany({
-        where: {
-          data: hoje,
-          routeId: { in: escalas.map((e) => e.routeId) },
-          status: { in: ["FINALIZADA", "CANCELADA"] },
-        },
-        select: { routeId: true },
-      }),
+    const jaRodaram = new Set(
+      await this.trips.listRouteIdsComViagemEncerrada(
+        escalas.map((escala) => escala.routeId),
+        hoje,
+      ),
     );
-    const jaRodaram = new Set(encerradas.map((t) => t.routeId));
     return escalas.find((escala) => !jaRodaram.has(escala.routeId)) ?? null;
   }
 

@@ -73,4 +73,14 @@ export interface TripRepository {
     page: number,
     pageSize: number,
   ): Promise<{ items: Trip[]; total: number }>;
+  /**
+   * Quais destas rotas já tiveram viagem ENCERRADA (finalizada ou
+   * cancelada) num dia — o que impede o rastreador de reabrir uma
+   * viagem que já terminou quando a chave é virada de novo na garagem.
+   *
+   * Bypass de RLS: quem chama é um APARELHO, sem ator e sem tenant. As
+   * rotas vêm da escala daquele ônibus específico, já resolvido pelo
+   * IMEI, então a lista de ids é o que mantém o bypass restrito.
+   */
+  listRouteIdsComViagemEncerrada(routeIds: string[], dia: Date): Promise<string[]>;
 }

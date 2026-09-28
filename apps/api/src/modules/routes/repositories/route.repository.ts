@@ -65,4 +65,14 @@ export interface RouteRepository {
   list(filter: ListRoutesFilter): Promise<ListRoutesResult>;
   /** Todas as rotas ativas do tenant, sem paginação — usado pelo mapa/dashboard. */
   listAllActive(companyId: string): Promise<Route[]>;
+  /**
+   * A rota ATIVA que tem este ônibus como veículo padrão — o caso
+   * "ônibus fixo por rota", que dispensa escala.
+   *
+   * Bypass de RLS, ao contrário do resto desta interface: quem chama é
+   * o rastreador, um APARELHO sem ator e sem tenant. O `companyId`
+   * explícito — tirado do próprio ônibus, já encontrado pelo IMEI — é
+   * o que mantém o bypass restrito.
+   */
+  findAtivaPorVeiculoPadrao(companyId: string, veiculoId: string): Promise<Route | null>;
 }
