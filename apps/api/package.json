@@ -45,7 +45,7 @@
     "@sentry/node": "^10.70.0",
     "@supabase/supabase-js": "^2.47.10",
     "@upstash/qstash": "^2.11.3",
-    "adm-zip": "^0.5.16",
+    "adm-zip": "^0.6.1",
     "argon2": "^0.41.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

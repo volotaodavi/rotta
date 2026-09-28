@@ -280,26 +280,26 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # Bloqueia o merge em caso de vulnerabilidade critica sem patch
-      # (Dossie 12, Secao 19.5).
+      # Bloqueia o merge em caso de vulnerabilidade alta ou critica sem
+      # patch (Dossie 12, Secao 19.5).
       #
-      # Existe UMA excecao registrada, em `pnpm.auditConfig.ignoreGhsas`
-      # (package.json): GHSA-23hp-3jrh-7fpw, o DoS de descompressao do
-      # `tar@6`. Ela nao e "ignorar vulnerabilidade", e um risco medido e
-      # aceito: `@expo/cli@0.22.28` declara `tar: ^6.2.1` e quebra com
-      # tar@7 (`Cannot read properties of undefined (reading 'extract')`
-      # no `expo prebuild` — causa raiz reproduzida no commit ff2282b),
-      # entao o override `@expo/cli>tar` mantem o 6 so ali dentro. O
-      # unico caminho que exercita esse codigo extrai o pacote oficial
-      # `expo-template-bare-minimum` do registry do npm — fonte
-      # confiavel, nunca entrada de usuario — e nada disso vai para o
-      # binario publicado nem para a API.
+      # O nivel era `critical` ate 28/09/2026. Subiu para `high` depois da
+      # triagem documentada em `docs/46-auditoria-de-dependencias.md`: das
+      # 60 vulnerabilidades altas que existiam, 34 foram CORRIGIDAS de
+      # verdade (overrides de patch em `pnpm.overrides` + upgrade do
+      # `adm-zip` na apps/api) e as 26 que sobraram estao registradas uma
+      # por uma em `pnpm.auditConfig.ignoreGhsas`.
       #
-      # A excecao e por ID de advisory, nao um passe livre: qualquer
-      # OUTRA vulnerabilidade critica continua derrubando este job.
-      # Revisar quando o Expo SDK subir para uma versao que aceite tar@7.
+      # Cada ID naquela lista tem um motivo escrito no documento: todas
+      # sao dependencias de ferramenta de build/dev/CI (`@expo/cli`,
+      # `metro`, `lighthouse`, CLI do Prisma) que nunca recebem entrada de
+      # usuario e nunca vao para o binario publicado nem para a API — e
+      # nenhuma delas tem versao corrigida compativel com o que o pacote
+      # pai declara. As exclusoes sao por ID de advisory, nao um passe
+      # livre: qualquer vulnerabilidade NOVA, alta ou critica, derruba
+      # este job. Revisar a lista quando o Expo SDK e o Metro subirem.
       - name: Audit
-        run: pnpm audit --audit-level=critical
+        run: pnpm audit --audit-level=high
         continue-on-error: false
 
   lighthouse:
