@@ -133,11 +133,23 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
-          Motorista ou monitor autônomo
+          Motorista ou monitor contratado
         </Text>
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-          Se já tem o código da transportadora, informe aqui pra pedir vínculo assim que sua conta
-          for criada. Sem o código agora? Sem problema — dá pra informar depois.
+          Esta conta fica aguardando uma transportadora aprovar seu vínculo. Se já tem o código
+          dela, informe aqui; se não, dá pra informar depois.
+        </Text>
+        {/*
+          O aviso existe porque o rótulo "autônomo" nesta tela capturava
+          a pessoa errada (01/10/2026): quem é autônomo/MEI DE VERDADE é
+          a própria transportadora e não depende de ninguém aprovar nada
+          — o caminho dele é "Sou transportadora, autônomo ou MEI", na
+          tela anterior. Sem esta linha, ele se cadastra aqui e descobre
+          o engano só depois, preso numa tela pedindo código.
+        */}
+        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+          É autônomo ou MEI e trabalha por conta própria? Volte e escolha &quot;Sou transportadora,
+          autônomo ou MEI&quot; — lá você não precisa de código nenhum.
         </Text>
 
         <AuthTextField

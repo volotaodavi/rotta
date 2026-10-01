@@ -78,7 +78,7 @@ export default function ConvitePage(): JSX.Element {
         tabs={[
           { id: "equipe", label: "Convite de equipe" },
           { id: "transportadora", label: "Sou responsável" },
-          { id: "autonomo", label: "Motorista/Monitor autônomo" },
+          { id: "autonomo", label: "Motorista/Monitor contratado" },
         ]}
         activeId={segmento}
         onChange={(id) => setSegmento(id as SegmentoConvite)}

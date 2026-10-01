@@ -51,8 +51,23 @@ export function VinculoPendenteBlockScreen(): JSX.Element {
         <Card.Body className="flex flex-col items-center gap-4 py-10 text-center">
           <Typography variant="title">Falta pouco, {user?.nome?.split(" ")[0] ?? ""}</Typography>
           <Typography variant="body" color="muted">
-            Sua conta de {user?.role === "monitor" ? "monitor" : "motorista"} autônomo já existe —
-            falta só uma transportadora aprovar seu vínculo pra você começar a usar a Rotta.
+            Sua conta de {user?.role === "monitor" ? "monitor" : "motorista"} já existe — falta só
+            uma transportadora aprovar seu vínculo pra você começar a usar a Rotta.
+          </Typography>
+
+          {/*
+            A saída que faltava (01/10/2026). Antes desta tela, o código
+            da transportadora era a ÚNICA ação possível além de "Sair" —
+            e quem é autônomo/MEI de verdade não depende de aprovação de
+            ninguém: ele É a transportadora. Sem esta linha, essa pessoa
+            ficava presa pedindo um código que nunca deveria precisar.
+          */}
+          <Typography variant="bodySmall" color="muted">
+            Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum —{" "}
+            <a href="/criar-conta/empresa?tipo=AUTONOMO" className="font-semibold underline">
+              cadastre sua própria transportadora
+            </a>
+            .
           </Typography>
 
           {isLoading ? (

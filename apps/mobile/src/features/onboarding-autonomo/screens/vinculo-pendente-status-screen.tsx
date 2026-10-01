@@ -93,6 +93,19 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         </Text>
       )}
 
+      {/*
+        A saída que faltava (01/10/2026, relato: "AUTÔNOMO e MEI não
+        precisa de código da transportadora para entrar"). O código era
+        a ÚNICA ação possível aqui — e quem é autônomo/MEI de verdade
+        não depende de aprovação de ninguém: ele É a transportadora
+        (`Company` com `tipo: AUTONOMO`). Sem esta linha, essa pessoa
+        ficava presa pedindo um código que nunca deveria precisar.
+      */}
+      <Text style={{ color: theme.colors.textMuted }}>
+        Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum — saia e escolha
+        &quot;Sou transportadora, autônomo ou MEI&quot; para cadastrar a sua.
+      </Text>
+
       {!joinRequest || joinRequest.status === "RECUSADO" ? (
         <VehicleButton
           label="Informar código da transportadora"

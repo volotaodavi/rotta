@@ -11,9 +11,29 @@ import { useTheme } from "@/providers/theme-provider";
 type Props = NativeStackScreenProps<AuthStackParamList, "AreaProfissional">;
 
 /**
- * Área Profissional (Dossiê 15, `AUTH-01`) — "Criar Empresa" ou "Já fui
- * convidado por uma empresa". O motorista nunca cria uma empresa; a
- * empresa já existe e ele apenas resgata o convite.
+ * Área Profissional (Dossiê 15, `AUTH-01`).
+ *
+ * ## A palavra "autônomo" significava DUAS coisas, e isso prendia gente
+ *
+ * Correção de 01/10/2026, depois do relato: "AUTÔNOMO e MEI não precisa
+ * de código da transportadora para entrar. Que loucura é essa?". Ele
+ * está certo, e a arquitetura sempre disse isso — está escrita em
+ * `apps/web/src/app/(auth)/criar-conta/motorista/page.tsx`: o
+ * autônomo/MEI **é** a própria transportadora (`Company` com
+ * `tipo: AUTONOMO`), mesmo cadastro de empresa.
+ *
+ * O que esta tela fazia era o oposto. O terceiro cartão dizia "Sou
+ * motorista/monitor autônomo — Atue SEM VÍNCULO com uma transportadora"
+ * e levava a `registerAutonomo`, que cria uma conta sem empresa e
+ * BLOQUEIA o app até alguma transportadora aprovar um vínculo. A
+ * descrição prometia exatamente o contrário do que acontecia, e o
+ * autônomo de verdade — que deveria clicar em "Criar empresa" — caía
+ * ali e ficava preso numa tela pedindo código.
+ *
+ * Agora os rótulos dizem a verdade: o primeiro cartão nomeia autônomo e
+ * MEI (é onde eles devem entrar, sem código nenhum), e o terceiro diz o
+ * que de fato é — motorista CONTRATADO que ainda não tem o convite em
+ * mãos, e cuja conta fica esperando aprovação.
  *
  * Redesign 15/09/2026 — ver nota em `criar-conta-screen.tsx`.
  */
@@ -38,8 +58,8 @@ export function AreaProfissionalScreen({ navigation }: Props): JSX.Element {
 
       <RoleOptionCard
         icon={Building2}
-        title="Criar empresa"
-        description="Cadastre sua transportadora na Rotta."
+        title="Sou transportadora, autônomo ou MEI"
+        description="Você é a própria transportadora. Não precisa do código de ninguém."
         onPress={() => navigation.navigate("CriarEmpresaWebView")}
       />
       <RoleOptionCard
@@ -50,8 +70,8 @@ export function AreaProfissionalScreen({ navigation }: Props): JSX.Element {
       />
       <RoleOptionCard
         icon={Car}
-        title="Sou motorista/monitor autônomo"
-        description="Atue sem vínculo com uma transportadora."
+        title="Trabalho para uma transportadora, mas não tenho convite"
+        description="Sua conta fica aguardando a transportadora aprovar o vínculo."
         onPress={() => navigation.navigate("CriarContaAutonomo")}
       />
     </AuthScreen>
