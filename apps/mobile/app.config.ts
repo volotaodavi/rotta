@@ -31,10 +31,19 @@ export default (): ExpoConfig => ({
   owner: "rotta-do-brasil-mobilidade-escolar",
   // Auditoria minuciosa 04/09/2026 — bump pra 1.0.0 (primeiro envio
   // público real à Play Store). `versionCode` (Android) é numérico e
-  // gerenciado à parte pelo EAS (`eas.json` -> `appVersionSource:
-  // "remote"` + `autoIncrement: true` no perfil de produção) — este
-  // campo é só o "versionName" exibido ao usuário.
-  version: "1.1.0",
+  // gerenciado à parte pela CI (ela pergunta à Play Console qual o maior
+  // já enviado e soma 1 — ver a nota em `android.versionCode` abaixo);
+  // este campo é só o "versionName" exibido ao usuário.
+  //
+  // 1.1.0 -> 1.2.0 (01/10/2026). Este bump não é cosmético: a 1.1.0 é
+  // de 16/09 e os QUATRO consertos da splash azul travada/piscando são
+  // de 18/09 e 21/09 (commits c85bb8e, 2639261, 9cc88cb, 29692f5).
+  // Nenhum deles chegou a um aparelho — quem está com a 1.1.0 instalada
+  // continua vendo o defeito exatamente como antes, com o conserto
+  // pronto e parado no repositório. A 1.2.0 é a primeira versão que
+  // leva: teto absoluto de tempo na splash e trava de ida única (ver
+  // `navigation/RootNavigator.tsx` e `use-limite-de-espera.ts`).
+  version: "1.2.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
