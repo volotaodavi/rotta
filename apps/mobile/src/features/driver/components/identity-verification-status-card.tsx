@@ -4,6 +4,8 @@ import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "rea
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
+import { explicarFalhaAoIniciar } from "./explicar-falha-ao-iniciar";
+
 import type { IdentityVerificationStatus } from "@rotta/api-client";
 
 import { AuthButton } from "@/features/auth/components";
@@ -93,8 +95,8 @@ export function IdentityVerificationStatusCard(): JSX.Element {
     try {
       const session = await createSession.mutateAsync(undefined);
       setSessionUrl(session.url);
-    } catch {
-      setErro("Não foi possível iniciar uma nova verificação agora. Tente novamente em instantes.");
+    } catch (causa) {
+      setErro(explicarFalhaAoIniciar(causa));
     }
   }
 
