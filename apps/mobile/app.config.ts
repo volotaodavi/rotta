@@ -151,8 +151,19 @@ export default (): ExpoConfig => ({
     googleServicesFile: process.env.GOOGLE_SERVICES_JSON || "./google-services.json",
     permissions: ["ACCESS_FINE_LOCATION", "ACCESS_BACKGROUND_LOCATION"],
     adaptiveIcon: {
+      // A placa de fundo do ícone adaptativo. Era "#0B0F14" (quase
+      // preto) e passou a ser o azul do próprio ícone (01/10/2026):
+      // `adaptive-icon.png` é só o FOREGROUND — o R branco e o ponto,
+      // recortados em transparência — então quem pinta o fundo é esta
+      // cor, não o arquivo. Deixá-la quase preta desenharia o símbolo
+      // branco sobre preto na gaveta de apps, que não é o ícone.
+      //
+      // "#013CE2" não foi escolhido a olho: é a mediana das quatro
+      // bordas do arquivo enviado pelo usuário, medida ao gerar o
+      // recorte. Assim a borda antisserrilhada da arte compõe exatamente
+      // sobre a mesma cor de que foi separada, sem halo.
       foregroundImage: "./assets/adaptive-icon.png",
-      backgroundColor: "#0B0F14",
+      backgroundColor: "#013CE2",
     },
   },
   web: {
