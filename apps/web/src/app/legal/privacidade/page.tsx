@@ -60,12 +60,12 @@ export default function PrivacidadePage(): JSX.Element {
 
       <LegalSection id="dados-coletados" title="2. Quais dados coletamos">
         Nome, e-mail, telefone e senha (armazenada apenas como hash, nunca em texto legível) de todo
-        usuário. <strong>Do Responsável, especificamente, não coletamos CPF</strong> — só nome,
+        usuário. <strong>Do Responsável, especificamente, não coletamos CPF</strong>. Só nome,
         e-mail e telefone. De transportadoras e de motoristas/monitores (inclusive autônomos): CNPJ
         ou CPF, endereço, dados de veículos, documentos obrigatórios (CNH, comprovantes, EAR, curso
         de transporte escolar quando aplicável, ver{" "}
         <Link href="/legal/motoristas">Diretrizes para Motoristas e Modalidades de Transporte</Link>
-        ). <strong>De alunos, não coletamos foto</strong> — só nome, data de nascimento, endereço de
+        ). <strong>De alunos, não coletamos foto</strong>. Só nome, data de nascimento, endereço de
         embarque/desembarque e, quando informado, necessidades especiais/medicamentos (opcional).
         Durante uma viagem ativa, a localização do veículo é registrada para acompanhamento em tempo
         real pela família (detalhe na seção 9). Dados de pagamento/cobrança são descritos na seção
@@ -128,7 +128,7 @@ export default function PrivacidadePage(): JSX.Element {
         responsáveis vinculados àquela rota acompanhem o trajeto em tempo real e recebam avisos de
         aproximação/embarque/desembarque. Para o Motorista/Monitor, essa coleta acontece{" "}
         <strong>mesmo com o aplicativo minimizado ou a tela do aparelho bloqueada</strong>{" "}
-        (localização em segundo plano) — sempre e somente enquanto a viagem estiver em andamento, e
+        (localização em segundo plano), sempre e somente enquanto a viagem estiver em andamento, e
         com aviso e consentimento explícitos dentro do próprio aplicativo antes de qualquer coleta
         (a permissão do sistema operacional pode ser revogada a qualquer momento nas configurações
         do aparelho). A localização do motorista/veículo{" "}

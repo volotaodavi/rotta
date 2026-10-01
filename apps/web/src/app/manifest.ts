@@ -23,7 +23,7 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Rotta — Gestão de Transporte Escolar",
+    name: "Rotta: Gestão de Transporte Escolar",
     short_name: "Rotta",
     description: "Gestão inteligente para transporte escolar.",
     start_url: "/entrar",

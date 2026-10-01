@@ -27,7 +27,7 @@ export function explicarFalhaAoIniciar(causa: unknown): string {
   }
   if (causa.status === 503) {
     return (
-      "A verificação de identidade está indisponível no momento — é uma configuração nossa, " +
+      "A verificação de identidade está indisponível no momento. É uma configuração nossa, " +
       "não um problema da sua conta. Fale com o suporte da Rotta."
     );
   }

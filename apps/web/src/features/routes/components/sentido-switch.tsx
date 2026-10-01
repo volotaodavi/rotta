@@ -42,7 +42,7 @@ export function SentidoSwitch({
         type="button"
         role="radio"
         aria-checked={ativo}
-        aria-label={`${TRIP_SENTIDO_LABEL[sentido]} — ${TRIP_SENTIDO_DESCRICAO[sentido]}`}
+        aria-label={`${TRIP_SENTIDO_LABEL[sentido]}: ${TRIP_SENTIDO_DESCRICAO[sentido]}`}
         disabled={disabled}
         onClick={() => onChange(sentido)}
         className={`flex flex-1 items-center justify-center gap-2 rounded-full border px-3 py-2 text-sm font-bold transition-colors disabled:opacity-60 ${

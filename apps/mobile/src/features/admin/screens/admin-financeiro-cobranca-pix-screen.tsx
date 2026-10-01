@@ -134,7 +134,7 @@ export function AdminFinanceiroCobrancaPixScreen(): JSX.Element {
   return (
     <VehicleScreen>
       <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-        Cobrança avulsa, não vinculada à mensalidade de nenhuma empresa — pra receber qualquer valor
+        Cobrança avulsa, não vinculada à mensalidade de nenhuma empresa, pra receber qualquer valor
         por Pix direto na conta Asaas da Rotta.
       </Text>
 

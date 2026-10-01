@@ -102,7 +102,7 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         ficava presa pedindo um código que nunca deveria precisar.
       */}
       <Text style={{ color: theme.colors.textMuted }}>
-        Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum — saia e escolha
+        Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum. Saia e escolha
         &quot;Sou transportadora, autônomo ou MEI&quot; para cadastrar a sua.
       </Text>
 

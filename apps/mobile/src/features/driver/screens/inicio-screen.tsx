@@ -531,7 +531,7 @@ function RotaOperacional({
                 <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
                   A {TRIP_SENTIDO_LABEL[trip.sentido].toLowerCase()} de hoje já foi{" "}
                   {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}. A rota continua
-                  disponível — pode iniciar outra viagem quando precisar.
+                  disponível. Pode iniciar outra viagem quando precisar.
                 </Text>
                 <SentidoSwitch
                   value={sentidoDaProximaViagem}

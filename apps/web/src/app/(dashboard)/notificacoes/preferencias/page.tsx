@@ -114,7 +114,7 @@ export default function NotificacoesPreferenciasPage(): JSX.Element {
             <Typography variant="subtitle">Push no navegador</Typography>
             <Typography variant="caption" color="muted">
               Ative para receber os avisos da Rotta como notificação do sistema, mesmo com esta aba
-              fechada — precisa ser feito uma vez em cada navegador/dispositivo.
+              fechada. Precisa ser feito uma vez em cada navegador/dispositivo.
             </Typography>
             <div>
               <Button
@@ -128,7 +128,7 @@ export default function NotificacoesPreferenciasPage(): JSX.Element {
             </div>
             {pushBrowser.status === "negado" && (
               <Typography variant="caption" color="danger">
-                Permissão negada — libere notificações para este site nas configurações do navegador
+                Permissão negada. Libere notificações para este site nas configurações do navegador
                 e tente de novo.
               </Typography>
             )}

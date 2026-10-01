@@ -1039,7 +1039,7 @@ function RotaOperacional({
           {isDono && veiculosDaEmpresa && veiculosDaEmpresa.items.length > 0 ? (
             <div className="flex flex-col gap-2">
               <Typography variant="bodySmall" className="font-medium">
-                Já tem veículo cadastrado — vincule um a esta rota
+                Já tem veículo cadastrado, vincule um a esta rota
               </Typography>
               <Select
                 value={veiculoEscolhidoId}
@@ -1286,7 +1286,7 @@ function RotaOperacional({
               <Typography variant="bodySmall" color="muted" className="text-center">
                 A {TRIP_SENTIDO_LABEL[trip.sentido].toLowerCase()} de hoje já foi{" "}
                 {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}. A rota continua
-                disponível — pode iniciar outra viagem quando precisar.
+                disponível. Pode iniciar outra viagem quando precisar.
               </Typography>
               <SentidoSwitch
                 value={sentidoDaProximaViagem}

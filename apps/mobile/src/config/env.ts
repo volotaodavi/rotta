@@ -71,7 +71,7 @@ function parseEnv(): z.infer<typeof envSchema> {
     isEnvConfigValid = false;
     // eslint-disable-next-line no-console
     console.error(
-      "[env] Configuração de ambiente inválida — o app vai continuar montando, mas chamadas de API vão falhar.",
+      "[env] Configuração de ambiente inválida. O app vai continuar montando, mas chamadas de API vão falhar.",
       error,
     );
     return {

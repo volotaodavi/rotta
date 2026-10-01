@@ -32,7 +32,7 @@ export function AppConfigErrorScreen(): JSX.Element {
   function handleFalarComSuporte(): void {
     Linking.openURL(
       buildWhatsAppUrl(
-        "Olá! Abri o app da Rotta e apareceu uma mensagem de configuração ausente — preciso de ajuda.",
+        "Olá! Abri o app da Rotta e apareceu uma mensagem de configuração ausente. Preciso de ajuda.",
       ),
     ).catch(() => {
       // Best-effort, mesmo padrão de todo `Linking.openURL` do app —
@@ -68,8 +68,8 @@ export function AppConfigErrorScreen(): JSX.Element {
         Não foi possível carregar o app
       </Text>
       <Text style={[styles.body, { color: theme.colors.textMuted }]}>
-        A configuração deste aplicativo não veio completa. Isso não é um problema da sua conta —
-        feche e abra o app de novo; se continuar acontecendo, fale com o nosso suporte.
+        A configuração deste aplicativo não veio completa. Isso não é um problema da sua conta.
+        Feche e abra o app de novo; se continuar acontecendo, fale com o nosso suporte.
       </Text>
 
       <AuthButton label="Falar com o suporte" onPress={handleFalarComSuporte} />

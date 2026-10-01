@@ -51,7 +51,7 @@ export function VinculoPendenteBlockScreen(): JSX.Element {
         <Card.Body className="flex flex-col items-center gap-4 py-10 text-center">
           <Typography variant="title">Falta pouco, {user?.nome?.split(" ")[0] ?? ""}</Typography>
           <Typography variant="body" color="muted">
-            Sua conta de {user?.role === "monitor" ? "monitor" : "motorista"} já existe — falta só
+            Sua conta de {user?.role === "monitor" ? "monitor" : "motorista"} já existe. Falta só
             uma transportadora aprovar seu vínculo pra você começar a usar a Rotta.
           </Typography>
 
@@ -63,7 +63,7 @@ export function VinculoPendenteBlockScreen(): JSX.Element {
             ficava presa pedindo um código que nunca deveria precisar.
           */}
           <Typography variant="bodySmall" color="muted">
-            Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum —{" "}
+            Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum.{" "}
             <a href="/criar-conta/empresa?tipo=AUTONOMO" className="font-semibold underline">
               cadastre sua própria transportadora
             </a>
@@ -93,7 +93,7 @@ export function VinculoPendenteBlockScreen(): JSX.Element {
             </div>
           ) : (
             <Typography variant="bodySmall" color="muted">
-              Pedido aprovado por <strong>{joinRequest.companyName}</strong> — entre novamente pra
+              Pedido aprovado por <strong>{joinRequest.companyName}</strong>. Entre novamente pra
               acessar.
             </Typography>
           )}

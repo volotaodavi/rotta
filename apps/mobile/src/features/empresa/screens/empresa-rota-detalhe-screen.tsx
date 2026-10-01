@@ -316,14 +316,14 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
               label="Endereço da parada"
               value={enderecoParada}
               onChangeText={setEnderecoParada}
-              placeholder="Rua das Flores, 123 — Centro, Campinas/SP"
+              placeholder="Rua das Flores, 123, Centro, Campinas/SP"
             />
             <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {enderecoGeocodificado.isGeocoding
                 ? "Localizando no mapa…"
                 : enderecoGeocodificado.coordenada
                   ? "Endereço localizado no mapa."
-                  : "A Rotta Geo AI localiza a coordenada sozinha — nunca digitada."}
+                  : "A Rotta Geo AI localiza a coordenada sozinha, nunca digitada."}
             </Text>
           </>
         )}

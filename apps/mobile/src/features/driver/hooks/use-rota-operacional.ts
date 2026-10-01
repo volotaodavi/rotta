@@ -244,7 +244,7 @@ export function useRotaOperacional(rota: Route): RotaOperacional {
     gpsStatus === "reporting"
       ? "Compartilhando sua localização com os responsáveis."
       : gpsStatus === "reporting-foreground-only"
-        ? 'Compartilhando localização só com o app aberto — permita "Sempre" nas configurações para continuar com o app em segundo plano.'
+        ? 'Compartilhando localização só com o app aberto. Permita "Sempre" nas configurações para continuar com o app em segundo plano.'
         : gpsStatus === "requesting"
           ? "Solicitando permissão de localização…"
           : gpsStatus === "denied"

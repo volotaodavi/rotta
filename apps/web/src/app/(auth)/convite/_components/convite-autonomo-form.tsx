@@ -129,7 +129,7 @@ export function ConviteAutonomoForm(): JSX.Element {
           <Typography variant="title">Motorista ou monitor autônomo</Typography>
           <Typography variant="bodySmall" color="muted">
             Se já tem o código da transportadora, informe aqui pra pedir vínculo assim que sua conta
-            for criada. Sem o código agora? Sem problema — dá pra informar depois.
+            for criada. Sem o código agora? Sem problema, dá pra informar depois.
           </Typography>
         </div>
 
@@ -167,7 +167,7 @@ export function ConviteAutonomoForm(): JSX.Element {
         <Typography variant="bodySmall" color="muted">
           {companyName
             ? `Transportadora ${companyName} · complete seus dados pra pedir o vínculo.`
-            : "Crie sua conta — o código da transportadora pode ser informado depois."}
+            : "Crie sua conta. O código da transportadora pode ser informado depois."}
         </Typography>
       </div>
 

@@ -162,7 +162,7 @@ export function useTripGpsReporting(tripId: string | null): {
           distanceInterval: 25,
           showsBackgroundLocationIndicator: true,
           foregroundService: {
-            notificationTitle: "Rotta — viagem em andamento",
+            notificationTitle: "Rotta: viagem em andamento",
             notificationBody: "Compartilhando sua localização com as famílias em tempo real.",
           },
         });

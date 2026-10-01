@@ -122,7 +122,7 @@ export function RouteOptimizationSection({
 
             {aplicada ? (
               <Typography variant="bodySmall" color="success">
-                Ordem aplicada — as paradas acima já refletem a nova sequência.
+                Ordem aplicada. As paradas acima já refletem a nova sequência.
               </Typography>
             ) : (
               <>

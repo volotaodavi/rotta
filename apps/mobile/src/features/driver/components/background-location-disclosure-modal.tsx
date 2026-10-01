@@ -42,7 +42,7 @@ export function BackgroundLocationDisclosureModal({
           <Text style={[styles.corpo, { color: theme.colors.textMuted }]}>
             Durante a viagem, a Rotta coleta sua localização mesmo com o app minimizado ou a tela
             bloqueada, para que as famílias acompanhem o trajeto em tempo real. A coleta acontece só
-            enquanto a viagem estiver em andamento — nunca fora dela — e você pode revogar essa
+            enquanto a viagem estiver em andamento, nunca fora dela, e você pode revogar essa
             permissão a qualquer momento nas configurações do aparelho.
           </Text>
 

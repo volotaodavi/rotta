@@ -78,7 +78,7 @@ export function useSairDaConta(): () => void {
 
     Alert.alert(
       "Você tem uma viagem em andamento",
-      "Sair agora interrompe o envio da sua localização, e as famílias deixam de acompanhar o veículo em tempo real. A viagem NÃO é finalizada — ela continua aberta até alguém encerrar.",
+      "Sair agora interrompe o envio da sua localização, e as famílias deixam de acompanhar o veículo em tempo real. A viagem NÃO é finalizada, ela continua aberta até alguém encerrar.",
       [
         { text: "Continuar na viagem", style: "cancel" },
         { text: "Sair mesmo assim", style: "destructive", onPress: () => void logout() },

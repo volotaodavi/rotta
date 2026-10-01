@@ -20,13 +20,13 @@ const COPY: Record<
   NAO_INICIADA: {
     icone: "alerta",
     titulo: "Verifique sua identidade para continuar",
-    textoPadrao: "Você ainda não verificou sua identidade — é obrigatório para usar a Rotta.",
+    textoPadrao: "Você ainda não verificou sua identidade. É obrigatório para usar a Rotta.",
   },
   EM_ANDAMENTO: {
     icone: "espera",
     titulo: "Verificação em andamento",
     textoPadrao:
-      "Se você já concluiu o formulário, aguarde a confirmação chegar — atualize o status abaixo.",
+      "Se você já concluiu o formulário, aguarde a confirmação chegar. Atualize o status abaixo.",
   },
   EM_ANALISE: {
     icone: "espera",

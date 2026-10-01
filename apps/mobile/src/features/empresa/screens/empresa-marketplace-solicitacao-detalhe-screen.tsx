@@ -212,13 +212,13 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
             multiline
           />
           <VehicleTextField
-            label="Vigência — início (AAAA-MM-DD)"
+            label="Vigência: início (AAAA-MM-DD)"
             value={vigenciaInicio}
             onChangeText={setVigenciaInicio}
             placeholder="ex: 2026-03-01"
           />
           <VehicleTextField
-            label="Vigência — fim (opcional)"
+            label="Vigência: fim (opcional)"
             value={vigenciaFim}
             onChangeText={setVigenciaFim}
             placeholder="Deixe em branco para indeterminado"

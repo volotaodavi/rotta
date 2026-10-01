@@ -52,7 +52,7 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
   function handleCancelarAssinatura(): void {
     Alert.alert(
       "Cancelar assinatura",
-      `Cancelar a assinatura Asaas de ${companyNome}? Ela para de ser cobrada e o status vira CANCELADO — não dá pra desfazer por aqui.`,
+      `Cancelar a assinatura Asaas de ${companyNome}? Ela para de ser cobrada e o status vira CANCELADO. Não dá pra desfazer por aqui.`,
       [
         { text: "Voltar", style: "cancel" },
         {

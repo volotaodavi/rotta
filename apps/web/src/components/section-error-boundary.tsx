@@ -103,7 +103,7 @@ export class SectionErrorBoundary extends Component<
         <Card>
           <Card.Body className="flex flex-col gap-3">
             <Typography variant="bodySmall" color="danger">
-              Não foi possível carregar esta seção agora. O resto da página continua funcionando —
+              Não foi possível carregar esta seção agora. O resto da página continua funcionando.
               recarregue quando puder tentar de novo.
             </Typography>
             <div className="rounded-md border border-danger/30 bg-danger/5 p-3">

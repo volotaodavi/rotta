@@ -163,7 +163,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
       <div>
         <Typography variant="title">Assinar antes de criar a conta</Typography>
         <Typography variant="body" color="muted">
-          R$ 39,90/mês. Pague agora e complete o cadastro da sua empresa em seguida — sem precisar
+          R$ 39,90/mês. Pague agora e complete o cadastro da sua empresa em seguida, sem precisar
           esperar o trial ou entrar na plataforma antes.
         </Typography>
       </div>
@@ -182,7 +182,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
               label="E-mail"
               helperText={
                 metodo === "PIX"
-                  ? "Opcional — pelo menos um destes 3 campos é obrigatório."
+                  ? "Opcional: pelo menos um destes 3 campos é obrigatório."
                   : undefined
               }
               isRequired={metodo !== "PIX"}
@@ -198,7 +198,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
               label="CPF ou CNPJ"
               helperText={
                 metodo === "PIX"
-                  ? "Opcional — pelo menos um destes 3 campos é obrigatório."
+                  ? "Opcional: pelo menos um destes 3 campos é obrigatório."
                   : undefined
               }
               isRequired={metodo !== "PIX"}
@@ -209,7 +209,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
               label="Telefone"
               helperText={
                 metodo === "PIX"
-                  ? "Opcional — pelo menos um destes 3 campos é obrigatório."
+                  ? "Opcional: pelo menos um destes 3 campos é obrigatório."
                   : "Opcional."
               }
             >

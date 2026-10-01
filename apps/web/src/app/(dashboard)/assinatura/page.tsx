@@ -132,7 +132,7 @@ export default function AssinaturaPage(): JSX.Element {
           <Card.Body className="flex flex-col gap-3">
             <Typography variant="subtitle">Pagar com Pix</Typography>
             <Typography variant="bodySmall" color="muted">
-              QR Code + copia-e-cola, confirmação automática — sem sair desta tela.
+              QR Code + copia-e-cola, confirmação automática, sem sair desta tela.
             </Typography>
             <Button
               isLoading={createPixCheckout.isPending}
@@ -260,7 +260,7 @@ export default function AssinaturaPage(): JSX.Element {
             <Card.Body className="flex flex-col gap-3">
               <Typography variant="subtitle">Pagar com boleto</Typography>
               <Typography variant="bodySmall" color="muted">
-                Gera um boleto com linha digitável e link para o PDF — o pagamento é confirmado em
+                Gera um boleto com linha digitável e link para o PDF. O pagamento é confirmado em
                 até 2 dias úteis após a compensação bancária.
               </Typography>
               <Button

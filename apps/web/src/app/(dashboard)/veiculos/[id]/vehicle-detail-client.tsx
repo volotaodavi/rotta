@@ -387,9 +387,9 @@ function DocumentosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
         <Card.Header title="Novo documento" />
         <Card.Body className="flex flex-col gap-4">
           <Typography variant="bodySmall" color="muted">
-            CRLV (ou CRLV-e), Seguro, Licenciamento, Vistoria — anexe uma foto, o PDF do documento
-            ou tire a foto na hora. A IA da Rotta confere se a imagem está legível e se os campos
-            esperados (placa, RENAVAM) aparecem — nunca é uma aprovação de autenticidade.
+            CRLV (ou CRLV-e), Seguro, Licenciamento, Vistoria. Anexe uma foto, o PDF do documento ou
+            tire a foto na hora. A IA da Rotta confere se a imagem está legível e se os campos
+            esperados (placa, RENAVAM) aparecem, nunca é uma aprovação de autenticidade.
           </Typography>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <FormField label="Tipo">
@@ -406,7 +406,7 @@ function DocumentosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
             </FormField>
             <FormField
               label="Vencimento"
-              helperText="Opcional — CRLV, Seguro, Licenciamento, Vistoria"
+              helperText="Opcional: CRLV, Seguro, Licenciamento, Vistoria"
             >
               <Input
                 type="date"

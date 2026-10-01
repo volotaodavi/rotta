@@ -119,7 +119,7 @@ export function textoDoAviso(pendencias: PendenciasDeEncerramento): string | nul
   if (pendencias.semRegistro.length > 0) {
     const plural = pendencias.semRegistro.length > 1;
     partes.push(
-      `Sem nenhum registro hoje: ${listarNomes(pendencias.semRegistro)} — ${
+      `Sem nenhum registro hoje: ${listarNomes(pendencias.semRegistro)}. ${
         plural ? "eles não constam" : "ele não consta"
       } nem como embarque, nem como ausência.`,
     );

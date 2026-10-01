@@ -226,7 +226,7 @@ export default function AlunoDetalhePage(): JSX.Element {
             {ausenciaHoje ? (
               <>
                 <Typography variant="bodySmall" color="muted">
-                  {student.nome} está marcado como ausente hoje — o motorista vai pular a parada
+                  {student.nome} está marcado como ausente hoje. O motorista vai pular a parada
                   dele.
                 </Typography>
                 <Button

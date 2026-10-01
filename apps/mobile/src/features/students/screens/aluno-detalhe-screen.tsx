@@ -215,7 +215,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
         {ausenciaHoje ? (
           <>
             <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
-              {student.nome} está marcado como ausente hoje — o motorista vai pular a parada dele.
+              {student.nome} está marcado como ausente hoje. O motorista vai pular a parada dele.
             </Text>
             <VehicleButton
               label="Desmarcar ausência"

@@ -113,7 +113,7 @@ try {
 } catch (error) {
   // eslint-disable-next-line no-console
   console.error(
-    "[background-trip-location-task] Falha ao registrar a task — GPS em segundo plano ficará indisponível, mas o resto do app continua.",
+    "[background-trip-location-task] Falha ao registrar a task. O GPS em segundo plano ficará indisponível, mas o resto do app continua.",
     error,
   );
 }

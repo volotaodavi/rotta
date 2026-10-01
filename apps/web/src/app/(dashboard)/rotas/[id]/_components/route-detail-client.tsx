@@ -308,7 +308,7 @@ function RotaDetalheContent({ routeId }: RouteDetailClientProps): JSX.Element {
             <Typography variant="bodySmall" color="danger">
               Esta rota está pausada: ela não aparece em &quot;Minhas Rotas&quot; para o motorista
               nem para o monitor enquanto estiver assim. Adicione ao menos uma parada e um aluno
-              abaixo — a rota é ativada automaticamente assim que o primeiro aluno for vinculado.
+              abaixo. A rota é ativada automaticamente assim que o primeiro aluno for vinculado.
             </Typography>
           </Card.Body>
         </Card>

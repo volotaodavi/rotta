@@ -51,7 +51,7 @@ export function SentidoSwitch({
       <Pressable
         accessibilityRole="radio"
         accessibilityState={{ selected: ativo, disabled: Boolean(disabled) }}
-        accessibilityLabel={`${TRIP_SENTIDO_LABEL[sentido]} — ${TRIP_SENTIDO_DESCRICAO[sentido]}`}
+        accessibilityLabel={`${TRIP_SENTIDO_LABEL[sentido]}: ${TRIP_SENTIDO_DESCRICAO[sentido]}`}
         disabled={disabled}
         onPress={() => onChange(sentido)}
         style={[

@@ -491,7 +491,7 @@ class MapCrashBoundary extends Component<{ children: ReactNode }, { hasError: bo
     // eslint-disable-next-line no-console
     console.error(
       "[RottaMap] Falha ao renderizar o mapa nativo (MapLibre). Se você está testando pelo " +
-        "app Expo Go, isso é esperado — mapas nativos exigem um build próprio do app " +
+        "app Expo Go, isso é esperado, mapas nativos exigem um build próprio do app " +
         "(dev client/EAS), Expo Go não carrega módulos nativos de terceiros.",
       error,
     );
@@ -503,7 +503,7 @@ class MapCrashBoundary extends Component<{ children: ReactNode }, { hasError: bo
       <View style={styles.errorOverlay}>
         <Text style={styles.errorText}>
           Mapa não disponível neste modo de teste (Expo Go). Mapas nativos só funcionam num build
-          próprio do app — o resto da tela continua funcionando normalmente.
+          próprio do app. O resto da tela continua funcionando normalmente.
         </Text>
       </View>
     );

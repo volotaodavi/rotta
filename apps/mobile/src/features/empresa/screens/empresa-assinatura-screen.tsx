@@ -62,7 +62,7 @@ function formatarReais(centavos: number): string {
 }
 
 function formatarData(iso: string | null): string {
-  if (!iso) return "—";
+  if (!iso) return "-";
   return new Date(iso).toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "long",
@@ -169,7 +169,7 @@ export function EmpresaAssinaturaScreen(): JSX.Element {
               nunca pagou" — dizer a mesma frase pros dois casos
               esconderia a diferença de quem está lendo. */}
           {extrato?.provider === "nenhum"
-            ? "Nenhuma cobrança foi gerada ainda — isso acontece quando a assinatura é contratada."
+            ? "Nenhuma cobrança foi gerada ainda. Isso acontece quando a assinatura é contratada."
             : "Nenhum pagamento registrado até agora."}
         </Text>
       ) : (

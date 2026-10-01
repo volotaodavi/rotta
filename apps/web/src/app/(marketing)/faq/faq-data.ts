@@ -36,6 +36,6 @@ export const FAQS = [
   {
     question: "Posso já assinar o plano Starter, sem esperar o trial?",
     answer:
-      'Sim. Além do cadastro normal ("Começar agora", que já libera 1 mês grátis), existe um segundo caminho para quem já sabe que quer pagar: em "Planos", escolha "Já quero assinar (pagar agora)" e pague via Pix, cartão ou boleto antes mesmo de criar a conta — a empresa nasce ativa, sem passar pelo trial.',
+      'Sim. Além do cadastro normal ("Começar agora", que já libera 1 mês grátis), existe um segundo caminho para quem já sabe que quer pagar: em "Planos", escolha "Já quero assinar (pagar agora)" e pague via Pix, cartão ou boleto antes mesmo de criar a conta. A empresa nasce ativa, sem passar pelo trial.',
   },
 ];

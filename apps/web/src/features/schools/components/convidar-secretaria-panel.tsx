@@ -66,13 +66,13 @@ export function ConvidarSecretariaPanel({
 
   return (
     <Card>
-      <Card.Header title={`Acesso da secretaria — ${schoolNome}`} />
+      <Card.Header title={`Acesso da secretaria: ${schoolNome}`} />
       <Card.Body className="flex flex-col gap-3">
         {!codigo ? (
           <>
             <Typography variant="bodySmall" color="muted">
               Gera um código para a secretaria desta escola criar a própria conta. Com ela, a escola
-              vê quais alunos vão de ônibus hoje e se já embarcaram — somente leitura, sem acesso a
+              vê quais alunos vão de ônibus hoje e se já embarcaram. Somente leitura, sem acesso a
               nada da sua operação.
             </Typography>
             <div className="flex gap-2">

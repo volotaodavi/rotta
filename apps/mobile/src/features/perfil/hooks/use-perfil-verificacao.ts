@@ -82,7 +82,7 @@ export function useVerificacaoResponsavel(): PerfilVerificacao {
         estaPreenchido(user?.nome) && estaPreenchido(user?.email) && estaPreenchido(user?.telefone),
       pendencia: estaPreenchido(user?.telefone)
         ? "Complete nome e e-mail da conta."
-        : "Falta o telefone da conta — é por ele que a transportadora fala com você.",
+        : "Falta o telefone da conta. É por ele que a transportadora fala com você.",
     },
     {
       id: "alunos",
@@ -154,7 +154,7 @@ export function useVerificacaoMotorista(): PerfilVerificacao {
       id: "veiculo",
       label: "Veículo vinculado",
       ok: Boolean(veiculo),
-      pendencia: "Nenhum veículo vinculado a você — a transportadora faz esse vínculo.",
+      pendencia: "Nenhum veículo vinculado a você. A transportadora faz esse vínculo.",
     },
     {
       id: "documentos-em-dia",

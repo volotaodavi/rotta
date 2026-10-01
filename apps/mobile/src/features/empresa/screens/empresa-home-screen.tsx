@@ -211,7 +211,7 @@ function StatTile({
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={styles.statTile}>
       <Icon size={18} color={theme.colors.primary} />
-      <Text style={[styles.statValor, { color: theme.colors.text }]}>{valor ?? "—"}</Text>
+      <Text style={[styles.statValor, { color: theme.colors.text }]}>{valor ?? "-"}</Text>
       <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{label}</Text>
     </Pressable>
   );

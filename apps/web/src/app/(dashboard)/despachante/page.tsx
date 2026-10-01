@@ -102,7 +102,7 @@ export default function DespachantePage(): JSX.Element {
         <Card.Body className="flex flex-col gap-4">
           <FormField
             label="Ônibus"
-            helperText="Número do ônibus, placa ou modelo — a partir de 2 caracteres a busca começa sozinha."
+            helperText="Número do ônibus, placa ou modelo. A partir de 2 caracteres a busca começa sozinha."
           >
             <Input
               value={termo}
@@ -185,7 +185,7 @@ export default function DespachantePage(): JSX.Element {
           ) : (rotas.data?.items.length ?? 0) === 0 ? (
             <EmptyState
               title="Nenhuma rota usa este ônibus como padrão"
-              description="Para pôr este carro numa rota, abra a rota em Rotas e defina o veículo padrão — ou troque o ônibus de hoje a partir do carro que está na rota."
+              description="Para pôr este carro numa rota, abra a rota em Rotas e defina o veículo padrão, ou troque o ônibus de hoje a partir do carro que está na rota."
             />
           ) : (
             rotas.data?.items.map((rota) => (
@@ -272,7 +272,7 @@ function RotaDoDespachante({
             </Typography>
           ) : tripDeHoje ? (
             <Typography variant="bodySmall" color="muted">
-              A viagem de hoje já foi encerrada — só dá para mexer no ônibus padrão.
+              A viagem de hoje já foi encerrada. Só dá para mexer no ônibus padrão.
             </Typography>
           ) : (
             <Typography variant="bodySmall" color="muted">
@@ -290,7 +290,7 @@ function RotaDoDespachante({
             <option value="">Selecione o ônibus</option>
             {substitutos.map((item) => (
               <option key={item.id} value={item.id}>
-                {identificar(item)} — {item.modelo} ({item.capacidadePassageiros} lugares)
+                {identificar(item)}, {item.modelo} ({item.capacidadePassageiros} lugares)
               </option>
             ))}
           </Select>
@@ -362,7 +362,7 @@ function RotaDoDespachante({
             </Button>
             <Typography variant="caption" color="muted">
               Rodízio planejado: vale da <strong>próxima viagem</strong> em diante e{" "}
-              <strong>não avisa ninguém agora</strong> — o carro de hoje não mudou.
+              <strong>não avisa ninguém agora</strong>. O carro de hoje não mudou.
             </Typography>
           </div>
         </div>

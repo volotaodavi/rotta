@@ -72,7 +72,7 @@ export function AusenciaHojeCard({
       {ausenciaHoje ? (
         <>
           <Text style={{ color: theme.colors.textMuted }}>
-            {nomeAluno} está marcado como ausente hoje — o motorista vai pular a parada dele.
+            {nomeAluno} está marcado como ausente hoje. O motorista vai pular a parada dele.
           </Text>
           <VehicleButton
             label="Desmarcar ausência"

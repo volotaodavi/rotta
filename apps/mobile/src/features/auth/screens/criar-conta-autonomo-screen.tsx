@@ -149,7 +149,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
         */}
         <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           É autônomo ou MEI e trabalha por conta própria? Volte e escolha &quot;Sou transportadora,
-          autônomo ou MEI&quot; — lá você não precisa de código nenhum.
+          autônomo ou MEI&quot;. Lá você não precisa de código nenhum.
         </Text>
 
         <AuthTextField
@@ -188,7 +188,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
       <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {companyName
           ? `Transportadora ${companyName} · complete seus dados pra pedir o vínculo.`
-          : 'Crie sua conta e complete a verificação de identidade — o código da transportadora pode ser informado depois, em "Meu pedido".'}
+          : 'Crie sua conta e complete a verificação de identidade. O código da transportadora pode ser informado depois, em "Meu pedido".'}
       </Text>
 
       <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Você é</Text>

@@ -36,9 +36,9 @@ export const SERVICE_TAG_LABEL: Record<ServiceTag, string> = {
 
 export const SERVICE_TAG_DESCRICAO: Record<ServiceTag, string> = {
   LICITADA:
-    "Atende contrato de licitação com o município — o Admin da Rotta cadastra e delimita a área de atuação dela.",
+    "Atende contrato de licitação com o município. O Admin da Rotta cadastra e delimita a área de atuação dela.",
   PRIVADA:
-    "Atende famílias que a contratam diretamente — ela se cadastra sozinha e se credencia nas escolas.",
+    "Atende famílias que a contratam diretamente. Ela se cadastra sozinha e se credencia nas escolas.",
 };
 
 /**

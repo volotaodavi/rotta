@@ -65,7 +65,7 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
         <VehicleCard>
           <StatusPill label="Asaas não configurada" tone="warning" />
           <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            Sem ASAAS_API_KEY — valores de Pix/cartão/boleto não podem ser consultados. Empresas e
+            Sem ASAAS_API_KEY, valores de Pix/cartão/boleto não podem ser consultados. Empresas e
             planos abaixo continuam corretos (vêm do banco da Rotta).
           </Text>
         </VehicleCard>

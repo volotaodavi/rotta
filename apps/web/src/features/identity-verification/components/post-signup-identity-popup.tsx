@@ -65,7 +65,7 @@ export function PostSignupIdentityPopup({
       </Modal.Header>
       <Modal.Body>
         <Typography variant="body" color="muted">
-          Por segurança de todos — famílias, escolas e motoristas — a Rotta exige verificação de
+          Por segurança de todos (famílias, escolas e motoristas), a Rotta exige verificação de
           identidade antes de liberar o restante da plataforma. Leva poucos minutos: documento + uma
           selfie, tudo pelo celular ou computador.
         </Typography>

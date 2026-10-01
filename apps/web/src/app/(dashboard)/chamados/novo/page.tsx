@@ -24,7 +24,7 @@ export default function NovoChamadoPage(): JSX.Element {
 
       <div className="flex flex-col gap-2">
         <Typography variant="caption" color="muted">
-          Alguma dessas é a sua dúvida? Toque pra preencher — ainda dá pra editar tudo antes de
+          Alguma dessas é a sua dúvida? Toque pra preencher. Ainda dá pra editar tudo antes de
           enviar.
         </Typography>
         <div className="flex flex-wrap gap-2">

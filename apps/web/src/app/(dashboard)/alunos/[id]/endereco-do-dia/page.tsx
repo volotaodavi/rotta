@@ -102,7 +102,7 @@ export default function EnderecoDoDiaPage(): JSX.Element {
         <Typography variant="bodySmall" color="muted">
           Vai levar ou buscar {student?.nome ?? "seu filho"} num endereço diferente algum dia?
           Marque o dia no calendário e informe onde. Só dá pra fazer antes da van começar o serviço
-          naquele dia — depois disso o dia fica travado.
+          naquele dia. Depois disso o dia fica travado.
         </Typography>
       </div>
 
@@ -423,7 +423,7 @@ function EnderecoDoDiaModal({
             <div className="flex items-center gap-2 rounded-xl bg-muted px-3 py-2">
               <MapPin size={16} className="shrink-0 text-text-muted" />
               <Typography variant="caption" color="muted" className="flex-1">
-                Já existe um endereço marcado pra este dia — salvar substitui, ou remova abaixo.
+                Já existe um endereço marcado pra este dia. Salvar substitui, ou remova abaixo.
               </Typography>
             </div>
           ) : null}

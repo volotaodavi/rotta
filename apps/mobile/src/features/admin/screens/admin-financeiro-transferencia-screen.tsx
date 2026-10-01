@@ -83,7 +83,7 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
           setChavePix("");
           setDescricao("");
           setSuccess(
-            `Transferência de ${centsToBRL(valorCentavos)} criada (status: ${transfer.status}). A confirmação final chega por webhook — pode levar alguns minutos.`,
+            `Transferência de ${centsToBRL(valorCentavos)} criada (status: ${transfer.status}). A confirmação final chega por webhook e pode levar alguns minutos.`,
           );
         },
         onError: (err) => {

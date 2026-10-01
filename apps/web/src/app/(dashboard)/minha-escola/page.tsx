@@ -137,18 +137,18 @@ export default function MinhaEscolaPage(): JSX.Element {
                         <span className="text-xs text-text-muted">{aluno.veiculoModelo}</span>
                       </span>
                     ) : (
-                      <span className="text-text-muted">—</span>
+                      <span className="text-text-muted">-</span>
                     ),
                 },
                 {
                   key: "rota",
                   header: "Rota",
-                  render: (aluno) => aluno.rotaNome ?? "—",
+                  render: (aluno) => aluno.rotaNome ?? "-",
                 },
                 {
                   key: "transportadora",
                   header: "Transportadora",
-                  render: (aluno) => aluno.transportadoraNome ?? "—",
+                  render: (aluno) => aluno.transportadoraNome ?? "-",
                 },
               ]}
               rows={alunos}

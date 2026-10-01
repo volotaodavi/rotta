@@ -85,8 +85,8 @@ export default function EscalaPage(): JSX.Element {
         <div>
           <Typography variant="title">Escala do dia</Typography>
           <Typography variant="bodySmall" color="muted">
-            Quem faz cada rota neste dia. Vence o veículo e o motorista padrão da rota — use quando
-            o dia foge do combinado.
+            Quem faz cada rota neste dia. Vence o veículo e o motorista padrão da rota. Use quando o
+            dia foge do combinado.
           </Typography>
         </div>
         <div className="flex items-end gap-2">
@@ -138,12 +138,12 @@ export default function EscalaPage(): JSX.Element {
                 {
                   key: "monitor",
                   header: "Monitor",
-                  render: (escala) => escala.monitorNome ?? "—",
+                  render: (escala) => escala.monitorNome ?? "-",
                 },
                 {
                   key: "obs",
                   header: "Observação",
-                  render: (escala) => escala.observacao ?? "—",
+                  render: (escala) => escala.observacao ?? "-",
                 },
                 {
                   key: "acao",
@@ -180,7 +180,7 @@ export default function EscalaPage(): JSX.Element {
           {semEscala.length === 0 && (rotas?.items.length ?? 0) > 0 ? (
             <Typography variant="bodySmall" color="muted">
               Todas as rotas ativas já estão designadas neste dia. Para trocar alguma, designe de
-              novo — designar a mesma rota no mesmo dia edita a escala.
+              novo, designar a mesma rota no mesmo dia edita a escala.
             </Typography>
           ) : null}
           <FormularioDeEscala
@@ -252,7 +252,7 @@ function FormularioDeEscala({
               {/* Número primeiro, placa como alternativa — mesma regra
                   do Painel do Despachante, para os dois públicos nunca
                   verem rótulos diferentes do mesmo carro. */}
-              {veiculo.numeroFrota ?? veiculo.placa} — {veiculo.modelo}
+              {veiculo.numeroFrota ?? veiculo.placa}, {veiculo.modelo}
             </option>
           ))}
         </Select>
