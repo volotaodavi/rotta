@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { TenantContext } from "@/infra/database/tenant-context";
 
 import { IS_PUBLIC_KEY } from "@/common/decorators/public.decorator";
+import { SEM_TENANT_KEY } from "@/common/decorators/sem-tenant.decorator";
 import { Role } from "@/shared/enums";
 
 /**
@@ -76,6 +77,24 @@ export class TenantGuard implements CanActivate {
     }
 
     if (!user.tenantId) {
+      // Rotas marcadas com `@SemTenant()` agem sobre o PRÓPRIO ator e
+      // não sobre recurso de transportadora nenhuma — a falta de
+      // `tenantId` não é motivo pra reprovar ali. O contexto publicado
+      // é o mesmo do Responsável (`bypass: false`): sem tenant,
+      // `withTenant(...)` não mostra linha de nenhuma tabela com RLS.
+      //
+      // Sem isto, o Motorista/Monitor autônomo — que nasce sem
+      // `Company`/`Membership` por desenho — levava `Forbidden
+      // resource` ao tentar verificar a identidade, que é justamente o
+      // passo ANTERIOR a pedir vínculo (ver o decorator).
+      const semTenant = this.reflector.getAllAndOverride<boolean>(SEM_TENANT_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (semTenant) {
+        request.tenantContext = { tenantId: null, bypass: false };
+        return true;
+      }
       return false;
     }
 

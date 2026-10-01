@@ -15,12 +15,21 @@ import {
 import { AdminAreas } from "@/common/decorators/admin-areas.decorator";
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
+import { SemTenant } from "@/common/decorators/sem-tenant.decorator";
 import { AdminArea, Role } from "@/shared/enums";
 
 /** Quem verifica a PRÓPRIA identidade hoje (Motorista/Monitor dirigem; Empresa/Gestor administram a conta) — Responsável/Escola/Admin Rotta não usam este fluxo. */
 const SELF_VERIFICATION_ROLES = [Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR] as const;
 
 /**
+ * `@SemTenant()` nas três rotas `me/*` (01/10/2026). Elas agem sempre
+ * sobre `actor.sub`, nunca sobre recurso de uma transportadora — e o
+ * Motorista/Monitor autônomo precisa delas ANTES de ter vínculo, que é
+ * quando o `tenantId` aparece. Sem isso, `TenantGuard` reprovava com
+ * `Forbidden resource` antes mesmo do `RolesGuard` conferir o papel
+ * (relato real: "o transportador tenta verificar a identidade e o app
+ * dá erro"). Ver o decorator para o porquê de ser seguro.
+ *
  * API REST da verificação de identidade hospedada via Didit
  * (`identity-verification/me/*`) — sempre a PRÓPRIA identidade do ator
  * autenticado (`actor.sub`), nunca um `userId` recebido do cliente.
@@ -38,6 +47,7 @@ export class IdentityVerificationController {
 
   @Get("me")
   @Roles(...SELF_VERIFICATION_ROLES)
+  @SemTenant()
   getMyStatus(@CurrentUser() actor: AuthenticatedUser): Promise<IdentityVerificationStatusResult> {
     return this.service.getStatus(actor.sub);
   }
@@ -45,6 +55,7 @@ export class IdentityVerificationController {
   @Post("me/sessions")
   @HttpCode(HttpStatus.CREATED)
   @Roles(...SELF_VERIFICATION_ROLES)
+  @SemTenant()
   createMySession(
     @CurrentUser() actor: AuthenticatedUser,
     @Body() dto: CreateIdentityVerificationSessionDto,
@@ -55,6 +66,7 @@ export class IdentityVerificationController {
   /** Pull-based, self-service — mesmo endpoint da Didit que `admin/:userId/refresh` usa, aqui escopado ao próprio ator. Corrige o caso relatado: "Em andamento" travado porque o webhook nunca chegou. */
   @Post("me/refresh")
   @Roles(...SELF_VERIFICATION_ROLES)
+  @SemTenant()
   refreshMyStatus(
     @CurrentUser() actor: AuthenticatedUser,
   ): Promise<IdentityVerificationStatusResult> {
