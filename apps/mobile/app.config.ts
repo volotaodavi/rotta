@@ -43,7 +43,16 @@ export default (): ExpoConfig => ({
   // pronto e parado no repositório. A 1.2.0 é a primeira versão que
   // leva: teto absoluto de tempo na splash e trava de ida única (ver
   // `navigation/RootNavigator.tsx` e `use-limite-de-espera.ts`).
-  version: "1.2.0",
+  //
+  // 1.2.0 -> 1.3.0 (02/10/2026). O que a 1.2.0 não leva: a saída do
+  // motorista autônomo/MEI. Na 1.2.0, a tela de vínculo pendente só
+  // oferece "informar o código da transportadora" — e quem é autônomo
+  // ou MEI É a própria transportadora, não tem código de ninguém pra
+  // informar. Essa pessoa fica presa nessa tela, sem conseguir usar o
+  // app. A 1.3.0 leva a tela `ConverterEmTransportadora`, que cria a
+  // `Company` dela na mesma conta, pedindo só o endereço (commit
+  // 49424f0).
+  version: "1.3.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
