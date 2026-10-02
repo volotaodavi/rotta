@@ -7,6 +7,7 @@
  * a implementar junto com cada modulo de backend real.
  */
 
+export * from "./endpoints/account-deletion";
 export * from "./endpoints/admin-accounts";
 export * from "./endpoints/agenda";
 export * from "./endpoints/analytics";

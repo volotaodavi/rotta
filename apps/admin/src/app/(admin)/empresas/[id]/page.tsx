@@ -13,8 +13,14 @@ import {
   buttonVariants,
 } from "@rotta/ui/web";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { use, useState } from "react";
 
+import { ExcluirDefinitivamenteDialog } from "@/features/account-deletion/components/excluir-definitivamente-dialog";
+import {
+  useCompanyDeletionPreview,
+  useDeleteCompany,
+} from "@/features/account-deletion/hooks/use-account-deletion";
 import { useAccessAsSupport } from "@/features/backoffice/hooks/use-backoffice";
 
 /** Abas da tela de empresa. `atuacao` entrou com o fluxo público (24/09/2026). */
@@ -49,6 +55,7 @@ export default function EmpresaDetalhesPage({
   params: Promise<{ id: string }>;
 }): JSX.Element {
   const { id } = use(params);
+  const router = useRouter();
   const { data: company, isLoading, isError } = useCompany(id);
   const { data: dashboard } = useCompanyDashboard(id);
   const suspend = useSuspendCompany(id);
@@ -61,6 +68,9 @@ export default function EmpresaDetalhesPage({
   const [suspendModalOpen, setSuspendModalOpen] = useState(false);
   const [suspendMotivo, setSuspendMotivo] = useState(motivo);
   const [activeTab, setActiveTab] = useState<AbaDaEmpresa>("dados");
+  const [excluirModalOpen, setExcluirModalOpen] = useState(false);
+  const previewExclusao = useCompanyDeletionPreview(id, excluirModalOpen);
+  const excluir = useDeleteCompany();
 
   function handleConfirmarAcessoSuporte(): void {
     if (supportMotivo.trim().length < 10) {
@@ -142,6 +152,15 @@ export default function EmpresaDetalhesPage({
               Suspender
             </Button>
           )}
+          {/*
+            Exclusão definitiva (pedido do usuário, 02/10/2026): suspender
+            mantém a linha no banco, e com ela o CNPJ/CPF e os e-mails
+            presos pelas constraints `@unique` — era o que travava um
+            recadastro depois de um cadastro de teste.
+          */}
+          <Button variant="danger" onClick={() => setExcluirModalOpen(true)}>
+            Excluir
+          </Button>
         </div>
       </div>
 
@@ -191,6 +210,29 @@ export default function EmpresaDetalhesPage({
           </Button>
         </Modal.Footer>
       </Modal>
+
+      <ExcluirDefinitivamenteDialog
+        isOpen={excluirModalOpen}
+        onClose={() => setExcluirModalOpen(false)}
+        titulo="Excluir transportadora definitivamente"
+        confirmacaoEsperada={company.nomeFantasia}
+        isLoadingPreview={previewExclusao.isLoading}
+        podeExcluir={previewExclusao.data ? true : null}
+        impedimentos={[]}
+        seraApagado={previewExclusao.data?.seraApagado ?? []}
+        contasQueSeraoApagadas={previewExclusao.data?.contasQueSeraoApagadas}
+        contasQueSobrevivem={previewExclusao.data?.contasQueSobrevivem}
+        isExcluindo={excluir.isPending}
+        erro={excluir.error}
+        onConfirmar={() =>
+          excluir.mutate(id, {
+            onSuccess: () => {
+              setExcluirModalOpen(false);
+              router.push("/empresas");
+            },
+          })
+        }
+      />
 
       {dashboard && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
@@ -264,6 +306,29 @@ export default function EmpresaDetalhesPage({
               value={`${company.bairro}, ${company.cidade}/${company.estado}`}
             />
             <InfoItem label="CEP" value={company.cep} />
+            <ExcluirDefinitivamenteDialog
+              isOpen={excluirModalOpen}
+              onClose={() => setExcluirModalOpen(false)}
+              titulo="Excluir transportadora definitivamente"
+              confirmacaoEsperada={company.nomeFantasia}
+              isLoadingPreview={previewExclusao.isLoading}
+              podeExcluir={previewExclusao.data ? true : null}
+              impedimentos={[]}
+              seraApagado={previewExclusao.data?.seraApagado ?? []}
+              contasQueSeraoApagadas={previewExclusao.data?.contasQueSeraoApagadas}
+              contasQueSobrevivem={previewExclusao.data?.contasQueSobrevivem}
+              isExcluindo={excluir.isPending}
+              erro={excluir.error}
+              onConfirmar={() =>
+                excluir.mutate(id, {
+                  onSuccess: () => {
+                    setExcluirModalOpen(false);
+                    router.push("/empresas");
+                  },
+                })
+              }
+            />
+
             {dashboard && (
               <InfoItem
                 label="Receita estimada"

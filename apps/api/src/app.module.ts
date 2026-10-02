@@ -42,6 +42,7 @@ import { RedisModule } from "@/infra/cache/redis.module";
 import { PrismaModule } from "@/infra/database/prisma.module";
 import { LoggerModule } from "@/infra/observability/logger.module";
 import { QueueModule } from "@/infra/queue/queue.module";
+import { AccountDeletionModule } from "@/modules/account-deletion/account-deletion.module";
 import { AdminAccountsModule } from "@/modules/admin-accounts/admin-accounts.module";
 import { AdminDigestModule } from "@/modules/admin-digest/admin-digest.module";
 import { AgendaModule } from "@/modules/agenda/agenda.module";
@@ -189,6 +190,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     LogsModule,
     AnalyticsModule,
     RottaAiModule,
+    AccountDeletionModule,
     BackofficeModule,
     LegalDocumentsModule,
     IdentityVerificationModule,

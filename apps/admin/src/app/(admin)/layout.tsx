@@ -121,6 +121,11 @@ const NAV_GROUPS: NavGroup[] = [
       // `/admin-contas` no próprio allowlist (pedido do usuário
       // 03/09/2026: "crie outros acessos... com particularidades").
       { href: "/admin-contas", label: "Contas Admin", icon: Users },
+      // Contas de USUÁRIO (não de admin) — a lista que o painel nunca
+      // teve, criada com a exclusão definitiva (02/10/2026). Fica em
+      // Plataforma, sem `@AdminAreas` no backend: GERAL-only, porque
+      // apagar conta não tem volta.
+      { href: "/contas", label: "Contas de usuários", icon: Users },
     ],
   },
 ];

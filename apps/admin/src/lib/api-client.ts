@@ -1,4 +1,5 @@
 import {
+  createAccountDeletionEndpoints,
   createAdminAccountsEndpoints,
   createAnalyticsEndpoints,
   createAnnouncementsEndpoints,
@@ -48,6 +49,7 @@ const apiClient = createApiClient({
   platform: "web",
 });
 
+export const accountDeletionApi = createAccountDeletionEndpoints(apiClient);
 export const authApi = createAuthEndpoints(apiClient);
 export const clientErrorsApi = createClientErrorsEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);
