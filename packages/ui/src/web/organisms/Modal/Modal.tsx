@@ -27,9 +27,32 @@ export interface ModalProps {
   ariaLabel?: string;
 }
 
+const SELETOR_FOCAVEL = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export function Modal({ isOpen, onClose, children, ariaLabel }: ModalProps): JSX.Element | null {
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<Element | null>(null);
+  /*
+    `onClose` fora das dependências do efeito, via ref.
+
+    BUG corrigido 02/10/2026 (usuário, sobre o Admin: "a cada letra
+    colocada ele buga e tenho que clicar sempre na caixa de escrita").
+    `onClose` é arrow function inline em praticamente toda chamada de
+    `Modal` da plataforma, então é uma referência NOVA a cada
+    renderização de quem abriu o modal. Com `onClose` na lista de
+    dependências, digitar UMA letra num campo dentro do modal
+    re-renderizava o pai, o efeito era descartado e remontado, e as
+    duas pontas dele tiravam o foco do campo: a limpeza devolvia o
+    foco pra quem abriu o modal e o efeito novo focava o primeiro
+    focável do painel (o "x" do cabeçalho). Resultado: só a primeira
+    letra entrava, em TODO diálogo com campo de texto (empresas,
+    alunos, veículos, rotas, planos, exclusão definitiva, contato do
+    site). Guardado por `apps/web/src/components/modal-mantem-o-foco.spec.tsx`.
+  */
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   // Esc fecha; foco preso dentro do modal (Tab/Shift+Tab não escapam);
   // foco volta pro elemento que abriu o modal ao fechar (Dossiê 25 §4.6).
@@ -37,18 +60,24 @@ export function Modal({ isOpen, onClose, children, ariaLabel }: ModalProps): JSX
     if (!isOpen) return;
 
     triggerRef.current = document.activeElement;
-    const panel = panelRef.current;
-    const focusable = panel?.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-    );
-    focusable?.[0]?.focus();
+    panelRef.current?.querySelector<HTMLElement>(SELETOR_FOCAVEL)?.focus();
 
     function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
-        onClose();
+        onCloseRef.current();
         return;
       }
-      if (event.key !== "Tab" || !focusable || focusable.length === 0) return;
+      if (event.key !== "Tab") return;
+
+      /*
+        A lista é consultada AQUI, não na abertura: o conteúdo do
+        modal muda enquanto ele está aberto (um preview que chega da
+        API e revela campos novos, um passo que aparece). Uma lista
+        capturada na abertura deixaria esses campos fora do ciclo de
+        Tab e ainda prenderia o foco num elemento que já saiu do DOM.
+      */
+      const focusable = panelRef.current?.querySelectorAll<HTMLElement>(SELETOR_FOCAVEL);
+      if (!focusable || focusable.length === 0) return;
 
       const first = focusable[0]!;
       const last = focusable[focusable.length - 1]!;
@@ -66,7 +95,7 @@ export function Modal({ isOpen, onClose, children, ariaLabel }: ModalProps): JSX
       document.removeEventListener("keydown", handleKeyDown);
       (triggerRef.current as HTMLElement | null)?.focus?.();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
