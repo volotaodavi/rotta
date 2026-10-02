@@ -17,6 +17,7 @@ import { useState } from "react";
 
 import { CompanyStatusBadge } from "@/features/companies/components/company-status-badge";
 import { useCompaniesList } from "@/features/companies/hooks/use-companies";
+import { useBuscaAdiada } from "@/hooks/use-busca-adiada";
 
 /**
  * Listagem de empresas (tenants) — visão exclusiva do Admin Rotta
@@ -32,10 +33,11 @@ export default function EmpresasListPage(): JSX.Element {
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState(() => searchParams.get("search") ?? "");
+  const buscaAdiada = useBuscaAdiada(search);
   const { data, isLoading, isError, refetch, isFetching } = useCompaniesList({
     page,
     pageSize: 20,
-    search: search || undefined,
+    search: buscaAdiada || undefined,
   });
 
   return (

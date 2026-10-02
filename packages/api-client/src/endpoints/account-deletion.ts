@@ -13,6 +13,10 @@ export interface ItemDeExclusao {
   quantos: number;
 }
 
+/** O que a conta é na plataforma — o vínculo sozinho não diz. */
+export type TipoDeConta =
+  "transportadora" | "transportador" | "responsavel" | "escola" | "indefinido";
+
 /** Uma conta como a tela de exclusão a lista. */
 export interface ContaDaBusca {
   userId: string;
@@ -24,14 +28,47 @@ export interface ContaDaBusca {
   criadaEm: string;
   verificacaoIdentidade: string;
   vinculos: Array<{ role: string; companyId: string; nomeFantasia: string }>;
+  tipo: TipoDeConta;
+  /** O que falta nesta conta, em frases prontas. Vazio = nada falta. */
+  pendencias: string[];
 }
+
+/** Recortes da lista, cada um um "o que falta" diferente. */
+export type RecorteDeContas =
+  | "com-pendencia"
+  | "sem-transportadora"
+  | "responsavel-sem-aluno"
+  | "identidade-pendente"
+  | "desativadas";
 
 export interface ListarContasParams {
   q?: string;
-  /** `true` = só quem ainda não tem empresa (cadastro não finalizado). */
-  semEmpresa?: boolean;
-  status?: string;
+  recorte?: RecorteDeContas;
   limit?: number;
+}
+
+/**
+ * Um pré-cadastro que nunca virou conta: quem pagou (ou só começou) o
+ * checkout público e nunca completou o cadastro. Não existe `User` nem
+ * `Company`, então não aparecia em nenhuma outra tela do painel.
+ */
+export interface PreCadastroDaBusca {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  cpfCnpj: string | null;
+  status: string;
+  planCode: string;
+  valorCentavos: number;
+  provider: string;
+  pagoEm: string | null;
+  expiraEm: string;
+  reembolsadoEm: string | null;
+  criadoEm: string;
+  pendencias: string[];
+  /** `false` quando há pagamento confirmado: aí é registro fiscal. */
+  podeExcluir: boolean;
 }
 
 export interface PreviewDeExclusaoDeConta {
@@ -83,6 +120,23 @@ export function createAccountDeletionEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<{ items: ContaDaBusca[]; total: number }>>(
           `/account-deletion/users${buildQueryString(params)}`,
+        )
+      ).data,
+
+    listarPreCadastros: async (
+      params: { q?: string; limit?: number } = {},
+    ): Promise<{ items: PreCadastroDaBusca[]; total: number }> =>
+      (
+        await apiClient.request<ApiEnvelope<{ items: PreCadastroDaBusca[]; total: number }>>(
+          `/account-deletion/pre-cadastros${buildQueryString(params)}`,
+        )
+      ).data,
+
+    excluirPreCadastro: async (id: string): Promise<{ id: string; nome: string }> =>
+      (
+        await apiClient.request<ApiEnvelope<{ id: string; nome: string }>>(
+          `/account-deletion/pre-cadastros/${id}`,
+          { method: "DELETE" },
         )
       ).data,
 

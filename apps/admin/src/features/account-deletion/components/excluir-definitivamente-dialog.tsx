@@ -33,6 +33,8 @@ export interface ExcluirDefinitivamenteDialogProps {
   /** O que o admin digita para liberar o botão: nome fantasia ou e-mail. */
   confirmacaoEsperada: string;
   titulo: string;
+  /** Troca o parágrafo de alerta quando o que está sendo apagado não é uma conta. */
+  aviso?: string;
   isLoadingPreview: boolean;
   /** `null` enquanto o preview não chegou. */
   podeExcluir: boolean | null;
@@ -65,6 +67,7 @@ export function ExcluirDefinitivamenteDialog({
   onClose,
   confirmacaoEsperada,
   titulo,
+  aviso,
   isLoadingPreview,
   podeExcluir,
   impedimentos,
@@ -95,9 +98,8 @@ export function ExcluirDefinitivamenteDialog({
         ) : (
           <>
             <Typography variant="bodySmall" color="danger">
-              Isto apaga os dados do banco e não tem como desfazer. E-mail, telefone, CPF e CNPJ
-              voltam a ficar livres para um novo cadastro. Os pagamentos já recebidos ficam
-              registrados, só sem os dados pessoais.
+              {aviso ??
+                "Isto apaga os dados do banco e não tem como desfazer. E-mail, telefone, CPF e CNPJ voltam a ficar livres para um novo cadastro. Os pagamentos já recebidos ficam registrados, só sem os dados pessoais."}
             </Typography>
 
             {podeExcluir === false ? (

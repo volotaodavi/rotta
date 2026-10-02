@@ -21,6 +21,7 @@ import type { ListVehiclesParams, Vehicle, VehicleStatus, VehicleType } from "@r
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
 import { useVehiclesList } from "@/features/vehicles/hooks/use-vehicles";
 import { VEHICLE_TYPE_LABEL } from "@/features/vehicles/labels";
+import { useBuscaAdiada } from "@/hooks/use-busca-adiada";
 
 /**
  * Listagem de veículos — visão CROSS-TENANT exclusiva do Admin Rotta
@@ -42,8 +43,10 @@ export default function VeiculosAdminPage(): JSX.Element {
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
+  const buscaAdiada = useBuscaAdiada(search);
+
   const params: ListVehiclesParams = {
-    search: search || undefined,
+    search: buscaAdiada || undefined,
     status: status || undefined,
     tipo: tipo || undefined,
     companyId: companyId || undefined,

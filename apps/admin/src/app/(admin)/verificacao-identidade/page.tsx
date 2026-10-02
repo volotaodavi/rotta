@@ -8,6 +8,7 @@ import type { IdentityVerificationStatus } from "@rotta/api-client";
 
 import { IdentityVerificationStatusBadge } from "@/features/identity-verification/components/identity-verification-status-badge";
 import { useIdentityVerificationsList } from "@/features/identity-verification/hooks/use-identity-verification-admin";
+import { useBuscaAdiada } from "@/hooks/use-busca-adiada";
 
 /** Cargo (`Membership.role`) → rótulo curto — mesmo mapa que decide o documento exigido (`resolveDocumentoEsperado`, backend). */
 const ROLE_LABEL: Record<string, string> = {
@@ -44,10 +45,12 @@ export default function VerificacaoIdentidadeListPage(): JSX.Element {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<IdentityVerificationStatus | "">("");
 
+  const buscaAdiada = useBuscaAdiada(search);
+
   const { data, isLoading, isError, refetch, isFetching } = useIdentityVerificationsList({
     page,
     pageSize: 20,
-    search: search || undefined,
+    search: buscaAdiada || undefined,
     status: status || undefined,
   });
 

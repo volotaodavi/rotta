@@ -1,6 +1,10 @@
 import { BadRequestException, ConflictException } from "@nestjs/common";
 
-import { AccountDeletionService } from "../account-deletion.service";
+import {
+  AccountDeletionService,
+  levantarPendenciasDaConta,
+  levantarPendenciasDoPreCadastro,
+} from "../account-deletion.service";
 
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -270,6 +274,63 @@ describe("AccountDeletionService", () => {
     });
   });
 
+  describe("excluirPreCadastro", () => {
+    const preCadastro = {
+      id: "pre-1",
+      nome: "Danilo",
+      email: "danilo@example.com",
+      cpfCnpj: "12345678901",
+      telefone: "21999999999",
+      status: "PENDENTE",
+      valorCentavos: 4990,
+      paidAt: null,
+      refundedAt: null,
+      linkedCompanyId: null,
+    };
+
+    beforeEach(() => {
+      (prisma.pendingSubscription as unknown as { findUnique: jest.Mock }).findUnique = jest
+        .fn()
+        .mockResolvedValue(preCadastro);
+      (prisma.pendingSubscription as unknown as { delete: jest.Mock }).delete = jest
+        .fn()
+        .mockResolvedValue(preCadastro);
+    });
+
+    it("apaga o checkout abandonado que nunca foi pago", async () => {
+      await expect(service.excluirPreCadastro("pre-1", ADMIN_ID, {})).resolves.toEqual({
+        id: "pre-1",
+        nome: "Danilo",
+      });
+      expect(auditLogService.record).toHaveBeenCalledWith(
+        expect.objectContaining({ entidadeTipo: "PendingSubscription", acao: "DELETED" }),
+      );
+    });
+
+    it("RECUSA apagar quando houve pagamento, porque aí é registro fiscal", async () => {
+      (prisma.pendingSubscription as unknown as { findUnique: jest.Mock }).findUnique = jest
+        .fn()
+        .mockResolvedValue({ ...preCadastro, status: "PAGO", paidAt: new Date() });
+
+      await expect(service.excluirPreCadastro("pre-1", ADMIN_ID, {})).rejects.toThrow(
+        /registro fiscal/,
+      );
+      expect(
+        (prisma.pendingSubscription as unknown as { delete: jest.Mock }).delete,
+      ).not.toHaveBeenCalled();
+    });
+
+    it("manda excluir a transportadora quando o pré-cadastro já virou uma", async () => {
+      (prisma.pendingSubscription as unknown as { findUnique: jest.Mock }).findUnique = jest
+        .fn()
+        .mockResolvedValue({ ...preCadastro, linkedCompanyId: COMPANY_ID });
+
+      await expect(service.excluirPreCadastro("pre-1", ADMIN_ID, {})).rejects.toThrow(
+        /exclua a transportadora/,
+      );
+    });
+  });
+
   describe("previewEmpresa", () => {
     it("lista o que será apagado para o admin ver ANTES de confirmar", async () => {
       tx.vehicle.count.mockResolvedValue(4);
@@ -286,5 +347,103 @@ describe("AccountDeletionService", () => {
       );
       expect(tx.company.delete).not.toHaveBeenCalled();
     });
+  });
+});
+
+/**
+ * As regras de "o que falta" (pedido de 02/10/2026: "mostre os
+ * cadastros não contemplados também, pq aí vou saber quais são as
+ * questões faltantes"). São funções puras justamente para poderem ser
+ * verificadas uma por uma: o que o admin lê na lista é isto.
+ */
+describe("levantarPendenciasDaConta", () => {
+  const base = {
+    status: "ATIVO" as const,
+    verificacaoIdentidade: "APROVADA",
+    temEmpresa: true,
+    quantosAlunos: 1,
+    ultimoPedidoDeVinculo: null,
+  };
+
+  it("não inventa pendência numa conta completa", () => {
+    expect(levantarPendenciasDaConta({ ...base, tipo: "transportadora" })).toEqual([]);
+  });
+
+  it("nunca cobra identidade de Responsável nem de Escola", () => {
+    const semIdentidade = { ...base, verificacaoIdentidade: "NAO_INICIADA", temEmpresa: false };
+
+    expect(levantarPendenciasDaConta({ ...semIdentidade, tipo: "responsavel" })).toEqual([]);
+    expect(levantarPendenciasDaConta({ ...semIdentidade, tipo: "escola" })).toEqual([]);
+    expect(levantarPendenciasDaConta({ ...semIdentidade, tipo: "transportador" })).toEqual([
+      "nunca começou a verificação de identidade",
+      "sem transportadora: não informou código nem criou a própria",
+    ]);
+  });
+
+  it("diz o nome da transportadora que está travando o vínculo", () => {
+    expect(
+      levantarPendenciasDaConta({
+        ...base,
+        tipo: "transportador",
+        temEmpresa: false,
+        ultimoPedidoDeVinculo: { status: "PENDENTE", nomeFantasia: "Van do Zé" },
+      }),
+    ).toEqual(["esperando Van do Zé aprovar o vínculo"]);
+
+    expect(
+      levantarPendenciasDaConta({
+        ...base,
+        tipo: "transportador",
+        temEmpresa: false,
+        ultimoPedidoDeVinculo: { status: "RECUSADO", nomeFantasia: "Van do Zé" },
+      }),
+    ).toEqual(["Van do Zé recusou o vínculo"]);
+  });
+
+  it("aponta a família que criou conta e nunca cadastrou aluno", () => {
+    expect(
+      levantarPendenciasDaConta({
+        ...base,
+        tipo: "responsavel",
+        temEmpresa: false,
+        quantosAlunos: 0,
+      }),
+    ).toEqual(["nenhum aluno cadastrado"]);
+  });
+
+  it("marca a conta que não virou nada na plataforma", () => {
+    expect(levantarPendenciasDaConta({ ...base, tipo: "indefinido", temEmpresa: false })).toContain(
+      "cadastro não finalizado: a conta não virou nada na plataforma",
+    );
+  });
+});
+
+describe("levantarPendenciasDoPreCadastro", () => {
+  const base = {
+    status: "PENDENTE",
+    paidAt: null,
+    expiresAt: new Date(Date.now() + 3_600_000),
+    refundedAt: null,
+    email: "danilo@example.com",
+    cpfCnpj: null,
+    telefone: null,
+  };
+
+  it("separa quem pagou e sumiu de quem só abandonou o checkout", () => {
+    expect(levantarPendenciasDoPreCadastro({ ...base, paidAt: new Date() })).toEqual([
+      "pagou e nunca completou o cadastro",
+    ]);
+    expect(
+      levantarPendenciasDoPreCadastro({ ...base, expiresAt: new Date(Date.now() - 1) }),
+    ).toEqual(["checkout abandonado e expirado: nunca foi pago"]);
+    expect(levantarPendenciasDoPreCadastro(base)).toEqual([
+      "checkout criado, aguardando o pagamento",
+    ]);
+  });
+
+  it("avisa quando não há nem como ligar o pagamento a uma conta", () => {
+    expect(
+      levantarPendenciasDoPreCadastro({ ...base, email: null, cpfCnpj: null, telefone: null }),
+    ).toContain("sem e-mail, CPF/CNPJ ou telefone: não há como ligar a uma conta");
   });
 });

@@ -28,6 +28,40 @@ export interface ContaDaBusca {
   criadaEm: string;
   verificacaoIdentidade: string;
   vinculos: Array<{ role: string; companyId: string; nomeFantasia: string }>;
+  /** O que esta conta é na plataforma, para a tela não chutar pelo vínculo. */
+  tipo: "transportadora" | "transportador" | "responsavel" | "escola" | "indefinido";
+  /**
+   * O que falta nesta conta, em linguagem de tela. Vazio = nada falta.
+   * Pedido do usuário 02/10/2026: "mostre os cadastros não contemplados
+   * também, pq aí vou saber quais são as questões faltantes".
+   */
+  pendencias: string[];
+}
+
+/**
+ * Um pré-cadastro que nunca virou conta: alguém começou (e às vezes
+ * pagou) e paramos de ver a pessoa. É o "cadastro não contemplado" que
+ * nenhuma tela do painel mostrava, porque não existe `User` nenhum
+ * para listar.
+ */
+export interface PreCadastroDaBusca {
+  id: string;
+  nome: string;
+  email: string | null;
+  telefone: string | null;
+  cpfCnpj: string | null;
+  status: string;
+  planCode: string;
+  valorCentavos: number;
+  provider: string;
+  pagoEm: string | null;
+  expiraEm: string;
+  reembolsadoEm: string | null;
+  criadoEm: string;
+  /** O que falta para este pré-cadastro virar uma conta de verdade. */
+  pendencias: string[];
+  /** `false` quando há dinheiro no registro: aí ele é fiscal, não se apaga. */
+  podeExcluir: boolean;
 }
 
 export interface PreviewDeExclusaoDeConta {
@@ -59,6 +93,168 @@ export interface ResultadoDaExclusaoDeEmpresa {
   /** Contas que o admin pediu para apagar mas que ainda têm histórico em outro lugar. */
   contasMantidas: Array<{ userId: string; email: string; motivo: string }>;
   pagamentosAnonimizados: number;
+}
+
+/** Recortes da lista de contas, cada um um "o que falta" diferente. */
+export type RecorteDeContas =
+  | "com-pendencia"
+  | "sem-transportadora"
+  | "responsavel-sem-aluno"
+  | "identidade-pendente"
+  | "desativadas";
+
+/**
+ * Quem NÃO precisa de verificação de identidade: Responsável e conta de
+ * Escola. Não é escolha desta tela, é a regra que o painel já aplica
+ * para bloquear o acesso (`apps/web/src/app/(dashboard)/layout.tsx`:
+ * `shouldCheckIdentity = !isResponsavel && !isEscola`). Listar "identidade
+ * não iniciada" para uma família seria apontar uma pendência que
+ * ninguém nunca vai resolver, porque não existe.
+ */
+const SEM_EXIGENCIA_DE_IDENTIDADE: Prisma.UserWhereInput = {
+  isResponsavel: false,
+  escolaId: null,
+};
+
+const RECORTES_DE_CONTAS: Record<RecorteDeContas, Prisma.UserWhereInput> = {
+  "com-pendencia": {
+    OR: [
+      { status: { not: "ATIVO" } },
+      { ...SEM_EXIGENCIA_DE_IDENTIDADE, identityVerificationStatus: { not: "APROVADA" } },
+      { ...SEM_EXIGENCIA_DE_IDENTIDADE, memberships: { none: {} } },
+      { isResponsavel: true, alunos: { none: {} } },
+    ],
+  },
+  "sem-transportadora": { ...SEM_EXIGENCIA_DE_IDENTIDADE, memberships: { none: {} } },
+  "responsavel-sem-aluno": { isResponsavel: true, alunos: { none: {} } },
+  "identidade-pendente": {
+    ...SEM_EXIGENCIA_DE_IDENTIDADE,
+    identityVerificationStatus: { not: "APROVADA" },
+  },
+  /*
+    `UserStatus` só tem ATIVO e INATIVO — não existe SUSPENSO para
+    conta de usuário, e a primeira versão desta tela oferecia um filtro
+    "Contas suspensas" (`status: "SUSPENSO"`) que o banco nunca ia
+    casar: o recorte vinha sempre vazio, para qualquer base. Quem tem
+    SUSPENSO é `Company`, e é lá que a suspensão de verdade acontece
+    (uma transportadora suspensa trava todas as contas dela).
+    Individualmente, o que existe é desativar (`INATIVO`), hoje usado
+    por conta Admin e por conta de Escola.
+  */
+  desativadas: { status: "INATIVO" },
+};
+
+/** Papéis de `Membership` que são a transportadora, não um empregado dela. */
+const PAPEIS_DA_TRANSPORTADORA = new Set(["empresa", "gestor", "admin"]);
+
+/**
+ * O que a conta é na plataforma. Olha o que o login olha, na mesma
+ * ordem: `Membership` primeiro (é a verdade quando existe), e os
+ * campos avulsos (`isResponsavel`/`autonomoRole`/`escolaId`) depois,
+ * que é como uma conta sem `Membership` nenhum ainda consegue entrar
+ * (ver as notas em `model User`).
+ */
+function classificarConta(conta: {
+  isResponsavel: boolean;
+  autonomoRole: string | null;
+  escolaId: string | null;
+  papeis: string[];
+}): ContaDaBusca["tipo"] {
+  if (conta.papeis.some((papel) => PAPEIS_DA_TRANSPORTADORA.has(papel))) return "transportadora";
+  if (conta.papeis.length > 0 || conta.autonomoRole) return "transportador";
+  if (conta.escolaId) return "escola";
+  if (conta.isResponsavel) return "responsavel";
+  return "indefinido";
+}
+
+const PENDENCIA_POR_IDENTIDADE: Record<string, string> = {
+  NAO_INICIADA: "nunca começou a verificação de identidade",
+  EM_ANDAMENTO: "parou no meio da verificação de identidade",
+  EM_ANALISE: "verificação de identidade em análise",
+  REPROVADA: "verificação de identidade reprovada",
+  EXPIRADA: "verificação de identidade expirada",
+};
+
+/**
+ * O que falta nesta conta, em linguagem de tela. Função pura de
+ * propósito: é a regra que o admin lê na lista, então tem que ser
+ * testável sem banco.
+ */
+export function levantarPendenciasDaConta(conta: {
+  tipo: ContaDaBusca["tipo"];
+  status: UserStatus;
+  verificacaoIdentidade: string;
+  temEmpresa: boolean;
+  quantosAlunos: number;
+  ultimoPedidoDeVinculo: { status: string; nomeFantasia: string } | null;
+}): string[] {
+  const pendencias: string[] = [];
+
+  if (conta.status === "INATIVO") pendencias.push("conta desativada");
+
+  const precisaDeIdentidade = conta.tipo !== "responsavel" && conta.tipo !== "escola";
+  if (precisaDeIdentidade && conta.verificacaoIdentidade !== "APROVADA") {
+    pendencias.push(
+      PENDENCIA_POR_IDENTIDADE[conta.verificacaoIdentidade] ??
+        `verificação de identidade em ${conta.verificacaoIdentidade}`,
+    );
+  }
+
+  if (conta.tipo === "transportador" && !conta.temEmpresa) {
+    const pedido = conta.ultimoPedidoDeVinculo;
+    if (pedido?.status === "PENDENTE") {
+      pendencias.push(`esperando ${pedido.nomeFantasia} aprovar o vínculo`);
+    } else if (pedido?.status === "RECUSADO") {
+      pendencias.push(`${pedido.nomeFantasia} recusou o vínculo`);
+    } else {
+      // O caso do relato de 01/10/2026: autônomo/MEI que ficou preso
+      // numa tela pedindo código de transportadora.
+      pendencias.push("sem transportadora: não informou código nem criou a própria");
+    }
+  }
+
+  if (conta.tipo === "responsavel" && conta.quantosAlunos === 0) {
+    pendencias.push("nenhum aluno cadastrado");
+  }
+
+  if (conta.tipo === "indefinido") {
+    pendencias.push("cadastro não finalizado: a conta não virou nada na plataforma");
+  }
+
+  return pendencias;
+}
+
+/** O que falta para um pré-cadastro virar conta. Pura, mesma razão da de cima. */
+export function levantarPendenciasDoPreCadastro(registro: {
+  status: string;
+  paidAt: Date | null;
+  expiresAt: Date;
+  refundedAt: Date | null;
+  email: string | null;
+  cpfCnpj: string | null;
+  telefone: string | null;
+}): string[] {
+  const pendencias: string[] = [];
+  const expirado = registro.expiresAt.getTime() < Date.now();
+
+  if (registro.refundedAt) {
+    pendencias.push("reembolsado: não vira conta, pode ser apagado");
+  } else if (registro.paidAt || registro.status === "PAGO") {
+    pendencias.push("pagou e nunca completou o cadastro");
+  } else if (expirado) {
+    pendencias.push("checkout abandonado e expirado: nunca foi pago");
+  } else {
+    pendencias.push("checkout criado, aguardando o pagamento");
+  }
+
+  // Sem nenhum destes três, nem o próprio dono consegue reivindicar o
+  // pré-cadastro: `AuthService.register` casa o pagamento com o
+  // cadastro novo justamente por e-mail, CPF/CNPJ ou telefone.
+  if (!registro.email && !registro.cpfCnpj && !registro.telefone) {
+    pendencias.push("sem e-mail, CPF/CNPJ ou telefone: não há como ligar a uma conta");
+  }
+
+  return pendencias;
 }
 
 /** Quem não pode ser apagado por este caminho, nunca. */
@@ -118,19 +314,26 @@ export class AccountDeletionService {
    * verificação de identidade ou em alguma empresa, então um cadastro
    * abandonado no meio do caminho era invisível e, por isso,
    * impossível de apagar.
+   *
+   * Cada linha vem com `tipo` e `pendencias` (pedido do usuário
+   * 02/10/2026: "mostre os cadastros não contemplados também, pq aí vou
+   * saber quais são as questões faltantes"). O `tipo` não é enfeite: a
+   * primeira versão desta tela tratava "sem empresa" como sinônimo de
+   * cadastro não finalizado, e isso é falso para a maior categoria de
+   * conta da plataforma — um Responsável NUNCA tem `Membership` (ver
+   * `AuthService.registerPessoal`: cria o `User` e nada mais), então a
+   * lista chamava toda família de cadastro incompleto. Agora quem diz
+   * se falta algo é a regra de cada tipo.
    */
   async listarContas(filtro: {
     q?: string;
-    /** `true` = só quem ainda não tem empresa (cadastro não finalizado). */
-    semEmpresa?: boolean;
-    status?: UserStatus;
+    recorte?: RecorteDeContas;
     limit: number;
   }): Promise<{ items: ContaDaBusca[]; total: number }> {
     const termo = filtro.q?.trim();
     const where: Prisma.UserWhereInput = {
       isAdminRotta: false,
-      ...(filtro.status ? { status: filtro.status } : {}),
-      ...(filtro.semEmpresa ? { memberships: { none: {} } } : {}),
+      ...(filtro.recorte ? RECORTES_DE_CONTAS[filtro.recorte] : {}),
       ...(termo
         ? {
             OR: [
@@ -159,32 +362,188 @@ export class AccountDeletionService {
             status: true,
             createdAt: true,
             identityVerificationStatus: true,
+            isResponsavel: true,
+            autonomoRole: true,
+            escolaId: true,
             memberships: {
               select: { role: true, company: { select: { id: true, nomeFantasia: true } } },
             },
+            // O último pedido de vínculo responde a pergunta que mais
+            // importa num transportador sem empresa: ele está esperando
+            // alguém aprovar, foi recusado, ou nunca pediu nada?
+            joinRequestsFeitos: {
+              orderBy: { createdAt: "desc" },
+              take: 1,
+              select: { status: true, company: { select: { nomeFantasia: true } } },
+            },
+            _count: { select: { alunos: true } },
           },
         }),
       ]);
 
       return {
         total,
-        items: users.map((user) => ({
-          userId: user.id,
-          nome: user.nome,
-          email: user.email,
-          telefone: user.telefone,
-          cpf: user.cpf,
-          status: user.status,
-          criadaEm: user.createdAt.toISOString(),
-          verificacaoIdentidade: user.identityVerificationStatus,
-          vinculos: user.memberships.map((vinculo) => ({
+        items: users.map((user) => {
+          const vinculos = user.memberships.map((vinculo) => ({
             role: vinculo.role,
             companyId: vinculo.company.id,
             nomeFantasia: vinculo.company.nomeFantasia,
-          })),
-        })),
+          }));
+          const tipo = classificarConta({
+            isResponsavel: user.isResponsavel,
+            autonomoRole: user.autonomoRole,
+            escolaId: user.escolaId,
+            papeis: vinculos.map((vinculo) => vinculo.role),
+          });
+
+          return {
+            userId: user.id,
+            nome: user.nome,
+            email: user.email,
+            telefone: user.telefone,
+            cpf: user.cpf,
+            status: user.status,
+            criadaEm: user.createdAt.toISOString(),
+            verificacaoIdentidade: user.identityVerificationStatus,
+            vinculos,
+            tipo,
+            pendencias: levantarPendenciasDaConta({
+              tipo,
+              status: user.status,
+              verificacaoIdentidade: user.identityVerificationStatus,
+              temEmpresa: vinculos.length > 0,
+              quantosAlunos: user._count.alunos,
+              ultimoPedidoDeVinculo: user.joinRequestsFeitos[0]
+                ? {
+                    status: user.joinRequestsFeitos[0].status,
+                    nomeFantasia: user.joinRequestsFeitos[0].company.nomeFantasia,
+                  }
+                : null,
+            }),
+          };
+        }),
       };
     });
+  }
+
+  /**
+   * Pré-cadastros que nunca viraram conta (pedido do usuário
+   * 02/10/2026: "mostre os cadastros não contemplados também").
+   *
+   * `PendingSubscription` é onde mora o caso mais caro de todos: a
+   * pessoa pagou a assinatura no checkout público e nunca completou o
+   * cadastro. Não existe `User` nem `Company`, então ela não aparecia
+   * em NENHUMA tela do painel: nem aqui, nem em Empresas, nem em
+   * Aprovações. O dinheiro entrou e a pessoa ficou invisível.
+   *
+   * `linkedCompanyId` preenchido é o fim feliz (virou empresa), e sai
+   * da lista por isso.
+   */
+  async listarPreCadastros(filtro: {
+    q?: string;
+    limit: number;
+  }): Promise<{ items: PreCadastroDaBusca[]; total: number }> {
+    const termo = filtro.q?.trim();
+    const where: Prisma.PendingSubscriptionWhereInput = {
+      linkedCompanyId: null,
+      ...(termo
+        ? {
+            OR: [
+              { nome: { contains: termo, mode: "insensitive" } },
+              { email: { contains: termo, mode: "insensitive" } },
+              { telefone: { contains: termo } },
+              { cpfCnpj: { contains: termo } },
+            ],
+          }
+        : {}),
+    };
+
+    // `PendingSubscription` não tem `companyId` (nem FK nenhuma): é
+    // pré-cadastro, existe antes de qualquer tenant. Daí `withBypass`,
+    // e não `runInTenantTransaction`.
+    const [total, registros] = await Promise.all([
+      this.prisma.withBypass(this.prisma.pendingSubscription.count({ where })),
+      this.prisma.withBypass(
+        this.prisma.pendingSubscription.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          take: filtro.limit,
+        }),
+      ),
+    ]);
+
+    return {
+      total,
+      items: registros.map((registro) => ({
+        id: registro.id,
+        nome: registro.nome,
+        email: registro.email,
+        telefone: registro.telefone,
+        cpfCnpj: registro.cpfCnpj,
+        status: registro.status,
+        planCode: registro.planCode,
+        valorCentavos: registro.valorCentavos,
+        provider: registro.provider,
+        pagoEm: registro.paidAt?.toISOString() ?? null,
+        expiraEm: registro.expiresAt.toISOString(),
+        reembolsadoEm: registro.refundedAt?.toISOString() ?? null,
+        criadoEm: registro.createdAt.toISOString(),
+        pendencias: levantarPendenciasDoPreCadastro(registro),
+        podeExcluir: registro.paidAt === null && registro.status !== "PAGO",
+      })),
+    };
+  }
+
+  /**
+   * Apaga um pré-cadastro que não tem dinheiro nenhum atrás dele.
+   *
+   * Com pagamento confirmado é recusado de propósito: aí o registro é
+   * o rastro fiscal da cobrança no Asaas/AbacatePay, a mesma razão por
+   * que a exclusão de empresa o ANONIMIZA em vez de apagar
+   * (`anonimizarPagamentos`). Um checkout abandonado sem pagamento, ao
+   * contrário, é lixo de formulário: ocupa o e-mail/CPF na busca e não
+   * serve de prova de nada.
+   */
+  async excluirPreCadastro(
+    id: string,
+    atorUserId: string,
+    meta: RequestMeta,
+  ): Promise<{ id: string; nome: string }> {
+    const registro = await this.prisma.withBypass(
+      this.prisma.pendingSubscription.findUnique({ where: { id } }),
+    );
+    if (!registro) {
+      throw new ConflictException("Pré-cadastro não encontrado.");
+    }
+    if (registro.linkedCompanyId) {
+      throw new ConflictException(
+        "Este pré-cadastro já virou uma transportadora. Para apagar, exclua a transportadora.",
+      );
+    }
+    if (registro.paidAt !== null || registro.status === "PAGO") {
+      throw new ConflictException(
+        "Este pré-cadastro tem pagamento confirmado e é registro fiscal: não se apaga. " +
+          "Ele é anonimizado junto da exclusão da transportadora, quando houver uma.",
+      );
+    }
+
+    await this.prisma.withBypass(this.prisma.pendingSubscription.delete({ where: { id } }));
+
+    await this.registrarAuditoria({
+      entidadeTipo: "PendingSubscription",
+      entidadeId: id,
+      atorUserId,
+      meta,
+      dados: {
+        nome: registro.nome,
+        email: registro.email,
+        cpfCnpj: registro.cpfCnpj,
+        status: registro.status,
+        valorCentavos: registro.valorCentavos,
+      },
+    });
+
+    return { id, nome: registro.nome };
   }
 
   async previewConta(userId: string): Promise<PreviewDeExclusaoDeConta> {

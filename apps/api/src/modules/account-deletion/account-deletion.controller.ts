@@ -10,9 +10,12 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
-import { AccountDeletionService, type RequestMeta } from "./account-deletion.service";
+import {
+  AccountDeletionService,
+  type RecorteDeContas,
+  type RequestMeta,
+} from "./account-deletion.service";
 
-import type { UserStatus } from "@prisma/client";
 import type { Request } from "express";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
@@ -21,6 +24,24 @@ import { Role } from "@/shared/enums";
 
 function requestMeta(req: Request): RequestMeta {
   return { ip: req.ip, userAgent: req.headers["user-agent"] };
+}
+
+/**
+ * Recorte desconhecido é ignorado (lista inteira), nunca erro 400: a
+ * tela é a única cliente, e um nome errado aqui não é um ataque, é um
+ * link antigo.
+ */
+const RECORTES_VALIDOS = new Set<RecorteDeContas>([
+  "com-pendencia",
+  "sem-transportadora",
+  "responsavel-sem-aluno",
+  "identidade-pendente",
+  "desativadas",
+]);
+
+/** Teto de 100 por página: busca de admin, não exportação. */
+function limitePedido(limit: number | undefined): number {
+  return limit && limit > 0 ? Math.min(limit, 100) : 50;
 }
 
 /**
@@ -41,16 +62,39 @@ export class AccountDeletionController {
   @Get("users")
   listarContas(
     @Query("q") q?: string,
-    @Query("semEmpresa") semEmpresa?: string,
-    @Query("status") status?: string,
+    @Query("recorte") recorte?: string,
     @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
   ) {
     return this.service.listarContas({
       q,
-      semEmpresa: semEmpresa === "true",
-      status: status ? (status as UserStatus) : undefined,
-      limit: limit && limit > 0 ? Math.min(limit, 100) : 50,
+      recorte: RECORTES_VALIDOS.has(recorte as RecorteDeContas)
+        ? (recorte as RecorteDeContas)
+        : undefined,
+      limit: limitePedido(limit),
     });
+  }
+
+  /**
+   * Pré-cadastros que nunca viraram conta — a lista que não existia em
+   * tela nenhuma do painel (pedido do usuário 02/10/2026: "mostre os
+   * cadastros não contemplados também, pq aí vou saber quais são as
+   * questões faltantes").
+   */
+  @Get("pre-cadastros")
+  listarPreCadastros(
+    @Query("q") q?: string,
+    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
+  ) {
+    return this.service.listarPreCadastros({ q, limit: limitePedido(limit) });
+  }
+
+  @Delete("pre-cadastros/:id")
+  excluirPreCadastro(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
+    return this.service.excluirPreCadastro(id, actor.sub, requestMeta(req));
   }
 
   @Get("users/:id/preview")

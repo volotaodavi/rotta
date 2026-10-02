@@ -27,6 +27,7 @@ import {
   useSyncInep,
 } from "@/features/schools/hooks/use-schools";
 import { SCHOOL_TYPE_LABEL } from "@/features/schools/labels";
+import { useBuscaAdiada } from "@/hooks/use-busca-adiada";
 
 /** Legenda curta de quando a última sincronização rodou — "há poucos segundos" é mais legível que um timestamp cru enquanto o worker ainda está rodando. */
 function formatarQuandoRodou(iso: string): string {
@@ -73,8 +74,10 @@ export default function EscolasAdminPage(): JSX.Element {
     pageSize: 1,
   });
 
+  const buscaAdiada = useBuscaAdiada(search);
+
   const params: ListSchoolsParams = {
-    search: search || undefined,
+    search: buscaAdiada || undefined,
     status: status || undefined,
     tipo: tipo || undefined,
     companyId: companyId || undefined,

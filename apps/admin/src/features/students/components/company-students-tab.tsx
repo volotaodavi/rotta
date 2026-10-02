@@ -655,28 +655,43 @@ function NewStudentModal({
               <Input value={responsavelId} onChange={(e) => setResponsavelId(e.target.value)} />
             </FormField>
           ) : (
+            /*
+              Rótulos no lugar de placeholder (02/10/2026, usuário: "não
+              precisa de CPF do aluno, apenas do responsável"). O aluno
+              nunca teve CPF neste cadastro — `Student` não tem o campo
+              no banco, e nenhuma tela pede. O que havia era este bloco,
+              dentro do modal "Novo aluno", com quatro campos
+              identificados SÓ por placeholder: o texto desaparece na
+              primeira letra digitada, e aí um campo "CPF" sobrando
+              embaixo do nome do aluno se lê exatamente como o CPF do
+              aluno. Agora cada campo diz de quem é, e o placeholder não
+              é mais a única pista.
+            */
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Input
-                placeholder="Nome do responsável"
-                value={novoNome}
-                onChange={(e) => setNovoNome(e.target.value)}
-              />
-              <Input
-                placeholder="E-mail"
-                type="email"
-                value={novoEmail}
-                onChange={(e) => setNovoEmail(e.target.value)}
-              />
-              <Input
-                placeholder="Telefone (DDD + número)"
-                value={novoTelefone}
-                onChange={(e) => setNovoTelefone(e.target.value)}
-              />
-              <Input
-                placeholder="CPF"
-                value={novoCpf}
-                onChange={(e) => setNovoCpf(e.target.value)}
-              />
+              <FormField label="Nome do responsável" isRequired>
+                <Input value={novoNome} onChange={(e) => setNovoNome(e.target.value)} />
+              </FormField>
+              <FormField label="E-mail do responsável" isRequired>
+                <Input
+                  type="email"
+                  value={novoEmail}
+                  onChange={(e) => setNovoEmail(e.target.value)}
+                />
+              </FormField>
+              <FormField label="Telefone do responsável" isRequired>
+                <Input
+                  placeholder="DDD + número"
+                  value={novoTelefone}
+                  onChange={(e) => setNovoTelefone(e.target.value)}
+                />
+              </FormField>
+              <FormField
+                label="CPF do responsável"
+                isRequired
+                helperText="O aluno não precisa de CPF."
+              >
+                <Input value={novoCpf} onChange={(e) => setNovoCpf(e.target.value)} />
+              </FormField>
             </div>
           )}
           {responsavelMode === "novo" && (
