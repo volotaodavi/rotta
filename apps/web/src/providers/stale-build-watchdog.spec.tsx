@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { StaleBuildWatchdog } from "./stale-build-watchdog";
@@ -79,6 +79,36 @@ describe("StaleBuildWatchdog", () => {
     render(<StaleBuildWatchdog />);
     await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalled());
 
+    expect(reloadSpy).not.toHaveBeenCalled();
+  });
+
+  /**
+   * O defeito que motivou a mudança de 02/10/2026: a checagem acontecia
+   * UMA vez, no carregamento. Uma aba aberta a tarde inteira nunca
+   * descobria que saiu deploy novo. Agora ela descobre — e, com a
+   * sessão em andamento, AVISA em vez de recarregar na cara da pessoa,
+   * que poderia estar com um formulário meio preenchido.
+   */
+  it("avisa, sem recarregar, quando o deploy novo sai com a aba já aberta", async () => {
+    fetchSpy = vi
+      .fn()
+      // Primeira checagem (no carregamento): ainda é o mesmo build.
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(htmlWithBuildId("build-atual")),
+      })
+      // Checagem seguinte, disparada ao voltar pra aba: saiu deploy.
+      .mockResolvedValue({ ok: true, text: () => Promise.resolve(htmlWithBuildId("build-novo")) });
+    vi.stubGlobal("fetch", fetchSpy);
+
+    render(<StaleBuildWatchdog />);
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+
+    document.dispatchEvent(new Event("visibilitychange"));
+
+    await vi.waitFor(() =>
+      expect(screen.getByRole("button", { name: "Atualizar agora" })).toBeInTheDocument(),
+    );
     expect(reloadSpy).not.toHaveBeenCalled();
   });
 });

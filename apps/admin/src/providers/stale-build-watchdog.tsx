@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { extractBuildIdFromHtml, getOwnBuildId } from "@/lib/build-id";
 
 const RELOAD_GUARD_KEY = "rotta_stale_build_reload_at";
-/** Mesma janela de proteção contra loop já usada em `use-chunk-load-recovery.ts`. */
+/** Mesma janela de proteção contra loop de `use-chunk-load-recovery.ts`. */
 const RELOAD_GUARD_WINDOW_MS = 10_000;
 /**
  * De quanto em quanto tempo uma aba já aberta pergunta se saiu deploy
@@ -22,32 +22,30 @@ const RELOAD_GUARD_WINDOW_MS = 10_000;
 const INTERVALO_DE_CHECAGEM_MS = 5 * 60 * 1000;
 
 /**
- * ACHADO REAL (investigação de 21 ocorrências reais em produção do
- * "Server Components render" sem `digest`, sempre segundos depois de
- * criar/abrir uma rota — ver a nota completa em
- * `apps/web/src/lib/chunk-load-error.ts` e `ClientErrorReport`,
- * schema.prisma). Os fixes anteriores (`ServiceWorkerRegistration`,
- * `useChunkLoadRecovery`) só agem DEPOIS que o erro já apareceu — este
- * componente tenta evitar que ele apareça: busca o HTML da própria
- * página de novo (`cache: "no-store"`, sempre rede, nunca cache) e
- * compara o `rotta-build-id` dessa resposta fresca contra o build que o
- * navegador já tem carregado (a `<meta>` que `layout.tsx` renderiza).
- * Se forem diferentes, o navegador está rodando um deploy velho.
+ * Espelho de `apps/web/src/providers/stale-build-watchdog.tsx`
+ * (02/10/2026), no app que nunca o teve — e o Admin era o pior lugar
+ * para não ter: é uma aba que fica aberta o dia inteiro, então era
+ * justamente quem mais ficava rodando um deploy antigo sem saber.
+ * Guardado pelo teste do app vizinho (`stale-build-watchdog.spec.tsx`,
+ * mesmo arquivo, mesmo comportamento); a duplicação segue o que o
+ * monorepo já faz com infra de app (`use-cep-lookup`,
+ * `use-chunk-load-recovery` existem nos dois).
+ *
+ * Busca o HTML da própria página de novo (`cache: "no-store"`, sempre
+ * rede, nunca cache) e compara o `rotta-build-id` dessa resposta
+ * fresca contra o build que o navegador já tem carregado (a `<meta>`
+ * que `app/layout.tsx` renderiza). Se forem diferentes, o navegador
+ * está rodando um deploy velho.
  *
  * O que acontece quando está velho depende de QUANDO a gente descobre:
  *
  * - Na primeira checagem, logo depois do carregamento: recarrega
- *   sozinho (mesma proteção de 10s contra loop de
- *   `use-chunk-load-recovery.ts`). A pessoa acabou de abrir a tela,
- *   não tem nada pra perder.
+ *   sozinho (com proteção de 10s contra loop). A pessoa acabou de
+ *   abrir a tela, não tem nada pra perder.
  * - Nas checagens seguintes, com a sessão em andamento: mostra um
  *   aviso com botão. Recarregar à força aqui jogaria fora um
  *   formulário meio preenchido, e aí o conserto seria pior que o
  *   defeito.
- *
- * Roda em cima do painel autenticado (`(dashboard)/layout.tsx`) — onde
- * as 21 ocorrências reais aconteceram — não nas páginas de marketing
- * público, que não têm esse histórico e não valem o fetch extra.
  */
 export function StaleBuildWatchdog(): JSX.Element | null {
   const [temVersaoNova, setTemVersaoNova] = useState(false);
@@ -120,7 +118,7 @@ export function StaleBuildWatchdog(): JSX.Element | null {
       className="fixed inset-x-0 bottom-0 z-50 flex flex-wrap items-center justify-center gap-3 border-t border-border bg-surface px-4 py-3 shadow-lg"
     >
       <span className="text-sm text-text">
-        Saiu uma versão nova da Rotta. Atualize para continuar com ela.
+        Saiu uma versão nova do painel. Atualize para continuar com ela.
       </span>
       <button
         type="button"

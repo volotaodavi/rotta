@@ -43,6 +43,21 @@ export function QueryProvider({ children }: { children: ReactNode }): JSX.Elemen
             retry: deveRepetirLeitura,
             staleTime: 30_000,
             refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
+            /*
+              Atualização sozinha, por padrão (pedido do usuário
+              02/10/2026: "não atualiza de forma automática. Isso é em
+              toda web"). Mesma decisão, mesma cadência e mesma razão
+              de `apps/web/src/providers/query-provider.tsx`: aqui
+              vários hooks já pediam 60s por conta própria (painel,
+              empresas, escolas, chamados, cobranças, identidade), e o
+              que ficava parado era justamente o que ninguém lembrou de
+              marcar — a lista de contas, as fichas abertas, os
+              veículos, os pré-cadastros.
+            */
+            refetchInterval: 60_000,
+            /** Aba escondida não consulta; voltar à aba traz tudo (acima). */
+            refetchIntervalInBackground: false,
           },
           mutations: {
             retry: false,

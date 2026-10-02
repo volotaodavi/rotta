@@ -44,6 +44,7 @@ import { useBackofficeDashboard } from "@/features/backoffice/hooks/use-backoffi
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { defaultRouteForAdminPapel, isAdminRouteAllowed } from "@/lib/admin-area-access";
 import { PrivacyProvider, usePrivacy } from "@/providers/privacy-provider";
+import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
 
 interface NavItem {
   href: Route;
@@ -578,6 +579,12 @@ export default function AdminLayout({ children }: { children: ReactNode }): JSX.
 
   return (
     <PrivacyProvider>
+      {/*
+        O painel é uma aba que fica aberta o dia inteiro: sem isto, um
+        deploy novo só chegava a quem lembrasse de dar F5
+        (02/10/2026). Ver `providers/stale-build-watchdog.tsx`.
+      */}
+      <StaleBuildWatchdog />
       <div className="flex min-h-screen bg-background text-text">
         <AdminSidebar
           papel={user.adminPapel}

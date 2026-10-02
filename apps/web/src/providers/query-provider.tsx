@@ -54,6 +54,40 @@ export function QueryProvider({ children }: { children: ReactNode }): JSX.Elemen
             retry: deveRepetirLeitura,
             staleTime: 30_000,
             refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
+            /*
+              Atualização sozinha, por padrão (pedido do usuário
+              02/10/2026: "não atualiza de forma automática. Isso é em
+              toda web").
+
+              O motivo era este: atualizar sozinho era OPT-IN. Cada
+              hook que lembrava escrevia o seu `refetchInterval` (GPS,
+              viagens, despacho, portal da escola, status do Asaas), e
+              todo o resto nunca se atualizava enquanto a tela ficava
+              aberta — notificações, pedidos de vínculo da equipe,
+              pré-cadastros de aluno, chamados, alunos, rotas,
+              veículos. Dado mudado por OUTRA pessoa (um motorista, uma
+              família, o Admin) só aparecia com F5. Agora o padrão é o
+              contrário: toda leitura se atualiza, e quem não deve
+              desliga explicitamente (`refetchInterval: false` nas
+              consultas que custam chamada externa, como geocodificação
+              e traçado de rota).
+
+              60s e não menos: é a cadência que os hooks que já faziam
+              isso escolheram, fica muito abaixo do limite do backend
+              (90 requisições por 10s por conta, `throttler.options.ts`)
+              e dá pra uma tela com meia dúzia de consultas sem chegar
+              perto de qualquer teto.
+            */
+            refetchInterval: 60_000,
+            /*
+              Explícito, mesmo sendo o padrão da biblioteca: aba
+              escondida NÃO fica consultando. Quem minimizou o
+              navegador não gera tráfego nenhum, e o
+              `refetchOnWindowFocus` acima já traz tudo atualizado no
+              instante em que a pessoa volta.
+            */
+            refetchIntervalInBackground: false,
           },
           mutations: {
             retry: false,

@@ -48,6 +48,13 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
     <html lang="pt-BR" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/*
+          Identidade do deploy que serviu este HTML (02/10/2026, mesmo
+          mecanismo de `apps/web/src/app/layout.tsx`). É o que permite a
+          uma aba já aberta descobrir que saiu versão nova — ver
+          `providers/stale-build-watchdog.tsx`.
+        */}
+        <meta name="rotta-build-id" content={process.env.NEXT_PUBLIC_BUILD_ID ?? "dev"} />
       </head>
       <body>
         <AppProviders>{children}</AppProviders>

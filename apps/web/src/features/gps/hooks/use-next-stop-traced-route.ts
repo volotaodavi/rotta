@@ -76,6 +76,15 @@ export function useNextStopTracedRoute(
       }),
     enabled: Boolean(origemParaRota && destino),
     retry: false,
+    /*
+      Nunca repete sozinha (02/10/2026, quando atualizar sozinho virou
+      o padrão do app): a resposta vem de geocodificação/traçado de
+      rota por serviço externo (Nominatim/OSRM via Rotta Geo Engine) e
+      não muda com o tempo — o endereço de ontem tem a mesma
+      coordenada hoje. Repetir de minuto em minuto, com o mapa aberto
+      na tela, só queimaria chamada externa.
+    */
+    refetchInterval: false,
     staleTime: 60 * 1000,
   });
 
