@@ -98,13 +98,25 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         precisa de código da transportadora para entrar"). O código era
         a ÚNICA ação possível aqui — e quem é autônomo/MEI de verdade
         não depende de aprovação de ninguém: ele É a transportadora
-        (`Company` com `tipo: AUTONOMO`). Sem esta linha, essa pessoa
+        (`Company` com `tipo: AUTONOMO`). Sem esta saída, essa pessoa
         ficava presa pedindo um código que nunca deveria precisar.
+
+        A primeira versão desta saída mandava sair e se cadastrar de
+        novo pela Área Profissional — ou seja, uma conta nova do zero,
+        com o mesmo e-mail e o mesmo CPF já em uso, e a verificação de
+        identidade refeita. Agora a conversão acontece na mesma conta,
+        em `ConverterEmTransportadora`.
       */}
+      <Text style={[styles.secao, { color: theme.colors.text }]}>Trabalha por conta própria?</Text>
       <Text style={{ color: theme.colors.textMuted }}>
-        Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum. Saia e escolha
-        &quot;Sou transportadora, autônomo ou MEI&quot; para cadastrar a sua.
+        Autônomo e MEI são a própria transportadora e não precisam de código nenhum. Sua conta e sua
+        verificação de identidade continuam as mesmas.
       </Text>
+      <VehicleButton
+        label="Criar minha transportadora"
+        variant="secondary"
+        onPress={() => navigation.navigate("ConverterEmTransportadora")}
+      />
 
       {!joinRequest || joinRequest.status === "RECUSADO" ? (
         <VehicleButton
@@ -114,7 +126,7 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         />
       ) : null}
       {!identityAprovada && (!joinRequest || joinRequest.status === "RECUSADO") ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Text style={[styles.nota, { color: theme.colors.textMuted }]}>
           Conclua a verificação de identidade antes de informar o código.
         </Text>
       ) : null}
@@ -125,6 +137,7 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
 }
 
 const styles = StyleSheet.create({
+  nota: { fontSize: 12 },
   secao: { fontSize: 16, fontWeight: "700", marginTop: 8 },
   titulo: { fontSize: 20, fontWeight: "700" },
 });

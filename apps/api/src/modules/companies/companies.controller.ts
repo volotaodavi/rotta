@@ -21,6 +21,7 @@ import { Throttle } from "@nestjs/throttler";
 
 import { CompaniesService, type RequestMeta } from "./companies.service";
 import { ChangePlanDto } from "./dto/change-plan.dto";
+import { ConverterEmTransportadoraDto } from "./dto/converter-em-transportadora.dto";
 import { CreateCompanyDto } from "./dto/create-company.dto";
 import { ListCompaniesQueryDto } from "./dto/list-companies-query.dto";
 import { SuspendCompanyDto } from "./dto/suspend-company.dto";
@@ -28,11 +29,14 @@ import { UpdateCompanySettingsDto } from "./dto/update-company-settings.dto";
 import { UpdateCompanyTagsDto } from "./dto/update-company-tags.dto";
 import { UpdateCompanyDto } from "./dto/update-company.dto";
 
+import type { CompanyResponseDto } from "./dto/company-response.dto";
 import type { Request } from "express";
 
 import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
+import { SemTenant } from "@/common/decorators/sem-tenant.decorator";
+import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
 import { Role } from "@/shared/enums";
 
 const TENANT_ROLES = [
@@ -110,6 +114,30 @@ export class CompaniesController {
     @Req() req: Request,
   ) {
     return this.companiesService.update(id, dto, actor, requestMeta(req));
+  }
+
+  /**
+   * O Motorista/Monitor autônomo virando a própria transportadora.
+   *
+   * `@SemTenant()` é obrigatório aqui: quem chama isto é exatamente
+   * quem AINDA NÃO TEM tenant, e o `TenantGuard` reprovaria antes de
+   * qualquer checagem de papel (foi assim que a verificação de
+   * identidade quebrou, ver o decorator). `@SkipTrialGuard()` pelo
+   * mesmo motivo de `BillingController`: sem empresa ainda, não há
+   * trial a conferir, e o guard não pode barrar o passo que CRIA a
+   * empresa.
+   */
+  @Post("me/autonomo")
+  @HttpCode(HttpStatus.CREATED)
+  @Roles(Role.MOTORISTA, Role.MONITOR)
+  @SemTenant()
+  @SkipTrialGuard()
+  converterAutonomo(
+    @CurrentUser() actor: AuthenticatedUser,
+    @Body() dto: ConverterEmTransportadoraDto,
+    @Req() req: Request,
+  ): Promise<CompanyResponseDto> {
+    return this.companiesService.converterAutonomoEmTransportadora(actor, dto, requestMeta(req));
   }
 
   @Delete(":id")

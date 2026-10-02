@@ -131,6 +131,7 @@ describe("CompaniesService", () => {
       upsertByCode: jest.fn(),
     };
     usersService = {
+      findById: jest.fn(),
       findByIdentifier: jest.fn(),
       assertNoDuplicateIdentity: jest.fn(),
       createUserWithPassword: jest.fn(),
@@ -638,6 +639,119 @@ describe("CompaniesService", () => {
       companyRepository.findById.mockResolvedValue(buildCompany());
       await service.update("company-1", {}, adminActor, {});
       expect(companyRepository.update).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Conversão do autônomo na própria transportadora (01/10/2026).
+   *
+   * Relato: "a conta que está tentando acessar como motorista autônomo
+   * ainda está como motorista comum... está pedindo ainda o código".
+   * Autônomo e MEI são a própria transportadora e nunca dependeram do
+   * código de ninguém, mas quem se cadastrou pelo fluxo de motorista
+   * nascia sem `Company` e ficava preso na tela de vínculo pendente.
+   *
+   * O que estes testes guardam é que a conversão usa a CONTA QUE JÁ
+   * EXISTE (nome, e-mail, telefone e CPF vêm de lá, nunca do corpo da
+   * requisição) e que ela não vira uma porta para criar empresa em nome
+   * de outra pessoa.
+   */
+  describe("converterAutonomoEmTransportadora", () => {
+    const autonomoActor: AuthenticatedUser = {
+      sub: "user-9",
+      tenantId: null,
+      role: Role.MOTORISTA,
+      vinculoId: "user-9",
+    };
+
+    const endereco = {
+      cep: "24900000",
+      endereco: "Rua das Flores",
+      numero: "123",
+      bairro: "Centro",
+      cidade: "Maricá",
+      estado: "rj",
+    };
+
+    function usuarioAutonomo(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "user-9",
+        nome: "Danilo Menezes",
+        email: "danilo@example.com",
+        telefone: "21999990000",
+        cpf: "529.982.247-25",
+        ...overrides,
+      };
+    }
+
+    it("cria a transportadora com os dados DA CONTA, não do corpo da requisição", async () => {
+      // O corpo só traz endereço. Nome, e-mail, telefone e CPF saem da
+      // conta logada, senão a tela viraria um jeito de abrir empresa em
+      // nome de terceiro.
+      usersService.findById.mockResolvedValue(usuarioAutonomo());
+      companyRepository.findByCpfCnpj.mockResolvedValue(null);
+      companyRepository.create.mockResolvedValue(
+        buildCompany({ id: "company-9", tipo: CompanyType.AUTONOMO }),
+      );
+
+      await service.converterAutonomoEmTransportadora(autonomoActor, endereco, {});
+
+      const dados = companyRepository.create.mock.calls[0][0];
+      expect(dados.razaoSocial).toBe("Danilo Menezes");
+      expect(dados.cpfCnpj).toBe("52998224725");
+      expect(dados.email).toBe("danilo@example.com");
+      expect(dados.tipo).toBe(CompanyType.AUTONOMO);
+      expect(dados.estado).toBe("RJ");
+    });
+
+    it("vincula o dono à empresa na MESMA transação", async () => {
+      // Empresa sem o vínculo do dono seria uma transportadora que
+      // ninguém administra, e a pessoa continuaria presa na tela de onde
+      // veio.
+      usersService.findById.mockResolvedValue(usuarioAutonomo());
+      companyRepository.findByCpfCnpj.mockResolvedValue(null);
+      companyRepository.create.mockResolvedValue(buildCompany({ id: "company-9" }));
+
+      await service.converterAutonomoEmTransportadora(autonomoActor, endereco, {});
+
+      expect(prisma.runInTenantTransaction).toHaveBeenCalledTimes(1);
+      expect(usersService.createMembership).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: "user-9", role: Role.EMPRESA }),
+        expect.anything(),
+      );
+    });
+
+    it("recusa quem JÁ tem transportadora", async () => {
+      await expect(
+        service.converterAutonomoEmTransportadora(
+          { ...autonomoActor, tenantId: "company-1" },
+          endereco,
+          {},
+        ),
+      ).rejects.toThrow(BadRequestException);
+      expect(companyRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("recusa quando já existe transportadora com aquele CPF", async () => {
+      // Senão a segunda conversão criaria uma empresa duplicada e
+      // estouraria na constraint de `cpfCnpj` único, com erro de banco
+      // em vez de mensagem legível.
+      usersService.findById.mockResolvedValue(usuarioAutonomo());
+      companyRepository.findByCpfCnpj.mockResolvedValue(buildCompany());
+
+      await expect(
+        service.converterAutonomoEmTransportadora(autonomoActor, endereco, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(companyRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("recusa conta sem CPF, que é o documento da transportadora autônoma", async () => {
+      usersService.findById.mockResolvedValue(usuarioAutonomo({ cpf: null }));
+
+      await expect(
+        service.converterAutonomoEmTransportadora(autonomoActor, endereco, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(companyRepository.create).not.toHaveBeenCalled();
     });
   });
 });

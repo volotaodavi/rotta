@@ -194,6 +194,19 @@ export interface CnpjPreview {
   estado: string;
 }
 
+/** Corpo de `converterAutonomo`: só o que a conta ainda não tem. */
+export interface ConverterAutonomoInput {
+  cep: string;
+  endereco: string;
+  numero: string;
+  complemento?: string;
+  bairro: string;
+  cidade: string;
+  estado: string;
+  /** Como a transportadora aparece para as famílias. Vazio = o próprio nome da pessoa. */
+  nomeFantasia?: string;
+}
+
 export function createCompaniesEndpoints(apiClient: ApiClient) {
   return {
     /** Público — roda antes de existir conta, na tela de cadastro (`useCnpjLookup`). */
@@ -203,6 +216,23 @@ export function createCompaniesEndpoints(apiClient: ApiClient) {
     create: async (input: CreateCompanyInput): Promise<Company> =>
       (
         await apiClient.request<ApiEnvelope<Company>>("/companies", {
+          method: "POST",
+          body: omitEmptyOptionalStrings(input),
+        })
+      ).data,
+
+    /**
+     * Motorista/monitor que trabalha por conta própria virando a própria
+     * transportadora (`POST /companies/me/autonomo`).
+     *
+     * Só o endereço vai no corpo: nome, e-mail, telefone e CPF o backend
+     * lê da conta autenticada, porque pedir de novo seria recadastro
+     * disfarçado. A conta e os dados dela são preservados; o que nasce é
+     * a `Company` (tipo AUTONOMO) e o vínculo de dono.
+     */
+    converterAutonomo: async (input: ConverterAutonomoInput): Promise<Company> =>
+      (
+        await apiClient.request<ApiEnvelope<Company>>("/companies/me/autonomo", {
           method: "POST",
           body: omitEmptyOptionalStrings(input),
         })

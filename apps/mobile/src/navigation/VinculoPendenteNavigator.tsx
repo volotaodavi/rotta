@@ -4,6 +4,7 @@ import type { VinculoPendenteStackParamList } from "./types";
 
 import { DriverIdentityVerificationScreen } from "@/features/driver/screens";
 import {
+  ConverterEmTransportadoraScreen,
   InformarCodigoVinculoScreen,
   VinculoPendenteStatusScreen,
 } from "@/features/onboarding-autonomo/screens";
@@ -35,6 +36,11 @@ export function VinculoPendenteNavigator(): JSX.Element {
         name="InformarCodigo"
         component={InformarCodigoVinculoScreen}
         options={{ title: "Informar código" }}
+      />
+      <Stack.Screen
+        name="ConverterEmTransportadora"
+        component={ConverterEmTransportadoraScreen}
+        options={{ title: "Minha transportadora" }}
       />
     </Stack.Navigator>
   );

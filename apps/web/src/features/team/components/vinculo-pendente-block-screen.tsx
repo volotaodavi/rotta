@@ -7,6 +7,8 @@ import { useState, type FormEvent } from "react";
 
 import { useCreateJoinRequest, useMyJoinRequest } from "../hooks/use-join-requests";
 
+import { ConverterEmTransportadoraForm } from "./converter-em-transportadora-form";
+
 /**
  * Bloqueio total do Painel Web pro Motorista/Monitor autônomo
  * (`registerAutonomo`) enquanto `!user.companyId` (Frente 9, auditoria
@@ -28,6 +30,7 @@ export function VinculoPendenteBlockScreen(): JSX.Element {
   const criar = useCreateJoinRequest();
   const [codigo, setCodigo] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [mostrarConversao, setMostrarConversao] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -59,18 +62,32 @@ export function VinculoPendenteBlockScreen(): JSX.Element {
             A saída que faltava (01/10/2026). Antes desta tela, o código
             da transportadora era a ÚNICA ação possível além de "Sair" —
             e quem é autônomo/MEI de verdade não depende de aprovação de
-            ninguém: ele É a transportadora. Sem esta linha, essa pessoa
+            ninguém: ele É a transportadora. Sem esta saída, essa pessoa
             ficava presa pedindo um código que nunca deveria precisar.
-          */}
-          <Typography variant="bodySmall" color="muted">
-            Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum.{" "}
-            <a href="/criar-conta/empresa?tipo=AUTONOMO" className="font-semibold underline">
-              cadastre sua própria transportadora
-            </a>
-            .
-          </Typography>
 
-          {isLoading ? (
+            A primeira versão desta saída era um link pra
+            `/criar-conta/empresa?tipo=AUTONOMO`, que começa uma conta
+            NOVA do zero: e-mail e CPF já em uso, verificação de
+            identidade de novo, e a conta atual abandonada. Agora a
+            conversão acontece aqui dentro, na mesma conta.
+          */}
+          {mostrarConversao ? (
+            <ConverterEmTransportadoraForm />
+          ) : (
+            <Typography variant="bodySmall" color="muted">
+              Trabalha por conta própria? Autônomo e MEI não precisam de código nenhum.{" "}
+              <button
+                type="button"
+                onClick={() => setMostrarConversao(true)}
+                className="font-semibold underline"
+              >
+                crie sua própria transportadora
+              </button>
+              .
+            </Typography>
+          )}
+
+          {mostrarConversao ? null : isLoading ? (
             <Spinner size="md" />
           ) : !joinRequest ? (
             <Typography variant="bodySmall" color="muted">
@@ -98,7 +115,7 @@ export function VinculoPendenteBlockScreen(): JSX.Element {
             </Typography>
           )}
 
-          {!joinRequest || joinRequest.status === "RECUSADO" ? (
+          {!mostrarConversao && (!joinRequest || joinRequest.status === "RECUSADO") ? (
             <form onSubmit={handleSubmit} className="flex w-full flex-col gap-3">
               <FormField label="Código da transportadora" isRequired>
                 <Input

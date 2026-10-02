@@ -29,6 +29,7 @@ import { toCompanyResponseDto } from "./mappers/company.mapper";
 import type { ChangePlanDto } from "./dto/change-plan.dto";
 import type { CompanyDashboardResponseDto } from "./dto/company-dashboard-response.dto";
 import type { CompanyResponseDto, ListCompaniesResponseDto } from "./dto/company-response.dto";
+import type { ConverterEmTransportadoraDto } from "./dto/converter-em-transportadora.dto";
 import type { CreateCompanyDto } from "./dto/create-company.dto";
 import type { ListCompaniesQueryDto } from "./dto/list-companies-query.dto";
 import type { SuspendCompanyDto } from "./dto/suspend-company.dto";
@@ -253,6 +254,118 @@ export class CompaniesService implements OnModuleInit {
   }
 
   /** Frente M — mesmo padrão de `SchoolsService.generateCodigoInterno`, prefixo `TRN` (transportadora). */
+  /**
+   * Converte um Motorista/Monitor autônomo na PRÓPRIA transportadora
+   * (`Company` com `tipo: AUTONOMO`).
+   *
+   * ## Por que isto existe
+   *
+   * Relato de 01/10/2026: "a conta que está tentando acessar como
+   * motorista autônomo ainda está como motorista comum... está pedindo
+   * ainda o código". A arquitetura sempre disse que autônomo e MEI são
+   * a própria transportadora e não dependem do código de ninguém, mas
+   * quem se cadastrou pelo fluxo de motorista nasceu sem `Company` e
+   * ficava preso na tela de vínculo pendente.
+   *
+   * ## Por que precisa de uma tela, e não de uma migração
+   *
+   * `Company` exige `cep`/`endereco`/`numero`/`bairro`/`cidade`/
+   * `estado` como obrigatórios, e `registerAutonomo` nunca coletou
+   * nenhum deles. Converter no banco exigiria inventar o endereço de
+   * uma transportadora real, onde endereço é dado operacional. Então a
+   * pessoa informa só esses seis campos; nome, e-mail, telefone e CPF
+   * vêm da conta que já existe.
+   *
+   * A empresa nasce em `TRIAL` como qualquer outra (default do schema
+   * + `trialExpiraEm`), então ninguém é cobrado pela conversão.
+   */
+  async converterAutonomoEmTransportadora(
+    actor: AuthenticatedUser,
+    dto: ConverterEmTransportadoraDto,
+    meta: RequestMeta,
+  ): Promise<CompanyResponseDto> {
+    if (actor.tenantId) {
+      throw new BadRequestException(
+        "Esta conta já pertence a uma transportadora. A conversão só existe para quem ainda não tem vínculo.",
+      );
+    }
+
+    const user = await this.usersService.findById(actor.sub);
+    if (!user) {
+      throw new NotFoundException("Conta não encontrada.");
+    }
+    if (!user.cpf) {
+      throw new BadRequestException(
+        "Esta conta não tem CPF cadastrado, e o CPF é o documento da transportadora autônoma.",
+      );
+    }
+
+    const cpfDigits = onlyDigits(user.cpf);
+    const jaExiste = await this.companyRepository.findByCpfCnpj(cpfDigits);
+    if (jaExiste) {
+      throw new BadRequestException(
+        "Já existe uma transportadora cadastrada com este CPF. Entre com a conta dela.",
+      );
+    }
+
+    const plan = await this.resolvePlanOrThrow(DEFAULT_PLAN.code);
+    const codigoInterno = await this.generateCodigoInterno();
+    const trialExpiraEm = new Date();
+    trialExpiraEm.setMonth(trialExpiraEm.getMonth() + TRIAL_DURATION_MONTHS);
+
+    // Company + Membership numa transação só: uma empresa sem o vínculo
+    // do dono seria uma transportadora que ninguém administra, e o
+    // usuário continuaria preso na mesma tela de onde veio.
+    const company = await this.prisma.runInTenantTransaction(async (tx) => {
+      const criada = await this.companyRepository.create(
+        {
+          codigoInterno,
+          razaoSocial: user.nome,
+          nomeFantasia: dto.nomeFantasia?.trim() || user.nome,
+          cpfCnpj: cpfDigits,
+          tipo: CompanyType.AUTONOMO,
+          email: user.email,
+          telefone: onlyDigits(user.telefone),
+          cep: onlyDigits(dto.cep),
+          endereco: dto.endereco.trim(),
+          numero: dto.numero.trim(),
+          complemento: dto.complemento?.trim(),
+          bairro: dto.bairro.trim(),
+          cidade: dto.cidade.trim(),
+          estado: dto.estado.trim().toUpperCase(),
+          planId: plan.id,
+          trialExpiraEm,
+        },
+        tx,
+      );
+
+      await this.usersService.createMembership(
+        { userId: user.id, companyId: criada.id, role: Role.EMPRESA },
+        tx,
+      );
+
+      return criada;
+    });
+
+    await this.recordAudit({
+      companyId: company.id,
+      entidadeTipo: "Company",
+      entidadeId: company.id,
+      acao: "CREATED",
+      atorUserId: user.id,
+      dadosDepois: {
+        nomeFantasia: company.nomeFantasia,
+        tipo: company.tipo,
+        status: company.status,
+        origem: "conversao-autonomo",
+      },
+      ip: meta.ip,
+      userAgent: meta.userAgent,
+    });
+
+    return toCompanyResponseDto(company);
+  }
+
   private async generateCodigoInterno(): Promise<string> {
     const sequence = await this.companyRepository.nextCodigoInternoSequence();
     return `TRN-${String(sequence).padStart(6, "0")}`;

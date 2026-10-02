@@ -40,6 +40,8 @@ export type VinculoPendenteStackParamList = {
   Status: undefined;
   VerificacaoIdentidade: undefined;
   InformarCodigo: undefined;
+  /** Autônomo/MEI virando a própria transportadora, sem recadastro (01/10/2026). */
+  ConverterEmTransportadora: undefined;
 };
 
 /**
