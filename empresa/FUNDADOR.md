@@ -9,7 +9,7 @@ diretor lê este arquivo antes de decidir qualquer coisa.
 A diretoria trabalha em horário comercial, de segunda a sexta, e não
 trabalha em feriado nacional (decisão do fundador, 03/10/2026). Confira
 `CALENDARIO.md` ANTES de abrir qualquer outro arquivo: fim de semana,
-feriado ou fora da janela das 09:00 às 18:00 de Brasília, o turno
+feriado ou fora da janela das 08:00 às 16:00 de Brasília, o turno
 encerra ali mesmo, com uma linha de relatório.
 
 ## MODO: NORMAL

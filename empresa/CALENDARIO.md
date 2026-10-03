@@ -11,9 +11,9 @@ respeitado de verdade em vez de ficar escrito e ignorado.
 
 ## Horário comercial
 
-- **Início: 09:00** de Brasília. Nenhum turno começa antes disso, e é
-  por isso que os agendamentos estão entre 09:07 e 09:13.
-- **Limite: 18:00** de Brasília. Se o relógio passar das 18:00 com o
+- **Início: 08:00** de Brasília. Nenhum turno começa antes disso, e é
+  por isso que os agendamentos estão entre 08:07 e 08:13.
+- **Limite: 16:00** de Brasília. Se o relógio passar das 16:00 com o
   trabalho em andamento, o turno **para onde está**: empurra a branch
   com o que já existe, abre o Pull Request mesmo incompleto marcando no
   título que está incompleto, registra em `DECISOES.md` o que faltou, e

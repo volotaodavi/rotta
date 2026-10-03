@@ -2,6 +2,7 @@
 
 import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 
+import { Escritorio } from "@/features/diretoria/components/escritorio";
 import {
   ESCALA,
   JANELA,
@@ -63,6 +64,19 @@ function dataCurta(iso: string): string {
  */
 export default function DiretoriaPage(): JSX.Element {
   const hoje = situacaoDeHoje();
+  /*
+    A hora tem que ser a de Brasília, não a de quem está olhando: é
+    nela que os turnos estão agendados. Calculada no render, sem
+    relógio vivo, porque a tela já se atualiza sozinha
+    (`query-provider.tsx`) e um cronômetro por segundo só gastaria
+    bateria para mover um boneco.
+  */
+  const horaAgora = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date());
   const proximo = proximoTurno();
   const governanca = useGovernanca();
   const entregas = usePullRequestsDaDiretoria();
@@ -80,6 +94,15 @@ export default function DiretoriaPage(): JSX.Element {
           fundador.
         </Typography>
       </div>
+
+      <Escritorio
+        diaDaSemana={hoje.diaDaSemana}
+        horaAgora={horaAgora}
+        janela={JANELA}
+        éDiaDeTrabalho={hoje.motivoDeFolga === null}
+        entregas={entregas.data ?? []}
+        hojeIso={hoje.iso}
+      />
 
       {/* Hoje: a pergunta que o fundador faz ao abrir a tela. */}
       <Card>

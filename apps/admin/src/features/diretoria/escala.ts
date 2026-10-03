@@ -26,36 +26,36 @@ export const ESCALA: TurnoDaEscala[] = [
   {
     diaDaSemana: 1,
     cargo: "CEO",
-    hora: "09:07",
+    hora: "08:07",
     entrega: "A semana organizada, com a prioridade de cada cargo",
   },
   {
     diaDaSemana: 2,
     cargo: "CTO",
-    hora: "09:11",
+    hora: "08:11",
     entrega: "Conserto ou melhoria no produto, com teste",
   },
   {
     diaDaSemana: 3,
     cargo: "CMO",
-    hora: "09:13",
+    hora: "08:13",
     entrega: "Texto das páginas públicas, material ou análise de funil",
   },
   {
     diaDaSemana: 4,
     cargo: "CTO",
-    hora: "09:11",
+    hora: "08:11",
     entrega: "Conserto ou melhoria no produto, com teste",
   },
   {
     diaDaSemana: 5,
     cargo: "CFO",
-    hora: "09:09",
+    hora: "08:09",
     entrega: "Análise com número medido na fonte",
   },
 ];
 
-export const JANELA = { inicio: "09:00", limite: "18:00" } as const;
+export const JANELA = { inicio: "08:00", limite: "16:00" } as const;
 
 /**
  * Feriados nacionais, no mesmo formato de `empresa/CALENDARIO.md`

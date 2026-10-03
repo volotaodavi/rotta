@@ -13,7 +13,7 @@ vezes um turno disciplinado, e entrega menos.
 Regras de gasto, valendo para todo cargo:
 
 1. **Calendário primeiro, `MODO:` depois.** `CALENDARIO.md` diz se
-   hoje é dia de trabalho (segunda a sexta, 09:00 às 18:00 de Brasília,
+   hoje é dia de trabalho (segunda a sexta, 08:00 às 16:00 de Brasília,
    sem feriado nacional); fora disso o turno encerra na hora. Dentro do
    calendário, o `MODO:` de `FUNDADOR.md` manda: PAUSA encerra o turno,
    ECONOMIA faz a versão mínima útil. As duas conferências são as
