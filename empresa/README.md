@@ -26,10 +26,15 @@ aqui e dar commit, não mexer em configuração de agendador.
 
 | Cargo | Quando acorda (horário de Brasília) |
 | ----- | ----------------------------------- |
-| CEO   | segunda, 08:47                      |
-| CTO   | terça e quinta, 08:51               |
-| CMO   | quarta, 08:53                       |
-| CFO   | sexta, 08:49                        |
+| CEO   | segunda, 09:07                      |
+| CTO   | terça e quinta, 09:11               |
+| CMO   | quarta, 09:13                       |
+| CFO   | sexta, 09:09                        |
+
+Horário comercial, de segunda a sexta, sem feriado nacional: começa às
+09:00, encerra às 18:00, e um turno que cai fora do calendário termina
+na hora sem fazer nada. As regras e a lista de feriados estão em
+`CALENDARIO.md`.
 
 São 5 turnos por semana, um por dia útil, nenhum no fim de semana. Cada
 turno é uma sessão de verdade e consome o limite semanal do plano do
@@ -84,12 +89,13 @@ mesmo. Quem são os subordinados de cada cargo está na carta do cargo.
 
 ## Os arquivos
 
-| Arquivo         | Para que serve                                        |
-| --------------- | ----------------------------------------------------- |
-| `FUNDADOR.md`   | A palavra final. Lido antes de tudo, em todo disparo. |
-| `BACKLOG.md`    | A fila da companhia. Qualquer diretor pode mexer.     |
-| `DECISOES.md`   | Histórico. Só cresce, nunca é reescrito.              |
-| `cargos/ceo.md` | Estratégia, prioridade entre as áreas, cobrança.      |
-| `cargos/cto.md` | Produto, código, qualidade, dívida técnica.           |
-| `cargos/cmo.md` | Aquisição, mensagem, conteúdo, conversão.             |
-| `cargos/cfo.md` | Caixa, preço, inadimplência, custo.                   |
+| Arquivo         | Para que serve                                      |
+| --------------- | --------------------------------------------------- |
+| `FUNDADOR.md`   | A palavra final. Lido antes de tudo, em todo turno. |
+| `CALENDARIO.md` | Horário comercial, dias úteis e feriados nacionais. |
+| `BACKLOG.md`    | A fila da companhia. Qualquer diretor pode mexer.   |
+| `DECISOES.md`   | Histórico. Só cresce, nunca é reescrito.            |
+| `cargos/ceo.md` | Estratégia, prioridade entre as áreas, cobrança.    |
+| `cargos/cto.md` | Produto, código, qualidade, dívida técnica.         |
+| `cargos/cmo.md` | Aquisição, mensagem, conteúdo, conversão.           |
+| `cargos/cfo.md` | Caixa, preço, inadimplência, custo.                 |

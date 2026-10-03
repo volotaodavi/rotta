@@ -12,9 +12,12 @@ vezes um turno disciplinado, e entrega menos.
 
 Regras de gasto, valendo para todo cargo:
 
-1. **O `MODO:` de `FUNDADOR.md` manda.** PAUSA encerra o turno na hora.
-   ECONOMIA faz a versão mínima útil. Conferir isso é a primeira coisa
-   do turno, antes de abrir qualquer outro arquivo.
+1. **Calendário primeiro, `MODO:` depois.** `CALENDARIO.md` diz se
+   hoje é dia de trabalho (segunda a sexta, 09:00 às 18:00 de Brasília,
+   sem feriado nacional); fora disso o turno encerra na hora. Dentro do
+   calendário, o `MODO:` de `FUNDADOR.md` manda: PAUSA encerra o turno,
+   ECONOMIA faz a versão mínima útil. As duas conferências são as
+   primeiras coisas do turno, antes de abrir qualquer outro arquivo.
 2. **Leia pouco antes de escolher.** Só os arquivos do passo 1. De
    `DECISOES.md`, só o começo (`head -80`), que já é o mais recente.
    Nunca leia um arquivo grande inteiro para "entender o contexto":
