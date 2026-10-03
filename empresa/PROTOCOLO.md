@@ -71,6 +71,23 @@ No mesmo Pull Request, três coisas:
 O corpo do PR explica o problema antes da solução, em português, e diz
 o que o fundador precisa olhar com atenção na revisão.
 
+### Como abrir o Pull Request
+
+A sessão de um disparo roda sem conector nenhum, então as ferramentas
+`mcp__github__*` não existem ali. O caminho é o cliente embutido:
+
+```sh
+git push -u origin empresa/<cargo>/<assunto>
+gh api repos/volotaodavi/rotta/pulls -f title="..." -f head="empresa/<cargo>/<assunto>" -f base="<branch-padrao>" -f body="..."
+```
+
+A branch padrão é a que `git ls-remote --symref origin HEAD` devolve,
+nunca um nome decorado. Se o `gh api` falhar, empurre a branch de
+qualquer forma e diga no relatório que o PR ficou para o fundador
+abrir: trabalho empurrado sem PR é recuperável, trabalho perdido no
+container não é, porque o container é descartado quando a sessão
+termina.
+
 ## 5. Terminar a sessão com um relatório curto
 
 A última mensagem da sessão é o que chega ao e-mail do fundador. Três
