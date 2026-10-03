@@ -5,6 +5,7 @@ import {
   BarChart3,
   Bell,
   Building2,
+  Briefcase,
   Bug,
   Car,
   ChevronDown,
@@ -127,6 +128,13 @@ const NAV_GROUPS: NavGroup[] = [
       // Plataforma, sem `@AdminAreas` no backend: GERAL-only, porque
       // apagar conta não tem volta.
       { href: "/contas", label: "Contas de usuários", icon: Users },
+      // A diretoria de agentes de IA (pedido do fundador 03/10/2026:
+      // "essa parte de diretoria deverá aparecer para o admin geral
+      // apenas"). GERAL-only cai de graça: `isAdminRouteAllowed` só
+      // libera os prefixos de SUPORTE e FINANCEIRO, e `/diretoria` não
+      // é nenhum deles, então nem o link aparece nem a rota abre para
+      // eles.
+      { href: "/diretoria", label: "Diretoria", icon: Briefcase },
     ],
   },
 ];
