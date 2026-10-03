@@ -4,6 +4,30 @@ Davi é o fundador e presidente da Rotta. Este arquivo é lei na
 companhia. Onde ele contradisser a carta de um cargo, ele vence. Todo
 diretor lê este arquivo antes de decidir qualquer coisa.
 
+## MODO: NORMAL
+
+Esta linha governa o quanto a companhia gasta. Todo turno a lê antes de
+qualquer coisa, e ela custa nada de ler. O fundador troca a palavra
+depois de `MODO:` e o próximo turno obedece, sem precisar mexer em
+agendador nenhum.
+
+Cada turno é uma sessão de verdade e consome o limite semanal do plano
+do fundador, o mesmo limite que ele usa para trabalhar. Por isso este
+interruptor existe aqui, e não enterrado numa configuração.
+
+- **NORMAL**: o turno acontece como está escrito em `PROTOCOLO.md`.
+- **ECONOMIA**: o turno acontece, mas no menor tamanho útil. Nenhum
+  subagente. Nenhuma suíte de teste completa, só o arquivo de teste do
+  que foi tocado. Nada de refatoração. Entrega de no máximo cerca de
+  150 linhas mudadas; o que for maior vira item dividido no backlog, e
+  o turno termina. É o modo para semana apertada: continua havendo
+  progresso, sem concorrer com o trabalho do fundador.
+- **PAUSA**: o turno termina na hora, sem fazer nada. Lê este arquivo,
+  vê PAUSA, não abre PR, não escreve em `DECISOES.md`, e o relatório é
+  uma linha: "em pausa por ordem do fundador". Custa quase nada, e é o
+  jeito de parar a companhia sem desligar nada: basta trocar a palavra
+  aqui, do celular, pelo GitHub.
+
 <!--
   ORDEM DO FUNDADOR
 

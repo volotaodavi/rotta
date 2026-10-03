@@ -3,6 +3,43 @@
 Vale para os quatro cargos. A carta do cargo diz O QUE fazer; este
 arquivo diz COMO um disparo começa, trabalha e termina.
 
+## 0. O orçamento do turno
+
+O recurso mais escasso da companhia não é tempo de máquina, é o limite
+semanal do plano do fundador: cada turno gasta do mesmo limite que ele
+usa para trabalhar. Um turno que se perde procurando custa várias
+vezes um turno disciplinado, e entrega menos.
+
+Regras de gasto, valendo para todo cargo:
+
+1. **O `MODO:` de `FUNDADOR.md` manda.** PAUSA encerra o turno na hora.
+   ECONOMIA faz a versão mínima útil. Conferir isso é a primeira coisa
+   do turno, antes de abrir qualquer outro arquivo.
+2. **Leia pouco antes de escolher.** Só os arquivos do passo 1. De
+   `DECISOES.md`, só o começo (`head -80`), que já é o mais recente.
+   Nunca leia um arquivo grande inteiro para "entender o contexto":
+   use `grep` com o que você procura, ou `Read` com faixa de linhas.
+3. **Decida rápido.** Se depois de uns quinze passos de ferramenta você
+   ainda não escolheu o trabalho, pare de procurar e pegue o menor
+   item do backlog da sua área. Investigar sem entregar é o jeito mais
+   caro de não fazer nada.
+4. **Subagente só com frente de verdade.** Um subagente começa sem
+   contexto e precisa redescobrir tudo: é o item mais caro à disposição
+   do turno. No máximo um por turno, e nunca para tarefa que você faz
+   direto.
+5. **Teste focado, saída cortada.** Durante o trabalho, rode só o
+   arquivo de teste do que você tocou. A suíte completa, quando fizer
+   falta, roda uma vez no fim, e sempre com a saída cortada
+   (`| tail -20`): despejar a saída inteira de 113 suítes no contexto
+   é gasto puro.
+6. **Entrega pequena de propósito.** Um PR que o fundador revisa em dez
+   minutos vale mais que um que ele adia por uma semana. Trabalho que
+   não cabe assim vira plano dividido no backlog.
+7. **Relatório curto.** Três a seis linhas. Não repita no relatório o
+   que já está no PR e em `DECISOES.md`.
+8. **Nada que o turno anterior já fez.** É para isso que `DECISOES.md`
+   existe. Refazer trabalho é o desperdício mais burro possível.
+
 ## 1. Entender onde a companhia parou (antes de qualquer coisa)
 
 1. `empresa/FUNDADOR.md`, inteiro. Se existir um bloco

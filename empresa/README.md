@@ -27,14 +27,23 @@ aqui e dar commit, não mexer em configuração de agendador.
 | Cargo | Quando acorda (horário de Brasília) |
 | ----- | ----------------------------------- |
 | CEO   | segunda, 08:47                      |
-| CTO   | todo dia, 08:51                     |
+| CTO   | terça e quinta, 08:51               |
 | CMO   | quarta, 08:53                       |
 | CFO   | sexta, 08:49                        |
 
-São 7 disparos por semana, de propósito. Cada disparo é uma sessão de
-verdade e consome o limite do plano do fundador, o mesmo limite que ele
-usa para trabalhar. Subir a cadência é fácil e custa; descer é igual.
-Ver "Como o fundador muda as coisas" abaixo.
+São 5 turnos por semana, um por dia útil, nenhum no fim de semana. Cada
+turno é uma sessão de verdade e consome o limite semanal do plano do
+fundador, o mesmo limite que ele usa para trabalhar. Por isso a
+cadência é enxuta e o gasto de cada turno tem regra escrita (ver o
+passo 0 de `PROTOCOLO.md`).
+
+Dois controles existem para o fundador não ficar na mão da cadência:
+
+- A linha `MODO:` no topo de `FUNDADOR.md` (NORMAL, ECONOMIA ou PAUSA).
+  Trocar a palavra ali muda o gasto da companhia inteira a partir do
+  próximo turno, e dá para fazer do celular, pelo GitHub.
+- Pedir ao Claude para mudar horário, acrescentar ou tirar dia. Subir a
+  cadência é uma linha; descer também.
 
 ## O que sai de cada disparo
 
