@@ -1,0 +1,130 @@
+# Manutenção do banco de produção, sem shell e sem plano pago.
+#
+# ## Por que existe
+#
+# Em 05/10/2026 uma migração falhou em produção e travou TODO deploy
+# seguinte com P3009. O conserto é um comando do Prisma, mas rodá-lo
+# exige um shell com acesso ao banco — e o shell do Render é recurso
+# pago. Sem este arquivo, um erro de uma linha de SQL deixava a
+# plataforma sem poder subir versão nenhuma por tempo indeterminado.
+#
+# ## O que ele NÃO é
+#
+# Não é um executor de SQL livre. Cada operação abaixo é escrita,
+# nomeada e revisável no repositório. Um campo "cole seu SQL aqui" seria
+# mais flexível e seria exatamente o que não se deve ter apontado para
+# um banco de produção: qualquer pessoa com acesso de escrita no
+# repositório teria DROP TABLE a um clique.
+#
+# ## Como rodar
+#
+# Aba Actions do repositório, "Manutenção do banco", Run workflow,
+# escolher a operação. Toda execução fica registrada com quem disparou,
+# quando e a saída completa.
+#
+# ## O que precisa estar configurado
+#
+# O segredo `PRODUCAO_DATABASE_URL` (Settings, Secrets and variables,
+# Actions). Sem ele o workflow para com uma mensagem clara em vez de
+# falhar no meio. Revogar o acesso é apagar esse segredo.
+name: Manutenção do banco
+
+on:
+  workflow_dispatch:
+    inputs:
+      operacao:
+        description: "O que fazer no banco"
+        required: true
+        default: estado
+        type: choice
+        options:
+          # Só lê. É sempre o primeiro passo: diz qual migração travou e
+          # se ela chegou a aplicar alguma coisa.
+          - estado
+          # Marca como revertida qualquer migração falha que NÃO aplicou
+          # nada (`applied_steps_count = 0`). Uma parcialmente aplicada
+          # não é tocada de propósito: o banco fica num estado que só
+          # uma pessoa olhando sabe interpretar.
+          - destravar
+          # `prisma migrate deploy`. Útil para aplicar a migração sem
+          # esperar um deploy inteiro do Render.
+          - migrar
+          # Destravar e migrar, na ordem. O caminho de quem já olhou o
+          # `estado` e sabe o que está fazendo.
+          - destravar-e-migrar
+
+permissions:
+  contents: read
+
+concurrency:
+  # Duas manutenções simultâneas no mesmo banco é um jeito conhecido de
+  # transformar um problema em dois.
+  group: banco-manutencao
+  cancel-in-progress: false
+
+jobs:
+  manutencao:
+    name: ${{ inputs.operacao }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DATABASE_URL: ${{ secrets.PRODUCAO_DATABASE_URL }}
+      # O CLI do Prisma exige `directUrl` quando o schema declara um.
+      # Quando o banco não tem pooler, as duas strings são a mesma.
+      DIRECT_URL: ${{ secrets.PRODUCAO_DIRECT_URL || secrets.PRODUCAO_DATABASE_URL }}
+
+    steps:
+      - name: Conferir que o segredo existe
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::O segredo PRODUCAO_DATABASE_URL não está configurado."
+            echo "Configure em: Settings > Secrets and variables > Actions > New repository secret."
+            exit 1
+          fi
+          echo "Segredo presente. Nada do valor dele é impresso aqui."
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Instalar dependências
+        run: pnpm install --frozen-lockfile
+
+      - name: Gerar Prisma Client
+        run: pnpm --filter=@rotta/api prisma:generate
+
+      - name: Estado das migrações (antes)
+        working-directory: apps/api
+        run: |
+          echo "### Migrações sem conclusão" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          npx prisma migrate status 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Destravar migração que não aplicou nada
+        if: inputs.operacao == 'destravar' || inputs.operacao == 'destravar-e-migrar'
+        working-directory: apps/api
+        run: |
+          npx prisma db execute \
+            --file prisma/destravar-migracao-nao-aplicada.sql \
+            --schema prisma/schema.prisma
+          echo "Destravamento aplicado (só afeta migração com applied_steps_count = 0)."
+
+      - name: Aplicar migrações
+        if: inputs.operacao == 'migrar' || inputs.operacao == 'destravar-e-migrar'
+        working-directory: apps/api
+        run: npx prisma migrate deploy
+
+      - name: Estado das migrações (depois)
+        if: inputs.operacao != 'estado'
+        working-directory: apps/api
+        run: |
+          echo "### Depois" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          npx prisma migrate status 2>&1 | tee -a "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
