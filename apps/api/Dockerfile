@@ -91,4 +91,11 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
 # do `turbo prune` colocar o binario em outro lugar, cai no caminho
 # alternativo e, por ultimo, no `pnpm` de antes. Escolha de caminho nao
 # pode ser o motivo de a API nao subir.
-CMD ["sh", "-c", "P=apps/api/node_modules/.bin/prisma; [ -x \"$P\" ] || P=node_modules/.bin/prisma; if [ -x \"$P\" ]; then \"$P\" migrate deploy --schema apps/api/prisma/schema.prisma; else echo '[boot] binario do prisma nao encontrado, usando pnpm'; pnpm --filter=@rotta/api prisma:migrate:deploy; fi && node apps/api/dist/main.js"]
+# Antes do `migrate deploy` roda um destravamento (ver
+# `prisma/destravar-migracao-nao-aplicada.sql`): uma migracao que falhou
+# sem aplicar NADA deixa o deploy travado em P3009 para sempre, e o
+# conserto normal (`prisma migrate resolve`) exige um shell com acesso ao
+# banco — que no plano gratuito do Render nao existe. O `|| echo` existe
+# porque esse passo e conveniencia: se ele falhar, o `migrate deploy`
+# tem que ser tentado do mesmo jeito.
+CMD ["sh", "-c", "P=apps/api/node_modules/.bin/prisma; [ -x \"$P\" ] || P=node_modules/.bin/prisma; if [ -x \"$P\" ]; then \"$P\" db execute --file apps/api/prisma/destravar-migracao-nao-aplicada.sql --schema apps/api/prisma/schema.prisma || echo '[boot] destravamento nao rodou; seguindo para o migrate deploy'; \"$P\" migrate deploy --schema apps/api/prisma/schema.prisma; else echo '[boot] binario do prisma nao encontrado, usando pnpm'; pnpm --filter=@rotta/api prisma:migrate:deploy; fi && node apps/api/dist/main.js"]

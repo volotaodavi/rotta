@@ -19,6 +19,7 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
+    "prisma:destravar": "prisma db execute --file prisma/destravar-migracao-nao-aplicada.sql --schema prisma/schema.prisma",
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node --transpile-only prisma/seed.ts",
     "prisma:create-admin": "ts-node --transpile-only prisma/create-admin.ts",
