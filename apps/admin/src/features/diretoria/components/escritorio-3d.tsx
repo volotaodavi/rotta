@@ -4,6 +4,7 @@ import { Badge, Card, Typography } from "@rotta/ui/web";
 import { useEffect, useRef, useState } from "react";
 
 import { situacaoDeHoje } from "../escala";
+import { usePulso } from "../hooks/use-pulso";
 
 import type { ResumoDeUmTrabalhador } from "../escritorio-3d/cena";
 import type { Cargo } from "../escritorio-3d/planta";
@@ -42,6 +43,8 @@ export function Escritorio3D(): JSX.Element {
   const container = useRef<HTMLDivElement>(null);
   const [resumo, setResumo] = useState<ResumoDeUmTrabalhador[]>([]);
   const [erro, setErro] = useState<string | null>(null);
+  const { carga, dados: pulso } = usePulso();
+  const cenaViva = useRef<{ definirCargaDaPlataforma(c: number): void } | null>(null);
 
   const hoje = situacaoDeHoje();
   const emTurno = [...new Set(hoje.turnos.map((turno) => turno.cargo))] as Cargo[];
@@ -61,6 +64,7 @@ export function Escritorio3D(): JSX.Element {
         if (cancelado || !alvo.isConnected) return;
         const cena = new CenaDoEscritorio(alvo, { emTurno });
         viva = cena;
+        cenaViva.current = cena;
         setResumo(cena.resumo());
         intervalo = setInterval(() => setResumo(cena.resumo()), 1200);
       } catch (causa) {
@@ -76,12 +80,22 @@ export function Escritorio3D(): JSX.Element {
 
     return () => {
       cancelado = true;
+      cenaViva.current = null;
       if (intervalo) clearInterval(intervalo);
       viva?.destruir();
     };
     // `chaveDoDia` troca quando a escala do dia muda, e aí a cena é
     // remontada com o elenco certo.
   }, [chaveDoDia]);
+
+  /*
+    O pulso chega a cada 20 segundos e muda só o ritmo dos agentes, sem
+    reconstruir a cena: remontar o escritório a cada leitura faria todo
+    mundo voltar para a mesa e perderia o movimento em curso.
+  */
+  useEffect(() => {
+    cenaViva.current?.definirCargaDaPlataforma(carga);
+  }, [carga]);
 
   if (emTurno.length > 0 && erro === null) {
     return (
@@ -95,6 +109,13 @@ export function Escritorio3D(): JSX.Element {
                   {linha.cargo}: {linha.atividade}
                 </Badge>
               ))}
+              {pulso ? (
+                <Badge variant={pulso.viagensEmAndamento > 0 ? "success" : "neutral"}>
+                  {pulso.viagensEmAndamento > 0
+                    ? `${pulso.viagensEmAndamento} viagem(ns) agora`
+                    : "nenhuma viagem agora"}
+                </Badge>
+              ) : null}
             </div>
           </div>
 
@@ -105,9 +126,13 @@ export function Escritorio3D(): JSX.Element {
 
           <Typography variant="caption" color="muted">
             Quem aparece é verdade: só entra em cena o cargo que a escala de hoje coloca em turno, e
-            em fim de semana ou feriado o andar fica vazio. O caminho que cada um faz dentro do
-            escritório é leitura, não medição: nenhum agente vai mesmo ao cafezinho. Arraste para
-            girar, use a roda para aproximar.
+            em fim de semana ou feriado o andar fica vazio. O ritmo dos agentes também é verdade:
+            ele vem do uso real da plataforma neste minuto
+            {pulso
+              ? ` (${pulso.posicoesNaUltimaHora} posição(ões) de veículo na última hora, ${pulso.eventosDeAluno24h} embarque(s) em 24h)`
+              : ""}
+            . O caminho que cada um faz dentro do escritório é leitura, não medição: nenhum agente
+            vai mesmo ao cafezinho. Arraste para girar, use a roda para aproximar.
           </Typography>
         </Card.Body>
       </Card>

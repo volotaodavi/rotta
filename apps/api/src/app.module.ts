@@ -74,6 +74,7 @@ import { MonitorsModule } from "@/modules/monitors/monitors.module";
 import { NotificationsModule } from "@/modules/notifications/notifications.module";
 import { ParentsModule } from "@/modules/parents/parents.module";
 import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
+import { PlataformaModule } from "@/modules/plataforma/plataforma.module";
 import { ReportsModule } from "@/modules/reports/reports.module";
 import { RottaAiModule } from "@/modules/rotta-ai/rotta-ai.module";
 import { RouteAssignmentsModule } from "@/modules/route-assignments/route-assignments.module";
@@ -151,6 +152,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     UsersModule,
     CompaniesModule,
     BillingModule,
+    PlataformaModule,
     AdminDigestModule,
     TrialNotificationsModule,
     DocumentExpiryModule,
