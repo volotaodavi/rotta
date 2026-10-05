@@ -1,0 +1,402 @@
+import * as THREE from "three";
+
+import { Boneco } from "./boneco";
+import {
+  COR_DO_CARGO,
+  CORREDOR_LARGURA,
+  CORREDOR_Z,
+  LARGURA_DO_ANDAR,
+  PROFUNDIDADE_DO_ANDAR,
+  SALAS,
+  type Cargo,
+  type Sala,
+} from "./planta";
+
+export interface EstadoDoAndar {
+  /** Quem está em turno agora. Quem não está simplesmente não aparece. */
+  emTurno: Cargo[];
+}
+
+export interface ResumoDeUmTrabalhador {
+  cargo: Cargo;
+  sala: string;
+  atividade: string;
+}
+
+const TEXTO_DA_ATIVIDADE: Record<string, string> = {
+  "na-mesa": "na mesa",
+  indo: "a caminho",
+  "no-cafe": "no cafezinho",
+  "no-banheiro": "no banheiro",
+  "em-reuniao": "em reunião",
+  conversando: "conversando",
+};
+
+/**
+ * O escritório da diretoria em três dimensões.
+ *
+ * ## Por que isto existe
+ *
+ * Pedido do fundador, repetido três vezes entre 04 e 05/10/2026: ver os
+ * diretores trabalhando, não um gráfico dizendo que trabalharam. A
+ * tela de governança continua sendo a fonte dos fatos (PR aberto,
+ * decisão registrada, próximo turno); esta cena é a leitura humana
+ * desses fatos, e ela só mostra gente quando existe gente em turno.
+ *
+ * ## O que é verdade e o que é encenação
+ *
+ * **Verdade:** quem aparece. Um cargo só entra em cena se a escala de
+ * hoje (`escala.ts`, que espelha `empresa/CALENDARIO.md` e os
+ * agendamentos reais) disser que ele trabalha. Fim de semana e feriado
+ * esvaziam o andar.
+ *
+ * **Encenação:** o caminho que cada um faz dentro do escritório. Um
+ * agente não vai mesmo ao banheiro. O movimento existe para a tela ser
+ * legível de relance, e em nenhum lugar ela afirma que aquele passo
+ * específico aconteceu.
+ *
+ * Essa fronteira está escrita aqui porque é a única coisa que pode
+ * apodrecer: no dia em que alguém usar esta cena para afirmar um fato
+ * que ela não mede, o painel vira enfeite.
+ *
+ * ## Três.js sem dependência paga
+ *
+ * Biblioteca aberta, roda no navegador do admin, nenhum serviço
+ * externo, nenhuma conta, nenhum custo. Foi a pergunta direta do
+ * fundador e a resposta é esta.
+ */
+export class CenaDoEscritorio {
+  private readonly cena = new THREE.Scene();
+  private readonly camera: THREE.PerspectiveCamera;
+  private readonly renderer: THREE.WebGLRenderer;
+  private readonly relogio = new THREE.Clock();
+  private readonly bonecos: Boneco[] = [];
+  private readonly luzesDeSala = new Map<string, THREE.PointLight>();
+  private readonly container: HTMLElement;
+
+  private quadro = 0;
+  private anguloDaCamera = -0.55;
+  private alturaDaCamera = 0.95;
+  private distancia = 21;
+  private vivo = true;
+  private proximaReuniao = 45 + Math.random() * 60;
+  private reduzirMovimento = false;
+
+  constructor(container: HTMLElement, estado: EstadoDoAndar) {
+    this.container = container;
+    this.reduzirMovimento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    container.appendChild(this.renderer.domElement);
+    this.renderer.domElement.style.display = "block";
+    this.renderer.domElement.style.width = "100%";
+    this.renderer.domElement.style.height = "100%";
+    this.renderer.domElement.style.cursor = "grab";
+    this.renderer.domElement.setAttribute("role", "img");
+    this.renderer.domElement.setAttribute(
+      "aria-label",
+      "Planta do escritório da diretoria, em três dimensões, com um boneco para cada cargo em turno.",
+    );
+
+    this.camera = new THREE.PerspectiveCamera(42, 1, 0.1, 300);
+    this.montarAndar();
+    this.montarLuzes();
+    this.montarBonecos(estado);
+    this.redimensionar();
+    this.ligarArrastar();
+
+    window.addEventListener("resize", this.redimensionar);
+    document.addEventListener("visibilitychange", this.aoTrocarVisibilidade);
+    this.animar();
+  }
+
+  /** Quem está trabalhando agora e onde, para a legenda em texto ao lado. */
+  resumo(): ResumoDeUmTrabalhador[] {
+    return this.bonecos.map((boneco) => ({
+      cargo: boneco.cargo,
+      sala: boneco.salaAtualNome(),
+      atividade: TEXTO_DA_ATIVIDADE[boneco.atividadeAtual()] ?? boneco.atividadeAtual(),
+    }));
+  }
+
+  destruir(): void {
+    this.vivo = false;
+    cancelAnimationFrame(this.quadro);
+    window.removeEventListener("resize", this.redimensionar);
+    document.removeEventListener("visibilitychange", this.aoTrocarVisibilidade);
+    this.cena.traverse((no) => {
+      if (no instanceof THREE.Mesh) {
+        no.geometry.dispose();
+        const material = no.material as THREE.Material | THREE.Material[];
+        if (Array.isArray(material)) material.forEach((m) => m.dispose());
+        else material.dispose();
+      }
+    });
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
+  }
+
+  private montarAndar(): void {
+    const piso = new THREE.Mesh(
+      new THREE.BoxGeometry(LARGURA_DO_ANDAR, 0.2, PROFUNDIDADE_DO_ANDAR),
+      new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.95 }),
+    );
+    piso.position.set(LARGURA_DO_ANDAR / 2, -0.1, PROFUNDIDADE_DO_ANDAR / 2);
+    piso.receiveShadow = true;
+    this.cena.add(piso);
+
+    const corredor = new THREE.Mesh(
+      new THREE.BoxGeometry(LARGURA_DO_ANDAR - 2, 0.04, CORREDOR_LARGURA),
+      new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.75 }),
+    );
+    corredor.position.set(LARGURA_DO_ANDAR / 2, 0.02, CORREDOR_Z);
+    corredor.receiveShadow = true;
+    this.cena.add(corredor);
+
+    for (const sala of SALAS) this.montarSala(sala);
+  }
+
+  private montarSala(sala: Sala): void {
+    const centroX = sala.x + sala.largura / 2;
+    const centroZ = sala.z + sala.profundidade / 2;
+
+    const chao = new THREE.Mesh(
+      new THREE.BoxGeometry(sala.largura, 0.06, sala.profundidade),
+      new THREE.MeshStandardMaterial({ color: sala.cor, roughness: 0.9, metalness: 0.05 }),
+    );
+    chao.position.set(centroX, 0.03, centroZ);
+    chao.receiveShadow = true;
+    this.cena.add(chao);
+
+    /*
+      Paredes baixas, de 1,1 m. Altura real de parede esconderia o
+      interior das salas na vista de cima, e o ponto da tela é
+      justamente ver o que acontece dentro delas.
+    */
+    const ALTURA = 1.1;
+    const material = new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      roughness: 0.85,
+      transparent: true,
+      opacity: 0.55,
+    });
+
+    const paredes: [number, number, number, number][] = [
+      [centroX, sala.z, sala.largura, 0.12],
+      [centroX, sala.z + sala.profundidade, sala.largura, 0.12],
+      [sala.x, centroZ, 0.12, sala.profundidade],
+      [sala.x + sala.largura, centroZ, 0.12, sala.profundidade],
+    ];
+
+    for (const [px, pz, largura, profundidade] of paredes) {
+      const parede = new THREE.Mesh(new THREE.BoxGeometry(largura, ALTURA, profundidade), material);
+      parede.position.set(px, ALTURA / 2, pz);
+      parede.castShadow = true;
+      this.cena.add(parede);
+    }
+
+    const luz = new THREE.PointLight(0xfff4e0, 0, 9, 2);
+    luz.position.set(centroX, 2.6, centroZ);
+    this.luzesDeSala.set(sala.id, luz);
+    this.cena.add(luz);
+
+    this.montarMobilia(sala, centroX, centroZ);
+  }
+
+  private montarMobilia(sala: Sala, centroX: number, centroZ: number): void {
+    const madeira = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.8 });
+    const metal = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      roughness: 0.4,
+      metalness: 0.6,
+    });
+    const tela = new THREE.MeshStandardMaterial({ color: 0x0ea5e9, emissive: 0x0b4a6f });
+
+    const por = (malha: THREE.Mesh, x: number, y: number, z: number): void => {
+      malha.position.set(x, y, z);
+      malha.castShadow = true;
+      this.cena.add(malha);
+    };
+
+    if (sala.tipo === "gabinete") {
+      const mesa = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.1, 1.1), madeira);
+      por(mesa, centroX, 0.75, centroZ - 1.1);
+      const monitor = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.06), tela);
+      por(monitor, centroX, 1.1, centroZ - 1.45);
+      const cadeira = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.3, 0.5, 12), metal);
+      por(cadeira, centroX, 0.25, centroZ - 0.2);
+      const planta = new THREE.Mesh(
+        new THREE.ConeGeometry(0.35, 0.9, 8),
+        new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.9 }),
+      );
+      por(planta, sala.x + 0.8, 0.5, sala.z + sala.profundidade - 0.9);
+      return;
+    }
+
+    if (sala.tipo === "reuniao") {
+      const mesa = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 0.12, 24), madeira);
+      por(mesa, centroX, 0.75, centroZ);
+      for (let i = 0; i < 6; i += 1) {
+        const angulo = (i / 6) * Math.PI * 2;
+        const cadeira = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.26, 0.45, 10), metal);
+        por(cadeira, centroX + Math.cos(angulo) * 2.3, 0.22, centroZ + Math.sin(angulo) * 2.3);
+      }
+      return;
+    }
+
+    if (sala.tipo === "cafe") {
+      const bancada = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.12, 0.8), madeira);
+      por(bancada, centroX, 0.9, sala.z + 0.9);
+      const maquina = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.45), metal);
+      por(maquina, centroX - 0.9, 1.3, sala.z + 0.9);
+      const mesinha = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.1, 16), madeira);
+      por(mesinha, centroX, 0.72, centroZ + 1.6);
+      return;
+    }
+
+    const vaso = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.3, 0.3, 0.55, 14),
+      new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 }),
+    );
+    por(vaso, centroX, 0.28, sala.z + 1.2);
+    const pia = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.1, 0.5), metal);
+    por(pia, centroX, 0.9, sala.z + sala.profundidade - 1);
+  }
+
+  private montarLuzes(): void {
+    this.cena.add(new THREE.HemisphereLight(0xbfdbfe, 0x0b1220, 1.3));
+    /*
+      Luz de preenchimento vinda do lado oposto ao sol. Sem ela, o lado
+      escuro de cada boneco somia no piso escuro e a cena virava um
+      conjunto de salas vazias com vultos dentro.
+    */
+    const preenchimento = new THREE.DirectionalLight(0xc7d2fe, 0.6);
+    preenchimento.position.set(-12, 14, -8);
+    this.cena.add(preenchimento);
+    const sol = new THREE.DirectionalLight(0xffffff, 1.5);
+    sol.position.set(18, 26, 6);
+    sol.castShadow = true;
+    sol.shadow.mapSize.set(2048, 2048);
+    sol.shadow.camera.left = -22;
+    sol.shadow.camera.right = 22;
+    sol.shadow.camera.top = 22;
+    sol.shadow.camera.bottom = -22;
+    this.cena.add(sol);
+  }
+
+  private montarBonecos(estado: EstadoDoAndar): void {
+    for (const [id, luz] of this.luzesDeSala) {
+      const sala = SALAS.find((s) => s.id === id);
+      const comum = sala?.dono === undefined;
+      const aceso = comum ? estado.emTurno.length > 0 : estado.emTurno.includes(sala!.dono!);
+      luz.intensity = aceso ? 22 : 0;
+    }
+
+    for (const cargo of estado.emTurno) {
+      const boneco = new Boneco(cargo, COR_DO_CARGO[cargo]);
+      this.bonecos.push(boneco);
+      this.cena.add(boneco.grupo);
+    }
+  }
+
+  private readonly redimensionar = (): void => {
+    const largura = this.container.clientWidth || 800;
+    const altura = this.container.clientHeight || 460;
+    this.renderer.setSize(largura, altura, false);
+    this.camera.aspect = largura / altura;
+    this.camera.updateProjectionMatrix();
+    this.posicionarCamera();
+  };
+
+  private posicionarCamera(): void {
+    const alvo = new THREE.Vector3(LARGURA_DO_ANDAR / 2, 0, PROFUNDIDADE_DO_ANDAR / 2);
+    this.camera.position.set(
+      alvo.x + Math.sin(this.anguloDaCamera) * this.distancia,
+      this.distancia * this.alturaDaCamera,
+      alvo.z + Math.cos(this.anguloDaCamera) * this.distancia,
+    );
+    this.camera.lookAt(alvo);
+  }
+
+  /** Arrastar gira, roda aproxima. Sem biblioteca de controle: são vinte linhas. */
+  private ligarArrastar(): void {
+    const tela = this.renderer.domElement;
+    let arrastando = false;
+    let ultimoX = 0;
+    let ultimoY = 0;
+
+    tela.addEventListener("pointerdown", (evento) => {
+      arrastando = true;
+      ultimoX = evento.clientX;
+      ultimoY = evento.clientY;
+      tela.setPointerCapture(evento.pointerId);
+      tela.style.cursor = "grabbing";
+    });
+    tela.addEventListener("pointerup", (evento) => {
+      arrastando = false;
+      tela.releasePointerCapture(evento.pointerId);
+      tela.style.cursor = "grab";
+    });
+    tela.addEventListener("pointermove", (evento) => {
+      if (!arrastando) return;
+      this.anguloDaCamera -= (evento.clientX - ultimoX) * 0.006;
+      this.alturaDaCamera = Math.min(
+        1.4,
+        Math.max(0.35, this.alturaDaCamera + (evento.clientY - ultimoY) * 0.004),
+      );
+      ultimoX = evento.clientX;
+      ultimoY = evento.clientY;
+      this.posicionarCamera();
+    });
+    tela.addEventListener(
+      "wheel",
+      (evento) => {
+        evento.preventDefault();
+        this.distancia = Math.min(55, Math.max(14, this.distancia + evento.deltaY * 0.02));
+        this.posicionarCamera();
+      },
+      { passive: false },
+    );
+  }
+
+  /** Aba escondida não desenha. Um escritório animado num segundo plano é só bateria queimando. */
+  private readonly aoTrocarVisibilidade = (): void => {
+    if (document.hidden) {
+      cancelAnimationFrame(this.quadro);
+    } else if (this.vivo) {
+      this.relogio.getDelta();
+      this.animar();
+    }
+  };
+
+  private readonly animar = (): void => {
+    if (!this.vivo) return;
+    this.quadro = requestAnimationFrame(this.animar);
+
+    const delta = Math.min(this.relogio.getDelta(), 0.1);
+    if (!this.reduzirMovimento) {
+      for (const boneco of this.bonecos) boneco.atualizar(delta);
+      this.talvezChamarReuniao(delta);
+    }
+    this.renderer.render(this.cena, this.camera);
+  };
+
+  /**
+   * De vez em quando dois cargos se encontram na sala de reunião. Não é
+   * enfeite: na Rotta existe assunto cruzado de verdade, e o fundador
+   * pediu para ver isso acontecendo.
+   */
+  private talvezChamarReuniao(delta: number): void {
+    if (this.bonecos.length < 2) return;
+    this.proximaReuniao -= delta;
+    if (this.proximaReuniao > 0) return;
+
+    this.proximaReuniao = 70 + Math.random() * 90;
+    const embaralhados = [...this.bonecos].sort(() => Math.random() - 0.5);
+    embaralhados[0]?.chamarParaReuniao();
+    embaralhados[1]?.chamarParaReuniao();
+  }
+}

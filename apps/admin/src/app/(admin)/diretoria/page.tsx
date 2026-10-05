@@ -3,6 +3,7 @@
 import { Badge, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 
 import { Escritorio } from "@/features/diretoria/components/escritorio";
+import { Escritorio3D } from "@/features/diretoria/components/escritorio-3d";
 import {
   ESCALA,
   JANELA,
@@ -94,6 +95,8 @@ export default function DiretoriaPage(): JSX.Element {
           fundador.
         </Typography>
       </div>
+
+      <Escritorio3D />
 
       <Escritorio
         diaDaSemana={hoje.diaDaSemana}
