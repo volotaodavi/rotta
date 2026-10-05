@@ -9,9 +9,17 @@
 -- Todos nullable: quem chega por fora de anúncio, recusa os cookies ou
 -- usa bloqueador simplesmente não tem esses valores, e a venda fica
 -- sem atribuição em vez de ganhar uma atribuição inventada.
-ALTER TABLE "PendingSubscription"
-  ADD COLUMN "metaFbp" TEXT,
-  ADD COLUMN "metaFbc" TEXT,
-  ADD COLUMN "metaUserAgent" TEXT,
-  ADD COLUMN "metaIp" TEXT,
-  ADD COLUMN "metaPurchaseEm" TIMESTAMP(3);
+--
+-- O nome da tabela é `pending_subscriptions`, não `PendingSubscription`:
+-- o model tem `@@map`. A primeira versão desta migração usou o nome do
+-- model, falhou em produção com "relation does not exist" e travou todo
+-- deploy seguinte com P3009 (o Prisma se recusa a seguir enquanto
+-- houver migração marcada como falha). `IF NOT EXISTS` em cada coluna
+-- para a migração poder ser reaplicada sem conflito depois do
+-- `migrate resolve`.
+ALTER TABLE "pending_subscriptions"
+  ADD COLUMN IF NOT EXISTS "metaFbp" TEXT,
+  ADD COLUMN IF NOT EXISTS "metaFbc" TEXT,
+  ADD COLUMN IF NOT EXISTS "metaUserAgent" TEXT,
+  ADD COLUMN IF NOT EXISTS "metaIp" TEXT,
+  ADD COLUMN IF NOT EXISTS "metaPurchaseEm" TIMESTAMP(3);
