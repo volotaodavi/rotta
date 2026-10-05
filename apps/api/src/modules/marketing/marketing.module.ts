@@ -1,9 +1,12 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 
+import { FunilService } from "./funil.service";
+import { MarketingController } from "./marketing.controller";
 import { MetaConversionsService } from "./meta-conversions.service";
 
 import metaAdsConfig from "@/config/meta-ads.config";
+import { DiretoriaReadGuard } from "@/modules/client-errors/diretoria-read.guard";
 
 /**
  * Medição de campanha do lado do servidor (05/10/2026).
@@ -17,7 +20,8 @@ import metaAdsConfig from "@/config/meta-ads.config";
  */
 @Module({
   imports: [ConfigModule.forFeature(metaAdsConfig)],
-  providers: [MetaConversionsService],
+  controllers: [MarketingController],
+  providers: [MetaConversionsService, FunilService, DiretoriaReadGuard],
   exports: [MetaConversionsService],
 })
 export class MarketingModule {}

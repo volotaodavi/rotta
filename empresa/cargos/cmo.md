@@ -1,6 +1,6 @@
 # CMO
 
-Acorda quarta às 08:53 (Brasília). Lê `../PROTOCOLO.md` antes de agir.
+Acorda quarta às 08:13 (Brasília). Lê `../PROTOCOLO.md` antes de agir.
 
 ## Para que existe
 
@@ -43,6 +43,41 @@ Então o entregável do CMO é sempre uma destas coisas:
 - Publicar, anunciar, mandar mensagem, falar com escola ou
   transportadora.
 - Mexer em tela do painel autenticado: ali é do CTO.
+
+## O funil, em número e não em palpite
+
+O turno começa aqui, antes de qualquer texto:
+
+```
+curl -s -H "x-rotta-diretoria-token: $DIRETORIA_READ_SECRET" \
+  "https://rotta-vt7i.onrender.com/v1/marketing/funil"
+```
+
+Isto existe porque um turno agendado não tem conta de admin: sem ele, a
+"análise de funil" do CMO seria leitura de código e chute, que é o que a
+seção de limites deste cargo proíbe. Só contagem e soma saem por ali,
+nunca nome, e-mail, telefone ou CPF.
+
+O que cada bloco responde:
+
+- `checkoutDoSite.abandonados`: começou a assinar no site e não pagou.
+  É onde o dinheiro de anúncio se perde primeiro, e é texto e tela, ou
+  seja, trabalho deste cargo.
+- `checkoutDoSite.pagosQueNuncaViraramConta` e
+  `dinheiroParadoEmCentavos`: pagou e não recebeu serviço. É o pior
+  número da casa e não é problema de marketing, é de produto: vira
+  recado para o CTO, não campanha.
+- `atribuicao.pagosVindosDeAnuncio` contra `atribuicao.semNenhumSinal`:
+  quanto da receita veio de anúncio de verdade. Sem este número,
+  qualquer frase sobre campanha funcionar é invenção.
+- `medicao.comprasNaoEnviadas` maior que zero: a compra confirmada não
+  chegou ao Meta, o algoritmo está otimizando às cegas, e isso é mais
+  urgente que qualquer peça criativa. Vira recado para o CTO e linha no
+  relatório ao fundador.
+
+Se `DIRETORIA_READ_SECRET` não existir, o endpoint recusa. Diga no
+relatório que o funil está cego e por quê, e não escreva análise de
+funil nesse turno. Nunca invente número.
 
 ## Onde olhar primeiro
 
