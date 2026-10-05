@@ -49,6 +49,23 @@ cada linha abaixo.
 | Token da API de Marketing (`ads_management`) | Render    | vazio      | O CMO **pausar anúncio e remanejar verba** sozinho. Recomendação: só depois de duas ou três semanas com conversão medida. Sem histórico, automação de verba é chute caro.                                                                      |
 | ID da conta de anúncio (`act_...`)           | no código | vazio      | Saber em qual conta ler. **Não é segredo.**                                                                                                                                                                                                    |
 
+### O que a chave do Render destrava (comprovado em 05/10/2026)
+
+No dia em que ela foi ligada, o deploy estava travado havia horas em
+P3009 e três tentativas de conserto pelo repositório tinham falhado,
+porque faltava um fato que só o painel do Render tinha: **o serviço é
+runtime Node, não Docker.** O `Dockerfile` do repositório é ignorado, e
+a migração roda no Start Command configurado no painel.
+
+Com a chave, isso virou: ler a configuração do serviço, descobrir o
+runtime, ler as variáveis, achar o banco (Neon, não Supabase nem Render
+Postgres), destravar a migração pelo endpoint HTTP do Neon, corrigir o
+Start Command e disparar o deploy. Tudo sem o fundador clicar em nada.
+
+Fica registrado porque é o argumento concreto a favor de ligar as
+outras: o que trava um turno quase nunca é capacidade, é falta de um
+fato que está atrás de uma chave.
+
 ### O que exige uma pessoa, e sempre vai exigir
 
 Não é limitação de ferramenta, é de responsabilidade: estes atos têm uma
