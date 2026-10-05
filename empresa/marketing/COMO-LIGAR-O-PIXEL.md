@@ -29,6 +29,22 @@ A medição só acontece quando as duas são verdadeiras ao mesmo tempo:
    Eventos da produção e ensinar o algoritmo a procurar o público
    errado.
 
+## O verificador automático do Meta vai dizer que não achou o Pixel
+
+E está certo. O "Verificar configuração" do Gerenciador de Eventos e o
+Pixel Helper abrem a página e não clicam em "Aceitar" no aviso de
+cookies, então o script não carrega para eles.
+
+**Isto não é defeito e não deve ser "consertado".** O fundador decidiu
+em 05/10/2026, com as três opções na mesa (manter o portão, usar o modo
+de consentimento do Meta com consentimento revogado, ou carregar sempre):
+**manter o portão**. A medição espera o aceite, e a validação é feita à
+mão, do jeito abaixo.
+
+Quem mexer aqui no futuro: trocar isso não é melhoria técnica, é mudança
+de postura jurídica, e exige reescrever `/legal/cookies` e
+`/legal/privacidade` no mesmo commit.
+
 ## Como conferir que está funcionando
 
 1. Abra o site de produção e clique em **Aceitar** no aviso de cookies
