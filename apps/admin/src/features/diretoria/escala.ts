@@ -19,40 +19,47 @@ export interface TurnoDaEscala {
   cargo: "CEO" | "CTO" | "CMO" | "CFO";
   /** Horário de Brasília, como está no agendamento. */
   hora: string;
+  /**
+   * `completo` entrega trabalho; `plantao` só olha os erros e encerra
+   * em segundos quando não há erro novo. Só o CTO tem plantão, porque
+   * foi o que o fundador pediu em 05/10/2026: "qualquer erro que
+   * ocorrer, independente do CTO estar de folga ou não, ele deverá ser
+   * acionado".
+   */
+  tipo: "completo" | "plantao";
   entrega: string;
 }
+
+const CTO_COMPLETO = "Conserto ou melhoria no produto, com teste";
+const CTO_PLANTAO = "Plantão de erro: olha o que quebrou na mão do usuário";
 
 export const ESCALA: TurnoDaEscala[] = [
   {
     diaDaSemana: 1,
     cargo: "CEO",
     hora: "08:07",
+    tipo: "completo",
     entrega: "A semana organizada, com a prioridade de cada cargo",
   },
-  {
-    diaDaSemana: 2,
-    cargo: "CTO",
-    hora: "08:11",
-    entrega: "Conserto ou melhoria no produto, com teste",
-  },
+  { diaDaSemana: 1, cargo: "CTO", hora: "08:11", tipo: "plantao", entrega: CTO_PLANTAO },
+  { diaDaSemana: 2, cargo: "CTO", hora: "08:11", tipo: "completo", entrega: CTO_COMPLETO },
   {
     diaDaSemana: 3,
     cargo: "CMO",
     hora: "08:13",
+    tipo: "completo",
     entrega: "Texto das páginas públicas, material ou análise de funil",
   },
-  {
-    diaDaSemana: 4,
-    cargo: "CTO",
-    hora: "08:11",
-    entrega: "Conserto ou melhoria no produto, com teste",
-  },
+  { diaDaSemana: 3, cargo: "CTO", hora: "08:11", tipo: "plantao", entrega: CTO_PLANTAO },
+  { diaDaSemana: 4, cargo: "CTO", hora: "08:11", tipo: "completo", entrega: CTO_COMPLETO },
   {
     diaDaSemana: 5,
     cargo: "CFO",
     hora: "08:09",
+    tipo: "completo",
     entrega: "Análise com número medido na fonte",
   },
+  { diaDaSemana: 5, cargo: "CTO", hora: "08:11", tipo: "plantao", entrega: CTO_PLANTAO },
 ];
 
 export const JANELA = { inicio: "08:00", limite: "16:00" } as const;
@@ -116,8 +123,8 @@ export function hojeEmBrasilia(agora = new Date()): { iso: string; diaDaSemana: 
 export interface SituacaoDeHoje {
   iso: string;
   diaDaSemana: number;
-  /** `null` quando hoje não é dia de turno. */
-  turno: TurnoDaEscala | null;
+  /** Vazio quando hoje não é dia de trabalho. Um dia pode ter mais de um turno. */
+  turnos: TurnoDaEscala[];
   /** Nome do feriado, quando hoje for feriado nacional. */
   feriado: string | null;
   /** Por que ninguém trabalha hoje, em linguagem de tela. */
@@ -128,12 +135,12 @@ export function situacaoDeHoje(agora = new Date()): SituacaoDeHoje {
   const { iso, diaDaSemana } = hojeEmBrasilia(agora);
   const feriado = FERIADOS[iso] ?? null;
   const fimDeSemana = diaDaSemana === 6 || diaDaSemana === 7;
-  const turno = ESCALA.find((item) => item.diaDaSemana === diaDaSemana) ?? null;
+  const turnos = ESCALA.filter((item) => item.diaDaSemana === diaDaSemana);
 
   return {
     iso,
     diaDaSemana,
-    turno: feriado || fimDeSemana ? null : turno,
+    turnos: feriado || fimDeSemana ? [] : turnos,
     feriado,
     motivoDeFolga: feriado
       ? `Feriado nacional: ${feriado}`
@@ -143,12 +150,14 @@ export function situacaoDeHoje(agora = new Date()): SituacaoDeHoje {
   };
 }
 
-/** O próximo turno a partir de hoje, pulando fim de semana e feriado. */
-export function proximoTurno(agora = new Date()): { turno: TurnoDaEscala; emDias: number } | null {
+/** O próximo dia de trabalho a partir de hoje, pulando fim de semana e feriado. */
+export function proximoTurno(
+  agora = new Date(),
+): { turnos: TurnoDaEscala[]; emDias: number } | null {
   for (let adiante = 1; adiante <= 14; adiante += 1) {
     const data = new Date(agora.getTime() + adiante * 86_400_000);
     const situacao = situacaoDeHoje(data);
-    if (situacao.turno) return { turno: situacao.turno, emDias: adiante };
+    if (situacao.turnos.length > 0) return { turnos: situacao.turnos, emDias: adiante };
   }
   return null;
 }

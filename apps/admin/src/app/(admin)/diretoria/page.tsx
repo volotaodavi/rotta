@@ -111,15 +111,27 @@ export default function DiretoriaPage(): JSX.Element {
             <Typography variant="caption" color="muted">
               Hoje, {dataCurta(hoje.iso)}
             </Typography>
-            {hoje.turno ? (
+            {hoje.turnos.length > 0 ? (
               <>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Typography variant="subtitle">Turno do {hoje.turno.cargo}</Typography>
-                  <Badge variant="info">{hoje.turno.hora}</Badge>
+                  <Typography variant="subtitle">
+                    {hoje.turnos.map((turno) => turno.cargo).join(" e ")}
+                  </Typography>
+                  {hoje.turnos.map((turno) => (
+                    <Badge
+                      key={turno.cargo}
+                      variant={turno.tipo === "plantao" ? "neutral" : "info"}
+                    >
+                      {turno.cargo} {turno.hora}
+                      {turno.tipo === "plantao" ? ", plantão" : ""}
+                    </Badge>
+                  ))}
                 </div>
-                <Typography variant="bodySmall" color="muted">
-                  {hoje.turno.entrega}
-                </Typography>
+                {hoje.turnos.map((turno) => (
+                  <Typography key={turno.cargo} variant="bodySmall" color="muted">
+                    {turno.cargo}: {turno.entrega}
+                  </Typography>
+                ))}
               </>
             ) : (
               <>
@@ -127,7 +139,7 @@ export default function DiretoriaPage(): JSX.Element {
                 <Typography variant="bodySmall" color="muted">
                   {hoje.motivoDeFolga ?? "Hoje não tem turno na escala."}
                   {proximo
-                    ? ` Próximo turno: ${proximo.turno.cargo}, ${NOME_DO_DIA[proximo.turno.diaDaSemana] ?? ""} às ${proximo.turno.hora}.`
+                    ? ` Próximo dia de trabalho: ${NOME_DO_DIA[proximo.turnos[0]?.diaDaSemana ?? 0] ?? ""}, com ${proximo.turnos.map((turno) => turno.cargo).join(" e ")}.`
                     : ""}
                 </Typography>
               </>
@@ -197,26 +209,34 @@ export default function DiretoriaPage(): JSX.Element {
       <div className="flex flex-col gap-2">
         <Typography variant="subtitle">A semana</Typography>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {ESCALA.map((turno) => {
-            const ehHoje = hoje.turno?.diaDaSemana === turno.diaDaSemana;
+          {[1, 2, 3, 4, 5].map((dia) => {
+            const doDia = ESCALA.filter((turno) => turno.diaDaSemana === dia);
+            const ehHoje = hoje.diaDaSemana === dia && hoje.turnos.length > 0;
             return (
-              <Card key={turno.diaDaSemana}>
+              <Card key={dia}>
                 <Card.Body className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <Typography variant="caption" color="muted">
-                      {NOME_DO_DIA[turno.diaDaSemana]}
+                      {NOME_DO_DIA[dia]}
                     </Typography>
                     {ehHoje ? <Badge variant="info">hoje</Badge> : null}
                   </div>
-                  <div className="flex flex-wrap items-baseline gap-2">
-                    <Typography variant="subtitle">{turno.cargo}</Typography>
-                    <Typography variant="caption" color="muted">
-                      {turno.hora}
-                    </Typography>
-                  </div>
-                  <Typography variant="caption" color="muted">
-                    {CARGO_DESCRICAO[turno.cargo]}
-                  </Typography>
+                  {doDia.map((turno) => (
+                    <div key={turno.cargo} className="flex flex-col">
+                      <div className="flex flex-wrap items-baseline gap-2">
+                        <Typography variant="subtitle">{turno.cargo}</Typography>
+                        <Typography variant="caption" color="muted">
+                          {turno.hora}
+                          {turno.tipo === "plantao" ? ", plantão" : ""}
+                        </Typography>
+                      </div>
+                      <Typography variant="caption" color="muted">
+                        {turno.tipo === "plantao"
+                          ? "Só olha o que quebrou na mão do usuário"
+                          : CARGO_DESCRICAO[turno.cargo]}
+                      </Typography>
+                    </div>
+                  ))}
                 </Card.Body>
               </Card>
             );
