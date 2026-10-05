@@ -15,6 +15,20 @@ muda de ambiente. A variável `NEXT_PUBLIC_META_PIXEL_ID` continua
 existindo e continua vencendo sobre o padrão, para o dia em que houver
 uma segunda conta de anúncio.
 
+## Os identificadores da conta
+
+Nenhum destes é segredo: todos aparecem na URL do Gerenciador de
+Eventos ou no HTML do site.
+
+| O quê                              | Valor              |
+| ---------------------------------- | ------------------ |
+| Pixel / conjunto de dados          | `2122632155047063` |
+| Business (Gerenciador de Negócios) | `216642667672061`  |
+
+O que É segredo e nunca entra aqui: o token da API de Conversões
+(`META_CAPI_ACCESS_TOKEN`) e qualquer token da API de Marketing. Esses
+vivem só em variável de ambiente no Render.
+
 ## As duas condições para medir
 
 A medição só acontece quando as duas são verdadeiras ao mesmo tempo:
