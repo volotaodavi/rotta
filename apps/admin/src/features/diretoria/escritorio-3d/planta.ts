@@ -37,6 +37,19 @@ export interface Sala {
   porta: { x: number; z: number };
   /** Onde a pessoa para quando está nesta sala. */
   parada: { x: number; z: number };
+  /**
+   * Os lugares distintos onde alguém pode ficar nesta sala, e quantos
+   * cabem ao mesmo tempo.
+   *
+   * Existe por causa de dois defeitos reais que o fundador viu em
+   * 05/10/2026: no cafezinho os bonecos entravam um dentro do outro, e
+   * no banheiro entrava mais de um. Os dois tinham a mesma causa, que
+   * era toda sala ter UM ponto de parada só. Com vagas, a sala passa a
+   * ter capacidade: o banheiro tem uma, o cafezinho tem quatro
+   * separadas, e quem chega e não acha vaga simplesmente vai fazer
+   * outra coisa, como numa empresa de verdade.
+   */
+  vagas: { x: number; z: number }[];
   tipo: "gabinete" | "reuniao" | "cafe" | "banheiro" | "agentes" | "temporarios";
 }
 
@@ -58,6 +71,7 @@ export const SALAS: Sala[] = [
     cor: 0x1e3a8a,
     porta: { x: 4.75, z: 9 },
     parada: { x: 4.75, z: 5.2 },
+    vagas: [{ x: 4.75, z: 5.2 }],
     tipo: "gabinete",
   },
   {
@@ -70,6 +84,7 @@ export const SALAS: Sala[] = [
     cor: 0x166534,
     porta: { x: 13.25, z: 9 },
     parada: { x: 13.25, z: 5.2 },
+    vagas: [{ x: 13.25, z: 5.2 }],
     tipo: "gabinete",
   },
   {
@@ -82,6 +97,7 @@ export const SALAS: Sala[] = [
     cor: 0x9a3412,
     porta: { x: 21.75, z: 9 },
     parada: { x: 21.75, z: 5.2 },
+    vagas: [{ x: 21.75, z: 5.2 }],
     tipo: "gabinete",
   },
   {
@@ -94,6 +110,7 @@ export const SALAS: Sala[] = [
     cor: 0x854d0e,
     porta: { x: 30.25, z: 9 },
     parada: { x: 30.25, z: 5.2 },
+    vagas: [{ x: 30.25, z: 5.2 }],
     tipo: "gabinete",
   },
 
@@ -106,6 +123,10 @@ export const SALAS: Sala[] = [
     cor: 0x0f766e,
     porta: { x: 7.5, z: 14 },
     parada: { x: 7.5, z: 18.6 },
+    vagas: [
+      { x: 7.5, z: 18.6 },
+      { x: 10.5, z: 18.6 },
+    ],
     tipo: "agentes",
   },
   {
@@ -117,6 +138,10 @@ export const SALAS: Sala[] = [
     cor: 0x3730a3,
     porta: { x: 18.25, z: 14 },
     parada: { x: 18.25, z: 18 },
+    vagas: [
+      { x: 17, z: 18 },
+      { x: 19.5, z: 18 },
+    ],
     tipo: "temporarios",
   },
   {
@@ -128,6 +153,14 @@ export const SALAS: Sala[] = [
     cor: 0x475569,
     porta: { x: 26.25, z: 14 },
     parada: { x: 26.25, z: 18 },
+    vagas: [
+      { x: 24.4, z: 17 },
+      { x: 28.1, z: 17 },
+      { x: 24.4, z: 19.4 },
+      { x: 28.1, z: 19.4 },
+      { x: 26.25, z: 16.2 },
+      { x: 26.25, z: 20.2 },
+    ],
     tipo: "reuniao",
   },
   {
@@ -139,6 +172,12 @@ export const SALAS: Sala[] = [
     cor: 0x7c2d12,
     porta: { x: 33.5, z: 14 },
     parada: { x: 33.5, z: 17.5 },
+    vagas: [
+      { x: 32.1, z: 16.6 },
+      { x: 34.9, z: 16.6 },
+      { x: 32.1, z: 19.2 },
+      { x: 34.9, z: 19.2 },
+    ],
     tipo: "cafe",
   },
   {
@@ -150,6 +189,7 @@ export const SALAS: Sala[] = [
     cor: 0x0e7490,
     porta: { x: 38, z: 14 },
     parada: { x: 38, z: 17.5 },
+    vagas: [{ x: 38, z: 17.5 }],
     tipo: "banheiro",
   },
 ];
@@ -212,10 +252,22 @@ export const COR_DO_CARGO: Record<Cargo, number> = {
 export function caminho(de: Sala, para: Sala): { x: number; z: number }[] {
   if (de.id === para.id) return [para.parada];
 
+  /*
+    Mão dupla. Quem anda para a direita usa a faixa de cima, quem anda
+    para a esquerda usa a de baixo.
+    
+    Isto entrou depois de medir: com uma faixa só, dois bonecos em
+    sentidos opostos chegavam a 0,54 m um do outro, e um corpo tem 0,64 m
+    de largura. Eles se atravessavam ao se cruzar. As vagas por sala
+    resolveram a sobreposição de quem está parado; esta resolve a de quem
+    está passando, e é o mesmo que uma pessoa faz num corredor estreito.
+  */
+  const faixa = para.porta.x >= de.porta.x ? CORREDOR_Z - 0.85 : CORREDOR_Z + 0.85;
+
   return [
     de.porta,
-    { x: de.porta.x, z: CORREDOR_Z },
-    { x: para.porta.x, z: CORREDOR_Z },
+    { x: de.porta.x, z: faixa },
+    { x: para.porta.x, z: faixa },
     para.porta,
     para.parada,
   ];

@@ -2,6 +2,8 @@ import * as THREE from "three";
 
 import { caminho, gabineteDe, salaPorId, type Cargo, type Sala } from "./planta";
 
+import type { ControleDeVagas, Vaga } from "./vagas";
+
 /** O que a pessoa está fazendo agora. É isto que a tela precisa dizer em palavras. */
 export type Atividade =
   | "trabalhando"
@@ -18,6 +20,8 @@ interface Destino {
   atividade: Atividade;
   /** Quanto tempo fica lá, em segundos. */
   permanencia: number;
+  /** O lugar reservado nessa sala. Ninguém entra sem ter um. */
+  vaga: Vaga;
 }
 
 /**
@@ -64,8 +68,13 @@ export class Boneco {
   private atividade: Atividade = "parado";
   private fase = 0;
   private produzindo = false;
+  private vagaAtual: Vaga | null = null;
 
-  constructor(cargo: Cargo, cor: number) {
+  constructor(
+    cargo: Cargo,
+    cor: number,
+    private readonly vagas: ControleDeVagas,
+  ) {
     this.cargo = cargo;
     this.gabinete = gabineteDe(cargo);
     this.salaAtual = this.gabinete;
@@ -138,7 +147,11 @@ export class Boneco {
       cresceu foi a pessoa, porque é ela que o fundador pediu para ver.
     */
     this.grupo.scale.setScalar(1.45);
-    this.grupo.position.set(this.gabinete.parada.x, 0, this.gabinete.parada.z);
+    // Nasce já ocupando a própria mesa: o gabinete tem uma vaga só, e
+    // ela é dele.
+    this.vagaAtual = this.vagas.reservar(this.gabinete.id);
+    const inicio = this.vagaAtual ?? this.gabinete.parada;
+    this.grupo.position.set(inicio.x, 0, inicio.z);
     this.esperando = 2 + Math.random() * 8;
   }
 
@@ -196,30 +209,54 @@ export class Boneco {
   }
 
   /** Mandado por outro boneco: largue o que está fazendo e vá à sala de reunião. */
-  chamarParaReuniao(): void {
-    if (this.atividade === "em-reuniao") return;
-    this.irPara({ sala: salaPorId("reuniao"), atividade: "em-reuniao", permanencia: 16 });
+  chamarParaReuniao(): boolean {
+    if (this.atividade === "em-reuniao") return false;
+    return this.tentarIrPara(salaPorId("reuniao"), "em-reuniao", 16);
   }
 
   /** Visita o gabinete de outro cargo para tratar de assunto cruzado. */
-  visitar(outro: Cargo): void {
-    this.irPara({
-      sala: gabineteDe(outro),
-      atividade: "conversando",
-      permanencia: 11 + Math.random() * 8,
-    });
+  visitar(outro: Cargo): boolean {
+    return this.tentarIrPara(gabineteDe(outro), "conversando", 11 + Math.random() * 8);
   }
 
-  private irPara(destino: Destino): void {
-    this.rota = caminho(this.salaAtual, destino.sala);
-    this.salaAtual = destino.sala;
+  /** Volta para a própria mesa. Usado depois de uma conversa ou reunião. */
+  voltarParaMesa(): void {
+    this.tentarIrPara(this.gabinete, this.produzindo ? "trabalhando" : "parado", 16);
+  }
+
+  /**
+   * Tenta ir para uma sala. Devolve `false` quando a sala está cheia, e
+   * nesse caso o boneco NÃO sai do lugar: é assim que o banheiro aceita
+   * um por vez e o cafezinho para de empilhar gente no mesmo ponto.
+   */
+  private tentarIrPara(sala: Sala, atividade: Atividade, permanencia: number): boolean {
+    if (sala.id === this.salaAtual.id) {
+      this.atividade = atividade;
+      this.esperando = permanencia;
+      return true;
+    }
+
+    const vaga = this.vagas.reservar(sala.id);
+    if (!vaga) return false;
+
+    // Só larga o lugar antigo depois de garantir o novo. Na ordem
+    // inversa, dois bonecos trocando de sala ao mesmo tempo poderiam
+    // ficar os dois sem lugar.
+    this.vagas.liberar(this.vagaAtual);
+    this.vagaAtual = vaga;
+
+    this.rota = caminho(this.salaAtual, sala);
+    // O último ponto da rota é a vaga reservada, não o centro da sala.
+    this.rota[this.rota.length - 1] = { x: vaga.x, z: vaga.z };
+    this.salaAtual = sala;
     this.atividade = "indo";
-    this.destino = destino;
+    this.destino = { sala, atividade, permanencia, vaga };
     this.celular.visible = false;
     this.caneca.visible = false;
+    return true;
   }
 
-  private sortearDestino(): Destino {
+  private sortearDestino(): { sala: Sala; atividade: Atividade; permanencia: number } {
     const sorte = Math.random();
 
     if (this.produzindo) {
@@ -286,12 +323,15 @@ export class Boneco {
     this.esperando -= delta;
     if (this.esperando > 0) return;
 
-    const destino = this.sortearDestino();
-    if (destino.sala.id === this.salaAtual.id) {
-      this.atividade = destino.atividade;
-      this.esperando = destino.permanencia;
-    } else {
-      this.irPara(destino);
+    const escolha = this.sortearDestino();
+    if (!this.tentarIrPara(escolha.sala, escolha.atividade, escolha.permanencia)) {
+      /*
+        Sala cheia. Em vez de insistir ou de entrar por cima de alguém,
+        fica onde está por um tempo e tenta outra coisa depois. É o que
+        uma pessoa faz ao achar o banheiro ocupado.
+      */
+      this.atividade = this.produzindo ? "trabalhando" : "parado";
+      this.esperando = 5 + Math.random() * 6;
     }
   }
 

@@ -1,5 +1,7 @@
 import * as THREE from "three";
 
+import { CORREDOR_Z, gabineteDe, salaPorId, type Cargo } from "./planta";
+
 /**
  * Um agente de IA do produto, na sala dos agentes.
  *
@@ -38,6 +40,10 @@ export class AgenteDaPlataforma {
   private readonly materialDoMonitor: THREE.MeshStandardMaterial;
 
   private fase = Math.random() * 10;
+  private readonly estacao: THREE.Vector3;
+  private rota: { x: number; z: number }[] = [];
+  private voltando = false;
+  private conversando = 0;
   /** 0 = plataforma parada, 1 = movimento intenso. */
   private carga = 0;
 
@@ -100,6 +106,7 @@ export class AgenteDaPlataforma {
     this.grupo.add(this.fazerPlaca(nome));
     this.grupo.position.set(x, 0, z);
     this.grupo.scale.setScalar(1.25);
+    this.estacao = new THREE.Vector3(x, 0, z);
   }
 
   private fazerPlaca(texto: string): THREE.Sprite {
@@ -135,7 +142,54 @@ export class AgenteDaPlataforma {
     return this.carga > 0.05 ? "processando" : "em espera";
   }
 
+  /**
+   * Sai da estação, atravessa o corredor até o gabinete do diretor,
+   * fala, e volta.
+   *
+   * O percurso é o mesmo que uma pessoa faria: porta da sala dos
+   * agentes, corredor, porta do gabinete. Nenhum salto, pelo mesmo
+   * motivo dos diretores.
+   */
+  avisar(cargo: Cargo): void {
+    if (this.rota.length > 0 || this.conversando > 0) return;
+
+    const agentes = salaPorId("agentes");
+    const destino = gabineteDe(cargo);
+    // Mesma mão dupla dos diretores (ver `caminho` em `planta.ts`).
+    const faixa = destino.porta.x >= agentes.porta.x ? CORREDOR_Z - 0.85 : CORREDOR_Z + 0.85;
+    this.rota = [
+      { x: this.estacao.x, z: agentes.porta.z },
+      agentes.porta,
+      { x: agentes.porta.x, z: faixa },
+      { x: destino.porta.x, z: faixa },
+      destino.porta,
+      { x: destino.parada.x + 1.4, z: destino.parada.z + 0.7 },
+    ];
+    this.voltando = false;
+  }
+
+  /** `true` quando está fora da estação, para a legenda dizer a verdade. */
+  emTransito(): boolean {
+    return this.rota.length > 0 || this.conversando > 0;
+  }
+
   atualizar(delta: number): void {
+    if (this.rota.length > 0) {
+      this.caminhar(delta);
+      return;
+    }
+    if (this.conversando > 0) {
+      this.conversando -= delta;
+      // Gesticula enquanto fala.
+      this.fase += delta * 3;
+      this.bracoDireito.rotation.x = -0.5 + Math.sin(this.fase * 2.2) * 0.4;
+      this.bracoEsquerdo.rotation.x = -0.25;
+      if (this.conversando <= 0 && !this.voltando) {
+        this.voltarParaEstacao();
+      }
+      return;
+    }
+
     // Trabalhando rápido quando há uso, lento quando não há. Nunca
     // totalmente imóvel: estes nunca "saem", só ficam ociosos.
     const ritmo = 1.4 + this.carga * 12;
@@ -150,5 +204,48 @@ export class AgenteDaPlataforma {
     // A tela acompanha: pisca forte sob carga, fica em descanso sem uso.
     this.materialDoMonitor.emissiveIntensity =
       0.25 + this.carga * (0.9 + Math.abs(Math.sin(this.fase * 1.7)) * 1.4);
+  }
+
+  private voltarParaEstacao(): void {
+    const agentes = salaPorId("agentes");
+    const atualX = this.grupo.position.x;
+    const faixa = agentes.porta.x >= atualX ? CORREDOR_Z - 0.85 : CORREDOR_Z + 0.85;
+    this.rota = [
+      { x: atualX, z: faixa },
+      { x: agentes.porta.x, z: faixa },
+      agentes.porta,
+      { x: this.estacao.x, z: this.estacao.z },
+    ];
+    this.voltando = true;
+  }
+
+  private caminhar(delta: number): void {
+    const alvo = this.rota[0];
+    if (!alvo) return;
+
+    const dx = alvo.x - this.grupo.position.x;
+    const dz = alvo.z - this.grupo.position.z;
+    const distancia = Math.hypot(dx, dz);
+    const passo = 2.6 * delta;
+
+    if (distancia <= passo) {
+      this.grupo.position.x = alvo.x;
+      this.grupo.position.z = alvo.z;
+      this.rota.shift();
+      if (this.rota.length === 0 && !this.voltando) this.conversando = 7 + Math.random() * 5;
+      return;
+    }
+
+    this.grupo.position.x += (dx / distancia) * passo;
+    this.grupo.position.z += (dz / distancia) * passo;
+    this.grupo.rotation.y = Math.atan2(dx, dz);
+
+    // Rodando na base, não andando: é máquina, e a diferença tem que
+    // aparecer mesmo de longe.
+    this.fase += delta * 7;
+    this.corpo.rotation.y = Math.sin(this.fase) * 0.12;
+    this.bracoEsquerdo.rotation.x = -0.4;
+    this.bracoDireito.rotation.x = -0.4;
+    this.grupo.position.y = Math.abs(Math.sin(this.fase * 2)) * 0.03;
   }
 }
