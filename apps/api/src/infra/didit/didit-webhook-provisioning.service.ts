@@ -81,7 +81,7 @@ export class DiditWebhookProvisioningService implements OnModuleInit {
       await this.ensureWebhookRegistered();
     } catch (error) {
       this.logger.warn(
-        `Auto-registro do webhook Didit falhou — a verificação de identidade continua funcionando se o destino já estiver configurado manualmente (Business Console → API & Webhooks). Erro: ${(error as Error).message}`,
+        `Auto-registro do webhook Didit falhou: a verificação de identidade continua funcionando se o destino já estiver configurado manualmente (Business Console → API & Webhooks). Erro: ${(error as Error).message}`,
       );
     }
   }
@@ -92,7 +92,7 @@ export class DiditWebhookProvisioningService implements OnModuleInit {
     }
     if (this.diditConfig.webhookSecret) {
       this.logger.log(
-        "DIDIT_WEBHOOK_SECRET já configurado manualmente — auto-registro do webhook não é necessário.",
+        "DIDIT_WEBHOOK_SECRET já configurado manualmente: auto-registro do webhook não é necessário.",
       );
       return;
     }
@@ -106,7 +106,7 @@ export class DiditWebhookProvisioningService implements OnModuleInit {
     const existing = destinations.find((destination) => destination.url === webhookUrl);
     if (existing) {
       this.logger.warn(
-        `Já existe um destino de webhook Didit para ${webhookUrl} (id=${existing.id}), mas o segredo dele não pode ser recuperado agora — a Didit só mostra o secret_shared_key uma vez, na criação. Configure DIDIT_WEBHOOK_SECRET manualmente com o segredo já emitido, ou apague esse destino no Business Console para que o próximo boot registre um novo automaticamente.`,
+        `Já existe um destino de webhook Didit para ${webhookUrl} (id=${existing.id}), mas o segredo dele não pode ser recuperado agora: a Didit só mostra o secret_shared_key uma vez, na criação. Configure DIDIT_WEBHOOK_SECRET manualmente com o segredo já emitido, ou apague esse destino no Business Console para que o próximo boot registre um novo automaticamente.`,
       );
       return;
     }
@@ -118,7 +118,7 @@ export class DiditWebhookProvisioningService implements OnModuleInit {
     );
     await this.redis.set(WEBHOOK_SECRET_KEY, created.secret);
     this.logger.log(
-      `Destino de webhook Didit registrado automaticamente (id=${created.id}, url=${webhookUrl}) — verificação de identidade agora é automática de ponta a ponta.`,
+      `Destino de webhook Didit registrado automaticamente (id=${created.id}, url=${webhookUrl}): verificação de identidade agora é automática de ponta a ponta.`,
     );
   }
 }

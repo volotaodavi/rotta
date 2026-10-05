@@ -36,7 +36,7 @@ export class BillingSchedulerService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     if (!this.qstashSchedule.isConfigured) {
       this.logger.log(
-        "QSTASH_TOKEN/API_PUBLIC_URL não configurados — expiração automática de PendingSubscription desativada (sem agendamento).",
+        "QSTASH_TOKEN/API_PUBLIC_URL não configurados: expiração automática de PendingSubscription desativada (sem agendamento).",
       );
       return;
     }

@@ -79,7 +79,7 @@ export class TraccarForwardDto {
   @Max(180)
   longitude!: number;
 
-  @ApiPropertyOptional({ description: "Velocidade em NÓS — o Traccar não converte." })
+  @ApiPropertyOptional({ description: "Velocidade em NÓS: o Traccar não converte." })
   @IsOptional()
   @IsNumber()
   speed?: number;

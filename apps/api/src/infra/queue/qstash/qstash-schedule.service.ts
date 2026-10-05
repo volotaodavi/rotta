@@ -42,7 +42,7 @@ export class QstashScheduleService {
   ): Promise<void> {
     if (!this.isConfigured) {
       this.logger.warn(
-        `QSTASH_TOKEN/API_PUBLIC_URL não configurados — agendamento "${scheduleId}" não foi criado.`,
+        `QSTASH_TOKEN/API_PUBLIC_URL não configurados: agendamento "${scheduleId}" não foi criado.`,
       );
       return;
     }

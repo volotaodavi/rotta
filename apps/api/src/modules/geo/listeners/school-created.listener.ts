@@ -58,7 +58,7 @@ export class SchoolCreatedListener {
         if (rateLimited && restam) {
           const espera = RETRY_BACKOFF_MS[tentativa]!;
           this.logger.warn(
-            `Nominatim sob rate limit geocodificando a escola ${event.schoolId} — nova tentativa em ${espera}ms.`,
+            `Nominatim sob rate limit geocodificando a escola ${event.schoolId}: nova tentativa em ${espera}ms.`,
           );
           await sleep(espera);
           continue;

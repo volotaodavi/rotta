@@ -307,11 +307,11 @@ export class DriversService {
       return this.documentRepository.updateAiResult(documentId, {
         rottaAiStatus: status,
         rottaAiAnalisadoEm: new Date(),
-        rottaAiObservacoes: `Verificação via ${resultado.provedor} — status bruto: ${resultado.status}.`,
+        rottaAiObservacoes: `Verificação via ${resultado.provedor}: status bruto: ${resultado.status}.`,
       });
     } catch (error) {
       this.logger.warn(
-        `Rotta AI (Didit) indisponível para análise do documento ${documentId} — mantendo status pendente/indisponível.`,
+        `Rotta AI (Didit) indisponível para análise do documento ${documentId}: mantendo status pendente/indisponível.`,
         error as Error,
       );
       return this.documentRepository.updateAiResult(documentId, {
@@ -367,7 +367,7 @@ export class DriversService {
       });
     } catch (error) {
       this.logger.warn(
-        `Rotta AI indisponível para análise do documento ${documentId} — mantendo status pendente/indisponível.`,
+        `Rotta AI indisponível para análise do documento ${documentId}: mantendo status pendente/indisponível.`,
         error as Error,
       );
       return this.documentRepository.updateAiResult(documentId, {

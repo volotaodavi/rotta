@@ -29,7 +29,7 @@ export class ListRoutesQueryDto {
 
   @ApiPropertyOptional({
     description:
-      "Rotas cujo veículo PADRÃO é este (`veiculoPadraoId`). Existe para o Painel do Despachante, que parte do ônibus — o despachante conhece o carro que quebrou/entrou no rodízio, não o nome da rota.",
+      "Rotas cujo veículo PADRÃO é este (`veiculoPadraoId`). Existe para o Painel do Despachante, que parte do ônibus: o despachante conhece o carro que quebrou/entrou no rodízio, não o nome da rota.",
   })
   @IsOptional()
   @IsUUID()

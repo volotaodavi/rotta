@@ -32,5 +32,5 @@ export function vehiclesToExcelBuffer(vehicles: VehicleResponseDto[]): Promise<B
 }
 
 export function vehiclesToPdfBuffer(vehicles: VehicleResponseDto[]): Promise<Buffer> {
-  return toPdfBuffer(vehicles, COLUMNS, "Rotta — Relatório de Veículos");
+  return toPdfBuffer(vehicles, COLUMNS, "Rotta: Relatório de Veículos");
 }

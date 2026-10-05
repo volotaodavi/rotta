@@ -62,10 +62,10 @@ export class AsaasClientService {
     if (!this.isConfigured()) {
       void this.integrationHealth.recordNotConfigured(
         ASAAS_INTEGRATION_NAME,
-        "ASAAS_API_KEY ausente — nenhuma chamada real foi tentada.",
+        "ASAAS_API_KEY ausente: nenhuma chamada real foi tentada.",
       );
       throw new InternalServerErrorException(
-        "Asaas não está configurada (ASAAS_API_KEY ausente) — cobrança de cartão/boleto indisponível.",
+        "Asaas não está configurada (ASAAS_API_KEY ausente): cobrança de cartão/boleto indisponível.",
       );
     }
   }
@@ -111,11 +111,11 @@ export class AsaasClientService {
         errorEnvelope.errors?.map((error) => error.description).join("; ") ??
         `HTTP ${response.status}`;
       this.logger.warn(
-        `Asaas ${init.method} ${path} falhou: HTTP ${response.status} — ${descricao}`,
+        `Asaas ${init.method} ${path} falhou: HTTP ${response.status}: ${descricao}`,
       );
       void this.integrationHealth.recordFailure(
         ASAAS_INTEGRATION_NAME,
-        `HTTP ${response.status} em ${init.method} ${path} — ${descricao}`,
+        `HTTP ${response.status} em ${init.method} ${path}: ${descricao}`,
       );
       throw new InternalServerErrorException(`Falha ao comunicar com a Asaas: ${descricao}`);
     }

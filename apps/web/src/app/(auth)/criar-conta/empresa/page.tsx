@@ -22,6 +22,7 @@ import type { RegisterEmpresaInput } from "@rotta/api-client";
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { env } from "@/config/env";
+import { rastrear } from "@/features/marketing/tracking";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useCnpjLookup } from "@/hooks/use-cnpj-lookup";
 
@@ -246,6 +247,11 @@ export default function CriarEmpresaPage(): JSX.Element {
   }
 
   if (contaCriada) {
+    /*
+      Conversão: transportadora cadastrada. É o evento mais valioso do
+      funil depois do pagamento, porque é quem vira cliente pagante.
+    */
+    rastrear("cadastro_concluido", { publico: "transportadora" });
     return (
       <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-6 py-20 text-center">
         <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10 text-success">

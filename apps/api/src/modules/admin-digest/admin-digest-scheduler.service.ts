@@ -30,7 +30,7 @@ export class AdminDigestSchedulerService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     if (!this.qstashSchedule.isConfigured) {
       this.logger.log(
-        "QSTASH_TOKEN/API_PUBLIC_URL não configurados — resumo semanal/mensal do Admin Rotta desativado (sem agendamento).",
+        "QSTASH_TOKEN/API_PUBLIC_URL não configurados: resumo semanal/mensal do Admin Rotta desativado (sem agendamento).",
       );
       return;
     }

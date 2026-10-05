@@ -55,7 +55,7 @@ export class ListSchoolsResponseDto {
 export class SchoolSuggestionResponseDto extends SchoolResponseDto {
   @ApiPropertyOptional({
     description:
-      "Distância em km até a latitude/longitude informada na busca — null quando a busca não informou localização ou a escola ainda não tem coordenada confirmada.",
+      "Distância em km até a latitude/longitude informada na busca: null quando a busca não informou localização ou a escola ainda não tem coordenada confirmada.",
   })
   distanciaKm?: number | null;
 }

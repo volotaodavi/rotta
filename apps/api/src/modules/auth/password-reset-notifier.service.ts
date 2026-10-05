@@ -35,13 +35,13 @@ export class PasswordResetNotifierService {
     );
 
     const corpo = link
-      ? `Recebemos um pedido para redefinir sua senha na Rotta. Clique no link abaixo para escolher uma nova senha — se não foi você, ignore este e-mail.\n\n${link}\n\nEste link expira em breve.`
-      : `Recebemos um pedido para redefinir sua senha na Rotta. Use o código abaixo na tela de redefinição de senha — se não foi você, ignore este e-mail.\n\nCódigo: ${rawToken}\n\nEste código expira em breve.`;
+      ? `Recebemos um pedido para redefinir sua senha na Rotta. Clique no link abaixo para escolher uma nova senha: se não foi você, ignore este e-mail.\n\n${link}\n\nEste link expira em breve.`
+      : `Recebemos um pedido para redefinir sua senha na Rotta. Use o código abaixo na tela de redefinição de senha: se não foi você, ignore este e-mail.\n\nCódigo: ${rawToken}\n\nEste código expira em breve.`;
 
     try {
       await this.emailService.sendEmail(
         email,
-        "Redefinição de senha — Rotta",
+        "Redefinição de senha: Rotta",
         renderNotificationEmailHtml({ titulo: "Redefinir senha", corpo }),
       );
     } catch (error) {

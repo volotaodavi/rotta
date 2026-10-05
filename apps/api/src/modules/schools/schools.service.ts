@@ -602,7 +602,7 @@ export class SchoolsService {
       };
     }
     return {
-      buffer: await toPdfBuffer(schools, columns, "Rotta — Relatório de Escolas"),
+      buffer: await toPdfBuffer(schools, columns, "Rotta: Relatório de Escolas"),
       contentType: "application/pdf",
       filename: "escolas.pdf",
     };

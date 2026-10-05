@@ -168,7 +168,7 @@ export class MessagePersonalizationService {
       titulo: "Aluno não vai hoje",
       corpo: motivo
         ? `${nomeAluno} não vai usar o transporte hoje. Motivo: ${motivo}`
-        : `${nomeAluno} não vai usar o transporte hoje — pode pular a parada dele.`,
+        : `${nomeAluno} não vai usar o transporte hoje: pode pular a parada dele.`,
     };
   }
 
@@ -176,7 +176,7 @@ export class MessagePersonalizationService {
   alunoVoltouParaHoje(nomeAluno: string): PersonalizedMessage {
     return {
       titulo: "Aluno voltou para a rota de hoje",
-      corpo: `A ausência de ${nomeAluno} foi desmarcada — ele deve ser buscado normalmente hoje.`,
+      corpo: `A ausência de ${nomeAluno} foi desmarcada: ele deve ser buscado normalmente hoje.`,
     };
   }
 
@@ -250,7 +250,7 @@ export class MessagePersonalizationService {
   cnhVencendo(nomeMotorista: string, diasRestantes: number): PersonalizedMessage {
     return {
       titulo: "CNH vencendo",
-      corpo: `A CNH de ${nomeMotorista} vence em ${diasRestantes} dia(s) — regularize para continuar dirigindo.`,
+      corpo: `A CNH de ${nomeMotorista} vence em ${diasRestantes} dia(s): regularize para continuar dirigindo.`,
     };
   }
 
@@ -271,7 +271,7 @@ export class MessagePersonalizationService {
   pagamentoRecusado(valorFormatado: string): PersonalizedMessage {
     return {
       titulo: "Pagamento recusado",
-      corpo: `Seu pagamento de ${valorFormatado} foi recusado — verifique os dados e tente novamente.`,
+      corpo: `Seu pagamento de ${valorFormatado} foi recusado. Verifique os dados e tente novamente.`,
     };
   }
 
@@ -391,7 +391,7 @@ export class MessagePersonalizationService {
   cadastroConcluido(nome: string): PersonalizedMessage {
     return {
       titulo: "Bem-vindo à Rotta!",
-      corpo: `${this.saudacao(nome)} Sua conta na Rotta foi criada com sucesso — já pode acessar a plataforma a partir de agora.`,
+      corpo: `${this.saudacao(nome)} Sua conta na Rotta foi criada com sucesso: já pode acessar a plataforma a partir de agora.`,
     };
   }
 

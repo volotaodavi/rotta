@@ -372,6 +372,6 @@ function assertEscolaPublica(dependencia: SchoolAdministrativeDependency): void 
 
   throw new ForbiddenException(
     "O Portal da Escola existe apenas para escolas da rede pública (federal, estadual ou municipal). " +
-      "Esta escola é da rede privada — o acompanhamento das famílias dela é feito pelo app do responsável.",
+      "Esta escola é da rede privada: o acompanhamento das famílias dela é feito pelo app do responsável.",
   );
 }

@@ -342,7 +342,7 @@ export class BillingService {
       value: ROTTA_SUBSCRIPTION_PRICE_CENTS / 100,
       cycle: "MONTHLY",
       nextDueDate: hoje,
-      description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${company.nomeFantasia}`,
+      description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME}, ${company.nomeFantasia}`,
       externalReference: company.id,
     });
 
@@ -357,7 +357,7 @@ export class BillingService {
     const primeiroPagamento = pagamentos[0];
     if (!primeiroPagamento) {
       throw new InternalServerErrorException(
-        "Assinatura Pix criada na Asaas, mas nenhum pagamento foi encontrado — tente consultar novamente em instantes.",
+        "Assinatura Pix criada na Asaas, mas nenhum pagamento foi encontrado. Tente consultar novamente em instantes.",
       );
     }
 
@@ -432,7 +432,7 @@ export class BillingService {
       value: ROTTA_SUBSCRIPTION_PRICE_CENTS / 100,
       cycle: "MONTHLY",
       nextDueDate: hoje,
-      description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${company.nomeFantasia}`,
+      description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME}, ${company.nomeFantasia}`,
       externalReference: company.id,
       ...(dto.billingType !== "BOLETO" && dto.cartao && dto.titular
         ? {
@@ -465,7 +465,7 @@ export class BillingService {
     const primeiroPagamento = pagamentos[0];
     if (!primeiroPagamento) {
       throw new InternalServerErrorException(
-        "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado — tente consultar novamente em instantes.",
+        "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado. Tente consultar novamente em instantes.",
       );
     }
     return primeiroPagamento;
@@ -512,7 +512,7 @@ export class BillingService {
   ): Promise<{ pendingId: string; expiresAt: string; checkout: PixCheckoutResult }> {
     if (!dto.cpfCnpj) {
       throw new BadRequestException(
-        "Pagamento via Pix indisponível no momento sem CPF/CNPJ — preencha esse campo e tente novamente.",
+        "Pagamento via Pix indisponível no momento sem CPF/CNPJ. Preencha esse campo e tente novamente.",
       );
     }
 
@@ -546,7 +546,7 @@ export class BillingService {
         value: ROTTA_SUBSCRIPTION_PRICE_CENTS / 100,
         cycle: "MONTHLY",
         nextDueDate: hoje,
-        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${dto.nome}`,
+        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME}, ${dto.nome}`,
         externalReference,
       });
 
@@ -556,7 +556,7 @@ export class BillingService {
       const primeiroPagamento = pagamentos[0];
       if (!primeiroPagamento) {
         throw new InternalServerErrorException(
-          "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado — tente consultar novamente em instantes.",
+          "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado. Tente consultar novamente em instantes.",
         );
       }
 
@@ -677,7 +677,7 @@ export class BillingService {
       offset += ASAAS_PAYMENTS_PAGE_SIZE;
       if (pagina === ASAAS_PAYMENTS_MAX_PAGES - 1) {
         this.logger.warn(
-          `Reconciliação de pagamentos Asaas atingiu o limite de ${ASAAS_PAYMENTS_MAX_PAGES} páginas (${offset} pagamentos) sem terminar — números podem estar incompletos.`,
+          `Reconciliação de pagamentos Asaas atingiu o limite de ${ASAAS_PAYMENTS_MAX_PAGES} páginas (${offset} pagamentos) sem terminar: números podem estar incompletos.`,
         );
       }
     }
@@ -732,7 +732,7 @@ export class BillingService {
         value: ROTTA_SUBSCRIPTION_PRICE_CENTS / 100,
         cycle: "MONTHLY",
         nextDueDate: hoje,
-        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME} — ${dto.nome}`,
+        description: `${ROTTA_SUBSCRIPTION_PRODUCT_NAME}, ${dto.nome}`,
         externalReference,
         ...(dto.billingType !== "BOLETO" && dto.cartao && dto.titular
           ? {
@@ -755,7 +755,7 @@ export class BillingService {
       const primeiroPagamento = pagamentos[0];
       if (!primeiroPagamento) {
         throw new InternalServerErrorException(
-          "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado — tente consultar novamente em instantes.",
+          "Assinatura criada na Asaas, mas nenhum pagamento foi encontrado. Tente consultar novamente em instantes.",
         );
       }
 
@@ -858,7 +858,7 @@ export class BillingService {
         // algo que a Asaas nunca cobrou.
         if (pending.provider !== PendingSubscriptionProvider.ASAAS) {
           throw new Error(
-            `Provedor "${pending.provider}" não suportado mais (só Asaas) — reconciliar manualmente.`,
+            `Provedor "${pending.provider}" não suportado mais (só Asaas): reconciliar manualmente.`,
           );
         }
         if (!this.asaasClient.isConfigured()) {
@@ -1017,7 +1017,7 @@ export class BillingService {
   ): Promise<void> {
     if (!companyId) {
       this.logger.warn(
-        `Webhook Asaas "${eventName}" sem payment.externalReference — não é possível correlacionar com nenhuma Company.`,
+        `Webhook Asaas "${eventName}" sem payment.externalReference: não é possível correlacionar com nenhuma Company.`,
       );
       return;
     }
@@ -1031,7 +1031,7 @@ export class BillingService {
         // fazem sentido pra assinatura já vinculada) — ignora de
         // propósito, nunca cria/atualiza nada a partir daqui.
         this.logger.debug(
-          `Webhook Asaas "${eventName}" para PendingSubscription ${pendingId} com status ${status} — ignorado (só o evento de pagamento confirmado é aplicável antes do cadastro existir).`,
+          `Webhook Asaas "${eventName}" para PendingSubscription ${pendingId} com status ${status}: ignorado (só o evento de pagamento confirmado é aplicável antes do cadastro existir).`,
         );
       }
       return;
@@ -1239,7 +1239,7 @@ export class BillingService {
   ): Promise<PixCheckoutResult> {
     if (!this.asaasClient.isConfigured()) {
       throw new InternalServerErrorException(
-        "Asaas não está configurada (ASAAS_API_KEY ausente) — cobrança indisponível.",
+        "Asaas não está configurada (ASAAS_API_KEY ausente): cobrança indisponível.",
       );
     }
 
@@ -1301,7 +1301,7 @@ export class BillingService {
   ): Promise<AsaasPayment> {
     if (!this.asaasClient.isConfigured()) {
       throw new InternalServerErrorException(
-        "Asaas não está configurada (ASAAS_API_KEY ausente) — estorno indisponível.",
+        "Asaas não está configurada (ASAAS_API_KEY ausente): estorno indisponível.",
       );
     }
 
@@ -1348,7 +1348,7 @@ export class BillingService {
     }
     if (!this.asaasClient.isConfigured()) {
       throw new InternalServerErrorException(
-        "Asaas não está configurada (ASAAS_API_KEY ausente) — cancelamento indisponível.",
+        "Asaas não está configurada (ASAAS_API_KEY ausente): cancelamento indisponível.",
       );
     }
 
@@ -1396,7 +1396,7 @@ export class BillingService {
   ): Promise<AsaasTransfer> {
     if (!this.asaasClient.isConfigured()) {
       throw new InternalServerErrorException(
-        "Asaas não está configurada (ASAAS_API_KEY ausente) — transferência indisponível.",
+        "Asaas não está configurada (ASAAS_API_KEY ausente): transferência indisponível.",
       );
     }
 

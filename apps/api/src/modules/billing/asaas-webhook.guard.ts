@@ -36,7 +36,7 @@ export class AsaasWebhookGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     if (!this.config.webhookToken) {
       throw new UnauthorizedException(
-        "ASAAS_WEBHOOK_TOKEN não configurado — webhook da Asaas desativado.",
+        "ASAAS_WEBHOOK_TOKEN não configurado: webhook da Asaas desativado.",
       );
     }
 

@@ -1,8 +1,6 @@
 import { BadGatewayException, Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 
-import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
-
 import type {
   Coordenada,
   DirectionsResult,
@@ -11,6 +9,8 @@ import type {
   TripOptimizationResult,
 } from "./geo-engine.types";
 import type { GeoConfig } from "@/config/geo.config";
+
+import { IntegrationHealthService } from "@/infra/observability/integration-health.service";
 
 /**
  * Nomes usados como chave nos snapshots de `IntegrationHealthService` —
@@ -53,7 +53,7 @@ const NOMINATIM_MIN_INTERVAL_MS = 1100;
 export class NominatimRateLimitedException extends BadGatewayException {
   constructor() {
     super(
-      "Rotta Geo Engine: Nominatim rate-limitado (HTTP 429) — tente novamente em alguns segundos.",
+      "Rotta Geo Engine: Nominatim rate-limitado (HTTP 429). Tente novamente em alguns segundos.",
     );
   }
 }

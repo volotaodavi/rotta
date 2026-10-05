@@ -17,41 +17,41 @@ export class MeResponseDto {
   @ApiPropertyOptional({
     enum: CompanyType,
     description:
-      "Forma societária da empresa vinculada (Dossiê 16, `EMP-01`) — null para Role.ADMIN_ROTTA/RESPONSAVEL ou Motorista/Monitor autônomo ainda sem vínculo. Frente G: front-end usa isto pra decidir se mostra o alternador Visão completa/Modo Ação (só role=empresa com AUTONOMO/MEI — dono que também dirige).",
+      "Forma societária da empresa vinculada (Dossiê 16, `EMP-01`): null para Role.ADMIN_ROTTA/RESPONSAVEL ou Motorista/Monitor autônomo ainda sem vínculo. Frente G: front-end usa isto pra decidir se mostra o alternador Visão completa/Modo Ação (só role=empresa com AUTONOMO/MEI — dono que também dirige).",
   })
   companyType?: CompanyType | null;
   @ApiPropertyOptional({
     description:
-      "MFA/TOTP ativado (Dossiê 43) — só relevante para Role.ADMIN_ROTTA, sempre false para os demais papéis.",
+      "MFA/TOTP ativado (Dossiê 43): só relevante para Role.ADMIN_ROTTA, sempre false para os demais papéis.",
   })
   mfaEnabled?: boolean;
   @ApiPropertyOptional({
     description:
-      "Faturamento (Dossiê 26) — true quando a empresa está com trial vencido (+1 dia de graça), inadimplente, suspensa ou cancelada. Só relevante para Role.EMPRESA/GESTOR (sempre false pros demais papéis, que não têm Company/mensalidade). Front usa isto pra mostrar o cadeado na navegação sem duplicar a regra de datas no cliente — ver `TrialGuard`/`resolveTrialBloqueioMotivo`.",
+      "Faturamento (Dossiê 26): true quando a empresa está com trial vencido (+1 dia de graça), inadimplente, suspensa ou cancelada. Só relevante para Role.EMPRESA/GESTOR (sempre false pros demais papéis, que não têm Company/mensalidade). Front usa isto pra mostrar o cadeado na navegação sem duplicar a regra de datas no cliente — ver `TrialGuard`/`resolveTrialBloqueioMotivo`.",
   })
   billingBlocked?: boolean;
   @ApiPropertyOptional({
     description:
-      "Mensagem específica do motivo do bloqueio (null quando `billingBlocked` é false) — mesmo texto que o backend usa no popup de qualquer ação bloqueada.",
+      "Mensagem específica do motivo do bloqueio (null quando `billingBlocked` é false): mesmo texto que o backend usa no popup de qualquer ação bloqueada.",
   })
   billingBlockedReason?: string | null;
   @ApiProperty({
     enum: ConsentType,
     isArray: true,
     description:
-      "Consentimentos (Termos de Uso / Política de Privacidade, Dossiê 45 FRENTE 5) cuja versão vigente o usuário ainda não aceitou — vazio quando está tudo em dia. Cliente deve exibir um reaceite bloqueante quando não-vazio (mesma UX do cadastro, ver `POST /auth/me/consent`).",
+      "Consentimentos (Termos de Uso / Política de Privacidade, Dossiê 45 FRENTE 5) cuja versão vigente o usuário ainda não aceitou: vazio quando está tudo em dia. Cliente deve exibir um reaceite bloqueante quando não-vazio (mesma UX do cadastro, ver `POST /auth/me/consent`).",
   })
   pendingConsents!: ConsentType[];
   @ApiPropertyOptional({
     enum: AdminRottaPapel,
     description:
-      "Sub-papel dentro de Role.ADMIN_ROTTA (pedido do usuário 03/09/2026 — suporte@/financeiro@/admin geral com áreas diferentes) — só presente pra ADMIN_ROTTA, undefined pra todo outro papel. Front usa isto pra decidir o que mostrar na navegação (ver Dossiê do painel Admin).",
+      "Sub-papel dentro de Role.ADMIN_ROTTA (pedido do usuário 03/09/2026: suporte@/financeiro@/admin geral com áreas diferentes) — só presente pra ADMIN_ROTTA, undefined pra todo outro papel. Front usa isto pra decidir o que mostrar na navegação (ver Dossiê do painel Admin).",
   })
   adminPapel?: AdminRottaPapel;
   @ApiPropertyOptional({
     enum: SchoolStaffRole,
     description:
-      "Cargo dentro da escola — só presente pra Role.ESCOLA. NÃO isola dado: os três cargos leem a mesma lista de alunos. Decide só quem abre acesso para os colegas (DIRETOR).",
+      "Cargo dentro da escola: só presente pra Role.ESCOLA. NÃO isola dado: os três cargos leem a mesma lista de alunos. Decide só quem abre acesso para os colegas (DIRETOR).",
   })
   escolaPapel?: SchoolStaffRole;
 }
@@ -97,7 +97,7 @@ export class MfaSetupRequiredResponseDto {
 /** Segredo TOTP recém-gerado + material para o app autenticador escanear (Dossiê 43). */
 export class MfaSetupResponseDto {
   @ApiProperty({
-    description: "Segredo em Base32 — mostrado só como fallback de digitação manual.",
+    description: "Segredo em Base32: mostrado só como fallback de digitação manual.",
   })
   secret!: string;
   @ApiProperty() otpauthUrl!: string;

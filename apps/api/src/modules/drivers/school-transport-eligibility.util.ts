@@ -97,7 +97,7 @@ export function computeSchoolTransportEligibility(
   if (!requisitosVerificados.cnhCategoriaValida) {
     return {
       status: "NOT_ELIGIBLE",
-      motivo: `Categoria da CNH (${categoriaCnh ?? "não informada"}) não é elegível para transporte escolar — a Rotta trabalha com categorias D e E para essa modalidade, considerando também os demais requisitos aplicáveis.`,
+      motivo: `Categoria da CNH (${categoriaCnh ?? "não informada"}) não é elegível para transporte escolar: a Rotta trabalha com categorias D e E para essa modalidade, considerando também os demais requisitos aplicáveis.`,
       categoriaCnh,
       requisitosVerificados,
     };

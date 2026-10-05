@@ -83,7 +83,7 @@ function computeScore(
   const excluded = integrations.length - consideredIntegrations.length;
   const note =
     excluded > 0
-      ? `${excluded} integração(ões) excluída(s) do score por ainda não terem sido chamadas (unknown) ou não estarem configuradas neste ambiente (not_configured) — ver campo "integrations" para o detalhe de cada uma.`
+      ? `${excluded} integração(ões) excluída(s) do score por ainda não terem sido chamadas (unknown) ou não estarem configuradas neste ambiente (not_configured): ver campo "integrations" para o detalhe de cada uma.`
       : "Score calculado sobre todos os componentes monitorados (Postgres, Redis e integrações com pelo menos uma chamada real registrada).";
 
   return {

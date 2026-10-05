@@ -60,11 +60,11 @@ export class RottaPayProviderService {
   ): Promise<IniciarTransferenciaPixResult> {
     if (!this.config.clientId || !this.config.clientSecret) {
       this.logger.warn(
-        "Lytex não configurada (LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET ausentes) — saque registrado localmente e aguardando processamento manual.",
+        "Lytex não configurada (LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET ausentes): saque registrado localmente e aguardando processamento manual.",
       );
       void this.integrationHealth.recordNotConfigured(
         LYTEX_INTEGRATION_NAME,
-        "LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET ausentes — nenhuma chamada real foi tentada.",
+        "LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET ausentes: nenhuma chamada real foi tentada.",
       );
       return {
         sucesso: false,
@@ -73,7 +73,7 @@ export class RottaPayProviderService {
     }
 
     this.logger.warn(
-      "Lytex configurada (credenciais presentes), mas a chamada real de transferência PIX/split ainda não foi implementada — contrato da API pendente de verificação (docs.lytex.com.br). Saque registrado localmente e aguardando processamento manual.",
+      "Lytex configurada (credenciais presentes), mas a chamada real de transferência PIX/split ainda não foi implementada: contrato da API pendente de verificação (docs.lytex.com.br). Saque registrado localmente e aguardando processamento manual.",
     );
     // Credenciais presentes, mas nenhuma chamada de rede real acontece
     // aqui ainda (ver DIVULGAÇÃO HONESTA acima) — `not_configured` é o
@@ -86,7 +86,7 @@ export class RottaPayProviderService {
     return {
       sucesso: false,
       motivo:
-        "Integração com a Lytex tem credenciais configuradas, mas a chamada real ainda não foi implementada nesta base de código — pendente de confirmação do contrato da API (endpoints de autenticação e split de pagamento).",
+        "Integração com a Lytex tem credenciais configuradas, mas a chamada real ainda não foi implementada nesta base de código: pendente de confirmação do contrato da API (endpoints de autenticação e split de pagamento).",
     };
   }
 }

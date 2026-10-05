@@ -73,7 +73,7 @@ export class DataRetentionService {
     if (aindaSobrou) {
       this.logger.log(
         `Teto de ${LOTES_POR_EXECUCAO} lotes atingido (${apagadas} posições apagadas). ` +
-          "O restante sai nas próximas execuções — esperado enquanto o passivo acumulado drena.",
+          "O restante sai nas próximas execuções: esperado enquanto o passivo acumulado drena.",
       );
     }
 

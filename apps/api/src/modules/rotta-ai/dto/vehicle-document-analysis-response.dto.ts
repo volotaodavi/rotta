@@ -32,7 +32,7 @@ export class VehicleDocumentAnalysisResponseDto {
 
   @ApiProperty({
     description:
-      "true quando o formato é reconhecido e a resolução está acima do mínimo legível — NÃO significa que o conteúdo do documento foi verificado.",
+      "true quando o formato é reconhecido e a resolução está acima do mínimo legível: NÃO significa que o conteúdo do documento foi verificado.",
   })
   qualidadeAdequada!: boolean;
 
@@ -40,7 +40,7 @@ export class VehicleDocumentAnalysisResponseDto {
 
   @ApiProperty({
     description:
-      "true quando o OCR (Tesseract.js) conseguiu extrair algum texto da imagem — só roda quando qualidadeAdequada é true. false não significa documento inválido, pode ser falha temporária do OCR.",
+      "true quando o OCR (Tesseract.js) conseguiu extrair algum texto da imagem: só roda quando qualidadeAdequada é true. false não significa documento inválido, pode ser falha temporária do OCR.",
   })
   ocrExecutado!: boolean;
 
@@ -54,14 +54,14 @@ export class VehicleDocumentAnalysisResponseDto {
   @ApiProperty({
     type: [String],
     description:
-      "Avisos legíveis — sempre inclui a ressalva de escopo (formato/resolução/OCR de palavras-chave, nunca autenticidade).",
+      "Avisos legíveis: sempre inclui a ressalva de escopo (formato/resolução/OCR de palavras-chave, nunca autenticidade).",
   })
   avisos!: string[];
 
   @ApiProperty({
     example: false,
     description:
-      "Sempre false hoje — o OCR (Frentes G/H) lê texto e confere campos esperados, mas nenhum provedor de detecção de adulteração/autenticidade está contratado.",
+      "Sempre false hoje: o OCR (Frentes G/H) lê texto e confere campos esperados, mas nenhum provedor de detecção de adulteração/autenticidade está contratado.",
   })
   analiseCompleta!: false;
 }

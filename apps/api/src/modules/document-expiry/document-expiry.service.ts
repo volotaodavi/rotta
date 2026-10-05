@@ -105,7 +105,7 @@ export class DocumentExpiryService {
     }
 
     this.logger.log(
-      `Avaliação diária de vencimento de documentos: ${driverDocs.length} de motorista, ${vehicleDocs.length} de veículo em aberto — ${notificados} notificado(s) hoje.`,
+      `Avaliação diária de vencimento de documentos: ${driverDocs.length} de motorista, ${vehicleDocs.length} de veículo em aberto: ${notificados} notificado(s) hoje.`,
     );
     return { notificados };
   }

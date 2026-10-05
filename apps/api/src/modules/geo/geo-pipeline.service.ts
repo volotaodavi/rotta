@@ -128,8 +128,8 @@ export class GeoPipelineService {
     return this.coordinateRepository.updateStatus(aproximada.id, "REVISAO_MANUAL", {
       validadoPorIa: false,
       motivoRevisao: motivoNominatimSemResultado
-        ? `Endereço exato sem correspondência no Nominatim/OpenStreetMap (${motivoNominatimSemResultado}) — coordenada aproximada pelo município.`
-        : `${MAX_TENTATIVAS} tentativas automáticas com endereço cada vez mais simplificado reprovadas (cidade/estado/precisão não conferem) — coordenada aproximada pelo município.`,
+        ? `Endereço exato sem correspondência no Nominatim/OpenStreetMap (${motivoNominatimSemResultado}): coordenada aproximada pelo município.`
+        : `${MAX_TENTATIVAS} tentativas automáticas com endereço cada vez mais simplificado reprovadas (cidade/estado/precisão não conferem): coordenada aproximada pelo município.`,
     });
   }
 

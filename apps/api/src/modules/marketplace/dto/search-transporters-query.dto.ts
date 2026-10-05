@@ -63,7 +63,7 @@ export class SearchTransportersQueryDto {
   @ApiPropertyOptional({
     enum: VehicleCategory,
     description:
-      "Modalidade da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): só retorna transportadoras com pelo menos 1 veículo ativo declarado nessa categoria.",
+      "Modalidade da frota (Dossiê 45: CATEGORIA B ≠ TRANSPORTE ESCOLAR): só retorna transportadoras com pelo menos 1 veículo ativo declarado nessa categoria.",
   })
   @IsOptional()
   @IsEnum(VehicleCategory)

@@ -47,7 +47,7 @@ export class RegisterPessoalDto {
   @ApiProperty({
     example: true,
     description:
-      "Aceite dos Termos de Uso e da Política de Privacidade (LGPD) — obrigatoriamente true.",
+      "Aceite dos Termos de Uso e da Política de Privacidade (LGPD): obrigatoriamente true.",
   })
   @IsBoolean()
   @Equals(true, { message: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
@@ -55,7 +55,7 @@ export class RegisterPessoalDto {
 
   @ApiPropertyOptional({
     description:
-      "Área pública de convite (pedido do usuário: 'código da transportadora' + celular já achou um pré-cadastro pendente) — reivindica esse pré-cadastro automaticamente logo após criar a conta. Best-effort: se não bater mais (já reclamado por outra pessoa, por exemplo), o cadastro segue normalmente sem travar.",
+      "Área pública de convite (pedido do usuário: 'código da transportadora' + celular já achou um pré-cadastro pendente): reivindica esse pré-cadastro automaticamente logo após criar a conta. Best-effort: se não bater mais (já reclamado por outra pessoa, por exemplo), o cadastro segue normalmente sem travar.",
   })
   @IsOptional()
   @IsString()
@@ -63,7 +63,7 @@ export class RegisterPessoalDto {
 
   @ApiPropertyOptional({
     description:
-      "Token do widget Cloudflare Turnstile ('não sou um robô', pedido do usuário 01/09/2026) — só exigido quando o cadastro vem da web (ver `AuthService.assertHumanIfWeb`); ausente no app nativo, que não tem widget de navegador.",
+      "Token do widget Cloudflare Turnstile ('não sou um robô', pedido do usuário 01/09/2026): só exigido quando o cadastro vem da web (ver `AuthService.assertHumanIfWeb`); ausente no app nativo, que não tem widget de navegador.",
   })
   @IsOptional()
   @IsString()

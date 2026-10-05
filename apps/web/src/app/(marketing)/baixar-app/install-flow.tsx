@@ -4,6 +4,8 @@ import { Download, ShieldCheck, Smartphone } from "@rotta/icons";
 import { Button, buttonVariants, Modal, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
+import { rastrear } from "@/features/marketing/tracking";
+
 /**
  * Fluxo em pop-up de verdade (pedido do usuário, 11/09/2026 — "ao
  * clicar no botão de instalar, deverá ir a uma tela explicando o que
@@ -72,6 +74,8 @@ export function InstallFlow({
           </Typography>
           <a
             href={apkUrl}
+            // Conversão: o app saiu daqui para o aparelho de alguém.
+            onClick={() => rastrear("app_baixado")}
             className={buttonVariants({ variant: "primary", size: "lg", fullWidth: true })}
             download
           >

@@ -19,7 +19,7 @@ export class CreateAgendaEventDto {
   @IsDateString()
   data!: string;
 
-  @ApiPropertyOptional({ description: "Fim do período — omitido para um evento de um único dia" })
+  @ApiPropertyOptional({ description: "Fim do período: omitido para um evento de um único dia" })
   @IsOptional()
   @IsDateString()
   dataFim?: string;

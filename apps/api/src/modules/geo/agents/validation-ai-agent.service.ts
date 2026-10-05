@@ -63,7 +63,7 @@ export class ValidationAiAgentService {
         "REVISAO_MANUAL",
         {
           validadoPorIa: false,
-          motivoRevisao: `${MAX_TENTATIVAS} tentativas automáticas reprovadas — cidade/estado/precisão não conferem com o cadastro da escola.`,
+          motivoRevisao: `${MAX_TENTATIVAS} tentativas automáticas reprovadas: cidade/estado/precisão não conferem com o cadastro da escola.`,
         },
       );
       return { status: "REVISAO_MANUAL", coordinate: revisao };

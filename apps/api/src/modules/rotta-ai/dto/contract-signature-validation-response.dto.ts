@@ -18,7 +18,7 @@ export class ContractSignatureValidationResponseDto {
 
   @ApiProperty({
     description:
-      "Sempre false — esta é uma checagem heurística sobre metadados de assinatura (IP, tempo decorrido), não uma verificação certificada de assinatura eletrônica.",
+      "Sempre false: esta é uma checagem heurística sobre metadados de assinatura (IP, tempo decorrido), não uma verificação certificada de assinatura eletrônica.",
   })
   analiseCompleta!: boolean;
 }

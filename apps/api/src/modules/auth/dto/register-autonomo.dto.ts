@@ -62,7 +62,7 @@ export class RegisterAutonomoDto {
     example: "TRN-000001",
     required: false,
     description:
-      "Código da transportadora (Frente 9, auditoria 31/08/2026 — pedido do usuário: 'código primeiro, depois dados, depois conta, como continuação de um único fluxo'). Opcional: sem ele, a conta nasce solta (comportamento de sempre — quem quiser vincular depois, usa 'Meu pedido'). Com ele, um `CompanyJoinRequest` PENDENTE é criado na mesma chamada — a aprovação da empresa continua manual, só a ORDEM do fluxo muda (antes: conta → código, num passo separado depois de autenticado).",
+      "Código da transportadora (Frente 9, auditoria 31/08/2026: pedido do usuário: 'código primeiro, depois dados, depois conta, como continuação de um único fluxo'). Opcional: sem ele, a conta nasce solta (comportamento de sempre — quem quiser vincular depois, usa 'Meu pedido'). Com ele, um `CompanyJoinRequest` PENDENTE é criado na mesma chamada — a aprovação da empresa continua manual, só a ORDEM do fluxo muda (antes: conta → código, num passo separado depois de autenticado).",
   })
   @IsOptional()
   @IsString()
@@ -72,7 +72,7 @@ export class RegisterAutonomoDto {
   @ApiProperty({
     example: true,
     description:
-      "Aceite dos Termos de Uso e da Política de Privacidade (LGPD) — obrigatoriamente true.",
+      "Aceite dos Termos de Uso e da Política de Privacidade (LGPD): obrigatoriamente true.",
   })
   @IsBoolean()
   @Equals(true, { message: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
@@ -80,7 +80,7 @@ export class RegisterAutonomoDto {
 
   @ApiPropertyOptional({
     description:
-      "Token do widget Cloudflare Turnstile ('não sou um robô', pedido do usuário 01/09/2026) — só exigido quando o cadastro vem da web (ver `AuthService.assertHumanIfWeb`); ausente no app nativo, que não tem widget de navegador.",
+      "Token do widget Cloudflare Turnstile ('não sou um robô', pedido do usuário 01/09/2026): só exigido quando o cadastro vem da web (ver `AuthService.assertHumanIfWeb`); ausente no app nativo, que não tem widget de navegador.",
   })
   @IsOptional()
   @IsString()

@@ -19,7 +19,7 @@ export class CompanyServiceAreaResponseDto {
 
   @ApiPropertyOptional({
     description:
-      "Nome da escola, quando a área é de uma escola específica — a tela mostra o nome, não o UUID.",
+      "Nome da escola, quando a área é de uma escola específica: a tela mostra o nome, não o UUID.",
     nullable: true,
   })
   schoolNome!: string | null;

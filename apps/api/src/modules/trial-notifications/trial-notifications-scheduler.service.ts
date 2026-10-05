@@ -23,7 +23,7 @@ export class TrialNotificationsSchedulerService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     if (!this.qstashSchedule.isConfigured) {
       this.logger.log(
-        "QSTASH_TOKEN/API_PUBLIC_URL não configurados — aviso diário de trial desativado (sem agendamento).",
+        "QSTASH_TOKEN/API_PUBLIC_URL não configurados: aviso diário de trial desativado (sem agendamento).",
       );
       return;
     }

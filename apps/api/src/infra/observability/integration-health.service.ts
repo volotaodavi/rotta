@@ -109,7 +109,7 @@ export class IntegrationHealthService {
       return stored ?? IntegrationHealthService.UNKNOWN_SNAPSHOT;
     } catch (error) {
       this.logger.warn(
-        `Falha ao ler o histórico de saúde de "${integration}" no Redis — assumindo estado desconhecido. Erro: ${error instanceof Error ? error.message : String(error)}`,
+        `Falha ao ler o histórico de saúde de "${integration}" no Redis: assumindo estado desconhecido. Erro: ${error instanceof Error ? error.message : String(error)}`,
       );
       return IntegrationHealthService.UNKNOWN_SNAPSHOT;
     }
@@ -120,7 +120,7 @@ export class IntegrationHealthService {
       await this.redis.set(this.key(integration), value);
     } catch (error) {
       this.logger.warn(
-        `Falha ao gravar o histórico de saúde de "${integration}" no Redis — descartado (best-effort). Erro: ${error instanceof Error ? error.message : String(error)}`,
+        `Falha ao gravar o histórico de saúde de "${integration}" no Redis: descartado (best-effort). Erro: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

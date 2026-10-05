@@ -86,7 +86,7 @@ export class DiditWebhookController {
       await this.applyToIdentityVerification(event);
     } else {
       this.logger.debug(
-        "Webhook Didit sem vendor_data/session_id — fora do fluxo de verificação de identidade hospedada, nada a correlacionar.",
+        "Webhook Didit sem vendor_data/session_id: fora do fluxo de verificação de identidade hospedada, nada a correlacionar.",
       );
     }
 
@@ -121,7 +121,7 @@ export class DiditWebhookController {
 
       if (updated.count === 0) {
         this.logger.warn(
-          `Webhook Didit ignorado: session_id=${event.session_id} não é a sessão atual do usuário ${event.vendor_data} (ou usuário não existe) — provável evento de uma sessão já substituída.`,
+          `Webhook Didit ignorado: session_id=${event.session_id} não é a sessão atual do usuário ${event.vendor_data} (ou usuário não existe): provável evento de uma sessão já substituída.`,
         );
         return;
       }

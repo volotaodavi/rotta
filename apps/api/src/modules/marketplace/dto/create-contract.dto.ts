@@ -16,7 +16,7 @@ export class CreateContractDto {
   @Min(0)
   valorMensalidadeCentavos!: number;
 
-  @ApiProperty({ example: "Plano mensal — ida e volta, 2 turnos" })
+  @ApiProperty({ example: "Plano mensal: ida e volta, 2 turnos" })
   @IsString()
   @MaxLength(500)
   planoDescricao!: string;

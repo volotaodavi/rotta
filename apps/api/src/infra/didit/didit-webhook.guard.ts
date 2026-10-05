@@ -96,7 +96,7 @@ export class DiditWebhookGuard implements CanActivate {
     const webhookSecret = await this.resolveWebhookSecret();
     if (!webhookSecret) {
       throw new UnauthorizedException(
-        "Nenhum segredo de webhook da Didit configurado (DIDIT_WEBHOOK_SECRET nem auto-registrado) — webhook desativado.",
+        "Nenhum segredo de webhook da Didit configurado (DIDIT_WEBHOOK_SECRET nem auto-registrado): webhook desativado.",
       );
     }
 

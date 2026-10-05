@@ -15,14 +15,14 @@ export class TransporterCardResponseDto {
   @ApiProperty({ enum: CompanyType })
   tipo!: CompanyType;
 
-  @ApiProperty({ description: "Selo Transportador Verificado — ver `verification.util.ts`" })
+  @ApiProperty({ description: "Selo Transportador Verificado: ver `verification.util.ts`" })
   verificado!: boolean;
 
   @ApiPropertyOptional({ description: "Distância até o ponto de busca, em km" })
   distanciaKm!: number;
 
   @ApiPropertyOptional({
-    description: "Média das avaliações recebidas (1-5) — null se ainda não avaliado",
+    description: "Média das avaliações recebidas (1-5): null se ainda não avaliado",
   })
   avaliacaoMedia!: number | null;
 
@@ -39,13 +39,13 @@ export class TransporterCardResponseDto {
     enum: VehicleCategory,
     isArray: true,
     description:
-      "Modalidades da frota ativa (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR): ESCOLAR só aparece aqui quando a empresa tem pelo menos 1 veículo ativo declarado nessa categoria — nunca inferido da categoria da CNH de um motorista.",
+      "Modalidades da frota ativa (Dossiê 45: CATEGORIA B ≠ TRANSPORTE ESCOLAR): ESCOLAR só aparece aqui quando a empresa tem pelo menos 1 veículo ativo declarado nessa categoria — nunca inferido da categoria da CNH de um motorista.",
   })
   categoriasVeiculo!: VehicleCategory[];
 
   @ApiProperty({
     description:
-      "Dossiê 45, achado C1 da auditoria de consistência Legal↔Produto: true somente quando a empresa tem ao menos 1 veículo ativo declarado ESCOLAR cujo motorista atualmente vinculado passa em `computeSchoolTransportEligibility` (CNH D/E + EAR + curso + antecedentes, todos verificados) — nunca apenas a categoria do veículo declarada pela empresa (`categoriasVeiculo` acima). Uma transportadora pode ter `categoriasVeiculo` incluindo ESCOLAR e `escolarVerificado: false` ao mesmo tempo.",
+      "Dossiê 45, achado C1 da auditoria de consistência Legal↔Produto: true somente quando a empresa tem ao menos 1 veículo ativo declarado ESCOLAR cujo motorista atualmente vinculado passa em `computeSchoolTransportEligibility` (CNH D/E + EAR + curso + antecedentes, todos verificados): nunca apenas a categoria do veículo declarada pela empresa (`categoriasVeiculo` acima). Uma transportadora pode ter `categoriasVeiculo` incluindo ESCOLAR e `escolarVerificado: false` ao mesmo tempo.",
   })
   escolarVerificado!: boolean;
 
@@ -54,7 +54,7 @@ export class TransporterCardResponseDto {
 
   @ApiPropertyOptional({
     description:
-      "Menor mensalidade entre contratos ativos, em centavos — null se ainda não tem contrato ativo",
+      "Menor mensalidade entre contratos ativos, em centavos: null se ainda não tem contrato ativo",
   })
   mensalidadeAPartirDeCentavos!: number | null;
 }
@@ -139,13 +139,13 @@ export class TransporterDetailResponseDto extends TransporterCardResponseDto {
 
   @ApiProperty({
     type: [PublicTeamMemberDto],
-    description: "Motoristas/monitores ativos — só nome e papel, nunca dado pessoal sensível",
+    description: "Motoristas/monitores ativos: só nome e papel, nunca dado pessoal sensível",
   })
   equipe!: PublicTeamMemberDto[];
 
   @ApiPropertyOptional({
     description:
-      "Média de horas entre o envio e a decisão (aprovada/recusada) de solicitações — null se a empresa ainda não decidiu nenhuma",
+      "Média de horas entre o envio e a decisão (aprovada/recusada) de solicitações: null se a empresa ainda não decidiu nenhuma",
   })
   tempoMedioRespostaHoras!: number | null;
 }

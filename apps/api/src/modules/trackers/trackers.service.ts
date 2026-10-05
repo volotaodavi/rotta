@@ -161,7 +161,7 @@ export class TrackersService {
     if (!veiculo.viagemAtualId) {
       return {
         aceita: true,
-        motivo: "Ônibus sem viagem aberta — posição registrada só na frota.",
+        motivo: "Ônibus sem viagem aberta: posição registrada só na frota.",
         vehicleId: veiculo.id,
       };
     }
@@ -303,7 +303,7 @@ export class TrackersService {
     const rota = await this.routes.findAtivaPorVeiculoPadrao(veiculo.companyId, veiculo.id);
     if (!rota?.motoristaPadraoId) {
       if (rota) {
-        this.logger.warn(`Rota ${rota.nome} sem motorista designado — viagem não aberta.`);
+        this.logger.warn(`Rota ${rota.nome} sem motorista designado: viagem não aberta.`);
       }
       return null;
     }

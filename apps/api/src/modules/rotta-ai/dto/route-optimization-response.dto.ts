@@ -20,7 +20,7 @@ export class RouteOptimizationResponseDto {
   @ApiProperty({
     type: [String],
     description:
-      "IDs de RouteStop na ordem sugerida pela Rotta Route AI — origem e destino (primeira/última parada) permanecem fixos, só a ordem intermediária muda.",
+      "IDs de RouteStop na ordem sugerida pela Rotta Route AI: origem e destino (primeira/última parada) permanecem fixos, só a ordem intermediária muda.",
   })
   ordemSugeridaIds!: string[];
 
@@ -32,7 +32,7 @@ export class RouteOptimizationResponseDto {
 
   @ApiProperty({
     description:
-      "duracaoAtualSegundos - duracaoSugeridaSegundos, nunca negativo (a sugestão nunca é pior que a ordem atual — OSRM sempre inclui a ordem de entrada no espaço de busca).",
+      "duracaoAtualSegundos - duracaoSugeridaSegundos, nunca negativo (a sugestão nunca é pior que a ordem atual: OSRM sempre inclui a ordem de entrada no espaço de busca).",
   })
   economiaSegundos!: number;
 
@@ -41,7 +41,7 @@ export class RouteOptimizationResponseDto {
 
   @ApiProperty({
     description:
-      "true quando a ordem sugerida é idêntica à atual (a rota já está na sequência mais eficiente) — a tela deve tratar isso como 'nada a aplicar', nunca como uma sugestão vazia/quebrada.",
+      "true quando a ordem sugerida é idêntica à atual (a rota já está na sequência mais eficiente): a tela deve tratar isso como 'nada a aplicar', nunca como uma sugestão vazia/quebrada.",
   })
   jaOtimizada!: boolean;
 }

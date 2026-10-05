@@ -78,7 +78,7 @@ export class CompanyServiceAreasService {
     // ser legível em vez de um erro de constraint.
     if (porMunicipio === porEscola) {
       throw new BadRequestException(
-        "Informe um município (cidade + estado) OU uma escola específica — nunca os dois, nunca nenhum.",
+        "Informe um município (cidade + estado) OU uma escola específica: nunca os dois, nunca nenhum.",
       );
     }
 

@@ -784,7 +784,7 @@ export class VehiclesService {
       });
     } catch (error) {
       this.logger.warn(
-        `Rotta AI indisponível para análise do documento ${documentId} — mantendo status pendente/indisponível.`,
+        `Rotta AI indisponível para análise do documento ${documentId}: mantendo status pendente/indisponível.`,
         error as Error,
       );
       return this.documentRepository.updateAiResult(documentId, {
@@ -1577,7 +1577,7 @@ export class VehiclesService {
       const imei = item.imei.trim();
 
       if (!/^\d{14,17}$/.test(imei)) {
-        recusadas.push({ linha, identificador, motivo: "IMEI inválido — são 14 a 17 dígitos." });
+        recusadas.push({ linha, identificador, motivo: "IMEI inválido: são 14 a 17 dígitos." });
         continue;
       }
 
@@ -1651,7 +1651,7 @@ export class VehiclesService {
   ): Promise<VehicleResponseDto> {
     if (dto.status === VehicleAdminReviewStatus.PRE_APROVADO) {
       throw new BadRequestException(
-        "Só é possível aprovar ou reprovar — o estado pré-aprovado é automático.",
+        "Só é possível aprovar ou reprovar: o estado pré-aprovado é automático.",
       );
     }
     if (
@@ -1659,7 +1659,7 @@ export class VehiclesService {
       !dto.observacaoTransportadora?.trim()
     ) {
       throw new BadRequestException(
-        "Informe o motivo da reprovação para a transportadora — ele é mostrado diretamente para ela.",
+        "Informe o motivo da reprovação para a transportadora: ele é mostrado diretamente para ela.",
       );
     }
 

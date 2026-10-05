@@ -21,7 +21,7 @@ export class TeamMemberResponseDto {
   @ApiProperty({ enum: IdentityVerificationStatus })
   identityVerificationStatus!: IdentityVerificationStatus;
   @ApiPropertyOptional({
-    description: "Motivo legível quando REPROVADA — null em qualquer outro status.",
+    description: "Motivo legível quando REPROVADA: null em qualquer outro status.",
   })
   identityVerificationMotivo?: string | null;
   @ApiPropertyOptional() identityVerifiedAt?: Date | null;

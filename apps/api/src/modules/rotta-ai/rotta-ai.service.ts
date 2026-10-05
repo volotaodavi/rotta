@@ -99,7 +99,7 @@ export class RottaAiService {
       dto.tipo !== "CNH"
     ) {
       throw new BadRequestException(
-        `Motoristas só podem enviar CNH como documento de identidade — ${dto.tipo} não é aceito, porque só a CNH comprova a categoria de habilitação exigida para dirigir veículo escolar.`,
+        `Motoristas só podem enviar CNH como documento de identidade: ${dto.tipo} não é aceito, porque só a CNH comprova a categoria de habilitação exigida para dirigir veículo escolar.`,
       );
     }
 
@@ -148,7 +148,7 @@ export class RottaAiService {
       case "EAR":
       case "CURSO":
         throw new NotImplementedException(
-          `A validação automática de ${dto.tipo} ainda não está disponível — não é um documento de identidade do catálogo da Didit, precisa de um provedor específico (ex. OCR genérico + validação manual).`,
+          `A validação automática de ${dto.tipo} ainda não está disponível: não é um documento de identidade do catálogo da Didit, precisa de um provedor específico (ex. OCR genérico + validação manual).`,
         );
     }
   }
@@ -250,15 +250,15 @@ export class RottaAiService {
 
     if (!metadata.formato) {
       avisos.push(
-        "Formato de arquivo não reconhecido como imagem (esperado JPEG ou PNG) — não é possível avaliar a qualidade.",
+        "Formato de arquivo não reconhecido como imagem (esperado JPEG ou PNG): não é possível avaliar a qualidade.",
       );
     } else if (metadata.larguraPx === null || metadata.alturaPx === null) {
       avisos.push(
-        "Não foi possível ler as dimensões da imagem — o arquivo pode estar corrompido ou incompleto.",
+        "Não foi possível ler as dimensões da imagem: o arquivo pode estar corrompido ou incompleto.",
       );
     } else if (metadata.larguraPx < LARGURA_MINIMA_PX || metadata.alturaPx < ALTURA_MINIMA_PX) {
       avisos.push(
-        `Resolução baixa (${metadata.larguraPx}x${metadata.alturaPx}px) — abaixo do mínimo recomendado (${LARGURA_MINIMA_PX}x${ALTURA_MINIMA_PX}px); o texto do documento pode ficar ilegível.`,
+        `Resolução baixa (${metadata.larguraPx}x${metadata.alturaPx}px): abaixo do mínimo recomendado (${LARGURA_MINIMA_PX}x${ALTURA_MINIMA_PX}px); o texto do documento pode ficar ilegível.`,
       );
     } else {
       qualidadeAdequada = true;
@@ -273,18 +273,18 @@ export class RottaAiService {
         camposEncontrados = detectFields(texto);
         if (camposEncontrados.length === 0) {
           avisos.push(
-            "O OCR rodou mas não encontrou nenhum dos campos esperados pra este tipo de documento — confira se o arquivo enviado é mesmo o documento certo.",
+            "O OCR rodou mas não encontrou nenhum dos campos esperados pra este tipo de documento. Confira se o arquivo enviado é mesmo o documento certo.",
           );
         }
       } else {
         avisos.push(
-          "Não foi possível extrair texto da imagem via OCR desta vez (pode ser uma falha temporária do OCR, não necessariamente um problema com o documento) — a checagem de campos foi pulada.",
+          "Não foi possível extrair texto da imagem via OCR desta vez (pode ser uma falha temporária do OCR, não necessariamente um problema com o documento): a checagem de campos foi pulada.",
         );
       }
     }
 
     avisos.push(
-      "Esta análise cobre formato, resolução e presença de palavras/números esperados via OCR — não confirma autenticidade nem detecta adulteração; isso continua exigindo um provedor de visão computacional contratado.",
+      "Esta análise cobre formato, resolução e presença de palavras/números esperados via OCR: não confirma autenticidade nem detecta adulteração; isso continua exigindo um provedor de visão computacional contratado.",
     );
 
     return {
@@ -395,7 +395,7 @@ export class RottaAiService {
       assinadoResponsavel.ip === assinadoEmpresa.ip
     ) {
       anomaliasDetectadas.push(
-        `Mesmo IP (${assinadoResponsavel.ip}) assinou como Responsável e como Empresa — confirme que as duas partes de fato usaram conexões/dispositivos diferentes.`,
+        `Mesmo IP (${assinadoResponsavel.ip}) assinou como Responsável e como Empresa: confirme que as duas partes de fato usaram conexões/dispositivos diferentes.`,
       );
     }
 
@@ -407,7 +407,7 @@ export class RottaAiService {
       const segundosAteAssinar = (evento.createdAt.getTime() - contract.createdAt.getTime()) / 1000;
       if (segundosAteAssinar >= 0 && segundosAteAssinar < SIGNATURE_TOO_FAST_SECONDS) {
         anomaliasDetectadas.push(
-          `Assinatura da ${rotulo} ocorreu ${Math.round(segundosAteAssinar)}s após a geração do contrato — tempo pouco provável para ter lido o conteúdo.`,
+          `Assinatura da ${rotulo} ocorreu ${Math.round(segundosAteAssinar)}s após a geração do contrato: tempo pouco provável para ter lido o conteúdo.`,
         );
       }
     }
@@ -458,7 +458,7 @@ export class RottaAiService {
 
     if (stops.length < 3) {
       throw new BadRequestException(
-        "A otimização de rota exige pelo menos 3 paradas cadastradas — abaixo disso não há ganho relevante a calcular (Dossiê 18, ROT-08).",
+        "A otimização de rota exige pelo menos 3 paradas cadastradas: abaixo disso não há ganho relevante a calcular (Dossiê 18, ROT-08).",
       );
     }
 

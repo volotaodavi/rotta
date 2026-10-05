@@ -14,13 +14,13 @@ import {
 export class CreateRouteDto {
   @ApiPropertyOptional({
     description:
-      "Obrigatório só para Admin Rotta (sem tenant próprio). Ignorado para Empresa/Gestor — sempre a própria empresa do ator.",
+      "Obrigatório só para Admin Rotta (sem tenant próprio). Ignorado para Empresa/Gestor: sempre a própria empresa do ator.",
   })
   @IsOptional()
   @IsUUID()
   companyId?: string;
 
-  @ApiProperty({ example: "Rota Manhã — Zona Norte" })
+  @ApiProperty({ example: "Rota Manhã: Zona Norte" })
   @IsString()
   @MaxLength(120)
   nome!: string;

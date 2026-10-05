@@ -61,7 +61,7 @@ export class CreateStudentForCompanyDto extends OmitType(CreateStudentDto, [
 ] as const) {
   @ApiPropertyOptional({
     description:
-      "Obrigatório só para Admin Rotta (sem tenant próprio). Ignorado para Empresa/Gestor — sempre a própria empresa do ator.",
+      "Obrigatório só para Admin Rotta (sem tenant próprio). Ignorado para Empresa/Gestor: sempre a própria empresa do ator.",
   })
   @IsOptional()
   @IsString()

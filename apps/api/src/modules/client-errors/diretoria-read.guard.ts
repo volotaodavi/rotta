@@ -45,7 +45,7 @@ export class DiretoriaReadGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     if (!this.segredo) {
       throw new UnauthorizedException(
-        "DIRETORIA_READ_SECRET não configurado — leitura da diretoria desativada.",
+        "DIRETORIA_READ_SECRET não configurado: leitura da diretoria desativada.",
       );
     }
 

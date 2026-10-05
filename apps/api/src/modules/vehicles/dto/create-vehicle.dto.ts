@@ -10,7 +10,7 @@ export class CreateVehicleDto {
   @ApiPropertyOptional({
     example: "412",
     description:
-      "Número/prefixo do ônibus (transporte público). Único dentro da empresa. Frota privada pode deixar vazio — lá a placa é a identidade.",
+      "Número/prefixo do ônibus (transporte público). Único dentro da empresa. Frota privada pode deixar vazio: lá a placa é a identidade.",
   })
   @IsOptional()
   @IsString()

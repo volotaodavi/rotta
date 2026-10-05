@@ -42,7 +42,7 @@ export class TrackerIngestGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     if (!this.segredo) {
       throw new UnauthorizedException(
-        "TRACKER_INGEST_SECRET não configurado — ingestão de rastreadores desativada.",
+        "TRACKER_INGEST_SECRET não configurado: ingestão de rastreadores desativada.",
       );
     }
 

@@ -762,7 +762,7 @@ export class AuthService {
 
     if (session.revokedAt) {
       this.logger.warn(
-        `Reuso de refresh token já revogado detectado (userId=${session.userId}) — revogando todas as sessões.`,
+        `Reuso de refresh token já revogado detectado (userId=${session.userId}): revogando todas as sessões.`,
       );
       await this.sessionRepository.revokeAllForUser(session.userId);
       throw new UnauthorizedException("Sessão inválida. Faça login novamente.");
@@ -942,10 +942,10 @@ export class AuthService {
       })),
       sessoesAtivas,
       escopo:
-        "Esta exportação cobre identidade (User), vínculos (Membership) e sessões ativas — os " +
+        "Esta exportação cobre identidade (User), vínculos (Membership) e sessões ativas: os " +
         "dados que o módulo Auth possui diretamente. Não inclui ainda dado de outros módulos " +
         "(ex. alunos cadastrados, documentos enviados, histórico de viagens, chamados de " +
-        "suporte) — cada um exigiria integrar aquele módulo aqui; ver Dossiê 33 para o escopo " +
+        "suporte): cada um exigiria integrar aquele módulo aqui; ver Dossiê 33 para o escopo " +
         "completo e o plano de evolução (agregador cross-módulo).",
     };
   }

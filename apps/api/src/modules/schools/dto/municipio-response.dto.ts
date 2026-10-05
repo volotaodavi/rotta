@@ -10,7 +10,7 @@ import { ApiProperty } from "@nestjs/swagger";
  * não dá para desfazer com um clique.
  */
 export class MunicipioResponseDto {
-  @ApiProperty({ example: "Maricá", description: "Nome com acento e caixa — é o que aparece." })
+  @ApiProperty({ example: "Maricá", description: "Nome com acento e caixa: é o que aparece." })
   cidade!: string;
 
   @ApiProperty({ example: "RJ" })
@@ -18,7 +18,7 @@ export class MunicipioResponseDto {
 
   @ApiProperty({
     example: "marica",
-    description: "Chave de busca sem acento nem caixa — é o que o filtro usa.",
+    description: "Chave de busca sem acento nem caixa: é o que o filtro usa.",
   })
   cidadeNormalizada!: string;
 

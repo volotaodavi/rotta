@@ -93,7 +93,7 @@ export class QstashPublisherService {
   ): Promise<string | undefined> {
     if (!this.isConfigured) {
       this.logger.warn(
-        `QSTASH_TOKEN/API_PUBLIC_URL não configurados — job "${route}" não foi publicado.`,
+        `QSTASH_TOKEN/API_PUBLIC_URL não configurados: job "${route}" não foi publicado.`,
       );
       return undefined;
     }
@@ -116,7 +116,7 @@ export class QstashPublisherService {
     if (items.length === 0) return;
     if (!this.isConfigured) {
       this.logger.warn(
-        `QSTASH_TOKEN/API_PUBLIC_URL não configurados — lote de ${items.length} job(s) "${items[0]!.route}" não foi publicado.`,
+        `QSTASH_TOKEN/API_PUBLIC_URL não configurados: lote de ${items.length} job(s) "${items[0]!.route}" não foi publicado.`,
       );
       return;
     }

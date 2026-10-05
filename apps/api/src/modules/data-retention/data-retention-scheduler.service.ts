@@ -26,7 +26,7 @@ export class DataRetentionSchedulerService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     if (!this.qstashSchedule.isConfigured) {
       this.logger.warn(
-        "QSTASH_TOKEN/API_PUBLIC_URL não configurados — limpeza de posições antigas DESATIVADA. " +
+        "QSTASH_TOKEN/API_PUBLIC_URL não configurados: limpeza de posições antigas DESATIVADA. " +
           "A tabela `trip_positions` vai crescer sem limite até isto ser configurado.",
       );
       return;

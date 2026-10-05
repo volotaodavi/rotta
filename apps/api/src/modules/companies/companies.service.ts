@@ -149,7 +149,7 @@ export class CompaniesService implements OnModuleInit {
       const activePlans = await this.planRepository.listActive();
       if (activePlans.length === 0) {
         this.logger.warn(
-          `Nenhum Plano ativo no catálogo — provisionando "${DEFAULT_PLAN.code}" ` +
+          `Nenhum Plano ativo no catálogo: provisionando "${DEFAULT_PLAN.code}" ` +
             "automaticamente para não bloquear o cadastro self-service.",
         );
         await this.planRepository.upsertByCode({ ...DEFAULT_PLAN, isActive: true });
@@ -429,7 +429,7 @@ export class CompaniesService implements OnModuleInit {
         );
       }
       this.logger.warn(
-        `Consulta de CNPJ ${cpfCnpjDigits} na Receita Federal indisponível — seguindo com os dados enviados pelo cliente, sem confirmação. ${
+        `Consulta de CNPJ ${cpfCnpjDigits} na Receita Federal indisponível: seguindo com os dados enviados pelo cliente, sem confirmação. ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
@@ -438,7 +438,7 @@ export class CompaniesService implements OnModuleInit {
 
     if (!this.receitaFederalService.isAtiva(receita)) {
       throw new BadRequestException(
-        `Este CNPJ está com situação cadastral "${receita.situacaoCadastral}" na Receita Federal — só é possível cadastrar empresas com situação ATIVA.`,
+        `Este CNPJ está com situação cadastral "${receita.situacaoCadastral}" na Receita Federal: só é possível cadastrar empresas com situação ATIVA.`,
       );
     }
 

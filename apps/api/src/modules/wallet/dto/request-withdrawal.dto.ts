@@ -13,7 +13,7 @@ export class RequestWithdrawalDto {
   @ApiProperty({
     example: "11999998888",
     description:
-      "Chave PIX (CPF/CNPJ/e-mail/telefone/aleatória) — a Rotta não valida o formato específico, só presença.",
+      "Chave PIX (CPF/CNPJ/e-mail/telefone/aleatória): a Rotta não valida o formato específico, só presença.",
   })
   @IsString()
   @Length(1, 140)

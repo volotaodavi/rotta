@@ -71,7 +71,7 @@ async function bootstrap(): Promise<void> {
 
   // --- Documentacao viva (OpenAPI/Swagger — Dossie 23, Secao 16.1) ---
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("Rotta — Core API")
+    .setTitle("Rotta: Core API")
     .setDescription("Documentacao gerada automaticamente a partir dos decorators do NestJS.")
     .setVersion("0.1.0")
     .addBearerAuth()

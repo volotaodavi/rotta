@@ -194,7 +194,7 @@ export class RoutesService {
     if (!companyId) {
       throw new BadRequestException(
         actor.role === Role.ADMIN_ROTTA
-          ? "Informe companyId — Admin Rotta não tem uma empresa própria."
+          ? "Informe companyId: Admin Rotta não tem uma empresa própria."
           : "Empresa não identificada.",
       );
     }
@@ -509,7 +509,7 @@ export class RoutesService {
       const school = await this.schoolsService.findByIdOrThrow(dto.schoolId, actor);
       if (school.latitude == null || school.longitude == null) {
         throw new BadRequestException(
-          `A escola "${school.nomeOficial}" ainda não tem coordenada geocodificada — tente novamente em alguns instantes ou escolha outra escola.`,
+          `A escola "${school.nomeOficial}" ainda não tem coordenada geocodificada. Tente novamente em alguns instantes ou escolha outra escola.`,
         );
       }
       const endereco = `${school.logradouro}, ${school.numero} - ${school.bairro}, ${school.cidade}/${school.estado}`;
@@ -592,7 +592,7 @@ export class RoutesService {
     );
     if (emUso) {
       throw new ConflictException(
-        "Esta parada está em uso por pelo menos um aluno vinculado à rota — reatribua o aluno a outra parada antes de removê-la.",
+        "Esta parada está em uso por pelo menos um aluno vinculado à rota: reatribua o aluno a outra parada antes de removê-la.",
       );
     }
 
@@ -664,7 +664,7 @@ export class RoutesService {
     const existingVinculo = await this.routeStudentRepository.findByContractId(dto.contractId);
     if (existingVinculo && existingVinculo.ativo) {
       throw new ConflictException(
-        "Este contrato já está vinculado a uma rota — remova o vínculo atual antes de criar outro.",
+        "Este contrato já está vinculado a uma rota. Remova o vínculo atual antes de criar outro.",
       );
     }
 
@@ -685,7 +685,7 @@ export class RoutesService {
     );
     if (conflito) {
       throw new ConflictException(
-        `Este aluno já está em outra rota ativa no turno ${route.turno} — RN-26 não permite duas rotas simultâneas do mesmo turno.`,
+        `Este aluno já está em outra rota ativa no turno ${route.turno}: RN-26 não permite duas rotas simultâneas do mesmo turno.`,
       );
     }
 

@@ -37,13 +37,13 @@ export class SecretCipherService {
     const keyBase64 = this.configService.get<AuthConfig>("auth")?.mfaEncryptionKey;
     if (!keyBase64) {
       throw new Error(
-        "MFA_ENCRYPTION_KEY não configurada — não é possível cifrar/decifrar segredos de MFA neste ambiente.",
+        "MFA_ENCRYPTION_KEY não configurada: não é possível cifrar/decifrar segredos de MFA neste ambiente.",
       );
     }
     const key = Buffer.from(keyBase64, "base64");
     if (key.length !== 32) {
       throw new Error(
-        "MFA_ENCRYPTION_KEY inválida — precisa decodificar para exatamente 32 bytes (AES-256).",
+        "MFA_ENCRYPTION_KEY inválida: precisa decodificar para exatamente 32 bytes (AES-256).",
       );
     }
     return key;

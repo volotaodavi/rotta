@@ -13,7 +13,7 @@ export class CompanyResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty({
     description:
-      "Código único da transportadora (Frente M) — o Responsável informa este código no Marketplace para solicitar transporte diretamente, sem precisar buscar por proximidade/escola.",
+      "Código único da transportadora (Frente M): o Responsável informa este código no Marketplace para solicitar transporte diretamente, sem precisar buscar por proximidade/escola.",
   })
   codigoInterno!: string;
   @ApiProperty() razaoSocial!: string;
@@ -25,7 +25,7 @@ export class CompanyResponseDto {
     enum: ServiceTag,
     isArray: true,
     description:
-      "Habilitações da empresa — quais funcionalidades ela enxerga. Acumulativas: com as duas, tem acesso a tudo.",
+      "Habilitações da empresa: quais funcionalidades ela enxerga. Acumulativas: com as duas, tem acesso a tudo.",
   })
   tags!: ServiceTag[];
   @ApiProperty() email!: string;
@@ -49,7 +49,7 @@ export class CompanyResponseDto {
   @ApiProperty({ type: PlanResponseDto }) plan!: PlanResponseDto;
   @ApiPropertyOptional({
     description:
-      "Quando o trial de 1 mês grátis vence (Dossiê 26) — `null` em empresas já `ATIVO`/administrativas ou criadas antes deste campo existir. Base do painel de controle de planos do Admin (dias restantes/expirado há N dias).",
+      "Quando o trial de 1 mês grátis vence (Dossiê 26): `null` em empresas já `ATIVO`/administrativas ou criadas antes deste campo existir. Base do painel de controle de planos do Admin (dias restantes/expirado há N dias).",
   })
   trialExpiraEm?: Date | null;
   @ApiProperty() createdAt!: Date;

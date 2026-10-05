@@ -35,7 +35,7 @@ export class TurnstileService {
     const { secretKey } = this.configService.get<TurnstileConfig>("turnstile")!;
     if (!secretKey) {
       this.logger.warn(
-        "TURNSTILE_SECRET_KEY não configurada — verificação 'não sou um robô' desativada, cadastro seguindo sem checar.",
+        "TURNSTILE_SECRET_KEY não configurada: verificação 'não sou um robô' desativada, cadastro seguindo sem checar.",
       );
       return;
     }

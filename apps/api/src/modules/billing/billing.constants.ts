@@ -16,7 +16,15 @@
 /** Mesmo valor de `DEFAULT_PLAN.priceCents` (Companies) — nunca duplicar o número em outro lugar. */
 export const ROTTA_SUBSCRIPTION_PRICE_CENTS = 3990;
 
-export const ROTTA_SUBSCRIPTION_PRODUCT_NAME = "Rotta — Mensalidade da Plataforma";
+/*
+  Sem travessão: isto é o que o cliente lê no boleto e na fatura do
+  cartão, o documento mais formal que ele recebe da Rotta. A limpeza de
+  travessões de 01/10/2026 cobriu app, web e pacotes de copy e deixou o
+  backend de fora, então esta string continuou saindo como
+  "Rotta — Mensalidade da Plataforma — Van do Zé" na cobrança de quem
+  paga. Dois-pontos é a pontuação que a frase pede.
+*/
+export const ROTTA_SUBSCRIPTION_PRODUCT_NAME = "Rotta: Mensalidade da Plataforma";
 
 /**
  * Taxas públicas da Asaas (asaas.com/taxas, consultado em 2026-08 —

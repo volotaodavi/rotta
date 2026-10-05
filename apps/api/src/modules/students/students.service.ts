@@ -295,7 +295,7 @@ export class StudentsService {
     if (!companyId) {
       throw new BadRequestException(
         actor.role === Role.ADMIN_ROTTA
-          ? "Informe companyId — Admin Rotta não tem uma empresa própria."
+          ? "Informe companyId: Admin Rotta não tem uma empresa própria."
           : "Empresa não identificada.",
       );
     }

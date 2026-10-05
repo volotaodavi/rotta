@@ -36,13 +36,13 @@ export class CreateRouteStopDto {
   @ApiProperty({
     required: false,
     description:
-      "Escola do catálogo compartilhado — quando informado, endereco/latitude/longitude são preenchidos a partir dela (nunca digitados).",
+      "Escola do catálogo compartilhado: quando informado, endereco/latitude/longitude são preenchidos a partir dela (nunca digitados).",
   })
   @IsOptional()
   @IsUUID()
   schoolId?: string;
 
-  @ApiProperty({ required: false, example: "Rua das Flores, 123 — Bela Vista" })
+  @ApiProperty({ required: false, example: "Rua das Flores, 123: Bela Vista" })
   @IsOptional()
   @IsString()
   @MaxLength(200)

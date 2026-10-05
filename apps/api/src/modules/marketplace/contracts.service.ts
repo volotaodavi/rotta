@@ -171,7 +171,7 @@ export class ContractsService {
       await this.authentiqueService.prepararDocumentoParaAssinatura({ contractId: contract.id });
     } catch (error) {
       this.logger.warn(
-        `Authentique indisponível para o contrato ${contract.id} — assinatura seguirá pendente.`,
+        `Authentique indisponível para o contrato ${contract.id}: assinatura seguirá pendente.`,
       );
       this.logger.warn(error instanceof Error ? error.message : String(error));
     }
@@ -259,7 +259,7 @@ export class ContractsService {
     ]);
     if (!company || !student || !responsavel || !school) {
       throw new NotFoundException(
-        "Não foi possível montar o termo de ciência — algum dado relacionado não foi encontrado.",
+        "Não foi possível montar o termo de ciência: algum dado relacionado não foi encontrado.",
       );
     }
 
@@ -288,12 +288,12 @@ export class ContractsService {
       );
       if (validacao.anomaliasDetectadas.length > 0) {
         this.logger.warn(
-          `Rotta AI detectou possível anomalia na assinatura do contrato ${contract.id} (ativação segue normalmente — checagem best-effort): ${validacao.anomaliasDetectadas.join(" | ")}`,
+          `Rotta AI detectou possível anomalia na assinatura do contrato ${contract.id} (ativação segue normalmente: checagem best-effort): ${validacao.anomaliasDetectadas.join(" | ")}`,
         );
       }
     } catch (error) {
       this.logger.warn(
-        `Rotta AI indisponível para validar o contrato ${contract.id} — ativação segue apenas pela regra de negócio (ambas as assinaturas já presentes).`,
+        `Rotta AI indisponível para validar o contrato ${contract.id}: ativação segue apenas pela regra de negócio (ambas as assinaturas já presentes).`,
       );
       this.logger.warn(error instanceof Error ? error.message : String(error));
     }

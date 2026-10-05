@@ -24,7 +24,7 @@ export class CreateClientErrorReportDto {
   @MaxLength(4000)
   message!: string;
 
-  @ApiPropertyOptional({ description: "error.digest — Next.js redige a mensagem real em produção" })
+  @ApiPropertyOptional({ description: "error.digest: Next.js redige a mensagem real em produção" })
   @IsOptional()
   @IsString()
   @MaxLength(200)

@@ -23,7 +23,7 @@ export class DocumentExpirySchedulerService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     if (!this.qstashSchedule.isConfigured) {
       this.logger.log(
-        "QSTASH_TOKEN/API_PUBLIC_URL não configurados — lembrete diário de vencimento de documento desativado (sem agendamento).",
+        "QSTASH_TOKEN/API_PUBLIC_URL não configurados: lembrete diário de vencimento de documento desativado (sem agendamento).",
       );
       return;
     }

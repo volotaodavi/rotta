@@ -91,7 +91,7 @@ export class ConversationsService {
     const papel = this.papelNoContrato(contract, actor);
     if (!papel) {
       throw new ForbiddenException(
-        "Você não é o Responsável, Motorista ou Monitor deste contrato — sem acesso a esta conversa.",
+        "Você não é o Responsável, Motorista ou Monitor deste contrato: sem acesso a esta conversa.",
       );
     }
     return papel;

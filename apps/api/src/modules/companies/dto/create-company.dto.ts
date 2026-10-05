@@ -106,7 +106,7 @@ export class CreateCompanyDto {
 
   @ApiPropertyOptional({
     example: "#3B6EF6",
-    description: "Dossiê 24 — cor de destaque da marca da empresa",
+    description: "Dossiê 24: cor de destaque da marca da empresa",
   })
   @IsOptional()
   @IsHexColor()

@@ -70,7 +70,7 @@ export class SupabaseStorageService implements OnModuleInit {
     if (!this.config.supabaseUrl || !this.config.supabaseServiceRoleKey) {
       this.logger.warn(
         "Armazenamento de arquivos (Supabase Storage) NÃO está configurado neste ambiente " +
-          "(SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes) — todo upload (logo/foto de empresa, " +
+          "(SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY ausentes): todo upload (logo/foto de empresa, " +
           "documentos de motorista/veículo, foto de aluno) vai falhar com 503 até isso ser corrigido. " +
           "Ver Dossiê 31 para o passo a passo de configuração.",
       );

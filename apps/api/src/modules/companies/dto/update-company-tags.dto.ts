@@ -21,7 +21,7 @@ export class UpdateCompanyTagsDto {
     enum: ServiceTag,
     isArray: true,
     description:
-      "Habilitações da empresa. Acumulativas — com as duas, ela tem acesso a todas as funcionalidades.",
+      "Habilitações da empresa. Acumulativas: com as duas, ela tem acesso a todas as funcionalidades.",
     example: ["LICITADA", "PRIVADA"],
   })
   @IsArray()

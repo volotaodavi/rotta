@@ -10,7 +10,7 @@ import { IsString, MinLength } from "class-validator";
 export class AccessAsSupportDto {
   @ApiProperty({
     minLength: 10,
-    description: "Justificativa obrigatória — registrada no log de auditoria",
+    description: "Justificativa obrigatória: registrada no log de auditoria",
   })
   @IsString()
   @MinLength(10)

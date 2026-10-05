@@ -15,7 +15,7 @@ export class VehicleResponseDto {
   @ApiPropertyOptional({
     example: "412",
     description:
-      "Número/prefixo do ônibus. No transporte público é por ele que o despachante procura — placa ninguém decora.",
+      "Número/prefixo do ônibus. No transporte público é por ele que o despachante procura: placa ninguém decora.",
     nullable: true,
   })
   numeroFrota?: string | null;
@@ -40,7 +40,7 @@ export class VehicleResponseDto {
     description: "PENDENTE quando a confiança da IA foi baixa e aguarda revisão de um Admin Rotta",
   })
   categoriaRevisaoStatus!: VehicleCategoryReviewStatus;
-  @ApiPropertyOptional({ description: "0-100 — só preenchido quando categoriaOrigem = IA" })
+  @ApiPropertyOptional({ description: "0-100: só preenchido quando categoriaOrigem = IA" })
   categoriaConfiancaIa?: number | null;
   @ApiPropertyOptional({ description: "Motivo legível da sugestão da IA" })
   categoriaMotivoIa?: string | null;
@@ -52,7 +52,7 @@ export class VehicleResponseDto {
   @ApiProperty({
     enum: VehicleAdminReviewStatus,
     description:
-      "Aprovação/reprovação do Admin Rotta (camada adicional — todo veículo nasce PRE_APROVADO)",
+      "Aprovação/reprovação do Admin Rotta (camada adicional: todo veículo nasce PRE_APROVADO)",
   })
   revisaoAdminStatus!: VehicleAdminReviewStatus;
   @ApiPropertyOptional({ description: "Observação mostrada aos responsáveis (Li e concordo)" })

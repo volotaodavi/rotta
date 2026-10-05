@@ -16,12 +16,12 @@ export class NationalBusinessResponseDto {
   @ApiProperty() empresasAtivasPagantes!: number;
   @ApiProperty({
     nullable: true,
-    description: "Sempre null nesta fase — ver indisponibilidadeLtvCac",
+    description: "Sempre null nesta fase: ver indisponibilidadeLtvCac",
   })
   ltvCentavos!: number | null;
   @ApiProperty({
     nullable: true,
-    description: "Sempre null nesta fase — ver indisponibilidadeLtvCac",
+    description: "Sempre null nesta fase: ver indisponibilidadeLtvCac",
   })
   cacCentavos!: number | null;
   @ApiProperty() indisponibilidadeLtvCac!: string;
@@ -34,7 +34,7 @@ export class NationalPeriodResponseDto {
   @ApiProperty() empresasCanceladas!: number;
   @ApiProperty({
     description:
-      "Aproximação: empresasCanceladas do período / empresasAtivasPagantes ATUAL (não há snapshot histórico do total ativo no início do período — Dossiê 30 §5).",
+      "Aproximação: empresasCanceladas do período / empresasAtivasPagantes ATUAL (não há snapshot histórico do total ativo no início do período: Dossiê 30 §5).",
   })
   churnRateAproximado!: number;
   @ApiProperty() viagensRealizadas!: number;
@@ -53,13 +53,13 @@ export class NationalKpisResponseDto {
   @ApiProperty({ type: NationalPeriodResponseDto }) periodo!: NationalPeriodResponseDto;
   @ApiProperty({
     type: NationalPeriodResponseDto,
-    description: "Janela imediatamente anterior, de mesmo tamanho — comparação de períodos",
+    description: "Janela imediatamente anterior, de mesmo tamanho: comparação de períodos",
   })
   periodoAnterior!: NationalPeriodResponseDto;
   @ApiProperty({
     type: [String],
     description:
-      "Alertas baseados em regras (limiares), nunca em previsão de IA — ver GET /analytics/anomalies",
+      "Alertas baseados em regras (limiares), nunca em previsão de IA: ver GET /analytics/anomalies",
   })
   alertas!: string[];
 }

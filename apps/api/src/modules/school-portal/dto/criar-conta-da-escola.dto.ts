@@ -29,7 +29,7 @@ export class CriarContaDaEscolaDto {
   email!: string;
 
   @ApiProperty({
-    description: "Celular com DDD — vira identificador de login e canal de recuperação.",
+    description: "Celular com DDD: vira identificador de login e canal de recuperação.",
   })
   @IsString()
   @Length(10, 15)
@@ -43,14 +43,14 @@ export class CriarContaDaEscolaDto {
   @ApiProperty({
     enum: SchoolStaffRole,
     description:
-      "Cargo na escola. Só `DIRETOR` pode, depois, abrir acesso para os colegas — por isso o Admin da Rotta cria um diretor por escola e o resto nasce de lá.",
+      "Cargo na escola. Só `DIRETOR` pode, depois, abrir acesso para os colegas: por isso o Admin da Rotta cria um diretor por escola e o resto nasce de lá.",
   })
   @IsEnum(SchoolStaffRole)
   papel!: SchoolStaffRole;
 
   @ApiPropertyOptional({
     description:
-      "A escola. OBRIGATÓRIO para o Admin da Rotta; PROIBIDO para o diretor — no caso dele, a escola vem do token, senão ele abriria acesso na escola de outra pessoa.",
+      "A escola. OBRIGATÓRIO para o Admin da Rotta; PROIBIDO para o diretor: no caso dele, a escola vem do token, senão ele abriria acesso na escola de outra pessoa.",
   })
   @IsOptional()
   @IsUUID()

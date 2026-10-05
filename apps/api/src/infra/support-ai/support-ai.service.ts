@@ -7,10 +7,10 @@ const TIMEOUT_MS = 15_000;
 
 /** Rótulo pt-BR usado só dentro do prompt (categoria/"grau" que o usuário já escolheu ao abrir o chamado). */
 const CATEGORIA_LABEL: Record<string, string> = {
-  DUVIDA: "DUVIDA (Grau 2 — dúvida de uso)",
-  PROBLEMA_TECNICO: "PROBLEMA_TECNICO (Grau 1 — bug relatado)",
-  COBRANCA: "COBRANCA (Grau 3 — envolve dinheiro)",
-  OUTRO: "OUTRO (categoria incerta — trate como Grau 3)",
+  DUVIDA: "DUVIDA (Grau 2: dúvida de uso)",
+  PROBLEMA_TECNICO: "PROBLEMA_TECNICO (Grau 1: bug relatado)",
+  COBRANCA: "COBRANCA (Grau 3: envolve dinheiro)",
+  OUTRO: "OUTRO (categoria incerta: trate como Grau 3)",
 };
 
 /**
@@ -25,7 +25,7 @@ const CATEGORIA_LABEL: Record<string, string> = {
  * COBRANCA/OUTRO, que nunca respondem a dúvida financeira, só
  * confirmam entendimento e chamam um humano).
  */
-const SYSTEM_PROMPT = `Você é a Rotta AI, assistente de suporte da Rotta — uma plataforma brasileira de gestão de transporte escolar.
+const SYSTEM_PROMPT = `Você é a Rotta AI, assistente de suporte da Rotta: uma plataforma brasileira de gestão de transporte escolar.
 
 O QUE A ROTTA FAZ (use isso pra responder dúvidas com precisão, Grau 2):
 - Conecta transportadoras (Empresa/Gestor) a famílias (Responsável) que precisam de transporte escolar.
@@ -88,7 +88,7 @@ function parseProcessarChamadoContent(content: string): ProcessarChamadoResult {
     .replace(/^RESPOSTA:\s*/i, "")
     .trim();
   return {
-    resumoInterno: resumoInterno || "Sem resumo — a IA não descreveu o caso.",
+    resumoInterno: resumoInterno || "Sem resumo: a IA não descreveu o caso.",
     respostaTenant,
   };
 }

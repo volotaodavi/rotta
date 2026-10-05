@@ -147,7 +147,7 @@ export class LegalDocumentsService implements OnModuleInit {
     }
     if (version.autorId === actor.sub) {
       throw new ConflictException(
-        "Quem redigiu a versão não pode aprová-la — peça para outra pessoa da equipe revisar.",
+        "Quem redigiu a versão não pode aprová-la. Peça para outra pessoa da equipe revisar.",
       );
     }
     return this.repository.updateVersion(versionId, {

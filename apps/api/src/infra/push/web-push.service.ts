@@ -65,7 +65,7 @@ export class WebPushService {
         try {
           subscription = JSON.parse(token) as webpush.PushSubscription;
         } catch {
-          this.logger.warn("Token WEB inválido (não é um JSON de PushSubscription) — descartado.");
+          this.logger.warn("Token WEB inválido (não é um JSON de PushSubscription): descartado.");
           invalidos.push(token);
           return;
         }

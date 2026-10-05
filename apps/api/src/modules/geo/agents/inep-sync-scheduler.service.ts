@@ -57,7 +57,7 @@ export class InepSyncSchedulerService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     if (!this.qstashSchedule.isConfigured) {
       this.logger.log(
-        "QSTASH_TOKEN/API_PUBLIC_URL não configurados — sincronização nacional automática desativada (só manual via POST /geo/inep-sync).",
+        "QSTASH_TOKEN/API_PUBLIC_URL não configurados: sincronização nacional automática desativada (só manual via POST /geo/inep-sync).",
       );
       return;
     }

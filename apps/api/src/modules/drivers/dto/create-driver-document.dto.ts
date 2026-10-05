@@ -18,7 +18,7 @@ export class CreateDriverDocumentDto {
   @MaxLength(64)
   numero?: string;
 
-  @ApiPropertyOptional({ description: "Categoria da CNH (ex. D, E) — só relevante para tipo=CNH" })
+  @ApiPropertyOptional({ description: "Categoria da CNH (ex. D, E): só relevante para tipo=CNH" })
   @IsOptional()
   @IsString()
   @MaxLength(8)

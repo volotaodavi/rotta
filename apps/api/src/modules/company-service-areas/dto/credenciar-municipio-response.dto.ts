@@ -18,7 +18,7 @@ export class CredenciarMunicipioResponseDto {
   @ApiProperty({ description: "Vínculos criados agora." })
   credenciadas!: number;
 
-  @ApiProperty({ description: "Já estavam credenciadas antes — reexecutar é seguro." })
+  @ApiProperty({ description: "Já estavam credenciadas antes: reexecutar é seguro." })
   jaCredenciadas!: number;
 
   @ApiProperty({

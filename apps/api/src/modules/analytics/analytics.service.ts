@@ -20,7 +20,7 @@ import { BackofficeService } from "@/modules/backoffice/backoffice.service";
 
 const LTV_CAC_INDISPONIVEL =
   "LTV e CAC ainda não são calculados: a Rotta não tem hoje uma fonte de dado de custo de aquisição " +
-  "(gasto de marketing/canal) nem um ledger de receita por coorte de cliente — os dois insumos mínimos " +
+  "(gasto de marketing/canal) nem um ledger de receita por coorte de cliente: os dois insumos mínimos " +
   "para um cálculo real. Nenhum valor é estimado/inventado aqui (stub honesto, mesmo princípio de " +
   "RottaAiService/AuthentiqueService, Dossiê 30 §5).";
 
@@ -129,18 +129,18 @@ export class AnalyticsService {
 
     if (periodo.churnRateAproximado > CHURN_RATE_ALERTA) {
       alertas.push(
-        `Churn aproximado do período em ${(periodo.churnRateAproximado * 100).toFixed(1)}% — acima do limiar de ${CHURN_RATE_ALERTA * 100}%.`,
+        `Churn aproximado do período em ${(periodo.churnRateAproximado * 100).toFixed(1)}%: acima do limiar de ${CHURN_RATE_ALERTA * 100}%.`,
       );
     }
 
     const inadimplentes = operacional.empresasPorStatus[CompanyStatus.INADIMPLENTE] ?? 0;
     if (inadimplentes > 0) {
-      alertas.push(`${inadimplentes} empresa(s) inadimplente(s) — ver Financeiro (ADM-03).`);
+      alertas.push(`${inadimplentes} empresa(s) inadimplente(s): ver Financeiro (ADM-03).`);
     }
 
     if (operacional.chamadosAbertos > CHAMADOS_ABERTOS_ALERTA) {
       alertas.push(
-        `${operacional.chamadosAbertos} chamados de suporte abertos — acima do limiar de ${CHAMADOS_ABERTOS_ALERTA}.`,
+        `${operacional.chamadosAbertos} chamados de suporte abertos: acima do limiar de ${CHAMADOS_ABERTOS_ALERTA}.`,
       );
     }
 
@@ -148,7 +148,7 @@ export class AnalyticsService {
       operacional.documentosMotoristaPendentes + operacional.documentosVeiculoPendentes;
     if (documentosPendentes > DOCUMENTOS_PENDENTES_ALERTA) {
       alertas.push(
-        `${documentosPendentes} documentos pendentes de análise (motorista + veículo) — fila de aprovações acumulando.`,
+        `${documentosPendentes} documentos pendentes de análise (motorista + veículo): fila de aprovações acumulando.`,
       );
     }
 

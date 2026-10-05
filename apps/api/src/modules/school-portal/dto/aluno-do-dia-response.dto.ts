@@ -50,7 +50,7 @@ export class AlunoDoDiaResponseDto {
   sentido!: string | null;
 
   @ApiPropertyOptional({
-    description: "Placa do veículo de hoje — é o que a escola confere no portão.",
+    description: "Placa do veículo de hoje: é o que a escola confere no portão.",
     nullable: true,
   })
   veiculoPlaca!: string | null;
@@ -60,7 +60,7 @@ export class AlunoDoDiaResponseDto {
 
   @ApiPropertyOptional({
     description:
-      "Transportadora responsável por este aluno hoje. Presente porque a MESMA escola costuma ser atendida por várias — sem ele, não dá para saber a quem cobrar.",
+      "Transportadora responsável por este aluno hoje. Presente porque a MESMA escola costuma ser atendida por várias: sem ele, não dá para saber a quem cobrar.",
     nullable: true,
   })
   transportadoraNome!: string | null;

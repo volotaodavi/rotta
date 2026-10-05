@@ -37,7 +37,7 @@ export class QstashSignatureGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (!this.receiver) {
       throw new UnauthorizedException(
-        "QSTASH_CURRENT_SIGNING_KEY/QSTASH_NEXT_SIGNING_KEY não configurados — endpoints internos de fila desativados.",
+        "QSTASH_CURRENT_SIGNING_KEY/QSTASH_NEXT_SIGNING_KEY não configurados: endpoints internos de fila desativados.",
       );
     }
 

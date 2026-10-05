@@ -285,7 +285,7 @@ export class NotificationsService {
         ? QUEUE_NAMES.NOTIFICATIONS_CRITICAL
         : this.flowControlKeyByChannel[canal];
     if (!flowControlKey) {
-      this.logger.warn(`Nenhuma fila registrada para o canal ${canal} — entrega não enfileirada.`);
+      this.logger.warn(`Nenhuma fila registrada para o canal ${canal}: entrega não enfileirada.`);
       return;
     }
 

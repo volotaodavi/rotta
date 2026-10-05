@@ -46,7 +46,7 @@ export class TermoCienciaPdfService {
       doc.on("end", () => resolve(Buffer.concat(chunks)));
       doc.on("error", reject);
 
-      doc.fontSize(9).fillColor("#6B7280").text("ROTTA — plataforma de transporte escolar", {
+      doc.fontSize(9).fillColor("#6B7280").text("ROTTA: plataforma de transporte escolar", {
         align: "center",
       });
       doc.moveDown(0.5);

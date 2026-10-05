@@ -325,7 +325,7 @@ export class IdentityVerificationService {
   ): Promise<AdminIdentityVerificationDetail> {
     if (dto.newStatus === "Declined" && !dto.comment?.trim()) {
       throw new BadRequestException(
-        "Informe o motivo da recusa — ele é mostrado diretamente para o usuário.",
+        "Informe o motivo da recusa: ele é mostrado diretamente para o usuário.",
       );
     }
 

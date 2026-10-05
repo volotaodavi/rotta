@@ -74,7 +74,7 @@ export class AdminAccountsService {
     // própria senha/dados continua pelo fluxo normal de perfil.
     if (actor.sub === targetId) {
       throw new BadRequestException(
-        "Não é possível alterar a própria conta por aqui — peça a outro Admin Geral.",
+        "Não é possível alterar a própria conta por aqui. Peça a outro Admin Geral.",
       );
     }
 
@@ -101,7 +101,7 @@ export class AdminAccountsService {
       );
       if (outrosGeraisAtivos.length === 0) {
         throw new BadRequestException(
-          "Esta é a única conta com acesso Geral ativo — crie/ative outra antes de rebaixar ou desativar esta.",
+          "Esta é a única conta com acesso Geral ativo: crie/ative outra antes de rebaixar ou desativar esta.",
         );
       }
     }

@@ -48,7 +48,7 @@ export class VehicleCategoryClassifierService {
           categoria: VehicleCategory.EXECUTIVO,
           confianca: 92,
           motivo:
-            `Veículo tipo ${tipo.toLowerCase()} (${capacidadePassageiros} lugares) — pelo CTB (Art. 136), ` +
+            `Veículo tipo ${tipo.toLowerCase()} (${capacidadePassageiros} lugares): pelo CTB (Art. 136), ` +
             "transporte escolar regulamentado exige van/micro-ônibus/ônibus; carro de passeio nunca é elegível, " +
             "então a chance de ser Executivo é alta.",
         };
@@ -61,7 +61,7 @@ export class VehicleCategoryClassifierService {
           confianca: 65,
           motivo:
             `Veículo tipo ${tipo.toLowerCase()} (${capacidadePassageiros} lugares) é elegível tanto pra ` +
-            "transporte escolar quanto pra fretamento avulso — sugestão é Escolar (uso mais comum na Rotta), " +
+            "transporte escolar quanto pra fretamento avulso: sugestão é Escolar (uso mais comum na Rotta), " +
             "mas a confiança fica abaixo do limiar porque tipo/capacidade sozinhos não distinguem os dois.",
         };
 

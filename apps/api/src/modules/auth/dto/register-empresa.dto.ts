@@ -15,7 +15,7 @@ export class RegisterEmpresaDto extends CreateCompanyDto {
   @ApiProperty({
     example: true,
     description:
-      "Aceite dos Termos de Uso e da Política de Privacidade (LGPD) — obrigatoriamente true.",
+      "Aceite dos Termos de Uso e da Política de Privacidade (LGPD): obrigatoriamente true.",
   })
   @IsBoolean()
   @Equals(true, { message: "É necessário aceitar os Termos de Uso e a Política de Privacidade." })
@@ -23,7 +23,7 @@ export class RegisterEmpresaDto extends CreateCompanyDto {
 
   @ApiPropertyOptional({
     description:
-      "Token do widget Cloudflare Turnstile ('não sou um robô', pedido do usuário 01/09/2026) — só exigido quando o cadastro vem da web (ver `AuthService.assertHumanIfWeb`); ausente no app nativo, que não tem widget de navegador.",
+      "Token do widget Cloudflare Turnstile ('não sou um robô', pedido do usuário 01/09/2026): só exigido quando o cadastro vem da web (ver `AuthService.assertHumanIfWeb`); ausente no app nativo, que não tem widget de navegador.",
   })
   @IsOptional()
   @IsString()

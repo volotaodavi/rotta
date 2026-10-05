@@ -13,7 +13,7 @@ export class ChannelDeliveryStatsDto {
   @ApiProperty() total!: number;
   @ApiProperty() entregues!: number;
   @ApiProperty() falharam!: number;
-  @ApiProperty({ description: "0 a 1 — entregues/total (0 quando total é 0, nunca NaN)" })
+  @ApiProperty({ description: "0 a 1: entregues/total (0 quando total é 0, nunca NaN)" })
   taxaSucesso!: number;
   @ApiProperty({
     nullable: true,

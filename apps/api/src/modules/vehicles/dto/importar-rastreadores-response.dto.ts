@@ -3,7 +3,7 @@ import { ApiProperty } from "@nestjs/swagger";
 /** Uma linha que NÃO entrou, com o motivo em português para quem vai corrigir a planilha. */
 export class LinhaRecusadaDto {
   @ApiProperty({
-    description: "Posição na planilha, começando em 1 — é assim que a pessoa acha a linha.",
+    description: "Posição na planilha, começando em 1: é assim que a pessoa acha a linha.",
   })
   linha!: number;
 

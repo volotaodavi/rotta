@@ -11,7 +11,7 @@ export class ListStudentsQueryDto {
 
   @ApiPropertyOptional({
     description:
-      "Filtra por empresa — só tem efeito pro Admin Rotta (pedido do usuário 02/09/2026: aba 'Alunos' em empresas/[id]). Empresa/Gestor sempre vê só a própria (`actor.tenantId`), ignora este campo.",
+      "Filtra por empresa: só tem efeito pro Admin Rotta (pedido do usuário 02/09/2026: aba 'Alunos' em empresas/[id]). Empresa/Gestor sempre vê só a própria (`actor.tenantId`), ignora este campo.",
   })
   @IsOptional()
   @IsString()

@@ -23,7 +23,7 @@ import { AtLeastOneContato } from "@/common/validators/at-least-one-contato.deco
 export class CreatePreSignupPixDto {
   @ApiProperty({
     example: "João da Silva",
-    description: "Nome de quem está pagando — vira o nome sugerido ao completar o cadastro depois.",
+    description: "Nome de quem está pagando: vira o nome sugerido ao completar o cadastro depois.",
   })
   @IsString()
   nome!: string;

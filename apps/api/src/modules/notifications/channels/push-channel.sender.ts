@@ -44,7 +44,7 @@ export class PushChannelSender implements ChannelSender {
     );
     if (dispositivos.length === 0) {
       throw new NotFoundException(
-        "Usuário não possui nenhum dispositivo com token de push ativo — nenhum push enviado.",
+        "Usuário não possui nenhum dispositivo com token de push ativo: nenhum push enviado.",
       );
     }
 

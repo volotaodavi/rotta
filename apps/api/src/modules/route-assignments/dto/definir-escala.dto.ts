@@ -28,7 +28,7 @@ export class DefinirEscalaDto {
   @IsUUID()
   motoristaId!: string;
 
-  @ApiPropertyOptional({ description: "Monitor é opcional na operação — a escala vale sem ele." })
+  @ApiPropertyOptional({ description: "Monitor é opcional na operação: a escala vale sem ele." })
   @IsOptional()
   @IsUUID()
   monitorId?: string;

@@ -25,7 +25,7 @@ export class AuthentiqueService {
   // eslint-disable-next-line @typescript-eslint/require-await
   async prepararDocumentoParaAssinatura(_dto: PrepararDocumentoAssinaturaDto): Promise<never> {
     throw new NotImplementedException(
-      "A integração com a Authentique ainda não está disponível — integração pendente de contratação da API (authentique.com.br).",
+      "A integração com a Authentique ainda não está disponível: integração pendente de contratação da API (authentique.com.br).",
     );
   }
 }

@@ -34,5 +34,5 @@ export function companyBiRowsToExcelBuffer(rows: CompanyBiRow[]): Promise<Buffer
 }
 
 export function companyBiRowsToPdfBuffer(rows: CompanyBiRow[]): Promise<Buffer> {
-  return toPdfBuffer(rows, COLUMNS, "Rotta — Business Intelligence Nacional");
+  return toPdfBuffer(rows, COLUMNS, "Rotta: Business Intelligence Nacional");
 }
