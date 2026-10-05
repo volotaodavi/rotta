@@ -5,6 +5,27 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-05 — CEO
+
+**Fiz:** organizei a primeira semana. Marquei `[prioridade]` em um item por cargo no backlog e limpei o que já estava feito ou desatualizado.
+**Por que isso e não outra coisa:** o fio da semana é "quem pagou e não chegou". O backlog já registra pré-cadastro pago sem conta e conta criada sem cadastro terminado: dinheiro e família reais parados no funil. Ver isso de lados diferentes rende mais que quatro assuntos soltos.
+
+- CFO: quantificar os pré-cadastros pagos sem conta (quantos, quanto dinheiro, completar ou devolver). Só com dado da fonte.
+- CMO: onde o cadastro morre (texto, campo ou passo faltando). Cruza com o número do CFO, sem inventar taxa.
+- CTO: começar a auditoria dos agentes de IA pelo que toca dinheiro ou segurança. Fora disso, o plantão de erro segue como manda a carta.
+- CEO: escrever o que falta para vender a uma transportadora grande sem o fundador ao lado, no próximo turno.
+
+**Decidi sozinho:**
+
+- Tirei do backlog o travessão da API (feito em 36da054) e a organização da primeira semana (esta). Reduzi o item de testes ao `packages/ui`, porque o `apps/admin` já ganhou o primeiro teste em da467bd.
+- Não marquei o item do Vitest com ícone nem os de turno e escala: o primeiro é infraestrutura sem dor atual, e os dois últimos são pendências antigas que ninguém detalhou.
+- Nenhum PR de diretor estava aberto nem aguardando resposta, então não houve fila para cobrar. Também não há entrega anterior de ninguém para avaliar: é a primeira semana.
+
+**Preciso do fundador:** nada trava a semana. Os itens da seção "Só o fundador pode fazer" seguem valendo. Dois deles mudam o que a semana consegue: `DIRETORIA_READ_SECRET` (sem ele o plantão do CTO acorda cego) e o Pixel do Meta na Vercel (sem ele o CMO não mede nada).
+
+**Verificado:** calendário conferido pelo relógio do sistema (segunda, 08:08 de Brasília), `MODO: NORMAL`, sem ordem do fundador. Li o backlog e `DECISOES.md` inteiros e o `git log`. Conferi com `grep` que a limpeza de travessão cobre a API. Não rodei teste: o turno só mexe em documentos.
+**Descobri:** nada novo para o backlog.
+
 ## 2026-10-05 — FUNDAÇÃO (correção)
 
 **Fiz:** troquei a montagem da diretoria. Cada cargo agora tem uma

@@ -18,14 +18,9 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Produto e código (CTO)
 
-- [ ] (CTO) **Travessão nas mensagens da API.** A descrição da fatura
-      que o cliente vê no boleto do Asaas ainda sai como
-      "Rotta — Mensalidade da Plataforma — ...". A limpeza de 01/10/2026
-      cobriu app, web e pacotes de copy, e deixou o backend de fora.
-      É texto que chega ao cliente pago, no documento mais formal que
-      ele recebe.
-- [ ] (CTO) **`apps/admin` e `packages/ui` não têm teste nenhum.** O
-      script `test` dos dois é um `echo`. Os dois bugs achados em
+- [ ] (CTO) **`packages/ui` não tem teste nenhum** (o `apps/admin` ganhou
+      o primeiro em da467bd, o da escala). O script `test` do `packages/ui` é
+      um `echo`. Os dois bugs achados em
       02/10/2026 (foco perdido a cada letra, filtro que nunca casava)
       estavam exatamente ali. Começar pelo que já deu problema, não por
       cobertura geral.
@@ -43,7 +38,7 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
       02/10/2026, mas o mesmo padrão existe em outros lugares (o bloco
       "Cadastrar nova escola" no mesmo modal, entre outros). Placeholder
       desaparece na primeira letra digitada e deixa o campo anônimo.
-- [ ] (CTO) **Os agentes de IA do produto, sem dono até agora.**
+- [ ] (CTO) **[prioridade]** **Os agentes de IA do produto, sem dono até agora.**
       Geocoding, Validation, Map Intelligence, Education Sync, Rotta AI,
       Communication Engine e o Audit Engine passaram a ser do CTO em
       05/10/2026. Primeiro passo: descobrir qual deles está sem teste,
@@ -55,7 +50,7 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Dinheiro (CFO)
 
-- [ ] (CFO) **Quantificar os pré-cadastros pagos sem conta.** Quem
+- [ ] (CFO) **[prioridade]** **Quantificar os pré-cadastros pagos sem conta.** Quem
       pagou a assinatura no site e nunca completou o cadastro agora
       aparece no Admin, em "Contas de usuários". Falta saber quantos
       são, quanto dinheiro é, e qual o caminho para cada um: completar
@@ -81,15 +76,13 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 - [ ] (CMO) **Dicas para o gerenciador de anúncios**, em
       `empresa/marketing/`: o que otimizar, que público, que criativo, e
       o que o dado disponível sustenta de verdade.
-- [ ] (CMO) **Onde o cadastro morre.** O produto registra pré-cadastro
+- [ ] (CMO) **[prioridade]** **Onde o cadastro morre.** O produto registra pré-cadastro
       pago sem conta e conta criada sem cadastro terminado. Entender se
       a causa é texto, campo ou passo faltando.
 
 ### Companhia (CEO)
 
-- [ ] (CEO) **Organizar a primeira semana** e marcar a prioridade de
-      cada cargo.
-- [ ] (CEO) **O que falta para vender de verdade.** Escrever, com base
+- [ ] (CEO) **[prioridade]** **O que falta para vender de verdade.** Escrever, com base
       no que existe no repositório, o que ainda impede a Rotta de
       receber uma transportadora grande sem o fundador ao lado.
 
