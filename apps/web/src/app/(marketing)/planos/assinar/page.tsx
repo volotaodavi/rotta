@@ -13,7 +13,7 @@ import {
   useCreatePreSignupPixCheckout,
   usePreSignupStatus,
 } from "@/features/company/hooks/use-company";
-import { rastrear } from "@/features/marketing/tracking";
+import { lerAtribuicaoDeCampanha, rastrear } from "@/features/marketing/tracking";
 
 type Metodo = "PIX" | AsaasBillingType;
 
@@ -78,6 +78,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
         email: email.trim() || undefined,
         cpfCnpj: cpfCnpj.trim() || undefined,
         telefone: telefone.trim() || undefined,
+        atribuicao: lerAtribuicaoDeCampanha(),
       });
       setPendingId(result.pendingId);
       setPixCheckout(result.checkout ?? null);
@@ -96,6 +97,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
         cpfCnpj: cpfCnpj.trim(),
         telefone: telefone.trim() || undefined,
         billingType: metodo as AsaasBillingType,
+        atribuicao: lerAtribuicaoDeCampanha(),
         ...(metodo !== "BOLETO"
           ? {
               cartao,
@@ -146,6 +148,12 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
       valor: preSignupStatus?.valorCentavos ? preSignupStatus.valorCentavos / 100 : undefined,
       plano: preSignupStatus?.planCode,
       publico: "transportadora",
+      /*
+        O MESMO identificador que o servidor usa ao mandar esta compra
+        pela API de Conversões (`registrarCompraNoMetaBestEffort`), para
+        o Meta reconhecer os dois relatos como uma venda só.
+      */
+      ...(pendingId ? { eventoId: `pending:${pendingId}` } : {}),
     });
     const params = new URLSearchParams({
       ...(nome ? { nome } : {}),

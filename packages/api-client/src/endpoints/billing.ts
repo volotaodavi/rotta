@@ -194,11 +194,24 @@ interface ApiEnvelope<T> {
  * (`CreatePreSignupAsaasInput` abaixo) — restrição da própria Asaas, não
  * da Rotta (ver `apps/api/.../create-pre-signup-checkout.dto.ts`).
  */
+export interface AtribuicaoDeCampanha {
+  /** Cookie `_fbp`: identifica o navegador. */
+  fbp?: string;
+  /** Cookie `_fbc`: identifica o clique no anúncio. É o que liga a venda à campanha. */
+  fbc?: string;
+}
+
 export interface CreatePreSignupPixInput {
   nome: string;
   email?: string;
   cpfCnpj?: string;
   telefone?: string;
+  /**
+   * Sinais que o site lê dos cookies do próprio Pixel do Meta, para a
+   * API passar a compra confirmada de volta ao Meta com a campanha
+   * certa. Sempre opcional e sem nenhum efeito sobre o pagamento.
+   */
+  atribuicao?: AtribuicaoDeCampanha;
 }
 
 export interface CreatePreSignupAsaasInput {
@@ -209,6 +222,8 @@ export interface CreatePreSignupAsaasInput {
   billingType: AsaasBillingType;
   cartao?: CreateAsaasCheckoutInput["cartao"];
   titular?: CreateAsaasCheckoutInput["titular"];
+  /** Mesmo raciocínio de `CreatePreSignupPixInput.atribuicao`. */
+  atribuicao?: AtribuicaoDeCampanha;
 }
 
 export interface PreSignupCheckoutResult<T> {

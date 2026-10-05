@@ -18,6 +18,7 @@ import { CurrentUser, type AuthenticatedUser } from "@/common/decorators/current
 import { Public } from "@/common/decorators/public.decorator";
 import { Roles } from "@/common/decorators/roles.decorator";
 import { SkipTrialGuard } from "@/common/decorators/skip-trial-guard.decorator";
+import { type AtribuicaoDoNavegador } from "@/modules/marketing/meta-conversions.service";
 import { PlanNoticesService } from "@/modules/plan-notices/plan-notices.service";
 import { AdminArea, Role } from "@/shared/enums";
 
@@ -217,15 +218,37 @@ export class BillingController {
    */
   @Post("pre-signup/pix")
   @Public()
-  createPreSignupPixCheckout(@Body() dto: CreatePreSignupPixDto) {
-    return this.billingService.createPreSignupPixCheckout(dto);
+  createPreSignupPixCheckout(@Body() dto: CreatePreSignupPixDto, @Req() req: Request) {
+    return this.billingService.createPreSignupPixCheckout(dto, this.lerAtribuicao(dto, req));
   }
 
   /** Mesmo raciocínio de `pre-signup/pix`, cartão/débito/boleto via Asaas. */
   @Post("pre-signup/asaas")
   @Public()
-  createPreSignupAsaasCheckout(@Body() dto: CreatePreSignupAsaasDto) {
-    return this.billingService.createPreSignupAsaasCheckout(dto);
+  createPreSignupAsaasCheckout(@Body() dto: CreatePreSignupAsaasDto, @Req() req: Request) {
+    return this.billingService.createPreSignupAsaasCheckout(dto, this.lerAtribuicao(dto, req));
+  }
+
+  /**
+   * Monta os sinais de atribuição: os cookies do Pixel vêm do corpo (o
+   * navegador os lê e manda), o IP e o user agent vêm da própria
+   * requisição.
+   *
+   * O IP é lido aqui, e não no navegador, porque o navegador não sabe
+   * o próprio IP público, e porque um valor vindo do cliente seria
+   * forjável. É o mesmo IP que qualquer servidor web registra, usado
+   * só para o Meta casar esta compra com a visita que veio do anúncio.
+   */
+  private lerAtribuicao(
+    dto: { atribuicao?: { fbp?: string; fbc?: string } },
+    req: Request,
+  ): AtribuicaoDoNavegador {
+    return {
+      fbp: dto.atribuicao?.fbp ?? null,
+      fbc: dto.atribuicao?.fbc ?? null,
+      userAgent: req.headers["user-agent"] ?? null,
+      ip: req.ip ?? null,
+    };
   }
 
   /** Polling do front (tela pública) enquanto aguarda o webhook confirmar o pagamento pré-cadastro. */

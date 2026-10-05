@@ -11,6 +11,7 @@ import { BillingService } from "./billing.service";
 import { EmailModule } from "@/infra/email/email.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { MarketingModule } from "@/modules/marketing/marketing.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
 import { PlanNoticesModule } from "@/modules/plan-notices/plan-notices.module";
 import { UsersModule } from "@/modules/users/users.module";
@@ -34,6 +35,7 @@ import { UsersModule } from "@/modules/users/users.module";
     MessagePersonalizationModule,
     EmailModule,
     AuditModule,
+    MarketingModule,
   ],
   controllers: [BillingController, AsaasWebhookController, BillingQueueController],
   providers: [AsaasClientService, BillingService, AsaasWebhookGuard, BillingSchedulerService],

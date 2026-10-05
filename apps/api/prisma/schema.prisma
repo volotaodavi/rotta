@@ -607,6 +607,24 @@ model PendingSubscription {
   /// este registro histórico de pagamento precise sumir junto.
   linkedCompanyId String?   @db.Uuid
 
+  /// Sinais de atribuição do navegador que iniciou o checkout, usados
+  /// só para mandar a compra confirmada de volta ao Meta pela API de
+  /// Conversões (`MetaConversionsService`). `metaFbc` é o clique no
+  /// anúncio (o `fbclid` da URL) e é o único campo que liga esta venda
+  /// a um anúncio específico; `metaFbp` identifica o navegador. Nenhum
+  /// é dado pessoal declarado: são identificadores que o próprio Meta
+  /// criou. Nulos quando a pessoa chegou por fora de anúncio, recusou
+  /// os cookies ou usa bloqueador — e aí a venda simplesmente não é
+  /// atribuída a campanha nenhuma, que é o resultado honesto.
+  metaFbp        String?
+  metaFbc        String?
+  metaUserAgent  String?
+  metaIp         String?
+  /// Carimbo de quando a compra foi aceita pelo Meta. Existe para o
+  /// webhook da Asaas poder ser reentregue (ela reentrega) sem a
+  /// conversão ser contada duas vezes.
+  metaPurchaseEm DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

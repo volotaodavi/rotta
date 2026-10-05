@@ -44,10 +44,22 @@ import { PrismaService } from "@/infra/database/prisma.service";
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
+import {
+  AtribuicaoDoNavegador,
+  MetaConversionsService,
+} from "@/modules/marketing/meta-conversions.service";
 import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
+
+/** Só os campos de atribuição que `registrarCompraNoMetaBestEffort` lê. */
+interface AtribuicaoSalva {
+  metaFbp: string | null;
+  metaFbc: string | null;
+  metaUserAgent: string | null;
+  metaIp: string | null;
+}
 
 export interface BillingAdminCompanySummary {
   id: string;
@@ -180,6 +192,7 @@ export class BillingService {
     private readonly eventEmitter: EventEmitter2,
     private readonly adminInboxEmailService: AdminInboxEmailService,
     private readonly auditLogService: AuditLogService,
+    private readonly metaConversions: MetaConversionsService,
   ) {}
 
   /**
@@ -498,17 +511,19 @@ export class BillingService {
    */
   async createPreSignupPixCheckout(
     dto: CreatePreSignupPixDto,
+    atribuicao?: AtribuicaoDoNavegador,
   ): Promise<{ pendingId: string; expiresAt: string; checkout: PixCheckoutResult }> {
     if (!this.asaasClient.isConfigured()) {
       throw new BadRequestException(
         "Pagamento indisponível: a Asaas ainda não está configurada nesta implantação.",
       );
     }
-    return this.createPreSignupPixCheckoutViaAsaas(dto);
+    return this.createPreSignupPixCheckoutViaAsaas(dto, atribuicao);
   }
 
   private async createPreSignupPixCheckoutViaAsaas(
     dto: CreatePreSignupPixDto,
+    atribuicao?: AtribuicaoDoNavegador,
   ): Promise<{ pendingId: string; expiresAt: string; checkout: PixCheckoutResult }> {
     if (!dto.cpfCnpj) {
       throw new BadRequestException(
@@ -527,6 +542,10 @@ export class BillingService {
         provider: PendingSubscriptionProvider.ASAAS,
         providerCheckoutId: "",
         expiresAt,
+        metaFbp: atribuicao?.fbp ?? null,
+        metaFbc: atribuicao?.fbc ?? null,
+        metaUserAgent: atribuicao?.userAgent ?? null,
+        metaIp: atribuicao?.ip ?? null,
       },
     });
 
@@ -695,6 +714,7 @@ export class BillingService {
    */
   async createPreSignupAsaasCheckout(
     dto: CreatePreSignupAsaasDto,
+    atribuicao?: AtribuicaoDoNavegador,
   ): Promise<{ pendingId: string; expiresAt: string; payment: AsaasPayment }> {
     if (!this.asaasClient.isConfigured()) {
       throw new BadRequestException(
@@ -713,6 +733,10 @@ export class BillingService {
         provider: PendingSubscriptionProvider.ASAAS,
         providerCheckoutId: "",
         expiresAt,
+        metaFbp: atribuicao?.fbp ?? null,
+        metaFbc: atribuicao?.fbc ?? null,
+        metaUserAgent: atribuicao?.userAgent ?? null,
+        metaIp: atribuicao?.ip ?? null,
       },
     });
 
@@ -919,14 +943,72 @@ export class BillingService {
         return;
       }
 
+      const pagoEm = pending.paidAt ?? new Date();
       await this.prisma.pendingSubscription.update({
         where: { id: pendingId },
-        data: { status: PendingSubscriptionStatus.PAGO, paidAt: pending.paidAt ?? new Date() },
+        data: { status: PendingSubscriptionStatus.PAGO, paidAt: pagoEm },
       });
       this.logger.log(`PendingSubscription ${pendingId} -> PAGO (webhook "${eventName}").`);
+
+      await this.registrarCompraNoMetaBestEffort(pending, pagoEm);
     } catch (error) {
       this.logger.warn(
         `Não foi possível marcar a PendingSubscription ${pendingId} como PAGO a partir do webhook "${eventName}": ${(error as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Devolve a compra confirmada para o Meta pela API de Conversões.
+   *
+   * Este é o único lugar do sistema que sabe, com certeza, que o
+   * dinheiro entrou. O Pixel do navegador não sabe: o Pix é confirmado
+   * por webhook, minutos depois, com a pessoa já fora do site. Sem
+   * isto, o Meta otimizaria a campanha em cima de uma fração dos
+   * pagamentos reais, e o custo por aquisição apareceria muito pior do
+   * que é.
+   *
+   * `metaPurchaseEm` guarda que já foi enviado: a Asaas reentrega
+   * webhook, e conversão contada duas vezes estraga exatamente a conta
+   * que ela deveria informar.
+   *
+   * Best-effort de verdade: marketing nunca pode ser o motivo de uma
+   * confirmação de pagamento falhar.
+   */
+  private async registrarCompraNoMetaBestEffort(
+    pending: { id: string; valorCentavos: number; metaPurchaseEm: Date | null } & AtribuicaoSalva,
+    pagoEm: Date,
+  ): Promise<void> {
+    if (pending.metaPurchaseEm) return;
+
+    try {
+      const enviado = await this.metaConversions.registrarCompra({
+        /*
+          O mesmo `event_id` que a tela pública manda no evento do
+          navegador, para o Meta descartar a cópia quando os dois
+          caminhos conseguirem reportar a mesma venda.
+        */
+        eventId: `${PENDING_SUBSCRIPTION_ID_PREFIX}${pending.id}`,
+        valorCentavos: pending.valorCentavos,
+        ocorridoEm: pagoEm,
+        referenciaInterna: pending.id,
+        atribuicao: {
+          fbp: pending.metaFbp,
+          fbc: pending.metaFbc,
+          userAgent: pending.metaUserAgent,
+          ip: pending.metaIp,
+        },
+      });
+
+      if (enviado) {
+        await this.prisma.pendingSubscription.update({
+          where: { id: pending.id },
+          data: { metaPurchaseEm: new Date() },
+        });
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Conversão da PendingSubscription ${pending.id} não foi enviada ao Meta: ${(error as Error).message}`,
       );
     }
   }

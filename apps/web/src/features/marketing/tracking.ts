@@ -66,6 +66,13 @@ interface DadosDoEvento {
   publico?: string;
   /** Código do plano, quando houver. */
   plano?: string;
+  /**
+   * Chave de deduplicação, quando o MESMO evento também é mandado pelo
+   * servidor (API de Conversões). O Meta descarta a cópia: sem isto, uma
+   * compra que os dois caminhos conseguiram ver viraria duas, e o custo
+   * por aquisição apareceria pela metade do real.
+   */
+  eventoId?: string;
 }
 
 /**
@@ -103,6 +110,40 @@ declare global {
 }
 
 /**
+ * Lê os cookies que o próprio Pixel do Meta criou neste navegador.
+ *
+ * `_fbc` guarda o clique no anúncio (o `fbclid` que veio na URL) e é o
+ * único sinal que liga uma venda a um anúncio específico. `_fbp`
+ * identifica o navegador.
+ *
+ * Isto existe porque o pagamento é confirmado no servidor, por webhook
+ * da Asaas, minutos depois e possivelmente com o site já fechado: o
+ * navegador manda estes dois valores junto do checkout para que a API
+ * consiga, lá na frente, devolver a compra ao Meta com a campanha
+ * certa (`MetaConversionsService`, no backend).
+ *
+ * Devolve vazio quando a pessoa não aceitou os cookies, chegou por fora
+ * de anúncio ou usa bloqueador. Nesse caso a venda fica sem atribuição,
+ * que é o resultado honesto.
+ */
+export function lerAtribuicaoDeCampanha(): { fbp?: string; fbc?: string } {
+  if (typeof document === "undefined") return {};
+
+  const ler = (nome: string): string | undefined => {
+    const achado = document.cookie
+      .split("; ")
+      .find((parte) => parte.startsWith(`${nome}=`))
+      ?.slice(nome.length + 1);
+    return achado ? decodeURIComponent(achado) : undefined;
+  };
+
+  const fbp = ler("_fbp");
+  const fbc = ler("_fbc");
+
+  return { ...(fbp ? { fbp } : {}), ...(fbc ? { fbc } : {}) };
+}
+
+/**
  * Manda um evento para a plataforma cujo script estiver carregado.
  *
  * Nunca lança: uma falha de rastreamento não pode derrubar um
@@ -122,6 +163,7 @@ export function rastrear(evento: EventoDeMarketing, dados: DadosDoEvento = {}): 
         evento === "assinatura_paga"
           ? { value: dados.valor ?? 0, currency: "BRL", content_name: dados.plano }
           : { content_category: dados.publico, content_name: dados.plano },
+        ...(dados.eventoId ? [{ eventID: dados.eventoId }] : []),
       );
     }
 
