@@ -120,3 +120,79 @@ describe("ClientErrorsService", () => {
     });
   });
 });
+
+/**
+ * O plantão que a diretoria de agentes lê (autorizado pelo fundador em
+ * 05/10/2026). Dois comportamentos importam: agrupar o mesmo defeito, e
+ * não deixar vazar quem é a pessoa que esbarrou nele.
+ */
+describe("ClientErrorsService.plantao", () => {
+  const agora = new Date();
+  const umaHoraAtras = new Date(agora.getTime() - 60 * 60 * 1000);
+  const umaSemanaAtras = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  function erro(overrides: Partial<typeof REPORT>) {
+    return { ...REPORT, ...overrides };
+  }
+
+  it("agrupa o mesmo defeito e conta quantas pessoas bateram nele", async () => {
+    const repository = buildRepository();
+    repository.list.mockResolvedValue({
+      items: [
+        erro({ id: "1", message: "Boom", path: "/rotas/novo", createdAt: agora }),
+        erro({ id: "2", message: "Boom", path: "/rotas/123", createdAt: umaHoraAtras }),
+        erro({ id: "3", message: "Outro", path: "/alunos", createdAt: agora }),
+      ],
+      total: 3,
+    });
+    const service = new ClientErrorsService(repository, buildJwtService() as never, {
+      get: jest.fn(),
+    });
+
+    const resultado = await service.plantao();
+
+    expect(resultado.gruposDeErro).toBe(2);
+    const boom = resultado.items.find((item) => item.mensagem === "Boom");
+    expect(boom?.quantas).toBe(2);
+    expect(boom?.telas).toEqual(expect.arrayContaining(["/rotas/novo", "/rotas/123"]));
+  });
+
+  it("ignora o que está fora da janela pedida", async () => {
+    const repository = buildRepository();
+    repository.list.mockResolvedValue({
+      items: [erro({ id: "1", message: "Velho", createdAt: umaSemanaAtras })],
+      total: 1,
+    });
+    const service = new ClientErrorsService(repository, buildJwtService() as never, {
+      get: jest.fn(),
+    });
+
+    await expect(service.plantao(24)).resolves.toEqual(
+      expect.objectContaining({ gruposDeErro: 0, items: [] }),
+    );
+  });
+
+  it("nunca devolve quem é a pessoa que esbarrou no erro", async () => {
+    const repository = buildRepository();
+    repository.list.mockResolvedValue({
+      items: [
+        erro({
+          id: "1",
+          message: "Boom",
+          createdAt: agora,
+          userId: "user-123",
+          companyId: "company-456",
+        }),
+      ],
+      total: 1,
+    });
+    const service = new ClientErrorsService(repository, buildJwtService() as never, {
+      get: jest.fn(),
+    });
+
+    const texto = JSON.stringify(await service.plantao());
+
+    expect(texto).not.toContain("user-123");
+    expect(texto).not.toContain("company-456");
+  });
+});

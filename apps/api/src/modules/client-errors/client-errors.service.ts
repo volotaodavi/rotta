@@ -101,4 +101,81 @@ export class ClientErrorsService {
       pageSize,
     };
   }
+
+  /**
+   * O plantão da diretoria: os erros recentes, agrupados, para o CTO
+   * agente consertar sem precisar de conta de admin nem de acesso ao
+   * banco (autorizado pelo fundador em 05/10/2026 — ver
+   * `DiretoriaReadGuard`).
+   *
+   * Agrupado por mensagem de propósito: a mesma falha costuma chegar
+   * dezenas de vezes, e o que o turno precisa saber é "qual defeito
+   * existe e quantas pessoas bateram nele", não a lista crua.
+   *
+   * O que NÃO sai daqui: quem é a pessoa. Nenhum id de usuário, nenhum
+   * e-mail, nenhum dado de aluno. Um relatório de erro serve para
+   * consertar código, e para consertar código bastam a mensagem, a
+   * tela, a pilha e o build.
+   */
+  async plantao(horas = 72, limite = 20) {
+    const desde = new Date(Date.now() - horas * 60 * 60 * 1000);
+    const recentes = await this.repository.list({ page: 1, pageSize: 500 });
+
+    const porMensagem = new Map<
+      string,
+      {
+        app: string;
+        mensagem: string;
+        telas: Set<string>;
+        buildIds: Set<string>;
+        quantas: number;
+        primeiraVez: string;
+        ultimaVez: string;
+        pilha: string | null;
+      }
+    >();
+
+    for (const erro of recentes.items) {
+      const quando = new Date(erro.createdAt).toISOString();
+      if (new Date(erro.createdAt) < desde) continue;
+      const chave = `${erro.app}::${erro.message}`;
+      const atual = porMensagem.get(chave);
+      if (atual) {
+        atual.quantas += 1;
+        atual.telas.add(erro.path);
+        if (erro.buildId) atual.buildIds.add(erro.buildId);
+        if (quando < atual.primeiraVez) atual.primeiraVez = quando;
+        if (quando > atual.ultimaVez) atual.ultimaVez = quando;
+        continue;
+      }
+      porMensagem.set(chave, {
+        app: erro.app,
+        mensagem: erro.message,
+        telas: new Set([erro.path]),
+        buildIds: new Set(erro.buildId ? [erro.buildId] : []),
+        quantas: 1,
+        primeiraVez: quando,
+        ultimaVez: quando,
+        pilha: erro.stack ?? null,
+      });
+    }
+
+    const items = [...porMensagem.values()]
+      .sort((a, b) => b.quantas - a.quantas)
+      .slice(0, limite)
+      .map((grupo) => ({
+        app: grupo.app,
+        mensagem: grupo.mensagem,
+        telas: [...grupo.telas].slice(0, 5),
+        buildIds: [...grupo.buildIds].slice(0, 3),
+        quantas: grupo.quantas,
+        primeiraVez: grupo.primeiraVez,
+        ultimaVez: grupo.ultimaVez,
+        // A pilha de UMA ocorrência basta para achar o arquivo; mandar
+        // a de todas só encheria o contexto do turno.
+        pilha: grupo.pilha?.slice(0, 4000) ?? null,
+      }));
+
+    return { janelaEmHoras: horas, gruposDeErro: items.length, items };
+  }
 }

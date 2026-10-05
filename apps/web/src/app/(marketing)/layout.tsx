@@ -10,6 +10,7 @@ import type { ReactNode } from "react";
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
+import { MarketingTracking } from "@/features/marketing/components/marketing-tracking";
 import { ROTTA_APP_URL } from "@/lib/app-links";
 import { SITE_INSTAGRAM_URL } from "@/lib/site-config";
 import { wakeApi } from "@/lib/wake-api";
@@ -150,6 +151,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
 
   return (
     <div data-theme="light" className="flex min-h-screen flex-col bg-background text-text">
+      <MarketingTracking />
       <header
         className={`sticky top-0 z-30 transition-[background-color,box-shadow,border-color] duration-200 ${
           scrolled

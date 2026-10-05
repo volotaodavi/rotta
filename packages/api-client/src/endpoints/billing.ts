@@ -226,6 +226,9 @@ export interface PreSignupStatus {
   paidAt: string | null;
   expiresAt: string;
   linkedCompanyId: string | null;
+  /** Quanto a assinatura custou, em centavos. Usado no evento de compra da medição de campanha. */
+  valorCentavos: number;
+  planCode: string;
 }
 
 export function createBillingEndpoints(apiClient: ApiClient) {

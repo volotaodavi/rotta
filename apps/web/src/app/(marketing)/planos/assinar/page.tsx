@@ -13,6 +13,7 @@ import {
   useCreatePreSignupPixCheckout,
   usePreSignupStatus,
 } from "@/features/company/hooks/use-company";
+import { rastrear } from "@/features/marketing/tracking";
 
 type Metodo = "PIX" | AsaasBillingType;
 
@@ -80,6 +81,8 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
       });
       setPendingId(result.pendingId);
       setPixCheckout(result.checkout ?? null);
+      // Conversão: checkout aberto de verdade (o Pix foi gerado).
+      rastrear("checkout_aberto", { publico: "transportadora" });
     } catch {
       toast.error("Não foi possível gerar o Pix. Confira os dados e tente novamente.");
     }
@@ -133,6 +136,17 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
   // pagamento. Query string leva os mesmos dados pra pré-preencher
   // `/criar-conta/empresa` (ver `initialState` lá).
   if (pago) {
+    /*
+      Conversão de verdade: o webhook do Asaas já marcou PAGO. É o
+      único evento desta plataforma que carrega valor, e é o que faz o
+      Meta parar de procurar quem clica e começar a procurar quem paga.
+      O valor vem do plano configurado, nunca de número escrito à mão.
+    */
+    rastrear("assinatura_paga", {
+      valor: preSignupStatus?.valorCentavos ? preSignupStatus.valorCentavos / 100 : undefined,
+      plano: preSignupStatus?.planCode,
+      publico: "transportadora",
+    });
     const params = new URLSearchParams({
       ...(nome ? { nome } : {}),
       ...(email ? { email } : {}),

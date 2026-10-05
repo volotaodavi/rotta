@@ -13,6 +13,11 @@ respeitado de verdade em vez de ficar escrito e ignorado.
 
 - **Início: 08:00** de Brasília. Nenhum turno começa antes disso, e é
   por isso que os agendamentos estão entre 08:07 e 08:13.
+- **O CTO acorda todo dia útil** (decisão do fundador, 05/10/2026:
+  "qualquer erro que ocorrer, independente do CTO estar de folga ou
+  não, ele deverá ser acionado"). Terça e quinta são turno completo;
+  segunda, quarta e sexta são plantão de erro, que encerra em segundos
+  quando não há erro novo. Ver `cargos/cto.md`.
 - **Limite: 16:00** de Brasília. Se o relógio passar das 16:00 com o
   trabalho em andamento, o turno **para onde está**: empurra a branch
   com o que já existe, abre o Pull Request mesmo incompleto marcando no

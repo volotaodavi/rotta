@@ -21,6 +21,7 @@ import type { RegisterPessoalInput } from "@rotta/api-client";
 import { TermsAcceptanceCheckbox } from "@/components/terms-acceptance-checkbox";
 import { TurnstileWidget } from "@/components/turnstile-widget";
 import { env } from "@/config/env";
+import { rastrear } from "@/features/marketing/tracking";
 
 const INITIAL_STATE: RegisterPessoalInput = {
   nome: "",
@@ -89,6 +90,13 @@ export default function CriarContaPessoalPage(): JSX.Element {
   // C), a conta recém-criada (já autenticada, mesma sessão) segue
   // direto para lá.
   if (isDone) {
+    /*
+      Conversão: conta de Responsável criada. Sai daqui, do estado real
+      de sucesso, e não do clique no botão de enviar: clique não é
+      cadastro, e contar clique como conversão ensina o algoritmo do
+      anúncio a procurar gente que clica e desiste.
+    */
+    rastrear("cadastro_concluido", { publico: "responsavel" });
     return (
       <div className="mx-auto flex w-full max-w-sm flex-col items-center gap-4 py-20 text-center">
         <span className="flex h-12 w-12 items-center justify-center rounded-full bg-success/10 text-success">

@@ -1,7 +1,8 @@
-import { Body, Controller, Get, Headers, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiTags } from "@nestjs/swagger";
 
 import { ClientErrorsService } from "./client-errors.service";
+import { DiretoriaReadGuard } from "./diretoria-read.guard";
 import { CreateClientErrorReportDto } from "./dto/create-client-error-report.dto";
 import { ListClientErrorReportsQueryDto } from "./dto/list-client-error-reports-query.dto";
 
@@ -48,5 +49,21 @@ export class ClientErrorsController {
   @Get()
   list(@Query() query: ListClientErrorReportsQueryDto) {
     return this.service.list(query);
+  }
+
+  /**
+   * Plantão da diretoria de agentes: os erros recentes agrupados, lidos
+   * por um turno agendado que não tem conta de admin (autorizado pelo
+   * fundador em 05/10/2026). `@Public()` tira o JWT do caminho e quem
+   * autentica é o `DiretoriaReadGuard`, pelo segredo de cabeçalho.
+   */
+  @Public()
+  @UseGuards(DiretoriaReadGuard)
+  @Get("plantao")
+  plantao(@Query("horas") horas?: string, @Query("limite") limite?: string) {
+    return this.service.plantao(
+      horas ? Math.min(Math.max(Number(horas), 1), 720) : 72,
+      limite ? Math.min(Math.max(Number(limite), 1), 50) : 20,
+    );
   }
 }

@@ -47,6 +47,13 @@ export const envSchema = z.object({
   // subiu o receptor — melhor recusar do que aceitar posição de origem
   // desconhecida.
   TRACKER_INGEST_SECRET: z.string().optional(),
+  /*
+    Leitura dos erros de cliente pela diretoria de agentes (`empresa/`),
+    autorizada pelo fundador em 05/10/2026. Opcional: sem ela, a rota
+    `GET /client-errors/plantao` recusa tudo (ver `DiretoriaReadGuard`),
+    e nada mais na plataforma muda.
+  */
+  DIRETORIA_READ_SECRET: z.string().optional(),
   TRACKER_TIMEOUT_MINUTOS: z.coerce.number().int().positive().optional(),
   QSTASH_NEXT_SIGNING_KEY: z.string().optional(),
   API_PUBLIC_URL: z.string().url().or(z.literal("")).optional(),

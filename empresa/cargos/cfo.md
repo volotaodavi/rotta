@@ -75,6 +75,12 @@ Então todo turno do CFO termina com um recado endereçado ao CMO, escrito
 em `BACKLOG.md` na seção "Pedidos entre diretores", no formato
 `- [ ] (CMO) de: CFO — ...`. O recado responde três coisas, nesta ordem:
 
+0. **A campanha virou dinheiro?** Se houve campanha rodando, esta é a
+   primeira resposta: apareceu conta criada e assinatura paga no
+   período? Apareceu quanto, e vindo como? Não apareceu? Então diga o
+   que NÃO está acontecendo (ninguém chega, chega e não assina, assina
+   e não paga), porque é disso que o CMO precisa para saber se o
+   problema é da tela ou da segmentação.
 1. **Quanto entrou de verdade na semana**, e de quantas transportadoras.
 2. **Quanto a Rotta pode pagar por uma transportadora nova** sem sair no
    prejuízo, mostrando a conta (preço do plano, margem, quanto tempo ela

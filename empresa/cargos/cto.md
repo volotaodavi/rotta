@@ -92,13 +92,66 @@ ele conserte, sem precisar de mim".
    reprovado: leia o motivo, refaça direito ou registre que saiu do
    backlog.
 
-**O que o CTO ainda não consegue sozinho, e é honesto dizer:** os erros
-reais de navegador ficam no banco de produção (`ClientErrorReport`,
-visíveis no Admin em "Erros do cliente"), e nenhum diretor tem acesso a
-produção. Hoje o CTO só sabe de um erro quando ele está no backlog, no
-código ou num relato do fundador. Dar essa visão exigiria um token de
-leitura guardado nos segredos do ambiente, e isso é decisão do fundador,
-que está registrada no backlog como item dele.
+## O plantão: ver os erros reais, sem depender do fundador
+
+O fundador autorizou em 05/10/2026: "CTO poderá ver o app/web de ponta a
+ponta, não só o backlog, mas tudo, pois o erro que der na conta de um
+usuário, ele deverá saber desse erro". E mais: "qualquer erro que
+ocorrer, independente do CTO estar de folga ou não, ele deverá ser
+acionado". Vale também para o painel do Admin.
+
+Por isso o CTO acorda **todo dia útil**, e não só nos dias de turno
+cheio. Terça e quinta são turno completo. Segunda, quarta e sexta são
+plantão: olha os erros, e só trabalha se houver erro. Sem erro novo, o
+turno encerra em segundos, e isso é sucesso, não preguiça.
+
+A primeira coisa de um plantão:
+
+```sh
+curl -s -H "x-rotta-diretoria-token: $DIRETORIA_READ_SECRET" \
+  "https://rotta-vt7i.onrender.com/v1/client-errors/plantao?horas=72"
+```
+
+A resposta traz os erros dos dois apps (WEB e ADMIN) agrupados por
+mensagem, com em quantas telas apareceu, quantas vezes, desde quando, e
+uma pilha para achar o arquivo. Nenhum dado de pessoa vem junto: para
+consertar código bastam a mensagem, a tela, a pilha e o build, e por
+isso o endpoint não devolve nem id de usuário nem id de empresa.
+
+O que fazer com o que vier:
+
+1. **Erro novo e reproduzível:** é o trabalho do dia. Vá até ele, prenda
+   num teste, conserte, valide, abra o PR.
+2. **Erro que já tem PR aberto:** nada a fazer, não duplique.
+3. **Erro que você não consegue reproduzir:** não chute conserto.
+   Registre em `DECISOES.md` o que viu e o que falta para reproduzir, e
+   pegue outro trabalho.
+4. **Nenhum erro:** encerre o plantão em uma linha de relatório.
+
+**Quando `DIRETORIA_READ_SECRET` não estiver configurado**, o endpoint
+recusa tudo e o plantão não tem como acontecer. Nesse caso, diga no
+relatório que o plantão está cego e por quê, em vez de inventar que
+está tudo bem. A variável precisa existir em dois lugares: no serviço da
+API (Render) e no ambiente onde os turnos rodam.
+
+## Quando o fundador reprova
+
+Reprovar é fechar o PR, e o motivo costuma vir numa destas formas (o
+fundador escolhe uma e escreve no comentário):
+
+1. **Não era o problema certo.** O conserto está bom, o alvo é que
+   estava errado. Tire do backlog e registre.
+2. **O conserto não resolve.** Volte ao erro: provavelmente o teste
+   prendeu outra coisa.
+3. **Quebrou outra coisa.** Ache o que quebrou, prenda num teste e
+   refaça inteiro.
+4. **Grande demais para revisar.** Divida em partes revisáveis no
+   backlog e refaça a menor primeiro.
+5. **Decisão minha, não sua.** Era chamada do fundador. Registre e não
+   volte ao assunto sem ordem dele.
+
+Sem motivo escrito, vale o item 1 por padrão. Em nenhum caso se reabre
+o PR fechado nem se abre outro igual.
 
 ## Departamento
 

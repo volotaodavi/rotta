@@ -73,12 +73,11 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 - [ ] (CMO) **A promessa da página inicial.** Quem chega é
       transportadora, família ou escola, e precisa achar o próprio
       caminho e entender em dez segundos por que usar.
-- [ ] (CMO) **Instrumentar a conversão das páginas públicas.** Hoje
-      nenhuma página avisa Meta Ads ou Google Ads do que aconteceu
-      depois do clique, então campanha nenhuma consegue otimizar para
-      cliente. Eventos reais: cadastro iniciado, cadastro concluído,
-      checkout aberto, assinatura paga, app baixado. O identificador
-      vem de variável de ambiente, nunca do commit.
+- [ ] (CMO) **Completar a instrumentação.** Quatro eventos já disparam
+      (página vista, checkout aberto, assinatura paga com valor, conta
+      de responsável criada). Faltam: cadastro de transportadora
+      concluído, app baixado (clique na Play Store) e contato de escola
+      enviado. Mesmo padrão: momento real do produto, sem dado pessoal.
 - [ ] (CMO) **Dicas para o gerenciador de anúncios**, em
       `empresa/marketing/`: o que otimizar, que público, que criativo, e
       o que o dado disponível sustenta de verdade.
@@ -109,9 +108,19 @@ Nenhum diretor mexe nestes. Ficam aqui para não serem esquecidos.
       CTO só sabe de um erro quando ele chega pelo backlog ou por você.
       Dar essa visão significa guardar um token só de leitura nos
       segredos do ambiente. Risco e benefício são seus para pesar.
-- [ ] **Mandar o Pixel do Meta e os IDs do Google**, quando quiser que
-      as campanhas comecem a medir. O CMO já deixa as páginas lendo as
-      variáveis de ambiente; o valor é você que coloca na Vercel.
+- [ ] **Colar o Pixel do Meta na Vercel.** O passo a passo está em
+      `empresa/marketing/COMO-LIGAR-O-PIXEL.md`: é uma variável de
+      ambiente (`NEXT_PUBLIC_META_PIXEL_ID`) e um redeploy. O site já
+      dispara os eventos; falta só o número.
+- [ ] **Criar o `DIRETORIA_READ_SECRET`**, para o plantão do CTO
+      enxergar os erros reais. Invente um segredo longo e coloque o
+      MESMO valor em dois lugares: no serviço da API no Render, e no
+      ambiente onde os turnos da diretoria rodam. Sem ele, o plantão
+      acorda cego e diz isso no relatório.
+- [ ] **Decidir sobre a Marketing API do Meta**, se quiser que o CMO
+      mexa em campanha sozinho. Exige um token de Usuário do Sistema com
+      `ads_management`, guardado como segredo do ambiente. O caminho
+      está no fim de `empresa/marketing/COMO-LIGAR-O-PIXEL.md`.
 - [ ] Publicar a versão 1.3.0 na Play Store (o `.aab` da build #48 já
       está gerado e é o que leva a saída do motorista autônomo).
 

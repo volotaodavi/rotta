@@ -19,6 +19,7 @@ import {
   Home,
   Layers,
   LogOut,
+  LineChart,
   Megaphone,
   Menu,
   MessageCircle,
@@ -135,6 +136,12 @@ const NAV_GROUPS: NavGroup[] = [
       // é nenhum deles, então nem o link aparece nem a rota abre para
       // eles.
       { href: "/diretoria", label: "Diretoria", icon: Briefcase },
+      // Subgrupo de marketing (pedido do fundador 05/10/2026: "pode
+      // criar um subgrupo denominado marketing, que aí vamos poder
+      // analisar as métricas juntos"). Mesma regra de acesso da
+      // Diretoria: GERAL-only, porque `isAdminRouteAllowed` não libera
+      // `/marketing` para SUPORTE nem para FINANCEIRO.
+      { href: "/marketing", label: "Marketing", icon: LineChart },
     ],
   },
 ];

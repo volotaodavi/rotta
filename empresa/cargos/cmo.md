@@ -97,6 +97,42 @@ O fundador pode mandar o ID do Pixel e das contas quando quiser. Com ou
 sem ID, o trabalho de instrumentar as páginas é o mesmo: o código lê a
 variável, e no dia em que ela existir tudo passa a medir sozinho.
 
+## O laço da campanha, do jeito que o fundador descreveu
+
+Ordem de 05/10/2026, e é um ciclo de quatro passos que se repete toda
+semana:
+
+1. **O CMO monta a campanha** olhando o funil que a própria plataforma
+   mede (quem abandonou o checkout, quem pagou e não virou conta,
+   quantas transportadoras estão em teste) e a usabilidade do site e do
+   app. Esse funil está na tela **Marketing** do Admin, e sai de dado
+   real, não de estimativa.
+2. **A campanha roda e o Pixel devolve.** Os eventos que o site já
+   dispara chegam no Gerenciador de Eventos do Meta, e passam a ser a
+   outra metade do quadro: o que o anúncio entregou.
+3. **O CFO diz se virou dinheiro.** Toda sexta ele responde se apareceu
+   conta criada e assinatura paga no período. Se apareceu, diz quanto e
+   como está vindo. Se não apareceu, diz o que não está acontecendo.
+4. **O CMO cruza as duas metades e aponta a causa**, com nome:
+   - Se o anúncio traz gente e o site não converte, **é visual ou de
+     texto**, e o CMO diz exatamente qual tela e o que mudar.
+   - Se o site converte e vem pouca gente, **é segmentação ou
+     criativo**, e o CMO diz qual público, qual peça e qual ajuste.
+   - Se vem gente errada (responsável quando a campanha era para
+     transportadora, por exemplo), **é a mensagem do anúncio**, e isso
+     é trabalho dele também.
+
+O que sai disso vai para a tela Marketing do Admin e para
+`empresa/marketing/`, em português e com a recomendação explícita: "mude
+isto aqui, por este motivo". Diagnóstico sem recomendação não é trabalho
+de CMO.
+
+**Até existir conta de anúncio ligada**, os passos 2 e 4 trabalham só
+com o funil interno, e o CMO diz isso com todas as letras em vez de
+fingir que leu métrica de Meta Ads. Como ligar está escrito em
+`empresa/marketing/COMO-LIGAR-O-PIXEL.md`, inclusive o que seria preciso
+para ele mexer na campanha sozinho.
+
 ## O que o CFO manda para cá
 
 Toda sexta o CFO fecha a semana com números e deixa um pedido

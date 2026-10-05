@@ -795,6 +795,8 @@ export class BillingService {
     paidAt: Date | null;
     expiresAt: Date;
     linkedCompanyId: string | null;
+    valorCentavos: number;
+    planCode: string;
   }> {
     const pending = await this.prisma.pendingSubscription.findUnique({
       where: { id: pendingId },
@@ -807,6 +809,16 @@ export class BillingService {
       paidAt: pending.paidAt,
       expiresAt: pending.expiresAt,
       linkedCompanyId: pending.linkedCompanyId,
+      /*
+        Valor e plano saem daqui para a medição de campanha
+        (05/10/2026). O evento de compra que o site manda ao Meta e ao
+        Google precisa carregar quanto entrou: sem valor, o algoritmo
+        trata uma assinatura igual a um clique e nunca aprende a
+        procurar quem paga. Nada disso é dado pessoal, é o preço do
+        próprio plano, que já está público na página de planos.
+      */
+      valorCentavos: pending.valorCentavos,
+      planCode: pending.planCode,
     };
   }
 

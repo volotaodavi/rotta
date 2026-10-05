@@ -38,6 +38,17 @@ const envSchema = z.object({
   // cadastro segue normalmente sem exigir verificação (stub honesto,
   // mesmo padrão de `NEXT_PUBLIC_VAPID_PUBLIC_KEY`).
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().optional(),
+  /*
+    Medição de campanha (05/10/2026). Nenhuma é segredo (as três
+    aparecem no HTML de qualquer site que as use), e nenhuma é
+    obrigatória: sem elas, `MarketingTracking` não carrega script
+    nenhum e o site fica idêntico. Ver `features/marketing/tracking.ts`
+    para o que é enviado, e `empresa/marketing/COMO-LIGAR-O-PIXEL.md`
+    para onde o fundador cola cada valor.
+  */
+  NEXT_PUBLIC_META_PIXEL_ID: z.string().optional(),
+  NEXT_PUBLIC_GOOGLE_ADS_ID: z.string().optional(),
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -46,4 +57,7 @@ export const env = envSchema.parse({
   NEXT_PUBLIC_MAPTILER_API_KEY: process.env.NEXT_PUBLIC_MAPTILER_API_KEY || undefined,
   NEXT_PUBLIC_CARTO_API_KEY: process.env.NEXT_PUBLIC_CARTO_API_KEY || undefined,
   NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || undefined,
+  NEXT_PUBLIC_META_PIXEL_ID: process.env.NEXT_PUBLIC_META_PIXEL_ID || undefined,
+  NEXT_PUBLIC_GOOGLE_ADS_ID: process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || undefined,
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || undefined,
 });

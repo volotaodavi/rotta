@@ -116,6 +116,21 @@ abre um segundo PR sobre o mesmo assunto enquanto o primeiro estiver
 esperando resposta: ficar empilhando trabalho não revisado é a forma
 mais rápida de a diretoria virar barulho.
 
+### O motivo da reprovação, em cinco opções
+
+Para reprovar não é preciso escrever um texto. Basta fechar o PR com um
+número no comentário, e o diretor sabe o que fazer com cada um:
+
+|     | Motivo                     | O que o diretor faz                         |
+| --- | -------------------------- | ------------------------------------------- |
+| 1   | Não era o problema certo   | Tira do backlog e registra                  |
+| 2   | O conserto não resolve     | Volta ao erro e refaz                       |
+| 3   | Quebrou outra coisa        | Acha o que quebrou, prende num teste, refaz |
+| 4   | Grande demais para revisar | Divide em partes e refaz a menor            |
+| 5   | Decisão minha, não sua     | Registra e não volta ao assunto             |
+
+Fechar sem número nenhum vale como 1.
+
 ## O que o fundador decide, nunca um diretor
 
 - Preço, plano e qualquer mudança no que o cliente paga.
