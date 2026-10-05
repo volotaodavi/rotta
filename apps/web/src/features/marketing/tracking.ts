@@ -1,7 +1,5 @@
 "use client";
 
-import { env } from "@/config/env";
-
 /**
  * Medição de campanha (pedido do fundador, 05/10/2026: "preciso saber
  * onde e como colocar [o Pixel] para ele mandar os dados certinhos para
@@ -15,19 +13,28 @@ import { env } from "@/config/env";
  * conta" e "esta pessoa pagou", o algoritmo passa a procurar gente
  * parecida com quem pagou, e o mesmo orçamento rende outra coisa.
  *
- * ## Onde o fundador coloca o identificador
+ * ## De onde sai o identificador
  *
- * Em variável de ambiente na Vercel, nunca no código:
+ * De `lib/site-config.ts`: `getMetaPixelId()`, `getGoogleAdsId()` e
+ * `getGoogleAnalyticsId()`. O Pixel do Meta já tem o número da Rotta
+ * embutido lá (não é segredo, e a razão está escrita no arquivo); os
+ * dois do Google ainda dependem de `NEXT_PUBLIC_GOOGLE_ADS_ID` e
+ * `NEXT_PUBLIC_GA_MEASUREMENT_ID`, porque as tags correspondentes
+ * ainda não existem.
  *
- * - `NEXT_PUBLIC_META_PIXEL_ID` (Meta: Gerenciador de Eventos, o número
- *   de 15 ou 16 dígitos do Pixel)
- * - `NEXT_PUBLIC_GOOGLE_ADS_ID` (Google Ads: "AW-XXXXXXXXXX")
- * - `NEXT_PUBLIC_GA_MEASUREMENT_ID` (GA4: "G-XXXXXXXXXX")
+ * As funções daqui não leem configuração nenhuma: elas olham se o
+ * script da plataforma foi carregado (`window.fbq`, `window.gtag`) e,
+ * se não foi, não fazem nada. Assim existe UM lugar que decide se mede
+ * ou não (`MarketingTracking`, que respeita o consentimento), e é
+ * impossível um evento escapar por um caminho que não passou por essa
+ * decisão.
  *
- * Nenhuma é segredo (as três aparecem no HTML de qualquer site que as
- * usa), mas nenhuma pode ficar presa num commit: elas mudam de conta e
- * de ambiente. Sem a variável, nada carrega e nada quebra: as funções
- * daqui viram no-op silencioso, e o site continua idêntico.
+ * ## Consentimento
+ *
+ * Nada carrega antes de a pessoa aceitar o banner de cookies (LGPD,
+ * art. 7º/8º). O mesmo portão que já valia para o Google Analytics
+ * vale para o Pixel: são a mesma categoria de cookie de terceiro, e
+ * numa plataforma que lida com dado de criança essa régua não baixa.
  *
  * ## O que NUNCA é enviado
  *
@@ -95,24 +102,20 @@ declare global {
   }
 }
 
-export const metaPixelId = env.NEXT_PUBLIC_META_PIXEL_ID;
-export const googleAdsId = env.NEXT_PUBLIC_GOOGLE_ADS_ID;
-export const gaMeasurementId = env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
-export const rastreamentoLigado = Boolean(metaPixelId || googleAdsId || gaMeasurementId);
-
 /**
- * Manda um evento para quem estiver configurado.
+ * Manda um evento para a plataforma cujo script estiver carregado.
  *
- * Nunca lança: uma falha de rastreamento não pode derrubar um cadastro.
- * Chamar isto sem nenhuma variável configurada não faz nada, de
- * propósito, e é esse o estado do site hoje.
+ * Nunca lança: uma falha de rastreamento não pode derrubar um
+ * cadastro. Chamar isto antes do consentimento, ou com bloqueador de
+ * anúncio ligado, não faz nada — `window.fbq` e `window.gtag` só
+ * existem depois que `MarketingTracking` decidiu que pode medir.
  */
 export function rastrear(evento: EventoDeMarketing, dados: DadosDoEvento = {}): void {
   if (typeof window === "undefined") return;
 
   try {
     const meta = EVENTO_META[evento];
-    if (metaPixelId && window.fbq) {
+    if (window.fbq) {
       window.fbq(
         meta.padrao ? "track" : "trackCustom",
         meta.nome,
@@ -122,7 +125,7 @@ export function rastrear(evento: EventoDeMarketing, dados: DadosDoEvento = {}): 
       );
     }
 
-    if ((googleAdsId || gaMeasurementId) && window.gtag) {
+    if (window.gtag) {
       window.gtag("event", EVENTO_GOOGLE[evento], {
         ...(evento === "assinatura_paga" ? { value: dados.valor ?? 0, currency: "BRL" } : {}),
         ...(dados.publico ? { publico: dados.publico } : {}),

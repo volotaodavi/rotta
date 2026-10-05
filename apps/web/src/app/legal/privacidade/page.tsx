@@ -147,10 +147,14 @@ export default function PrivacidadePage(): JSX.Element {
       </LegalSection>
 
       <LegalSection id="cookies" title="11. Cookies e tecnologias de rastreamento">
-        A sessão da Rotta hoje é mantida sem cookies (token de acesso em memória do navegador +
-        token de atualização local, nunca cookie), ver detalhe completo na{" "}
-        <Link href="/legal/cookies">Política de Cookies</Link>, incluindo o que fazemos (e não
-        fazemos) quanto a rastreamento e analytics.
+        A sessão da Rotta é mantida sem cookies (token de acesso em memória do navegador + token de
+        atualização local, nunca cookie). As páginas públicas do site usam o Pixel do Meta para
+        medir quais anúncios trazem clientes de verdade, e ele só carrega depois que a pessoa aceita
+        o aviso de cookies: enquanto não houver esse aceite, nenhum cookie de terceiro é criado.
+        Nome, e-mail, telefone, CPF, dados de aluno, rota e posição de veículo nunca são enviados
+        para plataforma de anúncio, e não há medição nenhuma dentro do painel autenticado nem no
+        aplicativo. Detalhe completo, incluindo como recusar e como mudar de ideia depois, na{" "}
+        <Link href="/legal/cookies">Política de Cookies</Link>.
       </LegalSection>
 
       <LegalSection id="terceiros" title="12. Integrações de terceiros">

@@ -114,6 +114,60 @@ export function getGoogleAnalyticsId(): string | undefined {
 }
 
 /**
+ * O Pixel do Meta da Rotta, dado pelo fundador em 05/10/2026.
+ *
+ * Por que uma string literal aqui, quando o resto deste arquivo foge
+ * justamente disso: um ID de Pixel **não é segredo** — ele aparece no
+ * HTML de qualquer site que o usa, é feito para ser lido pelo navegador
+ * de quem visita, e não dá acesso a nada na conta de anúncio. O que o
+ * arquivo evita hardcodar é *domínio* (que muda quando se compra um
+ * domínio próprio) e *segredo* (que nunca pode entrar em commit). Este
+ * número não é nenhum dos dois: é a identidade fixa da conta de anúncio
+ * da Rotta, e deixá-lo aqui significa que a medição sobe junto com o
+ * deploy, sem depender de ninguém lembrar de colar variável num painel.
+ *
+ * A variável de ambiente continua existindo e continua vencendo, para o
+ * dia em que houver uma segunda conta de anúncio (agência, teste A/B de
+ * conta, outra praça).
+ */
+const PIXEL_DO_META_DA_ROTTA = "2122632155047063";
+
+export function getMetaPixelId(): string | undefined {
+  return process.env.NEXT_PUBLIC_META_PIXEL_ID || PIXEL_DO_META_DA_ROTTA;
+}
+
+/**
+ * Verificação de propriedade do domínio no Meta (Gerenciador de
+ * Negócios → Configurações do negócio → Segurança da marca → Domínios
+ * → "Verificação por meta-tag"). É o código que o Meta pede para
+ * liberar a configuração de eventos e a priorização de eventos do
+ * domínio.
+ *
+ * Mesma filosofia de `getGoogleSiteVerification`: sem a variável, a tag
+ * não é renderizada e nada quebra. Não é segredo (vai no HTML, é feita
+ * para ser lida por um robô), mas também não tem padrão embutido como o
+ * Pixel: ela é gerada por domínio, e a Rotta ainda não tem domínio
+ * próprio. Quando tiver, o código muda, e aí a variável é o lugar
+ * certo.
+ *
+ * Diferente do Pixel, esta tag NÃO depende de consentimento: ela não
+ * cria cookie, não mede ninguém e não envia nada — é uma string estática
+ * que prova a posse do domínio.
+ */
+export function getFacebookDomainVerification(): string | undefined {
+  return process.env.FACEBOOK_DOMAIN_VERIFICATION || undefined;
+}
+
+/**
+ * Google Ads (`AW-XXXXXXXXXX`). Sem padrão embutido: ao contrário do
+ * Pixel, nenhuma tag de conversão do Google foi criada ainda, e chutar
+ * um número aqui não ligaria nada.
+ */
+export function getGoogleAdsId(): string | undefined {
+  return process.env.NEXT_PUBLIC_GOOGLE_ADS_ID || undefined;
+}
+
+/**
  * Dados reais da empresa (Dossiê 45 — Rotta Legal, Trust & Community
  * Center) — fonte única, consumida por Termos/Privacidade/rodapé/
  * demais documentos legais. NUNCA inventar um dado que não exista

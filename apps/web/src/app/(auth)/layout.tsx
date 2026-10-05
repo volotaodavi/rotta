@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { RouteMark } from "@/components/route-mark";
 import { MarketingTracking } from "@/features/marketing/components/marketing-tracking";
+import { getGoogleAdsId, getMetaPixelId } from "@/lib/site-config";
 
 /**
  * Todas as páginas de `(auth)` são "use client" (formulários
@@ -37,7 +38,7 @@ export default function AuthLayout({ children }: { children: ReactNode }): JSX.E
       <Link href="/" className="mb-8">
         <RouteMark className="h-10 w-10" />
       </Link>
-      <MarketingTracking />
+      <MarketingTracking metaPixelId={getMetaPixelId()} googleAdsId={getGoogleAdsId()} />
       {children}
     </div>
   );

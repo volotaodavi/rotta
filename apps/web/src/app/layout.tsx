@@ -8,8 +8,11 @@ import {
   SITE_INSTAGRAM_URL,
   SITE_LOGO_PATH,
   SITE_NAME,
+  getFacebookDomainVerification,
+  getGoogleAdsId,
   getGoogleAnalyticsId,
   getGoogleSiteVerification,
+  getMetaPixelId,
   getSiteUrl,
 } from "@/lib/site-config";
 import { AppProviders } from "@/providers/app-providers";
@@ -56,6 +59,15 @@ export const metadata: Metadata = {
   },
   verification: {
     google: getGoogleSiteVerification(),
+    /*
+      Verificação de domínio do Meta. `other` existe porque o Next não
+      tem campo nomeado para o `facebook-domain-verification`, e é esse
+      nome de meta-tag exato que o Gerenciador de Negócios procura.
+      Ausente enquanto a variável não existir, igual à do Google.
+    */
+    other: getFacebookDomainVerification()
+      ? { "facebook-domain-verification": getFacebookDomainVerification()! }
+      : {},
   },
   // iOS/Safari não lê `manifest.webmanifest` (Android/Chrome) pra decidir
   // como abrir o app instalado — usa suas próprias meta tags. Sem isso,
@@ -172,6 +184,7 @@ const THEME_INIT_SCRIPT = `
  */
 export default function RootLayout({ children }: { children: ReactNode }): JSX.Element {
   const gaMeasurementId = getGoogleAnalyticsId();
+  const temRastreamento = Boolean(gaMeasurementId || getMetaPixelId() || getGoogleAdsId());
 
   return (
     <html lang="pt-BR" suppressHydrationWarning>
@@ -191,7 +204,7 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
         <AppProviders>{children}</AppProviders>
         <InstallAppPrompt />
         <GoogleAnalytics measurementId={gaMeasurementId} />
-        <CookieConsentBanner hasGoogleAnalytics={Boolean(gaMeasurementId)} />
+        <CookieConsentBanner temRastreamento={temRastreamento} />
       </body>
     </html>
   );

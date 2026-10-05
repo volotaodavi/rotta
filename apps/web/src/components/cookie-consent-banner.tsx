@@ -8,11 +8,17 @@ import { getCookieConsent, setCookieConsent } from "@/lib/cookie-consent";
 
 /**
  * Banner de consentimento de cookies (LGPD, art. 7º/8º) — só aparece
- * se `hasGoogleAnalytics` for `true` (ou seja, existe um Measurement ID
- * real configurado, ver `lib/site-config.ts#getGoogleAnalyticsId`).
- * Sem Analytics configurado, não há cookie de terceiro nenhum rodando
- * no site — mostrar um banner de consentimento pra nada seria só
- * ruído, nunca "mais seguro por via das dúvidas".
+ * se `temRastreamento` for `true`, ou seja, se existe de fato alguma
+ * medição de terceiro configurada: o Pixel do Meta
+ * (`getMetaPixelId()`), o Google Ads (`getGoogleAdsId()`) ou o Google
+ * Analytics (`getGoogleAnalyticsId()`). Sem nenhum deles, não há cookie
+ * de terceiro rodando no site, e mostrar um banner de consentimento pra
+ * nada seria só ruído, nunca "mais seguro por via das dúvidas".
+ *
+ * O prop deixou de se chamar `hasGoogleAnalytics` em 05/10/2026, quando
+ * o Pixel do Meta entrou: o nome antigo mentiria sobre o que o banner
+ * está pedindo permissão para fazer, e num banner de consentimento o
+ * nome errado é o defeito mais caro que existe.
  *
  * Fica escondido em duas situações: antes de montar no cliente (evita
  * "flash" do banner em cada navegação server-rendered antes do
@@ -23,9 +29,9 @@ import { getCookieConsent, setCookieConsent } from "@/lib/cookie-consent";
  * nunca escondido atrás de um "Configurações" à parte.
  */
 export function CookieConsentBanner({
-  hasGoogleAnalytics,
+  temRastreamento,
 }: {
-  hasGoogleAnalytics: boolean;
+  temRastreamento: boolean;
 }): JSX.Element | null {
   const [mounted, setMounted] = useState(false);
   const [decided, setDecided] = useState(false);
@@ -35,7 +41,7 @@ export function CookieConsentBanner({
     setDecided(getCookieConsent() !== null);
   }, []);
 
-  if (!hasGoogleAnalytics || !mounted || decided) return null;
+  if (!temRastreamento || !mounted || decided) return null;
 
   function decide(status: "accepted" | "rejected"): void {
     setCookieConsent(status);
@@ -50,8 +56,9 @@ export function CookieConsentBanner({
     >
       <div className="mx-auto flex max-w-4xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-text-muted">
-          Usamos cookies do Google Analytics para entender como o site é usado e melhorar a
-          experiência. Você pode aceitar ou recusar: veja detalhes na{" "}
+          Usamos cookies de medição para entender como o site é usado e para saber quais anúncios
+          trazem gente de verdade. Nada de dado de família, aluno ou veículo é enviado. Você pode
+          aceitar ou recusar: veja detalhes na{" "}
           <Link href="/legal/cookies" className="text-primary hover:underline">
             Política de Cookies
           </Link>

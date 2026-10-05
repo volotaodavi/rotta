@@ -185,12 +185,12 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     href: "/legal/cookies",
     titulo: "Política de Cookies",
     resumo:
-      "Como a sessão é mantida hoje e o que fazemos (e não fazemos) com cookies/rastreamento.",
-    versao: "1.0",
+      "Como a sessão é mantida, qual medição existe no site e como aceitar ou recusar cada uma.",
+    versao: "2.0",
     publicadoEm: "11/08/2026",
-    atualizadoEm: "11/08/2026",
+    atualizadoEm: "05/10/2026",
     status: "REVISADO",
-    revisadoEm: "19/08/2026",
+    revisadoEm: "05/10/2026",
     palavrasChave: ["cookies", "rastreamento", "analytics", "sessão"],
   },
   {

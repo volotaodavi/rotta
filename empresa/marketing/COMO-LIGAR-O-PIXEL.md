@@ -1,43 +1,63 @@
-# Onde e como colocar o Pixel do Meta
+# O Pixel do Meta: o que já está ligado e o que falta
 
 Escrito em 05/10/2026, a pedido do fundador: "preciso saber onde e como
 colocar para ele mandar os dados certinhos para o gerenciador de anúncio
 do Meta Ads".
 
-O código já está no site. Falta só o número. Enquanto o número não
-existir, nada carrega e nada quebra: o site fica exatamente como está
-hoje.
+**Estado: ligado.** O fundador mandou o código do Pixel em 05/10/2026 e
+o número `2122632155047063` está no código, em
+`apps/web/src/lib/site-config.ts`. Não há nada para colar em painel
+nenhum: a medição sobe junto com o deploy.
 
-## O que fazer, na ordem
+O número ficou no código, e não em variável de ambiente, porque um ID de
+Pixel não é segredo (aparece no HTML de qualquer site que o usa) e não
+muda de ambiente. A variável `NEXT_PUBLIC_META_PIXEL_ID` continua
+existindo e continua vencendo sobre o padrão, para o dia em que houver
+uma segunda conta de anúncio.
 
-**1. Pegar o número no Meta.** Gerenciador de Eventos (business.facebook.com),
-Fontes de Dados, o seu Pixel. O identificador é um número de 15 ou 16
-dígitos, no topo. Se ainda não existir Pixel, é ali mesmo que se cria um.
+## As duas condições para medir
 
-**2. Colar na Vercel.** Projeto do site (`rotta-web`), Settings,
-Environment Variables. Nome da variável, exatamente assim:
+A medição só acontece quando as duas são verdadeiras ao mesmo tempo:
 
-```
-NEXT_PUBLIC_META_PIXEL_ID
-```
+1. **A pessoa aceitou o aviso de cookies.** Antes disso, nenhum script
+   do Meta é baixado. É exigência da LGPD (art. 7º/8º) e é o que a
+   Política de Cookies da Rotta promete por escrito em
+   `/legal/cookies`. Travado por teste em
+   `apps/web/src/features/marketing/__tests__/pixel-espera-consentimento.spec.tsx`.
+2. **Não é máquina de desenvolvimento.** `localhost` e `127.0.0.1` não
+   medem, para evento de teste não entrar no mesmo Gerenciador de
+   Eventos da produção e ensinar o algoritmo a procurar o público
+   errado.
 
-Valor: só o número, sem aspas e sem espaço. Marque os três ambientes
-(Production, Preview, Development) se quiser medir também nas prévias.
+## Como conferir que está funcionando
 
-**3. Redeploy.** Variável de ambiente só entra num build novo. Na
-Vercel: Deployments, o último, Redeploy.
+1. Abra o site de produção e clique em **Aceitar** no aviso de cookies
+   (sem isso o Pixel não carrega, de propósito).
+2. No Gerenciador de Eventos do Meta, aba **Testar eventos**.
+3. Navegue pelo site. `PageView` tem que aparecer em tempo real.
 
-**4. Conferir.** Abra o site e, no Gerenciador de Eventos do Meta, a aba
-"Testar eventos". Navegando pelo site você tem que ver `PageView`
-aparecer em tempo real. Se aparecer, está ligado.
+Se nada aparecer, a causa quase sempre é uma destas três: o aviso de
+cookies não foi aceito naquele navegador, um bloqueador de anúncio está
+ligado, ou o deploy ainda não terminou.
 
-As outras duas variáveis seguem a mesma receita, quando você quiser:
+## O que ainda falta (e só o fundador pode fazer)
 
-| Variável                        | De onde vem                  | Cara do valor     |
-| ------------------------------- | ---------------------------- | ----------------- |
-| `NEXT_PUBLIC_META_PIXEL_ID`     | Meta, Gerenciador de Eventos | `123456789012345` |
-| `NEXT_PUBLIC_GOOGLE_ADS_ID`     | Google Ads, tag de conversão | `AW-XXXXXXXXXX`   |
-| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Google Analytics 4           | `G-XXXXXXXXXX`    |
+**Verificação do domínio.** O Gerenciador de Negócios do Meta
+(Configurações do negócio, Segurança da marca, Domínios) exige verificar
+a propriedade do domínio para liberar a configuração e a priorização de
+eventos. O método de meta-tag já está pronto no código: basta colar o
+código que o Meta gera na variável `FACEBOOK_DOMAIN_VERIFICATION` na
+Vercel (Settings, Environment Variables) e fazer um redeploy. O valor
+não é segredo.
+
+**Google.** Nenhuma conta do Google Ads ou Analytics existe ainda. Essas
+duas continuam em variável de ambiente, porque não há número para
+embutir:
+
+| Variável                        | De onde vem                  | Cara do valor   |
+| ------------------------------- | ---------------------------- | --------------- |
+| `NEXT_PUBLIC_GOOGLE_ADS_ID`     | Google Ads, tag de conversão | `AW-XXXXXXXXXX` |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | Google Analytics 4           | `G-XXXXXXXXXX`  |
 
 ## O que o Meta vai receber
 

@@ -43,9 +43,9 @@ const EVENTOS_INSTRUMENTADOS = [
 
 const VARIAVEIS = [
   {
-    nome: "NEXT_PUBLIC_META_PIXEL_ID",
-    onde: "Meta, Gerenciador de Eventos",
-    exemplo: "15 ou 16 dígitos",
+    nome: "FACEBOOK_DOMAIN_VERIFICATION",
+    onde: "Meta, Segurança da marca, Domínios",
+    exemplo: "libera a priorização de eventos",
   },
   {
     nome: "NEXT_PUBLIC_GOOGLE_ADS_ID",
@@ -110,8 +110,9 @@ export default function MarketingPage(): JSX.Element {
         <Typography variant="title">Marketing</Typography>
         <Typography variant="bodySmall" color="muted">
           O funil que a própria plataforma mede, o estado da medição de campanha e o que o CFO
-          mandou para o CMO. Não há número de Meta Ads aqui porque nenhuma conta de anúncio está
-          ligada ainda: quando estiver, é esta tela que recebe.
+          mandou para o CMO. Ainda não há número vindo do Meta Ads aqui: o Pixel manda evento para
+          lá, mas ler desempenho de campanha de volta depende de um token da API de Marketing que
+          ainda não existe. Quando existir, é esta tela que recebe.
         </Typography>
       </div>
 
@@ -170,9 +171,9 @@ export default function MarketingPage(): JSX.Element {
         <Card>
           <Card.Body className="flex flex-col gap-4">
             <Typography variant="bodySmall" color="muted">
-              O site já dispara os eventos abaixo. Enquanto as variáveis de ambiente não existirem,
-              eles não saem para lugar nenhum e nada quebra: no dia em que você colar os
-              identificadores na Vercel, tudo passa a medir sozinho, sem deploy de código novo.
+              O Pixel do Meta está ligado desde 05/10/2026 e os eventos abaixo saem de momentos
+              reais do produto. Eles só disparam depois que a pessoa aceita o aviso de cookies, e
+              nunca dentro deste painel: a medição existe apenas nas páginas públicas.
             </Typography>
 
             <div className="overflow-x-auto">
@@ -200,11 +201,11 @@ export default function MarketingPage(): JSX.Element {
 
             <div className="flex flex-col gap-2">
               <Typography variant="bodySmall" className="font-semibold">
-                Onde colar cada identificador
+                O que ainda falta configurar
               </Typography>
               <Typography variant="caption" color="muted">
                 Vercel, projeto do site, Settings, Environment Variables. Depois de salvar, um novo
-                deploy e pronto.
+                deploy e pronto. O ID do Pixel não está nesta lista porque já vive no código.
               </Typography>
               {VARIAVEIS.map((variavel) => (
                 <div key={variavel.nome} className="flex flex-wrap items-baseline gap-2">
