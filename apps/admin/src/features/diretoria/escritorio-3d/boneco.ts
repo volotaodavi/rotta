@@ -4,7 +4,14 @@ import { caminho, gabineteDe, salaPorId, type Cargo, type Sala } from "./planta"
 
 /** O que a pessoa está fazendo agora. É isto que a tela precisa dizer em palavras. */
 export type Atividade =
-  "na-mesa" | "indo" | "no-cafe" | "no-banheiro" | "em-reuniao" | "conversando";
+  | "trabalhando"
+  | "parado"
+  | "no-celular"
+  | "indo"
+  | "no-cafe"
+  | "no-banheiro"
+  | "em-reuniao"
+  | "conversando";
 
 interface Destino {
   sala: Sala;
@@ -16,82 +23,107 @@ interface Destino {
 /**
  * Um funcionário: o corpo que aparece na cena e a rotina que o move.
  *
- * ## Por que ele anda em vez de ficar parado
+ * ## A regra que o fundador deu, e que manda em tudo aqui
  *
- * O fundador pediu para ver os diretores trabalhando, e "trabalhando"
- * para uma pessoa olhando a tela não é um boneco sentado: é alguém que
- * levanta, vai ao cafezinho, passa na sala do colega para resolver uma
- * coisa, volta. A rotina abaixo é simples de propósito, mas as escolhas
- * dela não são aleatórias no sentido ruim: a mesa domina (é onde o
- * trabalho acontece), as idas rápidas são curtas e a sala de reunião só
- * recebe quem foi chamado por outro.
+ * 05/10/2026: "deve mostrar eles trabalhando, olhando o computador,
+ * mexendo. Isso só vale se eles estiverem realmente trabalhando. Se
+ * estiverem fazendo nada eles ficam parados olhando e depois vão fazer
+ * suas coisas, mexer no celular, pegar um café".
  *
- * ## O que ele NUNCA faz
+ * Então `trabalhando` e `parado` são estados DIFERENTES e visíveis de
+ * longe: quem trabalha está curvado sobre a mesa com as mãos digitando;
+ * quem não tem o que fazer está de pé, olhando em volta, e daqui a
+ * pouco pega o celular ou vai ao café. A cena recebe de fora
+ * (`definirTrabalhando`) quem está de fato produzindo, e esse sinal vem
+ * de fato real, nunca de sorteio.
  *
- * Aparecer quando o cargo está de folga. Um escritório cheio num dia em
- * que ninguém trabalha seria uma tela bonita mentindo, e o painel
- * inteiro existe para dizer a verdade sobre o que a diretoria está
- * fazendo.
+ * ## Nada de teletransporte
+ *
+ * Todo deslocamento é interpolado quadro a quadro ao longo do caminho
+ * que `planta.ts` devolve, e esse caminho sempre passa pelo corredor.
+ * Ninguém muda de sala sem atravessar a distância.
  */
 export class Boneco {
   readonly grupo = new THREE.Group();
   readonly cargo: Cargo;
 
   private readonly gabinete: Sala;
+  private readonly tronco: THREE.Mesh;
+  private readonly cabeca: THREE.Mesh;
   private readonly pernaEsquerda: THREE.Mesh;
   private readonly pernaDireita: THREE.Mesh;
   private readonly bracoEsquerdo: THREE.Mesh;
   private readonly bracoDireito: THREE.Mesh;
+  private readonly celular: THREE.Mesh;
+  private readonly caneca: THREE.Mesh;
 
   private rota: { x: number; z: number }[] = [];
+  private destino: Destino | null = null;
   private esperando = 0;
   private salaAtual: Sala;
-  private atividade: Atividade = "na-mesa";
-  private faseDoPasso = 0;
+  private atividade: Atividade = "parado";
+  private fase = 0;
+  private produzindo = false;
 
   constructor(cargo: Cargo, cor: number) {
     this.cargo = cargo;
     this.gabinete = gabineteDe(cargo);
     this.salaAtual = this.gabinete;
 
-    const pele = new THREE.MeshStandardMaterial({ color: 0xd8a07a, roughness: 0.8 });
-    const camisa = new THREE.MeshStandardMaterial({ color: cor, roughness: 0.7 });
-    const calca = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+    const pele = new THREE.MeshStandardMaterial({ color: 0xc98f67, roughness: 0.8 });
+    const camisa = new THREE.MeshStandardMaterial({ color: cor, roughness: 0.65 });
+    const calca = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.85 });
 
-    const tronco = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.42, 4, 12), camisa);
-    tronco.position.y = 1.02;
-    tronco.castShadow = true;
+    this.tronco = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.42, 4, 12), camisa);
+    this.tronco.position.y = 1.02;
 
-    const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.19, 20, 16), pele);
-    cabeca.position.y = 1.47;
-    cabeca.castShadow = true;
+    this.cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.19, 20, 16), pele);
+    this.cabeca.position.y = 1.47;
 
     const cabelo = new THREE.Mesh(
       new THREE.SphereGeometry(0.2, 20, 16, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0x27201a, roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ color: 0x27201a, roughness: 0.95 }),
     );
     cabelo.position.y = 1.5;
 
-    const geometriaDoMembro = new THREE.CapsuleGeometry(0.075, 0.34, 4, 8);
-    this.pernaEsquerda = new THREE.Mesh(geometriaDoMembro, calca);
+    const membro = new THREE.CapsuleGeometry(0.075, 0.34, 4, 8);
+    this.pernaEsquerda = new THREE.Mesh(membro, calca);
     this.pernaEsquerda.position.set(-0.11, 0.42, 0);
-    this.pernaDireita = new THREE.Mesh(geometriaDoMembro, calca);
+    this.pernaDireita = new THREE.Mesh(membro, calca);
     this.pernaDireita.position.set(0.11, 0.42, 0);
 
-    const geometriaDoBraco = new THREE.CapsuleGeometry(0.065, 0.3, 4, 8);
-    this.bracoEsquerdo = new THREE.Mesh(geometriaDoBraco, camisa);
+    const braco = new THREE.CapsuleGeometry(0.065, 0.3, 4, 8);
+    this.bracoEsquerdo = new THREE.Mesh(braco, camisa);
     this.bracoEsquerdo.position.set(-0.3, 1.05, 0);
-    this.bracoDireito = new THREE.Mesh(geometriaDoBraco, camisa);
+    this.bracoDireito = new THREE.Mesh(braco, camisa);
     this.bracoDireito.position.set(0.3, 1.05, 0);
 
+    this.celular = new THREE.Mesh(
+      new THREE.BoxGeometry(0.1, 0.17, 0.02),
+      new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        emissive: 0x1d4ed8,
+        emissiveIntensity: 0.9,
+      }),
+    );
+    this.celular.visible = false;
+
+    this.caneca = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.07, 0.06, 0.13, 10),
+      new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.4 }),
+    );
+    this.caneca.visible = false;
+
     for (const parte of [
-      tronco,
-      cabeca,
+      this.tronco,
+      this.cabeca,
       cabelo,
       this.pernaEsquerda,
       this.pernaDireita,
       this.bracoEsquerdo,
       this.bracoDireito,
+      this.celular,
+      this.caneca,
     ]) {
       parte.castShadow = true;
       this.grupo.add(parte);
@@ -107,7 +139,7 @@ export class Boneco {
     */
     this.grupo.scale.setScalar(1.45);
     this.grupo.position.set(this.gabinete.parada.x, 0, this.gabinete.parada.z);
-    this.esperando = 4 + Math.random() * 10;
+    this.esperando = 2 + Math.random() * 8;
   }
 
   /**
@@ -118,7 +150,7 @@ export class Boneco {
    * porque a placa tem que encarar a câmera mesmo quando a pessoa
    * estiver de costas.
    */
-  private fazerPlaca(cargo: Cargo): THREE.Sprite {
+  private fazerPlaca(texto: string): THREE.Sprite {
     const tela = document.createElement("canvas");
     tela.width = 256;
     tela.height = 128;
@@ -131,7 +163,7 @@ export class Boneco {
       pincel.fillStyle = "#f8fafc";
       pincel.textAlign = "center";
       pincel.textBaseline = "middle";
-      pincel.fillText(cargo, 128, 66);
+      pincel.fillText(texto, 128, 66);
     }
     const sprite = new THREE.Sprite(
       new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(tela), depthTest: false }),
@@ -150,45 +182,23 @@ export class Boneco {
     return this.salaAtual.nome;
   }
 
+  /**
+   * Diz se este cargo está produzindo de verdade AGORA.
+   *
+   * Vem de fora e vem de fato: turno em andamento dentro da janela de
+   * trabalho. Quando é `false`, a pessoa continua no escritório mas
+   * para de digitar: fica de pé, olha em volta, mexe no celular, vai ao
+   * café. É exatamente a diferença que o fundador pediu, e ela só vale
+   * alguma coisa porque o sinal não é inventado aqui dentro.
+   */
+  definirTrabalhando(produzindo: boolean): void {
+    this.produzindo = produzindo;
+  }
+
   /** Mandado por outro boneco: largue o que está fazendo e vá à sala de reunião. */
   chamarParaReuniao(): void {
     if (this.atividade === "em-reuniao") return;
-    this.irPara({ sala: salaPorId("reuniao"), atividade: "em-reuniao", permanencia: 14 });
-  }
-
-  private irPara(destino: Destino): void {
-    this.rota = caminho(this.salaAtual, destino.sala);
-    this.salaAtual = destino.sala;
-    this.atividade = "indo";
-    this.destino = destino;
-  }
-
-  private destino: Destino | null = null;
-
-  private sortearDestino(): Destino {
-    const sorte = Math.random();
-    /*
-      A mesa domina porque é onde o trabalho acontece. Os números
-      refletem um expediente comum, não um parque de diversões: a maior
-      parte do tempo sentado, uma ida ao café de vez em quando, banheiro
-      raro, e conversa na sala de outro cargo quando há assunto cruzado
-      (que na Rotta existe de verdade: o CFO fecha número que o CMO usa
-      para dimensionar verba).
-    */
-    if (sorte < 0.5) {
-      return { sala: this.gabinete, atividade: "na-mesa", permanencia: 18 + Math.random() * 25 };
-    }
-    if (sorte < 0.7) {
-      return { sala: salaPorId("cafe"), atividade: "no-cafe", permanencia: 8 + Math.random() * 7 };
-    }
-    if (sorte < 0.8) {
-      return {
-        sala: salaPorId("banheiro"),
-        atividade: "no-banheiro",
-        permanencia: 5 + Math.random() * 4,
-      };
-    }
-    return { sala: this.gabinete, atividade: "na-mesa", permanencia: 15 + Math.random() * 20 };
+    this.irPara({ sala: salaPorId("reuniao"), atividade: "em-reuniao", permanencia: 16 });
   }
 
   /** Visita o gabinete de outro cargo para tratar de assunto cruzado. */
@@ -196,8 +206,73 @@ export class Boneco {
     this.irPara({
       sala: gabineteDe(outro),
       atividade: "conversando",
-      permanencia: 10 + Math.random() * 8,
+      permanencia: 11 + Math.random() * 8,
     });
+  }
+
+  private irPara(destino: Destino): void {
+    this.rota = caminho(this.salaAtual, destino.sala);
+    this.salaAtual = destino.sala;
+    this.atividade = "indo";
+    this.destino = destino;
+    this.celular.visible = false;
+    this.caneca.visible = false;
+  }
+
+  private sortearDestino(): Destino {
+    const sorte = Math.random();
+
+    if (this.produzindo) {
+      /*
+        Quem está em turno passa a maior parte do tempo na mesa. As
+        saídas existem para a cena respirar, mas são curtas e raras: um
+        diretor que vive no cafezinho seria uma tela engraçada contando
+        uma mentira.
+      */
+      if (sorte < 0.72) {
+        return {
+          sala: this.gabinete,
+          atividade: "trabalhando",
+          permanencia: 22 + Math.random() * 30,
+        };
+      }
+      if (sorte < 0.88) {
+        return {
+          sala: salaPorId("cafe"),
+          atividade: "no-cafe",
+          permanencia: 9 + Math.random() * 6,
+        };
+      }
+      return {
+        sala: salaPorId("banheiro"),
+        atividade: "no-banheiro",
+        permanencia: 6 + Math.random() * 4,
+      };
+    }
+
+    /*
+      Fora de produção: a ordem do fundador é "ficam parados olhando e
+      depois vão fazer suas coisas". Então o estado base é parado, e as
+      coisas dele são celular, café e banheiro.
+    */
+    if (sorte < 0.34) {
+      return { sala: this.gabinete, atividade: "parado", permanencia: 10 + Math.random() * 12 };
+    }
+    if (sorte < 0.6) {
+      return { sala: this.gabinete, atividade: "no-celular", permanencia: 12 + Math.random() * 10 };
+    }
+    if (sorte < 0.85) {
+      return {
+        sala: salaPorId("cafe"),
+        atividade: "no-cafe",
+        permanencia: 12 + Math.random() * 10,
+      };
+    }
+    return {
+      sala: salaPorId("banheiro"),
+      atividade: "no-banheiro",
+      permanencia: 6 + Math.random() * 5,
+    };
   }
 
   atualizar(delta: number): void {
@@ -206,31 +281,31 @@ export class Boneco {
       return;
     }
 
-    this.balancarParado(delta);
+    this.animarParado(delta);
+
     this.esperando -= delta;
-    if (this.esperando <= 0) {
-      const destino = this.sortearDestino();
-      if (destino.sala.id === this.salaAtual.id) {
-        this.atividade = destino.atividade;
-        this.esperando = destino.permanencia;
-      } else {
-        this.irPara(destino);
-      }
+    if (this.esperando > 0) return;
+
+    const destino = this.sortearDestino();
+    if (destino.sala.id === this.salaAtual.id) {
+      this.atividade = destino.atividade;
+      this.esperando = destino.permanencia;
+    } else {
+      this.irPara(destino);
     }
   }
 
   private andar(delta: number): void {
     const alvo = this.rota[0];
     if (!alvo) return;
+
     const dx = alvo.x - this.grupo.position.x;
     const dz = alvo.z - this.grupo.position.z;
     const distancia = Math.hypot(dx, dz);
-
-    const VELOCIDADE = 2.1;
-    const passo = VELOCIDADE * delta;
+    const passo = 2.3 * delta;
 
     if (distancia <= passo) {
-      this.grupo.position.set(alvo.x, 0, alvo.z);
+      this.grupo.position.set(alvo.x, this.grupo.position.y, alvo.z);
       this.rota.shift();
       if (this.rota.length === 0 && this.destino) {
         this.atividade = this.destino.atividade;
@@ -246,23 +321,113 @@ export class Boneco {
     // frente para +z.
     this.grupo.rotation.y = Math.atan2(dx, dz);
 
-    this.faseDoPasso += delta * 9;
-    const balanco = Math.sin(this.faseDoPasso);
-    this.pernaEsquerda.rotation.x = balanco * 0.6;
-    this.pernaDireita.rotation.x = -balanco * 0.6;
-    this.bracoEsquerdo.rotation.x = -balanco * 0.45;
-    this.bracoDireito.rotation.x = balanco * 0.45;
-    this.grupo.position.y = Math.abs(Math.sin(this.faseDoPasso)) * 0.045;
+    this.fase += delta * 9;
+    const balanco = Math.sin(this.fase);
+    this.pernaEsquerda.rotation.x = balanco * 0.62;
+    this.pernaDireita.rotation.x = -balanco * 0.62;
+    this.bracoEsquerdo.rotation.x = -balanco * 0.5;
+    this.bracoDireito.rotation.x = balanco * 0.5;
+    this.tronco.rotation.x = 0.06;
+    this.grupo.position.y = Math.abs(Math.sin(this.fase)) * 0.05;
   }
 
-  /** Mesmo parado alguém respira. Sem isto a cena parece travada, não calma. */
-  private balancarParado(delta: number): void {
-    this.faseDoPasso += delta * 1.6;
-    const respiro = Math.sin(this.faseDoPasso) * 0.03;
-    this.grupo.position.y = Math.max(0, respiro * 0.5);
-    this.pernaEsquerda.rotation.x *= 0.88;
-    this.pernaDireita.rotation.x *= 0.88;
-    this.bracoEsquerdo.rotation.x = respiro;
-    this.bracoDireito.rotation.x = -respiro;
+  /** Cada atividade tem um corpo próprio. É daqui que sai "dá para ver o que ele está fazendo". */
+  private animarParado(delta: number): void {
+    this.fase += delta;
+    this.celular.visible = false;
+    this.caneca.visible = false;
+
+    const suavizar = (atual: number, alvo: number, forca = 0.12): number =>
+      atual + (alvo - atual) * forca;
+
+    this.pernaEsquerda.rotation.x = suavizar(this.pernaEsquerda.rotation.x, 0);
+    this.pernaDireita.rotation.x = suavizar(this.pernaDireita.rotation.x, 0);
+
+    switch (this.atividade) {
+      case "trabalhando": {
+        // Curvado sobre a mesa, mãos à frente, dedos batendo.
+        const digitando = Math.sin(this.fase * 11);
+        this.tronco.rotation.x = suavizar(this.tronco.rotation.x, 0.34);
+        this.cabeca.rotation.x = suavizar(this.cabeca.rotation.x, 0.36);
+        this.bracoEsquerdo.rotation.x = suavizar(
+          this.bracoEsquerdo.rotation.x,
+          -1.25 + digitando * 0.1,
+          0.3,
+        );
+        this.bracoDireito.rotation.x = suavizar(
+          this.bracoDireito.rotation.x,
+          -1.25 - digitando * 0.1,
+          0.3,
+        );
+        this.grupo.position.y = 0;
+        break;
+      }
+      case "no-celular": {
+        this.celular.visible = true;
+        this.celular.position.set(0.16, 1.22, 0.3);
+        this.celular.rotation.set(-0.9, 0, 0);
+        this.tronco.rotation.x = suavizar(this.tronco.rotation.x, 0.12);
+        this.cabeca.rotation.x = suavizar(this.cabeca.rotation.x, 0.5);
+        this.bracoDireito.rotation.x = suavizar(this.bracoDireito.rotation.x, -1.15);
+        this.bracoEsquerdo.rotation.x = suavizar(this.bracoEsquerdo.rotation.x, -0.2);
+        this.grupo.position.y = 0;
+        break;
+      }
+      case "no-cafe": {
+        this.caneca.visible = true;
+        this.caneca.position.set(0.26, 1.2, 0.18);
+        // Um gole de vez em quando, não um robô bebendo sem parar.
+        const gole = Math.max(0, Math.sin(this.fase * 0.9));
+        this.bracoDireito.rotation.x = suavizar(this.bracoDireito.rotation.x, -0.5 - gole * 0.75);
+        this.cabeca.rotation.x = suavizar(this.cabeca.rotation.x, -gole * 0.25);
+        this.tronco.rotation.x = suavizar(this.tronco.rotation.x, 0);
+        this.caneca.position.y = 1.2 + gole * 0.22;
+        this.grupo.position.y = Math.sin(this.fase * 1.4) * 0.012;
+        break;
+      }
+      case "em-reuniao":
+      case "conversando": {
+        // Gesticula enquanto fala, e olha para o lado de vez em quando.
+        const gesto = Math.sin(this.fase * 2.6);
+        this.bracoDireito.rotation.x = suavizar(
+          this.bracoDireito.rotation.x,
+          -0.55 + gesto * 0.3,
+          0.2,
+        );
+        this.bracoEsquerdo.rotation.x = suavizar(
+          this.bracoEsquerdo.rotation.x,
+          -0.2 - gesto * 0.2,
+          0.2,
+        );
+        this.cabeca.rotation.y = Math.sin(this.fase * 0.8) * 0.4;
+        this.tronco.rotation.x = suavizar(this.tronco.rotation.x, 0);
+        this.grupo.position.y = Math.sin(this.fase * 1.5) * 0.015;
+        break;
+      }
+      case "no-banheiro": {
+        this.tronco.rotation.x = suavizar(this.tronco.rotation.x, 0);
+        this.cabeca.rotation.x = suavizar(this.cabeca.rotation.x, 0);
+        this.bracoEsquerdo.rotation.x = suavizar(this.bracoEsquerdo.rotation.x, 0);
+        this.bracoDireito.rotation.x = suavizar(this.bracoDireito.rotation.x, 0);
+        this.grupo.position.y = Math.sin(this.fase * 1.3) * 0.01;
+        break;
+      }
+      default: {
+        // Parado de verdade: respira, olha em volta, muda o peso de pé.
+        this.tronco.rotation.x = suavizar(this.tronco.rotation.x, 0);
+        this.cabeca.rotation.x = suavizar(this.cabeca.rotation.x, 0);
+        this.cabeca.rotation.y = Math.sin(this.fase * 0.55) * 0.75;
+        this.bracoEsquerdo.rotation.x = suavizar(
+          this.bracoEsquerdo.rotation.x,
+          Math.sin(this.fase) * 0.05,
+        );
+        this.bracoDireito.rotation.x = suavizar(
+          this.bracoDireito.rotation.x,
+          -Math.sin(this.fase) * 0.05,
+        );
+        this.grupo.position.y = Math.abs(Math.sin(this.fase * 1.2)) * 0.012;
+        this.grupo.rotation.z = Math.sin(this.fase * 0.4) * 0.02;
+      }
+    }
   }
 }

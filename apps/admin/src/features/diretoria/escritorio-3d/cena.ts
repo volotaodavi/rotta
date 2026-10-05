@@ -1,7 +1,9 @@
 import * as THREE from "three";
 
+import { AgenteDaPlataforma } from "./agente";
 import { Boneco } from "./boneco";
 import {
+  AGENTES_DA_PLATAFORMA,
   COR_DO_CARGO,
   CORREDOR_LARGURA,
   CORREDOR_Z,
@@ -15,6 +17,14 @@ import {
 export interface EstadoDoAndar {
   /** Quem está em turno agora. Quem não está simplesmente não aparece. */
   emTurno: Cargo[];
+  /**
+   * Quem, dentre os que estão no andar, está DENTRO da janela de
+   * trabalho agora. Em turno mas fora do horário quer dizer presente e
+   * ocioso: fica parado, mexe no celular, pega um café.
+   */
+  produzindo?: Cargo[];
+  /** 0 a 1, medido na plataforma. Governa o ritmo dos agentes de IA. */
+  cargaDaPlataforma?: number;
 }
 
 export interface ResumoDeUmTrabalhador {
@@ -24,7 +34,9 @@ export interface ResumoDeUmTrabalhador {
 }
 
 const TEXTO_DA_ATIVIDADE: Record<string, string> = {
-  "na-mesa": "na mesa",
+  trabalhando: "trabalhando",
+  parado: "parado, sem tarefa",
+  "no-celular": "no celular",
   indo: "a caminho",
   "no-cafe": "no cafezinho",
   "no-banheiro": "no banheiro",
@@ -71,15 +83,17 @@ export class CenaDoEscritorio {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly relogio = new THREE.Clock();
   private readonly bonecos: Boneco[] = [];
+  private readonly agentes: AgenteDaPlataforma[] = [];
   private readonly luzesDeSala = new Map<string, THREE.PointLight>();
   private readonly container: HTMLElement;
 
   private quadro = 0;
   private anguloDaCamera = -0.55;
-  private alturaDaCamera = 0.95;
-  private distancia = 21;
+  private alturaDaCamera = 0.82;
+  private distancia = 37;
   private vivo = true;
-  private proximaReuniao = 45 + Math.random() * 60;
+  private proximaReuniao = 55 + Math.random() * 70;
+  private proximaVisita = 25 + Math.random() * 35;
   private reduzirMovimento = false;
 
   constructor(container: HTMLElement, estado: EstadoDoAndar) {
@@ -120,6 +134,19 @@ export class CenaDoEscritorio {
       sala: boneco.salaAtualNome(),
       atividade: TEXTO_DA_ATIVIDADE[boneco.atividadeAtual()] ?? boneco.atividadeAtual(),
     }));
+  }
+
+  /** O estado dos agentes da plataforma, que não têm escala. */
+  resumoDosAgentes(): { nome: string; estado: string }[] {
+    return this.agentes.map((agente) => ({ nome: agente.nome, estado: agente.estado() }));
+  }
+
+  /**
+   * Atualiza o ritmo dos agentes sem reconstruir a cena. Chamado a cada
+   * leitura nova do pulso da plataforma.
+   */
+  definirCargaDaPlataforma(carga: number): void {
+    for (const agente of this.agentes) agente.definirCarga(carga);
   }
 
   destruir(): void {
@@ -257,6 +284,35 @@ export class CenaDoEscritorio {
       return;
     }
 
+    if (sala.tipo === "agentes") {
+      // As estações vêm com cada agente (ver `agente.ts`). Aqui só o
+      // painel de parede, que dá a cara de sala de operação.
+      const painel = new THREE.Mesh(
+        new THREE.BoxGeometry(sala.largura - 2, 1.2, 0.1),
+        new THREE.MeshStandardMaterial({
+          color: 0x082f49,
+          emissive: 0x0369a1,
+          emissiveIntensity: 0.5,
+        }),
+      );
+      por(painel, centroX, 1.7, sala.z + 0.2);
+      return;
+    }
+
+    if (sala.tipo === "temporarios") {
+      /*
+        Mesas vazias de propósito. Os diretores podem criar funcionário
+        para uma frente específica, e enquanto não criarem, a sala fica
+        assim: pronta e sem ninguém. Uma sala cheia de gente que não
+        existe seria a pior mentira possível nesta tela.
+      */
+      for (let i = 0; i < 3; i += 1) {
+        const mesa = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.09, 0.8), madeira);
+        por(mesa, centroX, 0.72, sala.z + 2 + i * 2.1);
+      }
+      return;
+    }
+
     const vaso = new THREE.Mesh(
       new THREE.CylinderGeometry(0.3, 0.3, 0.55, 14),
       new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 }),
@@ -295,11 +351,45 @@ export class CenaDoEscritorio {
       luz.intensity = aceso ? 22 : 0;
     }
 
+    const produzindo = new Set(estado.produzindo ?? estado.emTurno);
     for (const cargo of estado.emTurno) {
       const boneco = new Boneco(cargo, COR_DO_CARGO[cargo]);
+      boneco.definirTrabalhando(produzindo.has(cargo));
       this.bonecos.push(boneco);
       this.cena.add(boneco.grupo);
     }
+
+    this.montarAgentes(estado.cargaDaPlataforma ?? 0);
+  }
+
+  /**
+   * Os sete agentes do produto, em fileira na sala deles.
+   *
+   * Sempre presentes, inclusive em feriado e fim de semana, porque é
+   * assim que eles são: rodam quando alguém usa a Rotta, não quando o
+   * relógio permite. A luz da sala deles também nunca apaga.
+   */
+  private montarAgentes(carga: number): void {
+    const sala = SALAS.find((s) => s.id === "agentes");
+    if (!sala) return;
+
+    const porFileira = 4;
+    const espacoX = 3;
+    const espacoZ = 3.4;
+
+    AGENTES_DA_PLATAFORMA.forEach((definicao, indice) => {
+      const coluna = indice % porFileira;
+      const fileira = Math.floor(indice / porFileira);
+      const x = sala.x + 2 + coluna * espacoX;
+      const z = sala.z + 2.4 + fileira * espacoZ;
+      const agente = new AgenteDaPlataforma(definicao.nome, definicao.cor, x, z);
+      agente.definirCarga(carga);
+      this.agentes.push(agente);
+      this.cena.add(agente.grupo);
+    });
+
+    const luz = this.luzesDeSala.get("agentes");
+    if (luz) luz.intensity = 26;
   }
 
   private readonly redimensionar = (): void => {
@@ -379,7 +469,9 @@ export class CenaDoEscritorio {
     const delta = Math.min(this.relogio.getDelta(), 0.1);
     if (!this.reduzirMovimento) {
       for (const boneco of this.bonecos) boneco.atualizar(delta);
+      for (const agente of this.agentes) agente.atualizar(delta);
       this.talvezChamarReuniao(delta);
+      this.talvezVisitarOutraSala(delta);
     }
     this.renderer.render(this.cena, this.camera);
   };
@@ -389,6 +481,25 @@ export class CenaDoEscritorio {
    * enfeite: na Rotta existe assunto cruzado de verdade, e o fundador
    * pediu para ver isso acontecendo.
    */
+  /**
+   * De vez em quando alguém atravessa o corredor para falar com outro
+   * cargo na sala dele. É o "ir até outra sala para falar do assunto
+   * adjacente e voltar" que o fundador pediu, e na Rotta esse assunto
+   * existe de verdade: o CFO fecha o número que o CMO usa para
+   * dimensionar verba.
+   */
+  private talvezVisitarOutraSala(delta: number): void {
+    if (this.bonecos.length < 2) return;
+    this.proximaVisita -= delta;
+    if (this.proximaVisita > 0) return;
+
+    this.proximaVisita = 35 + Math.random() * 50;
+    const embaralhados = [...this.bonecos].sort(() => Math.random() - 0.5);
+    const visitante = embaralhados[0];
+    const anfitriao = embaralhados[1];
+    if (visitante && anfitriao) visitante.visitar(anfitriao.cargo);
+  }
+
   private talvezChamarReuniao(delta: number): void {
     if (this.bonecos.length < 2) return;
     this.proximaReuniao -= delta;
