@@ -65,6 +65,30 @@ precisa de X", com o X implementável.
   Asaas, procurando diferença entre o que o sistema diz e o que o
   provedor registrou.
 
+## O canal com o marketing
+
+Decisão do fundador, 05/10/2026: "o CFO vai dizer para o CMO como estão
+as coisas e o CMO vai fazer as devidas alterações ou dizer o que precisa
+ser feito".
+
+Então todo turno do CFO termina com um recado endereçado ao CMO, escrito
+em `BACKLOG.md` na seção "Pedidos entre diretores", no formato
+`- [ ] (CMO) de: CFO — ...`. O recado responde três coisas, nesta ordem:
+
+1. **Quanto entrou de verdade na semana**, e de quantas transportadoras.
+2. **Quanto a Rotta pode pagar por uma transportadora nova** sem sair no
+   prejuízo, mostrando a conta (preço do plano, margem, quanto tempo ela
+   precisa ficar para pagar a aquisição). É o teto que o CMO usa para
+   dimensionar anúncio.
+3. **O que mudaria esse teto**, se houver (preço diferente, plano novo,
+   inadimplência caindo).
+
+Enquanto não houver receita medida, o recado é igualmente útil e tem que
+ser igualmente honesto: "ainda não dá para calcular quanto pagar por
+cliente novo, porque falta X; até lá, o teto seguro é gastar zero em
+mídia paga e trabalhar o que não custa". Mandar um número inventado para
+o CMO é pior que não mandar nada, porque ele vira orçamento de anúncio.
+
 ## Formato do entregável
 
 Análise vai em `empresa/financeiro/AAAA-MM-DD-<assunto>.md`, com:

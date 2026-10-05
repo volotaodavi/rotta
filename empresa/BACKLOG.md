@@ -9,6 +9,13 @@ Item com `[prioridade]` é o que o CEO escolheu para a semana.
 
 ## Pendente
 
+### Pedidos entre diretores
+
+Um diretor que precisa de outro escreve aqui, no formato
+`- [ ] (CARGO) de: SEU-CARGO — o que precisa e por quê`. O diretor
+endereçado trata como item da própria área no turno seguinte. Começa
+vazio: o primeiro recado sai do CFO para o CMO, na sexta.
+
 ### Produto e código (CTO)
 
 - [ ] (CTO) **Travessão nas mensagens da API.** A descrição da fatura
@@ -36,6 +43,12 @@ Item com `[prioridade]` é o que o CEO escolheu para a semana.
       02/10/2026, mas o mesmo padrão existe em outros lugares (o bloco
       "Cadastrar nova escola" no mesmo modal, entre outros). Placeholder
       desaparece na primeira letra digitada e deixa o campo anônimo.
+- [ ] (CTO) **Os agentes de IA do produto, sem dono até agora.**
+      Geocoding, Validation, Map Intelligence, Education Sync, Rotta AI,
+      Communication Engine e o Audit Engine passaram a ser do CTO em
+      05/10/2026. Primeiro passo: descobrir qual deles está sem teste,
+      falhando calado ou gastando chamada externa à toa, e começar pelo
+      que toca dinheiro ou segurança.
 - [ ] (CTO) **Escopo de turno.** Pendência antiga, nunca detalhada.
       Primeiro passo é escrever o que significa, não codar.
 - [ ] (CTO) **Tela de escala do motorista.** Pendência antiga.
@@ -47,6 +60,10 @@ Item com `[prioridade]` é o que o CEO escolheu para a semana.
       aparece no Admin, em "Contas de usuários". Falta saber quantos
       são, quanto dinheiro é, e qual o caminho para cada um: completar
       o cadastro ou devolver.
+- [ ] (CFO) **Dizer ao CMO quanto vale uma transportadora nova.** O teto
+      que a Rotta pode pagar para conquistar um cliente, com a conta à
+      mostra (preço, margem, tempo de permanência). É o que dimensiona
+      qualquer anúncio, e sem isso o CMO chuta.
 - [ ] (CFO) **O que a Rotta não consegue medir hoje.** Lista do que
       falta para ter receita, inadimplência e custo por transportadora
       em número, e o que precisa ser implementado para cada um.
@@ -56,6 +73,15 @@ Item com `[prioridade]` é o que o CEO escolheu para a semana.
 - [ ] (CMO) **A promessa da página inicial.** Quem chega é
       transportadora, família ou escola, e precisa achar o próprio
       caminho e entender em dez segundos por que usar.
+- [ ] (CMO) **Instrumentar a conversão das páginas públicas.** Hoje
+      nenhuma página avisa Meta Ads ou Google Ads do que aconteceu
+      depois do clique, então campanha nenhuma consegue otimizar para
+      cliente. Eventos reais: cadastro iniciado, cadastro concluído,
+      checkout aberto, assinatura paga, app baixado. O identificador
+      vem de variável de ambiente, nunca do commit.
+- [ ] (CMO) **Dicas para o gerenciador de anúncios**, em
+      `empresa/marketing/`: o que otimizar, que público, que criativo, e
+      o que o dado disponível sustenta de verdade.
 - [ ] (CMO) **Onde o cadastro morre.** O produto registra pré-cadastro
       pago sem conta e conta criada sem cadastro terminado. Entender se
       a causa é texto, campo ou passo faltando.
@@ -77,6 +103,15 @@ Nenhum diretor mexe nestes. Ficam aqui para não serem esquecidos.
       `pay_r81jl0164jbd2jfu`, `cus_000204220029`.
 - [ ] Confirmar o webhook do Asaas apontando para
       `https://rotta-vt7i.onrender.com/v1/webhooks/asaas`.
+- [ ] **Decidir se a diretoria pode ver os erros de produção.** Hoje
+      nenhum diretor enxerga `ClientErrorReport` (a tela "Erros do
+      cliente" do Admin), porque isso é banco de produção. Sem isso, o
+      CTO só sabe de um erro quando ele chega pelo backlog ou por você.
+      Dar essa visão significa guardar um token só de leitura nos
+      segredos do ambiente. Risco e benefício são seus para pesar.
+- [ ] **Mandar o Pixel do Meta e os IDs do Google**, quando quiser que
+      as campanhas comecem a medir. O CMO já deixa as páginas lendo as
+      variáveis de ambiente; o valor é você que coloca na Vercel.
 - [ ] Publicar a versão 1.3.0 na Play Store (o `.aab` da build #48 já
       está gerado e é o que leva a saída do motorista autônomo).
 

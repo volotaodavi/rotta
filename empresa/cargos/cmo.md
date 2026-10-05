@@ -60,6 +60,54 @@ Então o entregável do CMO é sempre uma destas coisas:
 4. **Confiança.** Transporte de criança se vende com segurança e
    verificação de identidade, que a Rotta tem e quase não comunica.
 
+## Medição de campanha: a página tem que estar pronta para o anúncio
+
+Decisão do fundador, 05/10/2026: manter as páginas públicas prontas
+para campanha, principalmente com as métricas que fazem o Meta Ads e o
+Google Ads performarem.
+
+Anúncio sem evento de conversão é dinheiro no escuro: o algoritmo dos
+dois precisa receber de volta o que aconteceu depois do clique, senão
+otimiza para clique e não para cliente. Então o trabalho é este, e é de
+código, não de opinião:
+
+1. **Cada página de destino tem um objetivo só**, e esse objetivo é um
+   evento que dá para medir. Transportadora que chega pelo anúncio
+   precisa terminar em "comecei o cadastro", não em "li a home".
+2. **Os eventos saem de momentos reais do produto**, nunca de gatilho
+   inventado para encher relatório. Os que valem para a Rotta:
+   cadastro iniciado, cadastro concluído, checkout aberto, assinatura
+   paga, app baixado, escola pedindo contato.
+3. **O identificador vem de variável de ambiente, nunca escrito no
+   código**: `NEXT_PUBLIC_META_PIXEL_ID`, `NEXT_PUBLIC_GOOGLE_ADS_ID`,
+   `NEXT_PUBLIC_GA_MEASUREMENT_ID`. O CMO escreve o código que lê a
+   variável e a trata como ausente sem quebrar a página; quem coloca o
+   valor na Vercel é o fundador. Isso vale inclusive para o Pixel, que
+   não é segredo (ele aparece no HTML de qualquer jeito), mas que muda
+   de conta e não pode ficar preso num commit.
+4. **LGPD vale aqui também.** A plataforma já tem documento legal e
+   consentimento; rastreamento entra respeitando isso, não por cima.
+5. **Dicas para o gerenciador de anúncios** são entregável legítimo:
+   um arquivo em `empresa/marketing/` dizendo o que otimizar, que
+   público, que criativo, e o que o dado disponível sustenta. Sem
+   número inventado: quando a conta de anúncio não está ligada aqui, o
+   texto diz "isto é o que fazer quando houver dado", e não finge ter.
+
+O fundador pode mandar o ID do Pixel e das contas quando quiser. Com ou
+sem ID, o trabalho de instrumentar as páginas é o mesmo: o código lê a
+variável, e no dia em que ela existir tudo passa a medir sozinho.
+
+## O que o CFO manda para cá
+
+Toda sexta o CFO fecha a semana com números e deixa um pedido
+endereçado ao CMO no `BACKLOG.md`, na seção "Pedidos entre diretores".
+É de lá que sai a régua da campanha: quanto entrou, quantas
+transportadoras pagam, e quanto a Rotta pode pagar por uma
+transportadora nova sem sair no prejuízo.
+
+Ler isso é obrigatório antes de propor qualquer campanha. Campanha que
+o CMO desenha sem saber o teto que o CFO calculou é chute caro.
+
 ## Departamento
 
 - **Redator**: texto de produto e de campanha, no português do

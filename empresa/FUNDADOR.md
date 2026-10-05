@@ -96,6 +96,26 @@ interruptor existe aqui, e não enterrado numa configuração.
   registra isso em `DECISOES.md` e diz por quê. Isso é um resultado
   aceitável; maquiar não é.
 
+## Como o fundador aprova e reprova
+
+Todo turno termina num Pull Request, e é por ele que a conversa
+acontece. Não é preciso escrever aqui nem me chamar:
+
+- **Fundir o PR = aprovado.** A mudança fica, e o assunto acabou.
+- **Comentar no PR = mudar isso antes.** O diretor daquele cargo lê o
+  comentário no turno seguinte e começa por ali, antes do backlog e de
+  qualquer ideia nova. Ele conserta na mesma branch, então o mesmo PR
+  se atualiza; não nasce um PR novo.
+- **Fechar o PR sem fundir = reprovado.** Com um motivo escrito, o
+  diretor refaz do jeito certo quando ainda fizer sentido. Sem motivo
+  nenhum, ele trata como "não era para ser feito", tira do backlog e
+  registra isso em `DECISOES.md`.
+
+Nenhum diretor reabre um PR fechado nem abre outro igual. E nenhum
+abre um segundo PR sobre o mesmo assunto enquanto o primeiro estiver
+esperando resposta: ficar empilhando trabalho não revisado é a forma
+mais rápida de a diretoria virar barulho.
+
 ## O que o fundador decide, nunca um diretor
 
 - Preço, plano e qualquer mudança no que o cliente paga.

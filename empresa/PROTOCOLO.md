@@ -55,6 +55,38 @@ Regras de gasto, valendo para todo cargo:
 5. `git log --oneline -15`, para ver o que mudou no código desde o
    último disparo.
 
+## 1.5 Antes de pegar trabalho novo, cuide do que você já entregou
+
+Um turno que abre o quinto Pull Request enquanto os quatro anteriores
+esperam resposta não está trabalhando, está empilhando. Então, toda vez,
+antes de escolher qualquer coisa:
+
+```sh
+gh api "repos/volotaodavi/rotta/pulls?state=all&per_page=20" --jq \
+  '.[] | select(.head.ref | startswith("empresa/<seu-cargo>/")) | {n:.number, estado:.state, merged:.merged_at}'
+```
+
+O que fazer com o que aparecer:
+
+- **Fundido:** o fundador aprovou. Acabou, não mexa mais nisso.
+- **Aberto com comentário ou revisão pedindo mudança:** esta é a tarefa
+  do turno, acima do backlog e acima de qualquer ideia nova. Leia o que
+  foi pedido (`gh api repos/volotaodavi/rotta/pulls/<n>/reviews` e
+  `.../issues/<n>/comments`), conserte na MESMA branch e empurre: o PR
+  se atualiza sozinho. Responda no PR o que mudou.
+- **Fechado sem fundir:** o fundador reprovou. Leia o motivo, se houver.
+  Com motivo, refaça do jeito certo quando ainda fizer sentido. Sem
+  motivo, trate como "não era para ser feito": tire do backlog e
+  registre em `DECISOES.md` que foi reprovado, com a sua leitura do
+  porquê. Não reabra o mesmo PR nem abra outro igual.
+- **Aberto e sem resposta:** deixe quieto e vá para outro assunto. Nunca
+  abra um segundo PR sobre o mesmo tema enquanto o primeiro estiver
+  aberto.
+
+Isso custa uma chamada e evita o pior desperdício possível, que é
+trabalhar de novo no que já foi recusado ou duplicar o que já está
+esperando.
+
 ## 2. Escolher UMA coisa
 
 Uma só, a de maior valor que caiba na sua autoridade e num Pull
@@ -81,6 +113,18 @@ o item no backlog endereçado àquele cargo e pegue o seu melhor item.
 - Use os subordinados da sua carta (subagentes) quando o trabalho tiver
   frentes de verdade. Não abra subagente para tarefa que você faz
   direto: cada um custa.
+- **Funcionário sob demanda.** Quando o trabalho pedir um especialista
+  que a sua carta não tem, crie: um subagente com a instrução que
+  aquela tarefa exige (um que só varre log, um que só revisa texto
+  legal, um que só compara preço de provedor). Diga no relatório que
+  criou e para quê. Se ele servir numa segunda vez, acrescente-o ao
+  departamento na sua carta, no mesmo PR: aí ele deixa de ser
+  improviso e vira cargo.
+- **Precisa de outro diretor?** Não invada a área dele e não espere.
+  Escreva o pedido em `BACKLOG.md`, na seção "Pedidos entre diretores",
+  no formato `- [ ] (CARGO) de: SEU-CARGO — o que você precisa e por
+quê`. O diretor endereçado trata aquilo como item da própria área no
+  turno seguinte.
 - Mudança em código vem com teste e com verificação rodada de verdade
   (typecheck, teste, lint; e `next build` quando mexer em tela do
   Next). Teste quebrado não vira PR.
