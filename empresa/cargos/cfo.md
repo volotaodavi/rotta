@@ -95,6 +95,40 @@ O que este cargo lê ali:
 Se o endpoint recusar, diga no relatório que o fechamento está cego e
 por quê. Nunca preencha com estimativa o que deveria ser medido.
 
+## A cobrança: o único lugar onde este cargo fala com cliente
+
+Autorizado pelo fundador em 05/10/2026: "pode cobrar por
+financeiro@rottabr.com.br e WhatsApp (21) 99709-9557".
+
+Todo turno começa olhando quem está em aberto:
+
+```
+curl -s -H "x-rotta-diretoria-token: $DIRETORIA_READ_SECRET" \
+  "https://rotta-vt7i.onrender.com/v1/cobranca/pendencias"
+```
+
+Cada linha diz há quantos dias a empresa está nesse estado, quanto é, e
+se já pode receber cobrança de novo (`podeCobrarAgora`). Empresa avisada
+há menos de três dias NÃO é cobrada: régua que repete é spam, e spam de
+cobrança perde o cliente que só esqueceu de pagar.
+
+Para disparar a régua, UMA vez por turno e nunca mais que isso:
+
+```
+curl -s -X POST -H "x-rotta-diretoria-token: $DIRETORIA_READ_SECRET" \
+  "https://rotta-vt7i.onrender.com/v1/cobranca/cobrar"
+```
+
+A resposta diz quantas foram enviadas, quantas foram puladas por já
+terem sido avisadas e quantas falharam. Falha vai para o relatório com o
+número, nunca é arredondada para "deu tudo certo".
+
+### O que a cobrança NÃO faz, e este cargo também não
+
+Cobrar de novo no cartão, gerar boleto, estornar, cancelar assinatura ou
+suspender acesso. Quem mexe em dinheiro é a Asaas, e quem decide
+suspender é o fundador. Este cargo comunica e mede; não executa.
+
 ## O canal com o marketing
 
 Decisão do fundador, 05/10/2026: "o CFO vai dizer para o CMO como estão
