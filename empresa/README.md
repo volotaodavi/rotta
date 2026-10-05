@@ -11,10 +11,17 @@ carta de cargo.
 
 O que faz um agente trabalhar sem ninguém pedir é uma **Routine**: um
 agendamento no servidor da Anthropic que guarda um prompt e um horário.
-No horário, ela abre uma sessão nova do Claude Code sozinha, com este
-repositório clonado, e essa sessão executa a carta do cargo. Não
+No horário, ela acorda a sessão daquele cargo e manda esse prompt. Não
 depende do computador do fundador estar ligado, nem de ninguém estar
 olhando.
+
+Cada cargo tem uma **sessão permanente própria**, criada com este
+repositório anexado. Isso não é detalhe de montagem: uma sessão aberta
+do zero por agendamento nasce sem repositório nenhum e sem credencial
+para empurrar branch, e foi exatamente assim que os dois primeiros
+turnos morreram em menos de um minuto (ver `DECISOES.md`, 05/10/2026).
+A sessão permanente também dá memória ao diretor de um turno para o
+outro.
 
 Cada Routine guarda um prompt curto que manda ler três arquivos: este,
 o `FUNDADOR.md` e a carta do próprio cargo. **Todo o comportamento da
@@ -59,7 +66,13 @@ Sempre as mesmas quatro coisas, nesta ordem:
 2. Um bloco novo no topo de `DECISOES.md`, dentro do mesmo PR: o que
    fez, por quê, o que decidiu sozinho e o que precisa do fundador.
 3. `BACKLOG.md` atualizado no mesmo PR: o que saiu, o que entrou.
-4. Um resumo por e-mail para o fundador quando a sessão termina.
+4. O relatório final, que fica na sessão do cargo.
+
+Não há e-mail: uma Routine amarrada a uma sessão permanente não aceita
+notificação (o servidor só oferece isso para Routine que abre sessão
+nova a cada disparo). O aviso de que saiu trabalho é o próprio Pull
+Request e a tela Diretoria do Admin, que mostra quantos estão
+esperando merge.
 
 **Nada é fundido sem o fundador.** O merge é dele, sempre. Um diretor
 que empurrasse direto para a branch padrão estaria publicando na

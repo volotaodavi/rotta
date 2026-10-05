@@ -5,6 +5,55 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-05 — FUNDAÇÃO (correção)
+
+**Fiz:** troquei a montagem da diretoria. Cada cargo agora tem uma
+sessão própria e permanente, criada com o repositório da Rotta
+anexado, e a Routine do cargo acorda ESSA sessão em vez de abrir uma
+sessão nova a cada turno.
+
+**Por que isso e não outra coisa:** a montagem anterior não funcionava,
+e levou três turnos para ficar claro. Dois turnos do CTO terminaram em
+28 e 60 segundos sem entregar nada. A documentação do ambiente explica:
+os repositórios de uma sessão são escolhidos quando ela começa, e uma
+sessão aberta por agendamento nasce com a lista vazia. Os dois turnos
+acordaram num container sem o código da Rotta e sem credencial para
+empurrar nada, leram o que tinham, escreveram um recado curto e
+encerraram. Não era o prompt, não era permissão, não era o agendador.
+
+**Decidi sozinho:**
+
+- Sessão permanente por cargo, em vez de sessão nova por turno. Além de
+  resolver o repositório, isso dá memória ao diretor entre turnos, o
+  que baratea cada turno seguinte.
+- Modelo fixado em Sonnet nas quatro sessões. O turno de teste que
+  finalmente teve repositório rodou em Opus por herança e consumiu US$
+  2,95 em cinco minutos, contra US$ 0,13 e US$ 0,16 dos dois turnos
+  vazios. Trabalho de diretoria não justifica o modelo mais caro.
+- As quatro Routines antigas foram apagadas e refeitas. Apagar uma
+  Routine apaga as sessões que ela criou, então as duas sessões de
+  teste vazias do CTO foram embora junto; a que importa, a que teve
+  repositório e provou o diagnóstico, foi criada à mão e continua lá.
+
+**Preciso do fundador:** nada agora. O primeiro turno de verdade é o
+CEO, segunda 08:07.
+
+**Verificado:** o turno de teste com repositório anexado leu 142 mil
+tokens de contexto e produziu 25 mil tokens de saída (contra 1,3 mil
+dos turnos sem repositório), ou seja, trabalhou de verdade. Ele não
+chegou a abrir o PR porque esbarrou no limite semanal do plano do
+fundador, que zerou no domingo às 21h de Brasília. Esse limite é o
+motivo de a cadência ser de cinco turnos por semana e de existir a
+linha `MODO:`.
+
+**Descobri:** uma Routine amarrada a uma sessão permanente não aceita
+notificação por e-mail (o servidor recusa; e-mail só existe para
+Routine que abre sessão nova a cada disparo). Então o aviso de fim de
+turno passa a ser o Pull Request e a tela Diretoria do Admin, que
+mostra quantos estão esperando merge. Se o fundador quiser o e-mail de
+volta, dá para criar um boletim semanal separado, que lê o repositório
+público e resume a semana.
+
 ## 2026-10-03 — FUNDAÇÃO
 
 **Fiz:** criei a diretoria da Rotta, a pedido do fundador: CEO, CTO,
