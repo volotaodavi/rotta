@@ -46,17 +46,21 @@ export function LegalDocumentShell({
         </div>
       </header>
 
-      {meta.status === "PENDENTE_REVISAO_JURIDICA" && (
-        <div className="rounded-md border border-warning/40 bg-warning/10 p-4">
-          <Typography variant="bodySmall">
-            <strong>Documento pendente de revisão jurídica.</strong> O conteúdo abaixo foi redigido
-            com base no funcionamento real da plataforma (auditado, não copiado de um modelo
-            genérico), mas ainda precisa ser revisado por um advogado antes de ser tratado como o
-            texto final e vinculante deste documento.
-          </Typography>
-        </div>
-      )}
+      {/*
+        O aviso "pendente de revisão jurídica" saiu em 05/10/2026, por
+        decisão do fundador. Ele aparecia para o visitante no topo de
+        documento legal e dizia, em caixa de alerta, que aquele texto
+        ainda não valia. Numa plataforma que transporta criança, isso
+        trabalhava contra a única coisa que vende o produto, que é
+        confiança: quem chega para avaliar a Rotta lia um aviso de que
+        os próprios termos dela não estão prontos.
 
+        O estado de revisão continua existindo e continua honesto, só
+        mudou de lugar: `meta.status` ainda é dado do documento, e a
+        linha "Revisado juridicamente em ..." no cabeçalho acima aparece
+        quando houver revisão. O que sumiu foi a caixa de alerta, não o
+        fato.
+      */}
       {toc.length > 0 && (
         <nav aria-label={`Índice: ${meta.titulo}`} className="rounded-md border border-border p-4">
           <Typography variant="overline" color="muted" className="mb-2 block">
