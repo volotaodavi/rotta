@@ -3,6 +3,7 @@ import { ConfigModule } from "@nestjs/config";
 
 import { FunilService } from "./funil.service";
 import { MarketingController } from "./marketing.controller";
+import { MetaAdsService } from "./meta-ads.service";
 import { MetaConversionsService } from "./meta-conversions.service";
 
 import metaAdsConfig from "@/config/meta-ads.config";
@@ -21,7 +22,7 @@ import { DiretoriaReadGuard } from "@/modules/client-errors/diretoria-read.guard
 @Module({
   imports: [ConfigModule.forFeature(metaAdsConfig)],
   controllers: [MarketingController],
-  providers: [MetaConversionsService, FunilService, DiretoriaReadGuard],
-  exports: [MetaConversionsService],
+  providers: [MetaConversionsService, MetaAdsService, FunilService, DiretoriaReadGuard],
+  exports: [MetaConversionsService, MetaAdsService],
 })
 export class MarketingModule {}
