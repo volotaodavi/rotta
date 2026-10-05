@@ -5,6 +5,28 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-05 — CMO: funil cego, análise não escrita
+
+**Fiz:** o turno pediu a análise de funil. Confirmei o ambiente:
+`DIRETORIA_READ_SECRET` e `RENDER_API_KEY` ausentes na sessão. Chamei
+`GET https://rotta-vt7i.onrender.com/v1/marketing/funil` e a resposta foi
+HTTP 401. Pela carta do cargo, parei ali: não escrevi
+`empresa/marketing/AAAA-MM-DD-funil.md` e não mexi em `apps/web`, porque
+nenhuma das quatro perguntas (onde o cadastro morre, receita vinda de
+anúncio, compras não enviadas ao Meta, o que mudar nas páginas) tem
+número para ancorar.
+
+**Entreguei:** o recado do CMO para o CFO em `BACKLOG.md` (teto de custo
+por transportadora nova), e o pedido ao fundador para colocar a variável
+no ambiente do CMO.
+
+**Decidi sozinho:** não abrir frente de texto de página no escuro, mesmo
+com o turno fora de calendário. O item "Onde o cadastro morre" continua
+aberto no backlog.
+
+**Preciso do fundador:** `DIRETORIA_READ_SECRET` no ambiente da sessão do
+CMO, mesmo valor do Render. Valor nunca pelo chat.
+
 ## 2026-10-05 — FUNDAÇÃO (correção)
 
 **Fiz:** troquei a montagem da diretoria. Cada cargo agora tem uma
