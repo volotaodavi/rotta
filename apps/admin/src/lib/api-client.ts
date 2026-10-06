@@ -49,6 +49,28 @@ const apiClient = createApiClient({
   platform: "web",
 });
 
+/**
+ * O pulso da plataforma, para o escritório 3D saber o quanto a Rotta
+ * está em movimento agora. Chamado direto em vez de passar por
+ * `@rotta/api-client` porque é uma rota só, exclusiva do Admin, e
+ * acrescentar um pacote de endpoints inteiro para ela seria cerimônia
+ * sem ganho.
+ */
+export interface PulsoDaPlataforma {
+  medidoEm: string;
+  viagensEmAndamento: number;
+  posicoesNaUltimaHora: number;
+  eventosDeAluno24h: number;
+  contasNovas24h: number;
+  errosDeCliente24h: number;
+  carga: number;
+}
+
+export const plataformaApi = {
+  pulso: async (): Promise<PulsoDaPlataforma> =>
+    (await apiClient.request<{ data: PulsoDaPlataforma }>("/plataforma/pulso")).data,
+};
+
 export const accountDeletionApi = createAccountDeletionEndpoints(apiClient);
 export const authApi = createAuthEndpoints(apiClient);
 export const clientErrorsApi = createClientErrorsEndpoints(apiClient);

@@ -827,6 +827,12 @@ model Company {
   /// `Company` específica.
   avisosPlano            PlanNotice[]
 
+  /// Quando o financeiro mandou a última cobrança para esta empresa.
+  /// Existe para o mesmo aviso não sair duas vezes no mesmo dia: uma
+  /// régua de cobrança que repete vira spam, e spam de cobrança é o
+  /// jeito mais rápido de perder um cliente que só esqueceu de pagar.
+  ultimaCobrancaEm DateTime?
+
   @@index([status])
   @@index([tipo])
   @@index([deletedAt])

@@ -3,10 +3,28 @@ import { registerAs } from "@nestjs/config";
 export interface MetaAdsConfig {
   /** Token da API de Conversões (System User do Gerenciador de Negócios). SEGREDO. */
   accessToken: string | undefined;
+  /**
+   * Token da API de Marketing, com `ads_read` (ler desempenho) e, se o
+   * fundador quiser, `ads_management` (pausar anúncio). SEGREDO.
+   *
+   * Separado do de Conversões de propósito: escrever evento e mexer em
+   * verba são poderes diferentes, e juntar os dois num token só obriga
+   * a dar o maior dos dois para conseguir o menor. Cai no de Conversões
+   * quando não existir, porque um token com `ads_management` serve para
+   * os dois usos e não faz sentido exigir dois cadastros de quem só tem
+   * um token.
+   */
+  adsToken: string | undefined;
   /** O mesmo Pixel que o site carrega no navegador. Não é segredo. */
   pixelId: string;
   /** Versão da Graph API usada na URL. */
   apiVersion: string;
+  /**
+   * Conta de anúncio, no formato `act_<numero>`. Não é segredo: é
+   * identificador de conta, aparece na URL do Gerenciador de Anúncios.
+   * Sem ela, a leitura de campanha fica desligada.
+   */
+  adAccountId: string | undefined;
   /**
    * Código da aba "Testar eventos" do Gerenciador de Eventos. Quando
    * presente, o evento aparece lá e NÃO conta para a otimização de
@@ -44,7 +62,9 @@ export interface MetaAdsConfig {
  */
 export default registerAs("metaAds", (): MetaAdsConfig => ({
   accessToken: process.env.META_CAPI_ACCESS_TOKEN || undefined,
+  adsToken: process.env.META_ADS_ACCESS_TOKEN || process.env.META_CAPI_ACCESS_TOKEN || undefined,
   pixelId: process.env.META_PIXEL_ID || "2122632155047063",
+  adAccountId: process.env.META_AD_ACCOUNT_ID || undefined,
   apiVersion: process.env.META_GRAPH_API_VERSION || "v21.0",
   testEventCode: process.env.META_CAPI_TEST_EVENT_CODE || undefined,
 }));

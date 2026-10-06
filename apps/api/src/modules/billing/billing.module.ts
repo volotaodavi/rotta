@@ -7,9 +7,12 @@ import { BillingQueueController } from "./billing-queue.controller";
 import { BillingSchedulerService } from "./billing-scheduler.service";
 import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
+import { CobrancaController } from "./cobranca.controller";
+import { CobrancaService } from "./cobranca.service";
 
 import { EmailModule } from "@/infra/email/email.module";
 import { AuditModule } from "@/modules/audit/audit.module";
+import { DiretoriaReadGuard } from "@/modules/client-errors/diretoria-read.guard";
 import { CompaniesModule } from "@/modules/companies/companies.module";
 import { MarketingModule } from "@/modules/marketing/marketing.module";
 import { MessagePersonalizationModule } from "@/modules/notifications/message-personalization.module";
@@ -37,11 +40,23 @@ import { UsersModule } from "@/modules/users/users.module";
     AuditModule,
     MarketingModule,
   ],
-  controllers: [BillingController, AsaasWebhookController, BillingQueueController],
-  providers: [AsaasClientService, BillingService, AsaasWebhookGuard, BillingSchedulerService],
+  controllers: [
+    BillingController,
+    AsaasWebhookController,
+    BillingQueueController,
+    CobrancaController,
+  ],
+  providers: [
+    AsaasClientService,
+    BillingService,
+    AsaasWebhookGuard,
+    BillingSchedulerService,
+    CobrancaService,
+    DiretoriaReadGuard,
+  ],
   // `BillingService` exportado pra `AdminDigestModule` reaproveitar
   // (`reconciliarPagamentosAsaas`, resumo semanal/mensal do Admin
   // Rotta) sem duplicar a lógica de reconciliação Asaas.
-  exports: [BillingService],
+  exports: [BillingService, CobrancaService],
 })
 export class BillingModule {}
