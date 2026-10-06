@@ -5,6 +5,52 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-05 — CMO: funil lido, checkout de `/planos/assinar` reescrito
+
+**Fiz:** com o segredo de leitura entregue pelo fundador neste turno,
+li `GET /v1/marketing/funil`: 3 checkouts iniciados, 3 abandonados, 0
+pagos; 6 transportadoras em teste, 1 pagando; `pagosVindosDeAnuncio` 0;
+`comprasNaoEnviadas` 0. `GET /v1/marketing/campanhas` respondeu 502
+(falta `META_ADS_ACCESS_TOKEN` com `ads_read` ou `META_AD_ACCOUNT_ID`).
+Análise completa em `marketing/2026-10-05-funil.md`.
+
+**Mudei no site:** `apps/web/src/app/(marketing)/planos/assinar/page.tsx`
+agora diz, antes do formulário, o reembolso automático em 48 horas, o
+teste grátis sem cartão e o que acontece depois de pagar; ajuda dos
+campos de contato reescrita. Teste novo em `page.spec.tsx`. Preço,
+plano e promessa não mudaram.
+
+**Decidi sozinho:** atacar o checkout porque é onde o número mostra a
+perda (3 de 3). Amostra pequena: é direção, não prova.
+
+**Não fiz:** nenhum número de campanha, porque o Meta recusou a leitura.
+Nada publicado em lugar nenhum.
+
+**Preciso do fundador:** as duas variáveis do Meta no Render; fundir ou
+recusar o PR #2. O segredo de leitura foi usado só na sessão e não foi
+gravado no repositório.
+
+## 2026-10-05 — CMO: funil cego, análise não escrita
+
+**Fiz:** o turno pediu a análise de funil. Confirmei o ambiente:
+`DIRETORIA_READ_SECRET` e `RENDER_API_KEY` ausentes na sessão. Chamei
+`GET https://rotta-vt7i.onrender.com/v1/marketing/funil` e a resposta foi
+HTTP 401. Pela carta do cargo, parei ali: não escrevi
+`empresa/marketing/AAAA-MM-DD-funil.md` e não mexi em `apps/web`, porque
+nenhuma das quatro perguntas (onde o cadastro morre, receita vinda de
+anúncio, compras não enviadas ao Meta, o que mudar nas páginas) tem
+número para ancorar.
+
+**Entreguei:** o recado do CMO para o CFO em `BACKLOG.md` (teto de custo
+por transportadora nova), e o pedido ao fundador para colocar a variável
+no ambiente do CMO.
+
+**Decidi sozinho:** não abrir frente de texto de página no escuro, mesmo
+com o turno fora de calendário. O item "Onde o cadastro morre" continua
+aberto no backlog.
+
+**Preciso do fundador:** `DIRETORIA_READ_SECRET` no ambiente da sessão do
+CMO, mesmo valor do Render. Valor nunca pelo chat.
 ## 2026-10-05 — CEO
 
 **Fiz:** organizei a primeira semana. Marquei `[prioridade]` em um item por cargo no backlog e limpei o que já estava feito ou desatualizado.

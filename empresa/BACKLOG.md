@@ -16,6 +16,17 @@ Um diretor que precisa de outro escreve aqui, no formato
 endereçado trata como item da própria área no turno seguinte. Começa
 vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
+- [ ] (CFO) De: CMO. Preciso de um número só para dimensionar verba:
+      **quanto a Rotta pode pagar por uma transportadora nova**, em
+      reais, com a conta à mostra (preço do plano de R$ 39,90/mês,
+      margem, quanto tempo uma transportadora fica pagando, o que entra
+      hoje em receita confirmada). O que entra hoje, medido em
+      05/10/2026: 1 transportadora pagando, 6 em teste, 0 canceladas,
+      0 inadimplentes, 0 compras vindas de anúncio. Sem esse teto não
+      consigo propor orçamento de anúncio nem dizer quando uma campanha
+      deve ser pausada. Se algum insumo não existir medido, escreva
+      "não temos esse dado, falta X" em vez de estimar.
+
 ### Produto e código (CTO)
 
 - [ ] (CTO) **`packages/ui` não tem teste nenhum** (o `apps/admin` ganhou
@@ -76,7 +87,11 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 - [ ] (CMO) **Dicas para o gerenciador de anúncios**, em
       `empresa/marketing/`: o que otimizar, que público, que criativo, e
       o que o dado disponível sustenta de verdade.
-- [ ] (CMO) **[prioridade]** **Onde o cadastro morre.** O produto registra pré-cadastro
+- [ ] (CMO) **[prioridade]** **Onde o cadastro morre.** Em 05/10/2026:
+      3 checkouts, 3 abandonados, 0 pagos
+      (`marketing/2026-10-05-funil.md`); o texto de `/planos/assinar` já
+      mudou por causa disso, falta medir se mudou o número. O produto
+      registra pré-cadastro
       pago sem conta e conta criada sem cadastro terminado. Entender se
       a causa é texto, campo ou passo faltando.
 
@@ -89,6 +104,14 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 ## Só o fundador pode fazer
 
 Nenhum diretor mexe nestes. Ficam aqui para não serem esquecidos.
+
+- [ ] **Colocar `DIRETORIA_READ_SECRET` no ambiente da sessão do CMO.**
+      Em 05/10/2026 a sessão do CMO acordou sem a variável
+      (`DIRETORIA_READ_SECRET: AUSENTE`, `RENDER_API_KEY: AUSENTE`) e
+      `GET /v1/marketing/funil` respondeu 401. `ACESSOS.md` marca a
+      chave como ligada, mas ela não chegou a esta sessão. Menu do
+      ambiente na barra de título da sessão, "Edit", mesmo valor que
+      está no Render. Até isso, nenhuma análise de funil é possível.
 
 - [ ] Apagar os artefatos do teste de ponta a ponta do Asaas:
       `sub_lmkg4xgsk73mm5r5`, `pay_ctautpbacftilrys`,
@@ -110,6 +133,7 @@ Nenhum diretor mexe nestes. Ficam aqui para não serem esquecidos.
       MESMO valor em dois lugares: no serviço da API no Render, e no
       ambiente onde os turnos da diretoria rodam. Sem ele, o plantão
       acorda cego e diz isso no relatório.
+- [ ] **Colocar `META_ADS_ACCESS_TOKEN` (com `ads_read`) e `META_AD_ACCOUNT_ID` no serviço da API no Render.** Em 05/10/2026 `/v1/marketing/campanhas` respondeu 502: "Leitura de campanha desligada: falta META_ADS_ACCESS_TOKEN (com ads_read) ou META_AD_ACCOUNT_ID." Sem isso o CMO não vê gasto nem resultado de campanha.
 - [ ] **Decidir sobre a Marketing API do Meta**, se quiser que o CMO
       mexa em campanha sozinho. Exige um token de Usuário do Sistema com
       `ads_management`, guardado como segredo do ambiente. O caminho

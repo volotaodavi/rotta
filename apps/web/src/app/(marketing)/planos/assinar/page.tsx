@@ -1,6 +1,6 @@
 "use client";
 
-import { Copy } from "@rotta/icons";
+import { Check, Copy } from "@rotta/icons";
 import { Button, Card, FormField, Input, Typography, useToast } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
@@ -182,13 +182,39 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-6 px-6 py-16">
-      <div>
-        <Typography variant="title">Assinar antes de criar a conta</Typography>
+      <div className="flex flex-col gap-2">
+        <Typography variant="title">Assinar a Rotta por R$ 39,90/mês</Typography>
         <Typography variant="body" color="muted">
-          R$ 39,90/mês. Pague agora e complete o cadastro da sua empresa em seguida, sem precisar
-          esperar o trial ou entrar na plataforma antes.
+          Você paga agora e, em seguida, cadastra a sua empresa com os mesmos dados. Não precisa
+          criar conta antes.
         </Typography>
       </div>
+
+      {!pendingId && (
+        <Card>
+          <Card.Body className="flex flex-col gap-3">
+            <Typography variant="subtitle">Antes de pagar, o que você precisa saber</Typography>
+            <ul className="flex flex-col gap-2">
+              {[
+                "Se você pagar e não completar o cadastro em 48 horas, o valor é devolvido automaticamente.",
+                "Nenhum dado de cartão fica salvo nesta página. O pagamento é processado pelo Asaas.",
+                "Depois do pagamento, falta só o cadastro da empresa: os seus dados já vão preenchidos.",
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                  <Typography variant="bodySmall">{item}</Typography>
+                </li>
+              ))}
+            </ul>
+            <Typography variant="bodySmall" color="muted">
+              Prefere testar antes? O primeiro mês é grátis e não pede cartão.{" "}
+              <Link href="/criar-conta" className="font-medium text-primary underline">
+                Criar conta e testar grátis
+              </Link>
+            </Typography>
+          </Card.Body>
+        </Card>
+      )}
 
       {!pendingId && (
         <Card>
@@ -204,7 +230,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
               label="E-mail"
               helperText={
                 metodo === "PIX"
-                  ? "Opcional: pelo menos um destes 3 campos é obrigatório."
+                  ? "Preencha ao menos um: e-mail, CPF ou CNPJ, ou telefone."
                   : undefined
               }
               isRequired={metodo !== "PIX"}
@@ -220,7 +246,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
               label="CPF ou CNPJ"
               helperText={
                 metodo === "PIX"
-                  ? "Opcional: pelo menos um destes 3 campos é obrigatório."
+                  ? "Preencha ao menos um: e-mail, CPF ou CNPJ, ou telefone."
                   : undefined
               }
               isRequired={metodo !== "PIX"}
@@ -231,7 +257,7 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
               label="Telefone"
               helperText={
                 metodo === "PIX"
-                  ? "Opcional: pelo menos um destes 3 campos é obrigatório."
+                  ? "Preencha ao menos um: e-mail, CPF ou CNPJ, ou telefone."
                   : "Opcional."
               }
             >
