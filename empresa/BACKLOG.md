@@ -52,9 +52,10 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 - [ ] (CTO) **[prioridade]** **Os agentes de IA do produto, sem dono até agora.**
       Geocoding, Validation, Map Intelligence, Education Sync, Rotta AI,
       Communication Engine e o Audit Engine passaram a ser do CTO em
-      05/10/2026. Primeiro passo: descobrir qual deles está sem teste,
-      falhando calado ou gastando chamada externa à toa, e começar pelo
-      que toca dinheiro ou segurança.
+      05/10/2026. Em 06/10/2026: Geo, Rotta AI e Didit já têm teste e o
+      Audit Engine ganhou os dele. Falta o Communication Engine:
+      `infra/whatsapp` e `infra/sms` sem nenhum teste, e conferir se um
+      envio que falha some calado.
 - [ ] (CTO) **Escopo de turno.** Pendência antiga, nunca detalhada.
       Primeiro passo é escrever o que significa, não codar.
 - [ ] (CTO) **Tela de escala do motorista.** Pendência antiga.

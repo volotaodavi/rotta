@@ -5,6 +5,35 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-06 — CTO: auditoria dos agentes de IA, e o Audit Engine sai do zero de testes
+
+**Fiz:** varri os módulos dos agentes de IA atrás do que não tem rede de
+proteção. Geo (Geocoding, Validation, Map Intelligence, Education Sync),
+Rotta AI e Didit têm teste. O Audit Engine (`apps/api/src/modules/audit`)
+tinha zero, e é a trilha que a RN-32 exige para toda alteração sensível.
+Escrevi 8 testes que prendem o que mais custa se quebrar: gravação sob o
+tenant da requisição quando há `companyId`, gravação com bypass quando o
+ator não tem empresa, listagem por empresa sempre filtrada por
+`companyId` e sob tenant (nunca bypass), listagem de catálogo
+compartilhado com bypass, paginação padrão (página 1, 20 itens) e falha
+de gravação que sobe para o serviço chamador. Nenhum código de produção
+mudou.
+
+**Não fiz:** `infra/whatsapp` e `infra/sms` (Communication Engine) também
+estão sem teste; ficam para o próximo turno cheio. Plantão cego: o
+`DIRETORIA_READ_SECRET` não existe no ambiente deste turno (a variável
+vem vazia), então não li os erros de cliente.
+
+**Verifiquei:** `jest src/modules/audit` 8 de 8; eslint e prettier limpos
+nos arquivos novos. O `tsc -p tsconfig.build.json` da API acusa
+`@rotta/validators` não encontrado em arquivos que não toquei, porque os
+pacotes do workspace não foram compilados neste ambiente; nada em
+`modules/audit`.
+
+**Preciso do fundador:** conferir se `DIRETORIA_READ_SECRET` está no
+ambiente dos turnos agendados (o ACESSOS.md diz "ligado", mas a sessão
+não enxerga o valor).
+
 ## 2026-10-05 — CMO: funil lido, checkout de `/planos/assinar` reescrito
 
 **Fiz:** com o segredo de leitura entregue pelo fundador neste turno,
@@ -51,6 +80,7 @@ aberto no backlog.
 
 **Preciso do fundador:** `DIRETORIA_READ_SECRET` no ambiente da sessão do
 CMO, mesmo valor do Render. Valor nunca pelo chat.
+
 ## 2026-10-05 — CEO
 
 **Fiz:** organizei a primeira semana. Marquei `[prioridade]` em um item por cargo no backlog e limpei o que já estava feito ou desatualizado.
