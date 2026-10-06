@@ -12,6 +12,22 @@ const EXPIRE_PENDING_SUBSCRIPTIONS_SCHEDULE_ID = "billing-expire-pending-subscri
  */
 const EXPIRE_PENDING_SUBSCRIPTIONS_CRON = "0 * * * *";
 
+const COBRANCA_SCHEDULE_ID = "billing-cobrar-pendencias";
+
+/**
+ * Uma vez por dia, 09:20 em Brasília (12:20 UTC).
+ *
+ * Horário escolhido, não sorteado: cobrança que chega de madrugada
+ * parece robô e cobrança que chega no fim do dia fica para amanhã. Meio
+ * da manhã de um dia útil é quando uma transportadora pequena está com
+ * o celular na mão entre uma rota e outra.
+ *
+ * Diário porque o próprio serviço já segura o intervalo de três dias
+ * por empresa: rodar todo dia só garante que ninguém espere mais do que
+ * precisa, sem nunca virar repetição.
+ */
+const COBRANCA_CRON = "20 12 * * 1-5";
+
 /**
  * Registra o QStash Schedule de `BillingService.
  * processarPendingSubscriptionsExpiradas`, mesmo padrão de
@@ -50,5 +66,13 @@ export class BillingSchedulerService implements OnModuleInit {
     this.logger.log(
       `Expiração/reembolso de PendingSubscription registrado: cron "${EXPIRE_PENDING_SUBSCRIPTIONS_CRON}".`,
     );
+
+    await this.qstashSchedule.upsertSchedule(
+      COBRANCA_SCHEDULE_ID,
+      "billing/cobrar-pendencias",
+      COBRANCA_CRON,
+      {},
+    );
+    this.logger.log(`Régua de cobrança registrada: cron "${COBRANCA_CRON}".`);
   }
 }
