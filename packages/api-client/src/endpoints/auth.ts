@@ -1,3 +1,5 @@
+import { TIMEOUT_PARTIDA_FRIA_MS } from "../http";
+
 import type { CompanyType } from "./companies";
 import type { ApiClient } from "../http";
 
@@ -287,11 +289,20 @@ export function createAuthEndpoints(apiClient: ApiClient) {
         })
       ).data,
 
+    /**
+     * `timeoutMs` maior que o padrão porque esta é a primeira chamada da
+     * abertura do app, e no plano gratuito do Render ela cai bem no cold
+     * start (~89s). Com o teto comum de 60s ela era abortada antes de o
+     * servidor acordar, o `catch` de `auth-context` mandava a pessoa
+     * para o login, e o login falhava igual: o app parecia não abrir.
+     * Ver `TIMEOUT_PARTIDA_FRIA_MS`.
+     */
     refresh: async (refreshToken: string): Promise<AuthTokensResponse> =>
       (
         await apiClient.request<ApiEnvelope<AuthTokensResponse>>("/auth/refresh", {
           method: "POST",
           body: { refreshToken },
+          timeoutMs: TIMEOUT_PARTIDA_FRIA_MS,
         })
       ).data,
 

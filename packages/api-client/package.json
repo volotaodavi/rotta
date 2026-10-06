@@ -10,8 +10,9 @@
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "typecheck": "tsc --noEmit",
-    "test": "echo \"[@rotta/api-client] nenhum teste ainda\" && exit 0",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+    "test": "vitest run",
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@rotta/types": "workspace:*"
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@rotta/config": "workspace:*",
     "eslint": "^8.57.1",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "vitest": "^4"
   }
 }

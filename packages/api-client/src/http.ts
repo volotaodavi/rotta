@@ -119,6 +119,29 @@ export const TIMEOUT_PADRAO_MS = 60_000;
  */
 export const TIMEOUT_UPLOAD_MS = 120_000;
 
+/**
+ * Teto para a PRIMEIRA requisição da abertura do app, quando acordar o
+ * servidor é a explicação mais provável para a demora.
+ *
+ * 120 segundos, contra os ~89 que o cold start do plano gratuito do
+ * Render leva de verdade (medido em 03/09/2026, nota completa em
+ * `apps/web/src/lib/wake-api.ts`). Até 06/10/2026 essa primeira chamada
+ * usava o teto comum de 60 segundos, e aí a aritmética decidia sozinha:
+ * 60 é menor que 89, então a renovação de sessão era abortada pelo
+ * próprio app 30 segundos antes de o servidor ficar pronto, SEMPRE.
+ *
+ * Na tela isso aparecia como "o app não abre": a renovação estourava, o
+ * `catch` mandava para o login, e o login estourava pelo mesmo motivo.
+ * Nenhum erro chegava ao relatório, porque não havia defeito de código
+ * para relatar: o app estava funcionando exatamente como escrito.
+ *
+ * O teto COMUM continua em 60 segundos de propósito. Se toda requisição
+ * esperasse dois minutos, um servidor fora do ar viraria uma tela parada
+ * por dois minutos a cada toque, e a pessoa não teria como distinguir
+ * lentidão de defeito.
+ */
+export const TIMEOUT_PARTIDA_FRIA_MS = 120_000;
+
 /** `ApiError.status` usado quando a requisição estourou o tempo. */
 export const STATUS_TEMPO_ESGOTADO = 408;
 

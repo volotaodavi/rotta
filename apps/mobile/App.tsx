@@ -1,8 +1,10 @@
 import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { isEnvConfigValid } from "@/config/env";
+import { acordarApi } from "@/lib/acordar-api";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { AppProviders } from "@/providers/app-providers";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -27,6 +29,15 @@ import { AppConfigErrorScreen } from "@/screens/app-config-error-screen";
  * mensagem genérica e confusa própria.
  */
 export default function App(): JSX.Element {
+  /*
+    Dispara antes de qualquer tela: enquanto a splash aparece e a
+    renovação de sessão começa, a API já está saindo do sono. Ver
+    `lib/acordar-api.ts` para o defeito de 06/10/2026 que isto conserta.
+  */
+  useEffect(() => {
+    acordarApi();
+  }, []);
+
   return (
     <AppErrorBoundary>
       {isEnvConfigValid ? (
