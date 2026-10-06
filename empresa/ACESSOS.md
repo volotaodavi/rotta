@@ -1,5 +1,16 @@
 # Acessos: o que a diretoria de agentes pode tocar
 
+> **Este repositório é PÚBLICO.** Nenhum valor secreto entra aqui, em
+> nenhuma hipótese, nem "só por um minuto": um segredo commitado fica no
+> histórico do Git para sempre, e num repositório público ele é indexado
+> antes de alguém notar. Este arquivo diz ONDE cada chave mora e PARA QUE
+> ela serve, nunca QUAL é o valor dela.
+>
+> Pelo mesmo motivo, ele deixou de listar quais chaves estão faltando:
+> uma lista do que ainda não está protegido é um roteiro pronto para
+> quem quiser tentar. O estado de cada uma se consulta no painel onde ela
+> mora, por quem tem acesso a ele.
+
 Pedido do fundador em 05/10/2026: "quero deixar você no comando de
 tudo".
 
@@ -32,22 +43,22 @@ cada linha abaixo.
 
 ### Operação (o CTO, e o que trava deploy)
 
-| Chave                   | Onde                        | Status     | O que passa a ser possível sem o fundador                                                                                                                                                                                                                                                     |
-| ----------------------- | --------------------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DIRETORIA_READ_SECRET` | Render + ambiente do Claude | **ligado** | Ver os erros que acontecem na mão do usuário, sem conta de admin.                                                                                                                                                                                                                             |
-| `RENDER_API_KEY`        | ambiente do Claude          | vazio      | Ler o log de um deploy que falhou, ver a configuração do serviço, disparar deploy. **É a que falta hoje**: sem ela, todo diagnóstico de deploy vira pedido de print. Account Settings, API Keys, Create API Key. Grátis em qualquer plano.                                                    |
-| `PRODUCAO_DATABASE_URL` | segredo do GitHub           | vazio      | Rodar a manutenção do banco pela aba Actions (`banco-manutencao.yml`): ver o estado das migrações, destravar uma falha, migrar. Sem isso, uma migração quebrada trava todo deploy e só um shell pago resolve. A string está em Render, serviço de Postgres, "Connect", External Database URL. |
+| Chave                   | Onde                        | O que passa a ser possível sem o fundador                                                                                                                                                                                                                                                     |
+| ----------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DIRETORIA_READ_SECRET` | Render + ambiente do Claude | Ver os erros que acontecem na mão do usuário, sem conta de admin.                                                                                                                                                                                                                             |
+| `RENDER_API_KEY`        | ambiente do Claude          | Ler o log de um deploy que falhou, ver a configuração do serviço, disparar deploy. **É a que falta hoje**: sem ela, todo diagnóstico de deploy vira pedido de print. Account Settings, API Keys, Create API Key. Grátis em qualquer plano.                                                    |
+| `PRODUCAO_DATABASE_URL` | segredo do GitHub           | Rodar a manutenção do banco pela aba Actions (`banco-manutencao.yml`): ver o estado das migrações, destravar uma falha, migrar. Sem isso, uma migração quebrada trava todo deploy e só um shell pago resolve. A string está em Render, serviço de Postgres, "Connect", External Database URL. |
 
 ### Campanha (o CMO, e o dinheiro de anúncio)
 
-| Chave                                        | Onde      | Status     | O que passa a ser possível sem o fundador                                                                                                                                                                                                      |
-| -------------------------------------------- | --------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pixel `2122632155047063`                     | no código | **ligado** | Medir cadastro, checkout e compra no navegador. Não é segredo.                                                                                                                                                                                 |
-| `META_CAPI_ACCESS_TOKEN`                     | Render    | vazio      | Mandar a assinatura paga de volta ao Meta no momento em que a Asaas confirma. Hoje a maioria das confirmações de Pix se perde, porque o navegador já fechou. Events Manager, conjunto de dados, Configurações, API de Conversões, Gerar token. |
-| `FACEBOOK_DOMAIN_VERIFICATION`               | Vercel    | vazio      | Liberar a priorização de eventos do domínio. **Não é segredo**: pode vir pelo chat.                                                                                                                                                            |
-| Token da API de Marketing (`ads_read`)       | Render    | vazio      | O CMO **ler** custo por cadastro, custo por assinatura e qual criativo puxa, e escrever a recomendação com número em vez de palpite.                                                                                                           |
-| Token da API de Marketing (`ads_management`) | Render    | vazio      | O CMO **pausar anúncio e remanejar verba** sozinho. Recomendação: só depois de duas ou três semanas com conversão medida. Sem histórico, automação de verba é chute caro.                                                                      |
-| ID da conta de anúncio (`act_...`)           | no código | vazio      | Saber em qual conta ler. **Não é segredo.**                                                                                                                                                                                                    |
+| Chave                                        | Onde      | O que passa a ser possível sem o fundador                                                                                                                                                                                                      |
+| -------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pixel `2122632155047063`                     | no código | Medir cadastro, checkout e compra no navegador. Não é segredo.                                                                                                                                                                                 |
+| `META_CAPI_ACCESS_TOKEN`                     | Render    | Mandar a assinatura paga de volta ao Meta no momento em que a Asaas confirma. Hoje a maioria das confirmações de Pix se perde, porque o navegador já fechou. Events Manager, conjunto de dados, Configurações, API de Conversões, Gerar token. |
+| `FACEBOOK_DOMAIN_VERIFICATION`               | Vercel    | Liberar a priorização de eventos do domínio. **Não é segredo**: pode vir pelo chat.                                                                                                                                                            |
+| Token da API de Marketing (`ads_read`)       | Render    | O CMO **ler** custo por cadastro, custo por assinatura e qual criativo puxa, e escrever a recomendação com número em vez de palpite.                                                                                                           |
+| Token da API de Marketing (`ads_management`) | Render    | O CMO **pausar anúncio e remanejar verba** sozinho. Recomendação: só depois de duas ou três semanas com conversão medida. Sem histórico, automação de verba é chute caro.                                                                      |
+| ID da conta de anúncio (`act_...`)           | no código | Saber em qual conta ler. **Não é segredo.**                                                                                                                                                                                                    |
 
 ### O que a chave do Render destrava (comprovado em 05/10/2026)
 
