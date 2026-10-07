@@ -16,7 +16,22 @@ import type { ApiClient } from "../http";
 export type ClientApp = "WEB" | "ADMIN" | "MOBILE";
 
 /** Ver a nota completa em `ClientErrorReport` (schema.prisma). */
-export type ClientErrorSource = "error-boundary" | "window-error" | "unhandledrejection";
+export type ClientErrorSource =
+  | "error-boundary"
+  | "window-error"
+  | "unhandledrejection"
+  /**
+   * A sessão não pôde ser renovada por motivo técnico (tempo esgotado,
+   * rede, servidor fora do ar), e a pessoa foi jogada para o login sem
+   * ter feito nada errado.
+   *
+   * Entrou em 06/10/2026. Até então esse caminho não gerava registro
+   * nenhum: o app "não abria", e o plantão de erro mostrava zero
+   * ocorrências em uma semana inteira, porque do ponto de vista do
+   * código não havia erro, havia uma sessão que não deu para renovar.
+   * Sessão legitimamente expirada (401/403) NÃO entra aqui.
+   */
+  | "sessao-nao-renovada";
 
 export interface CreateClientErrorReportInput {
   app: ClientApp;
