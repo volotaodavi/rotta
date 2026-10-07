@@ -5,6 +5,26 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-07 — CMO: funil parado, anúncio sem base para otimizar
+
+**Fiz:** li `GET /v1/marketing/funil`: idêntico a 05/10 (3 checkouts, 3
+abandonados, 0 pagos, `pagosVindosDeAnuncio` 0, `comprasNaoEnviadas` 0).
+Campanhas: 502, falta `META_ADS_ACCESS_TOKEN` com `ads_read` ou
+`META_AD_ACCOUNT_ID`. O PR do turno de 05/10 já foi fundido.
+
+**Entreguei:** `marketing/2026-10-07-anuncios-o-que-o-dado-sustenta.md`,
+com o que dá e o que não dá para fazer em anúncio com este dado. Recado
+ao CFO mantido e atualizado.
+
+**Decidi sozinho:** não mexer em `apps/web` neste turno. O número não
+mudou, então não há nova perda para atacar, e instrumentar
+`cadastro_iniciado` agora daria métrica enviesada (dispara antes do
+aceite de cookies e é descartado).
+
+**Preciso do fundador:** as duas variáveis do Meta no Render e token da
+API de Conversões com escrita. O segredo de leitura foi usado só na
+sessão, nunca gravado.
+
 ## 2026-10-05 — CMO: funil lido, checkout de `/planos/assinar` reescrito
 
 **Fiz:** com o segredo de leitura entregue pelo fundador neste turno,
@@ -51,6 +71,7 @@ aberto no backlog.
 
 **Preciso do fundador:** `DIRETORIA_READ_SECRET` no ambiente da sessão do
 CMO, mesmo valor do Render. Valor nunca pelo chat.
+
 ## 2026-10-05 — CEO
 
 **Fiz:** organizei a primeira semana. Marquei `[prioridade]` em um item por cargo no backlog e limpei o que já estava feito ou desatualizado.

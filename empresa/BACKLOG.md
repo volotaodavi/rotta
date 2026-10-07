@@ -21,7 +21,7 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
       reais, com a conta à mostra (preço do plano de R$ 39,90/mês,
       margem, quanto tempo uma transportadora fica pagando, o que entra
       hoje em receita confirmada). O que entra hoje, medido em
-      05/10/2026: 1 transportadora pagando, 6 em teste, 0 canceladas,
+      05 e 07/10/2026: 1 transportadora pagando, 6 em teste, 0 canceladas,
       0 inadimplentes, 0 compras vindas de anúncio. Sem esse teto não
       consigo propor orçamento de anúncio nem dizer quando uma campanha
       deve ser pausada. Se algum insumo não existir medido, escreva
@@ -84,13 +84,11 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
       de responsável criada). Faltam: cadastro de transportadora
       concluído, app baixado (clique na Play Store) e contato de escola
       enviado. Mesmo padrão: momento real do produto, sem dado pessoal.
-- [ ] (CMO) **Dicas para o gerenciador de anúncios**, em
-      `empresa/marketing/`: o que otimizar, que público, que criativo, e
-      o que o dado disponível sustenta de verdade.
+- [ ] (CMO) **Dicas para o gerenciador de anúncios.** Primeira versão em `marketing/2026-10-07-anuncios-o-que-o-dado-sustenta.md`; criativo e público só depois da leitura de campanha (502 por falta das variáveis do Meta).
 - [ ] (CMO) **[prioridade]** **Onde o cadastro morre.** Em 05/10/2026:
       3 checkouts, 3 abandonados, 0 pagos
       (`marketing/2026-10-05-funil.md`); o texto de `/planos/assinar` já
-      mudou por causa disso, falta medir se mudou o número. O produto
+      mudou por causa disso, em 07/10/2026 os números seguem idênticos (nenhum checkout novo), falta tráfego para medir. O produto
       registra pré-cadastro
       pago sem conta e conta criada sem cadastro terminado. Entender se
       a causa é texto, campo ou passo faltando.
