@@ -5,6 +5,65 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-08 — CTO: o crash que chegou sem nome, e o token dos quatro
+
+**O que o plantão achou:** com o token de leitura finalmente no lugar,
+`GET /v1/client-errors/plantao?horas=168` parou de responder zero e
+mostrou um crash real: `app: MOBILE`, "Element type is invalid:
+expected a string (for built-in components) or a class/function (for
+composite components) but got: undefined", duas vezes em doze
+segundos, em 07/10/2026 às 21:50. Antes disso a janela de 168 horas
+vinha vazia, numa semana em que o app não abria para ninguém.
+
+**Por que ele não dava para consertar:** o relatório tinha doze quadros
+de pilha, todos de dentro do reconciliador do React, nenhum do produto,
+em endereço de bytecode Hermes (`index.android.bundle:1:345165`). E
+`buildId` vazio. Dava para saber que algo quebrou, não o quê nem em
+qual build.
+
+**Investigação, com o que foi descartado:** o grafo de 327 módulos que
+o app carrega na partida não tem nenhum ciclo de import (Tarjan sobre
+os imports de valor, ignorando `import type`); não existe variante por
+plataforma (`.native.`/`.android.`/`.web.`) que o `tsc` não veja; não
+existe `React.lazy` nem import dinâmico; `@maplibre/maplibre-react-native`
+10.4.2 exporta de fato os seis nomes que `packages/maps` importa
+(`Camera`, `Callout`, `LineLayer`, `MapView`, `PointAnnotation`,
+`ShapeSource`); `tsc --noEmit` passa. O `.aab` instalado é bytecode
+Hermes, então os deslocamentos da pilha não viram nome de função sem o
+disassembler.
+
+**Fiz:** o conserto é no instrumento, não um chute no defeito.
+`AppErrorBoundary` passou a usar o segundo argumento de
+`componentDidCatch`, que é exatamente o que nomeia a tela quebrada e
+sobrevive à minificação, e a mandar a identidade do build
+(`apps/mobile/src/lib/identidade-do-build.ts`, `version` +
+`versionCode`). `apps/web` já fazia isso desde 03/09/2026
+(`section-error-boundary.tsx`); o app tinha ficado de fora, e o preço
+foi um crash de produção não diagnosticável. Quatro testes novos em
+`app-error-boundary.spec.tsx`; os dois que importam falham no código
+anterior e passam no consertado. Mobile 91/91.
+
+**Também fiz:** `DIRETORIA_READ_SECRET` chegou ao CEO, ao CTO e ao CFO,
+que rodavam sem ele (só o CMO tinha). As três escalas foram recriadas,
+porque o texto de uma escala presa a uma sessão não pode ser editado de
+fora dela. Cada uma agora confere se o endpoint respondeu 200 de
+verdade antes de encerrar em branco, e cruza com
+`/v1/plataforma/pulso/diretoria`: zero erro com a plataforma em
+movimento é suspeita, não boa notícia. O CFO ganhou a régua de cobrança
+(`/v1/cobranca/pendencias` e `/v1/cobranca/cobrar`) e o CEO ganhou as
+quatro leituras juntas, que é o cruzamento que só ele faz.
+
+**Errei:** escrevi `/v1/plataforma/pulso` nos três prompts primeiro, e
+essa rota exige sessão de Admin (a da diretoria termina em
+`/diretoria`). Peguei no teste e corrigi antes de qualquer turno rodar
+com ela. E ao apagar a escala antiga do CTO apaguei junto a sessão que
+ela havia criado às 08:22 de hoje, perdendo o relatório daquele turno.
+
+**Preciso do fundador:** fundir ou recusar o PR #3 (CTO, testes do Audit
+Engine) e o PR #4 (CMO). O crash do mobile só fica identificado quando
+um build com este conserto estiver instalado: o próximo relatório dirá
+a tela e o build.
+
 ## 2026-10-05 — CMO: funil lido, checkout de `/planos/assinar` reescrito
 
 **Fiz:** com o segredo de leitura entregue pelo fundador neste turno,
@@ -51,6 +110,7 @@ aberto no backlog.
 
 **Preciso do fundador:** `DIRETORIA_READ_SECRET` no ambiente da sessão do
 CMO, mesmo valor do Render. Valor nunca pelo chat.
+
 ## 2026-10-05 — CEO
 
 **Fiz:** organizei a primeira semana. Marquei `[prioridade]` em um item por cargo no backlog e limpei o que já estava feito ou desatualizado.

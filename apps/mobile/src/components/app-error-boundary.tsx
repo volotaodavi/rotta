@@ -1,9 +1,10 @@
 import { Component } from "react";
 import { ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
 
-import type { ReactNode } from "react";
+import type { ErrorInfo, ReactNode } from "react";
 
 import { clientErrorsApi } from "@/lib/api-client";
+import { identidadeDoBuild } from "@/lib/identidade-do-build";
 
 /**
  * Rede de segurança contra erro de render não tratado (auditoria
@@ -39,9 +40,9 @@ export class AppErrorBoundary extends Component<
     return { error };
   }
 
-  override componentDidCatch(error: Error): void {
+  override componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     // eslint-disable-next-line no-console
-    console.error(error);
+    console.error(error, errorInfo.componentStack);
     // Nunca lança — mesma garantia documentada em
     // `apps/web/src/lib/report-client-error.ts`: se o próprio reporte
     // falhar (rede fora do ar), a tela de erro continua funcionando
@@ -50,7 +51,7 @@ export class AppErrorBoundary extends Component<
       .report({
         app: "MOBILE",
         message: error.message || "Erro sem mensagem",
-        stack: error.stack,
+        stack: montarRastro(error, errorInfo),
         // RN não tem pathname de URL como a web — sem um
         // `navigationRef` global (que não existia antes desta
         // auditoria e seria uma mudança maior/mais arriscada pra
@@ -58,6 +59,7 @@ export class AppErrorBoundary extends Component<
         // barato disponível aqui; `stack` continua tendo a tela real.
         path: "(mobile)",
         source: "error-boundary",
+        buildId: identidadeDoBuild(),
       })
       .catch(() => undefined);
   }
@@ -88,6 +90,46 @@ export class AppErrorBoundary extends Component<
       </ScrollView>
     );
   }
+}
+
+/**
+ * Junta o rastro técnico com a árvore de componentes que estava
+ * renderizando quando quebrou.
+ *
+ * ## O defeito que isto conserta (07/10/2026)
+ *
+ * O app quebrou na mão de um usuário com "Element type is invalid:
+ * expected a string ... but got: undefined", e o relatório que chegou
+ * ao plantão do CTO tinha só isto de rastro:
+ *
+ * ```
+ * at createFiberFromTypeAndProps (address at index.android.bundle:1:345165)
+ * at reconcileChildFibersImpl (address at index.android.bundle:1:305099)
+ * ```
+ *
+ * Doze quadros, todos de dentro do React, nenhum do produto. Em build
+ * de produção o código vira bytecode Hermes, então `error.stack` dá
+ * endereço em vez de nome de arquivo, e não existe nenhum quadro da
+ * Rotta: a falha acontece no reconciliador, não no nosso código. O
+ * plantão sabia que algo quebrou e não tinha como saber O QUÊ.
+ *
+ * O React entrega essa resposta no segundo argumento de
+ * `componentDidCatch`, que esta classe ignorava: `componentStack` lista
+ * a cadeia de componentes (`<DriverNavigator>` dentro de
+ * `<NavigationContainer>` dentro de `<AppModeProvider>`...) e sobrevive
+ * à minificação, porque é construída com os nomes que o React guarda em
+ * tempo de execução.
+ *
+ * `apps/web` já fazia exatamente isto desde a auditoria de 03/09/2026
+ * (ver `section-error-boundary.tsx`), com a nota explicando o motivo. O
+ * app ficou de fora, e o preço foi um crash de produção não
+ * diagnosticável.
+ */
+function montarRastro(error: Error, errorInfo: ErrorInfo): string {
+  const tecnico = error.stack ?? error.message;
+  const arvore = errorInfo.componentStack;
+  if (!arvore) return tecnico;
+  return `${tecnico}\n--- component stack ---${arvore}`;
 }
 
 /** Cópia literal dos tokens do tema escuro (`packages/theme/src/tokens/colors.ts`) — ver nota da classe acima sobre o porquê de não vir de `useTheme`. */
