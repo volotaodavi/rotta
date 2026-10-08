@@ -1,7 +1,7 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useNotificationsList, useSetNotificationArquivada } from "../hooks/use-notifications";
-import { NOTIFICATION_PRIORITY_TONE, NOTIFICATION_TYPE_ICON } from "../labels";
+import { iconeDoTipo, NOTIFICATION_PRIORITY_TONE } from "../labels";
 
 import type { NotificationsStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -57,7 +57,7 @@ export function HistoricoScreen({ navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       {data.items.map((notification) => {
-        const TipoIcone = NOTIFICATION_TYPE_ICON[notification.tipo];
+        const TipoIcone = iconeDoTipo(notification.tipo);
         return (
           <VehicleCard key={notification.id}>
             <Pressable

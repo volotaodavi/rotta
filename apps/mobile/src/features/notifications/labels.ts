@@ -1,19 +1,37 @@
 import {
+  AlarmClock,
   AlertTriangle,
+  ArrowDownCircle,
+  ArrowUpCircle,
   Backpack,
+  BadgeCheck,
+  BadgeX,
+  Bell,
+  Building2,
   Bus,
   Car,
   CheckCircle2,
   Clock,
   CreditCard,
+  FileBarChart,
   FileText,
   Flag,
+  Hourglass,
   IdCard,
+  LifeBuoy,
+  Lock,
   MapPin,
   Handshake,
   MapPinned,
+  Megaphone,
+  MessageCircle,
+  MessageSquare,
   School,
+  ShieldCheck,
+  ShieldX,
   Siren,
+  TrendingUp,
+  UserCheck,
   UserCog,
   UserRoundX,
   Users,
@@ -65,6 +83,38 @@ export const NOTIFICATION_TYPE_ICON: Record<NotificationEventType, LucideIcon> =
   ALUNO_NAO_VAI_HOJE: Backpack,
   ENDERECO_DO_DIA_ALTERADO: MapPinned,
   ESCALA_ALTERADA: UserCog,
+  /*
+    Os dezenove abaixo entraram em 08/10/2026. Eles existiam no banco
+    desde sempre e NUNCA estiveram aqui: a Central de Notificações
+    resolvia o ícone por `NOTIFICATION_TYPE_ICON[tipo]` e renderizava o
+    resultado direto, então qualquer um deles chegando devolvia
+    `undefined` e derrubava a tela com "Element type is invalid ... but
+    got: undefined". Foi o que aconteceu com um usuário em 07/10/2026.
+    `CADASTRO_CONCLUIDO` e `IDENTIDADE_APROVADA` estão nesta lista, e
+    são das primeiras notificações que qualquer conta nova recebe.
+  */
+  TRIAL_EXPIRANDO: Hourglass,
+  TRIAL_VENCE_HOJE: AlarmClock,
+  TRIAL_BLOQUEADO: Lock,
+  SUPORTE_TICKET_ABERTO: LifeBuoy,
+  SUPORTE_NOVA_MENSAGEM: MessageCircle,
+  SUPORTE_TICKET_ENCERRADO: CheckCircle2,
+  AVISO_GERAL: Megaphone,
+  // Seta para cima é entrar na van, para baixo é descer dela. O aviso é
+  // por transição de parada, não por GPS — `VEICULO_PROXIMO` é o de
+  // distância e continua com `MapPin`.
+  ALUNO_VEZ_EMBARQUE: ArrowUpCircle,
+  ALUNO_VEZ_DESEMBARQUE: ArrowDownCircle,
+  VEICULO_REVISAO_APROVADA: BadgeCheck,
+  VEICULO_REVISAO_REPROVADA: BadgeX,
+  CONVERSA_NOVA_MENSAGEM: MessageSquare,
+  CADASTRO_CONCLUIDO: UserCheck,
+  IDENTIDADE_APROVADA: ShieldCheck,
+  IDENTIDADE_REPROVADA: ShieldX,
+  NOVO_CLIENTE_CADASTRADO: Building2,
+  PLANO_NOVA_ASSINATURA: TrendingUp,
+  RELATORIO_SEMANAL: FileBarChart,
+  RELATORIO_MENSAL: FileBarChart,
 };
 
 export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {
@@ -94,6 +144,25 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {
   ALUNO_NAO_VAI_HOJE: "Aluno não vai hoje",
   ENDERECO_DO_DIA_ALTERADO: "Endereço de hoje",
   ESCALA_ALTERADA: "Escala alterada",
+  TRIAL_EXPIRANDO: "Teste grátis acabando",
+  TRIAL_VENCE_HOJE: "Teste grátis vence hoje",
+  TRIAL_BLOQUEADO: "Teste grátis encerrado",
+  SUPORTE_TICKET_ABERTO: "Chamado aberto",
+  SUPORTE_NOVA_MENSAGEM: "Resposta do suporte",
+  SUPORTE_TICKET_ENCERRADO: "Chamado encerrado",
+  AVISO_GERAL: "Aviso da Rotta",
+  ALUNO_VEZ_EMBARQUE: "Vez do embarque",
+  ALUNO_VEZ_DESEMBARQUE: "Vez do desembarque",
+  VEICULO_REVISAO_APROVADA: "Veículo aprovado",
+  VEICULO_REVISAO_REPROVADA: "Veículo reprovado",
+  CONVERSA_NOVA_MENSAGEM: "Nova mensagem",
+  CADASTRO_CONCLUIDO: "Cadastro concluído",
+  IDENTIDADE_APROVADA: "Identidade aprovada",
+  IDENTIDADE_REPROVADA: "Identidade reprovada",
+  NOVO_CLIENTE_CADASTRADO: "Novo cliente",
+  PLANO_NOVA_ASSINATURA: "Nova assinatura",
+  RELATORIO_SEMANAL: "Relatório semanal",
+  RELATORIO_MENSAL: "Relatório mensal",
 };
 
 /**
@@ -137,7 +206,68 @@ export const NOTIFICATION_TYPE_TONE: Record<NotificationEventType, NotificationC
   ALUNO_NAO_VAI_HOJE: "warning",
   ENDERECO_DO_DIA_ALTERADO: "warning",
   ESCALA_ALTERADA: "warning",
+  // O trial escala de aviso a bloqueio, e a cor acompanha.
+  TRIAL_EXPIRANDO: "warning",
+  TRIAL_VENCE_HOJE: "danger",
+  TRIAL_BLOQUEADO: "danger",
+  SUPORTE_TICKET_ABERTO: "info",
+  SUPORTE_NOVA_MENSAGEM: "info",
+  SUPORTE_TICKET_ENCERRADO: "muted",
+  AVISO_GERAL: "info",
+  // "Chegou a vez do seu filho" é boa notícia, não alerta.
+  ALUNO_VEZ_EMBARQUE: "primary",
+  ALUNO_VEZ_DESEMBARQUE: "primary",
+  VEICULO_REVISAO_APROVADA: "success",
+  // Reprovação tira o veículo de operação: é a mais grave das duas.
+  VEICULO_REVISAO_REPROVADA: "danger",
+  CONVERSA_NOVA_MENSAGEM: "info",
+  CADASTRO_CONCLUIDO: "success",
+  IDENTIDADE_APROVADA: "success",
+  IDENTIDADE_REPROVADA: "danger",
+  // Informativo interno da Rotta: nunca compete por atenção com um
+  // aviso operacional na mesma lista.
+  NOVO_CLIENTE_CADASTRADO: "info",
+  PLANO_NOVA_ASSINATURA: "success",
+  RELATORIO_SEMANAL: "muted",
+  RELATORIO_MENSAL: "muted",
 };
+
+/**
+ * Ícone, tom e rótulo de um tipo de notificação, com saída garantida
+ * mesmo para um tipo que esta versão do app não conhece.
+ *
+ * ## Por que a busca direta no mapa não serve, mesmo com o mapa completo
+ *
+ * Porque o compilador garante que os mapas cobrem a união de HOJE, e o
+ * aparelho não roda a versão de hoje. A API sobe sozinha, várias vezes
+ * por semana; o aplicativo instalado só muda quando a pessoa atualiza
+ * pela loja, e muita gente demora semanas. No instante em que alguém
+ * adicionar o quadragésimo sexto valor ao
+ * `enum NotificationEventType`, todo celular com a versão anterior
+ * passa a receber um tipo fora dos mapas.
+ *
+ * Com busca direta, isso significava `undefined` virando componente e
+ * a Central inteira caindo com "Element type is invalid ... but got:
+ * undefined", que é exatamente o que aconteceu em 07/10/2026. Tipo
+ * system nenhum alcança um binário já instalado: só um padrão de
+ * leitura que não presume cobertura.
+ *
+ * Com estas funções, o pior caso é uma linha com sino cinza e a palavra
+ * "Notificação" em vez do rótulo bonito. A pessoa continua lendo o
+ * título e o corpo, que é o conteúdo de verdade, e abre a notificação
+ * normalmente.
+ */
+export function iconeDoTipo(tipo: NotificationEventType): LucideIcon {
+  return NOTIFICATION_TYPE_ICON[tipo] ?? Bell;
+}
+
+export function tomDoTipo(tipo: NotificationEventType): NotificationColorTone {
+  return NOTIFICATION_TYPE_TONE[tipo] ?? "muted";
+}
+
+export function rotuloDoTipo(tipo: NotificationEventType): string {
+  return NOTIFICATION_TYPE_LABEL[tipo] ?? "Notificação";
+}
 
 export const NOTIFICATION_PRIORITY_LABEL: Record<NotificationPriorityLevel, string> = {
   INFORMATIVA: "Informativa",

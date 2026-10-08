@@ -17,6 +17,12 @@ jest.mock("@/lib/api-client", () => ({
   clientErrorsApi: { report: jest.fn() },
 }));
 
+/** Quebra do mesmo jeito que o crash real de 07/10/2026: tipo `undefined`. */
+function TelaQueQuebra(): JSX.Element {
+  const Quebrado = undefined as unknown as () => JSX.Element;
+  return <Quebrado />;
+}
+
 /** Lança sempre que `deveLancar` é `true` — usado nos testes que só verificam a tela de erro em si. */
 function BombaControlada({ deveLancar }: { deveLancar: boolean }): JSX.Element {
   if (deveLancar) {
@@ -82,6 +88,54 @@ describe("AppErrorBoundary", () => {
         source: "error-boundary",
       }),
     );
+  });
+
+  /*
+    OS DOIS TESTES ABAIXO ENTRARAM EM 08/10/2026, e nascem de um crash
+    de produção que não deu para consertar.
+
+    Um usuário recebeu "Element type is invalid: expected a string (for
+    built-in components) or a class/function (for composite components)
+    but got: undefined" duas vezes em doze segundos. O relatório que
+    chegou ao plantão do CTO tinha doze quadros de pilha, todos de
+    dentro do reconciliador do React, nenhum do produto, em endereço de
+    bytecode Hermes (`index.android.bundle:1:345165`), e `buildId`
+    vazio. Dava para saber que algo quebrou, não o quê nem em qual
+    build.
+
+    O React sempre soube a resposta: `componentDidCatch` recebe um
+    segundo argumento com a cadeia de componentes, que nomeia a tela e
+    sobrevive à minificação. Esta classe ignorava esse argumento.
+    `apps/web` já anexava o `componentStack` desde 03/09/2026 (ver
+    `section-error-boundary.tsx`); o app tinha ficado de fora.
+  */
+  it("manda a árvore de componentes junto, que é o que nomeia a tela quebrada", () => {
+    render(
+      <AppErrorBoundary>
+        <TelaQueQuebra />
+      </AppErrorBoundary>,
+    );
+
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as { stack?: string };
+    expect(enviado.stack).toContain("--- component stack ---");
+    expect(enviado.stack).toContain("TelaQueQuebra");
+  });
+
+  it("diz qual build quebrou", () => {
+    render(
+      <AppErrorBoundary>
+        <BombaControlada deveLancar />
+      </AppErrorBoundary>,
+    );
+
+    /*
+      Em ambiente de teste não existe configuração nativa, então o valor
+      pode ser indefinido. O que fica trancado é que o campo É CALCULADO
+      E ENVIADO: antes do conserto ele nem aparecia na chamada, e
+      relatório sem build não cruza com envio da Play Store.
+    */
+    const chaves = Object.keys((clientErrorsApi.report as jest.Mock).mock.calls[0][0] as object);
+    expect(chaves).toContain("buildId");
   });
 
   it("nunca lança mesmo se o próprio reporte de erro falhar (rede fora do ar)", () => {

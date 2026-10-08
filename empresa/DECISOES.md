@@ -5,6 +5,65 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-08 — CTO: a Central de Notificações não abria, e o motivo era 26 contra 45
+
+**Relato do fundador:** "ao quererem entrar nas notificações, aparece
+erro".
+
+**O que era:** o `enum NotificationEventType` no `schema.prisma` tem 45
+valores. Os mapas de ícone, cor e rótulo das telas de notificação
+tinham 26. A Central do app fazia `NOTIFICATION_TYPE_ICON[tipo]` e
+usava o resultado como componente, então uma notificação de qualquer um
+dos 19 tipos ausentes virava `<undefined />` e derrubava a tela com
+"Element type is invalid: expected a string (for built-in components) or
+a class/function (for composite components) but got: undefined".
+
+É o MESMO erro que o plantão registrou em 07/10/2026 às 21:50, duas
+vezes em doze segundos. Entre os 19 que faltavam estão
+`CADASTRO_CONCLUIDO` e `IDENTIDADE_APROVADA`: bastava criar uma conta
+para a Central ficar inabrível.
+
+**Por que o compilador não pegou:** a união `NotificationEventType` do
+`packages/api-client` também declarava 26 valores. Um
+`Record<NotificationEventType, ...>` de 26 chaves estava, para o
+TypeScript, completo. Pior: o arquivo carregava uma nota admitindo a
+defasagem e chamando-a de inofensiva, dizendo que "uma notificação de
+tipo desconhecido continua aparecendo na Central, só não cai em nenhum
+filtro de categoria". Essa frase estava errada, e foi ela que fez o
+adiamento parecer seguro.
+
+**Por que não havia teste:** `lucide-react-native` publica ESM e
+resolve para `.mjs` pela condição `react-native`; o transform do
+`jest-expo` só casa `\.[jt]sx?$`. Nada que importasse
+`@rotta/icons/native` podia ser testado, e é embaixo desse barrel que
+os mapas vivem. A lacuna não foi descuido: era impossível escrever o
+teste que teria pegado.
+
+**Fiz, na ordem da causa:** completei a união para os 45 valores, que
+transformou cada mapa incompleto em erro de compilação (o `tsc` apontou
+sete, em mobile e web); preenchi os sete; troquei o acesso direto por
+`iconeDoTipo`/`tomDoTipo`/`rotuloDoTipo` com saída garantida, porque a
+API sobe sozinha e o aplicativo instalado não, e compilador nenhum
+alcança um binário já na mão do usuário; abri o caminho do Jest para o
+lucide via `moduleNameMapper` para o build CommonJS.
+
+**Diferença entre os dois apps, para o registro:** no mobile o mapa
+guarda o COMPONENTE e `<undefined />` derruba a árvore. Na web ele
+guarda um ELEMENTO já construído, e elemento `undefined` o React só não
+desenha: lá o efeito era círculo vazio e linha sem o nome do tipo,
+degradação silenciosa e não queda. Os dois foram consertados.
+
+**Prova:** o teste de integração monta a `CentralScreen` de verdade com
+uma notificação de tipo desconhecido. Revertendo a tela ao acesso
+direto, ele falha com a mensagem literal do crash de produção;
+restaurado o conserto, passa. `notification-event-type.spec.ts` tranca
+a união contra o `schema.prisma`, para a próxima adição ao enum quebrar
+um teste em vez de uma tela. Mobile 95/95, api-client 7/7, `tsc` limpo
+nos dois apps, `next build` verde.
+
+**Preciso do fundador:** instalar um build novo do app para o conserto
+chegar ao celular. Fundir ou recusar o PR #3 e o PR #4.
+
 ## 2026-10-08 — CTO: o crash que chegou sem nome, e o token dos quatro
 
 **O que o plantão achou:** com o token de leitura finalmente no lugar,

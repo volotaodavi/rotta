@@ -22,7 +22,7 @@ import {
   useMarkNotificationRead,
   useNotificationsList,
 } from "@/features/notifications/hooks/use-notifications";
-import { NOTIFICATION_TYPE_LABEL } from "@/features/notifications/labels";
+import { rotuloDoTipo } from "@/features/notifications/labels";
 import { NotificationTypeIcon } from "@/features/notifications/notification-icon";
 
 type FiltroRapido = "todas" | "nao_lidas" | "favoritas";
@@ -131,7 +131,7 @@ export default function NotificacoesPage(): JSX.Element {
                       </div>
                     </div>
                     <Typography variant="caption" color="muted">
-                      {NOTIFICATION_TYPE_LABEL[notification.tipo]} ·{" "}
+                      {rotuloDoTipo(notification.tipo)} ·{" "}
                       {new Date(notification.createdAt).toLocaleString("pt-BR")}
                     </Typography>
                     <Typography variant="body" color="muted" className="line-clamp-2">

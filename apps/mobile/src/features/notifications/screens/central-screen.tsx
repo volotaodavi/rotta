@@ -15,11 +15,7 @@ import {
   useMarkNotificationRead,
   useNotificationsList,
 } from "../hooks/use-notifications";
-import {
-  NOTIFICATION_TYPE_ICON,
-  NOTIFICATION_TYPE_TONE,
-  type NotificationColorTone,
-} from "../labels";
+import { iconeDoTipo, tomDoTipo, type NotificationColorTone } from "../labels";
 
 import type { NotificationsStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -108,6 +104,43 @@ const CATEGORIA_POR_TIPO: Record<NotificationEventType, Exclude<FiltroCategoria,
   ENDERECO_DO_DIA_ALTERADO: "viagem",
   ESCALA_ALTERADA: "viagem",
   NOVA_SOLICITACAO_TRANSPORTE: "pagamentos",
+  /*
+    Os dezenove abaixo entraram em 08/10/2026, junto com o conserto do
+    ícone (ver a nota em `../labels.ts`). Nenhum deles tem categoria
+    própria na referência de design, que só prevê Viagem, Aluno,
+    Segurança e Pagamentos, então cada um foi para a categoria do seu
+    ASSUNTO, e não do seu destinatário:
+
+    - Trial, assinatura e cliente novo são dinheiro: "pagamentos".
+    - Suporte, conversa e aviso geral são conversa com a Rotta ou com a
+      transportadora, e nenhuma das quatro categorias cobre isso. Vão
+      para "seguranca", que na prática é a gaveta de "precisa da sua
+      atenção", em vez de inventar uma quinta aba que o design não tem.
+    - Identidade e revisão de veículo são credenciamento de quem leva a
+      criança: "seguranca", sem dúvida.
+    - A vez do embarque e do desembarque são sobre a criança: "aluno".
+    - Relatório é informativo interno do Admin Rotta: "pagamentos", que
+      é onde o faturamento dele já mora.
+  */
+  TRIAL_EXPIRANDO: "pagamentos",
+  TRIAL_VENCE_HOJE: "pagamentos",
+  TRIAL_BLOQUEADO: "pagamentos",
+  PLANO_NOVA_ASSINATURA: "pagamentos",
+  NOVO_CLIENTE_CADASTRADO: "pagamentos",
+  RELATORIO_SEMANAL: "pagamentos",
+  RELATORIO_MENSAL: "pagamentos",
+  SUPORTE_TICKET_ABERTO: "seguranca",
+  SUPORTE_NOVA_MENSAGEM: "seguranca",
+  SUPORTE_TICKET_ENCERRADO: "seguranca",
+  AVISO_GERAL: "seguranca",
+  CONVERSA_NOVA_MENSAGEM: "seguranca",
+  CADASTRO_CONCLUIDO: "seguranca",
+  IDENTIDADE_APROVADA: "seguranca",
+  IDENTIDADE_REPROVADA: "seguranca",
+  VEICULO_REVISAO_APROVADA: "seguranca",
+  VEICULO_REVISAO_REPROVADA: "seguranca",
+  ALUNO_VEZ_EMBARQUE: "aluno",
+  ALUNO_VEZ_DESEMBARQUE: "aluno",
 };
 
 /**
@@ -268,8 +301,8 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
       ) : (
         <VehicleCard style={styles.lista}>
           {itens.map((notification, index) => {
-            const TipoIcone = NOTIFICATION_TYPE_ICON[notification.tipo];
-            const corTipo = resolveToneColor(theme, NOTIFICATION_TYPE_TONE[notification.tipo]);
+            const TipoIcone = iconeDoTipo(notification.tipo);
+            const corTipo = resolveToneColor(theme, tomDoTipo(notification.tipo));
             return (
               <Pressable
                 key={notification.id}

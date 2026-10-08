@@ -8,7 +8,7 @@ import {
   useNotificationsList,
   useSetNotificationArquivada,
 } from "@/features/notifications/hooks/use-notifications";
-import { NOTIFICATION_TYPE_LABEL } from "@/features/notifications/labels";
+import { rotuloDoTipo } from "@/features/notifications/labels";
 
 /**
  * Histórico de notificações arquivadas (Painel Web) — mesma experiência
@@ -56,7 +56,7 @@ export default function NotificacoesArquivadasPage(): JSX.Element {
                       <NotificationPriorityBadge prioridade={notification.prioridade} />
                     </div>
                     <Typography variant="caption" color="muted">
-                      {NOTIFICATION_TYPE_LABEL[notification.tipo]} ·{" "}
+                      {rotuloDoTipo(notification.tipo)} ·{" "}
                       {new Date(notification.createdAt).toLocaleString("pt-BR")}
                     </Typography>
                     <Typography variant="body" color="muted" className="line-clamp-2">

@@ -13,10 +13,7 @@ import {
   useSetNotificationArquivada,
   useSetNotificationFavorita,
 } from "@/features/notifications/hooks/use-notifications";
-import {
-  COMMUNICATION_CHANNEL_LABEL,
-  NOTIFICATION_TYPE_LABEL,
-} from "@/features/notifications/labels";
+import { COMMUNICATION_CHANNEL_LABEL, rotuloDoTipo } from "@/features/notifications/labels";
 
 /**
  * Detalhe de uma notificação (Painel Web) — mesma experiência de
@@ -85,7 +82,7 @@ export default function NotificacaoDetalhePage({
       <Card>
         <Card.Body className="flex flex-col gap-4">
           <Typography variant="caption" color="muted">
-            {NOTIFICATION_TYPE_LABEL[notification.tipo]} ·{" "}
+            {rotuloDoTipo(notification.tipo)} ·{" "}
             {new Date(notification.createdAt).toLocaleString("pt-BR")}
           </Typography>
           <Typography variant="body">{notification.corpo}</Typography>

@@ -16,6 +16,40 @@ import type { ApiClient } from "../http";
  * `companyId`).
  */
 
+/**
+ * Todo tipo de notificação que a API pode devolver.
+ *
+ * ## Esta união tem que ser IGUAL ao enum do banco, e o motivo é um
+ * defeito real, não zelo
+ *
+ * Até 08/10/2026 ela declarava 22 valores enquanto
+ * `enum NotificationEventType` no `schema.prisma` tinha 45. O arquivo
+ * ainda carregava uma nota admitindo a defasagem e dizendo que ela era
+ * inofensiva: "uma notificação de tipo desconhecido continua aparecendo
+ * na Central, só não cai em nenhum filtro de categoria".
+ *
+ * Essa frase estava errada, e foi ela que fez o adiamento parecer
+ * seguro. As telas de notificação resolvem o ícone de cada linha por
+ * `MAPA[notification.tipo]`, e um `Record<NotificationEventType, ...>`
+ * com 22 chaves satisfaz o compilador justamente porque a união tinha
+ * 22 valores. Chegando um dos 23 tipos que faltavam, a busca devolve
+ * `undefined`, a tela renderiza `<undefined />` e o React derruba a
+ * árvore inteira com "Element type is invalid: expected a string (for
+ * built-in components) or a class/function (for composite components)
+ * but got: undefined". Não é um filtro que deixa de funcionar, é a
+ * Central de Notificações que não abre.
+ *
+ * Em 07/10/2026 isso aconteceu com um usuário de verdade, duas vezes em
+ * doze segundos, e os tipos que faltavam incluíam `CADASTRO_CONCLUIDO`
+ * e `IDENTIDADE_APROVADA`, que são das primeiras notificações que
+ * qualquer conta nova recebe.
+ *
+ * Por isso a união completa é o conserto de raiz: com ela, todo mapa
+ * incompleto passa a ser erro de compilação, que é como este defeito
+ * deveria ter sido descoberto. `notification-event-type.spec.ts`
+ * tranca a união contra o `schema.prisma`, para a próxima adição ao
+ * enum quebrar um teste em vez de uma tela.
+ */
 export type NotificationEventType =
   | "VIAGEM_INICIADA"
   | "VIAGEM_ENCERRADA"
@@ -39,14 +73,35 @@ export type NotificationEventType =
   | "NOVA_ESCOLA"
   | "NOVO_ALUNO"
   | "NOVO_RESPONSAVEL"
+  // Trial de 15 dias (`TrialSchedulerService`).
+  | "TRIAL_EXPIRANDO"
+  | "TRIAL_VENCE_HOJE"
+  | "TRIAL_BLOQUEADO"
+  // Suporte (`SupportService`).
+  | "SUPORTE_TICKET_ABERTO"
+  | "SUPORTE_NOVA_MENSAGEM"
+  | "SUPORTE_TICKET_ENCERRADO"
+  // Comunicado geral do Admin Rotta (`AnnouncementsService`).
+  | "AVISO_GERAL"
+  // "Chegou a vez do seu filho", por transição de parada e não por GPS.
+  | "ALUNO_VEZ_EMBARQUE"
+  | "ALUNO_VEZ_DESEMBARQUE"
+  // Revisão de veículo pelo Admin Rotta.
+  | "VEICULO_REVISAO_APROVADA"
+  | "VEICULO_REVISAO_REPROVADA"
+  // Chat direto Responsável com Motorista/Monitor (`ConversationsService`).
+  | "CONVERSA_NOVA_MENSAGEM"
+  // Boas-vindas de qualquer papel, e verificação de identidade (Didit).
+  | "CADASTRO_CONCLUIDO"
+  | "IDENTIDADE_APROVADA"
+  | "IDENTIDADE_REPROVADA"
+  // Informativos internos da Rotta, só para Admin Rotta.
+  | "NOVO_CLIENTE_CADASTRADO"
+  | "PLANO_NOVA_ASSINATURA"
+  | "RELATORIO_SEMANAL"
+  | "RELATORIO_MENSAL"
   // Avisos por cargo (15/09/2026) — ver `enum NotificationEventType` no
   // `schema.prisma`, onde cada um está documentado com destinatário.
-  // ATENÇÃO: esta união está DEFASADA em relação ao enum do banco (o
-  // backend já emite tipos de Suporte, Trial, Identidade e Relatórios
-  // que nunca foram adicionados aqui). Uma notificação de tipo
-  // desconhecido continua aparecendo na Central — só não cai em nenhum
-  // filtro de categoria. Alinhar a união inteira é uma limpeza à parte,
-  // deliberadamente fora desta entrega pra não misturar com ela.
   | "NOVA_SOLICITACAO_TRANSPORTE"
   | "ALUNO_NAO_VAI_HOJE"
   | "ENDERECO_DO_DIA_ALTERADO"
