@@ -31,7 +31,22 @@ export type ClientErrorSource =
    * código não havia erro, havia uma sessão que não deu para renovar.
    * Sessão legitimamente expirada (401/403) NÃO entra aqui.
    */
-  | "sessao-nao-renovada";
+  | "sessao-nao-renovada"
+  /**
+   * A tentativa de entrar falhou por algo que NÃO é resposta do
+   * servidor: conexão caída no meio, requisição abortada, falha de
+   * rede. Credencial errada não entra aqui — isso é um 401 com texto
+   * próprio, e a pessoa precisa ler aquele texto, não este registro.
+   *
+   * Entrou em 13/10/2026, pelo mesmo motivo de `sessao-nao-renovada`:
+   * o fundador recebeu "Erro inesperado ao entrar" com a senha certa, o
+   * banco mostrava que o servidor tinha processado o login, e o plantão
+   * não tinha NADA — porque o `catch` da tela de login trocava o erro
+   * real por uma frase genérica e seguia em frente. Um caminho de falha
+   * que o app trata sozinho continua sendo uma falha; se ele não vira
+   * registro, ninguém nunca descobre o que aconteceu.
+   */
+  | "login-falhou";
 
 export interface CreateClientErrorReportInput {
   app: ClientApp;

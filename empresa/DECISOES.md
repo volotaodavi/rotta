@@ -5,6 +5,58 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-13 — CTO: "Erro inesperado ao entrar", e o que o banco provou
+
+**Relato do fundador:** print da tela de login do app com "Erro
+inesperado ao entrar", conta `isResponsavel`, senha digitada.
+
+**O que o banco provou, antes de qualquer hipótese:** a conta está
+`ATIVO`, sem bloqueio, com `tentativasLoginFalhas` em 0 e a linha do
+usuário atualizada no horário da tentativa. Esse contador sobe a cada
+senha errada e só é zerado numa entrada bem-sucedida. Ou seja: **a
+senha estava certa e o servidor processou o login.** A falha é do lado
+do aplicativo, depois da resposta. Sem memberships e com
+`isResponsavel`, a API devolve tokens normais, sem seleção de perfil e
+sem MFA: nenhum ramo exótico envolvido.
+
+**O que a mensagem diz:** a tela só usa essa frase quando o erro NÃO é
+`ApiError`. Credencial errada é 401 com texto próprio. E, importante
+contra a hipótese fácil: tempo esgotado TAMBÉM vira `ApiError`, porque
+o cliente HTTP traduz o próprio abort em "O servidor demorou demais
+para responder". Então o que o fundador viu não foi o nosso abort, foi
+a conexão caindo sem resposta nenhuma.
+
+**Defeito achado e consertado, mas sem prova de ser a causa dele:** o
+`login` não pedia o teto da partida fria. Pior, o comentário do
+`refresh`, escrito por mim em 06/10, já dizia com todas as letras que
+"o login falhava igual" — e mesmo assim só o `refresh` recebeu o teto
+maior. Sessenta segundos contra uma partida fria de noventa, na
+requisição que é literalmente a primeira de quem abre o app deslogado.
+É um defeito real, consertado e travado por teste. Não afirmo que era o
+dele.
+
+**O conserto que de fato responde a pergunta:** o `catch` da tela
+trocava o erro real por uma frase genérica e seguia adiante, então o
+plantão não tinha absolutamente nada sobre login. É a mesma cegueira de
+06/10, repetida porque naquela vez eu a corrigi só no caminho da
+renovação de sessão. Agora uma falha sem resposta do servidor vira
+registro (`source: "login-falhou"`), com o nome do erro, que é o que
+separa rede de abort de defeito nosso. Senha errada continua não
+reportando: plantão cheio de ruído esconde o sinal tão bem quanto
+plantão vazio.
+
+**Também mudou para o usuário:** em vez de "Erro inesperado ao entrar",
+a tela passa a dizer "Não foi possível falar com o servidor. Verifique
+sua conexão e tente de novo." Nós sabemos a categoria da falha; o que
+não sabemos é o motivo.
+
+**Prova:** três testes novos; os dois que importam falham no código
+anterior. Mobile 105/105, api-client 10/10, `tsc` limpo.
+
+**Preciso do fundador:** trocar a senha da conta, porque ela apareceu
+legível num print enviado pelo chat. E instalar o build novo: na
+próxima falha de login o plantão vai dizer o erro real.
+
 ## 2026-10-13 — CTO: o erro voltou, e o problema agora é que eu estou cego
 
 **Relato do fundador:** "no app deu erro na hora de entrar na aba de
