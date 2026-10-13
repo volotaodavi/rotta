@@ -5,6 +5,62 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-13 — CTO: o erro voltou, e o problema agora é que eu estou cego
+
+**Relato do fundador:** "no app deu erro na hora de entrar na aba de
+notificações", para autônomo, MEI e responsável.
+
+**O fato desconfortável:** o plantão mostra seis ocorrências de "Element
+type is invalid ... got: undefined" entre 07/10 e 12/10, quatro delas
+nas últimas 24 horas. A mais recente veio de um bundle DIFERENTE do de
+07/10 (`createFiberFromTypeAndProps` em 345038 contra 345165), ou seja,
+de um pacote que JÁ CONTÉM o conserto dos mapas de ícone de 08/10.
+
+Então o conserto de 08/10 não era a causa do que o fundador está
+vendo, ou não era a única. Os mapas estavam de fato incompletos e de
+fato quebrariam a tela, e o teste reproduziu isso com a mensagem
+literal — mas reproduzir UMA causa não prova que era A causa. Fica
+registrado como erro de leitura meu.
+
+**O que foi descartado hoje, com prova e não com opinião:** nenhum dos
+44 ícones usados na aba falta no lucide 1.31.0 (conferido contra os
+6067 exports reais do pacote); nenhum deles falta no bundle de produção
+que está no aparelho (conferido dentro do `.aab`); não existe ciclo de
+import (Tarjan sobre 328 módulos, com 251 dos 253 arquivos do app
+cobertos); `NotificationPriority`, `CommunicationChannel` e
+`DeviceTokenPlatform` batem com o api-client (5, 5 e 3); e a aba
+inteira monta no jest com dez tipos e as cinco prioridades, dentro de
+um `NavigationContainer` de verdade e com os ícones reais, sem mock.
+
+**Por que não achei:** porque o instrumento é cego, e a culpa é do
+instrumento. Os seis relatórios chegaram com `telas: ["(mobile)"]` —
+uma constante, igual para as 96 telas — e com `buildId` vazio. Pior:
+`montarRastro` DESCARTAVA a árvore de componentes quando o React não a
+fornecia, e `identidadeDoBuild` devolvia `undefined` quando
+`Constants.expoConfig` vinha nulo. Nos dois casos a saída era idêntica
+à de um app que não tem esse código. Passei a noite sem conseguir
+distinguir "o React não deu a árvore" de "o aparelho está com versão
+antiga", e as duas levam a investigações opostas.
+
+**Fiz, e é tudo sobre o instrumento:** `lib/tela-atual.ts` com um
+`navigationRef` no `NavigationContainer`, e o relatório passa a mandar
+o caminho real (`Notificacoes > Central`) em vez da constante — a nota
+antiga dizia que isso "seria uma mudança maior/mais arriscada" e que a
+pilha teria a tela real; a pilha não tem, em produção ela é endereço de
+bytecode. `identidadeDoBuild` nunca mais devolve vazio e carrega um
+sufixo dizendo qual fonte respondeu (`cfg`, `cfg-sem-codigo`,
+`codigo`), com a versão travada contra o `app.config.ts` por teste. A
+seção de árvore de componentes agora existe sempre, e quando o React
+não dá nada ela diz isso com todas as letras.
+
+**Regra que fica:** um instrumento que, ao falhar, produz exatamente a
+mesma saída de "não instalado" não é um instrumento. Toda falha de
+leitura tem que se identificar.
+
+**Preciso do fundador:** instalar o build novo. A próxima vez que a aba
+quebrar, o relatório vai dizer a tela e o build, e aí o conserto é
+direto. Fundir ou recusar o PR #3 e o PR #4.
+
 ## 2026-10-08 — CTO: a Central de Notificações não abria, e o motivo era 26 contra 45
 
 **Relato do fundador:** "ao quererem entrar nas notificações, aparece

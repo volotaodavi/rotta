@@ -5,6 +5,7 @@ import type { ErrorInfo, ReactNode } from "react";
 
 import { clientErrorsApi } from "@/lib/api-client";
 import { identidadeDoBuild } from "@/lib/identidade-do-build";
+import { telaAtual } from "@/lib/tela-atual";
 
 /**
  * Rede de segurança contra erro de render não tratado (auditoria
@@ -52,12 +53,16 @@ export class AppErrorBoundary extends Component<
         app: "MOBILE",
         message: error.message || "Erro sem mensagem",
         stack: montarRastro(error, errorInfo),
-        // RN não tem pathname de URL como a web — sem um
-        // `navigationRef` global (que não existia antes desta
-        // auditoria e seria uma mudança maior/mais arriscada pra
-        // adicionar só por causa disso), "(mobile)" é o melhor sinal
-        // barato disponível aqui; `stack` continua tendo a tela real.
-        path: "(mobile)",
+        /*
+          A tela de verdade, do navigator raiz até a folha. Era a
+          constante "(mobile)" até 13/10/2026, com a justificativa de
+          que a pilha teria a tela real — não tem, em build de produção
+          a pilha é endereço de bytecode, e num erro nascido dentro do
+          reconciliador do React não existe nenhum quadro do produto.
+          O resultado prático: seis relatórios de uma aba que não abria,
+          nenhum dizendo qual. Ver `lib/tela-atual.ts`.
+        */
+        path: telaAtual() ?? "(tela desconhecida)",
         source: "error-boundary",
         buildId: identidadeDoBuild(),
       })
@@ -128,8 +133,29 @@ export class AppErrorBoundary extends Component<
 function montarRastro(error: Error, errorInfo: ErrorInfo): string {
   const tecnico = error.stack ?? error.message;
   const arvore = errorInfo.componentStack;
-  if (!arvore) return tecnico;
-  return `${tecnico}\n--- component stack ---${arvore}`;
+
+  /*
+    A seção SEMPRE existe, mesmo vazia, e aqui está o porquê — é o
+    conserto de um defeito do próprio instrumento, descoberto em
+    13/10/2026.
+
+    A versão anterior fazia `if (!arvore) return tecnico`: sem árvore,
+    o relatório saía idêntico ao de antes de o campo existir. Quando o
+    crash voltou a acontecer e o relatório chegou sem a árvore, ficaram
+    DUAS explicações indistinguíveis: ou o React não forneceu a árvore,
+    ou o aparelho estava rodando uma versão antiga do app, sem este
+    código. Investigar as duas custou uma noite, e nenhuma das duas era
+    verificável a partir do relatório.
+
+    Um instrumento que, ao falhar, produz exatamente a mesma saída de
+    "não instalado" não é um instrumento. Agora o relatório distingue:
+    se o React não deu nada, ele diz isso com todas as letras.
+  */
+  const secao = arvore?.trim()
+    ? arvore
+    : "\n    (o React nao forneceu componentStack nesta ocorrencia)";
+
+  return `${tecnico}\n--- component stack ---${secao}`;
 }
 
 /** Cópia literal dos tokens do tema escuro (`packages/theme/src/tokens/colors.ts`) — ver nota da classe acima sobre o porquê de não vir de `useTheme`. */

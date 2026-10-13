@@ -19,6 +19,7 @@ import { IdentityVerificationBlockedScreen } from "@/features/driver/screens/ide
 import { EmpresaBillingBlockedScreen } from "@/features/empresa/screens";
 import { usePushRegistration } from "@/features/notifications/hooks/use-push-registration";
 import { VehicleAdminReviewAcknowledgeSheet } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-sheet";
+import { navegacaoRef } from "@/lib/tela-atual";
 import { AppModeProvider } from "@/providers/app-mode-provider";
 
 /**
@@ -180,7 +181,11 @@ export function RootNavigator(): JSX.Element {
 
   return (
     <AppModeProvider value={appMode}>
-      <NavigationContainer>
+      {/* O `ref` existe para o relatório de erro poder dizer QUAL tela
+          quebrou. Ver `lib/tela-atual.ts`: até 13/10/2026 todo crash do
+          app chegava ao plantão com a tela "(mobile)", uma constante
+          igual para as 96 telas. */}
+      <NavigationContainer ref={navegacaoRef}>
         {status === "unauthenticated" || !user ? (
           <AuthNavigator />
         ) : user.role === "motorista" || user.role === "monitor" ? (

@@ -121,21 +121,65 @@ describe("AppErrorBoundary", () => {
     expect(enviado.stack).toContain("TelaQueQuebra");
   });
 
-  it("diz qual build quebrou", () => {
+  it("diz qual build quebrou, sempre, nunca vazio", () => {
     render(
       <AppErrorBoundary>
         <BombaControlada deveLancar />
       </AppErrorBoundary>,
     );
 
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as {
+      buildId?: string;
+    };
     /*
-      Em ambiente de teste não existe configuração nativa, então o valor
-      pode ser indefinido. O que fica trancado é que o campo É CALCULADO
-      E ENVIADO: antes do conserto ele nem aparecia na chamada, e
-      relatório sem build não cruza com envio da Play Store.
+      A PRIMEIRA versão deste conserto mandava `undefined` quando
+      `Constants.expoConfig` não respondia, e foi o que aconteceu no
+      build de produção: seis relatórios chegaram ao plantão sem build
+      nenhum, indistinguíveis de "o aparelho está com uma versão antiga
+      do app". A ambiguidade custou uma noite de investigação. Agora o
+      campo nunca vem vazio, e o sufixo diz qual fonte respondeu.
     */
-    const chaves = Object.keys((clientErrorsApi.report as jest.Mock).mock.calls[0][0] as object);
-    expect(chaves).toContain("buildId");
+    expect(enviado.buildId).toBeTruthy();
+    expect(enviado.buildId).toContain("1.3.0");
+  });
+
+  it('nomeia a tela em vez da constante "(mobile)"', () => {
+    render(
+      <AppErrorBoundary>
+        <BombaControlada deveLancar />
+      </AppErrorBoundary>,
+    );
+
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as { path?: string };
+    /*
+      Sem `NavigationContainer` montado neste teste, `telaAtual()`
+      devolve `null` e o relatório diz isso com clareza. O que NÃO pode
+      voltar é a constante "(mobile)", que era igual para as 96 telas do
+      app e tornou seis relatórios de crash inúteis.
+    */
+    expect(enviado.path).toBe("(tela desconhecida)");
+    expect(enviado.path).not.toBe("(mobile)");
+  });
+
+  it("diz quando o React não forneceu a árvore de componentes", () => {
+    render(
+      <AppErrorBoundary>
+        <BombaControlada deveLancar />
+      </AppErrorBoundary>,
+    );
+
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as { stack?: string };
+    /*
+      A seção existe SEMPRE. A versão anterior a omitia quando o React
+      não dava árvore, e aí o relatório saía idêntico ao de um app sem
+      este código — as duas causas viravam a mesma saída. Um instrumento
+      que falha igual a "não instalado" não é instrumento.
+
+      Aqui o React FORNECE a árvore (ambiente de teste), então o
+      conteúdo é real e não o aviso.
+    */
+    expect(enviado.stack).toContain("--- component stack ---");
+    expect(enviado.stack).not.toContain("nao forneceu componentStack");
   });
 
   it("nunca lança mesmo se o próprio reporte de erro falhar (rede fora do ar)", () => {
