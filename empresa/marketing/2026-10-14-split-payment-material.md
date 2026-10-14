@@ -24,7 +24,10 @@ banco de produção em 14/10/2026:
    **R$ 0,00** e **nenhum** foi assinado pelas duas partes.
 3. A carteira tem **0 transações**.
 4. A cobrança de assinatura em produção é pela **Asaas**, não pela
-   Lytex.
+   Lytex. E em 14/10/2026 o CFO comparou as taxas reais das duas: a
+   Asaas é mais barata em quase todas as linhas e **não cobra tarifa
+   de split**. A decisão virou usar a Asaas, o que muda o fornecedor
+   mas não muda esta trava: o split continua não implementado.
 
 Anunciar pagamento dividido com esses quatro fatos no lugar é prometer
 uma função que não existe. Numa plataforma que transporta criança, a
@@ -90,13 +93,13 @@ Curto e factual. Sem "revolucionário", sem "inovador", sem exclamação.
   liquidação PIX mais a cobrança do split), e quem opera transporte
   sabe que toda maquininha cobra. Dizer que não cobra destrói a
   credibilidade do resto da página.
-- "Parceria com a Lytex". O nome do provedor não é benefício para o
-  cliente, é detalhe nosso. E a cláusula 4.1 deixa a Lytex alterar as
-  condições quando quiser: amarrar a marca da Rotta à dela é assumir um
-  risco sem ganho.
-- Qualquer número de desconto ou economia. A conta do CFO mostra que,
-  com o preço de hoje, o split **custa** mais do que a assinatura
-  inteira. Até existir preço novo, não há economia para anunciar.
+- O nome do provedor de pagamento, seja ele qual for. Não é benefício
+  para o cliente, é detalhe nosso, e amarrar a marca da Rotta à de um
+  fornecedor é assumir risco sem ganho.
+- Qualquer número de desconto ou economia para o cliente. Pela Asaas o
+  split fecha dentro dos R$ 39,90 que a Rotta já cobra, e isso é bom
+  para a Rotta, não é um desconto que a transportadora recebe. Anunciar
+  economia que a outra ponta não sente é propaganda vazia.
 
 ### O número a medir no dia seguinte
 

@@ -249,23 +249,123 @@ provedor pelo qual a Rotta ainda não transaciona nada.
 
 ---
 
-## 8. O número que falta, e que eu não vou inventar
+## 8. O número que faltava, agora da fonte: a conta Asaas da Rotta
 
-**As taxas vigentes da Asaas.** Sem elas não existe comparação honesta,
-e elas não estão em lugar nenhum do repositório. A fonte é o painel da
-Asaas, em Configurações, Taxas e tarifas.
+A primeira versão desta análise dizia que as taxas da Asaas eram o
+único número ausente e que eu não as inventaria. Elas foram obtidas
+depois, da fonte certa: a **API da Asaas, consultada com a chave de
+produção da própria Rotta** em 14/10/2026 (`GET /v3/myAccount/fees`).
+Não é tabela de blog nem de página comercial: é o que a conta
+`54.623.584 DAVI RIBEIRO VOLOTAO DA SILVA` paga hoje.
 
-O que precisa ser comparado, linha a linha: liquidação de PIX,
-liquidação de boleto, mensalidade da conta, e se a Asaas cobra por
-split (ela tem split nativo). **Enquanto esse número não existir, a
-frase "a Lytex é mais barata" é um palpite, e eu não assino palpite.**
+Diferença prática que vale registrar antes dos números: `docs.asaas.com`
+e `api.asaas.com` **respondem deste ambiente**. `docs.lytex.com.br` e
+`api.lytex.com.br` não. Isso não é detalhe de infraestrutura, é a
+diferença entre uma integração que pode ser escrita e uma que está
+parada desde agosto.
 
----
+### Comparação linha a linha
+
+| Serviço                    | Asaas (conta real)                        | Lytex (taxa incentivada)                       | Quem ganha                   |
+| -------------------------- | ----------------------------------------- | ---------------------------------------------- | ---------------------------- |
+| **Mensalidade da conta**   | **R$ 0,00, não existe**                   | R$ 0,00 **só se bater a meta**, senão R$ 99,90 | **Asaas**                    |
+| **Tarifa de split**        | **nenhuma linha na tabela**               | **1% (mín. R$ 0,10, máx. R$ 1,00)**            | **Asaas**                    |
+| PIX recebido               | **100 grátis por mês**, depois R$ 1,99    | R$ 1,85 desde o primeiro                       | **Asaas** até 100/mês        |
+| Boleto                     | R$ 1,99                                   | R$ 1,85                                        | Lytex por R$ 0,14            |
+| Cartão 1x                  | 2,99% + R$ 0,49                           | 3,39%                                          | **Asaas** acima de R$ 122,50 |
+| Cartão até 6x              | 3,49% + R$ 0,49                           | 3,89%                                          | **Asaas**                    |
+| Cartão até 12x             | 3,99% + R$ 0,49                           | 4,29%                                          | **Asaas**                    |
+| Criação de subconta        | R$ 12,90                                  | R$ 10,00                                       | Lytex por R$ 2,90, uma vez   |
+| **Manutenção de subconta** | **não existe**                            | R$ 2,00/mês                                    | **Asaas**                    |
+| Saque / transferência      | **30 grátis por mês**, depois PIX R$ 2,00 | R$ 6,20 do 6º em diante; subconta R$ 2,80      | **Asaas**                    |
+| Nota fiscal                | R$ 0,49                                   | R$ 0,99                                        | **Asaas**                    |
+| Negativação                | R$ 9,90                                   | R$ 11,99                                       | **Asaas**                    |
+| Consulta de crédito        | R$ 16,99                                  | R$ 17,90                                       | **Asaas**                    |
+| WhatsApp                   | R$ 0,55                                   | R$ 0,59                                        | **Asaas**                    |
+| SMS                        | R$ 0,50                                   | R$ 0,25                                        | Lytex                        |
+
+A Lytex ganha em três linhas: boleto por R$ 0,14, SMS por R$ 0,25, e
+criação de subconta por R$ 2,90 uma única vez. Perde em todo o resto.
+
+### O que isso faz com a conta
+
+**Cenário exato da meta da Lytex: 120 liquidações PIX por mês, 8
+transportadoras com subconta.**
+
+|                        | Asaas                                    | Lytex                         |
+| ---------------------- | ---------------------------------------- | ----------------------------- |
+| Liquidações            | 100 grátis + 20 × R$ 1,99 = **R$ 39,80** | 120 × R$ 1,85 = **R$ 222,00** |
+| Tarifa de split        | **R$ 0,00**                              | 120 × R$ 1,00 = **R$ 120,00** |
+| Manutenção de subconta | **R$ 0,00**                              | 8 × R$ 2,00 = **R$ 16,00**    |
+| Saques                 | dentro dos 30 grátis = **R$ 0,00**       | 8 × R$ 2,80 = **R$ 22,40**    |
+| **Custo mensal**       | **R$ 39,80**                             | **R$ 380,40**                 |
+
+**A Asaas sai 9,6 vezes mais barata no cenário exato que o contrato da
+Lytex pede. Diferença de R$ 340,60 por mês, R$ 4.087,20 por ano.**
+
+**Cenário conservador**, supondo que a isenção de 100 PIX/mês não valha
+para cobrança com QR dinâmico (há indício disso em material comercial
+da Asaas, e é a única ressalva real desta seção):
+
+|                  | Asaas                         | Lytex         |
+| ---------------- | ----------------------------- | ------------- |
+| **Custo mensal** | 120 × R$ 1,99 = **R$ 238,80** | **R$ 380,40** |
+
+Mesmo no pior caso para a Asaas, ela continua **R$ 141,60/mês mais
+barata**. A conclusão não depende da isenção.
+
+### Correção da seção 5.2
+
+A conta da seção 5.2, que dava prejuízo de R$ 7,65 por transportadora,
+usava as tarifas da **Lytex**, porque era o contrato em análise. Com as
+tarifas reais da Asaas ela se inverte:
+
+| Por transportadora, 15 famílias por PIX | Lytex        | Asaas         |
+| --------------------------------------- | ------------ | ------------- |
+| Custo mensal                            | R$ 47,55     | **R$ 4,98**   |
+| Receita (assinatura)                    | R$ 39,90     | R$ 39,90      |
+| **Resultado**                           | **−R$ 7,65** | **+R$ 34,92** |
+
+**Pela Asaas, o split fecha no preço que a Rotta já cobra hoje**, sem
+precisar de preço novo. A afirmação da seção 5.2 de que "o split
+precisa de preço próprio" vale para a Lytex, e não vale para a Asaas.
+Fica registrado como correção, não como ajuste de redação.
+
+### A ressalva honesta
+
+A ausência de tarifa de split está apoiada em duas evidências: não
+existe linha de split na tabela de taxas da conta, e a documentação do
+split diz que o cálculo incide sobre o `netValue`, ou seja, sobre o
+valor já líquido das taxas da cobrança. Nenhuma das duas é uma
+declaração explícita de "split é grátis". **Antes de depender disso em
+contrato com transportadora, confirmar com o suporte da Asaas por
+escrito.**
 
 ## 9. Recomendação
 
-**Não assinar ainda.** Não porque o contrato seja ruim: ele é barato,
-e a exposição máxima se a meta falhar está entre R$ 300 e R$ 470.
+**Não assinar o aditivo da Lytex, e usar o split da Asaas.**
+
+A recomendação mudou de "não assinar ainda" para "não assinar" quando
+as taxas reais da Asaas entraram na conta (seção 8). O argumento é
+simples e não depende de projeção:
+
+1. O principal benefício do aditivo é a isenção da mensalidade de
+   R$ 99,90. **Na Asaas não existe mensalidade nenhuma**, então esse
+   benefício vale zero em comparação.
+2. A Lytex cobra **1% por valor splitado**. A Asaas não tem essa linha.
+   No volume da meta, são R$ 120,00/mês de diferença só aí.
+3. A Asaas é mais barata em quase todas as linhas, e **9,6 vezes mais
+   barata no cenário exato que a meta da Lytex exige**.
+4. A integração da Asaas **já existe e funciona** em produção, com
+   quinze métodos implementados. A da Lytex está parada desde agosto
+   porque a documentação é inalcançável, e continua inalcançável hoje.
+5. Assinar o aditivo ligaria o relógio de 3 meses da cláusula 2.2 para
+   um provedor que a Rotta não vai usar.
+
+O que ainda vale do raciocínio anterior: a exposição da cláusula 3.2
+seria pequena (R$ 300 a R$ 470), então o risco de ter assinado não é
+grave. Se já assinou, rescinda com os 30 dias da cláusula 5.1.a, sem
+pressa e sem multa prevista.
 
 Não assinar porque **o relógio de 3 meses começa a correr na
 assinatura** (cl. 2.2), e hoje a Rotta não tem nem o primeiro
@@ -282,18 +382,50 @@ A ordem certa é esta:
 2. **Fazer o contrato ter valor.** Enquanto `valorMensalidadeCentavos`
    for 0 nos 5 contratos, não existe split possível. Isso é trabalho de
    produto, não de finanças, e é o verdadeiro pré-requisito.
-3. **Puxar as taxas da Asaas** e comparar (seção 8).
+3. ~~Puxar as taxas da Asaas~~ **feito**, seção 8.
 4. **Validar a arquitetura de subconta com um contador** (seção 5.1).
-5. **Só então assinar**, e negociando uma coisa: que o prazo de 3 meses
-   conte a partir da **primeira transação**, não da assinatura. É um
-   pedido razoável e é o que protege contra o cenário da cláusula 3.2.
-
-Se o fundador decidir assinar mesmo assim, por causa da isenção da
-mensalidade, a decisão é defensável: R$ 1.198,80/ano de economia contra
-uma exposição de até R$ 470. Mas aí o pedido do item 5 vira
-obrigatório, e tem que ser por escrito.
+   Continua valendo, e agora com a Asaas: o `walletId` de cada
+   transportadora é o que mantém o dinheiro das famílias fora do
+   faturamento do MEI.
+5. **Confirmar por escrito com o suporte da Asaas** que não há tarifa
+   de split (ressalva da seção 8).
+6. **Implementar o split na integração que já existe**, em
+   `AsaasClientService`. Ver seção 11.
 
 ---
+
+## 11. Como implementar, concretamente
+
+Não é projeto novo. A Asaas já está integrada e em produção
+(`apps/api/src/modules/billing/asaas-client.service.ts`, quinze métodos
+reais). O split entra como campo na criação de cobrança, não como
+provedor novo.
+
+O que a documentação da Asaas exige, e que já foi lido:
+
+1. **Cada transportadora precisa de uma conta Asaas** e a Rotta precisa
+   do `walletId` dela. Caminho: criar subconta pela API (R$ 12,90, uma
+   vez por transportadora) e guardar o `walletId` em `Company`.
+2. **O split vai no corpo da cobrança**, como lista de repasses. Cada
+   repasse é `fixedValue` ou `percentualValue` (sobre o `netValue`), e
+   os dois podem ser combinados.
+3. **A soma dos splits não pode passar do `netValue`.** Se passar, o
+   repasse é bloqueado e há 2 dias úteis para corrigir, senão é
+   cancelado.
+4. **Estorno da cobrança estorna os repasses.** Isso precisa estar
+   refletido no ledger da carteira, que já existe
+   (`wallet_transactions`).
+5. Nunca informar o `walletId` da própria conta que cria a cobrança.
+
+Pré-requisito de produto que continua sendo o verdadeiro gargalo:
+`Contract.valorMensalidadeCentavos` está **0 nos 5 contratos**, e
+nenhum foi assinado. Sem valor no contrato não existe o que dividir.
+
+E fica a pergunta aberta para o CTO decidir: a Rotta Pay foi desenhada
+no Dossiê 26 em cima da Lytex. Se o split vai pela Asaas, o
+`RottaPayProviderService` precisa ser reapontado, ou a carteira passa a
+ser só ledger interno enquanto o dinheiro anda pela Asaas. São dois
+desenhos diferentes e a escolha é técnica, não financeira.
 
 ## 10. Sobre divulgar isso imediatamente
 
