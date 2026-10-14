@@ -504,6 +504,154 @@ Confirmar a tarifa real da Conta Escrow no painel
 (`asaas.com/config/index?tab=fees`) antes de usar o número acima em
 qualquer decisão. Ele veio de artigo de ajuda de terceiro, não da conta.
 
+## 13. O modelo correto, esclarecido pelo fundador: take rate, estilo Uber
+
+Correção de entendimento, e ela muda tudo o que vem antes. O desenho
+não é "a Rotta paga tarifa de pagamento". É:
+
+> O responsável paga pela Rotta. O transportador recebe pela Rotta. A
+> Rotta retém uma parcela de cada mensalidade, e **essa parcela é o
+> faturamento variável da empresa**.
+
+As seções 5.2 e 8 tratavam a tarifa como custo a ser absorvido pela
+assinatura de R$ 39,90. No modelo de take rate, a assinatura deixa de
+ser o centro: a receita passa a crescer com o volume transportado.
+
+### A mecânica na Asaas, que suporta exatamente isso
+
+A cobrança é criada pela Rotta. No momento da liquidação, a Asaas
+calcula o split sobre o `netValue` (valor já líquido da taxa), **envia
+a parte do transportador direto para a carteira dele**, e o que não foi
+distribuído **permanece na conta da Rotta**. A Rotta nunca precisa
+receber o total e repassar depois: a divisão acontece na liquidação.
+
+Isso não é detalhe técnico, é a proteção fiscal do modelo, e volta na
+seção 13.3.
+
+### Quanto isso vale, com as tarifas reais da conta
+
+Premissa, e está rotulada como premissa: mensalidade média de R$ 300,
+recebimento por PIX. As taxas são as reais da conta (100 PIX grátis por
+mês, R$ 1,99 depois, sem tarifa de split).
+
+|        Famílias pagando |     Take 5% |     Take 8% |    Take 10% | Taxa Asaas |    Líquido a 8% |
+| ----------------------: | ----------: | ----------: | ----------: | ---------: | --------------: |
+|   15 (1 transportadora) |   R$ 225,00 |   R$ 360,00 |   R$ 450,00 |    R$ 0,00 |   **R$ 360,00** |
+|                      50 |   R$ 750,00 | R$ 1.200,00 | R$ 1.500,00 |    R$ 0,00 |     R$ 1.200,00 |
+| 120 (8 transportadoras) | R$ 1.800,00 | R$ 2.880,00 | R$ 3.600,00 |   R$ 39,80 | **R$ 2.840,20** |
+|                     281 | R$ 4.215,00 | R$ 6.744,00 | R$ 8.430,00 |  R$ 360,19 |     R$ 6.383,81 |
+
+Contra a receita confirmada de hoje, que é **R$ 39,90/mês**:
+
+- Uma transportadora com 15 famílias, a 8%, rende **R$ 360,00/mês**.
+  **Nove vezes** a receita atual inteira, vinda de um único cliente.
+- As 8 transportadoras atuais, com 15 famílias cada, renderiam
+  **R$ 2.840,20/mês líquidos**. **Setenta e uma vezes** a receita atual.
+
+A tarifa da Asaas é absorvida pelo take e some no ruído: a 8%, ela come
+1,2% da receita bruta no cenário de 120 famílias.
+
+### 13.1. A verdade dura: a Rotta não é a Uber, ainda
+
+O take rate da Uber é de cerca de 25%, e ele se sustenta por um motivo
+só: **a Uber traz o passageiro**. O motorista não tinha aquele cliente.
+
+Hoje a Rotta **não traz a família**. A transportadora já tem as
+famílias dela, conquistadas no boca a boca da escola, e já recebe
+delas direto por PIX. Cobrar 8% ou 10% de um contrato que ela trouxe
+sozinha é cobrar preço de marketplace por um serviço de software e
+cobrança. Ela vai fazer essa conta, e vai ver que R$ 360/mês é nove
+vezes o que um sistema de gestão custaria.
+
+Por isso o desenho honesto tem **dois take rates**:
+
+| Origem do contrato                  | Quem trouxe o cliente | Take defensável |
+| ----------------------------------- | --------------------- | --------------- |
+| A transportadora já tinha a família | Ela                   | **3% a 5%**     |
+| Veio do marketplace da Rotta        | A Rotta               | **10% a 20%**   |
+
+O segundo é o modelo Uber de verdade, e é o único lugar onde ele se
+justifica. É também o argumento mais forte para o marketplace existir:
+**é ele que cria o direito de cobrar take rate alto.**
+
+### 13.2. O que faz a transportadora aceitar: inadimplência
+
+Nenhuma transportadora cede 5% por conveniência. Ela cede por
+inadimplência, e a conta é essa:
+
+Uma van com 15 famílias a R$ 300 fatura R$ 4.500/mês. Duas famílias
+atrasadas crônicas são **R$ 600/mês em risco**, mais o tempo dela
+cobrando no WhatsApp.
+
+|                                                              | Valor              |
+| ------------------------------------------------------------ | ------------------ |
+| Take de 5% que ela paga                                      | R$ 225,00/mês      |
+| Perda evitada se a cobrança automática recuperar 1,5 família | R$ 450,00/mês      |
+| **Resultado para ela**                                       | **+R$ 225,00/mês** |
+
+**A 5% a conta fecha para ela com folga. A 8% fica apertada. A 10% ela
+recusa.** É por isso que 5% é o número defensável para contrato que ela
+trouxe, e não 8%.
+
+E isso dá ao CMO a única frase de venda que importa: não é "pague pelo
+app", é **"pare de perder mensalidade"**.
+
+### 13.3. O teto do MEI chega antes do que parece
+
+Com take rate, o faturamento da Rotta é **a comissão**, não o valor
+transportado, e a arquitetura da Asaas sustenta isso: a parte da
+transportadora vai direto para a carteira dela na liquidação, sem
+passar pelo saldo da Rotta.
+
+Mesmo assim, o teto chega:
+
+| Take | Famílias para bater R$ 6.750/mês | Transportadoras de 15 alunos |
+| ---: | -------------------------------: | ---------------------------: |
+|   3% |                              750 |                          ~50 |
+|   5% |                              450 |                          ~30 |
+|   8% |                              281 |                          ~19 |
+|  10% |                              225 |                          ~15 |
+
+O teto do MEI é **R$ 81.000/ano**, ou R$ 6.750/mês, com tolerância de
+20% até R$ 97.200 (confirmar o valor vigente com o contador: há
+projetos em tramitação que elevariam isso, sem consenso entre as
+fontes).
+
+**Ou seja: entre 15 e 30 transportadoras ativas, a Rotta deixa de caber
+no MEI.** Isso não é um problema distante, é o horizonte de
+planejamento. E há uma pergunta anterior e mais séria, que é de
+contador e não minha: **o MEI pode atuar como intermediador de
+pagamento de terceiros?** O CNAE precisa permitir, e a resposta
+provavelmente é não. Isso vale ser respondido **antes** de a primeira
+família pagar pela plataforma, não depois.
+
+### 13.4. A assinatura de R$ 39,90 morre?
+
+Recomendo que não, e vire piso.
+
+- **Só take rate:** no mês em que a transportadora não usar a cobrança
+  pela plataforma, a receita daquele cliente é zero. Receita variável
+  pura é volátil, e volatilidade com uma base de 8 clientes é risco.
+- **Só assinatura:** descarta todo o ganho das seções acima.
+- **Assinatura menor como piso, mais take rate:** a Rotta garante um
+  mínimo por cliente e participa do crescimento dele. É o desenho que
+  eu recomendo.
+
+Número para discutir, e é proposta e não conclusão: assinatura de
+**R$ 19,90 como piso** mais **5% sobre contrato próprio** e **15% sobre
+contrato originado pela Rotta**.
+
+### 13.5. O que trava hoje, e não é a Asaas
+
+Nada disso existe enquanto os contratos tiverem valor zero. São **5
+contratos, todos a R$ 0,00, nenhum assinado**, e **8 alunos cadastrados
+na plataforma inteira**. O modelo é bom; o gargalo é que o produto
+ainda não captura o valor da mensalidade nem colhe a assinatura das
+duas partes.
+
+Essa é a primeira coisa a construir, e ela é de produto. Sem ela, take
+rate é uma planilha bonita sobre um campo vazio.
+
 ## 10. Sobre divulgar isso imediatamente
 
 O fundador pediu divulgação imediata, e o CMO precisa ouvir isto do CFO
