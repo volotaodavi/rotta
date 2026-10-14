@@ -427,6 +427,83 @@ no Dossiê 26 em cima da Lytex. Se o split vai pela Asaas, o
 ser só ledger interno enquanto o dinheiro anda pela Asaas. São dois
 desenhos diferentes e a escolha é técnica, não financeira.
 
+## 12. Split ou Conta Escrow: a pergunta tem armadilha
+
+O fundador perguntou qual das duas é mais vantajosa. **Não são
+alternativas, são coisas diferentes que podem ser usadas juntas ou
+separadas.**
+
+- **Split** decide **para quem** o dinheiro vai, no momento em que a
+  cobrança é paga. A família paga R$ 300, a transportadora recebe a
+  parte dela e a Rotta retém a sua, automaticamente.
+- **Conta Escrow** decide **quando** o dinheiro recebido pela subconta
+  fica disponível. O recebimento acontece, mas o valor fica retido por
+  um prazo (`daysToExpire`) ou até uma liberação manual
+  (`POST /v3/escrow/{id}/finish`, que é imediata e irreversível).
+
+Dá para ter split sem escrow, escrow sem split, ou os dois. Perguntar
+qual é melhor é como perguntar se o volante é melhor que o freio.
+
+### Para a Rotta, a resposta é split agora, escrow não agora
+
+**Três razões, e a primeira não é de custo.**
+
+**1. O escrow inverte a promessa do produto.** Transportadora escolar
+vive de caixa apertado. A peça que o CMO preparou diz "receba sem
+correr atrás". Com escrow, ela passa a dizer "receba depois". Hoje a
+transportadora recebe das famílias direto, no dia, por PIX ou dinheiro.
+Oferecer uma plataforma que segura o dinheiro dela por X dias é dar um
+motivo para **não** usar a Rotta.
+
+**2. O serviço é contínuo, não é um evento.** Escrow foi desenhado para
+marketplace com entrega: segura até o produto chegar, libera. Transporte
+escolar é entregue toda manhã e toda tarde, o mês inteiro. Não existe o
+momento "entrega concluída" contra o qual liberar. Seria preciso
+inventar um critério arbitrário, e critério arbitrário sobre o dinheiro
+dos outros é exatamente o que gera disputa.
+
+**3. O custo traz de volta o que acabamos de evitar.** A tarifa da
+Conta Escrow não está na tabela de taxas da conta da Rotta (consultada
+em 14/10/2026), porque o recurso não está habilitado. A documentação
+manda consultar o painel. A referência que encontrei, **de artigo da
+central de ajuda e não confirmada na conta**, é de **R$ 99,90 na conta
+principal mais R$ 9,90 por mês por subconta habilitada**.
+
+Se esse número estiver certo, com 8 transportadoras:
+
+|                                         | Valor             |
+| --------------------------------------- | ----------------- |
+| Conta principal                         | R$ 99,90/mês      |
+| 8 subcontas × R$ 9,90                   | R$ 79,20/mês      |
+| **Total**                               | **R$ 179,10/mês** |
+| Receita se as 8 pagassem (8 × R$ 39,90) | R$ 319,20/mês     |
+| **Fatia da receita**                    | **56%**           |
+
+Contra a receita confirmada de hoje, que é **R$ 39,90/mês**, o escrow
+sozinho custaria **4,5 vezes tudo o que entra**. É a mesma mensalidade
+de R$ 99,90 que fez a gente recusar o aditivo da Lytex, com outro nome.
+
+### Onde o escrow seria certo, mais tarde
+
+Existe um caso real, e vale ficar registrado para não ser esquecido: **o
+primeiro pagamento de um contrato novo vindo do marketplace.** Uma
+família contrata pela Rotta uma transportadora que ela não conhece e
+paga o primeiro mês antes de a van passar pela primeira vez. Segurar
+**esse** pagamento até a primeira viagem acontecer de verdade é proteção
+honesta, e é uma das poucas coisas que justificam a Rotta existir como
+intermediária em vez de ser só um aplicativo.
+
+Mas é recurso para quando o marketplace tiver volume, e tem que ser
+escopado ao **primeiro pagamento de contrato novo**, nunca a toda
+mensalidade. E só vale a pena quando a receita suportar a mensalidade da
+funcionalidade.
+
+### Pendência
+
+Confirmar a tarifa real da Conta Escrow no painel
+(`asaas.com/config/index?tab=fees`) antes de usar o número acima em
+qualquer decisão. Ele veio de artigo de ajuda de terceiro, não da conta.
+
 ## 10. Sobre divulgar isso imediatamente
 
 O fundador pediu divulgação imediata, e o CMO precisa ouvir isto do CFO
