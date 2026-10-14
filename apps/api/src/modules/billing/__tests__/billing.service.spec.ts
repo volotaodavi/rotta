@@ -32,6 +32,7 @@ describe("BillingService", () => {
     update: jest.Mock;
     list: jest.Mock;
   };
+  let messagePersonalizationService: jest.Mocked<MessagePersonalizationService>;
   let prisma: {
     runWithTenantContext: jest.Mock;
     pendingSubscription: { create: jest.Mock; update: jest.Mock; delete: jest.Mock };
@@ -76,7 +77,7 @@ describe("BillingService", () => {
       listAdminRottaUserIds: jest.fn().mockResolvedValue([]),
       listMembershipsByCompany: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<UsersService>;
-    const messagePersonalizationService = {
+    messagePersonalizationService = {
       planoNovaAssinatura: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
       pagamentoAprovado: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
       pagamentoRecusado: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
@@ -387,6 +388,71 @@ describe("BillingService", () => {
           },
         }),
       ).resolves.toBeUndefined();
+    });
+
+    /*
+      A Asaas entrega webhook no modelo "at least once": o mesmo evento
+      PODE chegar mais de uma vez, e a documentação de boas práticas
+      dela manda impedir que a reentrega repita a regra de negócio.
+
+      Trocar o status de ATIVO para ATIVO é inofensivo. Avisar o cliente
+      duas vezes que o pagamento foi aprovado não é: quem recebe fica em
+      dúvida se pagou duas vezes, e numa plataforma que mexe com dinheiro
+      de família essa dúvida custa uma ligação e um pouco de confiança.
+    */
+    it("não avisa o pagamento de novo quando o mesmo evento chega duas vezes", async () => {
+      /* A empresa JÁ está ATIVO: é a segunda entrega do mesmo evento. */
+      companyRepository.findById.mockResolvedValue({
+        ...buildCompany(),
+        status: CompanyStatus.ATIVO,
+      });
+
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CONFIRMED",
+        payment: {
+          id: "pay_1",
+          customer: "cus_1",
+          subscription: "sub_1",
+          status: "CONFIRMED",
+          billingType: "PIX",
+          value: 39.9,
+          externalReference: "company-1",
+        },
+      });
+
+      /* O status continua sendo escrito, e isso é certo: é idempotente. */
+      expect(companyRepository.update).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ status: CompanyStatus.ATIVO }),
+      );
+      /* O que não pode é a notificação sair de novo. */
+      expect(messagePersonalizationService.pagamentoAprovado).not.toHaveBeenCalled();
+    });
+
+    it("avisa o pagamento na PRIMEIRA vez, quando o status realmente muda", async () => {
+      /*
+        Fecha a porta para um conserto preguiçoso: uma implementação que
+        simplesmente parasse de notificar passaria no teste acima.
+      */
+      companyRepository.findById.mockResolvedValue({
+        ...buildCompany(),
+        status: CompanyStatus.TRIAL,
+      });
+
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CONFIRMED",
+        payment: {
+          id: "pay_1",
+          customer: "cus_1",
+          subscription: "sub_1",
+          status: "CONFIRMED",
+          billingType: "PIX",
+          value: 39.9,
+          externalReference: "company-1",
+        },
+      });
+
+      expect(messagePersonalizationService.pagamentoAprovado).toHaveBeenCalledTimes(1);
     });
 
     it("marca PendingSubscription como PAGO quando a referência usa o prefixo pending: (pré-cadastro)", async () => {

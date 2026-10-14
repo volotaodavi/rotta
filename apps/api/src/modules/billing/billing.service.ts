@@ -943,6 +943,24 @@ export class BillingService {
         return;
       }
 
+      /*
+        `PAGO` fica DE FORA desta lista de propósito, e a ausência foi
+        reavaliada em 14/10/2026 contra a documentação de boas práticas
+        da Asaas, que manda impedir que uma reentrega repita a regra de
+        negócio.
+
+        A reentrega aqui é inofensiva, e por dois motivos independentes:
+        reescrever `PAGO` sobre `PAGO` não muda nada, e a compra no Meta
+        tem a própria trava (`registrarCompraNoMetaBestEffort` sai cedo
+        quando `metaPurchaseEm` já existe, e ainda manda um `eventId`
+        estável para o Meta descartar a cópia do lado dele).
+
+        Deixar `PAGO` passar é melhor que travar: quando o envio ao Meta
+        falha na primeira entrega, `metaPurchaseEm` continua nulo e a
+        segunda entrega vira uma nova tentativa gratuita. Travar aqui
+        compraria uma proteção que já existe e perderia essa retomada.
+      */
+
       const pagoEm = pending.paidAt ?? new Date();
       await this.prisma.pendingSubscription.update({
         where: { id: pendingId },
@@ -1142,7 +1160,25 @@ export class BillingService {
       if (status === CompanyStatus.ATIVO && antes && antes.status !== CompanyStatus.ATIVO) {
         this.notifyAdminRottaNovaAssinaturaBestEffort(companyId);
       }
-      if (pagamentoTipo && valorFormatado) {
+      /*
+        A notificação só sai quando o status REALMENTE mudou, e a
+        condição entrou em 14/10/2026 pelo mesmo motivo da trava em
+        `markPendingSubscriptionPaid`: a Asaas entrega webhook no modelo
+        "at least once", então o mesmo `PAYMENT_CONFIRMED` pode chegar
+        duas vezes.
+
+        Antes disto, a segunda entrega mandava um segundo "Pagamento
+        aprovado, R$ 39,90" para o cliente. Trocar o status de ATIVO
+        para ATIVO é inofensivo; avisar duas vezes que o pagamento foi
+        aprovado não é, porque quem recebe fica em dúvida se pagou duas
+        vezes, e numa plataforma que lida com dinheiro de família essa
+        dúvida custa uma ligação e um pouco de confiança.
+
+        O `antes` já era lido logo acima para a notificação do Admin
+        Rotta. Esta condição só passou a usar o mesmo fato.
+      */
+      const statusMudou = !antes || antes.status !== status;
+      if (pagamentoTipo && valorFormatado && statusMudou) {
         this.notifyPagamentoBestEffort(companyId, pagamentoTipo, valorFormatado);
       }
     } catch (error) {
