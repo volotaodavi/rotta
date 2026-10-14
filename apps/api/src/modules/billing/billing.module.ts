@@ -9,8 +9,6 @@ import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 import { CobrancaController } from "./cobranca.controller";
 import { CobrancaService } from "./cobranca.service";
-import { RecebimentoController } from "./recebimento.controller";
-import { RecebimentoService } from "./recebimento.service";
 
 import { EmailModule } from "@/infra/email/email.module";
 import { AuditModule } from "@/modules/audit/audit.module";
@@ -47,10 +45,8 @@ import { UsersModule } from "@/modules/users/users.module";
     AsaasWebhookController,
     BillingQueueController,
     CobrancaController,
-    RecebimentoController,
   ],
   providers: [
-    RecebimentoService,
     AsaasClientService,
     BillingService,
     AsaasWebhookGuard,

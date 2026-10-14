@@ -746,37 +746,6 @@ model Company {
   /// boleto.
   asaasSubscriptionId String? @db.VarChar(64)
 
-  /// Carteira da transportadora na Asaas (`walletId`), devolvida na
-  /// criação da subconta. É o identificador que o split usa para dizer
-  /// PARA ONDE vai a parte dela de cada mensalidade paga pela família.
-  /// Nulo enquanto a transportadora não habilitou o recebimento.
-  ///
-  /// NÃO confundir com `Wallet.id` (carteira interna da Rotta Pay):
-  /// são dois conceitos diferentes com o mesmo apelido, e por isso o
-  /// prefixo `asaas` aqui não é decoração.
-  asaasWalletId String? @db.VarChar(64)
-
-  /// ID da subconta na Asaas, devolvido junto com a carteira. Guardado
-  /// para consultar documentos e status do onboarding dela.
-  asaasSubaccountId String? @db.VarChar(64)
-
-  /// Chave de API da subconta, CIFRADA (`SecretCipherService`).
-  ///
-  /// A Asaas devolve esta chave UMA ÚNICA VEZ, no momento da criação, e
-  /// não permite recuperá-la depois. Perder significa não conseguir mais
-  /// consultar documentos nem status de onboarding daquela subconta em
-  /// nome dela. Por isso é gravada na mesma transação da criação.
-  ///
-  /// Cifrada e nunca exposta por nenhum endpoint: é credencial de
-  /// terceiro, não dado da transportadora.
-  asaasSubaccountApiKey String? @db.Text
-
-  /// Situação do onboarding da subconta, ecoada de
-  /// `GET /v3/myAccount/status` (campo `general`). A análise leva até 48
-  /// horas; enquanto isso a subconta já pode receber. Nulo antes de
-  /// existir subconta.
-  asaasOnboardingStatus String? @db.VarChar(32)
-
   /// Próximo vencimento da mensalidade paga por Pix avulso (AbacatePay) —
   /// setado pra `agora + 1 mês` sempre que um Pix é confirmado
   /// (`BillingService.applyPixPayment`). `null` pra quem nunca pagou por

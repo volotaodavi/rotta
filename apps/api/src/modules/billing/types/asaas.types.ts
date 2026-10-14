@@ -98,34 +98,6 @@ export interface CreateAsaasPaymentInput {
   externalReference?: string;
 }
 
-/**
- * Um repasse dentro de uma cobrança: para QUEM vai e QUANTO.
- *
- * A Asaas calcula o split sobre o `netValue`, ou seja, o valor já
- * descontada a tarifa de recebimento. Isso tem uma consequência que
- * vale dinheiro:
- *
- * - com `percentualValue`, a tarifa é rateada entre quem recebe e a
- *   Rotta, na proporção do repasse;
- * - com `fixedValue`, a Rotta absorve a tarifa inteira, porque o
- *   recebedor leva o valor cheio e o resto é o que sobra.
- *
- * Por isso o produto usa PERCENTUAL. Além do rateio, ele se ajusta
- * sozinho se a Asaas mudar a tarifa, em vez de corroer a margem em
- * silêncio.
- */
-export interface AsaasSplitInput {
-  /** `walletId` da subconta que recebe. Nunca o da própria conta que cria a cobrança: a Asaas recusa. */
-  walletId: string;
-  /** Percentual sobre o `netValue`. Aceita até 4 casas decimais. */
-  percentualValue?: number;
-  /** Alternativa ao percentual. Ver a nota acima sobre quem paga a tarifa. */
-  fixedValue?: number;
-  /** Correlação de volta com o nosso contrato, ecoada pela Asaas. */
-  externalReference?: string;
-  description?: string;
-}
-
 export interface CreateAsaasSubscriptionInput {
   customer: string;
   billingType: AsaasBillingType;
@@ -137,13 +109,6 @@ export interface CreateAsaasSubscriptionInput {
   externalReference?: string;
   creditCard?: AsaasCreditCardInput;
   creditCardHolderInfo?: AsaasCreditCardHolderInfoInput;
-  /**
-   * Repasses aplicados a CADA cobrança gerada por esta assinatura.
-   * Definido uma vez, na criação: a Asaas reaplica todo mês sozinha,
-   * sem precisar recriar nada. Ausente na mensalidade da própria Rotta,
-   * que não divide com ninguém.
-   */
-  split?: AsaasSplitInput[];
 }
 
 export interface AsaasSubscription {
@@ -269,46 +234,4 @@ export interface AsaasTransfer {
   failReason?: string | null;
   dateCreated?: string;
   effectiveDate?: string | null;
-}
-
-/**
- * Criação de subconta (`POST /v3/accounts`). A conta que cria precisa
- * ser pessoa jurídica, e a da Rotta é (MEI).
- *
- * Todos os campos abaixo são obrigatórios pela Asaas. `incomeValue` é o
- * faturamento mensal declarado da transportadora.
- */
-export interface CreateAsaasSubaccountInput {
-  name: string;
-  email: string;
-  cpfCnpj: string;
-  mobilePhone: string;
-  incomeValue: number;
-  address: string;
-  addressNumber: string;
-  province: string;
-  postalCode: string;
-}
-
-/**
- * Resposta da criação de subconta.
- *
- * `apiKey` vem DENTRO de `accessToken` e a Asaas não permite
- * recuperá-la depois: ou é guardada agora, cifrada, ou se perde para
- * sempre. `walletId` é o que o split usa.
- */
-export interface AsaasSubaccount {
-  id: string;
-  walletId: string;
-  accessToken?: string;
-  apiKey?: string;
-}
-
-/** `GET /v3/myAccount/status`, autenticado com a chave da PRÓPRIA subconta. */
-export interface AsaasAccountStatus {
-  commercialInfo?: string;
-  bankAccountInfo?: string;
-  documentation?: string;
-  /** Só `APPROVED` aqui significa conta inteiramente liberada. */
-  general?: string;
 }

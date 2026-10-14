@@ -2,7 +2,6 @@ import { Inject, Injectable, InternalServerErrorException, Logger } from "@nestj
 import { ConfigType } from "@nestjs/config";
 
 import type {
-  AsaasAccountStatus,
   AsaasBalance,
   AsaasCustomer,
   AsaasErrorEnvelope,
@@ -10,12 +9,10 @@ import type {
   AsaasListEnvelope,
   AsaasPayment,
   AsaasPixQrCode,
-  AsaasSubaccount,
   AsaasSubscription,
   AsaasTransfer,
   CreateAsaasCustomerInput,
   CreateAsaasPaymentInput,
-  CreateAsaasSubaccountInput,
   CreateAsaasSubscriptionInput,
   CreateAsaasTransferInput,
 } from "./types/asaas.types";
@@ -90,16 +87,7 @@ export class AsaasClientService {
    */
   private async request<T>(
     path: string,
-    init: {
-      method: "GET" | "POST" | "DELETE";
-      body?: unknown;
-      /**
-       * Chave alternativa. Só as consultas feitas EM NOME de uma
-       * subconta usam isto (ver `getSubaccountStatus`); todo o resto
-       * fala pela conta da Rotta.
-       */
-      apiKey?: string;
-    },
+    init: { method: "GET" | "POST" | "DELETE"; body?: unknown },
   ): Promise<T> {
     this.assertConfigured();
 
@@ -133,7 +121,7 @@ export class AsaasClientService {
       response = await fetch(`${this.config.baseUrl}${path}`, {
         method: init.method,
         headers: {
-          access_token: init.apiKey ?? (this.config.apiKey as string),
+          access_token: this.config.apiKey as string,
           "Content-Type": "application/json",
           Accept: "application/json",
         },
@@ -181,34 +169,6 @@ export class AsaasClientService {
 
     void this.integrationHealth.recordSuccess(ASAAS_INTEGRATION_NAME, Date.now() - startedAt);
     return payload as T;
-  }
-
-  /**
-   * Cria a subconta de uma transportadora (`POST /v3/accounts`).
-   *
-   * A resposta traz `walletId` (destino do split) e `apiKey` dentro de
-   * `accessToken`. **A `apiKey` não pode ser recuperada depois**: quem
-   * chama é obrigado a persistir as duas na mesma operação, cifrando a
-   * chave. Ver `Company.asaasSubaccountApiKey`.
-   */
-  createSubaccount(input: CreateAsaasSubaccountInput): Promise<AsaasSubaccount> {
-    return this.request<AsaasSubaccount>("/accounts", { method: "POST", body: input });
-  }
-
-  /**
-   * Situação do onboarding de uma subconta.
-   *
-   * Autentica com a chave da PRÓPRIA subconta, não com a da Rotta: é
-   * por isso que `apiKeyDaSubconta` é parâmetro em vez de sair da
-   * configuração. A conta só está inteiramente liberada quando
-   * `general` for `APPROVED`, o que pode levar até 48 horas; antes
-   * disso ela já consegue receber.
-   */
-  getSubaccountStatus(apiKeyDaSubconta: string): Promise<AsaasAccountStatus> {
-    return this.request<AsaasAccountStatus>("/myAccount/status", {
-      method: "GET",
-      apiKey: apiKeyDaSubconta,
-    });
   }
 
   createCustomer(input: CreateAsaasCustomerInput): Promise<AsaasCustomer> {
