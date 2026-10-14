@@ -29,6 +29,16 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Produto e código (CTO)
 
+- [ ] (CTO) Deduplicação geral do webhook da Asaas pelo `id` do evento.
+      A documentação de boas práticas dela manda persistir o id de cada
+      entrega e impedir que uma reentrega repita a regra de negócio.
+      Hoje o `AsaasWebhookEnvelope` nem captura o `id`, e a proteção
+      existe caso a caso: status é idempotente, a compra no Meta tem
+      `metaPurchaseEm`, e a notificação de pagamento ganhou guard em
+      14/10/2026. Isso cobre os handlers de hoje e não cobre o próximo.
+      Fazer direito exige capturar o `id` e uma tabela com índice único,
+      ou seja, migração: por isso ficou registrado em vez de improvisado.
+
 - [ ] (CTO) **`packages/ui` não tem teste nenhum** (o `apps/admin` ganhou
       o primeiro em da467bd, o da escala). O script `test` do `packages/ui` é
       um `echo`. Os dois bugs achados em
