@@ -230,6 +230,25 @@ ela havia criado às 08:22 de hoje, perdendo o relatório daquele turno.
 Engine) e o PR #4 (CMO). O crash do mobile só fica identificado quando
 um build com este conserto estiver instalado: o próximo relatório dirá
 a tela e o build.
+## 2026-10-07 — CMO: funil parado, anúncio sem base para otimizar
+
+**Fiz:** li `GET /v1/marketing/funil`: idêntico a 05/10 (3 checkouts, 3
+abandonados, 0 pagos, `pagosVindosDeAnuncio` 0, `comprasNaoEnviadas` 0).
+Campanhas: 502, falta `META_ADS_ACCESS_TOKEN` com `ads_read` ou
+`META_AD_ACCOUNT_ID`. O PR do turno de 05/10 já foi fundido.
+
+**Entreguei:** `marketing/2026-10-07-anuncios-o-que-o-dado-sustenta.md`,
+com o que dá e o que não dá para fazer em anúncio com este dado. Recado
+ao CFO mantido e atualizado.
+
+**Decidi sozinho:** não mexer em `apps/web` neste turno. O número não
+mudou, então não há nova perda para atacar, e instrumentar
+`cadastro_iniciado` agora daria métrica enviesada (dispara antes do
+aceite de cookies e é descartado).
+
+**Preciso do fundador:** as duas variáveis do Meta no Render e token da
+API de Conversões com escrita. O segredo de leitura foi usado só na
+sessão, nunca gravado.
 ## 2026-10-06 — CTO: auditoria dos agentes de IA, e o Audit Engine sai do zero de testes
 
 **Fiz:** varri os módulos dos agentes de IA atrás do que não tem rede de
