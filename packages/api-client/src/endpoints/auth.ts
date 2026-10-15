@@ -1,3 +1,5 @@
+import { TIMEOUT_PARTIDA_FRIA_MS } from "../http";
+
 import type { CompanyType } from "./companies";
 import type { ApiClient } from "../http";
 
@@ -279,19 +281,52 @@ export function createAuthEndpoints(apiClient: ApiClient) {
         })
       ).data,
 
+    /**
+     * `timeoutMs` da partida fria, pelo mesmo motivo do `refresh` abaixo
+     * e com um agravante: para quem está deslogado, ESTA é a primeira
+     * requisição de verdade do app.
+     *
+     * Ficou de fora em 06/10/2026 e custou caro. A nota do `refresh`,
+     * escrita naquele dia, já dizia com todas as letras que "o login
+     * falhava igual" — e mesmo assim só o `refresh` recebeu o teto
+     * maior. Em 13/10/2026 o fundador recebeu "Erro inesperado ao
+     * entrar" com a senha certa: o banco mostrava `tentativasLoginFalhas`
+     * zerado e a linha do usuário atualizada no horário da tentativa, ou
+     * seja, o servidor processou o login e o aplicativo desistiu antes
+     * de a resposta chegar.
+     *
+     * A aritmética é a mesma de sempre: a API dorme no plano gratuito do
+     * Render e leva perto de 90 segundos para acordar, o teto comum é de
+     * 60, e quem abre o app deslogado digita e-mail e senha em vinte
+     * segundos. A requisição de login cai bem no meio do cold start.
+     *
+     * O erro resultante não é um `ApiError` (não houve resposta HTTP),
+     * então a tela cai na mensagem genérica em vez de dizer o que
+     * aconteceu. Ver `__tests__/entrada-partida-fria.spec.ts`.
+     */
     login: async (input: LoginInput): Promise<LoginResponse> =>
       (
         await apiClient.request<ApiEnvelope<LoginResponse>>("/auth/login", {
           method: "POST",
           body: input,
+          timeoutMs: TIMEOUT_PARTIDA_FRIA_MS,
         })
       ).data,
 
+    /**
+     * `timeoutMs` maior que o padrão porque esta é a primeira chamada da
+     * abertura do app, e no plano gratuito do Render ela cai bem no cold
+     * start (~89s). Com o teto comum de 60s ela era abortada antes de o
+     * servidor acordar, o `catch` de `auth-context` mandava a pessoa
+     * para o login, e o login falhava igual.
+     * Ver `TIMEOUT_PARTIDA_FRIA_MS`.
+     */
     refresh: async (refreshToken: string): Promise<AuthTokensResponse> =>
       (
         await apiClient.request<ApiEnvelope<AuthTokensResponse>>("/auth/refresh", {
           method: "POST",
           body: { refreshToken },
+          timeoutMs: TIMEOUT_PARTIDA_FRIA_MS,
         })
       ).data,
 

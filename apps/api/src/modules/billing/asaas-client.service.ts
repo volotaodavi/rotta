@@ -24,6 +24,16 @@ import { IntegrationHealthService } from "@/infra/observability/integration-heal
 export const ASAAS_INTEGRATION_NAME = "asaas";
 
 /**
+ * Teto de tempo de uma chamada à Asaas.
+ *
+ * Trinta segundos é folgado para uma API de pagamento saudável e curto
+ * o bastante para a requisição do usuário não ficar pendurada. Não
+ * existe retentativa automática em cima deste teto, e isso é decisão,
+ * não esquecimento: ver a nota dentro de `request()`.
+ */
+const TIMEOUT_ASAAS_MS = 30_000;
+
+/**
  * Cliente HTTP de baixo nível para a API v3 da Asaas (Dossiê 26) — quem
  * processa Pix, cartão de crédito, débito e boleto da mensalidade da
  * Rotta, 100% Asaas desde 05/09/2026 (pedido do usuário: "esquece a
@@ -82,15 +92,52 @@ export class AsaasClientService {
     this.assertConfigured();
 
     const startedAt = Date.now();
-    const response = await fetch(`${this.config.baseUrl}${path}`, {
-      method: init.method,
-      headers: {
-        access_token: this.config.apiKey as string,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: init.body ? JSON.stringify(init.body) : undefined,
-    });
+
+    /*
+      Teto de tempo, acrescentado em 14/10/2026. Até aqui esta chamada
+      não tinha nenhum: um `fetch` pendurado na Asaas prendia a
+      requisição HTTP do usuário para sempre, e no plano gratuito do
+      Render, com poucos processos, requisições presas derrubam a
+      capacidade do serviço inteiro.
+
+      `AbortController` com `setTimeout`, e não `AbortSignal.timeout()`,
+      pelo mesmo motivo documentado em `packages/api-client/src/http.ts`:
+      o segundo não existe em todo runtime, o primeiro existe em toda
+      parte.
+
+      IMPORTANTE, e é a razão de NÃO haver retentativa aqui: a
+      documentação de boas práticas da Asaas diz, com todas as letras,
+      para não reenviar a mesma operação depois de um timeout, e sim
+      conferir pelos eventos se ela já foi criada. Tempo esgotado não
+      significa que a Asaas não processou: significa que não sabemos.
+      Reenviar seria arriscar uma cobrança duplicada na mão de uma
+      família. Quem reconcilia é o webhook.
+    */
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), TIMEOUT_ASAAS_MS);
+
+    let response: Response;
+    try {
+      response = await fetch(`${this.config.baseUrl}${path}`, {
+        method: init.method,
+        headers: {
+          access_token: this.config.apiKey as string,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: init.body ? JSON.stringify(init.body) : undefined,
+        signal: controller.signal,
+      });
+    } catch (erro) {
+      const esgotou = controller.signal.aborted;
+      const motivo = esgotou
+        ? `Tempo esgotado (${TIMEOUT_ASAAS_MS / 1000}s) em ${init.method} ${path}.`
+        : `Falha de rede em ${init.method} ${path}: ${(erro as Error).message}`;
+      void this.integrationHealth.recordFailure(ASAAS_INTEGRATION_NAME, motivo);
+      throw new InternalServerErrorException(`Falha ao comunicar com a Asaas: ${motivo}`);
+    } finally {
+      clearTimeout(timer);
+    }
 
     let payload: T | AsaasErrorEnvelope;
     try {

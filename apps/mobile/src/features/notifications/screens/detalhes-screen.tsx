@@ -9,11 +9,7 @@ import {
   useSetNotificationArquivada,
   useSetNotificationFavorita,
 } from "../hooks/use-notifications";
-import {
-  COMMUNICATION_CHANNEL_LABEL,
-  NOTIFICATION_PRIORITY_TONE,
-  NOTIFICATION_TYPE_ICON,
-} from "../labels";
+import { COMMUNICATION_CHANNEL_LABEL, NOTIFICATION_PRIORITY_TONE, iconeDoTipo } from "../labels";
 
 import type { NotificationsStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
@@ -86,7 +82,7 @@ export function DetalhesScreen({ route, navigation }: Props): JSX.Element {
     );
   }
 
-  const TipoIcone = NOTIFICATION_TYPE_ICON[notification.tipo];
+  const TipoIcone = iconeDoTipo(notification.tipo);
 
   return (
     <VehicleScreen>

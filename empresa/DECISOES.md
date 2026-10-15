@@ -5,6 +5,231 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-13 — CTO: "Erro inesperado ao entrar", e o que o banco provou
+
+**Relato do fundador:** print da tela de login do app com "Erro
+inesperado ao entrar", conta `isResponsavel`, senha digitada.
+
+**O que o banco provou, antes de qualquer hipótese:** a conta está
+`ATIVO`, sem bloqueio, com `tentativasLoginFalhas` em 0 e a linha do
+usuário atualizada no horário da tentativa. Esse contador sobe a cada
+senha errada e só é zerado numa entrada bem-sucedida. Ou seja: **a
+senha estava certa e o servidor processou o login.** A falha é do lado
+do aplicativo, depois da resposta. Sem memberships e com
+`isResponsavel`, a API devolve tokens normais, sem seleção de perfil e
+sem MFA: nenhum ramo exótico envolvido.
+
+**O que a mensagem diz:** a tela só usa essa frase quando o erro NÃO é
+`ApiError`. Credencial errada é 401 com texto próprio. E, importante
+contra a hipótese fácil: tempo esgotado TAMBÉM vira `ApiError`, porque
+o cliente HTTP traduz o próprio abort em "O servidor demorou demais
+para responder". Então o que o fundador viu não foi o nosso abort, foi
+a conexão caindo sem resposta nenhuma.
+
+**Defeito achado e consertado, mas sem prova de ser a causa dele:** o
+`login` não pedia o teto da partida fria. Pior, o comentário do
+`refresh`, escrito por mim em 06/10, já dizia com todas as letras que
+"o login falhava igual" — e mesmo assim só o `refresh` recebeu o teto
+maior. Sessenta segundos contra uma partida fria de noventa, na
+requisição que é literalmente a primeira de quem abre o app deslogado.
+É um defeito real, consertado e travado por teste. Não afirmo que era o
+dele.
+
+**O conserto que de fato responde a pergunta:** o `catch` da tela
+trocava o erro real por uma frase genérica e seguia adiante, então o
+plantão não tinha absolutamente nada sobre login. É a mesma cegueira de
+06/10, repetida porque naquela vez eu a corrigi só no caminho da
+renovação de sessão. Agora uma falha sem resposta do servidor vira
+registro (`source: "login-falhou"`), com o nome do erro, que é o que
+separa rede de abort de defeito nosso. Senha errada continua não
+reportando: plantão cheio de ruído esconde o sinal tão bem quanto
+plantão vazio.
+
+**Também mudou para o usuário:** em vez de "Erro inesperado ao entrar",
+a tela passa a dizer "Não foi possível falar com o servidor. Verifique
+sua conexão e tente de novo." Nós sabemos a categoria da falha; o que
+não sabemos é o motivo.
+
+**Prova:** três testes novos; os dois que importam falham no código
+anterior. Mobile 105/105, api-client 10/10, `tsc` limpo.
+
+**Preciso do fundador:** trocar a senha da conta, porque ela apareceu
+legível num print enviado pelo chat. E instalar o build novo: na
+próxima falha de login o plantão vai dizer o erro real.
+
+## 2026-10-13 — CTO: o erro voltou, e o problema agora é que eu estou cego
+
+**Relato do fundador:** "no app deu erro na hora de entrar na aba de
+notificações", para autônomo, MEI e responsável.
+
+**O fato desconfortável:** o plantão mostra seis ocorrências de "Element
+type is invalid ... got: undefined" entre 07/10 e 12/10, quatro delas
+nas últimas 24 horas. A mais recente veio de um bundle DIFERENTE do de
+07/10 (`createFiberFromTypeAndProps` em 345038 contra 345165), ou seja,
+de um pacote que JÁ CONTÉM o conserto dos mapas de ícone de 08/10.
+
+Então o conserto de 08/10 não era a causa do que o fundador está
+vendo, ou não era a única. Os mapas estavam de fato incompletos e de
+fato quebrariam a tela, e o teste reproduziu isso com a mensagem
+literal — mas reproduzir UMA causa não prova que era A causa. Fica
+registrado como erro de leitura meu.
+
+**O que foi descartado hoje, com prova e não com opinião:** nenhum dos
+44 ícones usados na aba falta no lucide 1.31.0 (conferido contra os
+6067 exports reais do pacote); nenhum deles falta no bundle de produção
+que está no aparelho (conferido dentro do `.aab`); não existe ciclo de
+import (Tarjan sobre 328 módulos, com 251 dos 253 arquivos do app
+cobertos); `NotificationPriority`, `CommunicationChannel` e
+`DeviceTokenPlatform` batem com o api-client (5, 5 e 3); e a aba
+inteira monta no jest com dez tipos e as cinco prioridades, dentro de
+um `NavigationContainer` de verdade e com os ícones reais, sem mock.
+
+**Por que não achei:** porque o instrumento é cego, e a culpa é do
+instrumento. Os seis relatórios chegaram com `telas: ["(mobile)"]` —
+uma constante, igual para as 96 telas — e com `buildId` vazio. Pior:
+`montarRastro` DESCARTAVA a árvore de componentes quando o React não a
+fornecia, e `identidadeDoBuild` devolvia `undefined` quando
+`Constants.expoConfig` vinha nulo. Nos dois casos a saída era idêntica
+à de um app que não tem esse código. Passei a noite sem conseguir
+distinguir "o React não deu a árvore" de "o aparelho está com versão
+antiga", e as duas levam a investigações opostas.
+
+**Fiz, e é tudo sobre o instrumento:** `lib/tela-atual.ts` com um
+`navigationRef` no `NavigationContainer`, e o relatório passa a mandar
+o caminho real (`Notificacoes > Central`) em vez da constante — a nota
+antiga dizia que isso "seria uma mudança maior/mais arriscada" e que a
+pilha teria a tela real; a pilha não tem, em produção ela é endereço de
+bytecode. `identidadeDoBuild` nunca mais devolve vazio e carrega um
+sufixo dizendo qual fonte respondeu (`cfg`, `cfg-sem-codigo`,
+`codigo`), com a versão travada contra o `app.config.ts` por teste. A
+seção de árvore de componentes agora existe sempre, e quando o React
+não dá nada ela diz isso com todas as letras.
+
+**Regra que fica:** um instrumento que, ao falhar, produz exatamente a
+mesma saída de "não instalado" não é um instrumento. Toda falha de
+leitura tem que se identificar.
+
+**Preciso do fundador:** instalar o build novo. A próxima vez que a aba
+quebrar, o relatório vai dizer a tela e o build, e aí o conserto é
+direto. Fundir ou recusar o PR #3 e o PR #4.
+
+## 2026-10-08 — CTO: a Central de Notificações não abria, e o motivo era 26 contra 45
+
+**Relato do fundador:** "ao quererem entrar nas notificações, aparece
+erro".
+
+**O que era:** o `enum NotificationEventType` no `schema.prisma` tem 45
+valores. Os mapas de ícone, cor e rótulo das telas de notificação
+tinham 26. A Central do app fazia `NOTIFICATION_TYPE_ICON[tipo]` e
+usava o resultado como componente, então uma notificação de qualquer um
+dos 19 tipos ausentes virava `<undefined />` e derrubava a tela com
+"Element type is invalid: expected a string (for built-in components) or
+a class/function (for composite components) but got: undefined".
+
+É o MESMO erro que o plantão registrou em 07/10/2026 às 21:50, duas
+vezes em doze segundos. Entre os 19 que faltavam estão
+`CADASTRO_CONCLUIDO` e `IDENTIDADE_APROVADA`: bastava criar uma conta
+para a Central ficar inabrível.
+
+**Por que o compilador não pegou:** a união `NotificationEventType` do
+`packages/api-client` também declarava 26 valores. Um
+`Record<NotificationEventType, ...>` de 26 chaves estava, para o
+TypeScript, completo. Pior: o arquivo carregava uma nota admitindo a
+defasagem e chamando-a de inofensiva, dizendo que "uma notificação de
+tipo desconhecido continua aparecendo na Central, só não cai em nenhum
+filtro de categoria". Essa frase estava errada, e foi ela que fez o
+adiamento parecer seguro.
+
+**Por que não havia teste:** `lucide-react-native` publica ESM e
+resolve para `.mjs` pela condição `react-native`; o transform do
+`jest-expo` só casa `\.[jt]sx?$`. Nada que importasse
+`@rotta/icons/native` podia ser testado, e é embaixo desse barrel que
+os mapas vivem. A lacuna não foi descuido: era impossível escrever o
+teste que teria pegado.
+
+**Fiz, na ordem da causa:** completei a união para os 45 valores, que
+transformou cada mapa incompleto em erro de compilação (o `tsc` apontou
+sete, em mobile e web); preenchi os sete; troquei o acesso direto por
+`iconeDoTipo`/`tomDoTipo`/`rotuloDoTipo` com saída garantida, porque a
+API sobe sozinha e o aplicativo instalado não, e compilador nenhum
+alcança um binário já na mão do usuário; abri o caminho do Jest para o
+lucide via `moduleNameMapper` para o build CommonJS.
+
+**Diferença entre os dois apps, para o registro:** no mobile o mapa
+guarda o COMPONENTE e `<undefined />` derruba a árvore. Na web ele
+guarda um ELEMENTO já construído, e elemento `undefined` o React só não
+desenha: lá o efeito era círculo vazio e linha sem o nome do tipo,
+degradação silenciosa e não queda. Os dois foram consertados.
+
+**Prova:** o teste de integração monta a `CentralScreen` de verdade com
+uma notificação de tipo desconhecido. Revertendo a tela ao acesso
+direto, ele falha com a mensagem literal do crash de produção;
+restaurado o conserto, passa. `notification-event-type.spec.ts` tranca
+a união contra o `schema.prisma`, para a próxima adição ao enum quebrar
+um teste em vez de uma tela. Mobile 95/95, api-client 7/7, `tsc` limpo
+nos dois apps, `next build` verde.
+
+**Preciso do fundador:** instalar um build novo do app para o conserto
+chegar ao celular. Fundir ou recusar o PR #3 e o PR #4.
+
+## 2026-10-08 — CTO: o crash que chegou sem nome, e o token dos quatro
+
+**O que o plantão achou:** com o token de leitura finalmente no lugar,
+`GET /v1/client-errors/plantao?horas=168` parou de responder zero e
+mostrou um crash real: `app: MOBILE`, "Element type is invalid:
+expected a string (for built-in components) or a class/function (for
+composite components) but got: undefined", duas vezes em doze
+segundos, em 07/10/2026 às 21:50. Antes disso a janela de 168 horas
+vinha vazia, numa semana em que o app não abria para ninguém.
+
+**Por que ele não dava para consertar:** o relatório tinha doze quadros
+de pilha, todos de dentro do reconciliador do React, nenhum do produto,
+em endereço de bytecode Hermes (`index.android.bundle:1:345165`). E
+`buildId` vazio. Dava para saber que algo quebrou, não o quê nem em
+qual build.
+
+**Investigação, com o que foi descartado:** o grafo de 327 módulos que
+o app carrega na partida não tem nenhum ciclo de import (Tarjan sobre
+os imports de valor, ignorando `import type`); não existe variante por
+plataforma (`.native.`/`.android.`/`.web.`) que o `tsc` não veja; não
+existe `React.lazy` nem import dinâmico; `@maplibre/maplibre-react-native`
+10.4.2 exporta de fato os seis nomes que `packages/maps` importa
+(`Camera`, `Callout`, `LineLayer`, `MapView`, `PointAnnotation`,
+`ShapeSource`); `tsc --noEmit` passa. O `.aab` instalado é bytecode
+Hermes, então os deslocamentos da pilha não viram nome de função sem o
+disassembler.
+
+**Fiz:** o conserto é no instrumento, não um chute no defeito.
+`AppErrorBoundary` passou a usar o segundo argumento de
+`componentDidCatch`, que é exatamente o que nomeia a tela quebrada e
+sobrevive à minificação, e a mandar a identidade do build
+(`apps/mobile/src/lib/identidade-do-build.ts`, `version` +
+`versionCode`). `apps/web` já fazia isso desde 03/09/2026
+(`section-error-boundary.tsx`); o app tinha ficado de fora, e o preço
+foi um crash de produção não diagnosticável. Quatro testes novos em
+`app-error-boundary.spec.tsx`; os dois que importam falham no código
+anterior e passam no consertado. Mobile 91/91.
+
+**Também fiz:** `DIRETORIA_READ_SECRET` chegou ao CEO, ao CTO e ao CFO,
+que rodavam sem ele (só o CMO tinha). As três escalas foram recriadas,
+porque o texto de uma escala presa a uma sessão não pode ser editado de
+fora dela. Cada uma agora confere se o endpoint respondeu 200 de
+verdade antes de encerrar em branco, e cruza com
+`/v1/plataforma/pulso/diretoria`: zero erro com a plataforma em
+movimento é suspeita, não boa notícia. O CFO ganhou a régua de cobrança
+(`/v1/cobranca/pendencias` e `/v1/cobranca/cobrar`) e o CEO ganhou as
+quatro leituras juntas, que é o cruzamento que só ele faz.
+
+**Errei:** escrevi `/v1/plataforma/pulso` nos três prompts primeiro, e
+essa rota exige sessão de Admin (a da diretoria termina em
+`/diretoria`). Peguei no teste e corrigi antes de qualquer turno rodar
+com ela. E ao apagar a escala antiga do CTO apaguei junto a sessão que
+ela havia criado às 08:22 de hoje, perdendo o relatório daquele turno.
+
+**Preciso do fundador:** fundir ou recusar o PR #3 (CTO, testes do Audit
+Engine) e o PR #4 (CMO). O crash do mobile só fica identificado quando
+um build com este conserto estiver instalado: o próximo relatório dirá
+a tela e o build.
 ## 2026-10-06 — CTO: auditoria dos agentes de IA, e o Audit Engine sai do zero de testes
 
 **Fiz:** varri os módulos dos agentes de IA atrás do que não tem rede de

@@ -87,6 +87,32 @@ Isso custa uma chamada e evita o pior desperdício possível, que é
 trabalhar de novo no que já foi recusado ou duplicar o que já está
 esperando.
 
+## 1.7 O repositório é público
+
+Confirmado em 06/10/2026: `volotaodavi/rotta` é público. Qualquer pessoa
+lê cada arquivo, cada commit e cada mensagem de commit, hoje e para
+sempre.
+
+Três consequências, e nenhuma delas é opinião:
+
+1. **Nenhum valor secreto entra no repositório.** Nem em código, nem em
+   teste, nem em arquivo de exemplo, nem em mensagem de commit, nem "só
+   para rodar uma vez". Segredo commitado fica no histórico mesmo depois
+   de apagado do arquivo, e num repositório público ele é indexado antes
+   de alguém notar. Se você precisar de um segredo, ele vem de variável
+   de ambiente e o seu relatório diz qual falta, nunca qual é.
+2. **Não escreva o que está desprotegido.** Lista de chave que ainda não
+   foi configurada é roteiro pronto para quem quiser tentar. O estado de
+   cada uma se consulta no painel onde ela mora.
+3. **Dado de cliente nunca sai do banco para cá.** Nenhum nome, e-mail,
+   telefone, CPF, aluno, placa ou endereço em análise, em relatório, em
+   `DECISOES.md` ou em corpo de PR. Contagem e soma resolvem qualquer
+   análise honesta, e foi assim que os endpoints da diretoria foram
+   construídos.
+
+Se um turno precisar violar qualquer um dos três para entregar, o
+entregável certo é não entregar e dizer por quê.
+
 ## 1.8 Bug tem passe livre
 
 Decisão do fundador em 05/10/2026: "os agentes de IA deverão descobrir

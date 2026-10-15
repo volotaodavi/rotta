@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { ehFalhaTecnica } from "./falha-de-renovacao";
 import {
   clearSession,
   decodeJwtExpiryMs,
@@ -74,9 +75,31 @@ const REFRESH_BUFFER_MS = 60_000;
 export function AuthProvider({
   authApi,
   children,
+  aoFalharPorMotivoTecnico,
 }: {
   authApi: AuthEndpoints;
   children: ReactNode;
+  /**
+   * Chamado quando a sessão NÃO pôde ser renovada por um motivo
+   * técnico: tempo esgotado, rede caída, servidor fora do ar.
+   *
+   * Existe por causa de 06/10/2026, quando o app "não abria" e o
+   * plantão de erro do CTO mostrava zero ocorrências em uma semana
+   * inteira. A renovação estourava no teto de tempo, o `catch` abaixo
+   * mandava a pessoa para o login, e nada era registrado em lugar
+   * nenhum: do ponto de vista do app, não havia erro, havia uma sessão
+   * que não deu para renovar. O defeito só foi descoberto porque o
+   * fundador reclamou.
+   *
+   * O que este callback NÃO deve receber: refresh token expirado ou
+   * revogado, que é o caminho normal de quem ficou muito tempo fora e
+   * precisa entrar de novo. Reportar isso encheria o plantão de ruído e
+   * faria o sinal de verdade desaparecer no meio.
+   *
+   * Opcional: quem monta o provider decide se quer reportar. O pacote
+   * de autenticação não conhece o módulo de erros, e não deve conhecer.
+   */
+  aoFalharPorMotivoTecnico?: (erro: unknown) => void;
 }): JSX.Element {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [user, setUser] = useState<MeResponse | null>(null);
@@ -137,13 +160,32 @@ export function AuthProvider({
       const tokens = await authApi.refresh(persistedRefreshToken);
       await applySession(tokens);
       return true;
-    } catch {
+    } catch (erro) {
+      /*
+        Separa os dois motivos de não conseguir renovar, que até
+        06/10/2026 eram tratados como um só:
+
+        - 401/403: o refresh token expirou ou foi revogado. É o caminho
+          normal de quem ficou muito tempo fora. Silêncio é o certo.
+        - qualquer outro: tempo esgotado, rede, servidor fora do ar. A
+          pessoa é jogada para o login sem ter feito nada errado, e isso
+          PRECISA aparecer no plantão. Foi exatamente este caso que
+          deixou o app "sem abrir" e não gerou nenhum registro.
+      */
+      if (ehFalhaTecnica(erro)) {
+        try {
+          aoFalharPorMotivoTecnico?.(erro);
+        } catch {
+          // Reportar erro nunca pode criar um segundo erro.
+        }
+      }
+
       await clearSession().catch(() => undefined);
       setUser(null);
       setStatus("unauthenticated");
       return false;
     }
-  }, [authApi, applySession]);
+  }, [authApi, applySession, aoFalharPorMotivoTecnico]);
 
   /**
    * Dedupe: sem app com múltiplas abas (é um app só), mas o refresh
