@@ -5,6 +5,66 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-14 — CFO: o aditivo da Lytex, e a meta que é 15x a plataforma
+
+**Pedido do fundador:** analisar o aditivo de Split Payment da Lytex,
+dizer se faz sentido, como implementar, e divulgar de imediato.
+
+**O que o documento é:** não é um contrato de split. É um aditivo de
+condições comerciais ao Termo de Uso da Lytex (Plano Prime), assinado
+pelo CNPJ do MEI do fundador, não por uma pessoa jurídica "Rotta". O
+split é uma linha entre dezessete da tabela de taxas.
+
+**Primeiro achado:** em **13 das 17 linhas a taxa incentivada é igual à
+padrão**. O valor real está concentrado na isenção da mensalidade
+(R$ 99,90/mês, R$ 1.198,80/ano) e no PIX de ticket acima de R$ 186,87,
+onde a taxa fixa de R$ 1,85 vence os 0,99%.
+
+**O achado que decide:** a meta é 120 liquidações de boleto e 120 de
+PIX por mês, em 3 meses. A Rotta inteira tem **8 alunos cadastrados**,
+1 transportadora pagando e 5 contratos responsável/transportadora
+**todos com valor R$ 0,00 e nenhum assinado**. A meta é quinze vezes a
+base de alunos, e o fluxo que a geraria não existe.
+
+**A conta que ninguém tinha feito:** com o preço atual de R$ 39,90/mês,
+operar o split absorvendo a tarifa dá **prejuízo de R$ 7,65 por
+transportadora por mês**, e **R$ 61,20/mês no cenário em que a meta é
+batida**. Bater a meta faz a Rotta perder mais dinheiro, não menos. O
+split não é economia: é serviço novo, com custo próprio, e precisa de
+preço próprio. Com 3% sobre a mensalidade intermediada viraria
+R$ 699,60/mês de margem, mas isso é projeção e está rotulada como tal.
+
+**Risco contratual registrado:** a cl. 3.1 diz que não bater a meta não
+tira o incentivo "automaticamente", e a 3.2 permite **cobrança
+retroativa** da diferença. O incentivo é adiantamento condicionado, não
+desconto. Exposição calculada: entre R$ 300 e R$ 470. Pequena, e por
+isso o risco financeiro NÃO é o motivo da recomendação.
+
+**Enquadramento que mudou a análise:** a Lytex já é a provedora
+escolhida da Rotta Pay desde o Dossiê 26, com credenciais configuradas
+e integração não implementada porque `docs.lytex.com.br` é inalcançável
+deste ambiente. Conferido em 14/10/2026: continua inalcançável. A
+cobrança em produção é pela Asaas.
+
+**Recomendação:** não assinar ainda. O relógio de 3 meses começa na
+assinatura, e hoje falta o primeiro ingrediente do fluxo. Ordem certa:
+decidir o modelo, pôr valor nos contratos, puxar as taxas da Asaas para
+comparar, validar a arquitetura de subconta com um contador, e só então
+assinar pedindo que o prazo conte da primeira transação.
+
+**Não fiz:** não inventei as taxas da Asaas. É o único número que falta
+para a comparação ser honesta, e ele está no painel deles.
+
+**CMO, por decisão conjunta:** nada é publicado sobre pagamento
+dividido até a primeira transação liquidar em produção. Material pronto
+e guardado. Anunciar função inexistente numa plataforma que transporta
+criança gasta a única coisa que vende o produto.
+
+**Preciso do fundador:** confirmar se o aditivo já foi assinado (pelo
+PDF recebido, não foi: há o carimbo da Autentique sem página de
+certificado em seguida); as taxas da Asaas; e a validação contábil da
+subconta.
+
 ## 2026-10-13 — CTO: "Erro inesperado ao entrar", e o que o banco provou
 
 **Relato do fundador:** print da tela de login do app com "Erro

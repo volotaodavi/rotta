@@ -16,6 +16,19 @@ Um diretor que precisa de outro escreve aqui, no formato
 endereçado trata como item da própria área no turno seguinte. Começa
 vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
+- [ ] (CTO) De: CFO. Antes de qualquer split: `Contract.valorMensalidadeCentavos`
+      está 0 nos 5 contratos existentes, e nenhum foi assinado pelas duas
+      partes. Sem valor no contrato não existe split possível. Esse é o
+      pré-requisito real, e é de produto, não de finanças.
+- [ ] (CTO) De: CFO. `docs.lytex.com.br` e `api.lytex.com.br` continuam
+      inalcançáveis deste ambiente (conferido 14/10/2026, HTTP 000). É o
+      mesmo impedimento registrado em agosto no
+      `rotta-pay-provider.service.ts`. Ou se libera a rede, ou o fundador
+      cola a documentação no repositório. Sem isso a integração de split
+      não sai do lugar.
+- [ ] (CMO) De: CFO. Não publicar nada sobre pagamento dividido até a
+      primeira transação liquidar em produção. Material pronto em
+      `empresa/marketing/2026-10-14-split-payment-material.md`.
 - [ ] (CFO) De: CMO. Preciso de um número só para dimensionar verba:
       **quanto a Rotta pode pagar por uma transportadora nova**, em
       reais, com a conta à mostra (preço do plano de R$ 39,90/mês,
