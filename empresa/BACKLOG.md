@@ -29,6 +29,44 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Produto e código (CTO)
 
+- [ ] (CTO) **Escopo PCI DSS do cartão recorrente, e a alternativa.**
+      Leia `financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md`.
+      O Asaas confirmou em 15/10/2026 que não existe SDK mobile nem
+      tokenização pelo front: o token é gerado pelo nosso backend, com a
+      chave da subconta que vai cobrar. Isso faz o número do cartão
+      transitar pelo nosso servidor e coloca a Rotta em escopo PCI.
+      Escrever o que o escopo exige de verdade, e comparar com a
+      alternativa de checkout hospedado em webview, que tira o cartão do
+      nosso servidor e custa abrir exceção à jornada nativa. Não
+      implementar nada: a decisão é do fundador, e este item é o
+      material para ele decidir.
+- [ ] (CTO) **Guarda da chave de API de subconta de terceiro.** A
+      arquitetura com custódia exige que a Rotta crie cobrança e
+      tokenize cartão com a chave de cada subconta, ou seja, guarde no
+      nosso banco autoridade de cobrança sobre conta de outra pessoa.
+      Escrever o padrão mínimo antes de qualquer linha de código:
+      cifrada em repouso, nunca em log, nunca no cliente, rotação, e
+      registro auditável de cada uso. Precedente que justifica o rigor:
+      em outubro de 2026 uma chave privada de service account passou
+      por conversa e segue comprometida.
+- [ ] (CTO) **Janela de 2 dias na recusa de cartão.** A retentativa do
+      Asaas dura até 2 dias depois do vencimento, e cada recusa dispara
+      `PAYMENT_CREDIT_CARD_CAPTURE_REFUSED`. A tela de atualizar cartão
+      e a notificação ao responsável precisam existir ANTES da primeira
+      cobrança no cartão. Como o sandbox aprova tudo e não permite
+      testar recusa, o plano de teste é disparar o payload do webhook
+      contra o nosso endpoint e, depois, uma cobrança real de valor
+      baixo antes de liberar para cliente.
+- [ ] (CTO) Deduplicação geral do webhook da Asaas pelo `id` do evento.
+      A documentação de boas práticas dela manda persistir o id de cada
+      entrega e impedir que uma reentrega repita a regra de negócio.
+      Hoje o `AsaasWebhookEnvelope` nem captura o `id`, e a proteção
+      existe caso a caso: status é idempotente, a compra no Meta tem
+      `metaPurchaseEm`, e a notificação de pagamento ganhou guard em
+      14/10/2026. Isso cobre os handlers de hoje e não cobre o próximo.
+      Fazer direito exige capturar o `id` e uma tabela com índice único,
+      ou seja, migração: por isso ficou registrado em vez de improvisado.
+
 - [ ] (CTO) **`packages/ui` não tem teste nenhum** (o `apps/admin` ganhou
       o primeiro em da467bd, o da escala). O script `test` do `packages/ui` é
       um `echo`. Os dois bugs achados em
@@ -52,15 +90,31 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 - [ ] (CTO) **[prioridade]** **Os agentes de IA do produto, sem dono até agora.**
       Geocoding, Validation, Map Intelligence, Education Sync, Rotta AI,
       Communication Engine e o Audit Engine passaram a ser do CTO em
-      05/10/2026. Primeiro passo: descobrir qual deles está sem teste,
-      falhando calado ou gastando chamada externa à toa, e começar pelo
-      que toca dinheiro ou segurança.
+      05/10/2026. Em 06/10/2026: Geo, Rotta AI e Didit já têm teste e o
+      Audit Engine ganhou os dele. Falta o Communication Engine:
+      `infra/whatsapp` e `infra/sms` sem nenhum teste, e conferir se um
+      envio que falha some calado.
 - [ ] (CTO) **Escopo de turno.** Pendência antiga, nunca detalhada.
       Primeiro passo é escrever o que significa, não codar.
 - [ ] (CTO) **Tela de escala do motorista.** Pendência antiga.
 
 ### Dinheiro (CFO)
 
+- [ ] (CFO) **Precificar a alavanca de custódia do split.** Leia
+      `financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md`. O
+      prazo de custódia (`daysToExpire`) protege de chargeback e atrasa
+      a receita da Rotta na mesma medida, porque o split também fica
+      retido. Escrever qual prazo a Rotta aguenta no caixa, e a partir
+      de qual prazo a proteção deixa de compensar. Falta o valor da
+      tarifa recorrente por subconta com custódia: sem ele, diga o que
+      falta em vez de estimar.
+- [ ] (CFO) **O take rate líquido, depois do MDR.** O cartão recorrente
+      é o meio principal por decisão do fundador em 14/10/2026, e o MDR
+      é a maior linha de custo sobre a taxa de intermediação. Escrever a
+      conta do take rate líquido por meio de pagamento, com as taxas
+      reais da conta (a tabela veio de `GET /v3/myAccount/fees` em
+      14/10/2026), e dizer qual piso em `fixedValue` sustenta transação
+      de ticket baixo.
 - [ ] (CFO) **[prioridade]** **Quantificar os pré-cadastros pagos sem conta.** Quem
       pagou a assinatura no site e nunca completou o cadastro agora
       aparece no Admin, em "Contas de usuários". Falta saber quantos
@@ -95,6 +149,24 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Companhia (CEO)
 
+- [ ] (CEO) **A sequência da frente de split, por escrito.** Leia
+      `financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md` e
+      responda uma coisa só: esta frente abre agora ou depois, e contra
+      qual número. O que está medido em 14/10/2026: 8 transportadoras,
+      7 em TRIAL e 1 ativa; 24 usuários, 2 novos em 30 dias; 8 alunos;
+      10 viagens em toda a história, a última em 28/08/2026; R$ 39,90
+      de receita mensal. Com zero viagem não existe mensalidade de
+      transporte para dividir, e portanto não existe take rate. Diga o
+      gatilho numérico que justifica abrir, e o que a companhia faz até
+      lá. Recomendação contrária é bem-vinda: a ordem de 14/10/2026 em
+      `FUNDADOR.md` manda discordar antes de executar.
+- [ ] (CEO) **Quem a família vê no extrato.** Na arquitetura com
+      custódia, quem emite a cobrança é a subconta da transportadora, e
+      o Asaas não confirmou quem aparece como recebedor. Isso é decisão
+      de marca e de confiança, não de código: nome desconhecido em
+      extrato de mãe pagando transporte de filho é causa de contestação
+      e de ligação para a transportadora. Escrever qual nome a Rotta
+      quer ali e o que fazer se não for possível escolher.
 - [ ] (CEO) **[prioridade]** **O que falta para vender de verdade.** Escrever, com base
       no que existe no repositório, o que ainda impede a Rotta de
       receber uma transportadora grande sem o fundador ao lado.
@@ -111,6 +183,27 @@ Nenhum diretor mexe nestes. Ficam aqui para não serem esquecidos.
       ambiente na barra de título da sessão, "Edit", mesmo valor que
       está no Render. Até isso, nenhuma análise de funil é possível.
 
+- [ ] **Mandar o e-mail ao comercial do Asaas** (`contato@asaas.com.br`
+      ou 0800 009 0037) com as sete perguntas da seção 7 de
+      `empresa/financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md`.
+      O time de Integrações respondeu tudo o que era técnico em
+      15/10/2026 e remeteu ao comercial exatamente o que decide se a
+      frente é segura: responsabilidade em chargeback sem saldo na
+      subconta, o que elimina a exposição da conta pai, valor da tarifa
+      de custódia por subconta, quem aparece no extrato da família,
+      franquia de Pix, homologação do white label e existência de
+      checkout hospedado. Nenhum diretor pode falar com gente de fora.
+- [ ] **Decidir a exceção de webview para captura de cartão.** Jornada
+      nativa integral contra escopo PCI DSS. É a decisão de maior
+      consequência da frente de split e é só sua.
+- [ ] **Autorizar, ou não, a guarda de chave de API de subconta de
+      terceiro** no banco da Rotta, e sob quais controles. Sem essa
+      autorização escrita, o CTO não começa a implementação.
+- [ ] **Apagar no Google Cloud a chave privada do service account do
+      Firebase** (key ID `40901697ff97d53e28aa3642ea30c3f9a822c80c`),
+      comprometida por ter passado em conversa. Deixou de ser higiene e
+      passou a ser pré-requisito: a arquitetura de split coloca cartão
+      e chave de terceiro no mesmo servidor.
 - [ ] Apagar os artefatos do teste de ponta a ponta do Asaas:
       `sub_lmkg4xgsk73mm5r5`, `pay_ctautpbacftilrys`,
       `pay_r81jl0164jbd2jfu`, `cus_000204220029`.

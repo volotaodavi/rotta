@@ -16,7 +16,37 @@ import type { ApiClient } from "../http";
 export type ClientApp = "WEB" | "ADMIN" | "MOBILE";
 
 /** Ver a nota completa em `ClientErrorReport` (schema.prisma). */
-export type ClientErrorSource = "error-boundary" | "window-error" | "unhandledrejection";
+export type ClientErrorSource =
+  | "error-boundary"
+  | "window-error"
+  | "unhandledrejection"
+  /**
+   * A sessão não pôde ser renovada por motivo técnico (tempo esgotado,
+   * rede, servidor fora do ar), e a pessoa foi jogada para o login sem
+   * ter feito nada errado.
+   *
+   * Entrou em 06/10/2026. Até então esse caminho não gerava registro
+   * nenhum: o app "não abria", e o plantão de erro mostrava zero
+   * ocorrências em uma semana inteira, porque do ponto de vista do
+   * código não havia erro, havia uma sessão que não deu para renovar.
+   * Sessão legitimamente expirada (401/403) NÃO entra aqui.
+   */
+  | "sessao-nao-renovada"
+  /**
+   * A tentativa de entrar falhou por algo que NÃO é resposta do
+   * servidor: conexão caída no meio, requisição abortada, falha de
+   * rede. Credencial errada não entra aqui — isso é um 401 com texto
+   * próprio, e a pessoa precisa ler aquele texto, não este registro.
+   *
+   * Entrou em 13/10/2026, pelo mesmo motivo de `sessao-nao-renovada`:
+   * o fundador recebeu "Erro inesperado ao entrar" com a senha certa, o
+   * banco mostrava que o servidor tinha processado o login, e o plantão
+   * não tinha NADA — porque o `catch` da tela de login trocava o erro
+   * real por uma frase genérica e seguia em frente. Um caminho de falha
+   * que o app trata sozinho continua sendo uma falha; se ele não vira
+   * registro, ninguém nunca descobre o que aconteceu.
+   */
+  | "login-falhou";
 
 export interface CreateClientErrorReportInput {
   app: ClientApp;

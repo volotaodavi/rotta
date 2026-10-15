@@ -15,9 +15,50 @@ import { AuthButton, AuthLogoMark, AuthScreen, AuthTextField, PasswordInput } fr
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { clientErrorsApi } from "@/lib/api-client";
+import { identidadeDoBuild } from "@/lib/identidade-do-build";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "Login">;
+
+/**
+ * Manda ao plantão a falha de login que NÃO veio do servidor.
+ *
+ * ## Por que existe
+ *
+ * Em 13/10/2026 o fundador recebeu "Erro inesperado ao entrar" com a
+ * senha certa. O banco provava que o servidor tinha processado o login
+ * (`tentativasLoginFalhas` zerado, linha do usuário atualizada no
+ * horário da tentativa), e o plantão de erro não tinha absolutamente
+ * nada: este `catch` trocava o erro real por uma frase genérica e
+ * seguia adiante.
+ *
+ * É a mesma cegueira de 06/10, quando a renovação de sessão falhava em
+ * silêncio e o plantão mostrou zero erro numa semana com o app
+ * inutilizável. A lição se repetiu porque foi aplicada só naquele
+ * caminho: **um caminho de falha que o app trata sozinho continua
+ * sendo uma falha, e precisa virar registro.**
+ *
+ * Só reporta o que não é `ApiError`. Senha errada é 401 com texto
+ * próprio, é uso normal do produto, e encheria o plantão de ruído.
+ *
+ * Nunca lança nem atrasa a tela: o `catch` vazio é deliberado, pelo
+ * mesmo motivo documentado em `AppErrorBoundary`.
+ */
+function relatarFalhaDeLogin(erro: unknown): void {
+  const alvo = erro instanceof Error ? erro : undefined;
+  void clientErrorsApi
+    .report({
+      app: "MOBILE",
+      message: alvo?.message || String(erro) || "Falha de login sem mensagem",
+      /* O NOME do erro é o que distingue rede de abort de bug nosso. */
+      stack: `${alvo?.name ?? typeof erro}: ${alvo?.stack ?? "(sem stack)"}`,
+      path: "Login",
+      source: "login-falhou",
+      buildId: identidadeDoBuild(),
+    })
+    .catch(() => undefined);
+}
 
 const ROLE_LABEL: Record<string, string> = {
   gestor: "Gestor",
@@ -85,7 +126,26 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
       // RootNavigator troca de tela sozinho assim que `status` vira
       // "authenticated".
     } catch (error) {
-      setErrorMessage(error instanceof ApiError ? error.message : "Erro inesperado ao entrar.");
+      if (error instanceof ApiError) {
+        /*
+          Resposta do servidor: credencial errada, conta bloqueada,
+          tempo esgotado (o cliente HTTP traduz o próprio abort em
+          `ApiError` com texto próprio). A mensagem dele já explica o
+          que houve, e não é falha da plataforma: nada a reportar.
+        */
+        setErrorMessage(error.message);
+      } else {
+        relatarFalhaDeLogin(error);
+        /*
+          Sem resposta HTTP nenhuma: a conexão caiu no meio. Dizer
+          "erro inesperado" aqui é inútil e um pouco desonesto, porque
+          nós sabemos a categoria — o que não sabemos é o motivo dela.
+          A frase abaixo diz o que aconteceu e o que fazer.
+        */
+        setErrorMessage(
+          "Não foi possível falar com o servidor. Verifique sua conexão e tente de novo.",
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }

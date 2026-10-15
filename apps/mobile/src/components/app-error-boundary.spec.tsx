@@ -17,6 +17,12 @@ jest.mock("@/lib/api-client", () => ({
   clientErrorsApi: { report: jest.fn() },
 }));
 
+/** Quebra do mesmo jeito que o crash real de 07/10/2026: tipo `undefined`. */
+function TelaQueQuebra(): JSX.Element {
+  const Quebrado = undefined as unknown as () => JSX.Element;
+  return <Quebrado />;
+}
+
 /** Lança sempre que `deveLancar` é `true` — usado nos testes que só verificam a tela de erro em si. */
 function BombaControlada({ deveLancar }: { deveLancar: boolean }): JSX.Element {
   if (deveLancar) {
@@ -82,6 +88,98 @@ describe("AppErrorBoundary", () => {
         source: "error-boundary",
       }),
     );
+  });
+
+  /*
+    OS DOIS TESTES ABAIXO ENTRARAM EM 08/10/2026, e nascem de um crash
+    de produção que não deu para consertar.
+
+    Um usuário recebeu "Element type is invalid: expected a string (for
+    built-in components) or a class/function (for composite components)
+    but got: undefined" duas vezes em doze segundos. O relatório que
+    chegou ao plantão do CTO tinha doze quadros de pilha, todos de
+    dentro do reconciliador do React, nenhum do produto, em endereço de
+    bytecode Hermes (`index.android.bundle:1:345165`), e `buildId`
+    vazio. Dava para saber que algo quebrou, não o quê nem em qual
+    build.
+
+    O React sempre soube a resposta: `componentDidCatch` recebe um
+    segundo argumento com a cadeia de componentes, que nomeia a tela e
+    sobrevive à minificação. Esta classe ignorava esse argumento.
+    `apps/web` já anexava o `componentStack` desde 03/09/2026 (ver
+    `section-error-boundary.tsx`); o app tinha ficado de fora.
+  */
+  it("manda a árvore de componentes junto, que é o que nomeia a tela quebrada", () => {
+    render(
+      <AppErrorBoundary>
+        <TelaQueQuebra />
+      </AppErrorBoundary>,
+    );
+
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as { stack?: string };
+    expect(enviado.stack).toContain("--- component stack ---");
+    expect(enviado.stack).toContain("TelaQueQuebra");
+  });
+
+  it("diz qual build quebrou, sempre, nunca vazio", () => {
+    render(
+      <AppErrorBoundary>
+        <BombaControlada deveLancar />
+      </AppErrorBoundary>,
+    );
+
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as {
+      buildId?: string;
+    };
+    /*
+      A PRIMEIRA versão deste conserto mandava `undefined` quando
+      `Constants.expoConfig` não respondia, e foi o que aconteceu no
+      build de produção: seis relatórios chegaram ao plantão sem build
+      nenhum, indistinguíveis de "o aparelho está com uma versão antiga
+      do app". A ambiguidade custou uma noite de investigação. Agora o
+      campo nunca vem vazio, e o sufixo diz qual fonte respondeu.
+    */
+    expect(enviado.buildId).toBeTruthy();
+    expect(enviado.buildId).toContain("1.3.0");
+  });
+
+  it('nomeia a tela em vez da constante "(mobile)"', () => {
+    render(
+      <AppErrorBoundary>
+        <BombaControlada deveLancar />
+      </AppErrorBoundary>,
+    );
+
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as { path?: string };
+    /*
+      Sem `NavigationContainer` montado neste teste, `telaAtual()`
+      devolve `null` e o relatório diz isso com clareza. O que NÃO pode
+      voltar é a constante "(mobile)", que era igual para as 96 telas do
+      app e tornou seis relatórios de crash inúteis.
+    */
+    expect(enviado.path).toBe("(tela desconhecida)");
+    expect(enviado.path).not.toBe("(mobile)");
+  });
+
+  it("diz quando o React não forneceu a árvore de componentes", () => {
+    render(
+      <AppErrorBoundary>
+        <BombaControlada deveLancar />
+      </AppErrorBoundary>,
+    );
+
+    const enviado = (clientErrorsApi.report as jest.Mock).mock.calls[0][0] as { stack?: string };
+    /*
+      A seção existe SEMPRE. A versão anterior a omitia quando o React
+      não dava árvore, e aí o relatório saía idêntico ao de um app sem
+      este código — as duas causas viravam a mesma saída. Um instrumento
+      que falha igual a "não instalado" não é instrumento.
+
+      Aqui o React FORNECE a árvore (ambiente de teste), então o
+      conteúdo é real e não o aviso.
+    */
+    expect(enviado.stack).toContain("--- component stack ---");
+    expect(enviado.stack).not.toContain("nao forneceu componentStack");
   });
 
   it("nunca lança mesmo se o próprio reporte de erro falhar (rede fora do ar)", () => {
