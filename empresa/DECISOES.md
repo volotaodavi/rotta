@@ -5,6 +5,44 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-15 — FUNDADOR: três decisões, e a build certa da 1.3.0
+
+**Decisão: a 1.3.0 só vai para a Play Store depois das respostas do
+Asaas e da Zapay.** O fundador foi informado de que publicar não depende
+de nenhuma das duas, e manteve a decisão. Está registrada aqui para
+nenhum diretor reabrir o assunto: não é esquecimento, é escolha.
+Consequência conhecida e aceita: o app na loja segue sem o conserto da
+Central de Notificações (build #51, 08/10) e sem o do login (build #53,
+13/10), e os 24 usuários cadastrados seguem com o binário anterior.
+
+**Decisão: a chave privada do service account do Firebase não será
+apagada** (key ID `40901697ff97d53e28aa3642ea30c3f9a822c80c`,
+comprometida por ter passado em conversa). Decisão do fundador, mantida
+após o risco ter sido apresentado duas vezes. Consequência para a
+arquitetura de split: o item do CTO sobre guarda de chave de API de
+subconta de terceiro passa a exigir padrão escrito mais rigoroso, porque
+credencial de terceiro ficaria na mesma infraestrutura.
+
+**Correção no backlog:** o item de publicar a 1.3.0 mandava usar o
+`.aab` da build #48. Publicar aquele binário colocaria na loja um app
+com o crash da Central dentro, porque a #48 (02/10) é só o bump de
+versão. A build correta é a **#53** (13/10, `28f35b8`), última
+bem-sucedida, que contém notificações (#51), instrumentação de crash
+(#52) e login (#53). O `versionCode` vem da CI, que soma 1 ao maior já
+enviado, então a #53 é aceita por cima da #48.
+
+**Feito pelo fundador em 15/10/2026:** enviados os e-mails ao comercial
+do Asaas e à área de parcerias da Zapay, mais a mensagem à B23; e
+feitas as ligações para as transportadoras cadastradas. O conteúdo das
+ligações ainda não foi registrado: quando for, é o primeiro dado real de
+demanda da companhia e reordena o backlog.
+
+**Fundidos:** PR #3 (CTO, 8 testes no Audit Engine), #4 (CMO, funil
+parado) e #5 (CFO, aditivo da Lytex). Conflitos em `DECISOES.md` nos
+dois primeiros, resolvidos mantendo os dois lados em ordem de data.
+Verificado antes de fundir: `jest src/modules/audit` 8 de 8 e a suíte da
+API com 118 suítes passando.
+
 ## 2026-10-14 — CFO: o aditivo da Lytex, e a meta que é 15x a plataforma
 
 **Pedido do fundador:** analisar o aditivo de Split Payment da Lytex,
