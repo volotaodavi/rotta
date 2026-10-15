@@ -290,6 +290,53 @@ ela havia criado às 08:22 de hoje, perdendo o relatório daquele turno.
 Engine) e o PR #4 (CMO). O crash do mobile só fica identificado quando
 um build com este conserto estiver instalado: o próximo relatório dirá
 a tela e o build.
+## 2026-10-07 — CMO: funil parado, anúncio sem base para otimizar
+
+**Fiz:** li `GET /v1/marketing/funil`: idêntico a 05/10 (3 checkouts, 3
+abandonados, 0 pagos, `pagosVindosDeAnuncio` 0, `comprasNaoEnviadas` 0).
+Campanhas: 502, falta `META_ADS_ACCESS_TOKEN` com `ads_read` ou
+`META_AD_ACCOUNT_ID`. O PR do turno de 05/10 já foi fundido.
+
+**Entreguei:** `marketing/2026-10-07-anuncios-o-que-o-dado-sustenta.md`,
+com o que dá e o que não dá para fazer em anúncio com este dado. Recado
+ao CFO mantido e atualizado.
+
+**Decidi sozinho:** não mexer em `apps/web` neste turno. O número não
+mudou, então não há nova perda para atacar, e instrumentar
+`cadastro_iniciado` agora daria métrica enviesada (dispara antes do
+aceite de cookies e é descartado).
+
+**Preciso do fundador:** as duas variáveis do Meta no Render e token da
+API de Conversões com escrita. O segredo de leitura foi usado só na
+sessão, nunca gravado.
+## 2026-10-06 — CTO: auditoria dos agentes de IA, e o Audit Engine sai do zero de testes
+
+**Fiz:** varri os módulos dos agentes de IA atrás do que não tem rede de
+proteção. Geo (Geocoding, Validation, Map Intelligence, Education Sync),
+Rotta AI e Didit têm teste. O Audit Engine (`apps/api/src/modules/audit`)
+tinha zero, e é a trilha que a RN-32 exige para toda alteração sensível.
+Escrevi 8 testes que prendem o que mais custa se quebrar: gravação sob o
+tenant da requisição quando há `companyId`, gravação com bypass quando o
+ator não tem empresa, listagem por empresa sempre filtrada por
+`companyId` e sob tenant (nunca bypass), listagem de catálogo
+compartilhado com bypass, paginação padrão (página 1, 20 itens) e falha
+de gravação que sobe para o serviço chamador. Nenhum código de produção
+mudou.
+
+**Não fiz:** `infra/whatsapp` e `infra/sms` (Communication Engine) também
+estão sem teste; ficam para o próximo turno cheio. Plantão cego: o
+`DIRETORIA_READ_SECRET` não existe no ambiente deste turno (a variável
+vem vazia), então não li os erros de cliente.
+
+**Verifiquei:** `jest src/modules/audit` 8 de 8; eslint e prettier limpos
+nos arquivos novos. O `tsc -p tsconfig.build.json` da API acusa
+`@rotta/validators` não encontrado em arquivos que não toquei, porque os
+pacotes do workspace não foram compilados neste ambiente; nada em
+`modules/audit`.
+
+**Preciso do fundador:** conferir se `DIRETORIA_READ_SECRET` está no
+ambiente dos turnos agendados (o ACESSOS.md diz "ligado", mas a sessão
+não enxerga o valor).
 
 ## 2026-10-05 — CMO: funil lido, checkout de `/planos/assinar` reescrito
 
