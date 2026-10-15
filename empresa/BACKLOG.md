@@ -242,8 +242,18 @@ Nenhum diretor mexe nestes. Ficam aqui para não serem esquecidos.
       mexa em campanha sozinho. Exige um token de Usuário do Sistema com
       `ads_management`, guardado como segredo do ambiente. O caminho
       está no fim de `empresa/marketing/COMO-LIGAR-O-PIXEL.md`.
-- [ ] Publicar a versão 1.3.0 na Play Store (o `.aab` da build #48 já
-      está gerado e é o que leva a saída do motorista autônomo).
+- [ ] **Publicar a versão 1.3.0 na Play Store usando o `.aab` da build
+      #53**, não o da #48. Corrigido em 15/10/2026: este item dizia #48,
+      e publicar aquele binário colocaria na loja um app com o crash da
+      Central de Notificações dentro. A #48 (02/10, `d7c52a1`) é só o
+      bump de versão que permite levar a saída do autônomo. O que
+      consertou as notificações é a #51 (08/10), a instrumentação de
+      crash é a #52 (13/10) e o login é a #53 (13/10, `28f35b8`), que é
+      a última bem-sucedida e contém as três. O `versionName` continua
+      1.3.0 desde o bump, e o `versionCode` vem da CI, que pergunta à
+      Play Console o maior já enviado e soma 1, então a #53 é aceita por
+      cima da #48. A #54 é a mesma árvore da #53 e foi cancelada: era um
+      APK, e o fundador pediu só `.aab`.
 
 ## Concluído
 
