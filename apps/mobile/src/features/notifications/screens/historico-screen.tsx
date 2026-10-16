@@ -1,3 +1,5 @@
+import { Archive } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useNotificationsList, useSetNotificationArquivada } from "../hooks/use-notifications";
@@ -49,7 +51,18 @@ export function HistoricoScreen({ navigation }: Props): JSX.Element {
   if (!data || data.items.length === 0) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.textMuted }}>Nenhuma notificação arquivada ainda.</Text>
+        {/*
+          Antes era uma frase solta, encostada no topo, que parecia tela
+          quebrada. Vazio desenhado como vazio parece defeito; vazio com
+          o fato e o caminho parece produto. Aqui o caminho existe de
+          verdade: arquivar acontece na Central, não aqui.
+        */}
+        <EmptyState
+          title="Nenhuma notificação arquivada"
+          description="O que você arquivar na Central aparece aqui."
+          icon={<Archive size={28} color={theme.colors.textMuted} />}
+          theme={theme}
+        />
       </VehicleScreen>
     );
   }

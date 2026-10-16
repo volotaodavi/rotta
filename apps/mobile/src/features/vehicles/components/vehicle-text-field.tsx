@@ -28,6 +28,21 @@ export function VehicleTextField({
         {label}
       </Text>
       <TextInput
+        /*
+          O rótulo acima é um `Text` solto: visualmente ele etiqueta o
+          campo, e para o leitor de tela não etiqueta nada. Sem esta
+          linha, quem usa TalkBack ou VoiceOver chega num formulário da
+          Rotta e ouve "campo de edição" em todos os campos, sem saber
+          qual é o CPF, qual é a placa e qual é o endereço de embarque.
+          Entrou em 16/10/2026, e vale para TODO formulário do app, que
+          é onde o funil medido morre: 3 checkouts iniciados, 3
+          abandonados.
+
+          `accessibilityLabel` no próprio input, e não
+          `accessibilityLabelledBy`, porque este último depende de
+          `nativeID` e só funciona no Android.
+        */
+        accessibilityLabel={label}
         placeholderTextColor={theme.colors.placeholder}
         style={[
           styles.input,

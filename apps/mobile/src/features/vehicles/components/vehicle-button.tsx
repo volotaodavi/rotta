@@ -46,6 +46,16 @@ export function VehicleButton({
   return (
     <Pressable
       accessibilityRole="button"
+      /*
+        Sem estas duas linhas o leitor de tela anunciava o botão como se
+        estivesse disponível mesmo desabilitado, e durante o
+        carregamento perdia o rótulo por completo: o texto some da tela
+        e só fica o indicador girando, que não tem o que anunciar. A
+        pessoa ouvia "botão" e nada mais, sem saber se apertou, se
+        funcionou, nem o que aquilo era.
+      */
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: isDisabled, busy: isLoading }}
       onPress={onPress}
       disabled={isDisabled}
       style={({ pressed }) => [
