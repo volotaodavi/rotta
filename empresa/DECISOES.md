@@ -5,6 +5,49 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-16 — CTO: o inventário do app desmentiu o plano de lotes, e duas decisões tomadas
+
+O fundador autorizou decidir sem perguntar. Antes de migrar a primeira
+tela, levantei o que existe. O levantamento contradiz o plano que eu
+mesmo tinha escrito horas antes, e o plano é que muda.
+
+**Componentes locais por área, medido em 16/10/2026:** auth 11, driver
+9, empresa 2, marketplace 2, **parent 0, notifications 0**.
+
+Ou seja: a inconsistência não está espalhada por igual. **Autenticação e
+motorista já têm camada própria e coerente.** Quem não tem nada é a área
+do responsável e a de notificações, que juntas são sete das 31 telas do
+conceito e incluem a aba que derrubou o app em 07/10.
+
+**Segundo achado: a arquitetura de informação do conceito já existe.** O
+`ParentNavigator` já implementa as cinco abas do conceito, com ícone e
+rótulo (Início, Viagens, Mapa, Notificações, Perfil), construído em
+setembro a partir de imagens de referência do próprio fundador. O
+conceito novo não propõe estrutura nova: propõe acabamento. Isso reduz o
+risco e muda o tipo de trabalho.
+
+**Plano corrigido:** o lote 3 deixa de ser autenticação e passa a ser
+**responsável e notificações**, que é onde a falta de componente de fato
+está. Autenticação entra depois, e menor do que eu previa.
+
+**Decisão 1: "Entrar com Google" não entra neste lote.** Os fatos: não
+existe nada de Google no código; o que mata o funil são 3 checkouts
+abandonados de causa não apurada; a verificação da Didit é bloqueante,
+então "entrar num toque" é falso para motorista e transportadora, que
+param na verificação de qualquer jeito; e a regra de vínculo de conta,
+se errada, gera cliente e cobrança duplicados. O espaço do botão fica
+reservado na tela, para entrar depois sem redesenho. Se alguma das
+transportadoras disser numa ligação que o cadastro foi a barreira, o
+peso muda e eu reabro.
+
+**Decisão 2: as telas 05, 06 e 07 do conceito não serão construídas.**
+São o fluxo de recuperação de senha por código de 6 dígitos. Em
+15/09/2026 o fundador já viu exatamente essa proposta, num print, e
+decidiu manter o fluxo por link de e-mail que existe, porque o código
+exigiria recurso de backend inexistente. A decisão está registrada no
+cabeçalho de `esqueci-senha-screen.tsx`. Construir agora seria
+contradizer uma decisão dele sem fato novo.
+
 ## 2026-10-16 — FUNDADOR (correção no mesmo dia): o CFO não paga nada
 
 **Ordem:** "O CFO não poderá pagar as contas. Ele só poderá avisar e

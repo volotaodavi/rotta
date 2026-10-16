@@ -57,12 +57,22 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
       **Lote 2:** cabeçalho de tela com troca de perfil, linha de fatura,
       e subir o `SlideToAction` de `apps/mobile/src/components` para o
       pacote, já usado por `modo-operacional` e `inicio-screen`.
-      **Lote 3:** autenticação e cadastro, telas 01 a 08 do conceito mais
-      as que faltam nele: cadastro de empresa, verificação Didit (que é
-      bloqueante no app real e não aparece no conceito), vínculo por
-      código e conversão de autônomo. É o único trecho com número medido
-      acusando o desenho: 3 checkouts, 3 abandonados, 0 pagos.
-      **Lote 4:** motorista. **Lote 5:** responsável, sem pagamentos.
+      **Lote 2, feito em 16/10:** AppHeader, e o `SlideToAction` subiu de
+      `apps/mobile/src/components` para o pacote, com os dois imports do
+      motorista atualizados.
+      **Lote 3 (ordem corrigida em 16/10, ver `DECISOES.md`):**
+      responsável e notificações. O inventário mostrou componentes
+      locais por área: auth 11, driver 9, empresa 2, marketplace 2,
+      **parent 0, notifications 0**. A inconsistência está onde não há
+      componente, e não na autenticação, que já tem camada própria. São
+      sete das 31 telas do conceito e incluem a aba que derrubou o app
+      em 07/10.
+      **Lote 4:** empresa e gestor, que tem 2 componentes para cerca de
+      25 telas e é o maior bloco do app.
+      **Lote 5:** autenticação e cadastro, menor do que parecia. Sem
+      "Entrar com Google" e sem as telas 05 a 07 do conceito, que são o
+      fluxo de código de 6 dígitos que o fundador já recusou em
+      15/09/2026 por exigir backend inexistente.
       **Lote 6:** financeiro, por último, atrás de uma interface de
       provedor, para trocar Asaas por outra instituição sem refazer
       tela, e com Pix Automático como trilho principal em vez de cartão,
