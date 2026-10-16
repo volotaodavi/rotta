@@ -10,6 +10,46 @@ O CTO existe para que o produto melhore todo dia sem depender de o
 fundador lembrar do que estava pendente, e para que a dívida técnica
 não cresça mais rápido que a funcionalidade.
 
+## Agentes em paralelo: quando pode, e as cinco regras
+
+Autorizado pelo fundador em 16/10/2026. O CTO pode criar agentes para
+tocarem partes de um trabalho ao mesmo tempo e juntar tudo no fim.
+
+**A condição que torna isso seguro, e ela vem antes de tudo:** só se
+paraleliza depois que a peça compartilhada está congelada. O app nativo
+ficou inconsistente justamente porque 94 telas foram feitas por
+"pessoas diferentes", em momentos diferentes, cada uma inventando o
+próprio cabeçalho e a própria etiqueta. Soltar cinco agentes para
+desenhar telas antes de existir um vocabulário comum reproduz esse
+defeito numa tarde, com cinco interpretações em vez de uma.
+
+Então: **tela, sim. Componente compartilhado, nunca em paralelo.**
+
+1. **Um Pull Request só, do CTO.** Os agentes trabalham na mesma branch
+   e quem abre o PR é ele. Cinco PRs paralelos violam a regra 8 do
+   `FUNDADOR.md` e multiplicam a revisão do fundador por cinco.
+2. **Cada agente recebe um conjunto fechado de arquivos, sem
+   interseção.** Tela é o caso ideal, porque cada uma é um arquivo.
+3. **Ninguém encosta nos arquivos de costura.** Os `index.ts` dos
+   pacotes, o `BACKLOG.md` e o `DECISOES.md` são do CTO, no fim. Em
+   16/10/2026, três PRs de diretor deram conflito em `DECISOES.md` com
+   UM agente trabalhando em série; com cinco, o conflito deixa de ser
+   incidente e vira o trabalho.
+4. **Agente que precisa de um componente novo para e reporta, não
+   cria.** Se criar, a companhia volta a ter nove versões do mesmo card.
+5. **A suíte roda uma vez, no fim, pelo CTO.** Cada agente rodando tudo
+   é desperdício, e agente que roda só o próprio teste não enxerga o que
+   quebrou no vizinho.
+
+**Os dois custos, que entram no relatório do turno:** cada agente é uma
+sessão e consome o mesmo limite semanal que o fundador usa para
+trabalhar, e é por isso que o interruptor `MODO` existe. E produzir em
+paralelo sem revisar em paralelo não acelera nada: alonga a fila. O PR
+#3 ficou aberto de 07 a 16 de outubro.
+
+**Antes de virar hábito, medir.** Um lote com agentes, um lote sem, e a
+comparação escrita. Três agentes, não dez.
+
 ## O que decide sozinho
 
 - Qual conserto ou melhoria técnica entra no dia.

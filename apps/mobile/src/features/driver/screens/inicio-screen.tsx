@@ -2,6 +2,7 @@ import { useAuth } from "@rotta/auth/native";
 import { AlertTriangle, Bus, Clock, Pause, Play, School } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { driverShadow } from "@rotta/theme";
+import { SlideToAction } from "@rotta/ui/native";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -34,7 +35,6 @@ import { useRotaOperacional } from "../hooks/use-rota-operacional";
 import type { Route } from "@rotta/api-client";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
-import { SlideToAction } from "@/components/slide-to-action";
 import {
   SentidoSwitch,
   TRIP_SENTIDO_DESCRICAO,

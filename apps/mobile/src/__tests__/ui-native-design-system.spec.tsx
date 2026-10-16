@@ -1,5 +1,12 @@
 import { lightTheme } from "@rotta/theme";
-import { EmptyState, FilterTabs, PersonRow, SectionHeader, StatusPill } from "@rotta/ui/native";
+import {
+  AppHeader,
+  EmptyState,
+  FilterTabs,
+  PersonRow,
+  SectionHeader,
+  StatusPill,
+} from "@rotta/ui/native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 /**
@@ -179,5 +186,47 @@ describe("PersonRow", () => {
 
     expect(screen.getByLabelText("Embarcado")).toBeTruthy();
     expect(screen.getByText("07:12")).toBeTruthy();
+  });
+});
+
+describe("AppHeader", () => {
+  it("não desenha bolinha quando não há aviso", () => {
+    /*
+      Ponto vermelho permanente ensina a pessoa a ignorar o ponto
+      vermelho, e aí o aviso que importa some junto.
+    */
+    render(<AppHeader titulo="Rotta" avisos={0} onAbrirAvisos={jest.fn()} theme={theme} />);
+
+    expect(screen.getByLabelText("Notificações")).toBeTruthy();
+    expect(screen.queryByText("0")).toBeNull();
+  });
+
+  it("acima de 99 mostra 99+, porque três dígitos viram borrão", () => {
+    render(<AppHeader titulo="Rotta" avisos={128} onAbrirAvisos={jest.fn()} theme={theme} />);
+
+    expect(screen.getByText("99+")).toBeTruthy();
+    expect(screen.getByLabelText("Notificações, 99+ não lidas")).toBeTruthy();
+  });
+
+  it("só convida a trocar de perfil quando existe para onde trocar", () => {
+    /*
+      A mesma pessoa pode ser responsável de um aluno e motorista de uma
+      transportadora, e as duas telas mostram viagem. Sem saber em qual
+      perfil está, ela lê a tela errada achando que é a certa.
+    */
+    const { rerender } = render(
+      <AppHeader titulo="Rotta" perfilAtivo="Responsável" theme={theme} />,
+    );
+    expect(screen.getByLabelText("Perfil Responsável")).toBeTruthy();
+
+    rerender(
+      <AppHeader
+        titulo="Rotta"
+        perfilAtivo="Transportadora"
+        onTrocarPerfil={jest.fn()}
+        theme={theme}
+      />,
+    );
+    expect(screen.getByLabelText("Perfil Transportadora, tocar para trocar")).toBeTruthy();
   });
 });

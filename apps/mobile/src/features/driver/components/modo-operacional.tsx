@@ -20,6 +20,7 @@ import {
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { buildNavigationUrl } from "@rotta/maps/navigation";
 import { driverShadow } from "@rotta/theme";
+import { SlideToAction } from "@rotta/ui/native";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -58,7 +59,6 @@ import type {
 import type { ReactNode } from "react";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
-import { SlideToAction } from "@/components/slide-to-action";
 import { VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 

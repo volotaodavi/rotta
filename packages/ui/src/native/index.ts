@@ -25,6 +25,7 @@
 
 export * from "./atoms/StatusPill";
 export * from "./molecules/ActionGrid";
+export * from "./molecules/AppHeader";
 export * from "./molecules/BalanceCard";
 export * from "./molecules/EmptyState";
 export * from "./molecules/MovementRow";
@@ -34,3 +35,4 @@ export * from "./molecules/PersonRow";
 export * from "./molecules/SectionHeader";
 export * from "./molecules/Timeline";
 export * from "./organisms/BottomSheet";
+export * from "./organisms/SlideToAction";
