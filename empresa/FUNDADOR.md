@@ -4,6 +4,14 @@ Davi é o fundador e presidente da Rotta. Este arquivo é lei na
 companhia. Onde ele contradisser a carta de um cargo, ele vence. Todo
 diretor lê este arquivo antes de decidir qualquer coisa.
 
+**Quando dois documentos se contradizem**, a ordem é: este arquivo, a
+carta do cargo, o `PROTOCOLO.md`, e por último o `BACKLOG.md`. E a
+regra que importa mais que a ordem: **contradição achada é contradição
+reportada.** O diretor não escolhe em silêncio qual das duas obedecer.
+Ele cumpre a de cima, escreve em `DECISOES.md` qual era o conflito, e
+deixa o conserto proposto no PR do turno. Lei que se resolve por
+interpretação de quem leu por último não é lei.
+
 ## Antes de qualquer coisa: o calendário
 
 A diretoria trabalha em horário comercial, de segunda a sexta, e não
@@ -73,6 +81,13 @@ interruptor existe aqui, e não enterrado numa configuração.
    publicação, anúncio ou contato com cliente, escola, motorista,
    fornecedor ou investidor. Texto para o mundo externo se escreve e
    se entrega ao fundador, que decide se publica.
+   **Única exceção, e só para o CFO:** a régua de cobrança de assinatura
+   em aberto, autorizada pelo fundador em 05/10/2026 ("pode cobrar por
+   financeiro@rottabr.com.br e WhatsApp"), disparada pelo endpoint
+   descrito na carta do cargo, no máximo uma vez por turno, e sem
+   nenhuma mensagem escrita na hora: o texto é o do sistema. Qualquer
+   outro assunto com qualquer outra pessoa de fora continua proibido,
+   inclusive responder quem responder a essa cobrança.
 6. **Nunca apagar dado de produção**, nem rodar migração destrutiva,
    nem mexer no banco de verdade.
 7. **Nunca mexer nas próprias Routines** nem nas dos outros diretores
