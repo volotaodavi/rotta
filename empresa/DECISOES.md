@@ -5,6 +5,53 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-16 — FUNDADOR (correção no mesmo dia): o CFO não paga nada
+
+**Ordem:** "O CFO não poderá pagar as contas. Ele só poderá avisar e
+dizer o que tem que ser feito. Nada de movimentação que tire dinheiro do
+caixa nesse primeiro momento, pois não temos movimentação. Quando eu ver
+que ele poderá fazer as devidas questões, ele será avisado."
+
+**O que estava errado na versão anterior, escrita horas antes:** eu dei
+ao CFO um mandato de movimentação travado por sete condições, todas
+fechadas. Na prática ele movia zero, mas a porta ficava escrita com a
+chave esperando ser girada. O fundador tirou a porta, e tirar é
+diferente de trancar. A proibição 4 voltou a valer sem exceção, inclusive
+para o CFO, e não existe caminho condicional nem futuro para um diretor
+pagar algo. Nenhum turno pergunta sobre isso nem trata como pendência.
+
+**Removidos:** `financeiro/DESTINOS.md` e `financeiro/MOVIMENTACOES.md`.
+Eram o aparato de um poder que não existe, e manter arquivo de destinos
+autorizados num repositório onde ninguém pode pagar é convite a alguém
+achar que pode acrescentar uma linha.
+
+**Mantido, porque é o cargo:** DRE, Balanço Patrimonial, despesa fixa,
+débito no ativo, crédito no passivo, conversa com as outras lideranças, e
+relatório com opções, custo e risco. Mais o aviso de vencimento, com
+data e valor: dizer é o trabalho, pagar não é.
+
+**Fato novo do fundador:** ele **já é MEI**, e a intenção é virar LTDA ao
+bater R$ 6.750,00 por mês mais o variável do split.
+
+**O que ninguém havia notado sobre esse número:** R$ 6.750 por mês são
+exatamente R$ 81.000 por ano, que é o teto de faturamento do MEI. O
+gatilho de LTDA é o limite legal, não uma meta de gosto. Daí duas
+obrigações novas do CFO: vigiar o acumulado do ano civil e avisar com
+meses de antecedência, e conferir o valor do teto na fonte com link e
+data, nunca de memória.
+
+**E a tradução que vai em todo fechamento:** no preço de hoje, R$ 39,90,
+o teto do MEI equivale a cerca de 169 transportadoras pagando ao mesmo
+tempo. Medido em 14/10/2026: uma. Essa distância é o tamanho real do
+caminho, e qualquer plano de LTDA antes dela é conversa sobre um problema
+que a Rotta ainda não tem.
+
+**A pergunta de contador mudou de tempo verbal.** Não é mais "a
+atividade da Rotta permitiria MEI", é "o enquadramento de hoje está
+correto". Continua no backlog do fundador, e é a única pergunta aberta
+que pode invalidar ao mesmo tempo o enquadramento atual e a arquitetura
+de cobrança futura.
+
 ## 2026-10-16 — FUNDADOR: internet livre para a diretoria, e o CFO ganha mandato financeiro
 
 **Internet livre e vitalícia para todos os diretores e agentes
