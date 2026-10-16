@@ -1,8 +1,9 @@
 import { Component } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity } from "react-native";
+import { ScrollView, StyleSheet, TouchableOpacity } from "react-native";
 
 import type { ErrorInfo, ReactNode } from "react";
 
+import { Texto } from "@/components/texto";
 import { clientErrorsApi } from "@/lib/api-client";
 import { identidadeDoBuild } from "@/lib/identidade-do-build";
 import { telaAtual } from "@/lib/tela-atual";
@@ -82,15 +83,17 @@ export class AppErrorBoundary extends Component<
         contentContainerStyle={styles.container}
         style={{ backgroundColor: COLORS.background }}
       >
-        <Text style={styles.titulo}>Algo deu errado</Text>
-        <Text style={styles.corpo}>Ocorreu um erro inesperado. Tente novamente em instantes.</Text>
-        {error.message ? <Text style={styles.mensagem}>{error.message}</Text> : null}
+        <Texto style={styles.titulo}>Algo deu errado</Texto>
+        <Texto style={styles.corpo}>
+          Ocorreu um erro inesperado. Tente novamente em instantes.
+        </Texto>
+        {error.message ? <Texto style={styles.mensagem}>{error.message}</Texto> : null}
         <TouchableOpacity
           accessibilityRole="button"
           onPress={this.handleRetry}
           style={styles.botao}
         >
-          <Text style={[styles.botaoTexto, { color: BOTAO_TEXT_COLOR }]}>Tentar novamente</Text>
+          <Texto style={[styles.botaoTexto, { color: BOTAO_TEXT_COLOR }]}>Tentar novamente</Texto>
         </TouchableOpacity>
       </ScrollView>
     );

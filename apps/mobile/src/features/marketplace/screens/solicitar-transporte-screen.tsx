@@ -5,7 +5,7 @@ import {
   type StudentSex,
 } from "@rotta/api-client";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useGeocodeAddress } from "../hooks/use-geocode-address";
 import { useLocation } from "../hooks/use-location";
@@ -17,6 +17,7 @@ import type { ParentTabParamList, MarketplaceStackParamList } from "@/navigation
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   EnderecoFields,
   ENDERECO_VAZIO,
@@ -180,7 +181,7 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
 
   return (
     <VehicleScreen>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>Solicitar Transporte</Text>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>Solicitar Transporte</Texto>
 
       <View style={styles.modoRow}>
         <VehicleButton
@@ -199,9 +200,9 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
         isLoadingStudents ? (
           <ActivityIndicator color={theme.colors.primary} />
         ) : students.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Você ainda não tem alunos cadastrados. Use &ldquo;Cadastrar novo aluno&rdquo; acima.
-          </Text>
+          </Texto>
         ) : (
           <View style={styles.lista}>
             {students.map((student) => (
@@ -213,9 +214,9 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
                       : undefined
                   }
                 >
-                  <Text style={[styles.nomeAluno, { color: theme.colors.text }]}>
+                  <Texto style={[styles.nomeAluno, { color: theme.colors.text }]}>
                     {student.nome}
-                  </Text>
+                  </Texto>
                   {selectedStudentId === student.id ? (
                     <StatusPill label="Selecionado" tone="success" />
                   ) : null}
@@ -226,7 +227,7 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
         )
       ) : (
         <View style={styles.form}>
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Dados do aluno</Text>
+          <Texto style={[styles.secao, { color: theme.colors.text }]}>Dados do aluno</Texto>
           <VehicleTextField label="Nome completo" value={nome} onChangeText={setNome} />
           <VehicleTextField
             label="Data de nascimento (AAAA-MM-DD)"
@@ -245,10 +246,10 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
             ))}
           </View>
 
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Escola</Text>
+          <Texto style={[styles.secao, { color: theme.colors.text }]}>Escola</Texto>
           {schoolId ? (
             <VehicleCard>
-              <Text style={{ color: theme.colors.text }}>{schoolNome}</Text>
+              <Texto style={{ color: theme.colors.text }}>{schoolNome}</Texto>
               <VehicleButton
                 label="Trocar escola"
                 variant="ghost"
@@ -275,10 +276,10 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
                     }}
                   >
                     <VehicleCard>
-                      <Text style={{ color: theme.colors.text }}>{school.nomeOficial}</Text>
-                      <Text style={{ color: theme.colors.textMuted }}>
+                      <Texto style={{ color: theme.colors.text }}>{school.nomeOficial}</Texto>
+                      <Texto style={{ color: theme.colors.textMuted }}>
                         {school.cidade}/{school.estado}
-                      </Text>
+                      </Texto>
                     </VehicleCard>
                   </Pressable>
                 ))}
@@ -286,7 +287,7 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
             </>
           )}
 
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Turno</Text>
+          <Texto style={[styles.secao, { color: theme.colors.text }]}>Turno</Texto>
           <View style={styles.chipsRow}>
             {TURNO_OPTIONS.map((option) => (
               <VehicleButton
@@ -298,10 +299,12 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
             ))}
           </View>
 
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Endereço de embarque</Text>
+          <Texto style={[styles.secao, { color: theme.colors.text }]}>Endereço de embarque</Texto>
           <EnderecoFields value={embarque} onChange={setEmbarque} />
 
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Endereço de desembarque</Text>
+          <Texto style={[styles.secao, { color: theme.colors.text }]}>
+            Endereço de desembarque
+          </Texto>
           <VehicleButton
             label="Usar o mesmo endereço de embarque"
             variant="ghost"
@@ -309,7 +312,7 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
           />
           <EnderecoFields value={desembarque} onChange={setDesembarque} />
 
-          <Text style={[styles.secao, { color: theme.colors.text }]}>Observações (opcional)</Text>
+          <Texto style={[styles.secao, { color: theme.colors.text }]}>Observações (opcional)</Texto>
           <VehicleTextField
             label="Necessidades especiais"
             value={necessidadesEspeciais}
@@ -331,7 +334,7 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
         </View>
       )}
 
-      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
 
       <VehicleButton
         label="Enviar solicitação"

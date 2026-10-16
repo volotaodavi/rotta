@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -44,20 +45,20 @@ export function PanelGreeting({
 
   return (
     <View style={styles.container}>
-      <Text style={[styles.saudacao, { color: theme.colors.text }]}>
+      <Texto style={[styles.saudacao, { color: theme.colors.text }]}>
         {saudacaoPorHora(agora?.getHours() ?? 12)}, {nome}!
-      </Text>
+      </Texto>
       {subtitulo ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>{subtitulo}</Text>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>{subtitulo}</Texto>
       ) : null}
       {agora ? (
         <View style={styles.horaRow}>
-          <Text style={[styles.hora, { color: theme.colors.text }]}>
+          <Texto style={[styles.hora, { color: theme.colors.text }]}>
             {agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          </Texto>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             {agora.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long" })}
-          </Text>
+          </Texto>
         </View>
       ) : null}
     </View>

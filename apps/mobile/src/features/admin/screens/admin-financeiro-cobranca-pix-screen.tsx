@@ -1,11 +1,12 @@
 import { ApiError } from "@rotta/api-client";
 import { SectionHeader } from "@rotta/ui/native";
 import { useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 
 import { useAdminPixChargeStatus, useCreateAdminPixCharge } from "../hooks/use-admin-billing";
 import { PIX_CHARGE_STATUS_LABEL } from "../labels";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -34,7 +35,7 @@ function PixChargeResult({
   const { data: status } = useAdminPixChargeStatus(chargeId, true);
 
   if (!status) {
-    return <Text style={{ color: theme.colors.textMuted }}>Carregando QR Code…</Text>;
+    return <Texto style={{ color: theme.colors.textMuted }}>Carregando QR Code…</Texto>;
   }
 
   const imagemQrCode = status.brCodeBase64.startsWith("data:")
@@ -48,18 +49,18 @@ function PixChargeResult({
         tone={status.status === "PAID" ? "success" : "neutral"}
       />
       <Image source={{ uri: imagemQrCode }} style={styles.qrImage} />
-      <Text style={[styles.valorGrande, { color: theme.colors.text }]}>
+      <Texto style={[styles.valorGrande, { color: theme.colors.text }]}>
         {centsToBRL(status.amount)}
-      </Text>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: "center" }}>
+      </Texto>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: "center" }}>
         Código copia-e-cola (toque e segure pra selecionar e copiar):
-      </Text>
-      <Text
+      </Texto>
+      <Texto
         selectable
         style={[styles.codigoPix, { color: theme.colors.text, borderColor: theme.colors.border }]}
       >
         {status.brCode}
-      </Text>
+      </Texto>
       <VehicleButton label="Gerar outra cobrança" variant="secondary" onPress={onNova} />
     </VehicleCard>
   );
@@ -137,10 +138,10 @@ export function AdminFinanceiroCobrancaPixScreen(): JSX.Element {
     <VehicleScreen>
       <View>
         <SectionHeader title="Cobrança Pix avulsa" theme={theme} />
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Não vinculada à mensalidade de nenhuma empresa, pra receber qualquer valor por Pix direto
           na conta Asaas da Rotta.
-        </Text>
+        </Texto>
       </View>
 
       <VehicleTextField
@@ -178,7 +179,7 @@ export function AdminFinanceiroCobrancaPixScreen(): JSX.Element {
         placeholder="Motivo da cobrança"
       />
 
-      {error ? <Text style={{ color: theme.colors.danger, fontSize: 12 }}>{error}</Text> : null}
+      {error ? <Texto style={{ color: theme.colors.danger, fontSize: 12 }}>{error}</Texto> : null}
 
       <VehicleButton
         label="Gerar cobrança"

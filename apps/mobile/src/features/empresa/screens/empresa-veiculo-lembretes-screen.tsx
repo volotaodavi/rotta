@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleReminderType } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -47,9 +48,9 @@ export function EmpresaVeiculoLembretesScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo lembrete
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {TIPOS.map((value) => (
             <VehicleButton
@@ -75,22 +76,22 @@ export function EmpresaVeiculoLembretesScreen({ route }: Props): JSX.Element {
       </VehicleCard>
 
       {!reminders || reminders.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum lembrete cadastrado ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum lembrete cadastrado ainda.</Texto>
       ) : (
         reminders.map((r) => (
           <VehicleCard key={r.id} style={styles.card}>
             <View style={styles.linha}>
-              <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+              <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
                 {VEHICLE_REMINDER_TYPE_LABEL[r.tipo]}
-              </Text>
+              </Texto>
               <StatusPill
                 label={r.vencido ? "Vencido" : r.vencendo ? "Vencendo" : r.status}
                 tone={r.vencido ? "danger" : r.vencendo ? "warning" : "neutral"}
               />
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Data-alvo: {new Date(r.dataAlvo).toLocaleDateString("pt-BR")}
-            </Text>
+            </Texto>
             {r.status === "PENDENTE" ? (
               <VehicleButton
                 label="Marcar concluído"

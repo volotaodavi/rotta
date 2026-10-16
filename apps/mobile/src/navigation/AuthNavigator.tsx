@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { AuthStackParamList } from "./types";
 
 import {
@@ -17,6 +19,7 @@ import {
   LoginScreen,
 } from "@/features/auth/screens";
 import { OnboardingScreen, RoleSelectionScreen } from "@/features/intro/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -38,8 +41,12 @@ export function AuthNavigator({
 }: {
   initialRouteName?: keyof AuthStackParamList;
 }): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRouteName}>
+    <Stack.Navigator
+      screenOptions={{ ...opcoesDoCabecalho(theme), headerShown: false }}
+      initialRouteName={initialRouteName}
+    >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="SelecionarPerfil" component={RoleSelectionScreen} />
       <Stack.Screen name="Entrada" component={EntradaScreen} />

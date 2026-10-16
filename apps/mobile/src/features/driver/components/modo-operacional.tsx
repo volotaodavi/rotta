@@ -31,7 +31,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
@@ -59,6 +58,7 @@ import type {
 import type { ReactNode } from "react";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -100,19 +100,19 @@ export function ParadaCard({
       <View style={inicioStyles.paradaHeader}>
         <MapPin size={16} color={theme.colors.textMuted} />
         <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text }}>
+          <Texto style={{ color: theme.colors.text }}>
             {parada.ordem}. {parada.endereco}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          </Texto>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Previsto: {parada.horarioPrevisto}
-          </Text>
+          </Texto>
         </View>
       </View>
 
       {alunos.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Nenhum aluno embarca/desembarca aqui.
-        </Text>
+        </Texto>
       ) : (
         alunos.map((aluno) => (
           <AlunoParadaRow
@@ -307,12 +307,12 @@ export function ModoOperacionalFullScreen({
                 { backgroundColor: isActive ? accentColor : theme.colors.textMuted },
               ]}
             />
-            <Text
+            <Texto
               numberOfLines={1}
               style={{ color: theme.colors.text, fontWeight: "700", fontSize: 14, maxWidth: 110 }}
             >
               {rota.nome}
-            </Text>
+            </Texto>
             <TripElapsedTimer
               iniciadaEm={trip.iniciadaEm}
               isRunning={isActive}
@@ -326,14 +326,14 @@ export function ModoOperacionalFullScreen({
 
         {gpsAvisoTexto ? (
           <View style={[styles.fsGpsAviso, { top: insets.top + 60 }]}>
-            <Text
+            <Texto
               style={[
                 styles.fsGpsAvisoTexto,
                 { color: theme.colors.textMuted, backgroundColor: theme.colors.surfaceElevated },
               ]}
             >
               {gpsAvisoTexto}
-            </Text>
+            </Texto>
           </View>
         ) : null}
       </View>
@@ -345,10 +345,10 @@ export function ModoOperacionalFullScreen({
             style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
           >
             <Users size={14} color={theme.colors.textMuted} />
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {alunosEmbarcados}/{totalAlunos} embarcados ·{" "}
               {verTodosAlunos ? "ocultar todos" : "ver todos"}
-            </Text>
+            </Texto>
           </Pressable>
           {/* Pedido do usuário: "o botão de pausar rota deverá sair de
               onde está, pois ele está muito difícil de ser clicado" —
@@ -379,24 +379,24 @@ export function ModoOperacionalFullScreen({
           <View style={{ gap: 12 }}>
             <View style={[styles.fsAlvoHeader, { borderTopColor: theme.colors.border }]}>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
                   {chegouNaEscola ? "Próximo destino · Escola" : "Próxima parada"}
-                </Text>
-                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+                </Texto>
+                <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
                   {paradaAlvo.ordem}. {paradaAlvo.endereco}
-                </Text>
+                </Texto>
                 {proximaEta ? (
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {new Date(proximaEta.etaPrevista).toLocaleTimeString("pt-BR", {
                       hour: "2-digit",
                       minute: "2-digit",
                     })}{" "}
                     · {formatarDistancia(proximaEta.distanciaMetros)}
-                  </Text>
+                  </Texto>
                 ) : distanciaAteAlvo !== null ? (
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {formatarDistancia(distanciaAteAlvo)}
-                  </Text>
+                  </Texto>
                 ) : null}
               </View>
               <Pressable
@@ -425,9 +425,9 @@ export function ModoOperacionalFullScreen({
         ) : (
           <View style={[styles.fsConcluido, { borderTopColor: theme.colors.border }]}>
             <Check size={28} color={theme.colors.driverSuccess} />
-            <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+            <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
               Todos os alunos foram desembarcados.
-            </Text>
+            </Texto>
             {isMotorista ? (
               <View style={{ paddingTop: 8, width: "100%" }}>
                 <SlideToAction
@@ -439,18 +439,18 @@ export function ModoOperacionalFullScreen({
                 />
               </View>
             ) : (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 Aguardando o motorista finalizar a viagem.
-              </Text>
+              </Texto>
             )}
           </View>
         )}
 
         {verTodosAlunos ? (
           <View style={[styles.rosterCompleto, { borderTopColor: theme.colors.border }]}>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
               Todas as paradas da rota
-            </Text>
+            </Texto>
             {paradasOrdenadas.map((parada) => (
               <ParadaCard
                 key={parada.id}
@@ -624,13 +624,13 @@ function AlunoParadaRow({
     // não só o texto do botão trocado por "Ausente".
     <View style={[styles.alunoRowContainer, jaAusente && { opacity: 0.5 }]}>
       <View style={styles.alunoRow}>
-        <Text style={{ color: theme.colors.text, flex: 1 }}>
+        <Texto style={{ color: theme.colors.text, flex: 1 }}>
           {isEmbarque ? "Embarque" : "Desembarque"}: {student?.nome ?? "Carregando…"}
-        </Text>
+        </Texto>
         {jaOcorreu ? (
           <Check size={18} color={theme.colors.driverSuccess} />
         ) : jaAusente ? (
-          <Text style={{ color: theme.colors.driverDanger, fontSize: 12 }}>Ausente</Text>
+          <Texto style={{ color: theme.colors.driverDanger, fontSize: 12 }}>Ausente</Texto>
         ) : !formularioAusenciaAberto ? (
           <View style={styles.alunoActions}>
             <Pressable
@@ -656,9 +656,9 @@ function AlunoParadaRow({
                   ) : (
                     <LogOut size={16} color={theme.colors.onPrimary} />
                   )}
-                  <Text style={[styles.alunoActionButtonLabel, { color: theme.colors.onPrimary }]}>
+                  <Texto style={[styles.alunoActionButtonLabel, { color: theme.colors.onPrimary }]}>
                     {isEmbarque ? "Embarque" : "Desembarque"}
-                  </Text>
+                  </Texto>
                 </>
               )}
             </Pressable>
@@ -682,12 +682,12 @@ function AlunoParadaRow({
       {isEmbarque && ausenteNaIdaHoje && !jaOcorreu && !jaAusente ? (
         <View style={[styles.continuidadeAviso, { backgroundColor: `${theme.colors.warning}1a` }]}>
           <View style={{ flex: 1, gap: 2 }}>
-            <Text style={{ color: theme.colors.warning, fontSize: 11, fontWeight: "700" }}>
+            <Texto style={{ color: theme.colors.warning, fontSize: 11, fontWeight: "700" }}>
               Ausente na ida
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            </Texto>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               Continua ausente ou embarcou pra voltar?
-            </Text>
+            </Texto>
           </View>
           <Pressable
             accessibilityRole="button"
@@ -695,9 +695,9 @@ function AlunoParadaRow({
             onPress={() => addEvent.mutate({ studentId: aluno.studentId, tipo: "AUSENTE" })}
             style={{ opacity: podeOperar ? 1 : 0.4 }}
           >
-            <Text style={{ color: theme.colors.driverDanger, fontSize: 12, fontWeight: "700" }}>
+            <Texto style={{ color: theme.colors.driverDanger, fontSize: 12, fontWeight: "700" }}>
               Confirmar ausência
-            </Text>
+            </Texto>
           </Pressable>
         </View>
       ) : null}
@@ -707,9 +707,9 @@ function AlunoParadaRow({
           obrigatório pra confirmar a ausência. */}
       {formularioAusenciaAberto && isEmbarque ? (
         <View style={[styles.ausenciaForm, { backgroundColor: theme.colors.muted }]}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Motivo da ausência (opcional)
-          </Text>
+          </Texto>
           <View style={styles.ausenciaPresetsRow}>
             {MOTIVO_AUSENCIA_PRESETS.map((preset) => (
               <Pressable
@@ -725,7 +725,7 @@ function AlunoParadaRow({
                   },
                 ]}
               >
-                <Text
+                <Texto
                   style={{
                     fontSize: 12,
                     color:
@@ -735,7 +735,7 @@ function AlunoParadaRow({
                   }}
                 >
                   {preset}
-                </Text>
+                </Texto>
               </Pressable>
             ))}
           </View>
@@ -760,9 +760,11 @@ function AlunoParadaRow({
               {addEvent.isPending ? (
                 <ActivityIndicator size="small" color={theme.colors.driverDanger} />
               ) : (
-                <Text style={{ color: theme.colors.driverDanger, fontSize: 14, fontWeight: "600" }}>
+                <Texto
+                  style={{ color: theme.colors.driverDanger, fontSize: 14, fontWeight: "600" }}
+                >
                   Confirmar ausência
-                </Text>
+                </Texto>
               )}
             </Pressable>
             <Pressable
@@ -771,17 +773,17 @@ function AlunoParadaRow({
                 setMotivoAusencia("");
               }}
             >
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Cancelar</Text>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Cancelar</Texto>
             </Pressable>
           </View>
         </View>
       ) : null}
 
       {longeDemais ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Aproxime-se até 1km do local para liberar o botão
           {distanciaMetros !== null ? ` (você está a ${formatarDistancia(distanciaMetros)})` : ""}.
-        </Text>
+        </Texto>
       ) : null}
     </View>
   );

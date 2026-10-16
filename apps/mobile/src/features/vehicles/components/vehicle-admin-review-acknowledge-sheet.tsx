@@ -1,6 +1,7 @@
 import { BottomSheet } from "@rotta/ui/native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { AuthButton } from "@/features/auth/components";
 import {
   useAcknowledgeVehicleAdminReview,
@@ -34,10 +35,10 @@ export function VehicleAdminReviewAcknowledgeSheet(): JSX.Element | null {
       title={`Aviso sobre o veículo ${pending.placa}`}
     >
       <View style={[styles.content, { padding: theme.spacing[6] }]}>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           A Rotta do Brasil analisou este veículo e tem uma observação para você.
-        </Text>
-        <Text style={[styles.body, { color: theme.colors.text }]}>{pending.observacao}</Text>
+        </Texto>
+        <Texto style={[styles.body, { color: theme.colors.text }]}>{pending.observacao}</Texto>
         <AuthButton
           label="Li e concordo"
           isLoading={acknowledge.isPending}

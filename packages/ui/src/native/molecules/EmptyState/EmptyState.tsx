@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -113,11 +114,12 @@ const styles = StyleSheet.create({
     width: 64,
   },
   titulo: {
+    fontFamily: fonteNativa(700),
     fontSize: 17,
-    fontWeight: "700",
     textAlign: "center",
   },
   descricao: {
+    fontFamily: fonteNativa(400),
     fontSize: 14,
     lineHeight: 20,
     /* Centralizado e com largura contida: frase longa esticada de ponta
@@ -131,7 +133,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   textoBotao: {
+    fontFamily: fonteNativa(600),
     fontSize: 15,
-    fontWeight: "600",
   },
 });

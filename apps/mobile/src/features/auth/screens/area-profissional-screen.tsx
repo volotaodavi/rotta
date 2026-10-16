@@ -1,11 +1,12 @@
 import { Building2, Car, Mail } from "@rotta/icons/native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { AuthScreen, RoleOptionCard } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "AreaProfissional">;
@@ -43,17 +44,17 @@ export function AreaProfissionalScreen({ navigation }: Props): JSX.Element {
   return (
     <AuthScreen>
       <View style={styles.headingBlock}>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Área Profissional
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Empresas, MEIs e motoristas autônomos.
-        </Text>
+        </Texto>
       </View>
 
       <RoleOptionCard

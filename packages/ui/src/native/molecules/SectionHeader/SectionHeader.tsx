@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -67,12 +68,12 @@ const styles = StyleSheet.create({
   },
   titulo: {
     flexShrink: 1,
+    fontFamily: fonteNativa(700),
     fontSize: 16,
-    fontWeight: "700",
     letterSpacing: -0.2,
   },
   acao: {
+    fontFamily: fonteNativa(600),
     fontSize: 13,
-    fontWeight: "600",
   },
 });

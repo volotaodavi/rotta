@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { EmpresaFrotaStackParamList } from "./types";
 
 import {
@@ -15,6 +17,7 @@ import {
   EmpresaVeiculoOcorrenciasScreen,
   EmpresaVeiculoVinculosScreen,
 } from "@/features/empresa/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<EmpresaFrotaStackParamList>();
 
@@ -24,8 +27,9 @@ const Stack = createNativeStackNavigator<EmpresaFrotaStackParamList>();
  * tempo real, antes só existia pra escolas/transportadores).
  */
 export function EmpresaFrotaNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen name="Lista" component={EmpresaFrotaListaScreen} options={{ title: "Frota" }} />
       <Stack.Screen
         name="Detalhe"

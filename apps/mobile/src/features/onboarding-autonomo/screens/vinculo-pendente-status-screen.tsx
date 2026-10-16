@@ -1,11 +1,12 @@
 import { useAuth } from "@rotta/auth/native";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { useMyJoinRequest } from "../hooks/use-join-request";
 
 import type { VinculoPendenteStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useMyIdentityVerification } from "@/features/driver/hooks/use-identity-verification";
 import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
@@ -40,20 +41,22 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
 
   return (
     <VehicleScreen>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>
         Olá, {user?.nome?.split(" ")[0] ?? "tudo bem"}
-      </Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      </Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Falta pouco pra você começar a usar a Rotta como{" "}
         {user?.role === "monitor" ? "monitor" : "motorista"}.
-      </Text>
+      </Texto>
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>1. Verificação de identidade</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>
+        1. Verificação de identidade
+      </Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         {isLoadingIdentity
           ? "Carregando…"
           : (IDENTITY_STATUS_LABEL[identity?.status ?? "NAO_INICIADA"] ?? identity?.status)}
-      </Text>
+      </Texto>
       {!identityAprovada ? (
         <VehicleButton
           label={
@@ -64,33 +67,33 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         />
       ) : null}
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>
         2. Vínculo com uma transportadora
-      </Text>
+      </Texto>
       {isLoadingRequest ? (
-        <Text style={{ color: theme.colors.textMuted }}>Carregando…</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Carregando…</Texto>
       ) : !joinRequest ? (
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Você ainda não informou o código de nenhuma transportadora.
-        </Text>
+        </Texto>
       ) : joinRequest.status === "PENDENTE" ? (
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Pedido enviado para {joinRequest.companyName}, aguardando a empresa aprovar.
-        </Text>
+        </Texto>
       ) : joinRequest.status === "RECUSADO" ? (
         <>
-          <Text style={{ color: theme.colors.danger }}>
+          <Texto style={{ color: theme.colors.danger }}>
             {joinRequest.companyName} recusou seu pedido
             {joinRequest.motivoRecusa ? `: ${joinRequest.motivoRecusa}` : "."}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted }}>
+          </Texto>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Você pode informar o código de outra transportadora.
-          </Text>
+          </Texto>
         </>
       ) : (
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Pedido aprovado por {joinRequest.companyName}, entre novamente pra acessar.
-        </Text>
+        </Texto>
       )}
 
       {/*
@@ -107,11 +110,13 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         identidade refeita. Agora a conversão acontece na mesma conta,
         em `ConverterEmTransportadora`.
       */}
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Trabalha por conta própria?</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>
+        Trabalha por conta própria?
+      </Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Autônomo e MEI são a própria transportadora e não precisam de código nenhum. Sua conta e sua
         verificação de identidade continuam as mesmas.
-      </Text>
+      </Texto>
       <VehicleButton
         label="Criar minha transportadora"
         variant="secondary"
@@ -126,9 +131,9 @@ export function VinculoPendenteStatusScreen({ navigation }: Props): JSX.Element 
         />
       ) : null}
       {!identityAprovada && (!joinRequest || joinRequest.status === "RECUSADO") ? (
-        <Text style={[styles.nota, { color: theme.colors.textMuted }]}>
+        <Texto style={[styles.nota, { color: theme.colors.textMuted }]}>
           Conclua a verificação de identidade antes de informar o código.
-        </Text>
+        </Texto>
       ) : null}
 
       <VehicleButton label="Sair" variant="secondary" onPress={() => void logout()} />

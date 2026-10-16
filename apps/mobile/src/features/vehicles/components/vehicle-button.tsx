@@ -1,7 +1,8 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import type { ReactNode } from "react";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type VehicleButtonVariant = "primary" | "secondary" | "ghost" | "danger";
@@ -86,11 +87,11 @@ export function VehicleButton({
       ) : (
         <View style={styles.content}>
           {icon}
-          <Text
+          <Texto
             style={[styles.label, { color: textColor, fontSize: theme.typography.button.fontSize }]}
           >
             {label}
-          </Text>
+          </Texto>
         </View>
       )}
     </Pressable>

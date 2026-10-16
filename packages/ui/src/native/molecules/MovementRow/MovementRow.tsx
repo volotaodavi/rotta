@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -122,10 +123,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   titulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 14,
-    fontWeight: "600",
   },
   subtitulo: {
+    fontFamily: fonteNativa(400),
     fontSize: 12,
     marginTop: 2,
   },
@@ -133,11 +135,12 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   valor: {
+    fontFamily: fonteNativa(700),
     fontSize: 14,
     fontVariant: ["tabular-nums"],
-    fontWeight: "700",
   },
   data: {
+    fontFamily: fonteNativa(400),
     fontSize: 11,
     fontVariant: ["tabular-nums"],
     marginTop: 2,

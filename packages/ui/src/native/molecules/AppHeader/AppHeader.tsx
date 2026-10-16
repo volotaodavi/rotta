@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -165,8 +166,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   titulo: {
+    fontFamily: fonteNativa(700),
     fontSize: 17,
-    fontWeight: "700",
   },
   perfil: {
     alignItems: "center",
@@ -174,6 +175,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   perfilTexto: {
+    fontFamily: fonteNativa(400),
     fontSize: 12,
   },
   direita: {
@@ -190,8 +192,8 @@ const styles = StyleSheet.create({
     top: -6,
   },
   bolinhaTexto: {
+    fontFamily: fonteNativa(700),
     fontSize: 10,
-    fontWeight: "700",
   },
   avatar: {
     alignItems: "center",
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
     width: 36,
   },
   avatarTexto: {
+    fontFamily: fonteNativa(700),
     fontSize: 13,
-    fontWeight: "700",
   },
 });

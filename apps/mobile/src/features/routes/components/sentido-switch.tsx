@@ -1,8 +1,9 @@
 import { ArrowLeftRight, Home, School } from "@rotta/icons/native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import type { TripSentido } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 export const TRIP_SENTIDO_LABEL: Record<TripSentido, string> = {
@@ -64,21 +65,21 @@ export function SentidoSwitch({
         ]}
       >
         <Icone size={16} color={ativo ? theme.colors.onPrimary : theme.colors.textMuted} />
-        <Text
+        <Texto
           style={[
             styles.ladoLabel,
             { color: ativo ? theme.colors.onPrimary : theme.colors.textMuted },
           ]}
         >
           {TRIP_SENTIDO_LABEL[sentido]}
-        </Text>
+        </Texto>
       </Pressable>
     );
   }
 
   return (
     <View style={styles.bloco}>
-      <Text style={[styles.rotulo, { color: theme.colors.textMuted }]}>Sentido</Text>
+      <Texto style={[styles.rotulo, { color: theme.colors.textMuted }]}>Sentido</Texto>
       <View style={styles.linha}>
         {renderLado("IDA", School)}
         {/* A seta também alterna: é o gesto mais natural depois de ler
@@ -94,9 +95,9 @@ export function SentidoSwitch({
         </Pressable>
         {renderLado("VOLTA", Home)}
       </View>
-      <Text style={[styles.descricao, { color: theme.colors.textMuted }]}>
+      <Texto style={[styles.descricao, { color: theme.colors.textMuted }]}>
         {TRIP_SENTIDO_DESCRICAO[value]}
-      </Text>
+      </Texto>
     </View>
   );
 }

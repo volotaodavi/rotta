@@ -1,9 +1,11 @@
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { render, waitFor } from "@testing-library/react-native";
-import { Text } from "react-native";
+import {} from "react-native";
 
 import { navegacaoRef, telaAtual } from "../tela-atual";
+
+import { Texto } from "@/components/texto";
 
 /**
  * O relatório de erro tem que dizer QUAL tela quebrou.
@@ -26,7 +28,7 @@ import { navegacaoRef, telaAtual } from "../tela-atual";
 const Stack = createNativeStackNavigator();
 
 function TelaFalsa(): JSX.Element {
-  return <Text>conteudo</Text>;
+  return <Texto>conteudo</Texto>;
 }
 
 describe("telaAtual", () => {

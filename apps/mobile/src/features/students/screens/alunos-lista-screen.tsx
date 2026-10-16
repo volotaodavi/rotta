@@ -1,10 +1,11 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useStudentsList } from "../hooks/use-students";
 
 import type { ParentPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
@@ -34,7 +35,7 @@ export function AlunosListaScreen({ navigation }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar seus alunos.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar seus alunos.</Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -45,7 +46,7 @@ export function AlunosListaScreen({ navigation }: Props): JSX.Element {
       <VehicleButton label="+ Adicionar aluno" onPress={() => navigation.navigate("AlunoNovo")} />
 
       {!data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum aluno cadastrado ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum aluno cadastrado ainda.</Texto>
       ) : (
         data.items.map((aluno) => (
           <Pressable
@@ -53,10 +54,10 @@ export function AlunosListaScreen({ navigation }: Props): JSX.Element {
             onPress={() => navigation.navigate("AlunoDetalhe", { studentId: aluno.id })}
           >
             <VehicleCard>
-              <Text style={[styles.nome, { color: theme.colors.text }]}>{aluno.nome}</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              <Texto style={[styles.nome, { color: theme.colors.text }]}>{aluno.nome}</Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {SCHOOL_SHIFT_LABEL[aluno.turno]}
-              </Text>
+              </Texto>
             </VehicleCard>
           </Pressable>
         ))

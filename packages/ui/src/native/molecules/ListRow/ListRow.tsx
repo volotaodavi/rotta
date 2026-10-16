@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -189,14 +190,16 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   rotulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 14,
-    fontWeight: "600",
   },
   descricao: {
+    fontFamily: fonteNativa(400),
     fontSize: 12,
     marginTop: 2,
   },
   valor: {
+    fontFamily: fonteNativa(400),
     fontSize: 13,
     fontVariant: ["tabular-nums"],
   },

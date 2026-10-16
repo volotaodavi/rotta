@@ -1,6 +1,6 @@
 import { Star } from "@rotta/icons/native";
 import { useEffect } from "react";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 
 import {
   useDeleteNotification,
@@ -14,6 +14,7 @@ import { COMMUNICATION_CHANNEL_LABEL, NOTIFICATION_PRIORITY_TONE, iconeDoTipo } 
 import type { NotificationsStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -75,9 +76,9 @@ export function DetalhesScreen({ route, navigation }: Props): JSX.Element {
   if (isError || !notification) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar esta notificação.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -89,23 +90,23 @@ export function DetalhesScreen({ route, navigation }: Props): JSX.Element {
       <VehicleCard>
         <View style={styles.linhaTitulo}>
           <TipoIcone size={22} color={theme.colors.text} />
-          <Text style={[styles.titulo, { color: theme.colors.text }]}>{notification.titulo}</Text>
+          <Texto style={[styles.titulo, { color: theme.colors.text }]}>{notification.titulo}</Texto>
         </View>
         <StatusPill
           label={notification.prioridade}
           tone={NOTIFICATION_PRIORITY_TONE[notification.prioridade]}
         />
-        <Text style={{ color: theme.colors.text }}>{notification.corpo}</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Texto style={{ color: theme.colors.text }}>{notification.corpo}</Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           {new Date(notification.createdAt).toLocaleString("pt-BR")}
-        </Text>
+        </Texto>
         {notification.canaisEscolhidos.length > 0 ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Enviada por:{" "}
             {notification.canaisEscolhidos
               .map((canal) => COMMUNICATION_CHANNEL_LABEL[canal])
               .join(", ")}
-          </Text>
+          </Texto>
         ) : null}
       </VehicleCard>
 

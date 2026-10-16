@@ -2,13 +2,14 @@ import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { FilterTabs, SectionHeader } from "@rotta/ui/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useCreateAdminTransfer } from "../hooks/use-admin-billing";
 import { PIX_KEY_TYPE_LABEL } from "../labels";
 
 import type { PixKeyType } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   VehicleButton,
   VehicleCard,
@@ -61,9 +62,9 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
   if ((user?.adminPapel ?? "GERAL") !== "GERAL") {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Transferências são restritas ao papel Geral.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -108,14 +109,14 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
       <VehicleScreen>
         <SectionHeader title="Confirmar transferência" theme={theme} />
         <VehicleCard>
-          <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+          <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
             Confirmar transferência de {centsToBRL(valorCentavos)} para a chave{" "}
             {PIX_KEY_TYPE_LABEL[tipoChavePix].toLowerCase()} {chavePix}?
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          </Texto>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Essa ação move dinheiro de verdade pra fora da conta da Rotta e fica registrada na
             Auditoria.
-          </Text>
+          </Texto>
         </VehicleCard>
         <VehicleButton
           label="Confirmar e transferir"
@@ -157,9 +158,9 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
         de chave estava selecionado.
       */}
       <View style={styles.chipsContainer}>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" }}>
           Tipo de chave
-        </Text>
+        </Texto>
         <FilterTabs
           options={TIPOS.map((tipo) => ({ key: tipo, label: PIX_KEY_TYPE_LABEL[tipo] }))}
           value={tipoChavePix}
@@ -175,9 +176,9 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
         placeholder="Motivo da transferência"
       />
 
-      {error ? <Text style={{ color: theme.colors.danger, fontSize: 12 }}>{error}</Text> : null}
+      {error ? <Texto style={{ color: theme.colors.danger, fontSize: 12 }}>{error}</Texto> : null}
       {success ? (
-        <Text style={{ color: theme.colors.success, fontSize: 12 }}>{success}</Text>
+        <Texto style={{ color: theme.colors.success, fontSize: 12 }}>{success}</Texto>
       ) : null}
 
       <VehicleButton label="Transferir" onPress={handleIniciar} />

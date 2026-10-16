@@ -2,7 +2,7 @@ import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   AuthButton,
@@ -15,6 +15,7 @@ import {
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { authApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -84,34 +85,34 @@ export function ConvitePreviewScreen({ route }: Props): JSX.Element {
   if (isError || !preview) {
     return (
       <AuthScreen>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Convite inválido
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Este código não existe, expirou ou já foi utilizado. Peça um novo convite.
-        </Text>
+        </Texto>
       </AuthScreen>
     );
   }
 
   return (
     <AuthScreen>
-      <Text
+      <Texto
         style={[
           styles.title,
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
         Complete seu cadastro
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         Convite de {preview.companyName} para atuar como {ROLE_LABEL[preview.role] ?? preview.role}.
-      </Text>
+      </Texto>
 
       <AuthTextField label="Nome completo" value={nome} onChangeText={setNome} />
       <AuthTextField
@@ -138,7 +139,7 @@ export function ConvitePreviewScreen({ route }: Props): JSX.Element {
       <AuthTermsCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
 
       {errorMessage ? (
-        <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
+        <Texto style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Texto>
       ) : null}
 
       <AuthButton

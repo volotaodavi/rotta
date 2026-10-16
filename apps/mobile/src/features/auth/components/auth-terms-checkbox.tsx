@@ -1,9 +1,10 @@
 import { Check, X } from "@rotta/icons/native";
 import { useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
+import { Texto } from "@/components/texto";
 import { env } from "@/config/env";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -50,23 +51,23 @@ export function AuthTermsCheckbox({
       >
         {checked ? <Check size={13} color={theme.colors.onPrimary} strokeWidth={3} /> : null}
       </Pressable>
-      <Text style={[styles.label, { color: theme.colors.textMuted }]}>
+      <Texto style={[styles.label, { color: theme.colors.textMuted }]}>
         Li e aceito os{" "}
-        <Text
+        <Texto
           style={{ color: theme.colors.primary, fontWeight: "600" }}
           onPress={() => setDocumento("termos")}
         >
           Termos de Uso
-        </Text>{" "}
+        </Texto>{" "}
         e a{" "}
-        <Text
+        <Texto
           style={{ color: theme.colors.primary, fontWeight: "600" }}
           onPress={() => setDocumento("privacidade")}
         >
           Política de Privacidade
-        </Text>{" "}
+        </Texto>{" "}
         da Rotta.
-      </Text>
+      </Texto>
 
       <Modal
         visible={documento !== null}
@@ -81,9 +82,9 @@ export function AuthTermsCheckbox({
               { borderBottomColor: theme.colors.border, paddingTop: insets.top + 8 },
             ]}
           >
-            <Text style={[styles.webviewTitle, { color: theme.colors.text }]}>
+            <Texto style={[styles.webviewTitle, { color: theme.colors.text }]}>
               {documento === "termos" ? "Termos de Uso" : "Política de Privacidade"}
-            </Text>
+            </Texto>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Fechar"

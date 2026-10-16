@@ -4,6 +4,7 @@ import { Bell, Bus, Home, Route, User } from "@rotta/icons/native";
 import { EmpresaFrotaNavigator } from "./EmpresaFrotaNavigator";
 import { EmpresaHomeNavigator } from "./EmpresaHomeNavigator";
 import { EmpresaRotasNavigator } from "./EmpresaRotasNavigator";
+import { opcoesDaBarraDeAbas, opcoesDoCabecalhoDeAba, SeloDeAba } from "./estilo-da-navegacao";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { EmpresaTabParamList } from "./types";
@@ -12,6 +13,7 @@ import { RottaSymbol } from "@/components/rotta-symbol";
 import { usePendingJoinRequests } from "@/features/empresa/hooks/use-empresa-team";
 import { EmpresaPerfilScreen } from "@/features/empresa/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
+import { useTheme } from "@/providers/theme-provider";
 
 const Tab = createBottomTabNavigator<EmpresaTabParamList>();
 
@@ -34,6 +36,7 @@ const Tab = createBottomTabNavigator<EmpresaTabParamList>();
  * é agnóstica).
  */
 export function EmpresaNavigator(): JSX.Element {
+  const { theme } = useTheme();
   const { data: naoLidas } = useUnreadNotificationsCount();
   // Frente 5 fechou o placeholder deixado na Frente 1: badge da aba
   // Início = contagem de pedidos de vínculo pendentes (ação real,
@@ -41,7 +44,14 @@ export function EmpresaNavigator(): JSX.Element {
   const { data: pedidosPendentes } = usePendingJoinRequests();
 
   return (
-    <Tab.Navigator initialRouteName="Inicio" screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      initialRouteName="Inicio"
+      screenOptions={{
+        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDoCabecalhoDeAba(theme),
+        headerShown: false,
+      }}
+    >
       <Tab.Screen
         name="Inicio"
         component={EmpresaHomeNavigator}
@@ -49,8 +59,15 @@ export function EmpresaNavigator(): JSX.Element {
           tabBarLabel: "Início",
           tabBarBadge:
             pedidosPendentes && pedidosPendentes.length > 0 ? pedidosPendentes.length : undefined,
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="house.fill" fallback={Home} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="house.fill"
+                fallback={Home}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -58,8 +75,15 @@ export function EmpresaNavigator(): JSX.Element {
         name="Frota"
         component={EmpresaFrotaNavigator}
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="bus.fill" fallback={Bus} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="bus.fill"
+                fallback={Bus}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -67,13 +91,15 @@ export function EmpresaNavigator(): JSX.Element {
         name="Rotas"
         component={EmpresaRotasNavigator}
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol
-              ios="arrow.triangle.turn.up.right.diamond.fill"
-              fallback={Route}
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="arrow.triangle.turn.up.right.diamond.fill"
+                fallback={Route}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -83,8 +109,15 @@ export function EmpresaNavigator(): JSX.Element {
         options={{
           tabBarLabel: "Notificações",
           tabBarBadge: naoLidas ? naoLidas : undefined,
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="bell.fill" fallback={Bell} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="bell.fill"
+                fallback={Bell}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -94,8 +127,15 @@ export function EmpresaNavigator(): JSX.Element {
         options={{
           headerShown: true,
           title: "Perfil",
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="person.fill" fallback={User} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="person.fill"
+                fallback={User}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />

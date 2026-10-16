@@ -2,7 +2,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
 import { Timeline } from "@rotta/ui/native";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useStudent } from "../hooks/use-students";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
@@ -13,6 +13,7 @@ import { AcompanhamentoSection, TripTrackingOverlay } from "./transporte-inicio-
 import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -72,17 +73,17 @@ export function ParentInicioScreen(): JSX.Element {
             perfil, e uma foto inventada seria pior que a inicial. */}
         <View style={styles.header}>
           <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted }]}>
-            <Text style={[styles.avatarLabel, { color: theme.colors.primary }]}>
+            <Texto style={[styles.avatarLabel, { color: theme.colors.primary }]}>
               {iniciais(user?.nome)}
-            </Text>
+            </Texto>
           </View>
           <View style={styles.headerTexto}>
-            <Text style={[styles.saudacao, { color: theme.colors.text }]}>
+            <Texto style={[styles.saudacao, { color: theme.colors.text }]}>
               {primeiroNome ? `Olá, ${primeiroNome}!` : "Olá!"}
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            </Texto>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Acompanhe o transporte do seu filho.
-            </Text>
+            </Texto>
           </View>
         </View>
 
@@ -104,19 +105,19 @@ export function ParentInicioScreen(): JSX.Element {
           <VehicleCard>
             <View style={styles.carregando}>
               <ActivityIndicator color={theme.colors.primary} />
-              <Text style={{ color: theme.colors.textMuted, flex: 1 }}>
+              <Texto style={{ color: theme.colors.textMuted, flex: 1 }}>
                 Buscando as informações do transporte.
-              </Text>
+              </Texto>
             </View>
           </VehicleCard>
         ) : semTransporte ? (
           <VehicleCard>
-            <Text style={[styles.tituloEstado, { color: theme.colors.text }]}>
+            <Texto style={[styles.tituloEstado, { color: theme.colors.text }]}>
               Você ainda não tem transporte escolar
-            </Text>
-            <Text style={{ color: theme.colors.textMuted }}>
+            </Texto>
+            <Texto style={{ color: theme.colors.textMuted }}>
               Busque um transportador próximo de você para solicitar o transporte do seu filho.
-            </Text>
+            </Texto>
             <VehicleButton
               label="Buscar transportadores"
               onPress={() => navigation.navigate("Mapa")}
@@ -124,13 +125,13 @@ export function ParentInicioScreen(): JSX.Element {
           </VehicleCard>
         ) : (
           <>
-            <Text style={[styles.tituloEstado, { color: theme.colors.text }]}>
+            <Texto style={[styles.tituloEstado, { color: theme.colors.text }]}>
               {state === "TRANSPORTE_ATIVO"
                 ? "Viagem em andamento"
                 : aluno
                   ? `Transporte de ${aluno.nome.split(" ")[0]}`
                   : "Seu transporte"}
-            </Text>
+            </Texto>
 
             {state === "SOLICITACAO_PENDENTE"
               ? solicitacoesPendentes.map((request) => (
@@ -144,9 +145,9 @@ export function ParentInicioScreen(): JSX.Element {
               <VehicleCard>
                 <Timeline steps={buildContratoSteps(ultimoContrato ?? null)} theme={theme} />
                 {solicitacaoAprovadaSemContrato ? (
-                  <Text style={{ color: theme.colors.textMuted, marginTop: theme.spacing[2] }}>
+                  <Texto style={{ color: theme.colors.textMuted, marginTop: theme.spacing[2] }}>
                     Sua solicitação foi aprovada. O transportador vai gerar o contrato em breve.
-                  </Text>
+                  </Texto>
                 ) : null}
               </VehicleCard>
             ) : null}

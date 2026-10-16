@@ -7,10 +7,11 @@
  * de fato tenta renderizar os filhos de novo.
  */
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { Text } from "react-native";
+import {} from "react-native";
 
 import { AppErrorBoundary } from "./app-error-boundary";
 
+import { Texto } from "@/components/texto";
 import { clientErrorsApi } from "@/lib/api-client";
 
 jest.mock("@/lib/api-client", () => ({
@@ -28,7 +29,7 @@ function BombaControlada({ deveLancar }: { deveLancar: boolean }): JSX.Element {
   if (deveLancar) {
     throw new Error("Falha proposital do teste");
   }
-  return <Text>Conteúdo normal</Text>;
+  return <Texto>Conteúdo normal</Texto>;
 }
 
 let tentativasRestantes = 0;
@@ -39,7 +40,7 @@ function BombaTransitoria(): JSX.Element {
     tentativasRestantes -= 1;
     throw new Error("Falha transitória");
   }
-  return <Text>Recuperado</Text>;
+  return <Texto>Recuperado</Texto>;
 }
 
 // A própria implementação do React loga o erro capturado no console
@@ -59,7 +60,7 @@ describe("AppErrorBoundary", () => {
   it("renderiza os filhos normalmente quando nada quebra", () => {
     render(
       <AppErrorBoundary>
-        <Text>Tudo certo</Text>
+        <Texto>Tudo certo</Texto>
       </AppErrorBoundary>,
     );
     expect(screen.getByText("Tudo certo")).toBeTruthy();

@@ -1,8 +1,9 @@
 import { ChevronRight } from "@rotta/icons/native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import type { ComponentType } from "react";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 export interface MenuRowItem {
@@ -52,7 +53,7 @@ export function MenuRowList({ items }: { items: MenuRowItem[] }): JSX.Element {
               style={({ pressed }) => [styles.linhaSolta, pressed ? styles.pressionada : null]}
             >
               <Icone size={22} color={theme.colors.danger} />
-              <Text style={[styles.label, { color: theme.colors.danger }]}>{item.label}</Text>
+              <Texto style={[styles.label, { color: theme.colors.danger }]}>{item.label}</Texto>
             </Pressable>
           );
         }
@@ -76,7 +77,7 @@ export function MenuRowList({ items }: { items: MenuRowItem[] }): JSX.Element {
             ]}
           >
             <Icone size={22} color={theme.colors.text} />
-            <Text style={[styles.label, { color: theme.colors.text }]}>{item.label}</Text>
+            <Texto style={[styles.label, { color: theme.colors.text }]}>{item.label}</Texto>
             <ChevronRight size={18} color={theme.colors.textMuted} />
           </Pressable>
         );

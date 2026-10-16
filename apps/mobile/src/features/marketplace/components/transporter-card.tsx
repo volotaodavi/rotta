@@ -1,8 +1,9 @@
 import { ChevronRight, Star } from "@rotta/icons/native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { TransporterCard as TransporterCardData } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { StatusPill, VehicleCard } from "@/features/vehicles/components";
 import { VEHICLE_CATEGORY_LABEL, VEHICLE_CATEGORY_TONE } from "@/features/vehicles/labels";
 import { useTheme } from "@/providers/theme-provider";
@@ -26,15 +27,15 @@ export function TransporterCard({
   return (
     <VehicleCard>
       <View style={styles.header}>
-        <Text style={[styles.nome, { color: theme.colors.text }]}>
+        <Texto style={[styles.nome, { color: theme.colors.text }]}>
           {transportador.nomeFantasia}
-        </Text>
+        </Texto>
         {transportador.verificado ? <StatusPill label="Verificado" tone="success" /> : null}
       </View>
 
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={{ color: theme.colors.textMuted }}>
         {transportador.distanciaKm.toFixed(1)} km de distância
-      </Text>
+      </Texto>
 
       {/* Modalidade real da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE ESCOLAR):
           nunca inferida da categoria da CNH de um motorista, sempre da frota
@@ -64,9 +65,9 @@ export function TransporterCard({
             ),
           )
         ) : (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Modalidade não informada
-          </Text>
+          </Texto>
         )}
       </View>
 
@@ -74,29 +75,29 @@ export function TransporterCard({
         {transportador.avaliacaoMedia !== null ? (
           <View style={styles.avaliacao}>
             <Star size={13} color={theme.colors.textMuted} fill={theme.colors.textMuted} />
-            <Text style={{ color: theme.colors.textMuted }}>
+            <Texto style={{ color: theme.colors.textMuted }}>
               {transportador.avaliacaoMedia.toFixed(1)} ({transportador.totalAvaliacoes})
-            </Text>
+            </Texto>
           </View>
         ) : (
-          <Text style={{ color: theme.colors.textMuted }}>Sem avaliações ainda</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Sem avaliações ainda</Texto>
         )}
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {transportador.veiculosAtivos} veículo(s)
-        </Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {transportador.alunosTransportados} aluno(s)
-        </Text>
+        </Texto>
       </View>
 
-      <Text style={[styles.mensalidade, { color: theme.colors.primary }]}>
+      <Texto style={[styles.mensalidade, { color: theme.colors.primary }]}>
         {transportador.mensalidadeAPartirDeCentavos !== null
           ? `A partir de R$ ${(transportador.mensalidadeAPartirDeCentavos / 100).toFixed(2)}/mês`
           : "Consulte a mensalidade"}
-      </Text>
+      </Texto>
 
       <View style={[styles.cta, { borderColor: theme.colors.border }]}>
-        <Text style={[styles.ctaLabel, { color: theme.colors.primary }]}>Conhecer empresa</Text>
+        <Texto style={[styles.ctaLabel, { color: theme.colors.primary }]}>Conhecer empresa</Texto>
         <ChevronRight size={16} color={theme.colors.primary} />
       </View>
     </VehicleCard>

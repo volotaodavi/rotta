@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { useCreateJoinRequest } from "../hooks/use-join-request";
 
 import type { VinculoPendenteStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleScreen, VehicleTextField } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -33,11 +34,11 @@ export function InformarCodigoVinculoScreen({ navigation }: Props): JSX.Element 
 
   return (
     <VehicleScreen>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>Código da transportadora</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>Código da transportadora</Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Peça à transportadora o código dela (a mesma tela onde ela mostra pros responsáveis) e
         informe aqui pra pedir vínculo.
-      </Text>
+      </Texto>
 
       <VehicleTextField
         label="Código"
@@ -48,10 +49,10 @@ export function InformarCodigoVinculoScreen({ navigation }: Props): JSX.Element 
       />
 
       {criar.isError ? (
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Nenhuma transportadora encontrada com esse código, ou você já tem um pedido pendente.
           Confira e tente de novo.
-        </Text>
+        </Texto>
       ) : null}
 
       <VehicleButton

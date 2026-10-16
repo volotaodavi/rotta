@@ -1,6 +1,6 @@
 import { ApiError, type SchoolShift, type StudentSex } from "@rotta/api-client";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useDeleteStudent,
@@ -14,6 +14,7 @@ import {
 import type { ParentPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import { STUDENT_SEX_LABEL } from "@/features/students/labels";
 import {
@@ -83,7 +84,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
   if (isError || !student) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar este aluno.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar este aluno.</Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -144,9 +145,9 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Dados do aluno
-        </Text>
+        </Texto>
         <VehicleTextField label="Nome completo" value={nome} onChangeText={setNome} />
         <VehicleTextField
           label="Data de nascimento (AAAA-MM-DD)"
@@ -176,20 +177,20 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Endereços
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Embarque: {student.embarqueLogradouro}, {student.embarqueNumero}, {student.embarqueBairro}
           , {student.embarqueCidade}/{student.embarqueEstado}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Desembarque: {student.desembarqueLogradouro}, {student.desembarqueNumero},{" "}
           {student.desembarqueBairro}, {student.desembarqueCidade}/{student.desembarqueEstado}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Para alterar um endereço, fale com o suporte pelos Chamados.
-        </Text>
+        </Texto>
         <VehicleButton
           label="Vai levar/buscar num endereço diferente algum dia?"
           variant="ghost"
@@ -198,9 +199,9 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Escola
-        </Text>
+        </Texto>
         <VehicleButton
           label="Ver escola"
           variant="secondary"
@@ -209,14 +210,14 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Ausência de hoje
-        </Text>
+        </Texto>
         {ausenciaHoje ? (
           <>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {student.nome} está marcado como ausente hoje. O motorista vai pular a parada dele.
-            </Text>
+            </Texto>
             <VehicleButton
               label="Desmarcar ausência"
               variant="secondary"
@@ -226,9 +227,9 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
           </>
         ) : (
           <>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Se {student.nome} não vai ter transporte hoje, avise antes da viagem começar.
-            </Text>
+            </Texto>
             <VehicleButton
               label="Meu filho não vai hoje"
               variant="danger"
@@ -237,13 +238,13 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
             />
           </>
         )}
-        {absenceError ? <Text style={{ color: theme.colors.danger }}>{absenceError}</Text> : null}
+        {absenceError ? <Texto style={{ color: theme.colors.danger }}>{absenceError}</Texto> : null}
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Informações adicionais
-        </Text>
+        </Texto>
         <VehicleTextField
           label="Necessidades especiais"
           value={necessidadesEspeciais}
@@ -264,7 +265,7 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
         />
       </VehicleCard>
 
-      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
 
       <VehicleButton
         label="Salvar alterações"
@@ -273,12 +274,12 @@ export function AlunoDetalheScreen({ route, navigation }: Props): JSX.Element {
       />
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.danger, fontWeight: "700", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.danger, fontWeight: "700", fontSize: 14 }}>
           Remover aluno
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Essa ação não pode ser desfeita.
-        </Text>
+        </Texto>
         {confirmarRemocao ? (
           <View style={styles.chips}>
             <VehicleButton

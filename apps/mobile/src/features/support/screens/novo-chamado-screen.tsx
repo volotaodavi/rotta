@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useCreateSupportTicket } from "../hooks/use-support";
 import { SUPPORT_TICKET_CATEGORIA_LABEL } from "../labels";
@@ -9,6 +9,7 @@ import type { SupportStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { SupportTicketCategoria } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   VehicleButton,
   VehicleCard,
@@ -58,9 +59,9 @@ export function NovoChamadoScreen({ navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={{ gap: 8 }}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Alguma dessas é a sua dúvida? Toque pra preencher.
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {SUPPORT_QUICK_REPLIES.map((quickReply) => (
             <VehicleButton
@@ -85,9 +86,9 @@ export function NovoChamadoScreen({ navigation }: Props): JSX.Element {
       />
 
       <VehicleCard style={{ gap: 8 }}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Categoria
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {CATEGORIAS.map((value) => (
             <VehicleButton
@@ -110,7 +111,7 @@ export function NovoChamadoScreen({ navigation }: Props): JSX.Element {
         style={{ minHeight: 120, textAlignVertical: "top" }}
       />
 
-      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+      {error ? <Texto style={{ color: theme.colors.danger }}>{error}</Texto> : null}
 
       <VehicleButton
         label="Abrir chamado"

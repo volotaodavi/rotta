@@ -1,6 +1,6 @@
 import { isValidPlate } from "@rotta/validators";
 import { useEffect, useRef, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useCreateVehicle, useLookupVehicleByPlate } from "../hooks/use-empresa-vehicles";
 
@@ -8,6 +8,7 @@ import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleType } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   VehicleButton,
   VehicleCard,
@@ -124,7 +125,9 @@ export function EmpresaVeiculoNovoScreen({ navigation }: Props): JSX.Element {
       />
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>Tipo</Text>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+          Tipo
+        </Texto>
         <View style={styles.chips}>
           {TIPOS.map((value) => (
             <VehicleButton
@@ -137,12 +140,12 @@ export function EmpresaVeiculoNovoScreen({ navigation }: Props): JSX.Element {
         </View>
       </VehicleCard>
 
-      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
         A categoria (Escolar, Fretamento ou Executivo) é sugerida automaticamente depois do
         cadastro, a partir do tipo e da capacidade. Dá pra conferir e trocar na tela do veículo.
-      </Text>
+      </Texto>
 
-      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+      {error ? <Texto style={{ color: theme.colors.danger }}>{error}</Texto> : null}
 
       <VehicleButton
         label="Cadastrar veículo"

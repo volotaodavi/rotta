@@ -1,5 +1,6 @@
-import { Text } from "react-native";
+import {} from "react-native";
 
+import { Texto } from "@/components/texto";
 import { VehicleTextField } from "@/features/vehicles/components";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { useTheme } from "@/providers/theme-provider";
@@ -107,12 +108,12 @@ export function EnderecoFields({
         keyboardType="numeric"
       />
       {isLoading ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Buscando endereço…</Text>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Buscando endereço…</Texto>
       ) : null}
       {notFound ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           CEP não encontrado. Preencha o endereço à mão.
-        </Text>
+        </Texto>
       ) : null}
       <VehicleTextField
         label="Rua"

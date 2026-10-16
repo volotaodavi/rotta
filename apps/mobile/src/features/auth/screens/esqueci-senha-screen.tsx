@@ -1,13 +1,14 @@
 import { ApiError } from "@rotta/api-client";
 import { Mail, MailCheck } from "@rotta/icons/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { AuthButton, AuthScreen, AuthStatusBadge, AuthTextField } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { authApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -57,18 +58,18 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
     return (
       <AuthScreen>
         <AuthStatusBadge icon={MailCheck} />
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Verifique seu e-mail
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Se houver uma conta com o e-mail {email}, enviamos um link para redefinir a senha. Confira
           também a caixa de spam.
-        </Text>
+        </Texto>
         <AuthButton
           label="Voltar para o login"
           variant="ghost"
@@ -81,17 +82,17 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
   return (
     <AuthScreen>
       <View style={styles.headingBlock}>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Esqueceu sua senha?
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.
-        </Text>
+        </Texto>
       </View>
 
       <AuthTextField
@@ -105,7 +106,7 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
       />
 
       {errorMessage ? (
-        <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
+        <Texto style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Texto>
       ) : null}
 
       <AuthButton

@@ -1,6 +1,6 @@
 import { ApiError } from "@rotta/api-client";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useMyTeam } from "../hooks/use-empresa-team";
 
@@ -8,6 +8,7 @@ import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleAssignmentRole } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import {
   useAssignVehicle,
@@ -63,9 +64,9 @@ export function EmpresaVeiculoVinculosScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Vincular motorista/monitor
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {(Object.keys(PAPEL_LABEL) as VehicleAssignmentRole[]).map((value) => (
             <VehicleButton
@@ -80,9 +81,9 @@ export function EmpresaVeiculoVinculosScreen({ route }: Props): JSX.Element {
           ))}
         </View>
         {candidatos.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
             Nenhum {PAPEL_LABEL[papel].toLowerCase()} com vínculo ativo nesta empresa ainda.
-          </Text>
+          </Texto>
         ) : (
           <View style={styles.chips}>
             {candidatos.map((membro) => (
@@ -96,7 +97,7 @@ export function EmpresaVeiculoVinculosScreen({ route }: Props): JSX.Element {
           </View>
         )}
         {errorMessage ? (
-          <Text style={{ color: theme.colors.danger, fontSize: 14 }}>{errorMessage}</Text>
+          <Texto style={{ color: theme.colors.danger, fontSize: 14 }}>{errorMessage}</Texto>
         ) : null}
         <VehicleButton
           label="Vincular"
@@ -106,23 +107,23 @@ export function EmpresaVeiculoVinculosScreen({ route }: Props): JSX.Element {
         />
       </VehicleCard>
 
-      <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+      <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
         Histórico
-      </Text>
+      </Texto>
       {!history || history.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum vínculo registrado ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum vínculo registrado ainda.</Texto>
       ) : (
         history.map((a) => (
           <VehicleCard key={a.id} style={styles.card}>
-            <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+            <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
               {PAPEL_LABEL[a.papel]}
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            </Texto>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Desde {new Date(a.iniciadoEm).toLocaleDateString("pt-BR")}
               {a.encerradoEm
                 ? ` até ${new Date(a.encerradoEm).toLocaleDateString("pt-BR")}`
                 : " (atual)"}
-            </Text>
+            </Texto>
           </VehicleCard>
         ))
       )}

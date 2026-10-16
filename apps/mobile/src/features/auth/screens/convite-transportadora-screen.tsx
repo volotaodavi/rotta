@@ -1,7 +1,7 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
-import { StyleSheet, Text, TouchableOpacity } from "react-native";
+import { StyleSheet, TouchableOpacity } from "react-native";
 
 import {
   AuthButton,
@@ -14,6 +14,7 @@ import {
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { studentPreRegistrationsApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -127,18 +128,18 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
   if (etapa === "codigo") {
     return (
       <AuthScreen>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Entrar com o código da transportadora
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Recebeu um código da transportadora do seu filho? Digite ele aqui pra começar o cadastro
           rapidinho.
-        </Text>
+        </Texto>
 
         <AuthTextField
           label="Código da transportadora"
@@ -157,7 +158,7 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
         />
 
         {erroBusca ? (
-          <Text style={[styles.error, { color: theme.colors.danger }]}>{erroBusca}</Text>
+          <Texto style={[styles.error, { color: theme.colors.danger }]}>{erroBusca}</Texto>
         ) : null}
 
         <AuthButton label="Continuar" isLoading={isBuscando} onPress={() => void handleBuscar()} />
@@ -167,20 +168,20 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
 
   return (
     <AuthScreen>
-      <Text
+      <Texto
         style={[
           styles.title,
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
         Complete seu cadastro
-      </Text>
-      <Text style={[styles.subtitleLong, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.subtitleLong, { color: theme.colors.textMuted }]}>
         Transportadora {companyName}
         {match
           ? ` · aluno ${match.nomeAluno} já pré-cadastrado. Confirme seus dados pra concluir.`
           : " · não encontramos um pré-cadastro com esse celular, então vamos fazer o cadastro completo do zero."}
-      </Text>
+      </Texto>
 
       <AuthTextField label="Nome completo" value={nome} onChangeText={setNome} />
       <AuthTextField
@@ -200,7 +201,7 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
       <AuthTermsCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
 
       {erroCadastro ? (
-        <Text style={[styles.error, { color: theme.colors.danger }]}>{erroCadastro}</Text>
+        <Texto style={[styles.error, { color: theme.colors.danger }]}>{erroCadastro}</Texto>
       ) : null}
 
       <AuthButton
@@ -219,12 +220,12 @@ export function ConviteTransportadoraLink({ onPress }: { onPress: () => void }):
   const { theme } = useTheme();
   return (
     <TouchableOpacity onPress={onPress} accessibilityRole="button">
-      <Text style={[styles.linkText, { color: theme.colors.textMuted }]}>
+      <Texto style={[styles.linkText, { color: theme.colors.textMuted }]}>
         É responsável e recebeu um código da transportadora (não um convite de equipe)?{" "}
-        <Text style={[styles.linkHighlight, { color: theme.colors.primary }]}>
+        <Texto style={[styles.linkHighlight, { color: theme.colors.primary }]}>
           Cadastre seu filho por aqui
-        </Text>
-      </Text>
+        </Texto>
+      </Texto>
     </TouchableOpacity>
   );
 }

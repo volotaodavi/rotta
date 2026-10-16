@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useApproveJoinRequest,
@@ -20,6 +20,7 @@ import {
 
 import type { Role } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -78,20 +79,22 @@ export function EmpresaEquipeScreen(): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Pedidos pendentes
-        </Text>
+        </Texto>
         {carregandoPendentes ? (
           <ActivityIndicator color={theme.colors.primary} />
         ) : !pendentes || pendentes.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhum pedido pendente.</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Nenhum pedido pendente.</Texto>
         ) : (
           pendentes.map((pedido) => (
             <View key={pedido.id} style={styles.pedido}>
-              <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{pedido.userName}</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
+                {pedido.userName}
+              </Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {PAPEL_LABEL[pedido.role] ?? pedido.role} · {pedido.userEmail}
-              </Text>
+              </Texto>
               <View style={styles.linhaBotoes}>
                 <VehicleButton
                   label="Aprovar"
@@ -115,35 +118,35 @@ export function EmpresaEquipeScreen(): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Equipe
-        </Text>
+        </Texto>
         {carregandoEquipe ? (
           <ActivityIndicator color={theme.colors.primary} />
         ) : !equipe || equipe.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhum membro na equipe ainda.</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Nenhum membro na equipe ainda.</Texto>
         ) : (
           equipe.map((membro) => (
             <View key={membro.userId} style={styles.membro}>
               <View style={styles.linha}>
-                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{membro.nome}</Text>
+                <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>{membro.nome}</Texto>
                 <StatusPill
                   label={IDENTITY_VERIFICATION_STATUS_LABEL[membro.identityVerificationStatus]}
                   tone={IDENTITY_VERIFICATION_STATUS_TONE[membro.identityVerificationStatus]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {PAPEL_LABEL[membro.papel] ?? membro.papel} · {membro.email}
-              </Text>
+              </Texto>
             </View>
           ))
         )}
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo convite
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {PAPEIS_CONVITE.map((value) => (
             <VehicleButton
@@ -161,7 +164,7 @@ export function EmpresaEquipeScreen(): JSX.Element {
           onChangeText={setCelular}
           keyboardType="phone-pad"
         />
-        {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+        {error ? <Texto style={{ color: theme.colors.danger }}>{error}</Texto> : null}
         <VehicleButton
           label="Criar convite"
           onPress={handleCriarConvite}
@@ -173,9 +176,9 @@ export function EmpresaEquipeScreen(): JSX.Element {
             {convites.map((convite) => (
               <View key={convite.id} style={styles.linha}>
                 <View>
-                  <Text style={{ color: theme.colors.text }}>
+                  <Texto style={{ color: theme.colors.text }}>
                     {convite.nome ?? convite.celular ?? PAPEL_LABEL[convite.role]}
-                  </Text>
+                  </Texto>
                   <StatusPill
                     label={COMPANY_JOIN_PRE_REGISTRATION_STATUS_LABEL[convite.status]}
                     tone={COMPANY_JOIN_PRE_REGISTRATION_STATUS_TONE[convite.status]}

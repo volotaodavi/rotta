@@ -2,7 +2,7 @@ import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { Lock, Mail, Phone, User } from "@rotta/icons/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import {
   AuthButton,
@@ -15,6 +15,7 @@ import {
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "CriarContaPessoal">;
@@ -65,17 +66,17 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
   return (
     <AuthScreen>
       <View style={styles.headingBlock}>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Criar conta
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Depois de entrar, você cadastra seus filhos e busca transportadores no Marketplace.
-        </Text>
+        </Texto>
       </View>
 
       <AuthTextField
@@ -110,7 +111,7 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
       <AuthTermsCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
 
       {errorMessage ? (
-        <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
+        <Texto style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Texto>
       ) : null}
 
       <AuthButton
@@ -120,12 +121,12 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
         disabled={!aceitouTermos}
       />
 
-      <Text
+      <Texto
         style={[styles.footerLink, { color: theme.colors.primary }]}
         onPress={() => navigation.navigate("ConviteCodigo")}
       >
         Tenho um código de convite
-      </Text>
+      </Texto>
     </AuthScreen>
   );
 }

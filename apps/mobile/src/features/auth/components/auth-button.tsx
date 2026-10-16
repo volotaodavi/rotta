@@ -1,5 +1,6 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type AuthButtonVariant = "primary" | "secondary" | "ghost";
@@ -63,11 +64,11 @@ export function AuthButton({
       {isLoading ? (
         <ActivityIndicator color={textColor} />
       ) : (
-        <Text
+        <Texto
           style={[styles.label, { color: textColor, fontSize: theme.typography.button.fontSize }]}
         >
           {label}
-        </Text>
+        </Texto>
       )}
     </Pressable>
   );

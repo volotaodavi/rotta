@@ -1,8 +1,9 @@
-import { Image, StyleSheet, Text } from "react-native";
+import { Image, StyleSheet } from "react-native";
 
 import { VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle, useVehicleDocuments } from "../hooks/use-vehicles";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -22,23 +23,23 @@ export function FotosScreen(): JSX.Element {
     <VehicleScreen>
       {vehicle?.fotoUrl ? (
         <VehicleCard>
-          <Text style={[styles.label, { color: theme.colors.textMuted }]}>Foto principal</Text>
+          <Texto style={[styles.label, { color: theme.colors.textMuted }]}>Foto principal</Texto>
           <Image source={{ uri: vehicle.fotoUrl }} style={styles.photo} resizeMode="cover" />
         </VehicleCard>
       ) : null}
 
       {fotos.length === 0 && !vehicle?.fotoUrl ? (
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Nenhuma foto cadastrada para este veículo.
-        </Text>
+        </Texto>
       ) : null}
 
       {fotos.map((doc) => (
         <VehicleCard key={doc.id}>
           <Image source={{ uri: doc.fileUrl }} style={styles.photo} resizeMode="cover" />
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Enviada em {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
-          </Text>
+          </Texto>
         </VehicleCard>
       ))}
     </VehicleScreen>

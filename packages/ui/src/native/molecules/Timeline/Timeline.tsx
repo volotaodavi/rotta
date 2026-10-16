@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -87,9 +88,9 @@ export function Timeline({ steps, theme }: TimelineProps): JSX.Element {
 
 const styles = StyleSheet.create({
   content: { flex: 1, gap: 2, paddingLeft: 12 },
-  description: { fontSize: 13 },
+  description: { fontFamily: fonteNativa(400), fontSize: 13 },
   dot: { borderRadius: 7, height: 14, width: 14 },
-  label: { fontSize: 14 },
+  label: { fontFamily: fonteNativa(400), fontSize: 14 },
   line: { flex: 1, marginTop: 4, width: 2 },
   rail: { alignItems: "center", width: 14 },
   row: { flexDirection: "row" },

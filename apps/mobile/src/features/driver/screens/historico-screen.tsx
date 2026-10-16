@@ -2,7 +2,7 @@ import { useAuth } from "@rotta/auth/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { driverShadow } from "@rotta/theme";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { PanelGreeting } from "../components";
 import { useRouteTripHistory } from "../hooks/use-driver-history";
@@ -11,6 +11,7 @@ import { useTripPositions } from "../hooks/use-driver-trip";
 
 import type { Route, Trip, TripStatus } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { StatusPill, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -73,7 +74,7 @@ function FiltroTabs({
             onPress={() => onChange(tab.id)}
             style={[styles.filtroTab, { borderBottomColor: ativa ? accentColor : "transparent" }]}
           >
-            <Text
+            <Texto
               style={{
                 color: ativa ? accentColor : theme.colors.textMuted,
                 fontWeight: ativa ? "700" : "500",
@@ -81,7 +82,7 @@ function FiltroTabs({
               }}
             >
               {tab.label}
-            </Text>
+            </Texto>
           </Pressable>
         );
       })}
@@ -116,9 +117,9 @@ export function DriverHistoricoScreen(): JSX.Element {
     return (
       <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <PanelGreeting nome={user?.nome ?? ""} />
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Nenhuma rota atribuída a você ainda: sem histórico para mostrar.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -142,11 +143,11 @@ function RouteHistorySection({ rota, filtro }: { rota: Route; filtro: FiltroStat
 
   return (
     <View style={styles.secao}>
-      <Text style={[styles.tituloRota, { color: theme.colors.text }]}>{rota.nome}</Text>
+      <Texto style={[styles.tituloRota, { color: theme.colors.text }]}>{rota.nome}</Texto>
       {isLoading ? (
         <ActivityIndicator color={accentColor} />
       ) : viagens.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhuma viagem nesta aba.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhuma viagem nesta aba.</Texto>
       ) : (
         viagens.map((trip) => <TripHistoryCard key={trip.id} trip={trip} />)
       )}
@@ -178,18 +179,18 @@ function TripHistoryCard({ trip }: { trip: Trip }): JSX.Element {
       ]}
     >
       <View style={styles.header}>
-        <Text style={{ color: theme.colors.text }}>
+        <Texto style={{ color: theme.colors.text }}>
           {new Date(trip.data).toLocaleDateString("pt-BR")}
-        </Text>
+        </Texto>
         <StatusPill
           label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
           tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
         />
       </View>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
         Início: {new Date(trip.iniciadaEm).toLocaleTimeString("pt-BR")}
         {duracaoMin !== null ? ` (duração: ${duracaoMin} min)` : ""}
-      </Text>
+      </Texto>
       {rotaPercorrida ? <RotaPercorridaPreview positions={rotaPercorrida} /> : null}
     </VehicleCard>
   );

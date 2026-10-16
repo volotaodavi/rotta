@@ -1,8 +1,9 @@
 import { ChevronRight } from "@rotta/icons/native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import type { ComponentType } from "react";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 interface RoleOptionCardProps {
@@ -54,8 +55,8 @@ export function RoleOptionCard({
         <Icon size={20} color={theme.colors.primary} />
       </View>
       <View style={styles.textBlock}>
-        <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text>
-        <Text style={[styles.description, { color: theme.colors.textMuted }]}>{description}</Text>
+        <Texto style={[styles.title, { color: theme.colors.text }]}>{title}</Texto>
+        <Texto style={[styles.description, { color: theme.colors.textMuted }]}>{description}</Texto>
       </View>
       <ChevronRight size={20} color={theme.colors.textMuted} />
     </Pressable>

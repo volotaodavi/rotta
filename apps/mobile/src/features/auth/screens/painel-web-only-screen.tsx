@@ -1,8 +1,9 @@
 import { useAuth } from "@rotta/auth/native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { AuthButton } from "../components";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -23,18 +24,18 @@ export function PainelWebOnlyScreen(): JSX.Element {
         { backgroundColor: theme.colors.background, padding: theme.spacing[6] },
       ]}
     >
-      <Text
+      <Texto
         style={[
           styles.title,
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
         Use o Painel Web
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         Olá, {user?.nome ?? ""}. A gestão da sua empresa ainda não está disponível no aplicativo.
         Acesse o Painel Web pelo navegador com a mesma conta.
-      </Text>
+      </Texto>
       <AuthButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </View>
   );

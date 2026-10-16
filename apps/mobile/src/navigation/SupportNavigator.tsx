@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { SupportStackParamList } from "./types";
 
 import {
@@ -7,6 +9,7 @@ import {
   ChamadosScreen,
   NovoChamadoScreen,
 } from "@/features/support/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<SupportStackParamList>();
 
@@ -19,8 +22,9 @@ const Stack = createNativeStackNavigator<SupportStackParamList>();
  * `/chamados/novo`, `/chamados/:id`).
  */
 export function SupportNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen name="Lista" component={ChamadosScreen} options={{ title: "Chamados" }} />
       <Stack.Screen name="Novo" component={NovoChamadoScreen} options={{ title: "Novo chamado" }} />
       <Stack.Screen

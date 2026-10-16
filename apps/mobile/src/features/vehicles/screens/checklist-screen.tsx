@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, Switch, Text, View } from "react-native";
+import { StyleSheet, Switch, View } from "react-native";
 
 import { VehicleButton, VehicleCard, VehicleScreen, VehicleTextField } from "../components";
 import {
@@ -8,6 +8,7 @@ import {
   useVehicleChecklists,
 } from "../hooks/use-vehicles";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 const ITEMS: {
@@ -60,10 +61,10 @@ export function ChecklistScreen(): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Novo checklist</Text>
+        <Texto style={[styles.title, { color: theme.colors.text }]}>Novo checklist</Texto>
         {ITEMS.map((item) => (
           <View key={item.key} style={styles.switchRow}>
-            <Text style={{ color: theme.colors.text }}>{item.label}</Text>
+            <Texto style={{ color: theme.colors.text }}>{item.label}</Texto>
             <Switch
               value={form[item.key]}
               onValueChange={(value) => setForm((current) => ({ ...current, [item.key]: value }))}
@@ -86,21 +87,21 @@ export function ChecklistScreen(): JSX.Element {
       </VehicleCard>
 
       {checklists?.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum checklist registrado ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum checklist registrado ainda.</Texto>
       ) : null}
 
       {checklists?.items.map((checklist) => (
         <VehicleCard key={checklist.id}>
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             {new Date(checklist.createdAt).toLocaleString("pt-BR")}
-          </Text>
-          <Text style={{ color: theme.colors.text }}>
+          </Texto>
+          <Texto style={{ color: theme.colors.text }}>
             {ITEMS.filter((item) => !checklist[item.key])
               .map((item) => item.label)
               .join(", ") || "Tudo OK"}
-          </Text>
+          </Texto>
           {checklist.observacoes ? (
-            <Text style={{ color: theme.colors.textMuted }}>{checklist.observacoes}</Text>
+            <Texto style={{ color: theme.colors.textMuted }}>{checklist.observacoes}</Texto>
           ) : null}
         </VehicleCard>
       ))}

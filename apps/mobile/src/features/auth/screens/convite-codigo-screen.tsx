@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { AuthButton, AuthScreen, AuthTextField } from "../components";
 
@@ -8,6 +8,7 @@ import { ConviteTransportadoraLink } from "./convite-transportadora-screen";
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "ConviteCodigo">;
@@ -30,17 +31,17 @@ export function ConviteCodigoScreen({ navigation }: Props): JSX.Element {
 
   return (
     <AuthScreen>
-      <Text
+      <Texto
         style={[
           styles.title,
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
         Código de convite
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         Informe o código que você recebeu da empresa ou escola.
-      </Text>
+      </Texto>
 
       <AuthTextField
         label="Código"

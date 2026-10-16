@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -112,8 +113,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rotulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 13,
-    fontWeight: "600",
     /* Levemente translúcido seria mais bonito e pior: contraste de
        rótulo sobre azul já fica no limite em tela ao sol. */
     opacity: 0.9,
@@ -126,8 +127,8 @@ const styles = StyleSheet.create({
   },
   valor: {
     flexShrink: 1,
+    fontFamily: fonteNativa(700),
     fontSize: 28,
     fontVariant: ["tabular-nums"],
-    fontWeight: "700",
   },
 });

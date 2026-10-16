@@ -2,6 +2,7 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Bell, History, Home, User } from "@rotta/icons/native";
 
 import { DriverPerfilNavigator } from "./DriverPerfilNavigator";
+import { opcoesDaBarraDeAbas, opcoesDoCabecalhoDeAba, SeloDeAba } from "./estilo-da-navegacao";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { DriverTabParamList } from "./types";
@@ -10,6 +11,7 @@ import type { LucideIcon } from "@rotta/icons/native";
 import { RottaSymbol } from "@/components/rotta-symbol";
 import { DriverHistoricoScreen, DriverInicioScreen } from "@/features/driver/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
+import { useTheme } from "@/providers/theme-provider";
 
 const Tab = createBottomTabNavigator<DriverTabParamList>();
 
@@ -58,21 +60,26 @@ const TAB_SF_SYMBOL: Record<keyof DriverTabParamList, string> = {
  * não lidas.
  */
 export function DriverNavigator(): JSX.Element {
+  const { theme } = useTheme();
   const { data: naoLidas } = useUnreadNotificationsCount();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
+        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDoCabecalhoDeAba(theme),
         headerShown: false,
-        tabBarIcon: ({ size, color }) => {
+        tabBarIcon: ({ size, color, focused }) => {
           const nome = route.name as keyof DriverTabParamList;
           return (
-            <RottaSymbol
-              ios={TAB_SF_SYMBOL[nome]}
-              fallback={TAB_ICON[nome]}
-              size={size}
-              color={color}
-            />
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios={TAB_SF_SYMBOL[nome]}
+                fallback={TAB_ICON[nome]}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           );
         },
       })}

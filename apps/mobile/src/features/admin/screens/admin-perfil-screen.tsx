@@ -1,9 +1,10 @@
 import { useAuth } from "@rotta/auth/native";
 import { LogOut } from "@rotta/icons/native";
-import { Text } from "react-native";
+import {} from "react-native";
 
 import { ADMIN_PAPEL_LABEL, ADMIN_PAPEL_TONE } from "../labels";
 
+import { Texto } from "@/components/texto";
 import { CabecalhoDePerfil } from "@/features/perfil";
 import {
   MenuRowList,
@@ -39,9 +40,9 @@ export function AdminPerfilScreen(): JSX.Element {
       />
 
       <VehicleCard>
-        <Text style={{ color: theme.colors.textMuted }}>{user?.email}</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>{user?.email}</Texto>
         {user?.telefone ? (
-          <Text style={{ color: theme.colors.textMuted }}>{user.telefone}</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>{user.telefone}</Texto>
         ) : null}
       </VehicleCard>
 

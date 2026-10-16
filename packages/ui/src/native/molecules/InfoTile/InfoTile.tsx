@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -130,10 +131,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   titulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 13,
-    fontWeight: "600",
   },
   subtitulo: {
+    fontFamily: fonteNativa(400),
     fontSize: 11,
     marginTop: 1,
   },

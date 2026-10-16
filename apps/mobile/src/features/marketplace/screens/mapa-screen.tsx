@@ -7,7 +7,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
@@ -27,6 +26,7 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { School, SearchTransportersParams } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -125,7 +125,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
       <VehicleScreen>
         <View style={[styles.center, { gap: theme.spacing[4] }]}>
           <ActivityIndicator color={theme.colors.primary} />
-          <Text style={{ color: theme.colors.textMuted }}>Obtendo sua localização...</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Obtendo sua localização...</Texto>
         </View>
       </VehicleScreen>
     );
@@ -232,9 +232,9 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
             { backgroundColor: theme.colors.surfaceElevated, borderRadius: theme.radius.full },
           ]}
         >
-          <Text style={{ color: theme.colors.primary, fontWeight: "600" }}>
+          <Texto style={{ color: theme.colors.primary, fontWeight: "600" }}>
             Já sei quem contratar, tenho o código
-          </Text>
+          </Texto>
         </Pressable>
 
         {schoolQuery.trim().length > 0 && !selectedSchool ? (
@@ -245,9 +245,9 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
             ]}
           >
             {(schoolResults?.items ?? []).length === 0 ? (
-              <Text style={[styles.resultsEmpty, { color: theme.colors.textMuted }]}>
+              <Texto style={[styles.resultsEmpty, { color: theme.colors.textMuted }]}>
                 Nenhuma escola encontrada com esse nome.
-              </Text>
+              </Texto>
             ) : (
               <ScrollView keyboardShouldPersistTaps="handled" style={styles.resultsList}>
                 {(schoolResults?.items ?? []).map((school) => (
@@ -258,12 +258,12 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
                   >
                     <MapPin size={16} color={theme.colors.textMuted} />
                     <View style={styles.resultText}>
-                      <Text style={[styles.resultNome, { color: theme.colors.text }]}>
+                      <Texto style={[styles.resultNome, { color: theme.colors.text }]}>
                         {school.nomeOficial}
-                      </Text>
-                      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                      </Texto>
+                      <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                         {school.cidade}/{school.estado}
-                      </Text>
+                      </Texto>
                     </View>
                   </Pressable>
                 ))}
@@ -281,7 +281,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
             { backgroundColor: theme.colors.primary, borderRadius: theme.radius.full },
           ]}
         >
-          <Text style={[styles.reabrirLabel, { color: theme.colors.onPrimary }]}>Ver lista</Text>
+          <Texto style={[styles.reabrirLabel, { color: theme.colors.onPrimary }]}>Ver lista</Texto>
         </Pressable>
       ) : null}
 
@@ -319,17 +319,17 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
             <ActivityIndicator color={theme.colors.primary} />
           ) : isError ? (
             <>
-              <Text style={{ color: theme.colors.danger }}>
+              <Texto style={{ color: theme.colors.danger }}>
                 Não foi possível buscar transportadores agora. Tente novamente mais tarde.
-              </Text>
+              </Texto>
               <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
             </>
           ) : !data || data.items.length === 0 ? (
-            <Text style={{ color: theme.colors.textMuted }}>
+            <Texto style={{ color: theme.colors.textMuted }}>
               {selectedSchool
                 ? "Nenhum transportador atende esta escola ainda."
                 : "Nenhum transportador encontrado perto de você ainda."}
-            </Text>
+            </Texto>
           ) : (
             data.items.map((transportador) => (
               <Pressable

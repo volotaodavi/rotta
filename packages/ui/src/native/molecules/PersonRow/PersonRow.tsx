@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { StatusPill, type StatusTone } from "../../atoms/StatusPill";
@@ -133,8 +134,8 @@ const styles = StyleSheet.create({
     width: 40,
   },
   iniciais: {
+    fontFamily: fonteNativa(700),
     fontSize: 14,
-    fontWeight: "700",
   },
   meio: {
     /* `flex: 1` com `minWidth: 0` é o que faz o nome longo ser cortado
@@ -143,10 +144,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   nome: {
+    fontFamily: fonteNativa(600),
     fontSize: 15,
-    fontWeight: "600",
   },
   subtitulo: {
+    fontFamily: fonteNativa(400),
     fontSize: 13,
     marginTop: 2,
   },
@@ -154,6 +156,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-end",
   },
   horario: {
+    fontFamily: fonteNativa(400),
     fontSize: 12,
     fontVariant: ["tabular-nums"],
   },

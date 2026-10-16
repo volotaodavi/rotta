@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useCancelStudentPreRegistration,
@@ -11,6 +11,7 @@ import {
   STUDENT_PRE_REGISTRATION_STATUS_TONE,
 } from "../labels";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -75,9 +76,9 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar os pré-cadastros.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -86,9 +87,9 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.form}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo pré-cadastro
-        </Text>
+        </Texto>
         <VehicleTextField label="Nome do aluno" value={nomeAluno} onChangeText={setNomeAluno} />
         <VehicleTextField
           label="Nome do responsável"
@@ -101,7 +102,7 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
           onChangeText={setCelularResponsavel}
           keyboardType="phone-pad"
         />
-        {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+        {error ? <Texto style={{ color: theme.colors.danger }}>{error}</Texto> : null}
         <VehicleButton
           label="Pré-cadastrar"
           onPress={handleSubmit}
@@ -110,22 +111,22 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
       </VehicleCard>
 
       {!data || data.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum pré-cadastro ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum pré-cadastro ainda.</Texto>
       ) : (
         data.map((item) => (
           <VehicleCard key={item.id}>
             <View style={styles.linha}>
-              <Text style={[styles.nome, { color: theme.colors.text }]} numberOfLines={1}>
+              <Texto style={[styles.nome, { color: theme.colors.text }]} numberOfLines={1}>
                 {item.nomeAluno}
-              </Text>
+              </Texto>
               <StatusPill
                 label={STUDENT_PRE_REGISTRATION_STATUS_LABEL[item.status]}
                 tone={STUDENT_PRE_REGISTRATION_STATUS_TONE[item.status]}
               />
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {item.nomeResponsavel} · {item.celularResponsavel}
-            </Text>
+            </Texto>
             {item.status === "PENDENTE" ? (
               <VehicleButton
                 label="Cancelar"

@@ -1,8 +1,9 @@
-import { Text } from "react-native";
+import {} from "react-native";
 
 import type { VeiculoStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -22,10 +23,10 @@ export function EscolaRotasVinculadasScreen(_props: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={{ color: theme.colors.textMuted }}>
         O módulo de Rotas ainda não foi implementado na plataforma. Assim que estiver disponível, as
         rotas que atendem esta escola aparecerão aqui automaticamente.
-      </Text>
+      </Texto>
     </VehicleScreen>
   );
 }

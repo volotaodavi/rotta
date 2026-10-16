@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import Svg, { Circle, Line, Path } from "react-native-svg";
 
 import type { LayoutChangeEvent } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 export interface TrendPoint {
@@ -87,10 +88,10 @@ export function BalanceTrendChart({ points }: { points: TrendPoint[] }): JSX.Ele
         <Circle cx={last.x} cy={last.y} r={4} fill={theme.colors.primary} />
       </Svg>
       <View style={styles.legenda}>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{points[0]!.label}</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>{points[0]!.label}</Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
           {points[points.length - 1]!.label}
-        </Text>
+        </Texto>
       </View>
     </View>
   );

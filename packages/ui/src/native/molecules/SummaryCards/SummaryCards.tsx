@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { StatusTone } from "../../atoms/StatusPill";
@@ -151,16 +152,17 @@ const styles = StyleSheet.create({
     minHeight: 82,
   },
   valor: {
+    fontFamily: fonteNativa(700),
     fontSize: 22,
     fontVariant: ["tabular-nums"],
-    fontWeight: "700",
     marginTop: 2,
   },
   rotulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 11,
-    fontWeight: "600",
   },
   detalhe: {
+    fontFamily: fonteNativa(400),
     fontSize: 10,
     fontVariant: ["tabular-nums"],
     marginTop: 3,

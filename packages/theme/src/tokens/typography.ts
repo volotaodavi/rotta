@@ -16,30 +16,90 @@
 /**
  * Família tipográfica por plataforma.
  *
- * `base` (Inter) continua sendo a fonte da MARCA — é o que a Web e o
- * Painel Admin carregam, e o que aparece em material impresso.
+ * `base` (Inter) é a fonte da Web e do Painel Admin.
  *
- * `native` é `undefined` de propósito: em React Native, não declarar
- * `fontFamily` faz o texto usar a fonte do SISTEMA. No iOS isso é o
- * **SF Pro**; no Android, o Roboto. Foi assim que o app sempre se
- * comportou (nenhuma fonte jamais foi carregada com `expo-font`) —
- * o que muda aqui é a intenção: passa a ser uma escolha registrada, e
- * não um acidente que o comentário antigo desta seção contradizia ao
- * afirmar "família única (Inter) em toda a plataforma".
+ * ## O app nativo passou a ter letra própria em 16/10/2026
  *
- * Usar o SF Pro por este caminho é o ÚNICO legítimo (pedido do usuário
- * 15/09/2026): a fonte vem do próprio aparelho, nunca do repositório.
- * Baixar SF Pro do Apple Design Resources e embutir no app violaria a
- * licença dela, que permite só mock-up de interface para plataformas
- * Apple e proíbe embutir em produto — e valeria tanto para o Android
- * quanto para o iOS.
+ * Até aqui `native` era `undefined` de propósito: sem declarar
+ * `fontFamily`, o React Native usa a fonte do SISTEMA (SF Pro no iOS,
+ * Roboto no Android). Era uma escolha registrada, feita em 15/09/2026.
+ *
+ * O fundador olhou o app depois de duas levas de redesenho e disse que
+ * ele continuava "com cara de IA". Tinha razão, e esta era a maior
+ * causa que restava: um app inteiro escrito na fonte padrão do sistema
+ * se parece com todo aplicativo que nunca escolheu uma letra. A
+ * tipografia é a camada que mais carrega identidade, e a Rotta não
+ * tinha nenhuma.
+ *
+ * `Plus Jakarta Sans` é a resposta: geométrica de esqueleto humanista,
+ * altura de x grande, 'a' de dois andares e bojo levemente quadrado —
+ * é a letra que o conceito visual do fundador desenha. Licença SIL
+ * Open Font, então pode ser embutida no produto, diferente da SF Pro
+ * da Apple, que a licença proíbe embutir.
+ *
+ * ## Por que um peso por família, e não `fontWeight`
+ *
+ * Porque no React Native com fonte própria, `fontWeight` não escolhe o
+ * arquivo: cada peso É uma família registrada. Pedir peso 700 numa
+ * família que só tem o regular faz o Android desenhar um negrito
+ * sintético, engrossado por software, que é exatamente o borrão que
+ * denuncia app mal feito. Quem precisa de peso usa `fonteNativa(700)`.
  */
 export const fontFamily = {
   /** Web/Admin — fonte da marca, carregada pelo próprio app. */
   base: "Inter",
-  /** Mobile — fonte do sistema (SF Pro no iOS, Roboto no Android). Nunca declarar. */
-  native: undefined,
+  /** Mobile — uma família registrada por peso (ver `fonteNativa`). */
+  native: {
+    400: "PlusJakartaSans_400Regular",
+    500: "PlusJakartaSans_500Medium",
+    600: "PlusJakartaSans_600SemiBold",
+    700: "PlusJakartaSans_700Bold",
+    800: "PlusJakartaSans_800ExtraBold",
+  },
 } as const;
+
+/** Peso tipográfico válido no app nativo. */
+export type PesoNativo = keyof typeof fontFamily.native;
+
+/**
+ * A família certa para um peso no app nativo.
+ *
+ * Aceita qualquer `fontWeight` do React Native, inclusive os nomes
+ * ("bold", "medium") e os pesos que a Rotta não carrega (100, 900).
+ * Peso que não existe cai no mais próximo que existe, em vez de cair
+ * no regular: pedir 900 e receber texto fino seria pior do que
+ * receber o extrabold.
+ */
+export function fonteNativa(peso: PesoNativo | string | number | undefined | null): string {
+  const porNome: Record<string, PesoNativo> = {
+    normal: 400,
+    regular: 400,
+    medium: 500,
+    semibold: 600,
+    bold: 700,
+    heavy: 800,
+    black: 800,
+    ultralight: 400,
+    thin: 400,
+    light: 400,
+    condensed: 400,
+    condensedBold: 700,
+  };
+
+  if (peso === undefined || peso === null) return fontFamily.native[400];
+
+  const numero = typeof peso === "number" ? peso : Number(peso);
+  if (Number.isNaN(numero)) {
+    const mapeado = porNome[String(peso)] ?? 400;
+    return fontFamily.native[mapeado];
+  }
+
+  const disponiveis: PesoNativo[] = [400, 500, 600, 700, 800];
+  const maisProximo = disponiveis.reduce((melhor, atual) =>
+    Math.abs(atual - numero) < Math.abs(melhor - numero) ? atual : melhor,
+  );
+  return fontFamily.native[maisProximo];
+}
 
 export interface TypographyStyle {
   fontSize: number;

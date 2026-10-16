@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { VinculoPendenteStackParamList } from "./types";
 
 import { DriverIdentityVerificationScreen } from "@/features/driver/screens";
@@ -8,6 +10,7 @@ import {
   InformarCodigoVinculoScreen,
   VinculoPendenteStatusScreen,
 } from "@/features/onboarding-autonomo/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<VinculoPendenteStackParamList>();
 
@@ -20,8 +23,9 @@ const Stack = createNativeStackNavigator<VinculoPendenteStackParamList>();
  * `DriverPerfilNavigator` (nunca duplicada).
  */
 export function VinculoPendenteNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen
         name="Status"
         component={VinculoPendenteStatusScreen}

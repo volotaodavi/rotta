@@ -1,7 +1,7 @@
 import { ApiError, type RegisterAutonomoInput } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import {
   AuthButton,
@@ -14,6 +14,7 @@ import {
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { studentPreRegistrationsApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -127,18 +128,18 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
   if (etapa === "codigo") {
     return (
       <AuthScreen>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Motorista ou monitor contratado
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Esta conta fica aguardando uma transportadora aprovar seu vínculo. Se já tem o código
           dela, informe aqui; se não, dá pra informar depois.
-        </Text>
+        </Texto>
         {/*
           O aviso existe porque o rótulo "autônomo" nesta tela capturava
           a pessoa errada (01/10/2026): quem é autônomo/MEI DE VERDADE é
@@ -147,10 +148,10 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
           tela anterior. Sem esta linha, ele se cadastra aqui e descobre
           o engano só depois, preso numa tela pedindo código.
         */}
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           É autônomo ou MEI e trabalha por conta própria? Volte e escolha &quot;Sou transportadora,
           autônomo ou MEI&quot;. Lá você não precisa de código nenhum.
-        </Text>
+        </Texto>
 
         <AuthTextField
           label="Código da transportadora (opcional)"
@@ -162,7 +163,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
         />
 
         {erroBusca ? (
-          <Text style={[styles.error, { color: theme.colors.danger }]}>{erroBusca}</Text>
+          <Texto style={[styles.error, { color: theme.colors.danger }]}>{erroBusca}</Texto>
         ) : null}
 
         <AuthButton
@@ -177,21 +178,21 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
 
   return (
     <AuthScreen>
-      <Text
+      <Texto
         style={[
           styles.title,
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
         Complete seu cadastro
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {companyName
           ? `Transportadora ${companyName} · complete seus dados pra pedir o vínculo.`
           : 'Crie sua conta e complete a verificação de identidade. O código da transportadora pode ser informado depois, em "Meu pedido".'}
-      </Text>
+      </Texto>
 
-      <Text style={[styles.fieldLabel, { color: theme.colors.text }]}>Você é</Text>
+      <Texto style={[styles.fieldLabel, { color: theme.colors.text }]}>Você é</Texto>
       <View style={styles.papelRow}>
         <View style={styles.papelOption}>
           <AuthButton
@@ -234,7 +235,7 @@ export function CriarContaAutonomoScreen({ navigation: _navigation }: Props): JS
       <AuthTermsCheckbox checked={aceitouTermos} onChange={setAceitouTermos} />
 
       {errorMessage ? (
-        <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
+        <Texto style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Texto>
       ) : null}
 
       <AuthButton

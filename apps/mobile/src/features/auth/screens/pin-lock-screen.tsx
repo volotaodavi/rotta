@@ -1,7 +1,7 @@
 import { useAuth } from "@rotta/auth/native";
 import { Fingerprint } from "@rotta/icons/native";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { isBiometricLockEnabled } from "../biometric-lock-store";
 import { AuthButton, AuthScreen } from "../components";
@@ -10,6 +10,7 @@ import { useBiometricAuth } from "../hooks/use-biometric-auth";
 import { maskEmail } from "../mask-email";
 import { isPinLockEnabled, verifyPinLock } from "../pin-lock-store";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /** Iniciais do nome pro avatar (mesmo padrão de `ParentPerfilScreen`/`DriverPerfilScreen` — nunca uma imagem inventada). */
@@ -108,23 +109,23 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }): JSX.Eleme
     <AuthScreen>
       <View style={styles.card}>
         <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted }]}>
-          <Text style={[styles.avatarLabel, { color: theme.colors.primary }]}>
+          <Texto style={[styles.avatarLabel, { color: theme.colors.primary }]}>
             {iniciais(user?.nome)}
-          </Text>
+          </Texto>
         </View>
-        <Text style={[styles.title, { color: theme.colors.text }]}>
+        <Texto style={[styles.title, { color: theme.colors.text }]}>
           Olá, {user?.nome.split(" ")[0]}
-        </Text>
+        </Texto>
         {user?.email ? (
-          <Text style={{ color: theme.colors.textMuted }}>{maskEmail(user.email)}</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>{maskEmail(user.email)}</Texto>
         ) : null}
       </View>
 
       {pinAtivo ? (
         <>
-          <Text style={[styles.subtitle, { color: theme.colors.textMuted, textAlign: "center" }]}>
+          <Texto style={[styles.subtitle, { color: theme.colors.textMuted, textAlign: "center" }]}>
             Digite seu PIN para continuar
-          </Text>
+          </Texto>
           <PinCodeInput
             value={pin}
             onChangeValue={setPin}
@@ -132,10 +133,14 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }): JSX.Eleme
             onComplete={(candidate) => void handlePinComplete(candidate)}
           />
           {errorMessage ? (
-            <Text style={{ color: theme.colors.danger, textAlign: "center" }}>{errorMessage}</Text>
+            <Texto style={{ color: theme.colors.danger, textAlign: "center" }}>
+              {errorMessage}
+            </Texto>
           ) : null}
           {isVerifying ? (
-            <Text style={{ color: theme.colors.textMuted, textAlign: "center" }}>Verificando…</Text>
+            <Texto style={{ color: theme.colors.textMuted, textAlign: "center" }}>
+              Verificando…
+            </Texto>
           ) : null}
 
           {biometriaAtiva ? (
@@ -145,19 +150,21 @@ export function PinLockScreen({ onUnlock }: { onUnlock: () => void }): JSX.Eleme
               style={styles.biometriaLink}
             >
               <Fingerprint size={18} color={theme.colors.primary} />
-              <Text style={{ color: theme.colors.primary, fontWeight: "600" }}>
+              <Texto style={{ color: theme.colors.primary, fontWeight: "600" }}>
                 Entrar com {biometriaLabel}
-              </Text>
+              </Texto>
             </Pressable>
           ) : null}
         </>
       ) : biometriaAtiva ? (
         <>
-          <Text style={[styles.subtitle, { color: theme.colors.textMuted, textAlign: "center" }]}>
+          <Texto style={[styles.subtitle, { color: theme.colors.textMuted, textAlign: "center" }]}>
             Toque para entrar com {biometriaLabel}
-          </Text>
+          </Texto>
           {errorMessage ? (
-            <Text style={{ color: theme.colors.danger, textAlign: "center" }}>{errorMessage}</Text>
+            <Texto style={{ color: theme.colors.danger, textAlign: "center" }}>
+              {errorMessage}
+            </Texto>
           ) : null}
           <AuthButton
             label={`Entrar com ${biometriaLabel}`}

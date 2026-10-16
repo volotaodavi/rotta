@@ -5,13 +5,14 @@ import {
   type StudentSex,
 } from "@rotta/api-client";
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { useCreateStudent } from "../hooks/use-students";
 
 import type { ParentPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useGeocodeAddress } from "@/features/marketplace/hooks/use-geocode-address";
 import { useLocation } from "@/features/marketplace/hooks/use-location";
 import { useSchoolsSearch } from "@/features/marketplace/hooks/use-school-picker";
@@ -134,7 +135,7 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Dados do aluno</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Dados do aluno</Texto>
       <VehicleTextField label="Nome completo" value={nome} onChangeText={setNome} />
       <VehicleTextField
         label="Data de nascimento (AAAA-MM-DD)"
@@ -153,10 +154,10 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
         ))}
       </View>
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Escola</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Escola</Texto>
       {schoolId ? (
         <VehicleCard>
-          <Text style={{ color: theme.colors.text }}>{schoolNome}</Text>
+          <Texto style={{ color: theme.colors.text }}>{schoolNome}</Texto>
           <VehicleButton
             label="Trocar escola"
             variant="ghost"
@@ -183,10 +184,10 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
                 }}
               >
                 <VehicleCard>
-                  <Text style={{ color: theme.colors.text }}>{school.nomeOficial}</Text>
-                  <Text style={{ color: theme.colors.textMuted }}>
+                  <Texto style={{ color: theme.colors.text }}>{school.nomeOficial}</Texto>
+                  <Texto style={{ color: theme.colors.textMuted }}>
                     {school.cidade}/{school.estado}
-                  </Text>
+                  </Texto>
                 </VehicleCard>
               </Pressable>
             ))}
@@ -194,7 +195,7 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
         </>
       )}
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Turno</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Turno</Texto>
       <View style={styles.chipsRow}>
         {TURNOS.map((value) => (
           <VehicleButton
@@ -206,10 +207,10 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
         ))}
       </View>
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Endereço de embarque</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Endereço de embarque</Texto>
       <EnderecoFields value={embarque} onChange={setEmbarque} />
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Endereço de desembarque</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Endereço de desembarque</Texto>
       <VehicleButton
         label="Usar o mesmo endereço de embarque"
         variant="ghost"
@@ -217,7 +218,7 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
       />
       <EnderecoFields value={desembarque} onChange={setDesembarque} />
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Observações (opcional)</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Observações (opcional)</Texto>
       <VehicleTextField
         label="Necessidades especiais"
         value={necessidadesEspeciais}
@@ -237,7 +238,7 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
         multiline
       />
 
-      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
 
       <VehicleButton
         label="Cadastrar aluno"

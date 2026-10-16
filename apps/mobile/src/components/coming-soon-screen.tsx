@@ -1,7 +1,8 @@
 import { Sparkles } from "@rotta/icons/native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -31,8 +32,8 @@ export function ComingSoonScreen({
       <View style={[styles.iconCircle, { backgroundColor: theme.colors.primaryMuted }]}>
         <Sparkles size={32} color={theme.colors.primary} />
       </View>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>{titulo}</Text>
-      <Text style={[styles.corpo, { color: theme.colors.textMuted }]}>{corpo}</Text>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>{titulo}</Texto>
+      <Texto style={[styles.corpo, { color: theme.colors.textMuted }]}>{corpo}</Texto>
     </View>
   );
 }

@@ -1,7 +1,8 @@
-import { Text } from "react-native";
+import {} from "react-native";
 
 import { IdentityVerificationStatusCard } from "../components";
 
+import { Texto } from "@/components/texto";
 import { VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -22,10 +23,10 @@ export function DriverIdentityVerificationScreen(): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
         Confirme sua identidade com a Didit: documento + biometria facial, num único formulário
         guiado.
-      </Text>
+      </Texto>
       <VehicleCard>
         <IdentityVerificationStatusCard />
       </VehicleCard>

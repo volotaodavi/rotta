@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 interface AuthTextFieldProps extends TextInputProps {
@@ -33,14 +34,14 @@ export function AuthTextField({
 
   return (
     <View style={styles.container}>
-      <Text
+      <Texto
         style={[
           styles.label,
           { color: theme.colors.textMuted, fontSize: theme.typography.caption.fontSize },
         ]}
       >
         {label}
-      </Text>
+      </Texto>
       <View style={styles.inputRow}>
         {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <TextInput
@@ -77,7 +78,7 @@ export function AuthTextField({
         {rightAccessory ? <View style={styles.accessory}>{rightAccessory}</View> : null}
       </View>
       {helperText ? (
-        <Text style={[styles.helper, { color: theme.colors.textMuted }]}>{helperText}</Text>
+        <Texto style={[styles.helper, { color: theme.colors.textMuted }]}>{helperText}</Texto>
       ) : null}
     </View>
   );

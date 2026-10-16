@@ -8,13 +8,14 @@ import {
 import { useAuth } from "@rotta/auth/native";
 import { Lock, Mail } from "@rotta/icons/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { AuthButton, AuthLogoMark, AuthScreen, AuthTextField, PasswordInput } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { clientErrorsApi } from "@/lib/api-client";
 import { identidadeDoBuild } from "@/lib/identidade-do-build";
 import { useTheme } from "@/providers/theme-provider";
@@ -155,17 +156,17 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
     return (
       <AuthScreen>
         <AuthLogoMark />
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Escolha uma empresa
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Sua conta está vinculada a mais de uma empresa.
-        </Text>
+        </Texto>
         <View style={styles.profileList}>
           {profiles.map((profile) => (
             <AuthButton
@@ -178,7 +179,7 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
           ))}
         </View>
         {errorMessage ? (
-          <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
+          <Texto style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Texto>
         ) : null}
         <AuthButton label="Voltar" variant="ghost" onPress={() => setProfiles(null)} />
       </AuthScreen>
@@ -190,17 +191,17 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
       <AuthLogoMark />
 
       <View style={styles.headingBlock}>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Entrar
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Acesse sua conta para continuar.
-        </Text>
+        </Texto>
       </View>
 
       <AuthTextField
@@ -219,27 +220,27 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
       />
 
       {errorMessage ? (
-        <Text style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Text>
+        <Texto style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Texto>
       ) : null}
 
       <AuthButton label="Entrar" onPress={() => void handleLogin()} isLoading={isSubmitting} />
 
-      <Text
+      <Texto
         style={[styles.link, { color: theme.colors.primary }]}
         onPress={() => navigation.navigate("EsqueciSenha")}
       >
         Esqueci minha senha
-      </Text>
+      </Texto>
 
-      <Text style={[styles.footer, { color: theme.colors.textMuted }]}>
+      <Texto style={[styles.footer, { color: theme.colors.textMuted }]}>
         Não tem uma conta?{" "}
-        <Text
+        <Texto
           style={[styles.footerLink, { color: theme.colors.primary }]}
           onPress={() => navigation.navigate("CriarConta")}
         >
           Criar conta
-        </Text>
-      </Text>
+        </Texto>
+      </Texto>
     </AuthScreen>
   );
 }

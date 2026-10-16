@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { ReactNode } from "react";
 
+import { Texto } from "@/components/texto";
 import { VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -27,10 +28,10 @@ export function AdminStatTile({
   return (
     <VehicleCard style={styles.card}>
       <View style={[styles.iconWrap, { backgroundColor: theme.colors.primaryMuted }]}>{icon}</View>
-      <Text style={[styles.valor, { color: theme.colors.text }]}>{value}</Text>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={2}>
+      <Texto style={[styles.valor, { color: theme.colors.text }]}>{value}</Texto>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={2}>
         {label}
-      </Text>
+      </Texto>
     </VehicleCard>
   );
 }

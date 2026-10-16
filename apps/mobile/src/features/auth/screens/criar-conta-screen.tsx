@@ -1,11 +1,12 @@
 import { Briefcase, User } from "@rotta/icons/native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { AuthScreen, RoleOptionCard } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "CriarConta">;
@@ -26,17 +27,17 @@ export function CriarContaScreen({ navigation }: Props): JSX.Element {
   return (
     <AuthScreen>
       <View style={styles.headingBlock}>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Como você usa a Rotta?
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Escolha o perfil que melhor representa você.
-        </Text>
+        </Texto>
       </View>
 
       <RoleOptionCard

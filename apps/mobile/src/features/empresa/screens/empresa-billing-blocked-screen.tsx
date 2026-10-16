@@ -1,7 +1,8 @@
 import { useAuth } from "@rotta/auth/native";
 import { Lock } from "@rotta/icons/native";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { env } from "@/config/env";
 import { VehicleButton } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
@@ -51,20 +52,20 @@ export function EmpresaBillingBlockedScreen({ reason }: { reason: string | null 
       <View style={[styles.iconWrap, { backgroundColor: `${theme.colors.warning}20` }]}>
         <Lock size={28} color={theme.colors.warning} />
       </View>
-      <Text
+      <Texto
         style={[
           styles.title,
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
         Assinatura pendente
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         {reason ?? "Sua assinatura da Rotta precisa ser regularizada."}
-      </Text>
-      <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
         O acesso ao app fica bloqueado até o pagamento ser regularizado no navegador.
-      </Text>
+      </Texto>
       <VehicleButton label="Regularizar pagamento" onPress={abrirAssinatura} />
       <VehicleButton label="Sair" variant="secondary" onPress={() => void logout()} />
     </View>

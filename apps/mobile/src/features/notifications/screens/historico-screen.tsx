@@ -1,6 +1,6 @@
 import { Archive } from "@rotta/icons/native";
 import { EmptyState } from "@rotta/ui/native";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useNotificationsList, useSetNotificationArquivada } from "../hooks/use-notifications";
 import { iconeDoTipo, NOTIFICATION_PRIORITY_TONE } from "../labels";
@@ -8,6 +8,7 @@ import { iconeDoTipo, NOTIFICATION_PRIORITY_TONE } from "../labels";
 import type { NotificationsStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -40,9 +41,9 @@ export function HistoricoScreen({ navigation }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar o histórico. Tente novamente mais tarde.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -78,13 +79,13 @@ export function HistoricoScreen({ navigation }: Props): JSX.Element {
             >
               <View style={styles.linhaTitulo}>
                 <TipoIcone size={18} color={theme.colors.textMuted} />
-                <Text style={[styles.titulo, { color: theme.colors.text }]} numberOfLines={1}>
+                <Texto style={[styles.titulo, { color: theme.colors.text }]} numberOfLines={1}>
                   {notification.titulo}
-                </Text>
+                </Texto>
               </View>
-              <Text style={{ color: theme.colors.textMuted }} numberOfLines={2}>
+              <Texto style={{ color: theme.colors.textMuted }} numberOfLines={2}>
                 {notification.corpo}
-              </Text>
+              </Texto>
               <StatusPill
                 label={notification.prioridade}
                 tone={NOTIFICATION_PRIORITY_TONE[notification.prioridade]}

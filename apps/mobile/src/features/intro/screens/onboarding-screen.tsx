@@ -4,7 +4,6 @@ import {
   Dimensions,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -20,6 +19,7 @@ import { ProgressDots } from "../components/progress-dots";
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { AuthButton } from "@/features/auth/components";
 import { setHasSeenOnboarding } from "@/lib/onboarding-store";
 import { useTheme } from "@/providers/theme-provider";
@@ -119,17 +119,17 @@ export function OnboardingScreen({ navigation }: Props): JSX.Element {
           { paddingBottom: insets.bottom + theme.spacing[6], gap: theme.spacing[3] },
         ]}
       >
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.headlineMobile.fontSize },
           ]}
         >
           {slide.title}
-        </Text>
-        <Text style={[styles.description, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.description, { color: theme.colors.textMuted }]}>
           {slide.description}
-        </Text>
+        </Texto>
 
         <View style={styles.actions}>
           <AuthButton

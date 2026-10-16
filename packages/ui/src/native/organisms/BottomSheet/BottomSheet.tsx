@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Animated,
@@ -159,5 +160,5 @@ const styles = StyleSheet.create({
   handle: { alignSelf: "center", borderRadius: 3, height: 4, marginBottom: 8, width: 36 },
   header: { paddingHorizontal: 16, paddingTop: 10 },
   sheet: { bottom: 0, left: 0, position: "absolute", right: 0 },
-  title: { fontSize: 16, fontWeight: "700", paddingBottom: 8 },
+  title: { fontFamily: fonteNativa(700), fontSize: 16, fontWeight: "700", paddingBottom: 8 },
 });

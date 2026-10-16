@@ -9,7 +9,7 @@ import {
   SummaryCards,
 } from "@rotta/ui/native";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { BarBreakdownChart } from "../components";
 import { useAdminBillingBalance, useAdminBillingOverview } from "../hooks/use-admin-billing";
@@ -17,6 +17,7 @@ import { useAdminBillingBalance, useAdminBillingOverview } from "../hooks/use-ad
 import type { AdminFinanceiroStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -90,9 +91,9 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
   if (isError || !data) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar o painel financeiro.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -105,10 +106,10 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
       {!data.asaas.configured ? (
         <VehicleCard>
           <StatusPill label="Asaas não configurada" tone="warning" />
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Sem ASAAS_API_KEY, valores de Pix/cartão/boleto não podem ser consultados. Empresas e
             planos abaixo continuam corretos (vêm do banco da Rotta).
-          </Text>
+          </Texto>
         </VehicleCard>
       ) : null}
 
@@ -119,10 +120,10 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
       */}
       {saldoCentavos === null ? (
         <VehicleCard>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Saldo atual (Asaas)</Text>
-          <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Saldo atual (Asaas)</Texto>
+          <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
             Não foi possível consultar o saldo agora.
-          </Text>
+          </Texto>
         </VehicleCard>
       ) : (
         <BalanceCard

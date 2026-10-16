@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import type { Coords } from "../hooks/use-location";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleScreen, VehicleTextField } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -40,12 +41,12 @@ export function EnderecoManualScreen({
 
   return (
     <VehicleScreen>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>Informe seu endereço</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>Informe seu endereço</Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Não conseguimos acessar sua localização automaticamente. Preencha seu endereço abaixo. Se
         você souber as coordenadas (latitude/longitude), informe-as para já poder buscar
         transportadores próximos.
-      </Text>
+      </Texto>
 
       <VehicleTextField label="CEP" value={cep} onChangeText={setCep} keyboardType="numeric" />
       <VehicleTextField label="Rua" value={rua} onChangeText={setRua} />
@@ -58,9 +59,9 @@ export function EnderecoManualScreen({
       <VehicleTextField label="Cidade" value={cidade} onChangeText={setCidade} />
       <VehicleTextField label="Estado (UF)" value={estado} onChangeText={setEstado} maxLength={2} />
 
-      <Text style={{ color: theme.colors.textMuted, fontSize: theme.typography.caption.fontSize }}>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: theme.typography.caption.fontSize }}>
         Coordenadas (opcional: a Rotta ainda não geocodifica endereços automaticamente)
-      </Text>
+      </Texto>
       <VehicleTextField
         label="Latitude"
         value={latitude}
@@ -77,9 +78,9 @@ export function EnderecoManualScreen({
       />
 
       {!coordsValidas ? (
-        <Text style={{ color: theme.colors.warning }}>
+        <Texto style={{ color: theme.colors.warning }}>
           Sem coordenadas, ainda não é possível buscar transportadores próximos ao seu endereço.
-        </Text>
+        </Texto>
       ) : null}
 
       <VehicleButton

@@ -22,7 +22,7 @@ import {
   SummaryCards,
 } from "@rotta/ui/native";
 import { useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import {
   FATURA_EM_ABERTO,
@@ -36,6 +36,7 @@ import { RottaLogo } from "@/components/rotta-logo";
 /* `StatusPill` vem da casca do app, e não do pacote: é ela que injeta o
    tema pelo `useTheme()`, e é dela que as outras 75 chamadas do app já
    usam. */
+import { Texto } from "@/components/texto";
 import { StatusPill, VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -200,7 +201,7 @@ export function PagamentosScreen({
         contentContainerStyle={[styles.corpo, { padding: theme.spacing[4] }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Pagamentos</Text>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>Pagamentos</Texto>
 
         {/*
           O aluno fica num seletor, e não num subtítulo: numa família
@@ -326,15 +327,15 @@ function LinhaDeFatura({ fatura, primeira }: { fatura: Fatura; primeira: boolean
           : { borderTopColor: theme.colors.hairline, borderTopWidth: StyleSheet.hairlineWidth },
       ]}
     >
-      <Text style={[styles.competencia, { color: theme.colors.text }]}>{fatura.competencia}</Text>
+      <Texto style={[styles.competencia, { color: theme.colors.text }]}>{fatura.competencia}</Texto>
       <View style={styles.linhaMeio}>
         <StatusPill label={ROTULO_DA_FATURA[fatura.status]} tone={TOM_DA_FATURA[fatura.status]} />
       </View>
       <View style={styles.linhaDireita}>
-        <Text style={[styles.valor, { color: theme.colors.text }]}>{fatura.valorFormatado}</Text>
-        <Text style={[styles.vencimento, { color: theme.colors.textMuted }]}>
+        <Texto style={[styles.valor, { color: theme.colors.text }]}>{fatura.valorFormatado}</Texto>
+        <Texto style={[styles.vencimento, { color: theme.colors.textMuted }]}>
           {fatura.vencimentoFormatado}
-        </Text>
+        </Texto>
       </View>
     </View>
   );

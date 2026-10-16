@@ -1,5 +1,6 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 export interface BarBreakdownItem {
@@ -35,10 +36,10 @@ export function BarBreakdownChart({
         return (
           <View key={item.label} style={styles.linhaWrap}>
             <View style={styles.legendaLinha}>
-              <Text style={[styles.label, { color: theme.colors.text }]}>{item.label}</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              <Texto style={[styles.label, { color: theme.colors.text }]}>{item.label}</Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {formatValue(item.value)}
-              </Text>
+              </Texto>
             </View>
             <View
               style={[

@@ -1,7 +1,8 @@
 import { MapPin } from "@rotta/icons/native";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -36,24 +37,24 @@ export function BackgroundLocationDisclosureModal({
             <MapPin size={28} color={theme.colors.primary} />
           </View>
 
-          <Text style={[styles.titulo, { color: theme.colors.text }]}>
+          <Texto style={[styles.titulo, { color: theme.colors.text }]}>
             Localização em segundo plano
-          </Text>
-          <Text style={[styles.corpo, { color: theme.colors.textMuted }]}>
+          </Texto>
+          <Texto style={[styles.corpo, { color: theme.colors.textMuted }]}>
             Durante a viagem, a Rotta coleta sua localização mesmo com o app minimizado ou a tela
             bloqueada, para que as famílias acompanhem o trajeto em tempo real. A coleta acontece só
             enquanto a viagem estiver em andamento, nunca fora dela, e você pode revogar essa
             permissão a qualquer momento nas configurações do aparelho.
-          </Text>
+          </Texto>
 
           <Pressable
             accessibilityRole="button"
             onPress={onConfirmar}
             style={[styles.botao, { backgroundColor: theme.colors.primary }]}
           >
-            <Text style={[styles.botaoLabel, { color: theme.colors.onPrimary }]}>
+            <Texto style={[styles.botaoLabel, { color: theme.colors.onPrimary }]}>
               Entendi, continuar
-            </Text>
+            </Texto>
           </Pressable>
         </View>
       </View>

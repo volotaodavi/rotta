@@ -1,10 +1,11 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useAdminApprovalQueue } from "../hooks/use-admin-backoffice";
 
 import type { AdminHomeStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -37,9 +38,9 @@ export function AdminApprovalsScreen(_props: Props): JSX.Element {
   if (isError || !data) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar a fila de aprovações.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -53,26 +54,26 @@ export function AdminApprovalsScreen(_props: Props): JSX.Element {
   return (
     <VehicleScreen>
       {isEmpty ? (
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Nenhum item pendente de revisão no momento.
-        </Text>
+        </Texto>
       ) : null}
 
       {data.documentosMotorista.length > 0 ? (
         <View style={styles.secao}>
-          <Text style={[styles.secaoTitulo, { color: theme.colors.text }]}>
+          <Texto style={[styles.secaoTitulo, { color: theme.colors.text }]}>
             Documentos de motorista ({data.documentosMotorista.length})
-          </Text>
+          </Texto>
           {data.documentosMotorista.map((doc) => (
             <VehicleCard key={doc.id}>
               <View style={styles.linha}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
+                  <Texto style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
                     {doc.userNome} · {doc.tipo}
-                  </Text>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  </Texto>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {doc.companyNome} · {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
-                  </Text>
+                  </Texto>
                 </View>
                 <StatusPill
                   label={doc.rottaAiStatus}
@@ -86,19 +87,19 @@ export function AdminApprovalsScreen(_props: Props): JSX.Element {
 
       {data.documentosVeiculo.length > 0 ? (
         <View style={styles.secao}>
-          <Text style={[styles.secaoTitulo, { color: theme.colors.text }]}>
+          <Texto style={[styles.secaoTitulo, { color: theme.colors.text }]}>
             Documentos de veículo ({data.documentosVeiculo.length})
-          </Text>
+          </Texto>
           {data.documentosVeiculo.map((doc) => (
             <VehicleCard key={doc.id}>
               <View style={styles.linha}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
+                  <Texto style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
                     {doc.vehiclePlaca} · {doc.tipo}
-                  </Text>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  </Texto>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {doc.companyNome} · {new Date(doc.createdAt).toLocaleDateString("pt-BR")}
-                  </Text>
+                  </Texto>
                 </View>
                 <StatusPill
                   label={doc.rottaAiStatus}
@@ -112,20 +113,20 @@ export function AdminApprovalsScreen(_props: Props): JSX.Element {
 
       {data.contratos.length > 0 ? (
         <View style={styles.secao}>
-          <Text style={[styles.secaoTitulo, { color: theme.colors.text }]}>
+          <Texto style={[styles.secaoTitulo, { color: theme.colors.text }]}>
             Contratos aguardando assinatura ({data.contratos.length})
-          </Text>
+          </Texto>
           {data.contratos.map((contract) => (
             <VehicleCard key={contract.id}>
               <View style={styles.linha}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
+                  <Texto style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
                     {contract.studentNome}
-                  </Text>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  </Texto>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {contract.companyNome} ·{" "}
                     {new Date(contract.createdAt).toLocaleDateString("pt-BR")}
-                  </Text>
+                  </Texto>
                 </View>
                 <StatusPill label={contract.status} tone="warning" />
               </View>

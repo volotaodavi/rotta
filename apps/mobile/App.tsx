@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AppErrorBoundary } from "@/components/app-error-boundary";
+import { FonteDaMarca } from "@/components/fonte-da-marca";
 import { isEnvConfigValid } from "@/config/env";
 import { acordarApi } from "@/lib/acordar-api";
 import { RootNavigator } from "@/navigation/RootNavigator";
@@ -40,19 +41,24 @@ export default function App(): JSX.Element {
 
   return (
     <AppErrorBoundary>
-      {isEnvConfigValid ? (
-        <AppProviders>
-          <StatusBar style="dark" />
-          <RootNavigator />
-        </AppProviders>
-      ) : (
-        <SafeAreaProvider>
-          <ThemeProvider>
+      {/* A letra da marca antes de qualquer tela: sem isto o texto
+          aparece em Roboto e pula para a Plus Jakarta Sans meio
+          segundo depois, reorganizando a tela na frente de quem lê. */}
+      <FonteDaMarca>
+        {isEnvConfigValid ? (
+          <AppProviders>
             <StatusBar style="dark" />
-            <AppConfigErrorScreen />
-          </ThemeProvider>
-        </SafeAreaProvider>
-      )}
+            <RootNavigator />
+          </AppProviders>
+        ) : (
+          <SafeAreaProvider>
+            <ThemeProvider>
+              <StatusBar style="dark" />
+              <AppConfigErrorScreen />
+            </ThemeProvider>
+          </SafeAreaProvider>
+        )}
+      </FonteDaMarca>
     </AppErrorBoundary>
   );
 }

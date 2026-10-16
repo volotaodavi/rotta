@@ -2,11 +2,12 @@ import { ApiError, type ConverterAutonomoInput } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { VinculoPendenteStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleScreen, VehicleTextField } from "@/features/vehicles/components";
 import { useCepLookup } from "@/hooks/use-cep-lookup";
 import { companiesApi } from "@/lib/api-client";
@@ -100,11 +101,11 @@ export function ConverterEmTransportadoraScreen({ navigation: _navigation }: Pro
   if (converter.isSuccess) {
     return (
       <VehicleScreen>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Transportadora criada</Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>Transportadora criada</Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {converter.data.nomeFantasia} já é sua, {user?.nome?.split(" ")[0] ?? ""}. Entre novamente
           para usar o app como transportadora.
-        </Text>
+        </Texto>
         <VehicleButton label="Entrar novamente" onPress={() => void logout()} />
       </VehicleScreen>
     );
@@ -112,12 +113,12 @@ export function ConverterEmTransportadoraScreen({ navigation: _navigation }: Pro
 
   return (
     <VehicleScreen>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>Minha transportadora</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>Minha transportadora</Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Autônomo e MEI são a própria transportadora, sem código de ninguém. Sua conta, seu CPF e sua
         verificação de identidade continuam as mesmas: falta só o endereço, que toda transportadora
         precisa ter.
-      </Text>
+      </Texto>
 
       <VehicleTextField
         label="Nome da sua transportadora (opcional)"
@@ -139,11 +140,11 @@ export function ConverterEmTransportadoraScreen({ navigation: _navigation }: Pro
         keyboardType="number-pad"
       />
       {cepLookup.isLoading ? (
-        <Text style={[styles.nota, { color: theme.colors.textMuted }]}>Buscando endereço…</Text>
+        <Texto style={[styles.nota, { color: theme.colors.textMuted }]}>Buscando endereço…</Texto>
       ) : cepLookup.notFound ? (
-        <Text style={[styles.nota, { color: theme.colors.textMuted }]}>
+        <Texto style={[styles.nota, { color: theme.colors.textMuted }]}>
           CEP não encontrado. Preencha os campos abaixo na mão.
-        </Text>
+        </Texto>
       ) : null}
 
       <VehicleTextField
@@ -194,7 +195,7 @@ export function ConverterEmTransportadoraScreen({ navigation: _navigation }: Pro
         </View>
       </View>
 
-      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
 
       <VehicleButton
         label="Criar minha transportadora"

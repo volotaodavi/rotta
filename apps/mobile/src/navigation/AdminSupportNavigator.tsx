@@ -1,9 +1,12 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { AdminSupportStackParamList } from "./types";
 
 import { AdminChamadosScreen } from "@/features/admin/screens";
 import { ChamadoDetalhesScreen } from "@/features/support/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<AdminSupportStackParamList>();
 
@@ -16,8 +19,9 @@ const Stack = createNativeStackNavigator<AdminSupportStackParamList>();
  * resolve o escopo cross-tenant pelo ator autenticado.
  */
 export function AdminSupportNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen name="Lista" component={AdminChamadosScreen} options={{ title: "Chamados" }} />
       <Stack.Screen
         name="Detalhes"

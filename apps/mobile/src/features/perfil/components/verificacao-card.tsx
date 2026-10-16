@@ -1,10 +1,11 @@
 import { Check, X } from "@rotta/icons/native";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { SeloVerificado } from "./selo-verificado";
 
 import type { PerfilVerificacao } from "../hooks/use-perfil-verificacao";
 
+import { Texto } from "@/components/texto";
 import { VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -31,13 +32,13 @@ export function VerificacaoCard({ verificacao }: { verificacao: PerfilVerificaca
   return (
     <VehicleCard>
       <View style={styles.titulo}>
-        <Text style={[styles.tituloTexto, { color: theme.colors.text }]}>
+        <Texto style={[styles.tituloTexto, { color: theme.colors.text }]}>
           Verificação do perfil
-        </Text>
+        </Texto>
         {verificacao.verificado ? <SeloVerificado size={18} /> : null}
       </View>
 
-      <Text
+      <Texto
         style={{
           color: verificacao.verificado ? theme.colors.success : theme.colors.textMuted,
           fontSize: 14,
@@ -46,7 +47,7 @@ export function VerificacaoCard({ verificacao }: { verificacao: PerfilVerificaca
         {verificacao.verificado
           ? "Perfil 100% verificado para todas as funcionalidades do app."
           : "Falta pouco para o seu perfil ficar 100% verificado."}
-      </Text>
+      </Texto>
 
       <View style={styles.lista}>
         {verificacao.requisitos.map((requisito) => (
@@ -68,13 +69,13 @@ export function VerificacaoCard({ verificacao }: { verificacao: PerfilVerificaca
               )}
             </View>
             <View style={styles.itemTexto}>
-              <Text style={[styles.itemLabel, { color: theme.colors.text }]}>
+              <Texto style={[styles.itemLabel, { color: theme.colors.text }]}>
                 {requisito.label}
-              </Text>
+              </Texto>
               {requisito.ok ? null : (
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   {requisito.pendencia}
-                </Text>
+                </Texto>
               )}
             </View>
           </View>
@@ -101,15 +102,15 @@ export function DadoLinha({
 
   return (
     <View style={styles.dado}>
-      <Text style={[styles.dadoRotulo, { color: theme.colors.textMuted }]}>{rotulo}</Text>
-      <Text
+      <Texto style={[styles.dadoRotulo, { color: theme.colors.textMuted }]}>{rotulo}</Texto>
+      <Texto
         style={[
           styles.dadoValor,
           { color: preenchido ? theme.colors.text : theme.colors.placeholder },
         ]}
       >
         {preenchido ? valor : "Não informado"}
-      </Text>
+      </Texto>
     </View>
   );
 }
@@ -126,7 +127,7 @@ export function DadosCard({
 
   return (
     <VehicleCard>
-      <Text style={[styles.tituloTexto, { color: theme.colors.text }]}>{titulo}</Text>
+      <Texto style={[styles.tituloTexto, { color: theme.colors.text }]}>{titulo}</Texto>
       <View style={styles.dados}>{children}</View>
     </VehicleCard>
   );

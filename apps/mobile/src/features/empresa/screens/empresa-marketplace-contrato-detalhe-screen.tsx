@@ -1,7 +1,7 @@
 import { ApiError } from "@rotta/api-client";
 import { Star } from "@rotta/icons/native";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useAssinarContratoComoEmpresa,
@@ -12,6 +12,7 @@ import {
 import type { EmpresaHomeStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   CONTRACT_STATUS_LABEL,
   CONTRACT_STATUS_TONE,
@@ -58,7 +59,9 @@ export function EmpresaMarketplaceContratoDetalheScreen({ route }: Props): JSX.E
   if (isError || !contract) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar este contrato.</Text>
+        <Texto style={{ color: theme.colors.danger }}>
+          Não foi possível carregar este contrato.
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -77,41 +80,41 @@ export function EmpresaMarketplaceContratoDetalheScreen({ route }: Props): JSX.E
     <VehicleScreen>
       <VehicleCard style={styles.card}>
         <View style={styles.linha}>
-          <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+          <Texto style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
             Contrato
-          </Text>
+          </Texto>
           <StatusPill
             label={CONTRACT_STATUS_LABEL[contract.status]}
             tone={CONTRACT_STATUS_TONE[contract.status]}
           />
         </View>
-        <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+        <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
           Mensalidade: {centsToBRL(contract.valorMensalidadeCentavos)}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Plano: {contract.planoDescricao}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Regras: {contract.regras}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Vigência: {new Date(contract.vigenciaInicio).toLocaleDateString("pt-BR")}
           {contract.vigenciaFim
             ? ` até ${new Date(contract.vigenciaFim).toLocaleDateString("pt-BR")}`
             : ""}
-        </Text>
+        </Texto>
       </VehicleCard>
 
-      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
 
       {contract.status === "AGUARDANDO_ASSINATURA" ? (
         <VehicleCard>
           {contract.assinadoEmpresaEm ? (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Já assinado pela sua empresa em{" "}
               {new Date(contract.assinadoEmpresaEm).toLocaleDateString("pt-BR")}. Aguardando a
               assinatura da família.
-            </Text>
+            </Texto>
           ) : (
             <VehicleButton
               label="Assinar contrato"
@@ -123,29 +126,29 @@ export function EmpresaMarketplaceContratoDetalheScreen({ route }: Props): JSX.E
       ) : null}
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Avaliações recebidas
-        </Text>
+        </Texto>
         {!ratings || ratings.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
             Nenhuma avaliação recebida ainda.
-          </Text>
+          </Texto>
         ) : (
           ratings.map((rating) => (
             <View key={rating.id} style={styles.ratingRow}>
               <View style={styles.linha}>
-                <Text style={{ color: theme.colors.text, fontSize: 14 }}>
+                <Texto style={{ color: theme.colors.text, fontSize: 14 }}>
                   {RATING_TARGET_LABEL[rating.alvoTipo]}
-                </Text>
+                </Texto>
                 <View style={styles.notaRow}>
                   <Star size={14} color={theme.colors.warning} fill={theme.colors.warning} />
-                  <Text style={{ color: theme.colors.text, fontSize: 14 }}>{rating.nota}</Text>
+                  <Texto style={{ color: theme.colors.text, fontSize: 14 }}>{rating.nota}</Texto>
                 </View>
               </View>
               {rating.comentario ? (
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   {rating.comentario}
-                </Text>
+                </Texto>
               ) : null}
             </View>
           ))

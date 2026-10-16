@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -269,8 +270,8 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   titulo: {
+    fontFamily: fonteNativa(700),
     fontSize: 17,
-    fontWeight: "700",
   },
   perfil: {
     alignItems: "center",
@@ -278,6 +279,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   perfilTexto: {
+    fontFamily: fonteNativa(400),
     fontSize: 12,
   },
   direita: {
@@ -294,8 +296,8 @@ const styles = StyleSheet.create({
     top: -6,
   },
   bolinhaTexto: {
+    fontFamily: fonteNativa(700),
     fontSize: 10,
-    fontWeight: "700",
   },
   avatar: {
     alignItems: "center",
@@ -304,8 +306,8 @@ const styles = StyleSheet.create({
     width: 36,
   },
   avatarTexto: {
+    fontFamily: fonteNativa(700),
     fontSize: 13,
-    fontWeight: "700",
   },
   faixa: {
     alignItems: "center",
@@ -322,16 +324,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   rotulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 13,
-    fontWeight: "600",
     /* Levemente translúcido seria mais bonito e pior: contraste de
        rótulo sobre azul já fica no limite em tela ao sol. */
     opacity: 0.92,
   },
   valor: {
+    fontFamily: fonteNativa(700),
     fontSize: 28,
     fontVariant: ["tabular-nums"],
-    fontWeight: "700",
     letterSpacing: -0.5,
     marginTop: 4,
   },

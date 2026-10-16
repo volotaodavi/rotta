@@ -1,7 +1,8 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 
 import APP_ICON from "../../../../assets/icon.png";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -19,22 +20,22 @@ export function AuthLogoMark(): JSX.Element {
   return (
     <View style={styles.wrap}>
       <Image source={APP_ICON} style={styles.mark} />
-      <Text
+      <Texto
         style={[
           styles.wordmark,
           { color: theme.colors.text, fontSize: theme.typography.subtitle.fontSize },
         ]}
       >
         Rotta
-      </Text>
-      <Text
+      </Texto>
+      <Texto
         style={[
           styles.tagline,
           { color: theme.colors.textMuted, fontSize: theme.typography.caption.fontSize },
         ]}
       >
         Mobilidade Escolar
-      </Text>
+      </Texto>
     </View>
   );
 }

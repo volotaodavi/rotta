@@ -1,6 +1,6 @@
 import { Loader2, ShieldAlert, ShieldCheck, X } from "@rotta/icons/native";
 import { useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
@@ -8,6 +8,7 @@ import { explicarFalhaAoIniciar } from "./explicar-falha-ao-iniciar";
 
 import type { IdentityVerificationStatus } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { AuthButton } from "@/features/auth/components";
 import {
   useCreateIdentityVerificationSession,
@@ -110,11 +111,11 @@ export function IdentityVerificationStatusCard(): JSX.Element {
       {status === "APROVADA" ? (
         <View style={styles.statusRow}>
           <ShieldCheck size={24} color={theme.colors.success} />
-          <Text style={[styles.statusTexto, { color: theme.colors.text }]}>
+          <Texto style={[styles.statusTexto, { color: theme.colors.text }]}>
             Identidade verificada
             {data?.verifiedAt ? ` em ${new Date(data.verifiedAt).toLocaleDateString("pt-BR")}` : ""}
             .
-          </Text>
+          </Texto>
         </View>
       ) : (
         <>
@@ -124,14 +125,14 @@ export function IdentityVerificationStatusCard(): JSX.Element {
             ) : (
               <ShieldAlert size={24} color={theme.colors.textMuted} />
             )}
-            <Text style={[styles.statusTexto, { color: theme.colors.text }]}>
+            <Texto style={[styles.statusTexto, { color: theme.colors.text }]}>
               {COPY[status].titulo}
-            </Text>
+            </Texto>
           </View>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
             {data?.motivo ?? COPY[status].textoPadrao}
-          </Text>
-          {erro ? <Text style={{ color: theme.colors.danger, fontSize: 14 }}>{erro}</Text> : null}
+          </Texto>
+          {erro ? <Texto style={{ color: theme.colors.danger, fontSize: 14 }}>{erro}</Texto> : null}
           {PODE_INICIAR.includes(status) ? (
             <AuthButton
               label={status === "NAO_INICIADA" ? "Verificar identidade agora" : "Tentar novamente"}
@@ -159,9 +160,9 @@ export function IdentityVerificationStatusCard(): JSX.Element {
             >
               <X size={22} color={theme.colors.text} />
             </Pressable>
-            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 20 }}>
+            <Texto style={{ color: theme.colors.text, fontWeight: "700", fontSize: 20 }}>
               Verificação de identidade
-            </Text>
+            </Texto>
             <View style={styles.headerSpacer} />
           </View>
           {sessionUrl ? <WebView source={{ uri: sessionUrl }} style={styles.flex} /> : null}

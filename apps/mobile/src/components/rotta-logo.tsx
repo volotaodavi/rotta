@@ -1,5 +1,6 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /* eslint-disable @typescript-eslint/no-require-imports -- `require` é a forma padrão de referenciar um asset estático de imagem no Metro/React Native. */
@@ -39,7 +40,7 @@ export function RottaLogo({
     <View style={styles.container}>
       <Image source={MARK} style={{ width: size, height: size }} resizeMode="contain" />
       {variant === "full" ? (
-        <Text
+        <Texto
           style={[
             styles.wordmark,
             {
@@ -50,7 +51,7 @@ export function RottaLogo({
           ]}
         >
           ROTTA
-        </Text>
+        </Texto>
       ) : null}
     </View>
   );

@@ -1,5 +1,5 @@
 import { useAuth } from "@rotta/auth/native";
-import { ActivityIndicator, Image, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, StyleSheet, View } from "react-native";
 
 import { StatusPill, VehicleButton, VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle } from "../hooks/use-vehicles";
@@ -8,6 +8,7 @@ import { VEHICLE_STATUS_LABEL, VEHICLE_STATUS_TONE, VEHICLE_TYPE_LABEL } from ".
 import type { VeiculoStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<VeiculoStackParamList, "MeuVeiculo">;
@@ -44,9 +45,9 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar seu veículo. Tente novamente mais tarde.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -55,11 +56,11 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
   if (!vehicle) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {isDono
             ? "Nenhum veículo vinculado a você ainda. Gerencie a frota e os vínculos pelo Painel Web."
             : "Você ainda não está vinculado a nenhum veículo. Fale com sua empresa."}
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -71,20 +72,20 @@ export function MeuVeiculoScreen({ navigation }: Props): JSX.Element {
           <Image source={{ uri: vehicle.fotoUrl }} style={styles.photo} resizeMode="cover" />
         ) : null}
         <View style={styles.headerRow}>
-          <Text style={[styles.placa, { color: theme.colors.text }]}>{vehicle.placa}</Text>
+          <Texto style={[styles.placa, { color: theme.colors.text }]}>{vehicle.placa}</Texto>
           <StatusPill
             label={VEHICLE_STATUS_LABEL[vehicle.status]}
             tone={VEHICLE_STATUS_TONE[vehicle.status]}
           />
         </View>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {vehicle.modelo} {vehicle.marca ? `, ${vehicle.marca}` : ""} ·{" "}
           {VEHICLE_TYPE_LABEL[vehicle.tipo]}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Capacidade: {vehicle.capacidadePassageiros} passageiros ·{" "}
           {vehicle.quilometragemAtual.toLocaleString("pt-BR")} km
-        </Text>
+        </Texto>
       </VehicleCard>
 
       <View style={styles.actions}>

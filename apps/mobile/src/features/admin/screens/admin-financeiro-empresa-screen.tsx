@@ -2,7 +2,7 @@ import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { Receipt, Undo2 } from "@rotta/icons/native";
 import { EmptyState, MovementRow, SectionHeader } from "@rotta/ui/native";
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 
 import {
   useAdminCompanyPaymentHistory,
@@ -14,6 +14,7 @@ import { PAYMENT_METODO_LABEL, PAYMENT_STATUS_LABEL, STATUS_ESTORNAVEL } from ".
 import type { AdminFinanceiroStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -116,9 +117,9 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
   if (isError || !data) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar os pagamentos de {companyNome}.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -128,7 +129,7 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
       <View>
         <SectionHeader title="Pagamentos da empresa" theme={theme} />
         {data.note ? (
-          <Text style={[styles.nota, { color: theme.colors.textMuted }]}>{data.note}</Text>
+          <Texto style={[styles.nota, { color: theme.colors.textMuted }]}>{data.note}</Texto>
         ) : null}
 
         {data.items.length === 0 ? (
@@ -178,9 +179,9 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
       {podeGerenciar ? (
         <View style={styles.zonaDeRisco}>
           <SectionHeader title="Assinatura" theme={theme} />
-          <Text style={[styles.nota, { color: theme.colors.textMuted }]}>
+          <Texto style={[styles.nota, { color: theme.colors.textMuted }]}>
             Cancelar faz {companyNome} parar de ser cobrada. Não dá pra desfazer por aqui.
-          </Text>
+          </Texto>
           <VehicleButton
             label="Cancelar assinatura"
             variant="danger"

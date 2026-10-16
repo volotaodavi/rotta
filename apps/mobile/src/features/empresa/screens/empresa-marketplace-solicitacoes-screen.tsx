@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useTransportRequestsList } from "../hooks/use-empresa-marketplace";
 
@@ -7,6 +7,7 @@ import type { EmpresaHomeStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { TransportRequestStatus } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   TRANSPORT_REQUEST_STATUS_LABEL,
   TRANSPORT_REQUEST_STATUS_TONE,
@@ -52,9 +53,9 @@ export function EmpresaMarketplaceSolicitacoesScreen({ navigation }: Props): JSX
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar as solicitações.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -62,9 +63,9 @@ export function EmpresaMarketplaceSolicitacoesScreen({ navigation }: Props): JSX
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
         Famílias que solicitaram transporte com a sua empresa pelo Marketplace da Rotta.
-      </Text>
+      </Texto>
 
       <View style={styles.chips}>
         <VehicleButton
@@ -83,9 +84,9 @@ export function EmpresaMarketplaceSolicitacoesScreen({ navigation }: Props): JSX
       </View>
 
       {!data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Nenhuma solicitação de transporte recebida ainda.
-        </Text>
+        </Texto>
       ) : (
         data.items.map((request) => (
           <Pressable
@@ -98,23 +99,23 @@ export function EmpresaMarketplaceSolicitacoesScreen({ navigation }: Props): JSX
           >
             <VehicleCard style={styles.card}>
               <View style={styles.linha}>
-                <Text style={[styles.nome, { color: theme.colors.text }]}>
+                <Texto style={[styles.nome, { color: theme.colors.text }]}>
                   {request.studentNome ?? "Aluno"}
-                </Text>
+                </Texto>
                 <StatusPill
                   label={TRANSPORT_REQUEST_STATUS_LABEL[request.status]}
                   tone={TRANSPORT_REQUEST_STATUS_TONE[request.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Responsável: {request.responsavelNome ?? "Não informado"}
-              </Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              </Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Escola: {request.schoolNome ?? "Não informada"}
-              </Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              </Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 Recebida em {new Date(request.createdAt).toLocaleDateString("pt-BR")}
-              </Text>
+              </Texto>
             </VehicleCard>
           </Pressable>
         ))

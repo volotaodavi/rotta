@@ -1,8 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import type { AdminSupportStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useSupportTickets } from "@/features/support/hooks/use-support";
 import { SUPPORT_TICKET_STATUS_LABEL, SUPPORT_TICKET_STATUS_TONE } from "@/features/support/labels";
 import {
@@ -39,7 +40,7 @@ export function AdminChamadosScreen({ navigation }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar os chamados.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar os chamados.</Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -48,7 +49,7 @@ export function AdminChamadosScreen({ navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       {!data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum chamado no momento.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum chamado no momento.</Texto>
       ) : (
         data.items.map((ticket) => (
           <Pressable
@@ -57,17 +58,17 @@ export function AdminChamadosScreen({ navigation }: Props): JSX.Element {
           >
             <VehicleCard>
               <View style={styles.linha}>
-                <Text style={[styles.assunto, { color: theme.colors.text }]} numberOfLines={1}>
+                <Texto style={[styles.assunto, { color: theme.colors.text }]} numberOfLines={1}>
                   {ticket.assunto}
-                </Text>
+                </Texto>
                 <StatusPill
                   label={SUPPORT_TICKET_STATUS_LABEL[ticket.status]}
                   tone={SUPPORT_TICKET_STATUS_TONE[ticket.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {ticket.companyNome} · {new Date(ticket.createdAt).toLocaleDateString("pt-BR")}
-              </Text>
+              </Texto>
             </VehicleCard>
           </Pressable>
         ))

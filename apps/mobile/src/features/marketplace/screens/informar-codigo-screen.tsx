@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { useTransporterByCode } from "../hooks/use-transporters";
 
 import type { MarketplaceStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleScreen, VehicleTextField } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -37,13 +38,13 @@ export function InformarCodigoScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>
         Já sabe qual transportadora contratar?
-      </Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      </Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Informe o código que a transportadora compartilhou com você, sem precisar buscar por
         proximidade ou escola.
-      </Text>
+      </Texto>
 
       <VehicleTextField
         label="Código da transportadora"
@@ -54,9 +55,9 @@ export function InformarCodigoScreen({ navigation }: Props): JSX.Element {
       />
 
       {buscar.isError ? (
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Nenhuma transportadora encontrada com esse código. Confira e tente de novo.
-        </Text>
+        </Texto>
       ) : null}
 
       <VehicleButton

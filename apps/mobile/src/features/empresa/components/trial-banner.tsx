@@ -1,8 +1,9 @@
 import { Sparkles } from "@rotta/icons/native";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 
 import type { Company } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { env } from "@/config/env";
 import { StatusPill, VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
@@ -69,16 +70,16 @@ export function TrialBanner({ company }: { company: Company }): JSX.Element | nu
         </View>
         <View style={styles.headerTexto}>
           <View style={styles.badgesRow}>
-            <Text style={[styles.titulo, { color: theme.colors.text }]}>Período de teste</Text>
+            <Texto style={[styles.titulo, { color: theme.colors.text }]}>Período de teste</Texto>
             <StatusPill label="Trial" tone="info" />
             {contagem ? (
               <StatusPill label={contagem.texto} tone={contagem.urgente ? "danger" : "neutral"} />
             ) : null}
           </View>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 14, lineHeight: 18 }}>
             Sua empresa está em período de teste gratuito. Assine o plano Starter (R$ 39,90/mês)
             para continuar usando a plataforma sem interrupções.
-          </Text>
+          </Texto>
         </View>
       </View>
       <VehicleButton label="Assinar agora" onPress={assinarAgora} />

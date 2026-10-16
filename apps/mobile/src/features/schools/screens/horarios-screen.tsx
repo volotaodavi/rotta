@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useSchool } from "../hooks/use-schools";
 import { SCHOOL_SHIFT_LABEL } from "../labels";
@@ -6,6 +6,7 @@ import { SCHOOL_SHIFT_LABEL } from "../labels";
 import type { VeiculoStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -35,7 +36,7 @@ export function EscolaHorariosScreen({ route }: Props): JSX.Element {
   if (isError || !school) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar os horários.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar os horários.</Texto>
       </VehicleScreen>
     );
   }
@@ -43,19 +44,19 @@ export function EscolaHorariosScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>
           Turnos atendidos por {school.nomeOficial}
-        </Text>
+        </Texto>
         {school.turnosAtendidos.map((turno) => (
-          <Text key={turno} style={{ color: theme.colors.textMuted }}>
+          <Texto key={turno} style={{ color: theme.colors.textMuted }}>
             • {SCHOOL_SHIFT_LABEL[turno]}
-          </Text>
+          </Texto>
         ))}
       </VehicleCard>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Horários detalhados por rota (ex. horário de embarque em cada ponto) dependem do módulo de
         Rotas, ainda não implementado.
-      </Text>
+      </Texto>
     </VehicleScreen>
   );
 }

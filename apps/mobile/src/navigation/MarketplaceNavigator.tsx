@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { MarketplaceStackParamList } from "./types";
 
 import {
@@ -8,6 +10,7 @@ import {
   SolicitarTransporteScreen,
   TransportadorDetalhesScreen,
 } from "@/features/marketplace/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
 
@@ -18,8 +21,9 @@ const Stack = createNativeStackNavigator<MarketplaceStackParamList>();
  * `ParentNavigator`, mesmo papel de `VeiculoNavigator` em `DriverNavigator`.
  */
 export function MarketplaceNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen name="MapaHome" component={MapaScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="InformarCodigo"

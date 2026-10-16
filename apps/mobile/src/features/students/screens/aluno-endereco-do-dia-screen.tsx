@@ -1,6 +1,6 @@
 import { ApiError, type StudentAddressOverrideTrecho } from "@rotta/api-client";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useRemoveStudentAddressOverride,
@@ -11,6 +11,7 @@ import {
 import type { ParentPerfilStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useGeocodeAddress } from "@/features/marketplace/hooks/use-geocode-address";
 import {
   ENDERECO_VAZIO,
@@ -101,9 +102,9 @@ export function AlunoEnderecoDoDiaScreen({ route }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar os endereços do dia.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -111,25 +112,25 @@ export function AlunoEnderecoDoDiaScreen({ route }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+      <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
         Já cadastrados
-      </Text>
+      </Texto>
       {!overrides || overrides.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum endereço do dia cadastrado.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum endereço do dia cadastrado.</Texto>
       ) : (
         overrides.map((item) => (
           <VehicleCard key={item.id} style={styles.card}>
             <View style={styles.linha}>
-              <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+              <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
                 {new Date(`${item.data}T00:00:00`).toLocaleDateString("pt-BR")}
-              </Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              </Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {STUDENT_ADDRESS_OVERRIDE_TRECHO_LABEL[item.trecho]}
-              </Text>
+              </Texto>
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {item.logradouro}, {item.numero}, {item.bairro}, {item.cidade}/{item.estado}
-            </Text>
+            </Texto>
             <VehicleButton
               label="Remover"
               variant="danger"
@@ -141,9 +142,9 @@ export function AlunoEnderecoDoDiaScreen({ route }: Props): JSX.Element {
       )}
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo endereço do dia
-        </Text>
+        </Texto>
         <VehicleTextField
           label="Data (AAAA-MM-DD)"
           value={data}
@@ -166,7 +167,7 @@ export function AlunoEnderecoDoDiaScreen({ route }: Props): JSX.Element {
           value={observacao}
           onChangeText={setObservacao}
         />
-        {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+        {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
         <VehicleButton
           label="Salvar endereço do dia"
           disabled={!podeSalvar}

@@ -10,7 +10,7 @@ import {
 } from "@rotta/icons/native";
 import { EmptyState, ListRow, SectionHeader } from "@rotta/ui/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import {
   StatusPill,
@@ -26,6 +26,7 @@ import {
 } from "../hooks/use-vehicles";
 import { VEHICLE_OCCURRENCE_SEVERITY_LABEL, VEHICLE_OCCURRENCE_SEVERITY_TONE } from "../labels";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -156,7 +157,7 @@ export function OcorrenciasScreen(): JSX.Element {
             numberOfLines={3}
           />
           {errorMessage ? (
-            <Text style={{ color: theme.colors.danger, fontSize: 13 }}>{errorMessage}</Text>
+            <Texto style={{ color: theme.colors.danger, fontSize: 13 }}>{errorMessage}</Texto>
           ) : null}
           <VehicleButton
             label="Registrar"
@@ -180,20 +181,20 @@ export function OcorrenciasScreen(): JSX.Element {
             {occurrences?.items.map((occurrence) => (
               <VehicleCard key={occurrence.id}>
                 <View style={styles.headerRow}>
-                  <Text style={[styles.title, { color: theme.colors.text }]}>
+                  <Texto style={[styles.title, { color: theme.colors.text }]}>
                     {occurrence.titulo}
-                  </Text>
+                  </Texto>
                   <StatusPill
                     label={VEHICLE_OCCURRENCE_SEVERITY_LABEL[occurrence.severidade]}
                     tone={VEHICLE_OCCURRENCE_SEVERITY_TONE[occurrence.severidade]}
                   />
                 </View>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 13 }}>
                   {occurrence.descricao}
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                </Texto>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
                   {new Date(occurrence.createdAt).toLocaleString("pt-BR")}
-                </Text>
+                </Texto>
               </VehicleCard>
             ))}
           </View>

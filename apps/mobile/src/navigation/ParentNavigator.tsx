@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Bell, History, Home, Map, User } from "@rotta/icons/native";
 
+import { opcoesDaBarraDeAbas, opcoesDoCabecalhoDeAba, SeloDeAba } from "./estilo-da-navegacao";
 import { MarketplaceNavigator } from "./MarketplaceNavigator";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
 import { ParentPerfilNavigator } from "./ParentPerfilNavigator";
@@ -12,6 +13,7 @@ import { useResponsavelTransportState } from "@/features/marketplace/hooks/use-t
 import { TRANSPORT_TAB_LABEL } from "@/features/marketplace/labels";
 import { ParentInicioScreen, TransporteInicioScreen } from "@/features/marketplace/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
+import { useTheme } from "@/providers/theme-provider";
 
 const Tab = createBottomTabNavigator<ParentTabParamList>();
 
@@ -42,11 +44,19 @@ const Tab = createBottomTabNavigator<ParentTabParamList>();
  * duplicado em cima de uma stack aninhada).
  */
 export function ParentNavigator(): JSX.Element {
+  const { theme } = useTheme();
   const { state } = useResponsavelTransportState();
   const { data: naoLidas } = useUnreadNotificationsCount();
 
   return (
-    <Tab.Navigator initialRouteName="Inicio" screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      initialRouteName="Inicio"
+      screenOptions={{
+        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDoCabecalhoDeAba(theme),
+        headerShown: false,
+      }}
+    >
       <Tab.Screen
         name="Inicio"
         component={ParentInicioScreen}
@@ -54,8 +64,15 @@ export function ParentNavigator(): JSX.Element {
           headerShown: true,
           title: "",
           tabBarLabel: "Início",
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="house.fill" fallback={Home} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="house.fill"
+                fallback={Home}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -74,13 +91,15 @@ export function ParentNavigator(): JSX.Element {
           headerShown: true,
           title: TRANSPORT_TAB_LABEL[state],
           tabBarLabel: "Viagens",
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol
-              ios="clock.arrow.circlepath"
-              fallback={History}
-              size={size}
-              color={color}
-            />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="clock.arrow.circlepath"
+                fallback={History}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -93,8 +112,15 @@ export function ParentNavigator(): JSX.Element {
         component={MarketplaceNavigator}
         options={{
           tabBarLabel: "Mapa",
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="map.fill" fallback={Map} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="map.fill"
+                fallback={Map}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -104,8 +130,15 @@ export function ParentNavigator(): JSX.Element {
         options={{
           tabBarLabel: "Notificações",
           tabBarBadge: naoLidas ? naoLidas : undefined,
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="bell.fill" fallback={Bell} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="bell.fill"
+                fallback={Bell}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -113,8 +146,15 @@ export function ParentNavigator(): JSX.Element {
         name="Perfil"
         component={ParentPerfilNavigator}
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="person.fill" fallback={User} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="person.fill"
+                fallback={User}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />

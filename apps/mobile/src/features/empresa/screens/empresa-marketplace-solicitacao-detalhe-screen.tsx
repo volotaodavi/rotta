@@ -1,6 +1,6 @@
 import { ApiError } from "@rotta/api-client";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useAprovarTransportRequest,
@@ -16,6 +16,7 @@ import { useVehiclesList } from "../hooks/use-empresa-vehicles";
 import type { EmpresaHomeStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   TRANSPORT_REQUEST_STATUS_LABEL,
   TRANSPORT_REQUEST_STATUS_TONE,
@@ -79,9 +80,9 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
   if (isError || !request) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar esta solicitação.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -126,33 +127,35 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
     <VehicleScreen>
       <VehicleCard style={styles.card}>
         <View style={styles.linha}>
-          <Text style={[styles.nome, { color: theme.colors.text }]}>
+          <Texto style={[styles.nome, { color: theme.colors.text }]}>
             {request.studentNome ?? "Aluno"}
-          </Text>
+          </Texto>
           <StatusPill
             label={TRANSPORT_REQUEST_STATUS_LABEL[request.status]}
             tone={TRANSPORT_REQUEST_STATUS_TONE[request.status]}
           />
         </View>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Responsável: {request.responsavelNome ?? "Não informado"}
           {request.responsavelTelefone ? ` · ${request.responsavelTelefone}` : ""}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Escola: {request.schoolNome ?? "Não informada"}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>Turno: {request.turno}</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+          Turno: {request.turno}
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Recebida em {new Date(request.createdAt).toLocaleDateString("pt-BR")}
-        </Text>
+        </Texto>
         {request.status === "RECUSADA" && request.motivoRecusa ? (
-          <Text style={{ color: theme.colors.danger, fontSize: 14 }}>
+          <Texto style={{ color: theme.colors.danger, fontSize: 14 }}>
             Motivo da recusa: {request.motivoRecusa}
-          </Text>
+          </Texto>
         ) : null}
       </VehicleCard>
 
-      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
 
       {request.status === "RECEBIDA" ? (
         <VehicleButton
@@ -164,9 +167,9 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
 
       {request.status === "RECEBIDA" || request.status === "EM_ANALISE" ? (
         <VehicleCard style={styles.card}>
-          <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
             Decisão
-          </Text>
+          </Texto>
           <VehicleButton
             label="Aprovar solicitação"
             isLoading={aprovar.isPending}
@@ -190,9 +193,9 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
 
       {request.status === "APROVADA" && !contratoExistente ? (
         <VehicleCard style={styles.card}>
-          <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
             Gerar contrato
-          </Text>
+          </Texto>
           <VehicleTextField
             label="Mensalidade (R$)"
             value={valorMensalidade}
@@ -224,7 +227,7 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
             placeholder="Deixe em branco para indeterminado"
           />
 
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Veículo (opcional)</Text>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Veículo (opcional)</Texto>
           <View style={styles.chips}>
             <VehicleButton
               label="Nenhum"
@@ -241,7 +244,9 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
             ))}
           </View>
 
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Motorista (opcional)</Text>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            Motorista (opcional)
+          </Texto>
           <View style={styles.chips}>
             <VehicleButton
               label="Nenhum"
@@ -258,7 +263,7 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
             ))}
           </View>
 
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Monitor (opcional)</Text>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Monitor (opcional)</Texto>
           <View style={styles.chips}>
             <VehicleButton
               label="Nenhum"
@@ -286,9 +291,9 @@ export function EmpresaMarketplaceSolicitacaoDetalheScreen({
 
       {contratoExistente ? (
         <VehicleCard style={styles.linha}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
             Contrato já gerado para esta solicitação.
-          </Text>
+          </Texto>
           <VehicleButton
             label="Ver contrato"
             variant="secondary"

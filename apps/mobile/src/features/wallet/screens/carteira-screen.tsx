@@ -22,6 +22,7 @@ import {
   MovementRow,
   SectionHeader,
 } from "@rotta/ui/native";
+import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -29,7 +30,6 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -49,6 +49,7 @@ import {
 } from "../labels";
 
 import { RottaLogo } from "@/components/rotta-logo";
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -156,9 +157,9 @@ export function CarteiraScreen(): JSX.Element {
   if (isError || !wallet) {
     return (
       <View style={[styles.center, { backgroundColor: theme.colors.background }]}>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar sua carteira Rotta Pay.
-        </Text>
+        </Texto>
       </View>
     );
   }
@@ -171,6 +172,9 @@ export function CarteiraScreen(): JSX.Element {
       style={[styles.flex, { backgroundColor: theme.colors.brandDeep }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
+      {/* Sobre o azul profundo, os ícones escuros da barra de status
+          somem. O app inteiro é claro, então a troca vale só aqui. */}
+      <StatusBar style="light" />
       <ScrollView
         contentContainerStyle={styles.rolagem}
         keyboardShouldPersistTaps="handled"
@@ -242,7 +246,7 @@ export function CarteiraScreen(): JSX.Element {
               />
               <VehicleTextField label="Chave PIX" value={chavePix} onChangeText={setChavePix} />
               {feedback ? (
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{feedback}</Text>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>{feedback}</Texto>
               ) : null}
               <VehicleButton
                 label="Confirmar saque"
@@ -253,16 +257,16 @@ export function CarteiraScreen(): JSX.Element {
           ) : null}
 
           <VehicleCard>
-            <Text style={[styles.rotuloPendente, { color: theme.colors.textMuted }]}>
+            <Texto style={[styles.rotuloPendente, { color: theme.colors.textMuted }]}>
               A receber (pendente)
-            </Text>
-            <Text style={[styles.valorPendente, { color: theme.colors.text }]}>
+            </Texto>
+            <Texto style={[styles.valorPendente, { color: theme.colors.text }]}>
               {centsToBRL(wallet.saldoPendenteCentavos)}
-            </Text>
-            <Text style={[styles.ajuda, { color: theme.colors.textMuted }]}>
+            </Texto>
+            <Texto style={[styles.ajuda, { color: theme.colors.textMuted }]}>
               Mensalidades de contratos ativados ficam aqui até a confirmação de recebimento pela
               Rotta.
-            </Text>
+            </Texto>
           </VehicleCard>
 
           <View>
@@ -326,12 +330,12 @@ export function CarteiraScreen(): JSX.Element {
                     ]}
                   >
                     <View style={styles.saqueTexto}>
-                      <Text style={[styles.saqueValor, { color: theme.colors.text }]}>
+                      <Texto style={[styles.saqueValor, { color: theme.colors.text }]}>
                         {centsToBRL(withdrawal.valorCentavos)}
-                      </Text>
-                      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                      </Texto>
+                      <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                         PIX: {withdrawal.chavePix}
-                      </Text>
+                      </Texto>
                     </View>
                     <StatusPill
                       label={WITHDRAWAL_STATUS_LABEL[withdrawal.status]}

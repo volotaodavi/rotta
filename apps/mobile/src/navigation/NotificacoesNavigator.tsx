@@ -1,8 +1,11 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Pressable, Text } from "react-native";
+import { Pressable } from "react-native";
+
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
 
 import type { NotificationsStackParamList } from "./types";
 
+import { Texto } from "@/components/texto";
 import {
   CentralScreen,
   DetalhesScreen,
@@ -22,7 +25,7 @@ export function NotificacoesNavigator(): JSX.Element {
   const { theme } = useTheme();
 
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen
         name="Central"
         component={CentralScreen}
@@ -40,7 +43,7 @@ export function NotificacoesNavigator(): JSX.Element {
               onPress={() => navigation.navigate("Preferencias")}
               hitSlop={8}
             >
-              <Text style={{ color: theme.colors.primary, fontWeight: "600" }}>Preferências</Text>
+              <Texto style={{ color: theme.colors.primary, fontWeight: "600" }}>Preferências</Texto>
             </Pressable>
           ),
         })}

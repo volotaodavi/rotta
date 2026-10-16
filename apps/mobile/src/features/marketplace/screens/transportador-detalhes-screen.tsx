@@ -1,5 +1,5 @@
 import { Star } from "@rotta/icons/native";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useTransporterDetail } from "../hooks/use-transporters";
 
@@ -7,6 +7,7 @@ import type { MarketplaceStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ReactNode } from "react";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -56,9 +57,9 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
   if (isError || !data) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar os dados deste transportador.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -66,18 +67,18 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
   return (
     <VehicleScreen>
       <View style={styles.header}>
-        <Text style={[styles.nome, { color: theme.colors.text }]}>{data.nomeFantasia}</Text>
+        <Texto style={[styles.nome, { color: theme.colors.text }]}>{data.nomeFantasia}</Texto>
         {data.verificado ? <StatusPill label="Verificado" tone="success" /> : null}
       </View>
       {data.avaliacaoMedia !== null ? (
         <View style={styles.avaliacao}>
           <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
-          <Text style={{ color: theme.colors.text }}>
+          <Texto style={{ color: theme.colors.text }}>
             {data.avaliacaoMedia.toFixed(1)} ({data.totalAvaliacoes} avaliações)
-          </Text>
+          </Texto>
         </View>
       ) : (
-        <Text style={{ color: theme.colors.textMuted }}>Sem avaliações ainda</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Sem avaliações ainda</Texto>
       )}
 
       <VehicleButton
@@ -86,27 +87,29 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
       />
 
       <Section title="Quem somos" theme={theme}>
-        <Text style={{ color: theme.colors.textMuted }}>{data.razaoSocial}</Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>{data.razaoSocial}</Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {data.tiposVeiculo.length > 0
             ? `Transportadora ${data.tipo === "MEI" ? "MEI" : data.tipo === "AUTONOMO" ? "autônoma" : "empresa"} atuando em ${data.cidade}/${data.estado}.`
             : `Atua em ${data.cidade}/${data.estado}.`}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {formatAtuandoDesde(data.atuandoDesde)}
-        </Text>
+        </Texto>
         {data.tempoMedioRespostaHoras !== null ? (
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Responde solicitações em média em {formatTempoResposta(data.tempoMedioRespostaHoras)}
-          </Text>
+          </Texto>
         ) : null}
       </Section>
 
       <Section title="Frota" theme={theme}>
-        <Text style={{ color: theme.colors.text }}>{data.veiculosAtivos} veículo(s) ativo(s)</Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.text }}>
+          {data.veiculosAtivos} veículo(s) ativo(s)
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {data.tiposVeiculo.join(", ") || "Tipo de veículo não informado"}
-        </Text>
+        </Texto>
         {/* Modalidade real da frota (Dossiê 45 — CATEGORIA B ≠ TRANSPORTE
             ESCOLAR): nunca inferida da categoria da CNH de um motorista,
             sempre da frota declarada em `Vehicle.categoria`. O badge
@@ -134,33 +137,33 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
               ),
             )
           ) : (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               Modalidade não informada
-            </Text>
+            </Texto>
           )}
         </View>
         {data.categoriasVeiculo.includes("ESCOLAR") && !data.escolarVerificado ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             A empresa declarou veículo(s) para transporte escolar, mas nenhum motorista vinculado
             teve CNH categoria D/E, EAR, curso e antecedentes totalmente verificados ainda.
-          </Text>
+          </Texto>
         ) : null}
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {data.alunosTransportados} aluno(s) transportado(s) atualmente
-        </Text>
-        <Text style={[styles.mensalidade, { color: theme.colors.primary }]}>
+        </Texto>
+        <Texto style={[styles.mensalidade, { color: theme.colors.primary }]}>
           {data.mensalidadeAPartirDeCentavos !== null
             ? `A partir de R$ ${(data.mensalidadeAPartirDeCentavos / 100).toFixed(2)}/mês`
             : "Consulte a mensalidade"}
-        </Text>
+        </Texto>
       </Section>
 
       {data.equipe.length > 0 ? (
         <Section title="Equipe" theme={theme}>
           {data.equipe.map((membro, index) => (
-            <Text key={`${membro.nome}-${index}`} style={{ color: theme.colors.textMuted }}>
+            <Texto key={`${membro.nome}-${index}`} style={{ color: theme.colors.textMuted }}>
               {membro.nome}: {membro.papel === "motorista" ? "Motorista" : "Monitor(a)"}
-            </Text>
+            </Texto>
           ))}
         </Section>
       ) : null}
@@ -168,45 +171,45 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
       {data.escolasAtendidas.length > 0 ? (
         <Section title="Escolas atendidas" theme={theme}>
           {data.escolasAtendidas.map((escola) => (
-            <Text key={escola.id} style={{ color: theme.colors.textMuted }}>
+            <Texto key={escola.id} style={{ color: theme.colors.textMuted }}>
               {escola.nomeOficial}
-            </Text>
+            </Texto>
           ))}
         </Section>
       ) : null}
 
       <Section title="Área atendida" theme={theme}>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {data.cidade}/{data.estado}, a {data.distanciaKm.toFixed(1)} km de você
-        </Text>
+        </Texto>
       </Section>
 
       {(data.telefone ?? data.whatsapp) ? (
         <Section title="Contato" theme={theme}>
           {data.telefone ? (
-            <Text style={{ color: theme.colors.textMuted }}>Telefone: {data.telefone}</Text>
+            <Texto style={{ color: theme.colors.textMuted }}>Telefone: {data.telefone}</Texto>
           ) : null}
           {data.whatsapp ? (
-            <Text style={{ color: theme.colors.textMuted }}>WhatsApp: {data.whatsapp}</Text>
+            <Texto style={{ color: theme.colors.textMuted }}>WhatsApp: {data.whatsapp}</Texto>
           ) : null}
         </Section>
       ) : null}
 
       <View style={styles.secaoAvaliacoes}>
-        <Text style={[styles.secao, { color: theme.colors.text }]}>Avaliações recentes</Text>
+        <Texto style={[styles.secao, { color: theme.colors.text }]}>Avaliações recentes</Texto>
         {data.avaliacoesRecentes.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhuma avaliação ainda.</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Nenhuma avaliação ainda.</Texto>
         ) : (
           data.avaliacoesRecentes.map((avaliacao, index) => (
             <VehicleCard key={`${avaliacao.responsavelNome}-${index}`}>
               <View style={styles.avaliacao}>
                 <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
-                <Text style={{ color: theme.colors.text }}>
+                <Texto style={{ color: theme.colors.text }}>
                   {avaliacao.nota} · {avaliacao.responsavelNome}
-                </Text>
+                </Texto>
               </View>
               {avaliacao.comentario ? (
-                <Text style={{ color: theme.colors.textMuted }}>{avaliacao.comentario}</Text>
+                <Texto style={{ color: theme.colors.textMuted }}>{avaliacao.comentario}</Texto>
               ) : null}
             </VehicleCard>
           ))
@@ -246,7 +249,7 @@ function Section({
 }): JSX.Element {
   return (
     <VehicleCard>
-      <Text style={[styles.secao, { color: theme.colors.text }]}>{title}</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>{title}</Texto>
       {children}
     </VehicleCard>
   );

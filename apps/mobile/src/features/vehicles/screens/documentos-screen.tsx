@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { StatusPill, VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle, useVehicleDocuments } from "../hooks/use-vehicles";
@@ -8,6 +8,7 @@ import {
   VEHICLE_DOCUMENT_TYPE_LABEL,
 } from "../labels";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -24,9 +25,9 @@ export function DocumentosScreen(): JSX.Element {
   if (documents && documents.length === 0) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Nenhum documento cadastrado para este veículo.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -35,14 +36,14 @@ export function DocumentosScreen(): JSX.Element {
     <VehicleScreen>
       {documents?.map((doc) => (
         <VehicleCard key={doc.id}>
-          <Text style={[styles.tipo, { color: theme.colors.text }]}>
+          <Texto style={[styles.tipo, { color: theme.colors.text }]}>
             {VEHICLE_DOCUMENT_TYPE_LABEL[doc.tipo]}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted }}>{doc.nomeOriginal}</Text>
+          </Texto>
+          <Texto style={{ color: theme.colors.textMuted }}>{doc.nomeOriginal}</Texto>
           {doc.vencimentoEm ? (
-            <Text style={{ color: theme.colors.textMuted }}>
+            <Texto style={{ color: theme.colors.textMuted }}>
               Vencimento: {new Date(doc.vencimentoEm).toLocaleDateString("pt-BR")}
-            </Text>
+            </Texto>
           ) : null}
           <StatusPill
             label={VEHICLE_DOCUMENT_AI_STATUS_LABEL[doc.rottaAiStatus]}

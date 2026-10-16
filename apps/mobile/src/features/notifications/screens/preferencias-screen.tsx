@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, Switch, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Switch, View } from "react-native";
 
 import {
   useNotificationPreference,
   useUpdateNotificationPreference,
 } from "../hooks/use-notifications";
 
+import { Texto } from "@/components/texto";
 import {
   VehicleButton,
   VehicleCard,
@@ -87,9 +88,9 @@ export function PreferenciasScreen(): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar suas preferências. Tente novamente mais tarde.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -98,12 +99,12 @@ export function PreferenciasScreen(): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard>
-        <Text style={[styles.secaoTitulo, { color: theme.colors.text }]}>
+        <Texto style={[styles.secaoTitulo, { color: theme.colors.text }]}>
           Canais de recebimento
-        </Text>
+        </Texto>
         {CANAIS.map((canal) => (
           <View key={canal.key} style={styles.switchRow}>
-            <Text style={{ color: theme.colors.text }}>{canal.label}</Text>
+            <Texto style={{ color: theme.colors.text }}>{canal.label}</Texto>
             <Switch
               value={form[canal.key]}
               onValueChange={(value) =>
@@ -116,9 +117,9 @@ export function PreferenciasScreen(): JSX.Element {
       </VehicleCard>
 
       <VehicleCard>
-        <Text style={[styles.secaoTitulo, { color: theme.colors.text }]}>Quiet Hours</Text>
+        <Texto style={[styles.secaoTitulo, { color: theme.colors.text }]}>Quiet Hours</Texto>
         <View style={styles.switchRow}>
-          <Text style={{ color: theme.colors.text }}>Silenciar aos fins de semana</Text>
+          <Texto style={{ color: theme.colors.text }}>Silenciar aos fins de semana</Texto>
           <Switch
             value={form.silenciarFinsDeSemana}
             onValueChange={(value) =>
@@ -129,10 +130,10 @@ export function PreferenciasScreen(): JSX.Element {
             trackColor={{ false: theme.colors.border, true: theme.colors.primary }}
           />
         </View>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           Deixe os dois horários em branco para desativar o silêncio noturno. Notificações de
           emergência nunca são silenciadas.
-        </Text>
+        </Texto>
         <VehicleTextField
           label="Início (HH:mm)"
           value={form.quietHoursInicio}

@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
 
 import { AuthButton } from "../components";
@@ -6,6 +6,7 @@ import { AuthButton } from "../components";
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { env } from "@/config/env";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -41,9 +42,9 @@ export function CriarEmpresaWebViewScreen({ navigation }: Props): JSX.Element {
           },
         ]}
       >
-        <Text style={[styles.helper, { color: theme.colors.textMuted }]}>
+        <Texto style={[styles.helper, { color: theme.colors.textMuted }]}>
           Concluiu o cadastro? Volte e entre com o e-mail/telefone e a senha que você criou.
-        </Text>
+        </Texto>
         <AuthButton label="Já concluí, fazer login" onPress={() => navigation.replace("Login")} />
       </View>
     </View>

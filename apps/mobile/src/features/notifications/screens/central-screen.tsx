@@ -10,7 +10,7 @@ import {
 } from "@rotta/icons/native";
 import { EmptyState } from "@rotta/ui/native";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   useMarkAllNotificationsRead,
@@ -24,6 +24,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { NotificationEventType } from "@rotta/api-client";
 import type { Theme } from "@rotta/theme";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -266,14 +267,14 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
                 color={ativo ? theme.colors.onPrimary : theme.colors.textMuted}
               />
             </View>
-            <Text
+            <Texto
               style={[
                 styles.filtroLabel,
                 { color: ativo ? theme.colors.primary : theme.colors.textMuted },
               ]}
             >
               {option.label}
-            </Text>
+            </Texto>
           </Pressable>
         );
       })}
@@ -297,9 +298,9 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
     return (
       <VehicleScreen>
         {filtros}
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar suas notificações. Tente novamente mais tarde.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -311,16 +312,16 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
           o link alinhado pelo topo do título, e não numa faixa própria
           acima dele, que empurrava a lista inteira para baixo. */}
       <View style={styles.cabecalho}>
-        <Text style={[styles.tituloTela, { color: theme.colors.text }]}>Notificações</Text>
+        <Texto style={[styles.tituloTela, { color: theme.colors.text }]}>Notificações</Texto>
         <Pressable
           onPress={() => markAllRead.mutate()}
           disabled={markAllRead.isPending}
           accessibilityRole="button"
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={[styles.acaoLink, { color: theme.colors.primary }]}>
+          <Texto style={[styles.acaoLink, { color: theme.colors.primary }]}>
             Marcar todas como lidas
-          </Text>
+          </Texto>
         </Pressable>
       </View>
 
@@ -362,7 +363,7 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
                 </View>
 
                 <View style={styles.linhaTexto}>
-                  <Text
+                  <Texto
                     style={[
                       styles.titulo,
                       { color: theme.colors.text, fontWeight: notification.lida ? "600" : "700" },
@@ -370,16 +371,19 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
                     numberOfLines={1}
                   >
                     {notification.titulo}
-                  </Text>
-                  <Text style={[styles.corpo, { color: theme.colors.textMuted }]} numberOfLines={2}>
+                  </Texto>
+                  <Texto
+                    style={[styles.corpo, { color: theme.colors.textMuted }]}
+                    numberOfLines={2}
+                  >
                     {notification.corpo}
-                  </Text>
+                  </Texto>
                 </View>
 
                 <View style={styles.linhaMeta}>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {carimboDeTempo(notification.createdAt)}
-                  </Text>
+                  </Texto>
                   <View style={styles.linhaMetaIcones}>
                     {notification.favoritada ? (
                       <Star

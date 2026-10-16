@@ -1,7 +1,8 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { ReactNode } from "react";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /** Iniciais do nome para o avatar: o produto não tem foto de perfil, e nunca inventa uma. */
@@ -60,17 +61,17 @@ export function CabecalhoDePerfil({
   return (
     <View style={styles.linha}>
       <View style={[styles.avatar, { backgroundColor: fundo, borderRadius: theme.radius.full }]}>
-        <Text style={[styles.iniciais, { color: cor }]}>{iniciaisDoNome(nome)}</Text>
+        <Texto style={[styles.iniciais, { color: cor }]}>{iniciaisDoNome(nome)}</Texto>
       </View>
 
       <View style={styles.textos}>
         <View style={styles.nomeLinha}>
-          <Text numberOfLines={1} style={[styles.nome, { color: theme.colors.text }]}>
+          <Texto numberOfLines={1} style={[styles.nome, { color: theme.colors.text }]}>
             {nome ?? "Sem nome"}
-          </Text>
+          </Texto>
           {selo}
         </View>
-        <Text style={[styles.papel, { color: theme.colors.textMuted }]}>{papel}</Text>
+        <Texto style={[styles.papel, { color: theme.colors.textMuted }]}>{papel}</Texto>
       </View>
     </View>
   );

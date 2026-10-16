@@ -1,11 +1,12 @@
 import { KeyRound, UserPlus } from "@rotta/icons/native";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { AuthScreen, RoleOptionCard } from "../components";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AuthStackParamList, "AreaPessoal">;
@@ -24,18 +25,18 @@ export function AreaPessoalScreen({ navigation }: Props): JSX.Element {
   return (
     <AuthScreen>
       <View style={styles.headingBlock}>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Área Pessoal
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Crie sua conta de Responsável para cadastrar seus filhos e buscar transportadores. Se você
           já recebeu um código de convite de uma escola ou empresa, também pode usá-lo.
-        </Text>
+        </Texto>
       </View>
 
       <RoleOptionCard

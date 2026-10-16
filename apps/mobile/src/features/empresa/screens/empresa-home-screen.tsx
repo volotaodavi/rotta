@@ -1,6 +1,6 @@
 import { useAuth } from "@rotta/auth/native";
 import { Bus, GraduationCap, ShoppingBag, Users } from "@rotta/icons/native";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { TrialBanner } from "../components";
 import { useMyCompany } from "../hooks/use-empresa-company";
@@ -15,6 +15,7 @@ import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ComponentType } from "react";
 
+import { Texto } from "@/components/texto";
 import { ROUTE_STATUS_LABEL, ROUTE_STATUS_TONE } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import {
@@ -98,18 +99,18 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
           },
         ]}
       >
-        <Text style={[styles.saudacao, { color: theme.colors.onPrimary }]} numberOfLines={1}>
+        <Texto style={[styles.saudacao, { color: theme.colors.onPrimary }]} numberOfLines={1}>
           Olá, {user?.nome}
-        </Text>
+        </Texto>
         {user?.companyName ? (
-          <Text style={{ color: theme.colors.onBrandMuted, fontSize: 12 }} numberOfLines={1}>
+          <Texto style={{ color: theme.colors.onBrandMuted, fontSize: 12 }} numberOfLines={1}>
             {user.companyName}
-          </Text>
+          </Texto>
         ) : null}
 
-        <Text style={[styles.resumoRotulo, { color: theme.colors.onBrandMuted }]}>
+        <Texto style={[styles.resumoRotulo, { color: theme.colors.onBrandMuted }]}>
           Resumo da operação
-        </Text>
+        </Texto>
         <View style={styles.statsRow}>
           <StatTile valor={veiculos?.total} label="Veículos" onPress={() => irParaAba("Frota")} />
           <StatTile
@@ -130,23 +131,23 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
       {rotasAtivas && rotasAtivas.items.length > 0 ? (
         <View style={styles.rotasSection}>
           <View style={styles.rotasHeader}>
-            <Text style={[styles.secao, { color: theme.colors.text }]}>Rotas ativas</Text>
+            <Texto style={[styles.secao, { color: theme.colors.text }]}>Rotas ativas</Texto>
             <Pressable onPress={() => irParaAba("Rotas")} accessibilityRole="button">
-              <Text style={{ color: theme.colors.primary, fontSize: 14, fontWeight: "600" }}>
+              <Texto style={{ color: theme.colors.primary, fontSize: 14, fontWeight: "600" }}>
                 Ver todas
-              </Text>
+              </Texto>
             </Pressable>
           </View>
           {rotasAtivas.items.map((rota) => (
             <Pressable key={rota.id} onPress={() => irParaAba("Rotas")}>
               <VehicleCard style={styles.rotaCard}>
-                <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
+                <Texto style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
                   {rota.nome}
-                </Text>
+                </Texto>
                 <View style={styles.rotaCardFooter}>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {SCHOOL_SHIFT_LABEL[rota.turno]}
-                  </Text>
+                  </Texto>
                   <StatusPill
                     label={ROUTE_STATUS_LABEL[rota.status]}
                     tone={ROUTE_STATUS_TONE[rota.status]}
@@ -228,8 +229,8 @@ function StatTile({
       accessibilityLabel={`${label}: ${valor ?? "sem dado"}`}
       style={styles.statTile}
     >
-      <Text style={[styles.statValor, { color: theme.colors.onPrimary }]}>{valor ?? "-"}</Text>
-      <Text style={{ color: theme.colors.onBrandMuted, fontSize: 11 }}>{label}</Text>
+      <Texto style={[styles.statValor, { color: theme.colors.onPrimary }]}>{valor ?? "-"}</Texto>
+      <Texto style={{ color: theme.colors.onBrandMuted, fontSize: 11 }}>{label}</Texto>
     </Pressable>
   );
 }

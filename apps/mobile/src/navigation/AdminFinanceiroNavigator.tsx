@@ -1,5 +1,7 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { AdminFinanceiroStackParamList } from "./types";
 
 import {
@@ -9,6 +11,7 @@ import {
   AdminFinanceiroOverviewScreen,
   AdminFinanceiroTransferenciaScreen,
 } from "@/features/admin/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<AdminFinanceiroStackParamList>();
 
@@ -20,8 +23,9 @@ const Stack = createNativeStackNavigator<AdminFinanceiroStackParamList>();
  * (sub-papel GERAL/FINANCEIRO) — ver `AdminNavigator.tsx`.
  */
 export function AdminFinanceiroNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen
         name="Overview"
         component={AdminFinanceiroOverviewScreen}

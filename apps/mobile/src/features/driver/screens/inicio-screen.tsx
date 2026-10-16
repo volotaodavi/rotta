@@ -4,15 +4,7 @@ import { RottaMap } from "@rotta/maps/native";
 import { driverShadow } from "@rotta/theme";
 import { SlideToAction } from "@rotta/ui/native";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import {
   AlunoPreViagemRow,
@@ -35,6 +27,7 @@ import { useRotaOperacional } from "../hooks/use-rota-operacional";
 import type { Route } from "@rotta/api-client";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
+import { Texto } from "@/components/texto";
 import {
   SentidoSwitch,
   TRIP_SENTIDO_DESCRICAO,
@@ -92,10 +85,10 @@ export function DriverInicioScreen(): JSX.Element {
     return (
       <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <PanelGreeting nome={user?.nome ?? ""} />
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Nenhuma rota atribuída</Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>Nenhuma rota atribuída</Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Você ainda não está vinculado a nenhuma rota. Fale com sua transportadora.
-        </Text>
+        </Texto>
         <MeuMapa location={minhaLocalizacao.location} status={minhaLocalizacao.status} />
       </VehicleScreen>
     );
@@ -105,7 +98,7 @@ export function DriverInicioScreen(): JSX.Element {
     return (
       <VehicleScreen backgroundColor={theme.colors.driverBackground}>
         <PanelGreeting nome={user?.nome ?? ""} />
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Suas rotas</Text>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>Suas rotas</Texto>
         {rotas.map((rota) => (
           <Pressable key={rota.id} onPress={() => setSelectedRouteId(rota.id)}>
             <VehicleCard
@@ -115,8 +108,8 @@ export function DriverInicioScreen(): JSX.Element {
                 driverShadow[theme.name].native,
               ]}
             >
-              <Text style={{ color: theme.colors.text }}>{rota.nome}</Text>
-              <Text style={{ color: theme.colors.textMuted }}>{TURNO_LABEL[rota.turno]}</Text>
+              <Texto style={{ color: theme.colors.text }}>{rota.nome}</Texto>
+              <Texto style={{ color: theme.colors.textMuted }}>{TURNO_LABEL[rota.turno]}</Texto>
             </VehicleCard>
           </Pressable>
         ))}
@@ -278,14 +271,14 @@ function RotaOperacional({
             >
               <AlertTriangle size={20} color={theme.colors.warning} />
             </View>
-            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+            <Texto style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
               Nenhum veículo cadastrado
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, textAlign: "center" }}>
+            </Texto>
+            <Texto style={{ color: theme.colors.textMuted, textAlign: "center" }}>
               {isDono
                 ? "Esta rota ainda não tem um veículo vinculado. Cadastre um veículo pelo Painel Web antes de iniciar a viagem."
                 : "Esta rota ainda não tem um veículo vinculado. Fale com sua transportadora para vincular um antes de iniciar a viagem."}
-            </Text>
+            </Texto>
             <VehicleButton
               label="Entendi"
               variant="primary"
@@ -335,47 +328,47 @@ function RotaOperacional({
           </View>
           <View style={styles.mapCardBody}>
             <View style={inicioStyles.mapCardBodyRow}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+              <Texto style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
                 {rota.nome}
-              </Text>
+              </Texto>
               {trip ? (
                 <StatusPill
                   label={TRIP_STATUS_LABEL[trip.status]?.label ?? trip.status}
                   tone={TRIP_STATUS_LABEL[trip.status]?.tone ?? "neutral"}
                 />
               ) : (
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   {TURNO_LABEL[rota.turno] ?? rota.turno}
-                </Text>
+                </Texto>
               )}
             </View>
             {/* Código único da viagem (pedido do usuário: "o código da viagem - único") — só existe depois que a viagem já foi iniciada. */}
             {trip ? (
               <>
-                <Text
+                <Texto
                   style={{ color: theme.colors.textMuted, fontSize: 12, fontFamily: "monospace" }}
                 >
                   Código da viagem: {trip.codigo}
-                </Text>
+                </Texto>
                 {/* A "placa" da viagem em andamento — quem está
                     dirigindo precisa ver em que sentido está, não só
                     escolher no início. */}
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   Sentido: {TRIP_SENTIDO_LABEL[trip.sentido]} ·{" "}
                   {TRIP_SENTIDO_DESCRICAO[trip.sentido]}
-                </Text>
+                </Texto>
               </>
             ) : null}
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {proximaParada
                 ? `Próxima parada: ${proximaParada.endereco}`
                 : `${paradasOrdenadas.length} paradas nesta rota`}
-            </Text>
+            </Texto>
             {showTrocarRota ? (
               <Pressable onPress={onTrocarRota} accessibilityRole="button">
-                <Text style={{ color: accentColor, fontSize: 14, fontWeight: "600" }}>
+                <Texto style={{ color: accentColor, fontSize: 14, fontWeight: "600" }}>
                   Trocar rota
-                </Text>
+                </Texto>
               </Pressable>
             ) : null}
           </View>
@@ -394,34 +387,36 @@ function RotaOperacional({
               driverShadow[theme.name].native,
             ]}
           >
-            <Text style={{ color: theme.colors.text, fontWeight: "700" }}>Próxima viagem</Text>
+            <Texto style={{ color: theme.colors.text, fontWeight: "700" }}>Próxima viagem</Texto>
             {escolaResumo ? (
               <View style={styles.proximaViagemLinha}>
                 <School size={14} color={theme.colors.textMuted} />
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
                   {escolaResumo}
-                </Text>
+                </Texto>
               </View>
             ) : null}
             {janelaHorario ? (
               <View style={styles.proximaViagemLinha}>
                 <Clock size={14} color={theme.colors.textMuted} />
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{janelaHorario}</Text>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  {janelaHorario}
+                </Texto>
               </View>
             ) : null}
             {meuVeiculo?.placa ? (
               <View style={styles.proximaViagemLinha}>
                 <Bus size={14} color={theme.colors.textMuted} />
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   {meuVeiculo.placa}
-                </Text>
+                </Texto>
               </View>
             ) : null}
             <View style={inicioStyles.mapCardBodyRow}>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {totalAlunos} alunos confirmados
                 {rota.monitorPadraoId ? " · 1 monitor" : ""}
-              </Text>
+              </Texto>
             </View>
             {/*
               Lista detalhada por aluno (pedido do usuário: "aparecerá
@@ -492,12 +487,12 @@ function RotaOperacional({
           ) : !trip ? (
             isMotorista ? (
               semVeiculoPadrao ? (
-                <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                <Texto style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
                   Esta rota ainda não tem um veículo cadastrado.{" "}
                   {isDono
                     ? "Cadastre um veículo antes de iniciar a viagem."
                     : "Fale com sua transportadora para vincular um veículo a esta rota."}
-                </Text>
+                </Texto>
               ) : (
                 <View style={styles.inicioViagem}>
                   <SentidoSwitch
@@ -516,9 +511,9 @@ function RotaOperacional({
                 </View>
               )
             ) : (
-              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+              <Texto style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
                 Nenhuma viagem registrada hoje. Aguardando o motorista iniciar.
-              </Text>
+              </Texto>
             )
           ) : viagemEncerrada ? (
             isMotorista ? (
@@ -528,11 +523,11 @@ function RotaOperacional({
               // a rota continua disponível pra outra viagem no mesmo
               // dia (ida de manhã, volta à tarde, por exemplo).
               <View style={styles.inicioViagem}>
-                <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+                <Texto style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
                   A {TRIP_SENTIDO_LABEL[trip.sentido].toLowerCase()} de hoje já foi{" "}
                   {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}. A rota continua
                   disponível. Pode iniciar outra viagem quando precisar.
-                </Text>
+                </Texto>
                 <SentidoSwitch
                   value={sentidoDaProximaViagem}
                   onChange={setSentidoEscolhido}
@@ -548,14 +543,16 @@ function RotaOperacional({
                 />
               </View>
             ) : (
-              <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+              <Texto style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
                 A viagem de hoje já foi {trip.status === "FINALIZADA" ? "finalizada" : "cancelada"}.
-              </Text>
+              </Texto>
             )
           ) : isMotorista ? (
             <>
               {gpsAvisoTexto ? (
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{gpsAvisoTexto}</Text>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  {gpsAvisoTexto}
+                </Texto>
               ) : null}
               {isActive ? (
                 <View style={styles.controlsRow}>
@@ -598,9 +595,9 @@ function RotaOperacional({
               )}
             </>
           ) : (
-            <Text style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
+            <Texto style={[styles.painelTexto, { color: theme.colors.textMuted }]}>
               Viagem em andamento. Só o motorista inicia, pausa ou finaliza.
-            </Text>
+            </Texto>
           )}
         </View>
 
@@ -614,10 +611,10 @@ function RotaOperacional({
             <RegistrarOcorrenciaButton veiculoId={trip.veiculoId} accentColor={accentColor} />
 
             <View style={inicioStyles.mapCardBodyRow}>
-              <Text style={[styles.secao, { color: theme.colors.text }]}>Paradas</Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              <Texto style={[styles.secao, { color: theme.colors.text }]}>Paradas</Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {alunosEmbarcados}/{totalAlunos} embarcados
-              </Text>
+              </Texto>
             </View>
             <View style={[styles.progressoTrilha, { backgroundColor: theme.colors.muted }]}>
               <View

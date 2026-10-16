@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useContractsList } from "../hooks/use-empresa-marketplace";
 
@@ -7,6 +7,7 @@ import type { EmpresaHomeStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { ContractStatus } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { CONTRACT_STATUS_LABEL, CONTRACT_STATUS_TONE } from "@/features/marketplace/labels";
 import {
   StatusPill,
@@ -49,7 +50,9 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar os contratos.</Text>
+        <Texto style={{ color: theme.colors.danger }}>
+          Não foi possível carregar os contratos.
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -57,9 +60,9 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
         Contratos gerados a partir de solicitações de transporte aprovadas.
-      </Text>
+      </Texto>
 
       <View style={styles.chips}>
         <VehicleButton
@@ -78,7 +81,7 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
       </View>
 
       {!items || items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum contrato encontrado.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum contrato encontrado.</Texto>
       ) : (
         items.map((contract) => (
           <Pressable
@@ -89,17 +92,17 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
           >
             <VehicleCard style={styles.card}>
               <View style={styles.linha}>
-                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+                <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
                   {centsToBRL(contract.valorMensalidadeCentavos)}/mês
-                </Text>
+                </Texto>
                 <StatusPill
                   label={CONTRACT_STATUS_LABEL[contract.status]}
                   tone={CONTRACT_STATUS_TONE[contract.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Vigência: {new Date(contract.vigenciaInicio).toLocaleDateString("pt-BR")}
-              </Text>
+              </Texto>
             </VehicleCard>
           </Pressable>
         ))

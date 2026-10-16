@@ -1,6 +1,6 @@
 import { Sparkles } from "@rotta/icons/native";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useAddSupportMessage,
@@ -12,6 +12,7 @@ import { SUPPORT_TICKET_STATUS_LABEL, SUPPORT_TICKET_STATUS_TONE } from "../labe
 import type { SupportStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -49,7 +50,7 @@ export function ChamadoDetalhesScreen({ route }: Props): JSX.Element {
   if (isError || !ticket) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Chamado não encontrado.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Chamado não encontrado.</Texto>
       </VehicleScreen>
     );
   }
@@ -58,10 +59,10 @@ export function ChamadoDetalhesScreen({ route }: Props): JSX.Element {
     <VehicleScreen>
       <View style={styles.cabecalho}>
         <View style={{ flex: 1 }}>
-          <Text style={[styles.titulo, { color: theme.colors.text }]}>{ticket.assunto}</Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          <Texto style={[styles.titulo, { color: theme.colors.text }]}>{ticket.assunto}</Texto>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Aberto em {new Date(ticket.createdAt).toLocaleDateString("pt-BR")}
-          </Text>
+          </Texto>
         </View>
         <StatusPill
           label={SUPPORT_TICKET_STATUS_LABEL[ticket.status]}
@@ -70,16 +71,16 @@ export function ChamadoDetalhesScreen({ route }: Props): JSX.Element {
       </View>
 
       <VehicleCard>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" }}>
           Descrição original
-        </Text>
-        <Text style={{ color: theme.colors.text }}>{ticket.descricao}</Text>
+        </Texto>
+        <Texto style={{ color: theme.colors.text }}>{ticket.descricao}</Texto>
       </VehicleCard>
 
       <View style={{ gap: 8 }}>
-        <Text style={{ color: theme.colors.text, fontWeight: "700" }}>Conversa</Text>
+        <Texto style={{ color: theme.colors.text, fontWeight: "700" }}>Conversa</Texto>
         {ticket.mensagens.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>Nossa equipe responderá em breve.</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Nossa equipe responderá em breve.</Texto>
         ) : (
           ticket.mensagens.map((message) => {
             const backgroundColor = message.autorIsIA
@@ -102,7 +103,7 @@ export function ChamadoDetalhesScreen({ route }: Props): JSX.Element {
               >
                 <View style={styles.autorLinha}>
                   {message.autorIsIA ? <Sparkles size={13} color={theme.colors.textMuted} /> : null}
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
                     {message.autorIsIA
                       ? "Rotta AI"
                       : message.autorIsAdminRotta
@@ -110,9 +111,9 @@ export function ChamadoDetalhesScreen({ route }: Props): JSX.Element {
                         : message.autorNome}
                     {" · "}
                     {new Date(message.createdAt).toLocaleString("pt-BR")}
-                  </Text>
+                  </Texto>
                 </View>
-                <Text style={{ color: theme.colors.text }}>{message.mensagem}</Text>
+                <Texto style={{ color: theme.colors.text }}>{message.mensagem}</Texto>
               </View>
             );
           })

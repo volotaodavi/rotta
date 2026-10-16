@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -102,8 +103,8 @@ const styles = StyleSheet.create({
     width: 54,
   },
   rotulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 12,
-    fontWeight: "600",
     textAlign: "center",
   },
 });

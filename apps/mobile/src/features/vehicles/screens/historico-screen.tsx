@@ -1,9 +1,10 @@
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import { VehicleCard, VehicleScreen } from "../components";
 import { useMyVehicle, useVehicleMaintenances } from "../hooks/use-vehicles";
 import { VEHICLE_MAINTENANCE_TYPE_LABEL } from "../labels";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 function centsToBRL(cents: number): string {
@@ -25,9 +26,9 @@ export function HistoricoScreen(): JSX.Element {
   if (maintenances && maintenances.items.length === 0) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Nenhuma manutenção registrada para este veículo.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -36,27 +37,27 @@ export function HistoricoScreen(): JSX.Element {
     <VehicleScreen>
       {maintenances?.items.map((maintenance) => (
         <VehicleCard key={maintenance.id}>
-          <Text style={[styles.tipo, { color: theme.colors.text }]}>
+          <Texto style={[styles.tipo, { color: theme.colors.text }]}>
             {VEHICLE_MAINTENANCE_TYPE_LABEL[maintenance.tipo]}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted }}>
+          </Texto>
+          <Texto style={{ color: theme.colors.textMuted }}>
             {new Date(maintenance.data).toLocaleDateString("pt-BR")}
             {maintenance.quilometragem
               ? ` · ${maintenance.quilometragem.toLocaleString("pt-BR")} km`
               : ""}
-          </Text>
+          </Texto>
           {maintenance.valorCentavos ? (
-            <Text style={{ color: theme.colors.textMuted }}>
+            <Texto style={{ color: theme.colors.textMuted }}>
               {centsToBRL(maintenance.valorCentavos)}
-            </Text>
+            </Texto>
           ) : null}
           {maintenance.fornecedor ? (
-            <Text style={{ color: theme.colors.textMuted }}>
+            <Texto style={{ color: theme.colors.textMuted }}>
               Fornecedor: {maintenance.fornecedor}
-            </Text>
+            </Texto>
           ) : null}
           {maintenance.observacoes ? (
-            <Text style={{ color: theme.colors.textMuted }}>{maintenance.observacoes}</Text>
+            <Texto style={{ color: theme.colors.textMuted }}>{maintenance.observacoes}</Texto>
           ) : null}
         </VehicleCard>
       ))}

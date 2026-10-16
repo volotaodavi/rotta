@@ -1,8 +1,11 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { AdminHomeStackParamList } from "./types";
 
 import { AdminApprovalsScreen, AdminHomeScreen } from "@/features/admin/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<AdminHomeStackParamList>();
 
@@ -13,8 +16,9 @@ const Stack = createNativeStackNavigator<AdminHomeStackParamList>();
  * muda, só a tela exibida dentro dela.
  */
 export function AdminHomeNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen name="Dashboard" component={AdminHomeScreen} options={{ title: "Início" }} />
       <Stack.Screen
         name="Aprovacoes"

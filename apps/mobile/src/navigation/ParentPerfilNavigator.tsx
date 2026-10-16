@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
 import { SupportNavigator } from "./SupportNavigator";
 
 import type { ParentPerfilStackParamList } from "./types";
@@ -19,6 +20,7 @@ import {
   AlunoNovoScreen,
   AlunosListaScreen,
 } from "@/features/students/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<ParentPerfilStackParamList>();
 
@@ -41,8 +43,9 @@ const Stack = createNativeStackNavigator<ParentPerfilStackParamList>();
  * tem `schoolId`).
  */
 export function ParentPerfilNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen
         name="PerfilHome"
         component={ParentPerfilScreen}

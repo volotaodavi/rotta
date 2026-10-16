@@ -1,7 +1,8 @@
 import { AlertTriangle } from "@rotta/icons/native";
-import { Linking, StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Texto } from "@/components/texto";
 import { AuthButton } from "@/features/auth/components";
 import { buildWhatsAppUrl } from "@/lib/whatsapp";
 import { useTheme } from "@/providers/theme-provider";
@@ -59,18 +60,18 @@ export function AppConfigErrorScreen(): JSX.Element {
         <AlertTriangle size={28} color={theme.colors.danger} />
       </View>
 
-      <Text
+      <Texto
         style={[
           styles.title,
           { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
         ]}
       >
         Não foi possível carregar o app
-      </Text>
-      <Text style={[styles.body, { color: theme.colors.textMuted }]}>
+      </Texto>
+      <Texto style={[styles.body, { color: theme.colors.textMuted }]}>
         A configuração deste aplicativo não veio completa. Isso não é um problema da sua conta.
         Feche e abra o app de novo; se continuar acontecendo, fale com o nosso suporte.
-      </Text>
+      </Texto>
 
       <AuthButton label="Falar com o suporte" onPress={handleFalarComSuporte} />
     </View>

@@ -1,6 +1,6 @@
 import { ApiError } from "@rotta/api-client";
 import { useState } from "react";
-import { StyleSheet, Text } from "react-native";
+import { StyleSheet } from "react-native";
 
 import {
   useMarkStudentAbsentToday,
@@ -8,6 +8,7 @@ import {
   useStudentDailyAbsence,
 } from "../hooks/use-students";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -67,13 +68,13 @@ export function AusenciaHojeCard({
 
   return (
     <VehicleCard>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>Ausência de hoje</Text>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>Ausência de hoje</Texto>
 
       {ausenciaHoje ? (
         <>
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             {nomeAluno} está marcado como ausente hoje. O motorista vai pular a parada dele.
-          </Text>
+          </Texto>
           <VehicleButton
             label="Desmarcar ausência"
             variant="secondary"
@@ -83,9 +84,9 @@ export function AusenciaHojeCard({
         </>
       ) : (
         <>
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Se {nomeAluno} não vai ter transporte hoje, avise antes da viagem começar.
-          </Text>
+          </Texto>
           <VehicleButton
             label={`${nomeAluno.split(" ")[0]} não vai hoje`}
             variant="danger"
@@ -96,7 +97,7 @@ export function AusenciaHojeCard({
       )}
 
       {errorMessage ? (
-        <Text style={{ color: theme.colors.danger, fontSize: 12 }}>{errorMessage}</Text>
+        <Texto style={{ color: theme.colors.danger, fontSize: 12 }}>{errorMessage}</Texto>
       ) : null}
     </VehicleCard>
   );

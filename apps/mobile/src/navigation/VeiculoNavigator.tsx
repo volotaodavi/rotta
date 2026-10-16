@@ -1,6 +1,8 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { useAuth } from "@rotta/auth/native";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
+
 import type { VeiculoStackParamList } from "./types";
 
 import {
@@ -19,6 +21,7 @@ import {
   OcorrenciasScreen,
 } from "@/features/vehicles/screens";
 import { CarteiraScreen, WalletComingSoonScreen } from "@/features/wallet/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<VeiculoStackParamList>();
 
@@ -45,11 +48,12 @@ const Stack = createNativeStackNavigator<VeiculoStackParamList>();
  * usuário. `CarteiraScreen` real nunca mudou, só qual role a alcança.
  */
 export function VeiculoNavigator(): JSX.Element {
+  const { theme } = useTheme();
   const { user } = useAuth();
   const isAutonomoOuMeiEmModoAcao = user?.role === "empresa";
 
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen
         name="MeuVeiculo"
         component={MeuVeiculoScreen}

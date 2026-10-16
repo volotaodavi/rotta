@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
 import { SupportNavigator } from "./SupportNavigator";
 
 import type { EmpresaHomeStackParamList } from "./types";
@@ -14,6 +15,7 @@ import {
   EmpresaMarketplaceSolicitacaoDetalheScreen,
   EmpresaMarketplaceSolicitacoesScreen,
 } from "@/features/empresa/screens";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<EmpresaHomeStackParamList>();
 
@@ -25,8 +27,9 @@ const Stack = createNativeStackNavigator<EmpresaHomeStackParamList>();
  * tela exibida dentro dela.
  */
 export function EmpresaHomeNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen name="Dashboard" component={EmpresaHomeScreen} options={{ title: "Início" }} />
       <Stack.Screen
         name="AlunosPreCadastro"

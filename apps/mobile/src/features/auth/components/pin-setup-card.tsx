@@ -1,6 +1,6 @@
 import { useAuth } from "@rotta/auth/native";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { isBiometricLockEnabled, setBiometricLockEnabled } from "../biometric-lock-store";
 import { useBiometricAuth } from "../hooks/use-biometric-auth";
@@ -8,6 +8,7 @@ import { disablePinLock, isPinLockEnabled, setPinLock } from "../pin-lock-store"
 
 import { PinCodeInput } from "./pin-code-input";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -57,11 +58,11 @@ function BiometricToggle({ userId }: { userId: string }): JSX.Element | null {
 
   return (
     <View style={[styles.subCard, { borderColor: theme.colors.border }]}>
-      <Text style={[styles.subTitle, { color: theme.colors.text }]}>Entrar com {label}</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={[styles.subTitle, { color: theme.colors.text }]}>Entrar com {label}</Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Desbloqueie o app com {label} em vez do PIN ou da senha.
-      </Text>
-      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+      </Texto>
+      {error ? <Texto style={{ color: theme.colors.danger }}>{error}</Texto> : null}
       <VehicleButton
         label={enabled ? `Desativar ${label}` : `Ativar ${label}`}
         variant="secondary"
@@ -154,11 +155,11 @@ export function PinSetupCard(): JSX.Element | null {
         },
       ]}
     >
-      <Text style={[styles.title, { color: theme.colors.text }]}>Acesso rápido</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={[styles.title, { color: theme.colors.text }]}>Acesso rápido</Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Desbloqueie o app com um PIN de 4 dígitos em vez de digitar a senha inteira de novo. Sua
         sessão continua a mesma, é só uma forma mais rápida de reabrir.
-      </Text>
+      </Texto>
 
       {step === "on" ? (
         <VehicleButton
@@ -170,9 +171,9 @@ export function PinSetupCard(): JSX.Element | null {
         <VehicleButton label="Ativar PIN de acesso rápido" onPress={() => setStep("choose")} />
       ) : (
         <View style={[styles.setup, { gap: theme.spacing[3] }]}>
-          <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+          <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
             {step === "choose" ? "Escolha um PIN de 4 dígitos" : "Confirme o PIN"}
-          </Text>
+          </Texto>
           <PinCodeInput
             value={currentPin}
             onChangeValue={setCurrentPin}
@@ -181,7 +182,9 @@ export function PinSetupCard(): JSX.Element | null {
               step === "choose" ? handleChooseComplete(pin) : void handleConfirmComplete(pin)
             }
           />
-          {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+          {errorMessage ? (
+            <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto>
+          ) : null}
           <VehicleButton label="Cancelar" variant="ghost" onPress={resetToOff} />
         </View>
       )}

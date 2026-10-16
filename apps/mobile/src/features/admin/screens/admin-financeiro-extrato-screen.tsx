@@ -1,7 +1,7 @@
 import { Receipt } from "@rotta/icons/native";
 import { EmptyState, MovementRow, SectionHeader } from "@rotta/ui/native";
 import { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { BalanceTrendChart } from "../components";
 import { useAdminBillingStatement } from "../hooks/use-admin-billing";
@@ -10,6 +10,7 @@ import { isTaxaLancamento, tipoLancamentoLabel } from "../labels";
 import type { BillingAdminStatementItem } from "@rotta/api-client";
 import type { Theme } from "@rotta/theme";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -127,9 +128,9 @@ export function AdminFinanceiroExtratoScreen(): JSX.Element {
   if (isError || !data?.configured) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar o extrato da conta Asaas.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }

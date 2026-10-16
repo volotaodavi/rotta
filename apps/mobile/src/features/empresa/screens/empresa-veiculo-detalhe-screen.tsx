@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useUpdateVehicleStatus, useVehicle } from "../hooks/use-empresa-vehicles";
 
@@ -6,6 +6,7 @@ import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleStatus } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -48,7 +49,9 @@ export function EmpresaVeiculoDetalheScreen({ route, navigation }: Props): JSX.E
   if (isError || !vehicle) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar este veículo.</Text>
+        <Texto style={{ color: theme.colors.danger }}>
+          Não foi possível carregar este veículo.
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -58,27 +61,27 @@ export function EmpresaVeiculoDetalheScreen({ route, navigation }: Props): JSX.E
     <VehicleScreen>
       <VehicleCard style={styles.card}>
         <View style={styles.linha}>
-          <Text style={[styles.placa, { color: theme.colors.text }]}>{vehicle.placa}</Text>
+          <Texto style={[styles.placa, { color: theme.colors.text }]}>{vehicle.placa}</Texto>
           <StatusPill
             label={VEHICLE_STATUS_LABEL[vehicle.status]}
             tone={VEHICLE_STATUS_TONE[vehicle.status]}
           />
         </View>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {vehicle.modelo}
           {vehicle.marca ? ` · ${vehicle.marca}` : ""}
           {vehicle.ano ? ` · ${vehicle.ano}` : ""}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           {VEHICLE_TYPE_LABEL[vehicle.tipo]} · {vehicle.capacidadePassageiros} passageiros
           {vehicle.cor ? ` · ${vehicle.cor}` : ""}
-        </Text>
+        </Texto>
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Status
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {TODOS_OS_STATUS.map((status) => (
             <VehicleButton

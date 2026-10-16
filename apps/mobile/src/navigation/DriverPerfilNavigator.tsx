@@ -1,5 +1,6 @@
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 
+import { opcoesDoCabecalho } from "./estilo-da-navegacao";
 import { SupportNavigator } from "./SupportNavigator";
 import { VeiculoNavigator } from "./VeiculoNavigator";
 
@@ -11,6 +12,7 @@ import {
   DriverPerfilScreen,
 } from "@/features/driver/screens";
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
+import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<DriverPerfilStackParamList>();
 
@@ -31,8 +33,9 @@ const Stack = createNativeStackNavigator<DriverPerfilStackParamList>();
  * árvore de Perfil dos dois papéis).
  */
 export function DriverPerfilNavigator(): JSX.Element {
+  const { theme } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: "center" }}>
+    <Stack.Navigator screenOptions={{ ...opcoesDoCabecalho(theme), headerTitleAlign: "center" }}>
       <Stack.Screen
         name="PerfilHome"
         component={DriverPerfilScreen}

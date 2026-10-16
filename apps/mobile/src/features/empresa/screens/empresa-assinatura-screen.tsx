@@ -1,6 +1,6 @@
 import { useAuth } from "@rotta/auth/native";
 import { ExternalLink } from "@rotta/icons/native";
-import { ActivityIndicator, Linking, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Linking, StyleSheet, View } from "react-native";
 
 import { useMyCompanyPayments } from "../hooks/use-empresa-billing";
 import { useMyCompany } from "../hooks/use-empresa-company";
@@ -8,6 +8,7 @@ import { useMyCompany } from "../hooks/use-empresa-company";
 import type { StatusPillTone } from "@/features/vehicles/components";
 import type { CompanyStatus } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { env } from "@/config/env";
 import {
   StatusPill,
@@ -112,26 +113,26 @@ export function EmpresaAssinaturaScreen(): JSX.Element {
         ) : (
           <>
             <View style={styles.statusRow}>
-              <Text style={[styles.secao, { color: theme.colors.text }]}>Plano Starter</Text>
+              <Texto style={[styles.secao, { color: theme.colors.text }]}>Plano Starter</Texto>
               <StatusPill label={STATUS_LABEL[company.status]} tone={STATUS_TONE[company.status]} />
             </View>
 
             {company.status === "TRIAL" && company.trialExpiraEm ? (
-              <Text style={{ color: theme.colors.textMuted }}>
+              <Texto style={{ color: theme.colors.textMuted }}>
                 Seu período de teste vai até {formatarData(company.trialExpiraEm)}.
-              </Text>
+              </Texto>
             ) : null}
 
             {company.status === "ATIVO" ? (
-              <Text style={{ color: theme.colors.textMuted }}>
+              <Texto style={{ color: theme.colors.textMuted }}>
                 Sua assinatura está em dia. Obrigado por usar a Rotta.
-              </Text>
+              </Texto>
             ) : null}
 
             {company.status === "INADIMPLENTE" || company.status === "SUSPENSO" ? (
-              <Text style={{ color: theme.colors.textMuted }}>
+              <Texto style={{ color: theme.colors.textMuted }}>
                 Regularize o pagamento para voltar a usar a Rotta sem interrupção.
-              </Text>
+              </Texto>
             ) : null}
 
             {/* O botão abre o navegador, e o rótulo diz isso — nunca
@@ -154,16 +155,16 @@ export function EmpresaAssinaturaScreen(): JSX.Element {
         )}
       </VehicleCard>
 
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Pagamentos</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Pagamentos</Texto>
 
       {carregandoExtrato ? (
         <ActivityIndicator color={theme.colors.primary} />
       ) : isError ? (
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar seus pagamentos agora.
-        </Text>
+        </Texto>
       ) : !extrato || extrato.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {/* `provider: "nenhum"` = a empresa ainda nem tem conta no
               provedor de pagamento, o que é diferente de "tem conta e
               nunca pagou" — dizer a mesma frase pros dois casos
@@ -171,7 +172,7 @@ export function EmpresaAssinaturaScreen(): JSX.Element {
           {extrato?.provider === "nenhum"
             ? "Nenhuma cobrança foi gerada ainda. Isso acontece quando a assinatura é contratada."
             : "Nenhum pagamento registrado até agora."}
-        </Text>
+        </Texto>
       ) : (
         <VehicleCard style={styles.lista}>
           {extrato.items.map((pagamento, index) => (
@@ -188,17 +189,17 @@ export function EmpresaAssinaturaScreen(): JSX.Element {
               ]}
             >
               <View style={styles.linhaTexto}>
-                <Text style={[styles.valor, { color: theme.colors.text }]}>
+                <Texto style={[styles.valor, { color: theme.colors.text }]}>
                   {formatarReais(pagamento.valorCentavos)}
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                </Texto>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   {METODO_LABEL[pagamento.metodo] ?? pagamento.metodo} ·{" "}
                   {formatarData(pagamento.data)}
-                </Text>
+                </Texto>
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                 {PAGAMENTO_STATUS_LABEL[pagamento.status] ?? pagamento.status}
-              </Text>
+              </Texto>
             </View>
           ))}
         </VehicleCard>

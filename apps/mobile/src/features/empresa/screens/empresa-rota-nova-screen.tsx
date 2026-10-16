@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { useCreateRoute } from "../hooks/use-empresa-routes";
 
@@ -7,6 +7,7 @@ import type { EmpresaRotasStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { RouteWeekday, SchoolShift } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { ROUTE_WEEKDAY_LABEL } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
 import {
@@ -67,9 +68,9 @@ export function EmpresaRotaNovaScreen({ navigation }: Props): JSX.Element {
       <VehicleTextField label="Nome da rota" value={nome} onChangeText={setNome} />
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Turno
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {TURNOS.map((value) => (
             <VehicleButton
@@ -83,9 +84,9 @@ export function EmpresaRotaNovaScreen({ navigation }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Dias da semana
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {DIAS.map((value) => (
             <VehicleButton
@@ -98,7 +99,7 @@ export function EmpresaRotaNovaScreen({ navigation }: Props): JSX.Element {
         </View>
       </VehicleCard>
 
-      {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+      {error ? <Texto style={{ color: theme.colors.danger }}>{error}</Texto> : null}
 
       <VehicleButton
         label="Cadastrar rota"

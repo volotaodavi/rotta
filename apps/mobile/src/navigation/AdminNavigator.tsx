@@ -5,6 +5,7 @@ import { Bell, Headset, Home, User, Wallet } from "@rotta/icons/native";
 import { AdminFinanceiroNavigator } from "./AdminFinanceiroNavigator";
 import { AdminHomeNavigator } from "./AdminHomeNavigator";
 import { AdminSupportNavigator } from "./AdminSupportNavigator";
+import { opcoesDaBarraDeAbas, opcoesDoCabecalhoDeAba, SeloDeAba } from "./estilo-da-navegacao";
 import { NotificacoesNavigator } from "./NotificacoesNavigator";
 
 import type { AdminTabParamList } from "./types";
@@ -12,6 +13,7 @@ import type { AdminTabParamList } from "./types";
 import { RottaSymbol } from "@/components/rotta-symbol";
 import { AdminPerfilScreen } from "@/features/admin/screens";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
+import { useTheme } from "@/providers/theme-provider";
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
 
@@ -37,19 +39,34 @@ const Tab = createBottomTabNavigator<AdminTabParamList>();
  * backend (`AdminAreaGuard`) é quem realmente barra cada rota.
  */
 export function AdminNavigator(): JSX.Element {
+  const { theme } = useTheme();
   const { user } = useAuth();
   const { data: naoLidas } = useUnreadNotificationsCount();
   const podeVerFinanceiro = (user?.adminPapel ?? "GERAL") !== "SUPORTE";
 
   return (
-    <Tab.Navigator initialRouteName="Inicio" screenOptions={{ headerShown: false }}>
+    <Tab.Navigator
+      initialRouteName="Inicio"
+      screenOptions={{
+        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDoCabecalhoDeAba(theme),
+        headerShown: false,
+      }}
+    >
       <Tab.Screen
         name="Inicio"
         component={AdminHomeNavigator}
         options={{
           tabBarLabel: "Início",
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="house.fill" fallback={Home} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="house.fill"
+                fallback={Home}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -57,8 +74,15 @@ export function AdminNavigator(): JSX.Element {
         name="Suporte"
         component={AdminSupportNavigator}
         options={{
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="headphones" fallback={Headset} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="headphones"
+                fallback={Headset}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -67,8 +91,15 @@ export function AdminNavigator(): JSX.Element {
           name="Financeiro"
           component={AdminFinanceiroNavigator}
           options={{
-            tabBarIcon: ({ size, color }) => (
-              <RottaSymbol ios="creditcard.fill" fallback={Wallet} size={size} color={color} />
+            tabBarIcon: ({ size, color, focused }) => (
+              <SeloDeAba ativo={focused} theme={theme}>
+                <RottaSymbol
+                  ios="creditcard.fill"
+                  fallback={Wallet}
+                  size={size - 2}
+                  color={focused ? theme.colors.onPrimary : color}
+                />
+              </SeloDeAba>
             ),
           }}
         />
@@ -79,8 +110,15 @@ export function AdminNavigator(): JSX.Element {
         options={{
           tabBarLabel: "Notificações",
           tabBarBadge: naoLidas ? naoLidas : undefined,
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="bell.fill" fallback={Bell} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="bell.fill"
+                fallback={Bell}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />
@@ -90,8 +128,15 @@ export function AdminNavigator(): JSX.Element {
         options={{
           headerShown: true,
           title: "Perfil",
-          tabBarIcon: ({ size, color }) => (
-            <RottaSymbol ios="person.fill" fallback={User} size={size} color={color} />
+          tabBarIcon: ({ size, color, focused }) => (
+            <SeloDeAba ativo={focused} theme={theme}>
+              <RottaSymbol
+                ios="person.fill"
+                fallback={User}
+                size={size - 2}
+                color={focused ? theme.colors.onPrimary : color}
+              />
+            </SeloDeAba>
           ),
         }}
       />

@@ -25,7 +25,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from "react-native";
@@ -44,6 +43,7 @@ import type {
   VehicleOccurrenceSeverity,
 } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { useUnreadNotificationsCount } from "@/features/notifications/hooks/use-notifications";
 import { StatusPill, VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import {
@@ -89,16 +89,16 @@ export function MeuMapa({
         {status === "requesting" || status === "idle" ? (
           <>
             <ActivityIndicator color={theme.colors.driverPrimary} />
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               Buscando sua localização…
-            </Text>
+            </Texto>
           </>
         ) : status === "denied" ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: "center" }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: "center" }}>
             Localização negada. Permita o acesso nas configurações do app para ver o mapa.
-          </Text>
+          </Texto>
         ) : (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Mapa indisponível.</Text>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Mapa indisponível.</Texto>
         )}
       </View>
     );
@@ -157,22 +157,22 @@ export function AlunoPreViagemRow({ aluno }: { aluno: RouteStudentDetalhado }): 
     <View style={[styles.alunoPreViagemRow, { backgroundColor: theme.colors.surface }]}>
       <View style={{ flex: 1 }}>
         <View style={styles.alunoPreViagemHeaderRow}>
-          <Text style={{ color: theme.colors.text, fontWeight: "600", fontSize: 14 }}>
+          <Texto style={{ color: theme.colors.text, fontWeight: "600", fontSize: 14 }}>
             {aluno.studentNome ?? "Aluno"}
-          </Text>
+          </Texto>
           {aluno.horarioPrevisto ? (
-            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
               {aluno.horarioPrevisto}
-            </Text>
+            </Texto>
           ) : null}
         </View>
         {subtitulo ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{subtitulo}</Text>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>{subtitulo}</Texto>
         ) : null}
         {aluno.responsavelNome ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
             Responsável: {aluno.responsavelNome}
-          </Text>
+          </Texto>
         ) : null}
       </View>
     </View>
@@ -220,17 +220,17 @@ export function ProximaParadaEtaCard({
     >
       <Navigation size={20} color={accentColor} />
       <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Próxima parada</Text>
-        <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{eta.endereco}</Text>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>Próxima parada</Texto>
+        <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>{eta.endereco}</Texto>
       </View>
       <View style={{ alignItems: "flex-end", gap: 2 }}>
         <View style={styles.etaHorario}>
           <Clock size={12} color={accentColor} />
-          <Text style={{ color: accentColor, fontWeight: "600", fontSize: 14 }}>
+          <Texto style={{ color: accentColor, fontWeight: "600", fontSize: 14 }}>
             {horarioPrevisto}
-          </Text>
+          </Texto>
         </View>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{distancia}</Text>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>{distancia}</Texto>
       </View>
       {parada ? (
         <Pressable
@@ -284,9 +284,9 @@ export function TripElapsedTimer({
   return (
     <View style={styles.timerRow}>
       <Timer size={20} color={isRunning ? accentColor : theme.colors.textMuted} />
-      <Text style={[styles.timerTexto, { color: theme.colors.text }]}>{texto}</Text>
+      <Texto style={[styles.timerTexto, { color: theme.colors.text }]}>{texto}</Texto>
       {!isRunning ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>pausada</Text>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>pausada</Texto>
       ) : null}
     </View>
   );
@@ -351,11 +351,11 @@ export function TripStatsGrid({
         >
           <View style={styles.statsTileHeader}>
             <tile.icon size={16} color={accentColor} />
-            <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{tile.label}</Text>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>{tile.label}</Texto>
           </View>
-          <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
+          <Texto style={{ color: theme.colors.text, fontWeight: "700", fontSize: 16 }}>
             {tile.valor}
-          </Text>
+          </Texto>
         </View>
       ))}
       {/* Paridade com o Painel Web (`TripStatsGrid` de `minha-rota/page.tsx`)
@@ -369,9 +369,9 @@ export function TripStatsGrid({
         ]}
       >
         <LifeBuoy size={18} color={accentColor} />
-        <Text style={{ color: accentColor, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: accentColor, fontWeight: "600", fontSize: 14 }}>
           Suporte: falar com a central
-        </Text>
+        </Texto>
       </Pressable>
     </View>
   );
@@ -475,7 +475,7 @@ export function AlunosDaViagemCard({
     <VehicleCard>
       <View style={inicioStyles.paradaHeader}>
         <Users size={16} color={accentColor} />
-        <Text style={{ color: theme.colors.text, fontWeight: "600" }}>Alunos</Text>
+        <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>Alunos</Texto>
       </View>
 
       <View style={styles.alunosAbasRow}>
@@ -492,46 +492,46 @@ export function AlunosDaViagemCard({
                 { backgroundColor: ativa ? accentColor : theme.colors.muted },
               ]}
             >
-              <Text
+              <Texto
                 style={[
                   styles.alunosAbaLabel,
                   { color: ativa ? theme.colors.onPrimary : theme.colors.textMuted },
                 ]}
               >
                 {item.rotulo} {item.total}
-              </Text>
+              </Texto>
             </Pressable>
           );
         })}
       </View>
 
       {visiveis.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           {aba === "embarcados" ? "Ninguém embarcou ainda." : "Ninguém aguardando embarque."}
-        </Text>
+        </Texto>
       ) : (
         visiveis.map(({ aluno, status }) => (
           <View key={aluno.id} style={styles.alunoViagemRow}>
             <View style={styles.alunoViagemTexto}>
-              <Text style={{ color: theme.colors.text }} numberOfLines={1}>
+              <Texto style={{ color: theme.colors.text }} numberOfLines={1}>
                 {aluno.studentNome ?? "Aluno"}
-              </Text>
+              </Texto>
               {aluno.bairro ? (
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
                   {aluno.bairro}
-                </Text>
+                </Texto>
               ) : null}
               {/* Onde o evento aconteceu — só aparece depois que há um
                   evento com parada; sem isso a linha some, nunca vira "—". */}
               {status.local ? (
                 <View style={styles.alunoViagemLocal}>
                   <MapPin size={11} color={theme.colors.textMuted} />
-                  <Text
+                  <Texto
                     style={{ color: theme.colors.textMuted, flex: 1, fontSize: 11 }}
                     numberOfLines={1}
                   >
                     {status.local}
-                  </Text>
+                  </Texto>
                 </View>
               ) : null}
             </View>
@@ -628,13 +628,13 @@ export function RegistrarOcorrenciaButton({
             <Pressable accessibilityRole="button" accessibilityLabel="Voltar" onPress={fechar}>
               <X size={22} color={theme.colors.text} />
             </Pressable>
-            <Text style={{ color: theme.colors.text, fontWeight: "700", fontSize: 20 }}>
+            <Texto style={{ color: theme.colors.text, fontWeight: "700", fontSize: 20 }}>
               Ocorrência
-            </Text>
+            </Texto>
           </View>
 
           <ScrollView contentContainerStyle={styles.ocorrenciaBody}>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Escolha o tipo</Text>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Escolha o tipo</Texto>
             {TIPOS_OCORRENCIA.map((tipo) => {
               const TipoIcone = tipo.icon;
               const ativo = tipoEscolhido === tipo.titulo;
@@ -653,14 +653,14 @@ export function RegistrarOcorrenciaButton({
                   ]}
                 >
                   <TipoIcone size={18} color={ativo ? accentColor : theme.colors.textMuted} />
-                  <Text style={{ color: theme.colors.text, flex: 1 }}>{tipo.titulo}</Text>
+                  <Texto style={{ color: theme.colors.text, flex: 1 }}>{tipo.titulo}</Texto>
                 </Pressable>
               );
             })}
 
             {tipoEscolhido === "Outros" ? (
               <>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Título</Text>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Título</Texto>
                 <TextInput
                   value={titulo}
                   onChangeText={setTitulo}
@@ -674,7 +674,7 @@ export function RegistrarOcorrenciaButton({
               </>
             ) : null}
 
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Descrição</Text>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Descrição</Texto>
             <TextInput
               value={descricao}
               onChangeText={setDescricao}

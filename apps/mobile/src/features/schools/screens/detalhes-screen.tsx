@@ -1,4 +1,4 @@
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useSchool } from "../hooks/use-schools";
 import {
@@ -11,6 +11,7 @@ import {
 import type { VeiculoStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -42,7 +43,7 @@ export function EscolaDetalhesScreen({ route, navigation }: Props): JSX.Element 
   if (isError || !school) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar esta escola.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar esta escola.</Texto>
       </VehicleScreen>
     );
   }
@@ -51,24 +52,24 @@ export function EscolaDetalhesScreen({ route, navigation }: Props): JSX.Element 
     <VehicleScreen>
       <VehicleCard>
         <View style={styles.headerRow}>
-          <Text style={[styles.nome, { color: theme.colors.text }]}>{school.nomeOficial}</Text>
+          <Texto style={[styles.nome, { color: theme.colors.text }]}>{school.nomeOficial}</Texto>
           <StatusPill
             label={SCHOOL_STATUS_LABEL[school.status]}
             tone={SCHOOL_STATUS_TONE[school.status]}
           />
         </View>
         {school.nomeFantasia ? (
-          <Text style={{ color: theme.colors.textMuted }}>{school.nomeFantasia}</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>{school.nomeFantasia}</Texto>
         ) : null}
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {SCHOOL_ADMINISTRATIVE_DEPENDENCY_LABEL[school.dependenciaAdministrativa]} ·{" "}
           {school.tipos.map((tipo) => SCHOOL_TYPE_LABEL[tipo]).join(", ")}
-        </Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {school.logradouro}, {school.numero}, {school.bairro}, {school.cidade}/{school.estado}
-        </Text>
+        </Texto>
         {school.observacoesLocalizacao ? (
-          <Text style={{ color: theme.colors.textMuted }}>{school.observacoesLocalizacao}</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>{school.observacoesLocalizacao}</Texto>
         ) : null}
       </VehicleCard>
 

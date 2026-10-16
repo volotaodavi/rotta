@@ -1,6 +1,6 @@
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { useMemo } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useSchool, useSchoolAccessPoints } from "../hooks/use-schools";
 import { SCHOOL_ACCESS_POINT_TYPE_LABEL } from "../labels";
@@ -8,6 +8,7 @@ import { SCHOOL_ACCESS_POINT_TYPE_LABEL } from "../labels";
 import type { VeiculoStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -42,9 +43,9 @@ export function EscolaMapaScreen({ route }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar os pontos de embarque.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }
@@ -52,10 +53,10 @@ export function EscolaMapaScreen({ route }: Props): JSX.Element {
   if (!points || points.length === 0) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Nenhum portão ou ponto de embarque cadastrado ainda em{" "}
           {school?.nomeOficial ?? "esta escola"}.
-        </Text>
+        </Texto>
       </VehicleScreen>
     );
   }

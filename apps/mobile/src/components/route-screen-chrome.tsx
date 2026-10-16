@@ -1,10 +1,11 @@
 import { ArrowLeft, LocateFixed } from "@rotta/icons/native";
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from "react-native";
 import Svg, { Defs, LinearGradient, Path, Stop } from "react-native-svg";
 
 import type { ReactNode } from "react";
 import type { StyleProp, ViewStyle } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -76,8 +77,8 @@ function RouteChip({ label, value }: { label: string; value: string }): JSX.Elem
         theme.elevation.dropdown.native,
       ]}
     >
-      <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{label}</Text>
-      <Text style={{ color: theme.colors.text, fontSize: 14, fontWeight: "700" }}>{value}</Text>
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>{label}</Texto>
+      <Texto style={{ color: theme.colors.text, fontSize: 14, fontWeight: "700" }}>{value}</Texto>
     </View>
   );
 }
@@ -132,22 +133,22 @@ export function RouteFromToCard({
         <View style={{ flex: 1, gap: 10 }}>
           <View style={styles.pontoRow}>
             <View style={styles.dotOrigem} />
-            <Text
+            <Texto
               style={{ color: theme.colors.onPrimary, fontSize: 14, fontWeight: "600", flex: 1 }}
               numberOfLines={1}
             >
               {origemLabel}
-            </Text>
+            </Texto>
           </View>
           <View style={[styles.linhaConectora, { borderColor: "rgba(255,255,255,0.4)" }]} />
           <View style={styles.pontoRow}>
             <View style={[styles.dotDestino, { backgroundColor: theme.colors.onPrimary }]} />
-            <Text
+            <Texto
               style={{ color: theme.colors.onPrimary, fontSize: 14, fontWeight: "600", flex: 1 }}
               numberOfLines={1}
             >
               {destinoLabel}
-            </Text>
+            </Texto>
           </View>
         </View>
         {rightSlot}

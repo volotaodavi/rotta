@@ -1,6 +1,6 @@
 import { useAuth } from "@rotta/auth/native";
 import { Bus, LifeBuoy, LogOut, School, ShieldCheck } from "@rotta/icons/native";
-import { View, StyleSheet, Text, Pressable } from "react-native";
+import { View, StyleSheet, Pressable } from "react-native";
 
 import { SCHOOL_SHIFT_LABEL } from "../../schools/labels";
 
@@ -8,6 +8,7 @@ import type { ParentPerfilStackParamList, ParentTabParamList } from "@/navigatio
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { PinSetupCard } from "@/features/auth/components";
 import { useStudentsList } from "@/features/marketplace/hooks/use-students";
 import {
@@ -80,7 +81,7 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
       <VerificacaoCard verificacao={verificacao} />
 
       <VehicleCard>
-        <Text style={[styles.secao, { color: theme.colors.text }]}>Meus filhos</Text>
+        <Texto style={[styles.secao, { color: theme.colors.text }]}>Meus filhos</Texto>
         {alunos && alunos.items.length > 0
           ? alunos.items.map((aluno) => (
               <Pressable
@@ -88,10 +89,10 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
                 onPress={() => navigation.navigate("AlunoDetalhe", { studentId: aluno.id })}
               >
                 <View style={styles.alunoLinha}>
-                  <Text style={{ color: theme.colors.text }}>{aluno.nome}</Text>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  <Texto style={{ color: theme.colors.text }}>{aluno.nome}</Texto>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {SCHOOL_SHIFT_LABEL[aluno.turno]}
-                  </Text>
+                  </Texto>
                 </View>
               </Pressable>
             ))

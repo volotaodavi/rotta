@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleMaintenanceType } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   VehicleButton,
   VehicleCard,
@@ -62,9 +63,9 @@ export function EmpresaVeiculoManutencoesScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Registrar manutenção
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {TIPOS.map((value) => (
             <VehicleButton
@@ -101,19 +102,21 @@ export function EmpresaVeiculoManutencoesScreen({ route }: Props): JSX.Element {
       </VehicleCard>
 
       {!data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhuma manutenção registrada ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>
+          Nenhuma manutenção registrada ainda.
+        </Texto>
       ) : (
         data.items.map((m) => (
           <VehicleCard key={m.id} style={styles.card}>
-            <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+            <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
               {VEHICLE_MAINTENANCE_TYPE_LABEL[m.tipo]}
-            </Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            </Texto>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               {new Date(m.data).toLocaleDateString("pt-BR")}
               {m.quilometragem ? ` · ${m.quilometragem.toLocaleString("pt-BR")} km` : ""}
-            </Text>
+            </Texto>
             {m.fornecedor ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{m.fornecedor}</Text>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>{m.fornecedor}</Texto>
             ) : null}
           </VehicleCard>
         ))

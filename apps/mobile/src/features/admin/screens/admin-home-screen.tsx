@@ -1,6 +1,6 @@
 import { useAuth } from "@rotta/auth/native";
 import { Building2, Bus, ClipboardCheck, GraduationCap, Headset, Route } from "@rotta/icons/native";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { AdminStatTile } from "../components";
 import { useAdminBackofficeDashboard } from "../hooks/use-admin-backoffice";
@@ -9,6 +9,7 @@ import { ADMIN_PAPEL_LABEL } from "../labels";
 import type { AdminHomeStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -37,9 +38,9 @@ export function AdminHomeScreen({ navigation }: Props): JSX.Element {
   if (isError || !data) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>
+        <Texto style={{ color: theme.colors.danger }}>
           Não foi possível carregar o painel do Admin.
-        </Text>
+        </Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -48,10 +49,10 @@ export function AdminHomeScreen({ navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <View>
-        <Text style={[styles.saudacao, { color: theme.colors.text }]}>Olá, {user?.nome}</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+        <Texto style={[styles.saudacao, { color: theme.colors.text }]}>Olá, {user?.nome}</Texto>
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
           {user?.adminPapel ? ADMIN_PAPEL_LABEL[user.adminPapel] : "Admin Rotta"}
-        </Text>
+        </Texto>
       </View>
 
       <View style={styles.grid}>

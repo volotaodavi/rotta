@@ -1,8 +1,9 @@
-import { Text } from "react-native";
+import {} from "react-native";
 
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useVehicleAuditLogs } from "@/features/vehicles/hooks/use-vehicles";
 import { useTheme } from "@/providers/theme-provider";
@@ -23,14 +24,14 @@ export function EmpresaVeiculoAuditoriaScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       {!data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhuma alteração registrada ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhuma alteração registrada ainda.</Texto>
       ) : (
         data.items.map((log) => (
           <VehicleCard key={log.id} style={{ gap: 4 }}>
-            <Text style={{ color: theme.colors.text, fontWeight: "600" }}>{log.acao}</Text>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>{log.acao}</Texto>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {new Date(log.createdAt).toLocaleString("pt-BR")}
-            </Text>
+            </Texto>
           </VehicleCard>
         ))
       )}

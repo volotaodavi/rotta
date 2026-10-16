@@ -1,13 +1,14 @@
 import { Bus, ChevronRight } from "@rotta/icons/native";
 import { EmptyState, ListRow } from "@rotta/ui/native";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useVehiclesList } from "../hooks/use-empresa-vehicles";
 
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -49,7 +50,7 @@ export function EmpresaFrotaListaScreen({ navigation }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar a frota.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar a frota.</Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );

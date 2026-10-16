@@ -1,6 +1,6 @@
 import { GraduationCap, MapPin } from "@rotta/icons/native";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import {
   useAddRouteStop,
@@ -17,6 +17,7 @@ import type { EmpresaRotasStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { TripSentido } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import { useGeocodeAddress } from "@/features/marketplace/hooks/use-geocode-address";
 import { SentidoSwitch } from "@/features/routes/components/sentido-switch";
 import {
@@ -115,7 +116,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
   if (isError || !rota) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar esta rota.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar esta rota.</Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -215,15 +216,15 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
     <VehicleScreen>
       <VehicleCard style={styles.card}>
         <View style={styles.linha}>
-          <Text style={[styles.nome, { color: theme.colors.text }]}>{rota.nome}</Text>
+          <Texto style={[styles.nome, { color: theme.colors.text }]}>{rota.nome}</Texto>
           <StatusPill
             label={ROUTE_STATUS_LABEL[rota.status]}
             tone={ROUTE_STATUS_TONE[rota.status]}
           />
         </View>
-        <Text style={{ color: theme.colors.textMuted }}>
+        <Texto style={{ color: theme.colors.textMuted }}>
           {SCHOOL_SHIFT_LABEL[rota.turno]} · {formatRouteWeekdaysAbbrev(rota.diasSemana)}
-        </Text>
+        </Texto>
         <VehicleButton
           label={rota.status === "ATIVA" ? "Pausar rota" : "Ativar rota"}
           variant="secondary"
@@ -233,15 +234,15 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Paradas
-        </Text>
+        </Texto>
         {/* A placa: mesma rota, dois sentidos. Só muda o que está na
             tela — o sentido pertence à VIAGEM, não à rota. */}
         <SentidoSwitch value={sentido} onChange={setSentido} />
 
         {paradasNoSentido.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhuma parada cadastrada ainda.</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Nenhuma parada cadastrada ainda.</Texto>
         ) : (
           paradasNoSentido.map((parada, indice) => {
             const direcao = getStopDirection(parada, alunos);
@@ -256,12 +257,12 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
                   {/* Numerada pela posição NESTE sentido (não por
                       `parada.ordem`, que é sempre a ordem da ida) — na
                       volta a escola é a parada 1. */}
-                  <Text style={{ color: theme.colors.text }}>
+                  <Texto style={{ color: theme.colors.text }}>
                     {indice + 1}. {parada.endereco}
-                  </Text>
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  </Texto>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     {parada.horarioPrevisto}
-                  </Text>
+                  </Texto>
                 </View>
                 {/* Selo Ida/Volta derivado do vínculo aluno↔parada —
                     sem aluno vinculado ainda, nenhum selo. */}
@@ -276,9 +277,9 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
           })
         )}
 
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Adicionar parada
-        </Text>
+        </Texto>
 
         {/* Dois modos, como no Painel Web: "Escola" pro destino da ida
             (catálogo já importado e geocodificado, nunca digitado) e
@@ -318,13 +319,13 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
               onChangeText={setEnderecoParada}
               placeholder="Rua das Flores, 123, Centro, Campinas/SP"
             />
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {enderecoGeocodificado.isGeocoding
                 ? "Localizando no mapa…"
                 : enderecoGeocodificado.coordenada
                   ? "Endereço localizado no mapa."
                   : "A Rotta Geo AI localiza a coordenada sozinha, nunca digitada."}
-            </Text>
+            </Texto>
           </>
         )}
 
@@ -334,7 +335,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
           onChangeText={setHorarioPrevisto}
           placeholder="07:30"
         />
-        {erroParada ? <Text style={{ color: theme.colors.danger }}>{erroParada}</Text> : null}
+        {erroParada ? <Texto style={{ color: theme.colors.danger }}>{erroParada}</Texto> : null}
         <VehicleButton
           label="Adicionar parada"
           variant="secondary"
@@ -344,18 +345,18 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
       </VehicleCard>
 
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Alunos vinculados
-        </Text>
+        </Texto>
         {!alunos || alunos.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhum aluno vinculado ainda.</Text>
+          <Texto style={{ color: theme.colors.textMuted }}>Nenhum aluno vinculado ainda.</Texto>
         ) : (
           alunos.map((aluno) => (
             <View key={aluno.id} style={styles.linha}>
-              <Text style={{ color: theme.colors.text }}>
+              <Texto style={{ color: theme.colors.text }}>
                 {aluno.studentNome ?? "Aluno"}
                 {aluno.schoolNome ? ` · ${aluno.schoolNome}` : ""}
-              </Text>
+              </Texto>
               <VehicleButton
                 label="Remover"
                 variant="danger"
@@ -366,13 +367,13 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
           ))
         )}
 
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Adicionar aluno
-        </Text>
+        </Texto>
         {candidatosDisponiveis.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Nenhum aluno com contrato ativo disponível pra vincular.
-          </Text>
+          </Texto>
         ) : (
           <View style={styles.chips}>
             {candidatosDisponiveis.map((candidato) => (
@@ -390,7 +391,9 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
 
         {alunoSelecionado ? (
           <>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>Parada de embarque</Text>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              Parada de embarque
+            </Texto>
             <View style={styles.chips}>
               {paradasOrdenadas.map((parada) => (
                 <VehicleButton
@@ -401,9 +404,9 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
                 />
               ))}
             </View>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
               Parada de desembarque
-            </Text>
+            </Texto>
             <View style={styles.chips}>
               {paradasOrdenadas.map((parada) => (
                 <VehicleButton
@@ -414,7 +417,7 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
                 />
               ))}
             </View>
-            {erroAluno ? <Text style={{ color: theme.colors.danger }}>{erroAluno}</Text> : null}
+            {erroAluno ? <Texto style={{ color: theme.colors.danger }}>{erroAluno}</Texto> : null}
             <VehicleButton
               label="Vincular aluno"
               isLoading={addStudent.isPending}

@@ -10,14 +10,7 @@ import { RottaMap } from "@rotta/maps/native";
 import { Timeline } from "@rotta/ui/native";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AusenciaHojeCard } from "../components/ausencia-hoje-card";
@@ -33,6 +26,7 @@ import type { ParentTabParamList } from "@/navigation/types";
 import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 
 import { RecenterButton } from "@/components/route-screen-chrome";
+import { Texto } from "@/components/texto";
 import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
 import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useSchool } from "@/features/schools/hooks/use-schools";
@@ -80,7 +74,7 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
   return (
     <VehicleCard>
       <View style={styles.viagensHeader}>
-        <Text style={[styles.secao, { color: theme.colors.text }]}>Viagens</Text>
+        <Texto style={[styles.secao, { color: theme.colors.text }]}>Viagens</Texto>
         <View style={styles.viagensAbas}>
           {(Object.keys(HISTORY_RANGE_LABEL) as StudentEventsHistoryRange[]).map((key) => (
             <TouchableOpacity
@@ -93,7 +87,7 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
                 },
               ]}
             >
-              <Text
+              <Texto
                 style={{
                   /* `onPrimary`, nunca "#fff" cru: ver a nota em
                      `colors.ts`, que existe por causa deste caso. */
@@ -103,7 +97,7 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
                 }}
               >
                 {HISTORY_RANGE_LABEL[key]}
-              </Text>
+              </Texto>
             </TouchableOpacity>
           ))}
         </View>
@@ -112,9 +106,9 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
       {isLoading ? (
         <ActivityIndicator color={theme.colors.primary} />
       ) : !eventos || eventos.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted, textAlign: "center", paddingVertical: 8 }}>
+        <Texto style={{ color: theme.colors.textMuted, textAlign: "center", paddingVertical: 8 }}>
           Nenhum embarque ou desembarque registrado neste período.
-        </Text>
+        </Texto>
       ) : (
         /*
           Linha do tempo vertical (tela 11 da referência, "VIAGENS -
@@ -235,12 +229,12 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   if (state === "SEM_TRANSPORTE") {
     return (
       <VehicleScreen>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>
           Você ainda não tem transporte escolar
-        </Text>
-        <Text style={{ color: theme.colors.textMuted }}>
+        </Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>
           Busque um transportador próximo de você para solicitar o transporte do seu filho.
-        </Text>
+        </Texto>
         <VehicleButton label="Buscar transportadores" onPress={() => navigation.navigate("Mapa")} />
       </VehicleScreen>
     );
@@ -249,13 +243,13 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   if (state === "SOLICITACAO_PENDENTE") {
     return (
       <VehicleScreen>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Solicitação em análise</Text>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>Solicitação em análise</Texto>
         {solicitacoesPendentes.map((request) => (
           <VehicleCard key={request.id}>
             <Timeline steps={buildSolicitacaoSteps(request)} theme={theme} />
-            <Text style={{ color: theme.colors.textMuted, marginTop: theme.spacing[2] }}>
+            <Texto style={{ color: theme.colors.textMuted, marginTop: theme.spacing[2] }}>
               Enviada em {new Date(request.createdAt).toLocaleDateString("pt-BR")}
-            </Text>
+            </Texto>
           </VehicleCard>
         ))}
       </VehicleScreen>
@@ -265,16 +259,16 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   if (state === "AGUARDANDO_CONTRATO") {
     return (
       <VehicleScreen>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Aguardando contrato</Text>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>Aguardando contrato</Texto>
         <VehicleCard>
           <Timeline steps={buildContratoSteps(ultimoContrato ?? null)} theme={theme} />
         </VehicleCard>
         {ultimoContrato ? (
           <ContratoAssinatura contrato={ultimoContrato} />
         ) : solicitacaoAprovadaSemContrato ? (
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Sua solicitação foi aprovada. O transportador vai gerar o contrato em breve.
-          </Text>
+          </Texto>
         ) : null}
       </VehicleScreen>
     );
@@ -287,12 +281,12 @@ export function TransporteInicioScreen({ navigation }: Props): JSX.Element {
   // CONTRATO_ENCERRADO
   return (
     <VehicleScreen>
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>Transporte encerrado</Text>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>Transporte encerrado</Texto>
       {ultimoContrato ? <DetalhesContrato contrato={ultimoContrato} /> : null}
       {ultimoContrato ? <AvaliacoesSection contrato={ultimoContrato} /> : null}
-      <Text style={{ color: theme.colors.textMuted }}>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Busque um novo transportador quando precisar.
-      </Text>
+      </Texto>
       <VehicleButton label="Buscar transportadores" onPress={() => navigation.navigate("Mapa")} />
     </VehicleScreen>
   );
@@ -315,7 +309,7 @@ function TransporteAtivoScreen({ contrato }: { contrato: Contract }): JSX.Elemen
   return (
     <>
       <VehicleScreen>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Text>
+        <Texto style={[styles.titulo, { color: theme.colors.text }]}>Meu Transporte</Texto>
         <DetalhesContrato contrato={contrato} />
         <AcompanhamentoSection contrato={contrato} />
         {viagem ? (
@@ -349,23 +343,23 @@ function DetalhesContrato({ contrato }: { contrato: Contract }): JSX.Element {
           tone={CONTRACT_STATUS_TONE[contrato.status]}
         />
       </View>
-      <Text style={{ color: theme.colors.text }}>
+      <Texto style={{ color: theme.colors.text }}>
         {transportador?.nomeFantasia ?? "Carregando transportador..."}
-      </Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      </Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         {escola?.nomeOficial ?? "Carregando escola..."}
-      </Text>
-      <Text style={[styles.mensalidade, { color: theme.colors.primary }]}>
+      </Texto>
+      <Texto style={[styles.mensalidade, { color: theme.colors.primary }]}>
         R$ {(contrato.valorMensalidadeCentavos / 100).toFixed(2)}/mês
-      </Text>
-      <Text style={{ color: theme.colors.textMuted }}>{contrato.planoDescricao}</Text>
-      <Text style={{ color: theme.colors.textMuted }}>{contrato.regras}</Text>
-      <Text style={{ color: theme.colors.textMuted }}>
+      </Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>{contrato.planoDescricao}</Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>{contrato.regras}</Texto>
+      <Texto style={{ color: theme.colors.textMuted }}>
         Vigência: {new Date(contrato.vigenciaInicio).toLocaleDateString("pt-BR")}
         {contrato.vigenciaFim
           ? ` até ${new Date(contrato.vigenciaFim).toLocaleDateString("pt-BR")}`
           : ""}
-      </Text>
+      </Texto>
     </VehicleCard>
   );
 }
@@ -399,15 +393,15 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
   return (
     <>
       <VehicleCard>
-        <Text style={[styles.secao, { color: theme.colors.text }]}>Acompanhamento</Text>
+        <Texto style={[styles.secao, { color: theme.colors.text }]}>Acompanhamento</Texto>
 
         {isLoading ? (
           <ActivityIndicator color={theme.colors.primary} />
         ) : !viagem ? (
-          <Text style={{ color: theme.colors.textMuted }}>
+          <Texto style={{ color: theme.colors.textMuted }}>
             Nenhum transporte em andamento no momento. O mapa aparece aqui assim que a viagem
             começar.
-          </Text>
+          </Texto>
         ) : (
           /* Layout do cartão "Viagem em andamento" da referência
              (15/09/2026): antes era o mapa seguido de UMA frase corrida
@@ -435,9 +429,9 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
           */
           <>
             <View style={styles.acompTopo}>
-              <Text style={[styles.acompRota, { color: theme.colors.text }]}>
+              <Texto style={[styles.acompRota, { color: theme.colors.text }]}>
                 {viagem.routeNome}
-              </Text>
+              </Texto>
               <StatusPill label="Em deslocamento" tone="success" />
             </View>
 
@@ -460,24 +454,30 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                   <User size={18} color={theme.colors.primary} />
                 </View>
                 <View style={styles.acompColunaTexto}>
-                  <Text numberOfLines={1} style={[styles.acompValor, { color: theme.colors.text }]}>
+                  <Texto
+                    numberOfLines={1}
+                    style={[styles.acompValor, { color: theme.colors.text }]}
+                  >
                     {viagem.motoristaNome}
-                  </Text>
-                  <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                  </Texto>
+                  <Texto style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
                     Motorista
-                  </Text>
+                  </Texto>
                 </View>
               </View>
 
               <View style={styles.acompColuna}>
                 <Bus size={18} color={theme.colors.text} />
                 <View style={styles.acompColunaTexto}>
-                  <Text numberOfLines={1} style={[styles.acompValor, { color: theme.colors.text }]}>
+                  <Texto
+                    numberOfLines={1}
+                    style={[styles.acompValor, { color: theme.colors.text }]}
+                  >
                     {viagem.placa}
-                  </Text>
-                  <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                  </Texto>
+                  <Texto style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
                     Veículo
-                  </Text>
+                  </Texto>
                 </View>
               </View>
             </View>
@@ -496,12 +496,12 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                   <User size={18} color={theme.colors.monitorAccent} />
                 </View>
                 <View style={styles.acompColunaTexto}>
-                  <Text style={[styles.acompValor, { color: theme.colors.text }]}>
+                  <Texto style={[styles.acompValor, { color: theme.colors.text }]}>
                     {viagem.monitorNome}
-                  </Text>
-                  <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                  </Texto>
+                  <Texto style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
                     Monitor
-                  </Text>
+                  </Texto>
                 </View>
               </View>
             ) : null}
@@ -516,12 +516,12 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                   },
                 ]}
               >
-                <Text numberOfLines={2} style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                <Texto numberOfLines={2} style={{ color: theme.colors.textMuted, fontSize: 13 }}>
                   Próximo destino: {proximaParada.endereco}
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                </Texto>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 13 }}>
                   Chegada prevista:{" "}
-                  <Text style={[styles.acompEta, { color: theme.colors.text }]}>
+                  <Texto style={[styles.acompEta, { color: theme.colors.text }]}>
                     {new Date(proximaParada.etaPrevista).toLocaleTimeString("pt-BR", {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -529,8 +529,8 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
                     {proximaParada.etaSegundos > 0
                       ? ` (${Math.max(1, Math.round(proximaParada.etaSegundos / 60))} min)`
                       : ""}
-                  </Text>
-                </Text>
+                  </Texto>
+                </Texto>
               </View>
             ) : null}
 
@@ -557,11 +557,11 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
               </View>
             ) : null}
 
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
               {viagem.ultimaPosicaoEm
                 ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
                 : "Aguardando a primeira posição do motorista"}
-            </Text>
+            </Texto>
           </>
         )}
       </VehicleCard>
@@ -644,10 +644,10 @@ export function TripTrackingOverlay({
             {isLoading ? (
               <ActivityIndicator color={theme.colors.success} />
             ) : (
-              <Text style={{ color: theme.colors.textMuted, textAlign: "center" }}>
+              <Texto style={{ color: theme.colors.textMuted, textAlign: "center" }}>
                 Localização temporariamente indisponível.{"\n"}O mapa aparece assim que o motorista
                 reportar a posição.
-              </Text>
+              </Texto>
             )}
           </View>
         )}
@@ -662,16 +662,16 @@ export function TripTrackingOverlay({
             <ChevronLeft size={20} color={theme.colors.text} />
           </Pressable>
           <View style={[styles.trackTitlePill, { backgroundColor: theme.colors.surfaceElevated }]}>
-            <Text
+            <Texto
               style={{ color: theme.colors.text, fontWeight: "700", fontSize: 14 }}
               numberOfLines={1}
             >
               Viagem em andamento
-            </Text>
+            </Texto>
             {viagem ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 11 }} numberOfLines={1}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }} numberOfLines={1}>
                 {viagem.placa} · {viagem.routeNome}
-              </Text>
+              </Texto>
             ) : null}
           </View>
         </View>
@@ -691,9 +691,9 @@ export function TripTrackingOverlay({
         <View style={[styles.trackHandle, { backgroundColor: theme.colors.border }]} />
 
         {!viagem ? (
-          <Text style={{ color: theme.colors.textMuted, textAlign: "center", paddingVertical: 8 }}>
+          <Texto style={{ color: theme.colors.textMuted, textAlign: "center", paddingVertical: 8 }}>
             Nenhum transporte em andamento no momento.
-          </Text>
+          </Texto>
         ) : (
           <>
             <View style={styles.trackStatusRow}>
@@ -701,9 +701,9 @@ export function TripTrackingOverlay({
               {proximaParada ? (
                 <View style={styles.etaRow}>
                   <Clock size={14} color={theme.colors.success} />
-                  <Text style={{ color: theme.colors.success, fontWeight: "600", fontSize: 14 }}>
+                  <Texto style={{ color: theme.colors.success, fontWeight: "600", fontSize: 14 }}>
                     Chegando às {formatarHora(proximaParada.etaPrevista)}
-                  </Text>
+                  </Texto>
                 </View>
               ) : null}
             </View>
@@ -713,19 +713,19 @@ export function TripTrackingOverlay({
                 <Navigation size={20} color={theme.colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+                <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
                   Motorista: {viagem.motoristaNome}
-                </Text>
+                </Texto>
                 {viagem.monitorNome ? (
-                  <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                  <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                     Monitor: {viagem.monitorNome}
-                  </Text>
+                  </Texto>
                 ) : null}
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                   {viagem.ultimaPosicaoEm
                     ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
                     : "Aguardando a primeira posição do motorista"}
-                </Text>
+                </Texto>
               </View>
             </View>
 
@@ -739,28 +739,31 @@ export function TripTrackingOverlay({
                 <View style={styles.paradaRow}>
                   <MapPin size={16} color={theme.colors.primary} />
                   <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                    <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
                       Próxima parada
-                    </Text>
-                    <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={2}>
+                    </Texto>
+                    <Texto
+                      style={{ color: theme.colors.text, fontWeight: "600" }}
+                      numberOfLines={2}
+                    >
                       {proximaParada.endereco}
-                    </Text>
+                    </Texto>
                   </View>
                 </View>
                 <View style={styles.proximaParadaColunas}>
                   <View style={styles.proximaParadaColuna}>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>ETA</Text>
-                    <Text style={[styles.proximaParadaValor, { color: theme.colors.text }]}>
+                    <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>ETA</Texto>
+                    <Texto style={[styles.proximaParadaValor, { color: theme.colors.text }]}>
                       {formatarHora(proximaParada.etaPrevista)}
-                    </Text>
+                    </Texto>
                   </View>
                   <View style={styles.proximaParadaColuna}>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>Distância</Text>
-                    <Text style={[styles.proximaParadaValor, { color: theme.colors.text }]}>
+                    <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>Distância</Texto>
+                    <Texto style={[styles.proximaParadaValor, { color: theme.colors.text }]}>
                       {proximaParada.distanciaMetros >= 1000
                         ? `${(proximaParada.distanciaMetros / 1000).toFixed(1)} km`
                         : `${Math.round(proximaParada.distanciaMetros)} m`}
-                    </Text>
+                    </Texto>
                   </View>
                 </View>
               </View>
@@ -768,21 +771,21 @@ export function TripTrackingOverlay({
 
             {proximasEtas && proximasEtas.length > 1 ? (
               <View style={{ gap: 6 }}>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
+                <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
                   Próximas paradas
-                </Text>
+                </Texto>
                 {proximasEtas.slice(0, 4).map((eta) => (
                   <View key={eta.routeStopId} style={styles.paradaRow}>
                     <MapPin size={14} color={theme.colors.textMuted} />
-                    <Text
+                    <Texto
                       style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}
                       numberOfLines={1}
                     >
                       {eta.endereco}
-                    </Text>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                    </Texto>
+                    <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                       {formatarHora(eta.etaPrevista)}
-                    </Text>
+                    </Texto>
                   </View>
                 ))}
               </View>
@@ -817,7 +820,9 @@ function ContratoAssinatura({ contrato }: { contrato: Contract }): JSX.Element {
         </VehicleCard>
       ) : (
         <>
-          {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+          {errorMessage ? (
+            <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto>
+          ) : null}
           <VehicleButton
             label="Assinar contrato"
             onPress={() => void handleAssinar()}
@@ -840,19 +845,19 @@ function AvaliacoesSection({ contrato }: { contrato: Contract }): JSX.Element {
 
   return (
     <View style={styles.avaliacoes}>
-      <Text style={[styles.secao, { color: theme.colors.text }]}>Avaliações</Text>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Avaliações</Texto>
       {isLoading ? <ActivityIndicator color={theme.colors.primary} /> : null}
       {(ratings ?? []).map((rating) => (
         <VehicleCard key={rating.id}>
           <View style={styles.avaliacao}>
-            <Text style={{ color: theme.colors.text }}>
+            <Texto style={{ color: theme.colors.text }}>
               {RATING_TARGETS.find((t) => t.tipo === rating.alvoTipo)?.label ?? rating.alvoTipo}:
-            </Text>
+            </Texto>
             <Star size={14} color={theme.colors.text} fill={theme.colors.text} />
-            <Text style={{ color: theme.colors.text }}>{rating.nota}</Text>
+            <Texto style={{ color: theme.colors.text }}>{rating.nota}</Texto>
           </View>
           {rating.comentario ? (
-            <Text style={{ color: theme.colors.textMuted }}>{rating.comentario}</Text>
+            <Texto style={{ color: theme.colors.textMuted }}>{rating.comentario}</Texto>
           ) : null}
         </VehicleCard>
       ))}
@@ -895,7 +900,7 @@ function RatingForm({
 
   return (
     <VehicleCard>
-      <Text style={[styles.rotuloAvaliacao, { color: theme.colors.text }]}>Avaliar {label}</Text>
+      <Texto style={[styles.rotuloAvaliacao, { color: theme.colors.text }]}>Avaliar {label}</Texto>
       <View style={styles.notas}>
         {[1, 2, 3, 4, 5].map((valor) => (
           <VehicleButton
@@ -912,7 +917,7 @@ function RatingForm({
         onChangeText={setComentario}
         multiline
       />
-      {errorMessage ? <Text style={{ color: theme.colors.danger }}>{errorMessage}</Text> : null}
+      {errorMessage ? <Texto style={{ color: theme.colors.danger }}>{errorMessage}</Texto> : null}
       <VehicleButton
         label="Enviar avaliação"
         onPress={() => void handleEnviar()}

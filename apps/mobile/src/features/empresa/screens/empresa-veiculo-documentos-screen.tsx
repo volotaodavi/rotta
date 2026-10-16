@@ -1,6 +1,6 @@
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useRemoveVehicleDocument, useUploadVehicleDocument } from "../hooks/use-empresa-vehicles";
 
@@ -8,6 +8,7 @@ import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { VehicleDocumentType } from "@rotta/api-client";
 
+import { Texto } from "@/components/texto";
 import {
   StatusPill,
   VehicleButton,
@@ -85,9 +86,9 @@ export function EmpresaVeiculoDocumentosScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       <VehicleCard style={styles.card}>
-        <Text style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
+        <Texto style={{ color: theme.colors.textMuted, fontWeight: "600", fontSize: 14 }}>
           Novo documento
-        </Text>
+        </Texto>
         <View style={styles.chips}>
           {TIPOS.map((value) => (
             <VehicleButton
@@ -104,7 +105,7 @@ export function EmpresaVeiculoDocumentosScreen({ route }: Props): JSX.Element {
           onChangeText={setVencimentoEm}
           placeholder="2026-12-31"
         />
-        {error ? <Text style={{ color: theme.colors.danger }}>{error}</Text> : null}
+        {error ? <Texto style={{ color: theme.colors.danger }}>{error}</Texto> : null}
         <VehicleButton
           label="Escolher foto e enviar"
           onPress={() => void handleEscolherArquivo()}
@@ -116,29 +117,29 @@ export function EmpresaVeiculoDocumentosScreen({ route }: Props): JSX.Element {
         <ActivityIndicator color={theme.colors.primary} />
       ) : isError ? (
         <View>
-          <Text style={{ color: theme.colors.danger }}>
+          <Texto style={{ color: theme.colors.danger }}>
             Não foi possível carregar os documentos.
-          </Text>
+          </Texto>
           <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
         </View>
       ) : !data || data.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum documento enviado ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum documento enviado ainda.</Texto>
       ) : (
         data.map((document) => (
           <VehicleCard key={document.id}>
             <View style={styles.linha}>
-              <Text style={[styles.tipo, { color: theme.colors.text }]}>
+              <Texto style={[styles.tipo, { color: theme.colors.text }]}>
                 {VEHICLE_DOCUMENT_TYPE_LABEL[document.tipo]}
-              </Text>
+              </Texto>
               <StatusPill
                 label={VEHICLE_DOCUMENT_AI_STATUS_LABEL[document.rottaAiStatus]}
                 tone={VEHICLE_DOCUMENT_AI_STATUS_TONE[document.rottaAiStatus]}
               />
             </View>
             {document.vencimentoEm ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 Vence em {new Date(document.vencimentoEm).toLocaleDateString("pt-BR")}
-              </Text>
+              </Texto>
             ) : null}
             <VehicleButton
               label="Remover"

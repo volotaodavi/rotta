@@ -1,5 +1,6 @@
-import { StyleSheet, Text, TextInput, View, type TextInputProps } from "react-native";
+import { StyleSheet, TextInput, View, type TextInputProps } from "react-native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 interface VehicleTextFieldProps extends TextInputProps {
@@ -19,14 +20,14 @@ export function VehicleTextField({
 
   return (
     <View style={styles.container}>
-      <Text
+      <Texto
         style={[
           styles.label,
           { color: theme.colors.textMuted, fontSize: theme.typography.caption.fontSize },
         ]}
       >
         {label}
-      </Text>
+      </Texto>
       <TextInput
         /*
           O rótulo acima é um `Text` solto: visualmente ele etiqueta o

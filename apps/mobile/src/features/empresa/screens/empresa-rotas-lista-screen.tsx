@@ -1,4 +1,4 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useRoutesList } from "../hooks/use-empresa-routes";
 import { useMyTeam } from "../hooks/use-empresa-team";
@@ -6,6 +6,7 @@ import { useMyTeam } from "../hooks/use-empresa-team";
 import type { EmpresaRotasStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import {
   formatRouteWeekdaysAbbrev,
   ROUTE_STATUS_LABEL,
@@ -49,7 +50,7 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
   if (isError) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.danger }}>Não foi possível carregar as rotas.</Text>
+        <Texto style={{ color: theme.colors.danger }}>Não foi possível carregar as rotas.</Texto>
         <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
       </VehicleScreen>
     );
@@ -60,7 +61,7 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
       <VehicleButton label="+ Nova rota" onPress={() => navigation.navigate("Novo")} />
 
       {!data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhuma rota cadastrada ainda.</Text>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhuma rota cadastrada ainda.</Texto>
       ) : (
         data.items.map((route) => (
           <Pressable
@@ -69,20 +70,20 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
           >
             <VehicleCard>
               <View style={styles.linha}>
-                <Text style={[styles.nome, { color: theme.colors.text }]} numberOfLines={1}>
+                <Texto style={[styles.nome, { color: theme.colors.text }]} numberOfLines={1}>
                   {route.nome}
-                </Text>
+                </Texto>
                 <StatusPill
                   label={ROUTE_STATUS_LABEL[route.status]}
                   tone={ROUTE_STATUS_TONE[route.status]}
                 />
               </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {SCHOOL_SHIFT_LABEL[route.turno]} · {formatRouteWeekdaysAbbrev(route.diasSemana)}
-              </Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
+              </Texto>
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
                 {nomeMotorista(route.motoristaPadraoId)}
-              </Text>
+              </Texto>
             </VehicleCard>
           </Pressable>
         ))

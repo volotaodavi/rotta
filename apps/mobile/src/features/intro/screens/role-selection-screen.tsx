@@ -1,12 +1,13 @@
 import { Car, ClipboardCheck, Heart } from "@rotta/icons/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { RoleOption } from "../components/role-option";
 
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { Texto } from "@/components/texto";
 import { AuthButton, AuthScreen } from "@/features/auth/components";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -61,17 +62,17 @@ export function RoleSelectionScreen({ navigation }: Props): JSX.Element {
   return (
     <AuthScreen>
       <View style={styles.header}>
-        <Text
+        <Texto
           style={[
             styles.title,
             { color: theme.colors.text, fontSize: theme.typography.title.fontSize },
           ]}
         >
           Como você utiliza a Rotta?
-        </Text>
-        <Text style={[styles.subtitle, { color: theme.colors.textMuted }]}>
+        </Texto>
+        <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
           Escolha seu perfil para continuar.
-        </Text>
+        </Texto>
       </View>
 
       <View style={styles.options} accessibilityRole="radiogroup">

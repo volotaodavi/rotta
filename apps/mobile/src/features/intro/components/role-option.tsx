@@ -1,9 +1,10 @@
 import { Check } from "@rotta/icons/native";
 import { useRef } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { Animated, Pressable, StyleSheet, View } from "react-native";
 
 import type { LucideIcon } from "@rotta/icons/native";
 
+import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
@@ -69,15 +70,17 @@ export function RoleOption({
         </View>
 
         <View style={styles.textBlock}>
-          <Text
+          <Texto
             style={[
               styles.title,
               { color: theme.colors.text, fontSize: theme.typography.body.fontSize },
             ]}
           >
             {title}
-          </Text>
-          <Text style={[styles.description, { color: theme.colors.textMuted }]}>{description}</Text>
+          </Texto>
+          <Texto style={[styles.description, { color: theme.colors.textMuted }]}>
+            {description}
+          </Texto>
         </View>
 
         <View

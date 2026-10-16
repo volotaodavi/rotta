@@ -1,3 +1,4 @@
+import { fonteNativa } from "@rotta/theme";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import type { Theme } from "@rotta/theme";
@@ -125,8 +126,8 @@ const styles = StyleSheet.create({
     minHeight: 38,
   },
   rotulo: {
+    fontFamily: fonteNativa(600),
     fontSize: 13,
-    fontWeight: "600",
   },
   contagem: {
     alignItems: "center",
@@ -136,7 +137,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   numero: {
+    fontFamily: fonteNativa(700),
     fontSize: 11,
-    fontWeight: "700",
   },
 });
