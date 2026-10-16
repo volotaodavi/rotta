@@ -81,43 +81,51 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      <View>
-        <Text style={[styles.saudacao, { color: theme.colors.text }]}>Olá, {user?.nome}</Text>
+      {/*
+        O cartão azul escuro da tela 28 do conceito: a saudação e o
+        resumo da operação na mesma peça, em branco sobre o azul da
+        marca. Antes eram duas coisas separadas, uma saudação solta e um
+        cartão branco de números, e nenhuma das duas dizia que aquele é
+        o painel da empresa.
+      */}
+      <View
+        style={[
+          styles.painel,
+          {
+            backgroundColor: theme.colors.brandDeep,
+            borderRadius: theme.radius.lg,
+            padding: theme.spacing[4],
+          },
+        ]}
+      >
+        <Text style={[styles.saudacao, { color: theme.colors.onPrimary }]} numberOfLines={1}>
+          Olá, {user?.nome}
+        </Text>
         {user?.companyName ? (
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{user.companyName}</Text>
+          <Text style={{ color: theme.colors.onBrandMuted, fontSize: 12 }} numberOfLines={1}>
+            {user.companyName}
+          </Text>
         ) : null}
-      </View>
 
-      {company ? <TrialBanner company={company} /> : null}
-
-      {/* "Resumo da operação" (achado 15/09/2026 comparando contra a tela
-          28 da referência "Home - Gestor") — os 3 números ficam dentro de
-          UM cartão só, com esse título acima, não como blocos soltos. */}
-      <VehicleCard>
-        <Text style={[styles.secao, { color: theme.colors.text, marginBottom: 4 }]}>
+        <Text style={[styles.resumoRotulo, { color: theme.colors.onBrandMuted }]}>
           Resumo da operação
         </Text>
         <View style={styles.statsRow}>
+          <StatTile valor={veiculos?.total} label="Veículos" onPress={() => irParaAba("Frota")} />
           <StatTile
-            icon={Bus}
-            valor={veiculos?.total}
-            label="Veículos"
-            onPress={() => irParaAba("Frota")}
-          />
-          <StatTile
-            icon={GraduationCap}
             valor={alunosTotal}
             label="Alunos"
             onPress={() => navigation.navigate("AlunosPreCadastro")}
           />
           <StatTile
-            icon={Users}
             valor={motoristasCount}
             label="Motoristas"
             onPress={() => navigation.navigate("Equipe")}
           />
         </View>
-      </VehicleCard>
+      </View>
+
+      {company ? <TrialBanner company={company} /> : null}
 
       {rotasAtivas && rotasAtivas.items.length > 0 ? (
         <View style={styles.rotasSection}>
@@ -195,13 +203,18 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
  * Um número do resumo (Veículos/Alunos/Motoristas) — `valor` `undefined`
  * enquanto carrega mostra "—", nunca um placeholder de número inventado.
  */
+/**
+ * Um número do resumo, desenhado sobre o azul do painel.
+ *
+ * Sem ícone: no conceito os três números aparecem limpos, e o ícone de
+ * cada um repetia o que o rótulo já diz. `-` quando o dado ainda não
+ * chegou, nunca zero: zero é um número que o gestor acredita.
+ */
 function StatTile({
-  icon: Icon,
   valor,
   label,
   onPress,
 }: {
-  icon: ComponentType<{ size?: number; color?: string }>;
   valor: number | undefined;
   label: string;
   onPress: () => void;
@@ -209,22 +222,28 @@ function StatTile({
   const { theme } = useTheme();
 
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" style={styles.statTile}>
-      <Icon size={18} color={theme.colors.primary} />
-      <Text style={[styles.statValor, { color: theme.colors.text }]}>{valor ?? "-"}</Text>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>{label}</Text>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${valor ?? "sem dado"}`}
+      style={styles.statTile}
+    >
+      <Text style={[styles.statValor, { color: theme.colors.onPrimary }]}>{valor ?? "-"}</Text>
+      <Text style={{ color: theme.colors.onBrandMuted, fontSize: 11 }}>{label}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
+  painel: { gap: 2 },
+  resumoRotulo: { fontSize: 11, fontWeight: "600", marginTop: 14 },
   rotaCard: { gap: 6 },
   rotaCardFooter: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   rotasHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
   rotasSection: { gap: 8 },
-  saudacao: { fontSize: 20, fontWeight: "700" },
+  saudacao: { fontSize: 20, fontWeight: "700", letterSpacing: -0.3 },
   secao: { fontSize: 16, fontWeight: "700" },
-  statTile: { alignItems: "center", flex: 1, gap: 4 },
-  statValor: { fontSize: 20, fontWeight: "700" },
-  statsRow: { flexDirection: "row", gap: 8 },
+  statTile: { alignItems: "flex-start", flex: 1, gap: 2 },
+  statValor: { fontSize: 24, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  statsRow: { flexDirection: "row", gap: 8, marginTop: 8 },
 });

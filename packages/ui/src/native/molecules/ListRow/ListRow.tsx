@@ -54,6 +54,15 @@ export interface ListRowProps {
    * coluna.
    */
   comoCartao?: boolean;
+  /**
+   * Marca a linha como escolhida, com borda e selo na cor da marca.
+   *
+   * Existe para a tela 21 do conceito ("Registrar ocorrência"), onde a
+   * pessoa escolhe um tipo entre cinco. Cor sozinha não basta, então a
+   * linha escolhida também é anunciada como selecionada pelo leitor de
+   * tela.
+   */
+  selecionado?: boolean;
   theme: Theme;
 }
 
@@ -67,6 +76,7 @@ export function ListRow({
   tom = "padrao",
   comSeparador = false,
   comoCartao = false,
+  selecionado = false,
   theme,
 }: ListRowProps): JSX.Element {
   const perigo = tom === "perigo";
@@ -85,8 +95,8 @@ export function ListRow({
           ? [
               theme.elevation.soft.native,
               {
-                backgroundColor: theme.colors.card,
-                borderColor: theme.colors.hairline,
+                backgroundColor: selecionado ? theme.colors.primaryMuted : theme.colors.card,
+                borderColor: selecionado ? theme.colors.primary : theme.colors.hairline,
                 borderRadius: theme.radius.lg,
                 borderWidth: 1,
                 paddingHorizontal: theme.spacing[3],
@@ -136,6 +146,7 @@ export function ListRow({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={descricao ? `${rotulo}, ${descricao}` : rotulo}
+      accessibilityState={{ selected: selecionado }}
       onPress={onPress}
       style={({ pressed }) => (pressed ? styles.pressionada : null)}
     >
