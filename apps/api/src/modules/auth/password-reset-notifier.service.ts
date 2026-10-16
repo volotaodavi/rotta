@@ -21,7 +21,18 @@ export class PasswordResetNotifierService {
 
   constructor(private readonly emailService: EmailService) {}
 
-  async notify(email: string, rawToken: string): Promise<void> {
+  /**
+   * `minutosParaExpirar` vem de quem criou o token (`AuthService`), e
+   * não de um número escrito aqui.
+   *
+   * O texto dizia "Este link expira em breve". São 30 minutos, e quem
+   * abre o e-mail no fim do dia tenta, falha e não entende por quê —
+   * achado de 16/10/2026, quando o fundador perguntou se dava para
+   * pedir a troca de senha. Prazo escrito à mão no texto seria pior
+   * que nenhum: na primeira vez que alguém mudasse o TTL, o e-mail
+   * passaria a mentir.
+   */
+  async notify(email: string, rawToken: string, minutosParaExpirar: number): Promise<void> {
     // `WEB_APP_URL` ausente (ex. ambiente sem essa variável configurada)
     // → ainda envia o e-mail, só sem link clicável (o token cru serve
     // pra colar manualmente na tela de redefinição, se precisar).
@@ -34,9 +45,16 @@ export class PasswordResetNotifierService {
       `Link de redefinição de senha para ${email}: token=${rawToken}${link ? ` (${link})` : ""}.`,
     );
 
+    const prazo =
+      minutosParaExpirar === 60
+        ? "1 hora"
+        : minutosParaExpirar > 60
+          ? `${Math.round(minutosParaExpirar / 60)} horas`
+          : `${minutosParaExpirar} minutos`;
+
     const corpo = link
-      ? `Recebemos um pedido para redefinir sua senha na Rotta. Clique no link abaixo para escolher uma nova senha: se não foi você, ignore este e-mail.\n\n${link}\n\nEste link expira em breve.`
-      : `Recebemos um pedido para redefinir sua senha na Rotta. Use o código abaixo na tela de redefinição de senha: se não foi você, ignore este e-mail.\n\nCódigo: ${rawToken}\n\nEste código expira em breve.`;
+      ? `Recebemos um pedido para redefinir sua senha na Rotta. Clique no link abaixo para escolher uma nova senha: se não foi você, ignore este e-mail.\n\n${link}\n\nEste link vale por ${prazo}. Depois disso, peça a redefinição outra vez.`
+      : `Recebemos um pedido para redefinir sua senha na Rotta. Use o código abaixo na tela de redefinição de senha: se não foi você, ignore este e-mail.\n\nCódigo: ${rawToken}\n\nEste código vale por ${prazo}. Depois disso, peça a redefinição outra vez.`;
 
     try {
       await this.emailService.sendEmail(

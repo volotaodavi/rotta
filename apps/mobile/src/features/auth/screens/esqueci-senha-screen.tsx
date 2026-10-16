@@ -90,8 +90,20 @@ export function EsqueciSenhaScreen({ navigation }: Props): JSX.Element {
         >
           Esqueceu sua senha?
         </Texto>
+        {/*
+          "o e-mail cadastrado", e não só "o e-mail": na Rotta dá para
+          entrar com e-mail, CPF ou telefone, mas a recuperação sai só
+          por e-mail. Quem sempre entrou pelo telefone não tem motivo
+          para lembrar qual e-mail ficou na conta. Telefone digitado
+          aqui dá erro de formato e a pessoa entende; e-mail ERRADO,
+          porém, devolve a mesma confirmação de sempre, porque a
+          resposta é genérica de propósito para não revelar quem tem
+          cadastro. Aí ela fica esperando um e-mail que nunca foi
+          enviado.
+        */}
         <Texto style={[styles.subtitle, { color: theme.colors.textMuted }]}>
-          Informe o e-mail da sua conta e enviaremos um link para redefinir a senha.
+          Informe o e-mail cadastrado na conta e enviaremos um link para redefinir a senha. A
+          recuperação é só por e-mail, mesmo que você costume entrar com telefone ou CPF.
         </Texto>
       </View>
 

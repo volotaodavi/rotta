@@ -859,7 +859,11 @@ export class AuthService {
       expiresAt: new Date(Date.now() + PASSWORD_RESET_TOKEN_TTL_MS),
     });
 
-    await this.passwordResetNotifier.notify(user.email, rawToken);
+    await this.passwordResetNotifier.notify(
+      user.email,
+      rawToken,
+      PASSWORD_RESET_TOKEN_TTL_MS / 60_000,
+    );
   }
 
   /** AUTH-03 — token de uso único; revoga todas as sessões ao concluir (`RN-AUTH-04`). */
