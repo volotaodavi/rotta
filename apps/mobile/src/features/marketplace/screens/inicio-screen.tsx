@@ -2,7 +2,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useAuth } from "@rotta/auth/native";
 import { Timeline } from "@rotta/ui/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { useStudent } from "../hooks/use-students";
 import { useResponsavelTransportState } from "../hooks/use-transport-state";
@@ -86,7 +86,30 @@ export function ParentInicioScreen(): JSX.Element {
           </View>
         </View>
 
-        {isLoading ? null : semTransporte ? (
+        {isLoading ? (
+          /*
+            Antes aqui era `null`: a tela mostrava "Olá, Davi!" e mais
+            NADA enquanto a consulta não voltava. A API dorme no plano
+            gratuito do Render e leva perto de 90 segundos para acordar,
+            então a mãe que abre o app para ver onde está a van encontra
+            uma saudação e um vazio, que é indistinguível de aplicativo
+            quebrado. É a mesma partida fria que derrubou a entrada em
+            06/10/2026 e o login em 13/10/2026, agora no primeiro lugar
+            que o responsável olha.
+
+            Indicador sozinho também não serve a 90 segundos: sem uma
+            frase, girar por um minuto e meio parece travado. A frase
+            diz o que está acontecendo.
+          */
+          <VehicleCard>
+            <View style={styles.carregando}>
+              <ActivityIndicator color={theme.colors.primary} />
+              <Text style={{ color: theme.colors.textMuted, flex: 1 }}>
+                Buscando as informações do transporte.
+              </Text>
+            </View>
+          </VehicleCard>
+        ) : semTransporte ? (
           <VehicleCard>
             <Text style={[styles.tituloEstado, { color: theme.colors.text }]}>
               Você ainda não tem transporte escolar
@@ -160,6 +183,7 @@ const styles = StyleSheet.create({
     width: 48,
   },
   avatarLabel: { fontSize: 16, fontWeight: "700" },
+  carregando: { alignItems: "center", flexDirection: "row", gap: 12 },
   header: { alignItems: "center", flexDirection: "row", gap: 12 },
   headerTexto: { flex: 1, gap: 2 },
   saudacao: { fontSize: 20, fontWeight: "700" },
