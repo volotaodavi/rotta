@@ -49,6 +49,26 @@ export interface ColorTokens {
   warning: string;
   danger: string;
   info: string;
+  /**
+   * Fundo suave de cada cor semântica, para etiqueta de estado, faixa de
+   * aviso e card de resumo.
+   *
+   * Entrou em 16/10/2026, junto com o `StatusPill` de `@rotta/ui/native`.
+   * Até aqui só `primaryMuted` existia, e quem precisava de um fundo
+   * verde claro resolvia na tela, com hexadecimal solto ou opacidade
+   * improvisada. O resultado era o mesmo estado pintado de um jeito em
+   * cada uma das 94 telas do app, que é exatamente o que esta paleta
+   * existe para impedir.
+   *
+   * No tema escuro, `successMuted` e `dangerMuted` reaproveitam os
+   * valores já validados em `driverSuccessMuted`/`driverDangerMuted`:
+   * eles foram escolhidos para leitura sob sol, dentro de uma van, e
+   * não havia razão para inventar um segundo verde escuro.
+   */
+  successMuted: string;
+  warningMuted: string;
+  dangerMuted: string;
+  infoMuted: string;
   neutral: NeutralScale;
   border: string;
   borderStrong: string;
@@ -153,6 +173,10 @@ export const darkColors: ColorTokens = {
   warning: "#F5A623",
   danger: "#EF4444",
   info: "#22D3EE",
+  successMuted: "#123321",
+  warningMuted: "#3A2A12",
+  dangerMuted: "#3A1614",
+  infoMuted: "#0E2E33",
   neutral: {
     100: "#1C212B",
     300: "#2A313D",
@@ -200,6 +224,10 @@ export const lightColors: ColorTokens = {
   warning: "#D97706",
   danger: "#DC2626",
   info: "#0891B2",
+  successMuted: "#DCFCE7",
+  warningMuted: "#FEF3C7",
+  dangerMuted: "#FEE2E2",
+  infoMuted: "#CFFAFE",
   neutral: {
     100: "#F7F8FA",
     300: "#E5E8EC",

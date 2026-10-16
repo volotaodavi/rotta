@@ -23,5 +23,10 @@
  * Ver `../web/index.ts` para a estrutura completa de atoms/molecules/organisms.
  */
 
+export * from "./atoms/StatusPill";
+export * from "./molecules/EmptyState";
+export * from "./molecules/FilterTabs";
+export * from "./molecules/PersonRow";
+export * from "./molecules/SectionHeader";
 export * from "./molecules/Timeline";
 export * from "./organisms/BottomSheet";
