@@ -95,7 +95,9 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
             >
               <Text
                 style={{
-                  color: range === key ? "#fff" : theme.colors.textMuted,
+                  /* `onPrimary`, nunca "#fff" cru: ver a nota em
+                     `colors.ts`, que existe por causa deste caso. */
+                  color: range === key ? theme.colors.onPrimary : theme.colors.textMuted,
                   fontSize: 12,
                   fontWeight: "600",
                 }}

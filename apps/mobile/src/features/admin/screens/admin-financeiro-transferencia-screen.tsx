@@ -160,7 +160,16 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
                   },
                 ]}
               >
-                <Text style={{ color: selecionado ? "#FFFFFF" : theme.colors.text, fontSize: 12 }}>
+                {/* `onPrimary`, nunca "#FFFFFF" cru: é o token que existe
+                    para texto desenhado em cima de preenchimento forte,
+                    e cor solta aqui é a divergência que o próprio
+                    `colors.ts` descreve. */}
+                <Text
+                  style={{
+                    color: selecionado ? theme.colors.onPrimary : theme.colors.text,
+                    fontSize: 12,
+                  }}
+                >
                   {PIX_KEY_TYPE_LABEL[tipo]}
                 </Text>
               </Pressable>
