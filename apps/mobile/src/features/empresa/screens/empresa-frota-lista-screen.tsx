@@ -1,5 +1,7 @@
+import { Bus, ChevronRight } from "@rotta/icons/native";
+import { EmptyState, ListRow } from "@rotta/ui/native";
 import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { useVehiclesList } from "../hooks/use-empresa-vehicles";
 
@@ -9,7 +11,6 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import {
   StatusPill,
   VehicleButton,
-  VehicleCard,
   VehicleScreen,
   VehicleTextField,
 } from "@/features/vehicles/components";
@@ -82,37 +83,50 @@ export function EmpresaFrotaListaScreen({ navigation }: Props): JSX.Element {
       />
 
       {!data || data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>Nenhum veículo cadastrado ainda.</Text>
+        <EmptyState
+          title="Nenhum veículo cadastrado"
+          description="Cadastre o primeiro veículo para vincular motorista, rota e documentos."
+          icon={<Bus size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
-        data.items.map((vehicle) => (
-          <Pressable
-            key={vehicle.id}
-            onPress={() => navigation.navigate("Detalhe", { vehicleId: vehicle.id })}
-          >
-            <VehicleCard>
-              <View style={styles.linha}>
-                <Text style={[styles.placa, { color: theme.colors.text }]}>{vehicle.placa}</Text>
-                <StatusPill
-                  label={VEHICLE_STATUS_LABEL[vehicle.status]}
-                  tone={VEHICLE_STATUS_TONE[vehicle.status]}
-                />
-              </View>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 14 }}>
-                {vehicle.modelo}
-                {vehicle.marca ? ` · ${vehicle.marca}` : ""}
-              </Text>
-            </VehicleCard>
-          </Pressable>
-        ))
+        /*
+          Um veículo por linha com selo, placa e estado, como na tela 30
+          do conceito. Antes cada veículo era um cartão com a placa numa
+          linha e o modelo em outra, o que dava uma pilha alta onde a
+          frota inteira não cabia na tela.
+        */
+        <View style={styles.lista}>
+          {data.items.map((vehicle) => (
+            <ListRow
+              key={vehicle.id}
+              rotulo={vehicle.placa}
+              descricao={`${vehicle.modelo}${vehicle.marca ? ` · ${vehicle.marca}` : ""}`}
+              icon={<Bus size={20} color={theme.colors.primary} />}
+              onPress={() => navigation.navigate("Detalhe", { vehicleId: vehicle.id })}
+              acessorio={
+                <View style={styles.acessorio}>
+                  <StatusPill
+                    label={VEHICLE_STATUS_LABEL[vehicle.status]}
+                    tone={VEHICLE_STATUS_TONE[vehicle.status]}
+                  />
+                  <ChevronRight size={18} color={theme.colors.textMuted} />
+                </View>
+              }
+              comoCartao
+              theme={theme}
+            />
+          ))}
+        </View>
       )}
     </VehicleScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  acessorio: { alignItems: "center", flexDirection: "row", gap: 8 },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  linha: { alignItems: "center", flexDirection: "row", gap: 8, justifyContent: "space-between" },
-  placa: { fontSize: 16, fontWeight: "700", letterSpacing: 0.5 },
+  lista: { gap: 8 },
   searchField: { flex: 1 },
   searchRow: { alignItems: "flex-end", flexDirection: "row", gap: 8 },
 });

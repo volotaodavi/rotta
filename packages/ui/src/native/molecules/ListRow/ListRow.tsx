@@ -63,6 +63,16 @@ export interface ListRowProps {
    * tela.
    */
   selecionado?: boolean;
+  /**
+   * O formato do selo do ícone.
+   *
+   * O conceito usa os dois: quadrado arredondado quando o selo
+   * identifica um assunto que existe no mundo (uma escola, um
+   * veículo), e círculo quando ele identifica uma ação ou um tipo (os
+   * cinco tipos de ocorrência da tela 21). Manter a diferença é o que
+   * deixa uma lista de coisas distinguível de uma lista de escolhas.
+   */
+  formatoDoSelo?: "quadrado" | "circulo";
   theme: Theme;
 }
 
@@ -77,6 +87,7 @@ export function ListRow({
   comSeparador = false,
   comoCartao = false,
   selecionado = false,
+  formatoDoSelo = "quadrado",
   theme,
 }: ListRowProps): JSX.Element {
   const perigo = tom === "perigo";
@@ -111,7 +122,7 @@ export function ListRow({
             styles.selo,
             {
               backgroundColor: perigo ? theme.colors.dangerMuted : theme.colors.primaryMuted,
-              borderRadius: theme.radius.md,
+              borderRadius: formatoDoSelo === "circulo" ? theme.radius.full : theme.radius.md,
             },
           ]}
         >

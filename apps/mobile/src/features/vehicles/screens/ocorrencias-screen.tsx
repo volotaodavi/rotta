@@ -1,5 +1,6 @@
 import {
   AlertCircle,
+  ChevronRight,
   Clock,
   MoreHorizontal,
   ShieldAlert,
@@ -123,7 +124,9 @@ export function OcorrenciasScreen(): JSX.Element {
                   setTipo(opcao.chave);
                   setErrorMessage(null);
                 }}
+                acessorio={<ChevronRight size={18} color={theme.colors.textMuted} />}
                 selecionado={ativo}
+                formatoDoSelo="circulo"
                 comoCartao
                 theme={theme}
               />

@@ -88,25 +88,18 @@ export function DriverAlunosScreen(): JSX.Element {
         />
       ) : null}
 
-      <VehicleCard>
-        {visiveis.map((aluno, indice) => (
-          <View
-            key={aluno.id}
-            style={
-              indice === 0
-                ? null
-                : {
-                    borderTopColor: theme.colors.hairline,
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                  }
-            }
-          >
+      {/* Um aluno por cartão, como nas telas 20 e 25 do conceito: a
+          lista é curta e cada linha é uma pessoa, não uma linha de
+          tabela. */}
+      <View style={styles.lista}>
+        {visiveis.map((aluno) => (
+          <VehicleCard key={aluno.id} style={styles.cartaoDoAluno}>
             <PersonRow
               nome={aluno.studentNome ?? "Aluno"}
               /*
-                Escola e rota numa linha só: são a mesma pergunta ("de
-                onde ele é"), e o motorista lê isso de relance, com o
-                celular no suporte.
+                Escola, rota e bairro numa linha só: são a mesma
+                pergunta ("de onde ele é"), e o motorista lê isso de
+                relance, com o celular no suporte.
               */
               subtitulo={[aluno.schoolNome, aluno.routeNome, aluno.bairro]
                 .filter(Boolean)
@@ -114,13 +107,15 @@ export function DriverAlunosScreen(): JSX.Element {
               horario={aluno.horarioPrevisto ?? undefined}
               theme={theme}
             />
-          </View>
+          </VehicleCard>
         ))}
-      </VehicleCard>
+      </View>
     </VehicleScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  cartaoDoAluno: { paddingVertical: 4 },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
+  lista: { gap: 8 },
 });
