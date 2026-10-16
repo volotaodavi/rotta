@@ -139,7 +139,10 @@ O time de Integrações remeteu ao comercial (`contato@asaas.com.br`,
 4. Quem figura como recebedor no extrato e na nota fiscal perante a
    família.
 5. Franquia de Pix gratuitos em assinatura com QR dinâmico.
-6. Homologação do white label.
+6. Homologação do white label. Confirmado em 16/10/2026 pelo próprio
+   time de Integrações: a liberação desse modelo não é self-service e
+   segue com o comercial. É o único item desta lista que trava a
+   implementação, e não apenas a decisão.
 7. Existência de checkout hospedado compatível com assinatura e split,
    que mantenha a Rotta fora do escopo PCI.
 
@@ -147,6 +150,59 @@ Conclusão de 15/10/2026: **a integração é tecnicamente viável e está
 clara. O que não está resolvido é se ela é segura, e isso é contrato e
 risco, não código.** O escopo não diminuiu com a resposta, ficou nítido
 e maior.
+
+## 7-A. Segunda resposta do Asaas, 16/10/2026: como se liga, e quem paga
+
+Segunda mensagem de Isadora, do time de Integrações. Ela resolve a
+ativação e confirma o custo.
+
+**Split não precisa de ativação.** Basta mandar o array `split`, com o
+`walletId` do recebedor, na criação da assinatura ou da cobrança. Não há
+liberação, não há homologação para isso.
+
+**Conta Escrow também se ativa pela própria API**, sem pedir liberação.
+Dois caminhos, e a escolha entre eles tem consequência de dinheiro:
+
+- `POST /v3/accounts/escrow`, com a chave da conta pai, configura
+  **todas as subcontas de uma vez**, valendo para as que já existem e
+  para as que forem criadas depois.
+- `POST /v3/accounts/{id}/escrow` configura **uma subconta específica**.
+
+Nos dois casos o corpo leva `enabled`, `daysToExpire` (os dias de
+retenção) e **`isFeePayer`**, que define se a taxa da custódia fica com
+a subconta.
+
+**Reconfirmado:** só entram em custódia as cobranças recebidas depois da
+configuração e **criadas pela própria subconta**. A inversão da seção 2
+vale.
+
+**Subconta white label continua com o comercial.** A liberação desse
+modelo não é self-service, e isso mantém de pé a pergunta que foi para
+`contato@asaas.com.br`.
+
+### A decisão de arquitetura que esta resposta cria
+
+O campo `isFeePayer` confirma o que a seção 3 deste documento havia
+levantado a partir da documentação: **custódia tem custo recorrente por
+subconta**. A novidade é que dá para escolher quem paga.
+
+E daí sai uma recomendação com número atrás. Em 14/10/2026 havia 8
+transportadoras cadastradas, 7 em TRIAL e 1 ativa, com 10 viagens em
+toda a história da plataforma e a última em 28/08/2026. Se a custódia
+for ligada pelo caminho de **todas as subcontas de uma vez**, as 7 que
+não transacionam passam a gerar tarifa de custódia, e com `isFeePayer`
+na subconta elas recebem uma cobrança sem nunca ter recebido um real
+pela Rotta, o que é a pior apresentação possível de uma funcionalidade
+nova. Com `isFeePayer` na conta pai, a Rotta paga por 7 subcontas
+paradas.
+
+Recomendação, portanto: **nunca usar o endpoint que liga tudo de uma
+vez.** Ligar custódia por subconta, pelo `POST /v3/accounts/{id}/escrow`,
+e só na subconta que já está recebendo. É uma linha de código a mais e
+evita custo sobre base inativa, que é a maior parte da base hoje.
+
+`isFeePayer` em si é decisão do fundador, porque é preço: deslocar a
+tarifa para a transportadora muda o que ela paga.
 
 ## 8. Decisões que são do fundador, não de diretor
 
