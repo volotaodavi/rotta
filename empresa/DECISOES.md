@@ -5,6 +5,68 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-16 — CTO: as seis telas de dinheiro passam a falar a mesma língua
+
+O fundador perguntou se as outras telas do financeiro, as que ficaram
+de lado, também foram feitas. Fui ver quais eram: a carteira Rotta Pay
+do transportador e as cinco telas do Financeiro do Admin no app. Todas
+existiam, todas desenhadas à mão, cada uma com a sua própria ideia de
+saldo, de extrato e de lista vazia.
+
+Agora todas usam os componentes de `@rotta/ui/native` que foram
+construídos para a área financeira e até aqui só a tela de Pagamentos
+do responsável tinha estreado: `BalanceCard`, `ActionGrid`,
+`MovementRow`, `SummaryCards`, `PersonRow`, `FilterTabs`,
+`SectionHeader`, `EmptyState`.
+
+**Não foi só pintura.** Nove defeitos reais saíram no caminho, e é por
+isso que este bloco existe:
+
+- **Saldo não podia ser escondido**, nem na carteira nem no Financeiro
+  do Admin. O transportador usa o app dentro da van, com passageiro
+  atrás; o Admin abre o saldo da companhia inteira em reunião com a
+  tela virada para terceiro.
+- **Saída era pintada de vermelho** no extrato. Toda taxa do Asaas e
+  toda transferência apareciam como falha, e um extrato saudável
+  parecia uma sequência de erros. O sinal passou para o texto, que é o
+  que sobra para quem não distingue verde de vermelho.
+- **Saldo que a API não devolveu virava um traço de 32 pontos**, que se
+  lê como conta zerada. Agora a tela diz que não conseguiu consultar.
+  É a regra de `empresa/dados/FORMULAS.md`.
+- **"Cancelar assinatura" era o primeiro elemento** da tela de uma
+  empresa, em vermelho, onde o polegar cai ao abrir, antes de qualquer
+  pagamento que justificasse a decisão. Foi para o fim.
+- **Pagamento estornado aparecia como entrada**, igual a quem pagou. É
+  dinheiro que voltou: agora é saída.
+- **Os cinco chips de tipo de chave Pix eram `Pressable` cru**, sem
+  `accessibilityRole` nem `accessibilityState`: para o leitor de tela,
+  cinco textos soltos, sem dizer qual estava escolhido, numa tela que
+  move dinheiro de verdade.
+- **Um cartão por lançamento** no extrato: vinte lançamentos davam
+  vinte caixas e o olho perdia a coluna de valores, que é exatamente o
+  que um extrato não pode fazer.
+- **Quatro listas vazias eram frases encostadas na borda** do cartão.
+- **Receber e enviar dinheiro eram duas barras azuis idênticas**, uma
+  debaixo da outra no pé do Financeiro.
+
+**Decidi sozinho:** o que não existe aparece apagado com o motivo à
+mostra, nunca escondido e nunca ativo dando erro. Vale para Transferir,
+Pagar e Cartão na carteira (dependem de instituição financeira
+parceira, e a conversa com o Banco Rendimento segue sem resposta) e
+para Transferir fora do papel Geral no Financeiro (o `AdminAreaGuard`
+é quem barra de verdade; a tela só não oferece o caminho que termina em
+403).
+
+**Verificado:** 24 suítes e 152 testes passando, `tsc --noEmit` limpo,
+lint sem erro. Dez testes novos, nos dois pontos onde errar custa
+dinheiro: a carteira do transportador e o início do Financeiro do
+Admin. Entre eles, o que prova que saldo sem resposta da API não vira
+`R$ 0,00`.
+
+**Preciso do fundador:** nada para esta entrega. Para ligar Pagamentos
+do responsável na navegação, continua faltando a resposta do comercial
+do Asaas.
+
 ## 2026-10-16 — CTO: as 31 telas do conceito, conferidas uma a uma. Falta uma.
 
 O fundador mandou dois conceitos visuais e pediu para refazer o UX do
