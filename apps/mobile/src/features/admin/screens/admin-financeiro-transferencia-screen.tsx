@@ -1,7 +1,8 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
+import { FilterTabs, SectionHeader } from "@rotta/ui/native";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { useCreateAdminTransfer } from "../hooks/use-admin-billing";
 import { PIX_KEY_TYPE_LABEL } from "../labels";
@@ -35,6 +36,14 @@ const TIPOS: PixKeyType[] = ["EMAIL", "CPF", "CNPJ", "PHONE", "EVP"];
  * esse papel em `AdminFinanceiroOverviewScreen`) — o backend
  * (`AdminAreaGuard`) é quem realmente barra o papel Financeiro, esta
  * checagem é só pra nem mostrar a tela.
+ *
+ * ## O que mudou em 16/10/2026
+ *
+ * Os cinco chips de tipo de chave Pix eram `Pressable` cru, sem
+ * `accessibilityRole` nem `accessibilityState`: para o leitor de tela,
+ * cinco textos soltos, sem dizer qual estava escolhido, numa tela que
+ * move dinheiro de verdade. Agora são `FilterTabs`, o mesmo componente
+ * das abas de fatura do responsável.
  */
 export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
   const { theme } = useTheme();
@@ -97,6 +106,7 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
   if (confirmando) {
     return (
       <VehicleScreen>
+        <SectionHeader title="Confirmar transferência" theme={theme} />
         <VehicleCard>
           <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
             Confirmar transferência de {centsToBRL(valorCentavos)} para a chave{" "}
@@ -139,43 +149,23 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
         autoCapitalize="none"
       />
 
+      {/*
+        Os chips desenhados à mão aqui viraram `FilterTabs`: é a mesma
+        escolha de um entre poucos, com o mesmo desenho das abas de
+        fatura do responsável, e um `Pressable` sem `accessibilityRole`
+        nem `accessibilityState` não dizia ao leitor de tela qual tipo
+        de chave estava selecionado.
+      */}
       <View style={styles.chipsContainer}>
         <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" }}>
           Tipo de chave
         </Text>
-        <View style={styles.chips}>
-          {TIPOS.map((tipo) => {
-            const selecionado = tipo === tipoChavePix;
-            return (
-              <Pressable
-                key={tipo}
-                onPress={() => setTipoChavePix(tipo)}
-                style={[
-                  styles.chip,
-                  {
-                    backgroundColor: selecionado
-                      ? theme.colors.primary
-                      : theme.colors.surfaceElevated,
-                    borderColor: selecionado ? theme.colors.primary : theme.colors.border,
-                  },
-                ]}
-              >
-                {/* `onPrimary`, nunca "#FFFFFF" cru: é o token que existe
-                    para texto desenhado em cima de preenchimento forte,
-                    e cor solta aqui é a divergência que o próprio
-                    `colors.ts` descreve. */}
-                <Text
-                  style={{
-                    color: selecionado ? theme.colors.onPrimary : theme.colors.text,
-                    fontSize: 12,
-                  }}
-                >
-                  {PIX_KEY_TYPE_LABEL[tipo]}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <FilterTabs
+          options={TIPOS.map((tipo) => ({ key: tipo, label: PIX_KEY_TYPE_LABEL[tipo] }))}
+          value={tipoChavePix}
+          onChange={(chave) => setTipoChavePix(chave as PixKeyType)}
+          theme={theme}
+        />
       </View>
 
       <VehicleTextField
@@ -196,7 +186,5 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  chip: { borderRadius: 999, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chipsContainer: { gap: 6 },
 });

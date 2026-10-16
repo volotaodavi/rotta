@@ -1,3 +1,5 @@
+import { Receipt } from "@rotta/icons/native";
+import { EmptyState, MovementRow, SectionHeader } from "@rotta/ui/native";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
@@ -6,54 +8,54 @@ import { useAdminBillingStatement } from "../hooks/use-admin-billing";
 import { isTaxaLancamento, tipoLancamentoLabel } from "../labels";
 
 import type { BillingAdminStatementItem } from "@rotta/api-client";
+import type { Theme } from "@rotta/theme";
 
-import {
-  StatusPill,
-  VehicleButton,
-  VehicleCard,
-  VehicleScreen,
-} from "@/features/vehicles/components";
+import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
-function LinhaExtrato({ item }: { item: BillingAdminStatementItem }): JSX.Element {
-  const { theme } = useTheme();
+function comoDia(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR");
+}
+
+function comoHora(iso: string): string {
+  return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+}
+
+/**
+ * Uma linha do extrato da conta Asaas.
+ *
+ * O saldo após o lançamento fica no subtítulo, junto da hora: num dia
+ * com seis lançamentos, a hora é o que distingue um do outro, e o saldo
+ * acumulado é o que explica o número grande. Os dois juntos em texto
+ * pequeno valem mais que qualquer um deles em destaque.
+ */
+function LinhaExtrato({
+  item,
+  theme,
+}: {
+  item: BillingAdminStatementItem;
+  theme: Theme;
+}): JSX.Element {
   const taxa = isTaxaLancamento(item.tipo);
-  const entrada = item.valorCentavos >= 0;
+  const rotuloDoTipo = tipoLancamentoLabel(item.tipo);
+  const titulo = item.descricao ?? rotuloDoTipo;
+  /* Quando a descrição já virou título, o tipo ainda precisa aparecer
+     em algum lugar: era o que a etiqueta amarela fazia nas taxas. */
+  const prefixo = taxa && item.descricao ? `${rotuloDoTipo} · ` : "";
 
   return (
-    <VehicleCard>
-      <View style={styles.linha}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
-            {item.descricao ?? tipoLancamentoLabel(item.tipo)}
-          </Text>
-          <View style={styles.subLinha}>
-            <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-              {new Date(item.data).toLocaleString("pt-BR")}
-            </Text>
-            {taxa ? <StatusPill label={tipoLancamentoLabel(item.tipo)} tone="warning" /> : null}
-          </View>
-        </View>
-        <View style={{ alignItems: "flex-end" }}>
-          <Text
-            style={{
-              color: entrada ? theme.colors.success : theme.colors.danger,
-              fontWeight: "700",
-            }}
-          >
-            {entrada ? "+" : "−"}
-            {centsToBRL(Math.abs(item.valorCentavos))}
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 11 }}>
-            saldo {centsToBRL(item.saldoAposCentavos)}
-          </Text>
-        </View>
-      </View>
-    </VehicleCard>
+    <MovementRow
+      titulo={titulo}
+      subtitulo={`${prefixo}${comoHora(item.data)} · saldo ${centsToBRL(item.saldoAposCentavos)}`}
+      valorFormatado={centsToBRL(Math.abs(item.valorCentavos))}
+      direcao={item.valorCentavos >= 0 ? "entrada" : "saida"}
+      data={comoDia(item.data)}
+      theme={theme}
+    />
   );
 }
 
@@ -64,6 +66,24 @@ function LinhaExtrato({ item }: { item: BillingAdminStatementItem }): JSX.Elemen
  * pro toque/rolagem do celular do que uma paginação numerada). A linha
  * de tendência do saldo usa só os itens já carregados — ponto real de
  * cada lançamento (`saldoAposCentavos`), nunca uma série inventada.
+ *
+ * ## O que mudou em 16/10/2026
+ *
+ * Passou a usar `MovementRow`, `SectionHeader` e `EmptyState`, a mesma
+ * linguagem da carteira do transportador. Três consertos vieram junto:
+ *
+ * **Saída deixou de ser vermelha.** Toda taxa do Asaas e toda
+ * transferência aparecia em vermelho, o que fazia um extrato saudável
+ * parecer uma sequência de erros. O sinal continua no texto, que é o
+ * que sobra para quem não distingue verde de vermelho.
+ *
+ * **Um cartão por lançamento virou uma lista.** Cada linha era um
+ * `VehicleCard` com borda e sombra próprias: vinte lançamentos davam
+ * vinte caixas, e o olho perdia a coluna de valores, que é exatamente o
+ * que um extrato não pode fazer.
+ *
+ * **Extrato vazio virou estado vazio**, com a explicação de por que
+ * pode estar vazio, em vez de uma frase encostada na borda da tela.
  */
 export function AdminFinanceiroExtratoScreen(): JSX.Element {
   const { theme } = useTheme();
@@ -117,7 +137,12 @@ export function AdminFinanceiroExtratoScreen(): JSX.Element {
   if (items.length === 0) {
     return (
       <VehicleScreen>
-        <Text style={{ color: theme.colors.textMuted }}>Ainda não há lançamentos nesta conta.</Text>
+        <EmptyState
+          title="Ainda não há lançamentos"
+          description="Mensalidades recebidas, taxas do Asaas e transferências aparecem aqui, da mais recente para a mais antiga."
+          icon={<Receipt size={28} color={theme.colors.textMuted} />}
+          theme={theme}
+        />
       </VehicleScreen>
     );
   }
@@ -126,19 +151,23 @@ export function AdminFinanceiroExtratoScreen(): JSX.Element {
     <VehicleScreen>
       {pontosSaldo.length >= 2 ? (
         <VehicleCard>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12, fontWeight: "600" }}>
-            Tendência do saldo
-          </Text>
+          <SectionHeader title="Tendência do saldo" theme={theme} />
           <BalanceTrendChart points={pontosSaldo} />
         </VehicleCard>
       ) : null}
 
-      {items.map((item, index) => (
-        <LinhaExtrato
-          key={`${item.data}-${item.tipo}-${item.valorCentavos}-${index}`}
-          item={item}
-        />
-      ))}
+      <View>
+        <SectionHeader title="Lançamentos" theme={theme} />
+        <VehicleCard>
+          {items.map((item, index) => (
+            <LinhaExtrato
+              key={`${item.data}-${item.tipo}-${item.valorCentavos}-${index}`}
+              item={item}
+              theme={theme}
+            />
+          ))}
+        </VehicleCard>
+      </View>
 
       {data.total > items.length ? (
         <VehicleButton
@@ -154,6 +183,4 @@ export function AdminFinanceiroExtratoScreen(): JSX.Element {
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  linha: { flexDirection: "row", gap: 8 },
-  subLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
 });

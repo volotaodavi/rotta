@@ -1,4 +1,14 @@
 import { ApiError } from "@rotta/api-client";
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  CreditCard,
+  Eye,
+  EyeOff,
+  Receipt,
+  Wallet,
+} from "@rotta/icons/native";
+import { ActionGrid, BalanceCard, EmptyState, MovementRow, SectionHeader } from "@rotta/ui/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
@@ -30,14 +40,44 @@ function centsToBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+/** Só a data, sem hora: extrato com hora em cada linha vira ruído. */
+function comoDia(iso: string): string {
+  return new Date(iso).toLocaleDateString("pt-BR");
+}
+
 /**
- * Carteira Rotta Pay do Motorista (Dossiê 26) — saldo, extrato e
- * solicitação de saque. Aninhada na stack de "Meu Veículo" (mesma
- * decisão de `EscolasScreen`: sem aba própria, Bottom Navigation do
- * Motorista já no limite de 3-4 itens, Dossiê 10 §11.1). Reaproveita os
- * primitivos de `@/features/vehicles/components` — mesmo padrão já
- * usado por Escolas/Marketplace/Notificações, nenhum Design System
- * nativo de tela cheia ainda existe (`@rotta/ui/native`).
+ * Carteira Rotta Pay do transportador — saldo, extrato e saque.
+ *
+ * ## O que mudou em 16/10/2026
+ *
+ * Esta é a tela do telefone da esquerda no segundo conceito visual que
+ * o fundador enviou, e era a que faltava receber a mesma linguagem da
+ * tela de Pagamentos. Ela passou a usar `BalanceCard`, `ActionGrid`,
+ * `MovementRow`, `SectionHeader` e `EmptyState`, que foram construídos
+ * justamente para ela e até aqui não tinham sido aplicados a tela
+ * nenhuma.
+ *
+ * Três consertos de verdade vieram junto:
+ *
+ * **O saldo pode ser escondido.** O transportador abre o app dentro da
+ * van, com passageiro atrás e gente ao lado na escola, e a tela fica no
+ * suporte a viagem inteira. Saldo sempre visível ali é exposição real.
+ *
+ * **Saída deixou de ser vermelha.** O extrato pintava todo débito de
+ * vermelho, o que faz um extrato saudável parecer um desastre: gastar
+ * não é erro. O sinal continua no texto, que é o que sobra para quem
+ * não distingue verde de vermelho.
+ *
+ * **Lista vazia virou estado vazio.** Eram duas frases soltas
+ * ("Nenhuma movimentação ainda.") encostadas na borda do cartão.
+ *
+ * ## O que a tela NÃO promete
+ *
+ * O conceito mostra Receber, Pix, Transferir, Pagar, Seguros e Cartão.
+ * Desses, só o saque existe: os outros dependem de instituição
+ * financeira parceira, e a conversa com o Banco Rendimento ainda não
+ * aconteceu. Eles aparecem apagados, com o motivo à mostra, em vez de
+ * sumir ou de abrir e dar erro.
  */
 export function CarteiraScreen(): JSX.Element {
   const { theme } = useTheme();
@@ -47,6 +87,9 @@ export function CarteiraScreen(): JSX.Element {
   const requestWithdrawal = useRequestWithdrawal();
 
   const [showForm, setShowForm] = useState(false);
+  /* Estado de sessão, e não preferência guardada: esconder o saldo é
+     decisão do momento ("tem gente do meu lado agora"), não ajuste. */
+  const [saldoVisivel, setSaldoVisivel] = useState(true);
   const [valor, setValor] = useState("");
   const [chavePix, setChavePix] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -90,13 +133,22 @@ export function CarteiraScreen(): JSX.Element {
     }
   }
 
+  const transacoes = transactionsResult?.items ?? [];
+  const saques = withdrawalRequests ?? [];
+
   return (
     <VehicleScreen>
+      <BalanceCard
+        label="Saldo disponível"
+        valorFormatado={centsToBRL(wallet.saldoDisponivelCentavos)}
+        visivel={saldoVisivel}
+        onAlternarVisibilidade={() => setSaldoVisivel((v) => !v)}
+        iconeVisivel={<Eye size={18} color={theme.colors.onPrimary} />}
+        iconeOculto={<EyeOff size={18} color={theme.colors.onPrimary} />}
+        theme={theme}
+      />
+
       <VehicleCard>
-        <Text style={[styles.label, { color: theme.colors.textMuted }]}>Saldo disponível</Text>
-        <Text style={[styles.saldo, { color: theme.colors.text }]}>
-          {centsToBRL(wallet.saldoDisponivelCentavos)}
-        </Text>
         <Text style={{ color: theme.colors.textMuted }}>
           A receber (pendente): {centsToBRL(wallet.saldoPendenteCentavos)}
         </Text>
@@ -104,14 +156,42 @@ export function CarteiraScreen(): JSX.Element {
           Mensalidades de contratos ativados aparecem aqui como pendentes até a confirmação de
           recebimento pela Rotta.
         </Text>
-        <VehicleButton
-          label={showForm ? "Cancelar saque" : "Solicitar saque"}
-          variant="secondary"
-          onPress={() => setShowForm((v) => !v)}
-        />
       </VehicleCard>
 
-      {showForm && (
+      <ActionGrid
+        items={[
+          {
+            key: "saque",
+            label: showForm ? "Cancelar" : "Sacar",
+            icon: <ArrowDownToLine size={20} color={theme.colors.primary} />,
+            onPress: () => setShowForm((v) => !v),
+          },
+          {
+            key: "transferir",
+            label: "Transferir",
+            icon: <ArrowUpFromLine size={20} color={theme.colors.primary} />,
+            onPress: () => undefined,
+            motivoIndisponivel: "depende de parceiro bancário",
+          },
+          {
+            key: "pagar",
+            label: "Pagar",
+            icon: <Receipt size={20} color={theme.colors.primary} />,
+            onPress: () => undefined,
+            motivoIndisponivel: "depende de parceiro bancário",
+          },
+          {
+            key: "cartao",
+            label: "Cartão",
+            icon: <CreditCard size={20} color={theme.colors.primary} />,
+            onPress: () => undefined,
+            motivoIndisponivel: "depende de parceiro bancário",
+          },
+        ]}
+        theme={theme}
+      />
+
+      {showForm ? (
         <VehicleCard>
           <VehicleTextField
             label="Valor do saque"
@@ -121,75 +201,70 @@ export function CarteiraScreen(): JSX.Element {
             keyboardType="decimal-pad"
           />
           <VehicleTextField label="Chave PIX" value={chavePix} onChangeText={setChavePix} />
-          {feedback && <Text style={{ color: theme.colors.textMuted }}>{feedback}</Text>}
+          {feedback ? <Text style={{ color: theme.colors.textMuted }}>{feedback}</Text> : null}
           <VehicleButton
             label="Confirmar saque"
             onPress={() => void handleSubmit()}
             isLoading={requestWithdrawal.isPending}
           />
         </VehicleCard>
-      )}
+      ) : null}
 
-      <VehicleCard>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Extrato</Text>
-        {transactionsResult && transactionsResult.items.length > 0 ? (
-          transactionsResult.items.map((transaction) => {
-            const credito = WALLET_IS_CREDITO[transaction.tipo];
-            return (
-              <View key={transaction.id} style={styles.row}>
+      <View>
+        <SectionHeader title="Extrato" theme={theme} />
+        {transacoes.length === 0 ? (
+          <EmptyState
+            title="Nenhuma movimentação ainda"
+            description="Mensalidades recebidas e saques aparecem aqui."
+            icon={<Wallet size={28} color={theme.colors.textMuted} />}
+            theme={theme}
+          />
+        ) : (
+          <VehicleCard>
+            {transacoes.map((transaction) => (
+              <MovementRow
+                key={transaction.id}
+                titulo={WALLET_TIPO_LABEL[transaction.tipo]}
+                subtitulo={WALLET_TRANSACTION_STATUS_LABEL[transaction.status]}
+                valorFormatado={centsToBRL(transaction.valorCentavos)}
+                direcao={WALLET_IS_CREDITO[transaction.tipo] ? "entrada" : "saida"}
+                data={comoDia(transaction.createdAt)}
+                theme={theme}
+              />
+            ))}
+          </VehicleCard>
+        )}
+      </View>
+
+      <View>
+        <SectionHeader title="Saques solicitados" theme={theme} />
+        {saques.length === 0 ? (
+          <EmptyState
+            title="Nenhum saque solicitado"
+            description="O dinheiro disponível pode ser enviado para a sua chave Pix."
+            theme={theme}
+          />
+        ) : (
+          <VehicleCard>
+            {saques.map((withdrawal) => (
+              <View key={withdrawal.id} style={styles.row}>
                 <View style={styles.rowText}>
-                  <Text style={{ color: theme.colors.text }}>
-                    {WALLET_TIPO_LABEL[transaction.tipo]}
+                  <Text style={[styles.saqueValor, { color: theme.colors.text }]}>
+                    {centsToBRL(withdrawal.valorCentavos)}
                   </Text>
                   <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                    {new Date(transaction.createdAt).toLocaleString("pt-BR")}
+                    PIX: {withdrawal.chavePix}
                   </Text>
                 </View>
-                <View style={styles.rowEnd}>
-                  <StatusPill
-                    label={WALLET_TRANSACTION_STATUS_LABEL[transaction.status]}
-                    tone={WALLET_TRANSACTION_STATUS_TONE[transaction.status]}
-                  />
-                  <Text
-                    style={{
-                      color: credito ? theme.colors.success : theme.colors.danger,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {credito ? "+" : "−"} {centsToBRL(transaction.valorCentavos)}
-                  </Text>
-                </View>
+                <StatusPill
+                  label={WITHDRAWAL_STATUS_LABEL[withdrawal.status]}
+                  tone={WITHDRAWAL_STATUS_TONE[withdrawal.status]}
+                />
               </View>
-            );
-          })
-        ) : (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhuma movimentação ainda.</Text>
+            ))}
+          </VehicleCard>
         )}
-      </VehicleCard>
-
-      <VehicleCard>
-        <Text style={[styles.title, { color: theme.colors.text }]}>Saques solicitados</Text>
-        {withdrawalRequests && withdrawalRequests.length > 0 ? (
-          withdrawalRequests.map((withdrawal) => (
-            <View key={withdrawal.id} style={styles.row}>
-              <View style={styles.rowText}>
-                <Text style={{ color: theme.colors.text }}>
-                  {centsToBRL(withdrawal.valorCentavos)}
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  PIX: {withdrawal.chavePix}
-                </Text>
-              </View>
-              <StatusPill
-                label={WITHDRAWAL_STATUS_LABEL[withdrawal.status]}
-                tone={WITHDRAWAL_STATUS_TONE[withdrawal.status]}
-              />
-            </View>
-          ))
-        ) : (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhum saque solicitado ainda.</Text>
-        )}
-      </VehicleCard>
+      </View>
     </VehicleScreen>
   );
 }
@@ -197,15 +272,13 @@ export function CarteiraScreen(): JSX.Element {
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   helper: { fontSize: 12 },
-  label: { fontSize: 12, fontWeight: "600" },
   row: {
     alignItems: "center",
     flexDirection: "row",
+    gap: 12,
     justifyContent: "space-between",
     paddingVertical: 8,
   },
-  rowEnd: { alignItems: "flex-end", gap: 4 },
-  rowText: { gap: 2 },
-  saldo: { fontSize: 26, fontWeight: "700" },
-  title: { fontSize: 16, fontWeight: "700", marginBottom: 4 },
+  rowText: { flex: 1, gap: 2, minWidth: 0 },
+  saqueValor: { fontSize: 15, fontVariant: ["tabular-nums"], fontWeight: "600" },
 });

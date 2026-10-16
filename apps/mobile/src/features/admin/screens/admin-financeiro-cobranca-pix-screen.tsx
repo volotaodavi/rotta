@@ -1,6 +1,7 @@
 import { ApiError } from "@rotta/api-client";
+import { SectionHeader } from "@rotta/ui/native";
 import { useState } from "react";
-import { Image, StyleSheet, Text } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 
 import { useAdminPixChargeStatus, useCreateAdminPixCharge } from "../hooks/use-admin-billing";
 import { PIX_CHARGE_STATUS_LABEL } from "../labels";
@@ -126,6 +127,7 @@ export function AdminFinanceiroCobrancaPixScreen(): JSX.Element {
   if (chargeId) {
     return (
       <VehicleScreen>
+        <SectionHeader title="Cobrança gerada" theme={theme} />
         <PixChargeResult chargeId={chargeId} onNova={handleNova} />
       </VehicleScreen>
     );
@@ -133,10 +135,13 @@ export function AdminFinanceiroCobrancaPixScreen(): JSX.Element {
 
   return (
     <VehicleScreen>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-        Cobrança avulsa, não vinculada à mensalidade de nenhuma empresa, pra receber qualquer valor
-        por Pix direto na conta Asaas da Rotta.
-      </Text>
+      <View>
+        <SectionHeader title="Cobrança Pix avulsa" theme={theme} />
+        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+          Não vinculada à mensalidade de nenhuma empresa, pra receber qualquer valor por Pix direto
+          na conta Asaas da Rotta.
+        </Text>
+      </View>
 
       <VehicleTextField
         label="Valor (R$)"

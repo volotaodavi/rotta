@@ -1,6 +1,7 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
-import { Undo2 } from "@rotta/icons/native";
+import { Receipt, Undo2 } from "@rotta/icons/native";
+import { EmptyState, MovementRow, SectionHeader } from "@rotta/ui/native";
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from "react-native";
 
 import {
@@ -13,12 +14,7 @@ import { PAYMENT_METODO_LABEL, PAYMENT_STATUS_LABEL, STATUS_ESTORNAVEL } from ".
 import type { AdminFinanceiroStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
-import {
-  StatusPill,
-  VehicleButton,
-  VehicleCard,
-  VehicleScreen,
-} from "@/features/vehicles/components";
+import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AdminFinanceiroStackParamList, "Empresa">;
@@ -38,6 +34,20 @@ function errorMessage(error: unknown, fallback: string): string {
  * espelha `CompanyPaymentHistoryRow` expandida (apps/admin). Estornar/
  * cancelar assinatura são GERAL-only no backend; aqui só decide se o
  * BOTÃO aparece — mesmo raciocínio de `AdminFinanceiroTransferenciaScreen`.
+ *
+ * ## O que mudou em 16/10/2026
+ *
+ * Mesma linguagem do extrato da conta e da carteira do transportador:
+ * `MovementRow`, `SectionHeader` e `EmptyState`. E dois consertos:
+ *
+ * **O botão vermelho de cancelar assinatura saiu do topo.** Ele era o
+ * primeiro elemento da tela, antes de qualquer pagamento, no lugar onde
+ * o polegar cai ao abrir. A ação destrutiva de uma empresa inteira
+ * agora fica no fim, depois do histórico que justifica a decisão.
+ *
+ * **Estorno deixou de ser um pagamento igual aos outros.** Um
+ * pagamento estornado é dinheiro que voltou, e aparecia com o mesmo
+ * sinal de quem pagou. Agora ele é saída, com sinal próprio.
  */
 export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
   const { companyId, companyNome } = route.params;
@@ -115,62 +125,77 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
+      <View>
+        <SectionHeader title="Pagamentos da empresa" theme={theme} />
+        {data.note ? (
+          <Text style={[styles.nota, { color: theme.colors.textMuted }]}>{data.note}</Text>
+        ) : null}
+
+        {data.items.length === 0 ? (
+          <EmptyState
+            title="Nenhum pagamento encontrado"
+            description={`${companyNome} não tem cobrança paga, pendente ou estornada no Asaas.`}
+            icon={<Receipt size={28} color={theme.colors.textMuted} />}
+            theme={theme}
+          />
+        ) : (
+          data.items.map((item) => {
+            const estornado = item.status === "REFUNDED";
+            const liquido = item.liquidoCentavos === null ? "-" : centsToBRL(item.liquidoCentavos);
+
+            return (
+              <VehicleCard key={item.id}>
+                <MovementRow
+                  titulo={PAYMENT_METODO_LABEL[item.metodo] ?? item.metodo}
+                  subtitulo={`${PAYMENT_STATUS_LABEL[item.status] ?? item.status} · líquido ${liquido}`}
+                  valorFormatado={centsToBRL(item.valorCentavos)}
+                  /* Estornado é dinheiro que voltou pro pagador: saída,
+                     e não mais uma entrada igual às outras. */
+                  direcao={estornado ? "saida" : "entrada"}
+                  data={item.data ? new Date(item.data).toLocaleDateString("pt-BR") : undefined}
+                  theme={theme}
+                />
+                {podeGerenciar && STATUS_ESTORNAVEL.has(item.status) ? (
+                  <VehicleButton
+                    label="Estornar"
+                    variant="secondary"
+                    icon={<Undo2 size={14} color={theme.colors.text} />}
+                    isLoading={estornarPagamento.isPending}
+                    onPress={() => handleEstornar(item.id, item.valorCentavos)}
+                  />
+                ) : null}
+              </VehicleCard>
+            );
+          })
+        )}
+      </View>
+
+      {/*
+        No fim, e não no topo: cancelar a assinatura tira a empresa
+        inteira da cobrança, e a decisão só faz sentido depois de ver o
+        histórico acima.
+      */}
       {podeGerenciar ? (
-        <VehicleButton
-          label="Cancelar assinatura"
-          variant="danger"
-          icon={<Undo2 size={16} color={theme.colors.onPrimary} />}
-          isLoading={cancelarAssinatura.isPending}
-          onPress={handleCancelarAssinatura}
-        />
+        <View style={styles.zonaDeRisco}>
+          <SectionHeader title="Assinatura" theme={theme} />
+          <Text style={[styles.nota, { color: theme.colors.textMuted }]}>
+            Cancelar faz {companyNome} parar de ser cobrada. Não dá pra desfazer por aqui.
+          </Text>
+          <VehicleButton
+            label="Cancelar assinatura"
+            variant="danger"
+            icon={<Undo2 size={16} color={theme.colors.onPrimary} />}
+            isLoading={cancelarAssinatura.isPending}
+            onPress={handleCancelarAssinatura}
+          />
+        </View>
       ) : null}
-
-      {data.note ? (
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>{data.note}</Text>
-      ) : null}
-
-      {data.items.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>
-          Nenhum pagamento encontrado pra esta empresa.
-        </Text>
-      ) : (
-        data.items.map((item) => (
-          <VehicleCard key={item.id}>
-            <View style={styles.linhaTopo}>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                {item.data ? new Date(item.data).toLocaleDateString("pt-BR") : "-"} ·{" "}
-                {PAYMENT_METODO_LABEL[item.metodo] ?? item.metodo}
-              </Text>
-              <StatusPill
-                label={PAYMENT_STATUS_LABEL[item.status] ?? item.status}
-                tone={item.status === "REFUNDED" ? "neutral" : "info"}
-              />
-            </View>
-            <View style={styles.linhaTopo}>
-              <Text style={{ color: theme.colors.text, fontWeight: "700" }}>
-                {centsToBRL(item.valorCentavos)}
-              </Text>
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                líquido {item.liquidoCentavos === null ? "-" : centsToBRL(item.liquidoCentavos)}
-              </Text>
-            </View>
-            {podeGerenciar && STATUS_ESTORNAVEL.has(item.status) ? (
-              <VehicleButton
-                label="Estornar"
-                variant="secondary"
-                icon={<Undo2 size={14} color={theme.colors.text} />}
-                isLoading={estornarPagamento.isPending}
-                onPress={() => handleEstornar(item.id, item.valorCentavos)}
-              />
-            ) : null}
-          </VehicleCard>
-        ))
-      )}
     </VehicleScreen>
   );
 }
 
 const styles = StyleSheet.create({
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  linhaTopo: { alignItems: "center", flexDirection: "row", justifyContent: "space-between" },
+  nota: { fontSize: 12 },
+  zonaDeRisco: { gap: 8 },
 });

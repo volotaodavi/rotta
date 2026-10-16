@@ -1,5 +1,15 @@
 import { useAuth } from "@rotta/auth/native";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { Building2, Eye, EyeOff, QrCode, Receipt, Send } from "@rotta/icons/native";
+import {
+  ActionGrid,
+  BalanceCard,
+  EmptyState,
+  PersonRow,
+  SectionHeader,
+  SummaryCards,
+} from "@rotta/ui/native";
+import { useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { BarBreakdownChart } from "../components";
 import { useAdminBillingBalance, useAdminBillingOverview } from "../hooks/use-admin-billing";
@@ -30,12 +40,41 @@ function centsToBRL(cents: number): string {
  * ativas) + saldo atual da conta Asaas da Rotta. Sem série histórica
  * fabricada em lugar nenhum — todo número aqui é o snapshot "desde
  * hoje" que a própria API já devolve.
+ *
+ * ## O que mudou em 16/10/2026
+ *
+ * Esta tela passou a falar a mesma linguagem visual da carteira do
+ * transportador e dos Pagamentos do responsável: `BalanceCard`,
+ * `SummaryCards`, `ActionGrid`, `PersonRow`, `SectionHeader` e
+ * `EmptyState`, do `@rotta/ui/native`. Antes era a única área de
+ * dinheiro desenhada à mão, com `Pressable` cru no lugar de linha e
+ * frase solta no lugar de estado vazio.
+ *
+ * Três consertos de verdade vieram junto:
+ *
+ * **O saldo da conta da Rotta pode ser escondido.** É o saldo da
+ * empresa inteira, e o Admin abre isto em mesa de café e em reunião
+ * com terceiro na tela.
+ *
+ * **Saldo que a API não devolveu deixou de ser um "-" gigante.** Sem
+ * `ASAAS_API_KEY`, ou com a consulta falhando, a tela agora diz que o
+ * saldo não pôde ser consultado, em vez de desenhar um traço de 32
+ * pontos que parece valor zerado.
+ *
+ * **Os três botões empilhados viraram grade.** "Ver extrato", "Gerar
+ * cobrança Pix" e "Nova transferência" eram três barras largas no pé
+ * da tela, a de transferência logo abaixo da de cobrança, com a mesma
+ * cor e a mesma forma: dinheiro saindo e dinheiro entrando a um polegar
+ * de distância. Na grade cada ação tem ícone próprio.
  */
 export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Element {
   const { theme } = useTheme();
   const { user } = useAuth();
   const { data, isLoading, isError, refetch } = useAdminBillingOverview();
   const { data: balance } = useAdminBillingBalance();
+  /* Estado de sessão, e não preferência guardada: esconder o saldo é
+     decisão do momento ("tem gente vendo minha tela agora"). */
+  const [saldoVisivel, setSaldoVisivel] = useState(true);
   // Sem `adminPapel` (token antigo) cai no default seguro do resto do
   // sistema (GERAL) — mesmo raciocínio de `FinanceiroPage` (apps/admin).
   const podeTransferir = (user?.adminPapel ?? "GERAL") === "GERAL";
@@ -59,6 +98,8 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
     );
   }
 
+  const saldoCentavos = balance?.saldoCentavos ?? null;
+
   return (
     <VehicleScreen>
       {!data.asaas.configured ? (
@@ -71,22 +112,60 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
         </VehicleCard>
       ) : null}
 
-      <VehicleCard>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Saldo atual (Asaas)</Text>
-        <Text style={[styles.saldo, { color: theme.colors.text }]}>
-          {balance?.saldoCentavos == null ? "-" : centsToBRL(balance.saldoCentavos)}
-        </Text>
-        <VehicleButton
-          label="Ver extrato"
-          variant="secondary"
-          onPress={() => navigation.navigate("Extrato")}
+      {/*
+        Saldo desconhecido não vira número: `FORMULAS.md` manda dado que
+        falta aparecer como falta. Um "R$ 0,00" aqui faria o Admin achar
+        que a conta zerou.
+      */}
+      {saldoCentavos === null ? (
+        <VehicleCard>
+          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>Saldo atual (Asaas)</Text>
+          <Text style={{ color: theme.colors.text, fontWeight: "600" }}>
+            Não foi possível consultar o saldo agora.
+          </Text>
+        </VehicleCard>
+      ) : (
+        <BalanceCard
+          label="Saldo atual (Asaas)"
+          valorFormatado={centsToBRL(saldoCentavos)}
+          visivel={saldoVisivel}
+          onAlternarVisibilidade={() => setSaldoVisivel((v) => !v)}
+          iconeVisivel={<Eye size={18} color={theme.colors.onPrimary} />}
+          iconeOculto={<EyeOff size={18} color={theme.colors.onPrimary} />}
+          theme={theme}
         />
-      </VehicleCard>
+      )}
+
+      <ActionGrid
+        items={[
+          {
+            key: "extrato",
+            label: "Extrato",
+            icon: <Receipt size={20} color={theme.colors.primary} />,
+            onPress: () => navigation.navigate("Extrato"),
+          },
+          {
+            key: "cobranca",
+            label: "Cobrar Pix",
+            icon: <QrCode size={20} color={theme.colors.primary} />,
+            onPress: () => navigation.navigate("CobrancaPix"),
+          },
+          {
+            key: "transferencia",
+            label: "Transferir",
+            icon: <Send size={20} color={theme.colors.primary} />,
+            onPress: () => navigation.navigate("Transferencia"),
+            /* O backend (`AdminAreaGuard`) é quem barra de verdade;
+               aqui o atalho fica apagado com o motivo à mostra, em vez
+               de desaparecer e deixar o papel Financeiro procurando. */
+            motivoIndisponivel: podeTransferir ? undefined : "restrito ao papel Geral",
+          },
+        ]}
+        theme={theme}
+      />
 
       <VehicleCard>
-        <Text style={[styles.tituloSecao, { color: theme.colors.text }]}>
-          Mensalidade da plataforma hoje
-        </Text>
+        <SectionHeader title="Mensalidade da plataforma hoje" theme={theme} />
         <BarBreakdownChart
           formatValue={(v) =>
             v === 0 && data.totalRecebidoCentavos === null ? "-" : centsToBRL(v)
@@ -109,19 +188,29 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
             },
           ]}
         />
-        <View style={styles.linhaMuted}>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            {data.quantidadeCobrancasPagas ?? "-"} cobranças pagas hoje
-          </Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            {data.quantidadeEmpresasAtivas} empresas ativas
-          </Text>
-        </View>
+        <SummaryCards
+          items={[
+            {
+              key: "pagas",
+              label: "Pagas hoje",
+              valor: data.quantidadeCobrancasPagas ?? null,
+              tone: "success",
+            },
+            {
+              key: "empresas",
+              label: "Empresas",
+              valor: data.quantidadeEmpresasAtivas,
+              detalhe: "ativas",
+              tone: "info",
+            },
+          ]}
+          theme={theme}
+        />
       </VehicleCard>
 
       {data.planos.length > 0 ? (
         <VehicleCard>
-          <Text style={[styles.tituloSecao, { color: theme.colors.text }]}>Planos em uso</Text>
+          <SectionHeader title="Planos em uso" theme={theme} />
           <BarBreakdownChart
             formatValue={(v) => `${v} ${v === 1 ? "empresa" : "empresas"}`}
             items={data.planos.map((plano, index) => ({
@@ -139,68 +228,44 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
       ) : null}
 
       <View style={styles.secao}>
-        <Text style={[styles.tituloSecao, { color: theme.colors.text }]}>
-          Empresas usando o plano
-        </Text>
+        <SectionHeader title="Empresas usando o plano" theme={theme} />
         {data.empresasAtivas.length === 0 ? (
-          <Text style={{ color: theme.colors.textMuted }}>Nenhuma empresa ativa no momento.</Text>
+          <EmptyState
+            title="Nenhuma empresa ativa"
+            description="Transportadoras com plano ativo aparecem aqui, com o histórico de pagamento de cada uma."
+            icon={<Building2 size={28} color={theme.colors.textMuted} />}
+            theme={theme}
+          />
         ) : (
-          data.empresasAtivas.map((empresa) => (
-            <Pressable
-              key={empresa.id}
-              onPress={() =>
-                navigation.navigate("Empresa", {
-                  companyId: empresa.id,
-                  companyNome: empresa.nomeFantasia,
-                })
-              }
-            >
-              <VehicleCard>
-                <View style={styles.linhaEmpresa}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
-                      {empresa.nomeFantasia}
-                    </Text>
-                    <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                      Ativa desde {new Date(empresa.ativaDesde).toLocaleDateString("pt-BR")}
-                    </Text>
-                  </View>
-                  <View style={styles.badges}>
-                    <StatusPill label={empresa.planoNome} tone="neutral" />
-                    <StatusPill
-                      label={empresa.asaasSubscriptionId ? "Assinatura ativa" : "Sem recorrência"}
-                      tone={empresa.asaasSubscriptionId ? "info" : "warning"}
-                    />
-                  </View>
-                </View>
-              </VehicleCard>
-            </Pressable>
-          ))
+          <VehicleCard>
+            {data.empresasAtivas.map((empresa) => (
+              <PersonRow
+                key={empresa.id}
+                nome={empresa.nomeFantasia}
+                subtitulo={`${empresa.planoNome} · ativa desde ${new Date(
+                  empresa.ativaDesde,
+                ).toLocaleDateString("pt-BR")}`}
+                status={{
+                  label: empresa.asaasSubscriptionId ? "Assinatura ativa" : "Sem recorrência",
+                  tone: empresa.asaasSubscriptionId ? "info" : "warning",
+                }}
+                onPress={() =>
+                  navigation.navigate("Empresa", {
+                    companyId: empresa.id,
+                    companyNome: empresa.nomeFantasia,
+                  })
+                }
+                theme={theme}
+              />
+            ))}
+          </VehicleCard>
         )}
       </View>
-
-      <VehicleButton
-        label="Gerar cobrança Pix"
-        variant="secondary"
-        onPress={() => navigation.navigate("CobrancaPix")}
-      />
-      {podeTransferir ? (
-        <VehicleButton
-          label="Nova transferência Pix"
-          variant="secondary"
-          onPress={() => navigation.navigate("Transferencia")}
-        />
-      ) : null}
     </VehicleScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  badges: { alignItems: "flex-end", gap: 4 },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  linhaEmpresa: { alignItems: "center", flexDirection: "row", gap: 8 },
-  linhaMuted: { flexDirection: "row", justifyContent: "space-between" },
-  saldo: { fontSize: 32, fontWeight: "700" },
   secao: { gap: 8 },
-  tituloSecao: { fontSize: 14, fontWeight: "700" },
 });
