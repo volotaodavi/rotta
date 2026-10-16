@@ -207,6 +207,27 @@ Nenhum diretor mexe nestes. Ficam aqui para não serem esquecidos.
       ambiente na barra de título da sessão, "Edit", mesmo valor que
       está no Render. Até isso, nenhuma análise de funil é possível.
 
+- [ ] **Perguntar a um contador se a atividade da Rotta permite MEI.** O
+      plano de a diretoria pagar a Guia DAS-MEI do CNPJ
+      54.623.584/0001-80 depende disso, e a resposta não é obviamente
+      sim: o enquadramento exige ocupação na lista permitida, e
+      plataforma e desenvolvimento de software em geral não estão nela.
+      Somam-se o teto de faturamento anual e a pergunta de 14/10/2026
+      sobre MEI intermediando pagamento de terceiros, que é o que o
+      split faria. Enquanto não houver resposta escrita, o CFO trata o
+      DAS-MEI como hipótese.
+- [ ] **Definir os tetos e os destinos do mandato do CFO.** Preencher
+      `empresa/financeiro/DESTINOS.md`: valor máximo por movimentação,
+      valor máximo por mês, e a primeira linha de destino. Só o fundador
+      edita esse arquivo. Enquanto estiver sem número, o teto é zero e
+      nenhuma movimentação é permitida, mesmo com todas as outras travas
+      cumpridas.
+- [ ] **Dar o número do gatilho de realidade.** O mandato financeiro só
+      abre quando o produto estiver funcionando e a recorrência for
+      comprovada. A proposta escrita em `FUNDADOR.md` é três meses
+      consecutivos de receita recorrente e viagem registrada em pelo
+      menos oito das últimas doze semanas. Aprovar, mudar o número, ou
+      dizer qual é o seu.
 - [ ] **Mandar o e-mail ao comercial do Asaas** (`contato@asaas.com.br`
       ou 0800 009 0037) com as sete perguntas da seção 7 de
       `empresa/financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md`.
