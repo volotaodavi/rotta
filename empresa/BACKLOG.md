@@ -42,6 +42,32 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Produto e código (CTO)
 
+- [ ] (CTO) **[prioridade]** **Refazer o UX/UI do app nativo, por lotes.**
+      Pedido do fundador em 16/10/2026, a partir de dois conceitos
+      visuais que ele enviou, com a regra "sem tirar nada". O conceito
+      cobre 31 telas; o app tem 94, então as outras 63 entram no mesmo
+      tratamento. A causa do problema não é a cor: `@rotta/theme` já
+      estava certo e o azul já era praticamente o do conceito. A causa é
+      que `@rotta/ui/native` exportava dois componentes para 94 telas, e
+      cada tela desenhava o próprio cabeçalho, linha e etiqueta.
+      **Lote 1, feito em 16/10:** nove componentes compartilhados
+      (StatusPill, SectionHeader, EmptyState, FilterTabs, PersonRow,
+      SummaryCards, BalanceCard, ActionGrid, MovementRow) mais quatro
+      tokens semânticos `*Muted` no tema. 18 testes.
+      **Lote 2:** cabeçalho de tela com troca de perfil, linha de fatura,
+      e subir o `SlideToAction` de `apps/mobile/src/components` para o
+      pacote, já usado por `modo-operacional` e `inicio-screen`.
+      **Lote 3:** autenticação e cadastro, telas 01 a 08 do conceito mais
+      as que faltam nele: cadastro de empresa, verificação Didit (que é
+      bloqueante no app real e não aparece no conceito), vínculo por
+      código e conversão de autônomo. É o único trecho com número medido
+      acusando o desenho: 3 checkouts, 3 abandonados, 0 pagos.
+      **Lote 4:** motorista. **Lote 5:** responsável, sem pagamentos.
+      **Lote 6:** financeiro, por último, atrás de uma interface de
+      provedor, para trocar Asaas por outra instituição sem refazer
+      tela, e com Pix Automático como trilho principal em vez de cartão,
+      que é o que mantém a Rotta fora do escopo PCI.
+
 - [ ] (CTO) **A tela de operação no Admin, depois de uma semana de uso.**
       `GET /v1/plataforma/operacao` já existe e devolve os números da
       seção 1 de `empresa/dados/FORMULAS.md`, com `resumo` em uma frase.
