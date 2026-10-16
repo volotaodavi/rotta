@@ -154,7 +154,11 @@ export function ParentInicioScreen(): JSX.Element {
             {state === "TRANSPORTE_ATIVO" && contratoAtivo ? (
               <>
                 <AcompanhamentoSection contrato={contratoAtivo} />
-                <VehicleButton label="Acompanhar no mapa" onPress={() => setTrackingOpen(true)} />
+                <VehicleButton
+                  label="Acompanhar no mapa"
+                  forma="pilula"
+                  onPress={() => setTrackingOpen(true)}
+                />
               </>
             ) : null}
 

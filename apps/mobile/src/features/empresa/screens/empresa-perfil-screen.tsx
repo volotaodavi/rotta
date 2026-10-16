@@ -9,6 +9,7 @@ import type { EmpresaTabParamList } from "@/navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 
 import {
+  CabecalhoDePerfil,
   DadoLinha,
   DadosCard,
   SeloVerificado,
@@ -18,15 +19,6 @@ import {
 import { MenuRowList, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useAppModeContext } from "@/providers/app-mode-provider";
 import { useTheme } from "@/providers/theme-provider";
-
-/** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */
-function iniciais(nome: string | undefined): string {
-  if (!nome) return "?";
-  const partes = nome.trim().split(/\s+/);
-  const primeira = partes[0]?.[0] ?? "";
-  const ultima = partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "";
-  return (primeira + ultima).toUpperCase();
-}
 
 /**
  * Perfil da Empresa/Gestor no app (pedido do usuário 11/09/2026) —
@@ -67,26 +59,11 @@ export function EmpresaPerfilScreen(): JSX.Element {
 
   return (
     <VehicleScreen>
-      <VehicleCard>
-        <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted }]}>
-            <Text style={[styles.avatarLabel, { color: theme.colors.primary }]}>
-              {iniciais(user?.nome)}
-            </Text>
-          </View>
-          <View style={styles.headerInfo}>
-            <View style={styles.nomeLinha}>
-              <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
-              {verificacao.verificado ? <SeloVerificado /> : null}
-            </View>
-            {user?.companyName ? (
-              <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                {user.companyName}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-      </VehicleCard>
+      <CabecalhoDePerfil
+        nome={user?.nome}
+        papel={user?.companyName ?? "Transportadora"}
+        selo={verificacao.verificado ? <SeloVerificado /> : null}
+      />
 
       {/* "Poderá ver TUDO oq foi preenchido" (pedido do usuário
           15/09/2026) — conta + transportadora na mesma tela. Continua
@@ -153,17 +130,4 @@ export function EmpresaPerfilScreen(): JSX.Element {
   );
 }
 
-const styles = StyleSheet.create({
-  avatar: {
-    alignItems: "center",
-    borderRadius: 999,
-    height: 52,
-    justifyContent: "center",
-    width: 52,
-  },
-  avatarLabel: { fontSize: 20, fontWeight: "700" },
-  header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
-  headerInfo: { flex: 1, gap: 4 },
-  nome: { fontSize: 16, fontWeight: "700" },
-  nomeLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
-});
+const styles = StyleSheet.create({});

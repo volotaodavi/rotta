@@ -1,8 +1,6 @@
 import { ChevronRight } from "@rotta/icons/native";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { VehicleCard } from "./vehicle-card";
-
 import type { ComponentType } from "react";
 
 import { useTheme } from "@/providers/theme-provider";
@@ -11,63 +9,100 @@ export interface MenuRowItem {
   icon: ComponentType<{ size?: number; color?: string }>;
   label: string;
   onPress: () => void;
-  /** Ação destrutiva/de saída ("Sair") — vermelha e sem seta, como na referência. */
+  /** Ação destrutiva/de saída ("Sair") — vermelha e sem seta, como no conceito. */
   destrutivo?: boolean;
 }
 
 /**
- * Lista de itens de menu do Perfil — ícone + rótulo + seta, dentro de um
- * cartão único com divisórias (15/09/2026, referência visual do
- * usuário: telas "PERFIL - RESPONSÁVEL"/"PERFIL - MOTORISTA"/"PERFIL -
- * GESTOR", todas com o mesmo padrão).
+ * Os atalhos do Perfil — ícone, rótulo e seta.
  *
- * Antes cada Perfil empilhava `VehicleButton` de largura total, um por
- * atalho: mesma navegação, mas com peso visual de botão de ação em
- * cima de itens que são só navegação — e sem o "Sair" destacado em
- * vermelho que a referência mostra em todos os três papéis.
+ * Um componente só para os quatro Perfis de propósito: o padrão é
+ * idêntico nas quatro telas do conceito (Responsável, Motorista,
+ * Monitor e Gestor), então duplicar isso seria garantir que eles
+ * divergissem na primeira alteração.
  *
- * Um componente só pros três Perfis de propósito: o padrão é idêntico
- * nas três telas da referência, então duplicar isso seria garantir que
- * eles divergissem na primeira alteração.
+ * ## O que mudou em 16/10/2026
+ *
+ * Era um cartão único com divisórias. No conceito que o fundador
+ * aprovou, **cada atalho é um cartão próprio**, com respiro entre
+ * eles. A diferença não é gosto: uma pilha de oito linhas dentro de uma
+ * caixa só é uma tabela, e o dedo erra a linha; oito cartões separados
+ * dão alvo próprio a cada um e é isso que o desenho mostra.
+ *
+ * "Sair" continua sendo a exceção, e agora pelo motivo certo: no
+ * conceito ele é a única linha sem cartão e sem seta, em vermelho.
+ * Sair não leva a outra tela, encerra — seta ali prometeria uma tela
+ * que não existe.
  */
 export function MenuRowList({ items }: { items: MenuRowItem[] }): JSX.Element {
   const { theme } = useTheme();
 
   return (
-    <VehicleCard style={styles.lista}>
-      {items.map((item, index) => {
+    <View style={styles.lista}>
+      {items.map((item) => {
         const Icone = item.icon;
-        const cor = item.destrutivo ? theme.colors.danger : theme.colors.text;
+
+        if (item.destrutivo) {
+          return (
+            <Pressable
+              key={item.label}
+              accessibilityRole="button"
+              accessibilityLabel={item.label}
+              onPress={item.onPress}
+              style={({ pressed }) => [styles.linhaSolta, pressed ? styles.pressionada : null]}
+            >
+              <Icone size={22} color={theme.colors.danger} />
+              <Text style={[styles.label, { color: theme.colors.danger }]}>{item.label}</Text>
+            </Pressable>
+          );
+        }
+
         return (
           <Pressable
             key={item.label}
-            onPress={item.onPress}
             accessibilityRole="button"
-            style={[
-              styles.linha,
-              index > 0
-                ? {
-                    borderTopColor: theme.colors.border,
-                    borderTopWidth: StyleSheet.hairlineWidth,
-                  }
-                : null,
+            accessibilityLabel={item.label}
+            onPress={item.onPress}
+            style={({ pressed }) => [
+              styles.cartao,
+              theme.elevation.soft.native,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.hairline,
+                borderRadius: theme.radius.lg,
+                paddingHorizontal: theme.spacing[4],
+              },
+              pressed ? styles.pressionada : null,
             ]}
           >
-            <Icone
-              size={20}
-              color={item.destrutivo ? theme.colors.danger : theme.colors.textMuted}
-            />
-            <Text style={[styles.label, { color: cor }]}>{item.label}</Text>
-            {item.destrutivo ? null : <ChevronRight size={18} color={theme.colors.textMuted} />}
+            <Icone size={22} color={theme.colors.text} />
+            <Text style={[styles.label, { color: theme.colors.text }]}>{item.label}</Text>
+            <ChevronRight size={18} color={theme.colors.textMuted} />
           </Pressable>
         );
       })}
-    </VehicleCard>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  label: { flex: 1, fontSize: 16 },
-  linha: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 14 },
-  lista: { gap: 0, paddingVertical: 0 },
+  cartao: {
+    alignItems: "center",
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 14,
+    /* 56 pontos: é a altura da linha no conceito, e dá alvo de toque
+       confortável para oito atalhos seguidos. */
+    minHeight: 56,
+  },
+  label: { flex: 1, fontSize: 15, fontWeight: "500" },
+  linhaSolta: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 14,
+    minHeight: 52,
+    paddingHorizontal: 16,
+  },
+  lista: { gap: 8 },
+  pressionada: { opacity: 0.65 },
 });

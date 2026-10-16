@@ -5,7 +5,7 @@ import {
   type StudentEventsHistoryRange,
   type TripStudentEventType,
 } from "@rotta/api-client";
-import { ChevronLeft, Clock, MapPin, Navigation, Star } from "@rotta/icons/native";
+import { Bus, ChevronLeft, Clock, MapPin, Navigation, Star, User } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { Timeline } from "@rotta/ui/native";
 import { useQuery } from "@tanstack/react-query";
@@ -319,7 +319,11 @@ function TransporteAtivoScreen({ contrato }: { contrato: Contract }): JSX.Elemen
         <DetalhesContrato contrato={contrato} />
         <AcompanhamentoSection contrato={contrato} />
         {viagem ? (
-          <VehicleButton label="Acompanhar no mapa" onPress={() => setTrackingOpen(true)} />
+          <VehicleButton
+            label="Acompanhar no mapa"
+            forma="pilula"
+            onPress={() => setTrackingOpen(true)}
+          />
         ) : null}
         <HistoricoEventosCard studentId={contrato.studentId} />
         <AvaliacoesSection contrato={contrato} />
@@ -415,71 +419,119 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
              `useProximasEtasResponsavel`) — nenhuma chamada nova, nenhum
              dado inventado: cada bloco só aparece quando o dado existe
              de verdade. */
+          /*
+            A anatomia do cartão "Viagem em andamento" do conceito, lida
+            do print em 16/10/2026: nome da rota e etiqueta de estado no
+            topo; uma linha divisória; motorista com avatar à esquerda e
+            veículo com ícone à direita, lado a lado; outra divisória; e
+            o próximo destino e a chegada prevista como texto corrido.
+
+            Antes as duas colunas eram texto solto sem ícone nenhum, e
+            destino e previsão vinham como quatro blocos de rótulo e
+            valor empilhados, cada um com o seu ícone cinza. O dado é o
+            mesmo; o que muda é parar de dar o mesmo peso visual para o
+            que é identidade (quem dirige) e para o que é estado (onde
+            está).
+          */
           <>
-            <View style={styles.acompRow}>
+            <View style={styles.acompTopo}>
+              <Text style={[styles.acompRota, { color: theme.colors.text }]}>
+                {viagem.routeNome}
+              </Text>
               <StatusPill label="Em deslocamento" tone="success" />
             </View>
 
-            <Text style={[styles.acompRota, { color: theme.colors.text }]}>{viagem.routeNome}</Text>
-
-            <View style={styles.acompColunas}>
+            <View
+              style={[
+                styles.acompColunas,
+                { borderTopColor: theme.colors.hairline, borderTopWidth: StyleSheet.hairlineWidth },
+              ]}
+            >
               <View style={styles.acompColuna}>
-                <Text style={[styles.acompValor, { color: theme.colors.text }]}>
-                  {viagem.motoristaNome}
-                </Text>
-                <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
-                  Motorista
-                </Text>
+                <View
+                  style={[
+                    styles.acompSelo,
+                    {
+                      backgroundColor: theme.colors.primaryMuted,
+                      borderRadius: theme.radius.full,
+                    },
+                  ]}
+                >
+                  <User size={18} color={theme.colors.primary} />
+                </View>
+                <View style={styles.acompColunaTexto}>
+                  <Text numberOfLines={1} style={[styles.acompValor, { color: theme.colors.text }]}>
+                    {viagem.motoristaNome}
+                  </Text>
+                  <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                    Motorista
+                  </Text>
+                </View>
               </View>
+
               <View style={styles.acompColuna}>
-                <Text style={[styles.acompValor, { color: theme.colors.text }]}>
-                  {viagem.placa}
-                </Text>
-                <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>Veículo</Text>
+                <Bus size={18} color={theme.colors.text} />
+                <View style={styles.acompColunaTexto}>
+                  <Text numberOfLines={1} style={[styles.acompValor, { color: theme.colors.text }]}>
+                    {viagem.placa}
+                  </Text>
+                  <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                    Veículo
+                  </Text>
+                </View>
               </View>
             </View>
 
             {viagem.monitorNome ? (
               <View style={styles.acompColuna}>
-                <Text style={[styles.acompValor, { color: theme.colors.text }]}>
-                  {viagem.monitorNome}
-                </Text>
-                <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>Monitor</Text>
+                <View
+                  style={[
+                    styles.acompSelo,
+                    {
+                      backgroundColor: theme.colors.monitorAccentMuted,
+                      borderRadius: theme.radius.full,
+                    },
+                  ]}
+                >
+                  <User size={18} color={theme.colors.monitorAccent} />
+                </View>
+                <View style={styles.acompColunaTexto}>
+                  <Text style={[styles.acompValor, { color: theme.colors.text }]}>
+                    {viagem.monitorNome}
+                  </Text>
+                  <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
+                    Monitor
+                  </Text>
+                </View>
               </View>
             ) : null}
 
             {proximaParada ? (
-              <>
-                <View style={styles.acompLinhaIcone}>
-                  <MapPin size={16} color={theme.colors.textMuted} />
-                  <View style={styles.acompLinhaTexto}>
-                    <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
-                      Próximo destino
-                    </Text>
-                    <Text style={{ color: theme.colors.text }} numberOfLines={2}>
-                      {proximaParada.endereco}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.acompLinhaIcone}>
-                  <Clock size={16} color={theme.colors.textMuted} />
-                  <View style={styles.acompLinhaTexto}>
-                    <Text style={[styles.acompRotulo, { color: theme.colors.textMuted }]}>
-                      Previsão de chegada
-                    </Text>
-                    <Text style={[styles.acompEta, { color: theme.colors.primary }]}>
-                      {new Date(proximaParada.etaPrevista).toLocaleTimeString("pt-BR", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                      {proximaParada.etaSegundos > 0
-                        ? ` (${Math.max(1, Math.round(proximaParada.etaSegundos / 60))} min)`
-                        : ""}
-                    </Text>
-                  </View>
-                </View>
-              </>
+              <View
+                style={[
+                  styles.acompDestino,
+                  {
+                    borderTopColor: theme.colors.hairline,
+                    borderTopWidth: StyleSheet.hairlineWidth,
+                  },
+                ]}
+              >
+                <Text numberOfLines={2} style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                  Próximo destino: {proximaParada.endereco}
+                </Text>
+                <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+                  Chegada prevista:{" "}
+                  <Text style={[styles.acompEta, { color: theme.colors.text }]}>
+                    {new Date(proximaParada.etaPrevista).toLocaleTimeString("pt-BR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                    {proximaParada.etaSegundos > 0
+                      ? ` (${Math.max(1, Math.round(proximaParada.etaSegundos / 60))} min)`
+                      : ""}
+                  </Text>
+                </Text>
+              </View>
             ) : null}
 
             {viagem.latitude && viagem.longitude ? (
@@ -872,14 +924,15 @@ function RatingForm({
 }
 
 const styles = StyleSheet.create({
-  acompColuna: { flex: 1, gap: 2 },
-  acompColunas: { flexDirection: "row", gap: 12 },
-  acompEta: { fontSize: 16, fontWeight: "700" },
-  acompLinhaIcone: { alignItems: "flex-start", flexDirection: "row", gap: 8 },
-  acompLinhaTexto: { flex: 1, gap: 2 },
-  acompRota: { fontSize: 16, fontWeight: "600" },
-  acompRotulo: { fontSize: 12 },
-  acompRow: { alignItems: "flex-start", flexDirection: "row" },
+  acompColuna: { alignItems: "center", flex: 1, flexDirection: "row", gap: 10 },
+  acompColunaTexto: { flex: 1, minWidth: 0 },
+  acompColunas: { flexDirection: "row", gap: 12, paddingTop: 12 },
+  acompDestino: { gap: 3, paddingTop: 12 },
+  acompEta: { fontWeight: "700" },
+  acompRota: { flex: 1, fontSize: 16, fontWeight: "700" },
+  acompRotulo: { fontSize: 12, marginTop: 1 },
+  acompSelo: { alignItems: "center", height: 36, justifyContent: "center", width: 36 },
+  acompTopo: { alignItems: "center", flexDirection: "row", gap: 10 },
   acompValor: { fontSize: 14, fontWeight: "600" },
   avaliacao: { alignItems: "center", flexDirection: "row", gap: 4 },
   avaliacoes: { gap: 12 },

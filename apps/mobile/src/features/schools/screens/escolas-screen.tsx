@@ -1,6 +1,7 @@
 import { ChevronRight, School as SchoolIcon } from "@rotta/icons/native";
+import { EmptyState, ListRow } from "@rotta/ui/native";
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { useSchoolsList } from "../hooks/use-schools";
 import { SCHOOL_STATUS_LABEL, SCHOOL_STATUS_TONE } from "../labels";
@@ -13,7 +14,6 @@ import { useLocation } from "@/features/marketplace/hooks/use-location";
 import {
   StatusPill,
   VehicleButton,
-  VehicleCard,
   VehicleScreen,
   VehicleTextField,
 } from "@/features/vehicles/components";
@@ -151,67 +151,54 @@ export function EscolasScreen({ navigation }: Props): JSX.Element {
       />
 
       {escolas.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>
-          {busca.trim()
-            ? "Nenhuma escola encontrada para essa busca."
-            : "Nenhuma escola vinculada às suas rotas ainda."}
-        </Text>
+        <EmptyState
+          title={busca.trim() ? "Nenhuma escola encontrada" : "Nenhuma escola ainda"}
+          description={
+            busca.trim()
+              ? "Tente outro nome, bairro ou cidade."
+              : "As escolas das suas rotas aparecem aqui."
+          }
+          icon={<SchoolIcon size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
-        <VehicleCard style={styles.lista}>
-          {escolas.map((escola, index) => (
-            <Pressable
+        /*
+          Uma escola por cartão, como na tela 14 do conceito: a lista é
+          curta e cada item leva a outra tela, então cada um ganha alvo
+          próprio. Antes eram linhas dentro de um cartão só, o que dava
+          um bloco contínuo onde o dedo erra o alvo.
+        */
+        <View style={styles.lista}>
+          {escolas.map((escola) => (
+            <ListRow
               key={escola.id}
+              rotulo={escola.nomeFantasia ?? escola.nomeOficial}
+              descricao={subtitulo(escola)}
+              icon={<SchoolIcon size={20} color={theme.colors.primary} />}
               onPress={() => navigation.navigate("EscolaDetalhes", { schoolId: escola.id })}
-              accessibilityRole="button"
-              style={[
-                styles.linha,
-                index > 0
-                  ? {
-                      borderTopColor: theme.colors.border,
-                      borderTopWidth: StyleSheet.hairlineWidth,
-                    }
-                  : null,
-              ]}
-            >
-              <View style={[styles.iconeQuadrado, { backgroundColor: theme.colors.primaryMuted }]}>
-                <SchoolIcon size={20} color={theme.colors.primary} />
-              </View>
-
-              <View style={styles.linhaTexto}>
-                <Text style={[styles.nome, { color: theme.colors.text }]} numberOfLines={1}>
-                  {escola.nomeFantasia ?? escola.nomeOficial}
-                </Text>
-                <Text style={{ color: theme.colors.textMuted, fontSize: 12 }} numberOfLines={1}>
-                  {subtitulo(escola)}
-                </Text>
-              </View>
-
-              {escola.status !== "ATIVA" ? (
-                <StatusPill
-                  label={SCHOOL_STATUS_LABEL[escola.status]}
-                  tone={SCHOOL_STATUS_TONE[escola.status]}
-                />
-              ) : null}
-              <ChevronRight size={18} color={theme.colors.textMuted} />
-            </Pressable>
+              acessorio={
+                <View style={styles.acessorio}>
+                  {escola.status !== "ATIVA" ? (
+                    <StatusPill
+                      label={SCHOOL_STATUS_LABEL[escola.status]}
+                      tone={SCHOOL_STATUS_TONE[escola.status]}
+                    />
+                  ) : null}
+                  <ChevronRight size={18} color={theme.colors.textMuted} />
+                </View>
+              }
+              comoCartao
+              theme={theme}
+            />
           ))}
-        </VehicleCard>
+        </View>
       )}
     </VehicleScreen>
   );
 }
 
 const styles = StyleSheet.create({
+  acessorio: { alignItems: "center", flexDirection: "row", gap: 8 },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
-  iconeQuadrado: {
-    alignItems: "center",
-    borderRadius: 12,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  linha: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 12 },
-  linhaTexto: { flex: 1, gap: 2 },
-  lista: { gap: 0, paddingVertical: 0 },
-  nome: { fontSize: 16, fontWeight: "600" },
+  lista: { gap: 8 },
 });

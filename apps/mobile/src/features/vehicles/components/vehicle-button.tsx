@@ -14,6 +14,15 @@ interface VehicleButtonProps {
   disabled?: boolean;
   /** Ícone opcional antes do texto (Dossiê 36 — nunca emoji, sempre `@rotta/icons/native`). */
   icon?: ReactNode;
+  /**
+   * `pilula` arredonda o botão por inteiro.
+   *
+   * No conceito aprovado em 16/10/2026 isso aparece numa situação só, e
+   * não por acaso: o botão que leva ao mapa ao vivo, no Início do
+   * Responsável. É a ação de maior peso do app para quem está esperando
+   * a van, e a forma a separa de todo o resto.
+   */
+  forma?: "padrao" | "pilula";
 }
 
 /**
@@ -27,6 +36,7 @@ export function VehicleButton({
   isLoading = false,
   disabled = false,
   icon,
+  forma = "padrao",
 }: VehicleButtonProps): JSX.Element {
   const { theme } = useTheme();
   const isDisabled = disabled || isLoading;
@@ -67,7 +77,7 @@ export function VehicleButton({
           opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1,
           paddingVertical: theme.spacing[4],
           paddingHorizontal: theme.spacing[6],
-          borderRadius: theme.radius.lg,
+          borderRadius: forma === "pilula" ? theme.radius.full : theme.radius.lg,
         },
       ]}
     >

@@ -11,6 +11,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { PinSetupCard } from "@/features/auth/components";
 import { useStudentsList } from "@/features/marketplace/hooks/use-students";
 import {
+  CabecalhoDePerfil,
   DadoLinha,
   DadosCard,
   SeloVerificado,
@@ -26,15 +27,6 @@ import {
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<ParentPerfilStackParamList, "PerfilHome">;
-
-/** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */
-function iniciais(nome: string | undefined): string {
-  if (!nome) return "?";
-  const partes = nome.trim().split(/\s+/);
-  const primeira = partes[0]?.[0] ?? "";
-  const ultima = partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "";
-  return (primeira + ultima).toUpperCase();
-}
 
 /**
  * Perfil do Responsável — avatar (iniciais), dados da conta, "Meus
@@ -67,22 +59,11 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      <VehicleCard>
-        <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: theme.colors.primaryMuted }]}>
-            <Text style={[styles.avatarLabel, { color: theme.colors.primary }]}>
-              {iniciais(user?.nome)}
-            </Text>
-          </View>
-          <View style={styles.headerInfo}>
-            <View style={styles.nomeLinha}>
-              <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
-              {verificacao.verificado ? <SeloVerificado /> : null}
-            </View>
-            <Text style={{ color: theme.colors.textMuted }}>Responsável</Text>
-          </View>
-        </View>
-      </VehicleCard>
+      <CabecalhoDePerfil
+        nome={user?.nome}
+        papel="Responsável"
+        selo={verificacao.verificado ? <SeloVerificado /> : null}
+      />
 
       {/* "Poderá ver TUDO oq foi preenchido" (pedido do usuário
           15/09/2026) — antes esta tela só mostrava e-mail e telefone, e
@@ -158,17 +139,5 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
 
 const styles = StyleSheet.create({
   alunoLinha: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6 },
-  avatar: {
-    alignItems: "center",
-    borderRadius: 999,
-    height: 52,
-    justifyContent: "center",
-    width: 52,
-  },
-  avatarLabel: { fontSize: 20, fontWeight: "700" },
-  header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
-  headerInfo: { flex: 1 },
-  nome: { fontSize: 16, fontWeight: "700" },
-  nomeLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
   secao: { fontSize: 14, fontWeight: "700", marginBottom: 4 },
 });

@@ -1,5 +1,6 @@
 import {
   Backpack,
+  BellRing,
   Bus,
   CreditCard,
   LayoutGrid,
@@ -7,6 +8,7 @@ import {
   Star,
   type LucideIcon,
 } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
@@ -41,6 +43,34 @@ function resolveToneColor(theme: Theme, tone: NotificationColorTone): string {
     case "muted":
     default:
       return theme.colors.textMuted;
+  }
+}
+
+/**
+ * O fundo do selo de cada notificação.
+ *
+ * Existe porque a linha pintava o círculo com `${cor}26`, ou seja, a
+ * cor do ícone com um sufixo de opacidade em hexadecimal. Isso é o
+ * mesmo defeito que o `StatusPill` tinha: no tema escuro o resultado é
+ * uma mancha quase invisível, porque opacidade sobre fundo claro e
+ * sobre fundo escuro não dão o mesmo tom. A paleta já tem o fundo
+ * suave de cada estado desde 16/10/2026.
+ */
+function resolveToneMuted(theme: Theme, tone: NotificationColorTone): string {
+  switch (tone) {
+    case "success":
+      return theme.colors.successMuted;
+    case "primary":
+      return theme.colors.primaryMuted;
+    case "warning":
+      return theme.colors.warningMuted;
+    case "danger":
+      return theme.colors.dangerMuted;
+    case "info":
+      return theme.colors.infoMuted;
+    case "muted":
+    default:
+      return theme.colors.surface;
   }
 }
 
@@ -277,14 +307,16 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
 
   return (
     <VehicleScreen>
-      {/* Ordem da referência (tela "NOTIFICAÇÕES - RESPONSÁVEL"): o link
-          "Marcar todas como lidas" fica ACIMA do título, alinhado à
-          direita — depois o título, depois a faixa de filtros. */}
-      <View style={styles.acoesRow}>
+      {/* Título e ação na MESMA linha, como na tela 12 do conceito:
+          o link alinhado pelo topo do título, e não numa faixa própria
+          acima dele, que empurrava a lista inteira para baixo. */}
+      <View style={styles.cabecalho}>
+        <Text style={[styles.tituloTela, { color: theme.colors.text }]}>Notificações</Text>
         <Pressable
           onPress={() => markAllRead.mutate()}
           disabled={markAllRead.isPending}
           accessibilityRole="button"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
           <Text style={[styles.acaoLink, { color: theme.colors.primary }]}>
             Marcar todas como lidas
@@ -292,12 +324,15 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
         </Pressable>
       </View>
 
-      <Text style={[styles.tituloTela, { color: theme.colors.text }]}>Notificações</Text>
-
       {filtros}
 
       {itens.length === 0 ? (
-        <Text style={{ color: theme.colors.textMuted }}>{MENSAGEM_VAZIA[filtro]}</Text>
+        <EmptyState
+          title="Nada por aqui"
+          description={MENSAGEM_VAZIA[filtro]}
+          icon={<BellRing size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         <VehicleCard style={styles.lista}>
           {itens.map((notification, index) => {
@@ -311,13 +346,18 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
                   styles.linha,
                   index > 0
                     ? {
-                        borderTopColor: theme.colors.border,
+                        borderTopColor: theme.colors.hairline,
                         borderTopWidth: StyleSheet.hairlineWidth,
                       }
                     : null,
                 ]}
               >
-                <View style={[styles.iconeCirculo, { backgroundColor: `${corTipo}26` }]}>
+                <View
+                  style={[
+                    styles.iconeCirculo,
+                    { backgroundColor: resolveToneMuted(theme, tomDoTipo(notification.tipo)) },
+                  ]}
+                >
                   <TipoIcone size={18} color={corTipo} />
                 </View>
 
@@ -371,8 +411,13 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  acaoLink: { fontSize: 14, fontWeight: "600" },
-  acoesRow: { alignItems: "flex-end" },
+  acaoLink: { fontSize: 13, fontWeight: "600" },
+  cabecalho: {
+    alignItems: "baseline",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+  },
   center: { alignItems: "center", flex: 1, justifyContent: "center" },
   corpo: { fontSize: 14, lineHeight: 18 },
   filtroItem: { alignItems: "center", gap: 6, width: 68 },
@@ -399,5 +444,5 @@ const styles = StyleSheet.create({
   lista: { gap: 0, paddingVertical: 0 },
   pontoNaoLida: { borderRadius: 4, height: 8, width: 8 },
   titulo: { fontSize: 16 },
-  tituloTela: { fontSize: 24, fontWeight: "700" },
+  tituloTela: { flexShrink: 1, fontSize: 22, fontWeight: "700", letterSpacing: -0.4 },
 });

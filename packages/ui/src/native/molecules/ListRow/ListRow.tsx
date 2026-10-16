@@ -44,6 +44,16 @@ export interface ListRowProps {
   tom?: "padrao" | "perigo";
   /** Desenha a linha de separação acima. A primeira da lista não tem. */
   comSeparador?: boolean;
+  /**
+   * Cada linha vira um cartão próprio, com respiro entre elas.
+   *
+   * É o que o conceito faz nas listas curtas e tocáveis (escolas,
+   * veículos, atalhos do perfil): cada item tem alvo próprio. Listas
+   * longas de leitura continuam dentro de um cartão só, com divisória,
+   * porque vinte cartões seguidos viram vinte caixas e o olho perde a
+   * coluna.
+   */
+  comoCartao?: boolean;
   theme: Theme;
 }
 
@@ -56,6 +66,7 @@ export function ListRow({
   onPress,
   tom = "padrao",
   comSeparador = false,
+  comoCartao = false,
   theme,
 }: ListRowProps): JSX.Element {
   const perigo = tom === "perigo";
@@ -67,9 +78,21 @@ export function ListRow({
         styles.linha,
         {
           borderTopColor: theme.colors.hairline,
-          borderTopWidth: comSeparador ? StyleSheet.hairlineWidth : 0,
+          borderTopWidth: comSeparador && !comoCartao ? StyleSheet.hairlineWidth : 0,
           paddingVertical: theme.spacing[3],
         },
+        comoCartao
+          ? [
+              theme.elevation.soft.native,
+              {
+                backgroundColor: theme.colors.card,
+                borderColor: theme.colors.hairline,
+                borderRadius: theme.radius.lg,
+                borderWidth: 1,
+                paddingHorizontal: theme.spacing[3],
+              },
+            ]
+          : null,
       ]}
     >
       {icon ? (

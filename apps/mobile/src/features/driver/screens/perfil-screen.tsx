@@ -11,6 +11,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 import { PinSetupCard } from "@/features/auth/components";
 import {
+  CabecalhoDePerfil,
   DadoLinha,
   DadosCard,
   SeloVerificado,
@@ -31,15 +32,6 @@ const ROLE_LABEL: Record<string, string> = {
   // (`DriverNavigator` reaproveitado), com `role === "empresa"`.
   empresa: "Motorista autônomo/MEI",
 };
-
-/** Iniciais do nome pro avatar (sem foto de perfil no produto ainda — nunca uma imagem inventada). */
-function iniciais(nome: string | undefined): string {
-  if (!nome) return "?";
-  const partes = nome.trim().split(/\s+/);
-  const primeira = partes[0]?.[0] ?? "";
-  const ultima = partes.length > 1 ? (partes[partes.length - 1]?.[0] ?? "") : "";
-  return (primeira + ultima).toUpperCase();
-}
 
 /**
  * Perfil do Motorista/Monitor — avatar (iniciais, na identidade de
@@ -73,28 +65,14 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
     <VehicleScreen backgroundColor={theme.colors.driverBackground}>
       <PanelGreeting nome={user?.nome ?? ""} />
 
-      <VehicleCard
-        style={[
-          styles.driverCard,
-          { backgroundColor: theme.colors.surfaceElevated },
-          driverShadow[theme.name].native,
-        ]}
-      >
-        <View style={styles.header}>
-          <View style={[styles.avatar, { backgroundColor: accentMuted }]}>
-            <Text style={[styles.avatarLabel, { color: accentColor }]}>{iniciais(user?.nome)}</Text>
-          </View>
-          <View style={styles.headerInfo}>
-            <View style={styles.nomeLinha}>
-              <Text style={[styles.nome, { color: theme.colors.text }]}>{user?.nome}</Text>
-              {verificacao.verificado ? <SeloVerificado /> : null}
-            </View>
-            <Text style={{ color: theme.colors.textMuted }}>
-              {user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
-            </Text>
-          </View>
-        </View>
-      </VehicleCard>
+      <CabecalhoDePerfil
+        nome={user?.nome}
+        papel={user ? (ROLE_LABEL[user.role] ?? user.role) : ""}
+        selo={verificacao.verificado ? <SeloVerificado /> : null}
+        /* O avatar segue o papel: azul no Motorista, roxo no Monitor.
+           É a mesma regra de identidade do Modo Operacional. */
+        acento={{ cor: accentColor, fundo: accentMuted }}
+      />
 
       {/* "Poderá ver TUDO oq foi preenchido" (pedido do usuário
           15/09/2026) — inclui o veículo vinculado, que é o que liga a
@@ -166,18 +144,4 @@ export function DriverPerfilScreen({ navigation }: Props): JSX.Element {
   );
 }
 
-const styles = StyleSheet.create({
-  avatar: {
-    alignItems: "center",
-    borderRadius: 999,
-    height: 52,
-    justifyContent: "center",
-    width: 52,
-  },
-  avatarLabel: { fontSize: 20, fontWeight: "700" },
-  driverCard: { borderRadius: 24, borderWidth: 0 },
-  header: { alignItems: "center", flexDirection: "row", gap: 12, marginBottom: 4 },
-  headerInfo: { flex: 1 },
-  nome: { fontSize: 16, fontWeight: "700" },
-  nomeLinha: { alignItems: "center", flexDirection: "row", gap: 6 },
-});
+const styles = StyleSheet.create({});
