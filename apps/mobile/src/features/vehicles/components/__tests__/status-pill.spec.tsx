@@ -1,9 +1,8 @@
-import { lightTheme } from "@rotta/theme";
 import { render, screen } from "@testing-library/react-native";
 
 import { StatusPill } from "../status-pill";
 
-import { ThemeProvider } from "@/providers/theme-provider";
+import { temaDoApp, ThemeProvider } from "@/providers/theme-provider";
 
 /**
  * A casca que liga o selo antigo ao componente do sistema.
@@ -47,15 +46,15 @@ describe("StatusPill (casca de features/vehicles)", () => {
     montar("success");
 
     const estilo = estiloDe(screen.getByLabelText("Em rota"));
-    expect(estilo.backgroundColor).toBe(lightTheme.colors.successMuted);
+    expect(estilo.backgroundColor).toBe(temaDoApp("light").colors.successMuted);
     /* O jeito antigo era a cor da fonte com sufixo de opacidade. */
-    expect(estilo.backgroundColor).not.toBe(`${lightTheme.colors.success}26`);
+    expect(estilo.backgroundColor).not.toBe(`${temaDoApp("light").colors.success}26`);
   });
 
   it("neutral não pinta de cor nenhuma", () => {
     montar("neutral");
 
     const estilo = estiloDe(screen.getByLabelText("Em rota"));
-    expect(estilo.backgroundColor).toBe(lightTheme.colors.surface);
+    expect(estilo.backgroundColor).toBe(temaDoApp("light").colors.surface);
   });
 });

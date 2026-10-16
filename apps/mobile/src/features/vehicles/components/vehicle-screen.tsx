@@ -31,7 +31,13 @@ export function VehicleScreen({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView
-        contentContainerStyle={[styles.content, { padding: theme.spacing[6] }]}
+        /*
+          16 de margem, e não 24: o conceito aprovado é denso, com o
+          cartão quase encostando na borda da tela. 24 de cada lado
+          tirava 48 pontos de um celular de 360, e era parte do ar
+          sobrando que fazia as telas parecerem feitas por template.
+        */
+        contentContainerStyle={[styles.content, { padding: theme.spacing[4] }]}
         keyboardShouldPersistTaps="handled"
       >
         {children}

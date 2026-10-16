@@ -60,8 +60,16 @@ export function FilterTabs({ options, value, onChange, theme }: FilterTabsProps)
             style={[
               styles.pilula,
               {
-                backgroundColor: ativo ? theme.colors.primary : theme.colors.surface,
+                /*
+                  Inativa é branca com borda, e não cinza preenchida:
+                  no conceito as pílulas ficam sobre o fundo branco da
+                  tela, e cinza sobre branco vira um bloco único que
+                  esconde onde começa e termina cada opção.
+                */
+                backgroundColor: ativo ? theme.colors.primary : theme.colors.card,
+                borderColor: ativo ? theme.colors.primary : theme.colors.border,
                 borderRadius: theme.radius.full,
+                borderWidth: 1,
                 paddingHorizontal: theme.spacing[4],
               },
             ]}
@@ -81,7 +89,7 @@ export function FilterTabs({ options, value, onChange, theme }: FilterTabsProps)
                 style={[
                   styles.contagem,
                   {
-                    backgroundColor: ativo ? theme.colors.onPrimary : theme.colors.border,
+                    backgroundColor: ativo ? theme.colors.onPrimary : theme.colors.surface,
                     borderRadius: theme.radius.full,
                   },
                 ]}
@@ -114,10 +122,10 @@ const styles = StyleSheet.create({
     gap: 6,
     /* 40 pontos de altura: abaixo disso o toque falha com o celular na
        mão, em movimento, que é como o motorista usa o app. */
-    minHeight: 40,
+    minHeight: 38,
   },
   rotulo: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   contagem: {

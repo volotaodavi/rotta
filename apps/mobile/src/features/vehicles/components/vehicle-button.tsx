@@ -65,7 +65,7 @@ export function VehicleButton({
           borderColor,
           borderWidth: variant === "secondary" ? 1 : 0,
           opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1,
-          paddingVertical: theme.spacing[3] + 2,
+          paddingVertical: theme.spacing[4],
           paddingHorizontal: theme.spacing[6],
           borderRadius: theme.radius.lg,
         },
@@ -88,7 +88,11 @@ export function VehicleButton({
 }
 
 const styles = StyleSheet.create({
-  base: { alignItems: "center", justifyContent: "center" },
+  /* 52 pontos de altura e peso 700: no conceito o botão primário é a
+     peça mais pesada da tela, e era onde o app mais parecia genérico,
+     com um retângulo de 48 e texto semibold igual ao de qualquer
+     formulário. */
+  base: { alignItems: "center", justifyContent: "center", minHeight: 52 },
   content: { alignItems: "center", flexDirection: "row", gap: 6 },
-  label: { fontWeight: "600" },
+  label: { fontWeight: "700" },
 });

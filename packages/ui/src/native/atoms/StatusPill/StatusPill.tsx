@@ -84,8 +84,8 @@ export function StatusPill({ label, tone, size = "sm", theme }: StatusPillProps)
         {
           backgroundColor: fundo,
           borderRadius: theme.radius.full,
-          paddingHorizontal: denso ? theme.spacing[2] : theme.spacing[3],
-          paddingVertical: denso ? 2 : theme.spacing[1],
+          paddingHorizontal: denso ? 10 : theme.spacing[3],
+          paddingVertical: denso ? 3 : theme.spacing[1],
         },
       ]}
     >

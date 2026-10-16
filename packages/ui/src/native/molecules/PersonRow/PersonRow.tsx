@@ -34,6 +34,15 @@ export interface PersonRowProps {
   status?: { label: string; tone: StatusTone };
   /** Já formatado pela tela, por exemplo "07:05". */
   horario?: string;
+  /**
+   * Seta ou outro acessório no fim da linha, desenhado pela tela.
+   *
+   * No conceito de 16/10/2026 a linha de uma pessoa que leva a outra
+   * tela termina em seta ("Lucas Silva / Transporte Escolar >"), e a
+   * que só informa estado termina na etiqueta. Sem essa diferença, as
+   * duas parecem tocáveis e metade não é.
+   */
+  acessorio?: JSX.Element;
   onPress?: () => void;
   theme: Theme;
 }
@@ -52,6 +61,7 @@ export function PersonRow({
   avatarUri,
   status,
   horario,
+  acessorio,
   onPress,
   theme,
 }: PersonRowProps): JSX.Element {
@@ -91,6 +101,8 @@ export function PersonRow({
           <Text style={[styles.horario, { color: theme.colors.textMuted }]}>{horario}</Text>
         ) : null}
       </View>
+
+      {acessorio}
     </View>
   );
 

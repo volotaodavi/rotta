@@ -67,11 +67,12 @@ const styles = StyleSheet.create({
   },
   titulo: {
     flexShrink: 1,
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   acao: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
 });

@@ -62,7 +62,7 @@ export function ActionGrid({ items, theme }: ActionGridProps): JSX.Element {
                 styles.bolha,
                 {
                   backgroundColor: theme.colors.primaryMuted,
-                  borderRadius: theme.radius.md,
+                  borderRadius: theme.radius.lg,
                 },
               ]}
             >
@@ -94,9 +94,12 @@ const styles = StyleSheet.create({
   },
   bolha: {
     alignItems: "center",
-    height: 48,
+    /* 54 pontos, como no conceito: o selo é o alvo de toque real da
+       grade, e 48 com quatro colunas deixa o dedo encostando no
+       vizinho. */
+    height: 54,
     justifyContent: "center",
-    width: 48,
+    width: 54,
   },
   rotulo: {
     fontSize: 12,

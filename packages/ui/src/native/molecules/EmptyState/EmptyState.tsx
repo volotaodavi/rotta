@@ -54,8 +54,11 @@ export function EmptyState({
           style={[
             styles.icone,
             {
-              backgroundColor: theme.colors.surface,
-              borderRadius: theme.radius.full,
+              /* Mesmo selo azul claro das linhas e da grade de ações:
+                 um estado vazio com um círculo cinza no meio parece
+                 uma peça de outro produto. */
+              backgroundColor: theme.colors.primaryMuted,
+              borderRadius: theme.radius.lg,
               marginBottom: theme.spacing[4],
             },
           ]}

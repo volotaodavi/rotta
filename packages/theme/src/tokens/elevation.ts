@@ -26,7 +26,7 @@ export interface ElevationLevel {
   };
 }
 
-export const elevation: Record<"none" | "card" | "dropdown" | "modal", ElevationLevel> = {
+export const elevation: Record<"none" | "soft" | "card" | "dropdown" | "modal", ElevationLevel> = {
   // Cards no estado padrao nao usam sombra — a separacao vem do tom de superficie.
   none: {
     level: 0,
@@ -37,6 +37,33 @@ export const elevation: Record<"none" | "card" | "dropdown" | "modal", Elevation
       shadowOpacity: 0,
       shadowRadius: 0,
       elevation: 0,
+    },
+  },
+  /*
+    Sombra macia e azulada dos cartões do app nativo.
+
+    Entrou em 16/10/2026, com o conceito visual que o fundador aprovou:
+    naquelas telas o cartão branco não se separa do fundo branco por
+    borda cinza, e sim por uma sombra larga e quase invisível. Trocar
+    isso por borda é o que fazia o app parecer um formulário.
+
+    A cor não é preta: preto sobre fundo branco-azulado vira uma mancha
+    cinza suja. `#0A2C63` é o azul-marinho da própria tinta do produto,
+    e é o que o conceito mostra.
+
+    Fica fora de `card`/`dropdown`/`modal` de propósito: aqueles três
+    são a escala do site e do painel, onde a regra continua sendo
+    profundidade por tom de superfície.
+  */
+  soft: {
+    level: 1,
+    web: "0 1px 2px 0 rgba(10, 44, 99, 0.04), 0 8px 24px -6px rgba(10, 44, 99, 0.08)",
+    native: {
+      shadowColor: "#0A2C63",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.07,
+      shadowRadius: 14,
+      elevation: 2,
     },
   },
   // Reforco sutil opcional (ex. card sobre outro card em um layout de detalhe).

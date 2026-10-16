@@ -94,14 +94,19 @@ export function SummaryCards({ items, theme }: SummaryCardsProps): JSX.Element {
               },
             ]}
           >
+            {/*
+              Rótulo em cima, número embaixo: é a ordem do conceito, e é
+              a ordem em que a pergunta chega. A pessoa não olha "3" e
+              depois descobre do que; ela procura "Pagas" e lê quantas.
+            */}
+            <Text numberOfLines={1} style={[styles.rotulo, { color: corDoValor(item, theme) }]}>
+              {item.label}
+            </Text>
             <Text style={[styles.valor, { color: corDoValor(item, theme) }]}>
               {item.valor === null ? "-" : item.valor}
             </Text>
-            <Text numberOfLines={1} style={[styles.rotulo, { color: theme.colors.textMuted }]}>
-              {item.label}
-            </Text>
             {item.detalhe ? (
-              <Text numberOfLines={1} style={[styles.detalhe, { color: theme.colors.textMuted }]}>
+              <Text numberOfLines={1} style={[styles.detalhe, { color: corDoValor(item, theme) }]}>
                 {item.detalhe}
               </Text>
             ) : null}
@@ -143,21 +148,21 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   card: {
-    minHeight: 76,
+    minHeight: 82,
   },
   valor: {
     fontSize: 22,
     fontVariant: ["tabular-nums"],
     fontWeight: "700",
+    marginTop: 2,
   },
   rotulo: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: "600",
-    marginTop: 2,
   },
   detalhe: {
-    fontSize: 11,
+    fontSize: 10,
     fontVariant: ["tabular-nums"],
-    marginTop: 2,
+    marginTop: 3,
   },
 });

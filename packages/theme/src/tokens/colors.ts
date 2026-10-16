@@ -69,6 +69,30 @@ export interface ColorTokens {
   warningMuted: string;
   dangerMuted: string;
   infoMuted: string;
+  /**
+   * Azul profundo do topo das telas de conta (cabeçalho que sangra até
+   * a barra de status) e o azul mais vivo da faixa de saldo desenhada
+   * sobre ele.
+   *
+   * Entraram em 16/10/2026, amostrados pixel a pixel do conceito visual
+   * que o fundador enviou — não escolhidos por gosto. Sem eles, a tela
+   * resolvia o degradê de cabeçalho com hexadecimal solto, que é
+   * exatamente o que esta paleta existe para impedir.
+   *
+   * `onBrandMuted` é o texto secundário DESENHADO EM CIMA desse azul
+   * (o "Transportadora" abaixo de "Rotta"): cinza ali some, porque
+   * cinza foi calculado para fundo claro.
+   */
+  brandDeep: string;
+  brandBand: string;
+  onBrandMuted: string;
+  /**
+   * Linha de separação DENTRO de um cartão (entre itens de uma lista),
+   * mais clara que `border`, que separa o cartão do fundo. Usar
+   * `border` nas duas situações faz a lista parecer uma pilha de
+   * caixas em vez de um cartão só.
+   */
+  hairline: string;
   neutral: NeutralScale;
   border: string;
   borderStrong: string;
@@ -177,6 +201,10 @@ export const darkColors: ColorTokens = {
   warningMuted: "#3A2A12",
   dangerMuted: "#3A1614",
   infoMuted: "#0E2E33",
+  brandDeep: "#0A2B5E",
+  brandBand: "#1F6FE0",
+  onBrandMuted: "#9FBCE8",
+  hairline: "#1C222C",
   neutral: {
     100: "#1C212B",
     300: "#2A313D",
@@ -228,6 +256,10 @@ export const lightColors: ColorTokens = {
   warningMuted: "#FEF3C7",
   dangerMuted: "#FEE2E2",
   infoMuted: "#CFFAFE",
+  brandDeep: "#0A3B85",
+  brandBand: "#1180FE",
+  onBrandMuted: "#A9C6F5",
+  hairline: "#EFF3F8",
   neutral: {
     100: "#F7F8FA",
     300: "#E5E8EC",

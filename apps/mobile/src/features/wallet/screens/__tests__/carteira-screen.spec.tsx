@@ -1,6 +1,26 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ThemeProvider } from "@/providers/theme-provider";
+
+/*
+  A tela desenha o próprio cabeçalho azul, que encosta na barra de
+  status e traz a seta de voltar: ela precisa do recuo do topo e da
+  navegação. No teste os dois são dublês — medida de tela e pilha de
+  navegação real não cabem aqui, e não é isso que estes testes afirmam.
+*/
+jest.mock("@react-navigation/native", () => ({
+  useNavigation: () => ({ goBack: jest.fn() }),
+}));
+
+jest.mock("@rotta/auth/native", () => ({
+  useAuth: () => ({ user: { nome: "Carlos Silva" } }),
+}));
+
+const RECUO = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 47, bottom: 34, left: 0, right: 0 },
+};
 
 /**
  * A carteira Rotta Pay do transportador.
@@ -68,9 +88,11 @@ import { CarteiraScreen } from "../carteira-screen";
 
 function montar() {
   return render(
-    <ThemeProvider>
-      <CarteiraScreen />
-    </ThemeProvider>,
+    <SafeAreaProvider initialMetrics={RECUO}>
+      <ThemeProvider>
+        <CarteiraScreen />
+      </ThemeProvider>
+    </SafeAreaProvider>,
   );
 }
 

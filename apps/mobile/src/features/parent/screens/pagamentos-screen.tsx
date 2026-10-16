@@ -1,42 +1,69 @@
-import { Copy, CreditCard, KeyRound, QrCode, Receipt, Repeat, Wallet } from "@rotta/icons/native";
-import { ActionGrid, EmptyState, FilterTabs, SectionHeader, SummaryCards } from "@rotta/ui/native";
+import {
+  Bell,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  CreditCard,
+  FileText,
+  KeyRound,
+  QrCode,
+  Receipt,
+  Repeat,
+  User,
+  Wallet,
+} from "@rotta/icons/native";
+import {
+  AppHeader,
+  EmptyState,
+  FilterTabs,
+  InfoTile,
+  PersonRow,
+  SectionHeader,
+  SummaryCards,
+} from "@rotta/ui/native";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import {
   FATURA_EM_ABERTO,
   ROTULO_DA_FATURA,
   TOM_DA_FATURA,
   type Fatura,
-  type MeioDePagamento,
   type PagamentosDoResponsavel,
 } from "../pagamentos-tipos";
 
+import { RottaLogo } from "@/components/rotta-logo";
 /* `StatusPill` vem da casca do app, e não do pacote: é ela que injeta o
    tema pelo `useTheme()`, e é dela que as outras 75 chamadas do app já
-   usam. Importar o do pacote aqui obrigaria esta tela a repassar tema à
-   mão, divergindo do resto. */
-import {
-  StatusPill,
-  VehicleButton,
-  VehicleCard,
-  VehicleScreen,
-} from "@/features/vehicles/components";
+   usam. */
+import { StatusPill, VehicleButton, VehicleCard } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
 
 /**
- * Pagamentos do responsável — a tela 13 do conceito de 16/10/2026.
+ * Pagamentos do responsável — a tela 13 do conceito, e o telefone da
+ * direita do conceito financeiro.
  *
- * ## O que esta tela é, e o que ela ainda não é
+ * ## O que mudou em 16/10/2026, segunda passada
  *
- * É a única das 31 telas do conceito que não existia. Decisão do
- * fundador no mesmo dia: construir agora e, quando o Asaas responder,
- * "só integrar e colocar os botões para funcionar".
+ * A primeira versão desta tela foi feita de memória, porque as imagens
+ * do conceito tinham saído do contexto da conversa numa compactação. O
+ * fundador viu o resultado e disse, com razão, que estava "com cara de
+ * IA". Com as imagens recuperadas, esta é a tela montada como ele
+ * desenha, item por item:
  *
- * Então ela está pronta de desenho e **propositalmente não está ligada
- * na navegação**. Aba de Pagamentos que não paga é pior que aba
- * nenhuma: 24 pessoas usam o app hoje, e um caminho que termina em
- * nada ensina a não confiar no resto.
+ * - cabeçalho com a marca, o perfil em uso, o sino e o avatar;
+ * - o nome do aluno num seletor, e não escondido num subtítulo: uma
+ *   família com dois filhos precisa saber de quem é a fatura antes de
+ *   olhar o valor;
+ * - os quatro grupos de fatura como cartões tingidos pelo próprio
+ *   estado (verde, creme, rosa, cinza), com o rótulo em cima e o
+ *   número embaixo;
+ * - as formas de pagamento como blocos de duas linhas ("Pix / copia e
+ *   cola"), e não como ícones redondos sem explicação;
+ * - Extrato e Comprovantes em cinza, porque consultar é apoio e pagar
+ *   é a tarefa;
+ * - as faturas como linhas soltas sobre o fundo, com competência,
+ *   etiqueta de estado, valor e vencimento.
  *
  * ## Nada é inventado
  *
@@ -52,35 +79,68 @@ import { useTheme } from "@/providers/theme-provider";
  * tokenização pelo front: o cartão passaria pelo nosso servidor e
  * colocaria a Rotta em escopo PCI DSS. O Pix Automático dá a mesma
  * recorrência sem cartão, sem MDR e sem essa exposição. Por isso ele é
- * o primeiro atalho, e o cartão entra desabilitado com o motivo à
- * mostra, em vez de some.
+ * o primeiro meio, e o cartão entra desabilitado com o motivo à mostra,
+ * em vez de sumir.
  */
 export interface PagamentosScreenProps {
   /** Ausente enquanto a cobrança da família não existir no produto. */
   dados?: PagamentosDoResponsavel;
   onPagar?: () => void;
   onEscolherMeio?: (chave: string) => void;
+  onTrocarAluno?: () => void;
+  avisos?: number;
+  onAbrirAvisos?: () => void;
+  onAbrirPerfil?: () => void;
+  iniciais?: string;
 }
 
-const MEIOS: MeioDePagamento[] = [
-  { chave: "pix-recorrente", rotulo: "Pix recorrente" },
-  { chave: "pix-copia-cola", rotulo: "Pix copia e cola" },
-  { chave: "pix-qr", rotulo: "QR Code" },
-  { chave: "pix-chave", rotulo: "Chave Pix" },
-  {
-    chave: "cartao-recorrente",
-    rotulo: "Cartão",
-    motivoIndisponivel: "em avaliação",
-  },
-  { chave: "comprovantes", rotulo: "Comprovantes" },
+interface Meio {
+  chave: string;
+  rotulo: string;
+  descricao?: string;
+  motivoIndisponivel?: string;
+  variante?: "principal" | "apoio";
+}
+
+/** Três por linha, depois dois, depois dois: a ordem do conceito. */
+const MEIOS: Meio[][] = [
+  [
+    { chave: "pix-copia-cola", rotulo: "Pix", descricao: "copia e cola" },
+    { chave: "pix-qr", rotulo: "QR Code" },
+    { chave: "pix-chave", rotulo: "Chave Pix" },
+  ],
+  [
+    { chave: "pix-recorrente", rotulo: "Pix recorrente" },
+    {
+      chave: "cartao-recorrente",
+      rotulo: "Cartão recorrente",
+      descricao: "débito e crédito",
+      motivoIndisponivel: "em avaliação",
+    },
+  ],
+  [
+    {
+      chave: "extrato",
+      rotulo: "Extrato",
+      descricao: "ver movimentações",
+      variante: "apoio",
+    },
+    {
+      chave: "comprovantes",
+      rotulo: "Comprovantes",
+      descricao: "baixar e compartilhar",
+      variante: "apoio",
+    },
+  ],
 ];
 
 const ICONE_DO_MEIO: Record<string, typeof QrCode> = {
-  "pix-recorrente": Repeat,
   "pix-copia-cola": Copy,
   "pix-qr": QrCode,
   "pix-chave": KeyRound,
+  "pix-recorrente": Repeat,
   "cartao-recorrente": CreditCard,
+  extrato: FileText,
   comprovantes: Receipt,
 };
 
@@ -88,20 +148,43 @@ export function PagamentosScreen({
   dados,
   onPagar,
   onEscolherMeio,
+  onTrocarAluno,
+  avisos,
+  onAbrirAvisos,
+  onAbrirPerfil,
+  iniciais,
 }: PagamentosScreenProps): JSX.Element {
   const { theme } = useTheme();
   const [aba, setAba] = useState<"faturas" | "pagas">("faturas");
 
+  const cabecalho = (
+    <AppHeader
+      titulo="Rotta"
+      perfilAtivo="Responsável"
+      iniciais={iniciais}
+      avisos={avisos}
+      onAbrirAvisos={onAbrirAvisos}
+      onAbrirPerfil={onAbrirPerfil}
+      iconeMarca={<RottaLogo size={32} />}
+      iconeSino={<Bell size={20} color={theme.colors.primary} />}
+      iconeTrocarPerfil={<ChevronDown size={14} color={theme.colors.textMuted} />}
+      theme={theme}
+    />
+  );
+
   if (!dados) {
     return (
-      <VehicleScreen>
-        <EmptyState
-          title="Pagamento pelo app ainda não disponível"
-          description="A mensalidade do transporte continua sendo combinada direto com a transportadora."
-          icon={<Wallet size={28} color={theme.colors.textMuted} />}
-          theme={theme}
-        />
-      </VehicleScreen>
+      <View style={[styles.tela, { backgroundColor: theme.colors.background }]}>
+        {cabecalho}
+        <View style={styles.vazioTotal}>
+          <EmptyState
+            title="Pagamento pelo app ainda não disponível"
+            description="A mensalidade do transporte continua sendo combinada direto com a transportadora."
+            icon={<Wallet size={28} color={theme.colors.primary} />}
+            theme={theme}
+          />
+        </View>
+      </View>
     );
   }
 
@@ -110,24 +193,42 @@ export function PagamentosScreen({
   const visiveis = aba === "faturas" ? emAberto : pagas;
 
   return (
-    <VehicleScreen>
-      <View>
-        <Text style={[styles.titulo, { color: theme.colors.text }]}>Pagamentos</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 13 }}>{dados.alunoNome}</Text>
-      </View>
+    <View style={[styles.tela, { backgroundColor: theme.colors.background }]}>
+      {cabecalho}
 
-      <VehicleCard>
-        <SectionHeader title="Resumo de faturas" theme={theme} />
-        <SummaryCards
-          items={dados.resumo.map((grupo) => ({
-            key: grupo.status,
-            label: ROTULO_DA_FATURA[grupo.status],
-            valor: grupo.quantidade,
-            detalhe: grupo.totalFormatado ?? undefined,
-            tone: TOM_DA_FATURA[grupo.status],
-          }))}
-          theme={theme}
-        />
+      <ScrollView
+        contentContainerStyle={[styles.corpo, { padding: theme.spacing[4] }]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={[styles.titulo, { color: theme.colors.text }]}>Pagamentos</Text>
+
+        {/*
+          O aluno fica num seletor, e não num subtítulo: numa família
+          com dois filhos, saber de quem é a fatura vem antes do valor.
+        */}
+        <VehicleCard style={styles.seletor}>
+          <PersonRow
+            nome={dados.alunoNome}
+            subtitulo="Aluno(a)"
+            onPress={onTrocarAluno}
+            acessorio={<ChevronDown size={18} color={theme.colors.textMuted} />}
+            theme={theme}
+          />
+        </VehicleCard>
+
+        <View>
+          <SectionHeader title="Resumo de faturas" theme={theme} />
+          <SummaryCards
+            items={dados.resumo.map((grupo) => ({
+              key: grupo.status,
+              label: ROTULO_DA_FATURA[grupo.status],
+              valor: grupo.quantidade,
+              detalhe: grupo.totalFormatado ?? undefined,
+              tone: TOM_DA_FATURA[grupo.status],
+            }))}
+            theme={theme}
+          />
+        </View>
 
         {/*
           Sem nada em aberto, o botão sai da tela em vez de ficar
@@ -140,57 +241,79 @@ export function PagamentosScreen({
             onPress={() => onPagar?.()}
           />
         ) : null}
-      </VehicleCard>
 
-      <View>
-        <SectionHeader title="Formas de pagamento" theme={theme} />
-        <ActionGrid
-          items={MEIOS.map((meio) => {
-            const Icone = ICONE_DO_MEIO[meio.chave] ?? Wallet;
-            return {
-              key: meio.chave,
-              label: meio.rotulo,
-              icon: <Icone size={20} color={theme.colors.primary} />,
-              onPress: () => onEscolherMeio?.(meio.chave),
-              motivoIndisponivel: meio.motivoIndisponivel,
-            };
-          })}
-          theme={theme}
-        />
-      </View>
+        <View>
+          <SectionHeader title="Formas de pagamento" theme={theme} />
+          <View style={styles.meios}>
+            {MEIOS.map((linha, indiceDaLinha) => (
+              <View key={indiceDaLinha} style={styles.linhaDeMeios}>
+                {linha.map((meio) => {
+                  const Icone = ICONE_DO_MEIO[meio.chave] ?? Wallet;
+                  const apoio = meio.variante === "apoio";
+                  return (
+                    <View key={meio.chave} style={styles.celulaDeMeio}>
+                      <InfoTile
+                        titulo={meio.rotulo}
+                        subtitulo={meio.descricao}
+                        icon={
+                          <Icone
+                            size={20}
+                            color={apoio ? theme.colors.textMuted : theme.colors.primary}
+                          />
+                        }
+                        onPress={() => onEscolherMeio?.(meio.chave)}
+                        motivoIndisponivel={meio.motivoIndisponivel}
+                        variante={meio.variante}
+                        theme={theme}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+        </View>
 
-      <View style={styles.secaoFaturas}>
-        <SectionHeader title="Faturas" theme={theme} />
-        <FilterTabs
-          options={[
-            { key: "faturas", label: "Em aberto", count: emAberto.length },
-            { key: "pagas", label: "Pagas", count: pagas.length },
-          ]}
-          value={aba}
-          onChange={(chave) => setAba(chave as "faturas" | "pagas")}
-          theme={theme}
-        />
-
-        {visiveis.length === 0 ? (
-          <EmptyState
-            title={aba === "faturas" ? "Nenhuma fatura em aberto" : "Nenhuma fatura paga ainda"}
-            description={
-              aba === "faturas" ? "Está tudo em dia por aqui." : "As pagas aparecem nesta aba."
-            }
+        <View style={styles.secaoFaturas}>
+          <SectionHeader title="Faturas" theme={theme} />
+          <FilterTabs
+            options={[
+              { key: "faturas", label: "Em aberto", count: emAberto.length },
+              { key: "pagas", label: "Pagas", count: pagas.length },
+            ]}
+            value={aba}
+            onChange={(chave) => setAba(chave as "faturas" | "pagas")}
             theme={theme}
           />
-        ) : (
-          <VehicleCard>
-            {visiveis.map((fatura, indice) => (
-              <LinhaDeFatura key={fatura.id} fatura={fatura} primeira={indice === 0} />
-            ))}
-          </VehicleCard>
-        )}
-      </View>
-    </VehicleScreen>
+
+          {visiveis.length === 0 ? (
+            <EmptyState
+              title={aba === "faturas" ? "Nenhuma fatura em aberto" : "Nenhuma fatura paga ainda"}
+              description={
+                aba === "faturas" ? "Está tudo em dia por aqui." : "As pagas aparecem nesta aba."
+              }
+              icon={<Receipt size={28} color={theme.colors.primary} />}
+              theme={theme}
+            />
+          ) : (
+            <View>
+              {visiveis.map((fatura, indice) => (
+                <LinhaDeFatura key={fatura.id} fatura={fatura} primeira={indice === 0} />
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
+/**
+ * A linha de fatura do conceito: competência à esquerda, etiqueta de
+ * estado ao lado, valor e vencimento à direita. Sem cartão em volta —
+ * quatro faturas em quatro caixas separadas perdem a coluna de valores,
+ * que é o que a pessoa está conferindo.
+ */
 function LinhaDeFatura({ fatura, primeira }: { fatura: Fatura; primeira: boolean }): JSX.Element {
   const { theme } = useTheme();
 
@@ -200,29 +323,37 @@ function LinhaDeFatura({ fatura, primeira }: { fatura: Fatura; primeira: boolean
         styles.linha,
         primeira
           ? null
-          : { borderTopColor: theme.colors.border, borderTopWidth: StyleSheet.hairlineWidth },
+          : { borderTopColor: theme.colors.hairline, borderTopWidth: StyleSheet.hairlineWidth },
       ]}
     >
+      <Text style={[styles.competencia, { color: theme.colors.text }]}>{fatura.competencia}</Text>
       <View style={styles.linhaMeio}>
-        <Text style={[styles.competencia, { color: theme.colors.text }]}>{fatura.competencia}</Text>
-        <Text style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-          Vence em {fatura.vencimentoFormatado}
-        </Text>
+        <StatusPill label={ROTULO_DA_FATURA[fatura.status]} tone={TOM_DA_FATURA[fatura.status]} />
       </View>
       <View style={styles.linhaDireita}>
         <Text style={[styles.valor, { color: theme.colors.text }]}>{fatura.valorFormatado}</Text>
-        <StatusPill label={ROTULO_DA_FATURA[fatura.status]} tone={TOM_DA_FATURA[fatura.status]} />
+        <Text style={[styles.vencimento, { color: theme.colors.textMuted }]}>
+          {fatura.vencimentoFormatado}
+        </Text>
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  competencia: { fontSize: 15, fontWeight: "600" },
-  linha: { alignItems: "center", flexDirection: "row", gap: 12, paddingVertical: 12 },
-  linhaDireita: { alignItems: "flex-end", gap: 4 },
+  celulaDeMeio: { flex: 1, minWidth: 0 },
+  competencia: { fontSize: 13, fontWeight: "600", width: 76 },
+  corpo: { gap: 16, paddingBottom: 32 },
+  linha: { alignItems: "center", flexDirection: "row", gap: 10, paddingVertical: 12 },
+  linhaDeMeios: { flexDirection: "row", gap: 8 },
+  linhaDireita: { alignItems: "flex-end" },
   linhaMeio: { flex: 1, minWidth: 0 },
+  meios: { gap: 8 },
   secaoFaturas: { gap: 12 },
-  titulo: { fontSize: 22, fontWeight: "700" },
-  valor: { fontSize: 15, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  seletor: { paddingVertical: 4 },
+  tela: { flex: 1 },
+  titulo: { fontSize: 22, fontWeight: "700", letterSpacing: -0.4 },
+  valor: { fontSize: 14, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  vazioTotal: { flex: 1, justifyContent: "center", padding: 16 },
+  vencimento: { fontSize: 11, fontVariant: ["tabular-nums"], marginTop: 2 },
 });

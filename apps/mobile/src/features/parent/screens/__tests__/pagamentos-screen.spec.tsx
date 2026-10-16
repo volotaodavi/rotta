@@ -96,7 +96,7 @@ describe("Pagamentos do responsável", () => {
     const escolher = jest.fn();
     montar({ dados: DADOS, onEscolherMeio: escolher });
 
-    const cartao = screen.getByLabelText("Cartão, em avaliação");
+    const cartao = screen.getByLabelText("Cartão recorrente, em avaliação");
     expect(cartao.props.accessibilityState.disabled).toBe(true);
     fireEvent.press(cartao);
     expect(escolher).not.toHaveBeenCalled();

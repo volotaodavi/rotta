@@ -88,7 +88,15 @@ export function VeiculoNavigator(): JSX.Element {
       <Stack.Screen
         name="Carteira"
         component={isAutonomoOuMeiEmModoAcao ? CarteiraScreen : WalletComingSoonScreen}
-        options={{ title: "Rotta Pay" }}
+        /*
+          `headerShown: false` só aqui: a Carteira desenha o próprio
+          cabeçalho azul, que sangra até a barra de status, como no
+          conceito aprovado em 16/10/2026. Com a barra do navegador
+          por cima ficariam dois cabeçalhos na mesma tela. A volta
+          existe dentro do cabeçalho azul, e o gesto de arrastar da
+          borda continua valendo.
+        */
+        options={{ title: "Rotta Pay", headerShown: !isAutonomoOuMeiEmModoAcao }}
       />
     </Stack.Navigator>
   );

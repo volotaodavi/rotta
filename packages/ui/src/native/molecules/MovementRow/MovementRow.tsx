@@ -60,7 +60,10 @@ export function MovementRow({
           style={[
             styles.icone,
             {
-              backgroundColor: entrada ? theme.colors.successMuted : theme.colors.surface,
+              /* Entrada verde, saída azul: no conceito a saída não é
+                 cinza nem vermelha. Cinza faria a linha parecer
+                 desligada, vermelho faria gastar parecer erro. */
+              backgroundColor: entrada ? theme.colors.successMuted : theme.colors.primaryMuted,
               borderRadius: theme.radius.full,
             },
           ]}
@@ -110,32 +113,32 @@ const styles = StyleSheet.create({
   },
   icone: {
     alignItems: "center",
-    height: 36,
+    height: 38,
     justifyContent: "center",
-    width: 36,
+    width: 38,
   },
   meio: {
     flex: 1,
     minWidth: 0,
   },
   titulo: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "600",
   },
   subtitulo: {
-    fontSize: 13,
+    fontSize: 12,
     marginTop: 2,
   },
   direita: {
     alignItems: "flex-end",
   },
   valor: {
-    fontSize: 15,
+    fontSize: 14,
     fontVariant: ["tabular-nums"],
     fontWeight: "700",
   },
   data: {
-    fontSize: 12,
+    fontSize: 11,
     fontVariant: ["tabular-nums"],
     marginTop: 2,
   },
