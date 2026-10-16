@@ -24,7 +24,11 @@
  */
 
 export * from "./atoms/StatusPill";
+export * from "./molecules/ActionGrid";
+export * from "./molecules/BalanceCard";
 export * from "./molecules/EmptyState";
+export * from "./molecules/MovementRow";
+export * from "./molecules/SummaryCards";
 export * from "./molecules/FilterTabs";
 export * from "./molecules/PersonRow";
 export * from "./molecules/SectionHeader";
