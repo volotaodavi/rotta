@@ -42,6 +42,17 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Produto e código (CTO)
 
+- [ ] (CTO) **A tela de operação no Admin, depois de uma semana de uso.**
+      `GET /v1/plataforma/operacao` já existe e devolve os números da
+      seção 1 de `empresa/dados/FORMULAS.md`, com `resumo` em uma frase.
+      Falta a tela. A ordem é de propósito: o material que originou isso
+      (Tilli, "A configuração dos 6 painéis") diz para montar um painel,
+      usar por uma semana e só então promover, e esta casa tem histórico
+      de construir seis de uma vez e não abrir nenhum. Promover só o que
+      sobreviver ao uso. Quando montar, consumir pelo `@rotta/api-client`
+      e não repetir conta nenhuma no cliente: número que não vem do
+      endpoint não entra na tela.
+
 - [ ] (CTO) **Escopo PCI DSS do cartão recorrente, e a alternativa.**
       Leia `financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md`.
       O Asaas confirmou em 15/10/2026 que não existe SDK mobile nem

@@ -5,6 +5,48 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-16 — O Passo Zero da companhia, e o painel que responde se a Rotta funcionou
+
+**Origem:** documento enviado pelo fundador, "A configuração dos 6
+painéis" (Matheus Tilli), sobre transformar o Claude numa startup. A
+análise de 15/10 concluiu que quatro dos seis painéis não têm fonte de
+dado na Rotta (suporte não existe, marketing pago está em zero, finanças
+cabe em uma linha e o de CEO já existe como `pulso/diretoria`), e que o
+painel que o material não tem é justamente o que falta aqui: operação.
+
+**Feito:** `empresa/dados/FORMULAS.md`, com toda métrica escrita como
+conta explícita sobre colunas conferidas uma a uma contra o
+`schema.prisma`. É o Passo Zero adaptado: onde o material manda criar
+pasta de CSV, a Rotta aponta para o próprio banco, porque CSV aqui seria
+foto de um dado que já existe vivo. O arquivo também registra o que NÃO
+é calculável hoje e o que falta para ser: inadimplência em reais, custo
+por transportadora, take rate do split e churn com data.
+
+**Feito:** `OperacaoService` e as rotas `GET /plataforma/operacao`
+(Admin Rotta) e `GET /plataforma/operacao/diretoria` (cabeçalho da
+diretoria), nas mesmas duas portas do pulso e pelo mesmo motivo. Separado
+do `PulsoService` de propósito: a `carga` dele existe para animar o
+escritório 3D e a própria documentação dele diz que não tem significado
+de negócio. Estes números têm.
+
+**O que os testes prendem (6, passando):** o dia operado contado no fuso
+de Brasília e não em UTC, porque viagem da volta da tarde cai depois da
+meia-noite UTC e seria jogada para o dia seguinte; a janela de 7 dias
+como hoje mais os seis anteriores; aluno transportado contado só por
+`EMBARCOU`, já que somar `AUSENTE` e `DESEMBARCOU` contaria ausência
+como transporte e o mesmo aluno duas vezes; e o resumo dizendo há
+quantos dias não há viagem em vez de mostrar "0", porque zero passa
+batido e o que estava acontecendo era produto parado havia sete semanas.
+
+**Não fiz, de propósito:** a tela no Admin. Está no backlog do CTO com a
+regra do próprio material: montar um painel, usar por uma semana,
+promover só o que sobreviver. Esta casa tem histórico de levantar seis
+de uma vez e não abrir nenhum.
+
+**Erro meu, registrado:** a análise do documento ficou pronta em 15/10 e
+eu deixei a construção como oferta no ar, esperando autorização que o
+fundador já havia dado de forma permanente. Ele cobrou, com razão.
+
 ## 2026-10-15 — FUNDADOR: três decisões, e a build certa da 1.3.0
 
 **Decisão: a 1.3.0 só vai para a Play Store depois das respostas do
@@ -328,6 +370,7 @@ ela havia criado às 08:22 de hoje, perdendo o relatório daquele turno.
 Engine) e o PR #4 (CMO). O crash do mobile só fica identificado quando
 um build com este conserto estiver instalado: o próximo relatório dirá
 a tela e o build.
+
 ## 2026-10-07 — CMO: funil parado, anúncio sem base para otimizar
 
 **Fiz:** li `GET /v1/marketing/funil`: idêntico a 05/10 (3 checkouts, 3
@@ -347,6 +390,7 @@ aceite de cookies e é descartado).
 **Preciso do fundador:** as duas variáveis do Meta no Render e token da
 API de Conversões com escrita. O segredo de leitura foi usado só na
 sessão, nunca gravado.
+
 ## 2026-10-06 — CTO: auditoria dos agentes de IA, e o Audit Engine sai do zero de testes
 
 **Fiz:** varri os módulos dos agentes de IA atrás do que não tem rede de

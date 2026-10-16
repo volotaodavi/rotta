@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 
+import { OperacaoService } from "./operacao.service";
 import { PlataformaController } from "./plataforma.controller";
 import { PulsoService } from "./pulso.service";
 
@@ -15,7 +16,7 @@ import { DiretoriaReadGuard } from "@/modules/client-errors/diretoria-read.guard
  */
 @Module({
   controllers: [PlataformaController],
-  providers: [PulsoService, DiretoriaReadGuard],
-  exports: [PulsoService],
+  providers: [PulsoService, OperacaoService, DiretoriaReadGuard],
+  exports: [PulsoService, OperacaoService],
 })
 export class PlataformaModule {}

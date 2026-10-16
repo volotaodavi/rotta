@@ -1,6 +1,7 @@
 import { Controller, Get, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiExcludeController } from "@nestjs/swagger";
 
+import { OperacaoService, type OperacaoDaPlataforma } from "./operacao.service";
 import { PulsoService, type PulsoDaPlataforma } from "./pulso.service";
 
 import { Public } from "@/common/decorators/public.decorator";
@@ -27,7 +28,10 @@ import { Role } from "@/shared/enums";
 @ApiExcludeController()
 @Controller("plataforma")
 export class PlataformaController {
-  constructor(private readonly pulso: PulsoService) {}
+  constructor(
+    private readonly pulso: PulsoService,
+    private readonly operacao: OperacaoService,
+  ) {}
 
   @ApiBearerAuth()
   @Roles(Role.ADMIN_ROTTA)
@@ -41,5 +45,27 @@ export class PlataformaController {
   @Get("pulso/diretoria")
   medirParaDiretoria(): Promise<PulsoDaPlataforma> {
     return this.pulso.medir();
+  }
+
+  /**
+   * A operação, nas mesmas duas portas e pelo mesmo motivo.
+   *
+   * Separado do pulso de propósito: a `carga` do pulso existe para
+   * animar o escritório 3D e não tem significado de negócio, enquanto
+   * estes números respondem se a Rotta funcionou. Juntar os dois numa
+   * resposta só convidaria alguém a tratar `carga` como indicador.
+   */
+  @ApiBearerAuth()
+  @Roles(Role.ADMIN_ROTTA)
+  @Get("operacao")
+  medirOperacao(): Promise<OperacaoDaPlataforma> {
+    return this.operacao.medir();
+  }
+
+  @Public()
+  @UseGuards(DiretoriaReadGuard)
+  @Get("operacao/diretoria")
+  medirOperacaoParaDiretoria(): Promise<OperacaoDaPlataforma> {
+    return this.operacao.medir();
   }
 }
