@@ -5,6 +5,59 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-16 — CTO: as 31 telas do conceito, conferidas uma a uma. Falta uma.
+
+O fundador mandou dois conceitos visuais e pediu para refazer o UX do
+app nativo "conforme o print". Antes de continuar construindo, conferi
+item por item o que o conceito mostra contra o que o app tem. O
+resultado contraria a premissa do pedido, e por isso fica escrito.
+
+**Das 31 telas, 30 já existem.** E não por acaso: boa parte do app foi
+construída em setembro a partir de imagens de referência que o próprio
+fundador tinha enviado antes. O conceito novo é, em grande medida, o
+mesmo desenho redesenhado.
+
+Conferido, com o arquivo onde vive:
+
+- Autenticação (01 a 04, 08): `features/auth/screens`, com 11
+  componentes próprios. As telas 05 a 07, o fluxo de senha por código
+  de 6 dígitos, foram recusadas pelo fundador em 15/09/2026 por exigir
+  backend inexistente.
+- Responsável (09 a 12, 14, 15): `marketplace/screens/inicio-screen`,
+  `transporte-inicio-screen`, `notifications/screens/central-screen`,
+  `schools/screens/escolas-screen` e `parent/screens/perfil-screen`. A
+  tela de escolas **já calcula a distância em quilômetros** por
+  Haversine, exatamente como "Centro · 1,2 km" da referência.
+- Motorista e monitor (16 a 20, 22 a 25, 27): `driver/screens` e
+  `driver/components`, com 9 componentes próprios, incluindo o
+  deslizar para iniciar e o modo operacional com "Navegar".
+- **Registrar ocorrência (21 e 26): já existe**, em
+  `driver/components/inicio-cards`, com exatamente as cinco categorias
+  do conceito (Atraso, Aluno ausente, Problema no veículo, Situação de
+  segurança, Outros), cada uma com severidade mapeada.
+- Gestor (28 a 31): `empresa/screens/empresa-home-screen`,
+  `empresa-frota-mapa-screen`, `empresa-frota-lista-screen` e
+  `empresa-perfil-screen`. O resumo da operação **já mostra traço em
+  vez de zero** quando o dado não chegou.
+- Barra de navegação: o `ParentNavigator` já tem as cinco abas do
+  conceito, com ícone e rótulo.
+
+**A única que não existe é a 13, Pagamentos do responsável.** E ela não
+está parada por falta de desenho: depende da arquitetura de split, que
+espera resposta do comercial do Asaas, a decisão entre Pix Automático e
+cartão, e a liberação do white label.
+
+**O que de fato faltava não era tela, era buraco de estado**, e esses
+foram achados e fechados em 16/10: o selo que sujava no tema escuro em
+75 lugares, o campo de formulário que não se anunciava, o botão mudo
+durante o carregamento, o histórico sem estado vazio, a tela inicial do
+responsável vazia por 90 segundos na partida fria, e duas cores soltas.
+
+**Conclusão para o próximo turno que pegar este assunto:** não existe
+fila de telas a construir a partir do conceito. Continuar procurando o
+que mudar no UX, sem defeito relatado por quem usa, é produzir risco sem
+ganho. O próximo achado real depende de alguém abrir o app.
+
 ## 2026-10-16 — CTO: o inventário do app desmentiu o plano de lotes, e duas decisões tomadas
 
 O fundador autorizou decidir sem perguntar. Antes de migrar a primeira
