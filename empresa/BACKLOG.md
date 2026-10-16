@@ -124,6 +124,16 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Dinheiro (CFO)
 
+- [ ] (CFO) **O número que falta para precificar o take rate: quanto a
+      família paga de mensalidade de transporte.** Todo cálculo de taxa
+      depende disso e a Rotta não sabe: os cinco contratos no banco estão
+      com valor R$ 0,00 e nenhum assinado. A diferença não é pequena. Com
+      ticket de R$ 300 e taxa de 5%, o teto do MEI (R$ 6.750/mês) sai com
+      cerca de 30 transportadoras; com R$ 150 e 3%, precisa de cerca de 150. É a diferença entre um modelo que fecha e um que não fecha.
+      Enquanto o número não existir medido, qualquer taxa proposta é
+      chute e se escreve como chute. Dizer também o que precisa ser
+      implementado para medir: hoje o contrato aceita valor zero, o que é
+      a razão de não haver dado.
 - [ ] (CFO) **Precificar a alavanca de custódia do split.** Leia
       `financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md`. O
       prazo de custódia (`daysToExpire`) protege de chargeback e atrasa
@@ -173,6 +183,34 @@ vazio: o primeiro recado sai do CFO para o CMO, na sexta.
 
 ### Companhia (CEO)
 
+- [ ] (CEO) **Desenhar a migração do plano mensal para take rate.**
+      Intenção do fundador, 16/10/2026: extinguir a assinatura de
+      R$ 39,90 e viver da taxa do split, isentando cada transportadora
+      cujo split passe de R$ 39,90 por mês, até o plano mensal não ser
+      mais necessário. A direção é boa e o mecanismo tem três buracos
+      que o CEO precisa resolver com o CFO antes da primeira isenção:
+      (1) **a isenção cria o incentivo de contornar a Rotta.** Isenta, a
+      transportadora passa a ter o software de graça e o caminho mais
+      barato vira receber no PIX do motorista, fora da plataforma. Take
+      rate se sustenta quando a plataforma é dona da relação com o
+      cliente final, e a Rotta não traz a família: a transportadora chega
+      com a própria clientela. Responder, então, por que a família
+      pagaria pela Rotta, e a resposta mais plausível é que o trilho
+      reduza inadimplência, o que faz do take o preço da inadimplência
+      eliminada e não do software;
+      (2) **sazonalidade.** Ano letivo de dez meses, receita variável
+      vai a perto de zero em janeiro e julho, e a assinatura fixa era o
+      hedge disso;
+      (3) **a isenção só anda para um lado.** Quando o split cair abaixo
+      de R$ 39,90, ou a receita desaba ou a Rotta retira um benefício
+      concedido, que é o que mais gera cancelamento em cliente
+      satisfeito.
+      Correção proposta para as três de uma vez: em vez de isentar,
+      **substituir o plano por "o maior entre a taxa do split e um piso
+      mensal"**. A transportadora grande para de pagar assinatura
+      naturalmente, sem isenção manual e sem regra nova depois.
+      Decisão de preço é do fundador; o entregável aqui é o desenho com
+      as opções e o risco de cada uma.
 - [ ] (CEO) **A sequência da frente de split, por escrito.** Leia
       `financeiro/2026-10-15-split-asaas-respostas-e-decisoes.md` e
       responda uma coisa só: esta frente abre agora ou depois, e contra
