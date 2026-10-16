@@ -143,6 +143,9 @@ describe("TripsService", () => {
       findActiveMembership: jest.fn(),
       findById: jest.fn(),
       isAutonomoOuMei: jest.fn().mockResolvedValue(false),
+      /* Lista vazia = todos com identidade aprovada. O caso contrário
+         tem teste próprio, em "identidade aprovada". */
+      listarNaoAprovadosNaIdentidade: jest.fn().mockResolvedValue([]),
     } as unknown as jest.Mocked<UsersService>;
     auditLogService = { record: jest.fn() } as unknown as jest.Mocked<AuditLogService>;
     eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
@@ -360,6 +363,64 @@ describe("TripsService", () => {
       await expect(service.start({ routeId: "route-1" }, empresaActor, {})).rejects.toThrow(
         BadRequestException,
       );
+    });
+
+    it("recusa iniciar quando o motorista não está com a identidade aprovada", async () => {
+      /*
+        Até 16/10/2026 esta regra vivia só na interface do aplicativo, e
+        havia um caminho real de contorno sem má intenção: o app só
+        bloqueia quando a resposta do status chega, e o `RootNavigator`
+        tem teto de espera que manda seguir quando ela demora. A API
+        dorme no plano gratuito e acorda em cerca de 90 segundos, então
+        partida fria mais teto estourado colocava motorista não
+        verificado dentro do app, com o servidor aceitando a viagem.
+
+        Bloqueio de tela não é controle de acesso. Esta é a checagem que
+        vale.
+      */
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: "motorista-1",
+        monitorPadraoId: null,
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      usersService.listarNaoAprovadosNaIdentidade.mockResolvedValue(["Carlos Silva"]);
+
+      await expect(service.start({ routeId: "route-1" }, motoristaActor, {})).rejects.toThrow(
+        /Carlos Silva ainda não teve a identidade aprovada/,
+      );
+      expect(tripRepository.create).not.toHaveBeenCalled();
+    });
+
+    it("confere a identidade do monitor também, não só a do motorista", async () => {
+      /* Os dois ficam sozinhos com criança dentro da van. */
+      routesService.findByIdOrThrow.mockResolvedValue({
+        id: "route-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        turno: "MANHA",
+        motoristaPadraoId: "motorista-1",
+        monitorPadraoId: "monitor-1",
+        veiculoPadraoId: "vehicle-1",
+      } as never);
+      usersService.findActiveMembership.mockResolvedValue({ role: Role.MONITOR } as never);
+      usersService.listarNaoAprovadosNaIdentidade.mockResolvedValue([]);
+
+      /*
+        O que importa aqui é QUEM foi conferido, e a conferência
+        acontece antes da criação da viagem. Montar todo o caminho feliz
+        da criação só para chegar nesta linha tornaria o teste refém de
+        detalhes que não são o assunto dele.
+      */
+      await service.start({ routeId: "route-1" }, motoristaActor, {}).catch(() => undefined);
+
+      expect(usersService.listarNaoAprovadosNaIdentidade).toHaveBeenCalledWith([
+        "motorista-1",
+        "monitor-1",
+      ]);
     });
 
     it("REGRESSÃO — dono AUTONOMO/MEI inicia a própria rota (motoristaPadraoId = ele mesmo, Membership.role = EMPRESA)", async () => {

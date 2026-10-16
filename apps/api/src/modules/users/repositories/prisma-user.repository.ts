@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { IdentityVerificationStatus } from "@prisma/client";
 
 import type { CreateUserInput, UpdateUserAuthStateInput, UserRepository } from "./user.repository";
 import type { AdminRottaPapel, Prisma, SchoolStaffRole, User, UserStatus } from "@prisma/client";
@@ -68,6 +69,26 @@ export class PrismaUserRepository implements UserRepository {
       select: { id: true },
     });
     return responsaveis.map((responsavel) => responsavel.id);
+  }
+
+  async listarNomesComIdentidadeNaoAprovada(ids: string[]): Promise<string[]> {
+    const unicos = [...new Set(ids.filter(Boolean))];
+    if (unicos.length === 0) return [];
+
+    /*
+      `identityVerificationStatus` tem `@default(NAO_INICIADA)` no
+      schema e nunca é nulo, então quem nunca começou a verificação cai
+      aqui, que é o comportamento pedido pelo fundador em 12/09/2026:
+      "travar quase tudo até a identidade estar de fato aprovada".
+    */
+    const pendentes = await this.prisma.user.findMany({
+      where: {
+        id: { in: unicos },
+        identityVerificationStatus: { not: IdentityVerificationStatus.APROVADA },
+      },
+      select: { nome: true },
+    });
+    return pendentes.map((usuario) => usuario.nome);
   }
 
   listAdminRottaUsers(): Promise<User[]> {

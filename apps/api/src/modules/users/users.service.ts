@@ -280,6 +280,27 @@ export class UsersService {
     );
   }
 
+  /**
+   * Nomes de quem ainda NÃO está com a identidade aprovada, entre os
+   * informados. Lista vazia significa que todos estão aprovados.
+   *
+   * Existe porque, até 16/10/2026, a exigência de identidade aprovada
+   * para dirigir vivia **só na interface do aplicativo**
+   * (`RootNavigator`), e a API aceitava iniciar viagem sem olhar isso.
+   * Bloqueio de tela não é controle: basta a resposta do status não
+   * chegar para a tela deixar passar, e ela não chega justamente quando
+   * a API está em partida fria, que no plano gratuito do Render leva
+   * perto de 90 segundos e acontece todo dia.
+   *
+   * O campo tem `@default(NAO_INICIADA)` no schema, então nunca é nulo:
+   * quem nunca começou a verificação reprova nesta checagem, que é o
+   * comportamento que o fundador pediu em 12/09/2026 ("travar quase
+   * tudo até a identidade estar de fato aprovada").
+   */
+  listarNaoAprovadosNaIdentidade(userIds: string[]): Promise<string[]> {
+    return this.userRepository.listarNomesComIdentidadeNaoAprovada(userIds);
+  }
+
   isLockedOut(user: User): boolean {
     return Boolean(user.bloqueadoAte && user.bloqueadoAte.getTime() > Date.now());
   }

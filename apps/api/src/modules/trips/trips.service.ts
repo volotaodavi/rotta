@@ -413,6 +413,38 @@ export class TripsService {
       }
     }
 
+    /*
+      IDENTIDADE APROVADA, CONFERIDA NO SERVIDOR (16/10/2026).
+
+      Até aqui, a exigência de identidade aprovada para dirigir vivia
+      SÓ na interface do aplicativo, no `RootNavigator`, e esta API
+      aceitava iniciar viagem sem olhar isso. Bloqueio de tela não é
+      controle de acesso, e neste caso havia um caminho concreto para
+      contorná-lo sem má intenção nenhuma:
+
+      o app só bloqueia quando a resposta do status CHEGA
+      (`identityVerification != null`), e o `RootNavigator` tem um teto
+      absoluto de espera, escrito depois do incidente de 21/09/2026,
+      que manda seguir "qualquer que seja o estado pendente". A API
+      dorme no plano gratuito do Render e leva perto de 90 segundos
+      para acordar. Partida fria mais teto de espera estourado igual a
+      motorista não verificado dentro do app, com o servidor aceitando
+      a viagem.
+
+      Vale para motorista E monitor: os dois ficam sozinhos com
+      crianças. O campo tem `@default(NAO_INICIADA)`, então quem nunca
+      começou a verificação também não passa, que é exatamente o que o
+      fundador pediu em 12/09/2026.
+    */
+    const semIdentidade = await this.usersService.listarNaoAprovadosNaIdentidade(
+      monitorId ? [motoristaId, monitorId] : [motoristaId],
+    );
+    if (semIdentidade.length > 0) {
+      throw new BadRequestException(
+        `Não é possível iniciar a viagem: ${semIdentidade.join(" e ")} ainda não teve a identidade aprovada.`,
+      );
+    }
+
     const data = today();
     const existing = await this.tripRepository.findByRouteAndDate(dto.routeId, data);
     // Pedido do usuário: "rotas não são feitas para ser finalizadas

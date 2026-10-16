@@ -80,4 +80,13 @@ export interface UserRepository {
   updateAdminRottaPapel(id: string, papel: AdminRottaPapel): Promise<User>;
   /** Ativa/desativa uma conta Admin Rotta (`AdminAccountsService`) — nunca deleta o registro (auditoria/histórico). */
   updateStatus(id: string, status: UserStatus): Promise<User>;
+  /**
+   * Nomes de quem, entre os ids informados, ainda NÃO está com a
+   * identidade aprovada. Lista vazia significa que todos estão.
+   *
+   * Devolve nome, e não id, porque quem lê a resposta é o transportador
+   * tentando iniciar a viagem, e "Carlos ainda não teve a identidade
+   * aprovada" é acionável; um UUID não é.
+   */
+  listarNomesComIdentidadeNaoAprovada(ids: string[]): Promise<string[]>;
 }
