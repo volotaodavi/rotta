@@ -452,7 +452,7 @@ function RotaOperacional({
               tela, fora deste cartão.
             */}
             {routeStudentsDetalhado && routeStudentsDetalhado.length > 0 ? (
-              <View style={[styles.alunosPreViagemList, { borderTopColor: theme.colors.border }]}>
+              <View style={[styles.alunosPreViagemList, { borderTopColor: theme.colors.hairline }]}>
                 {routeStudentsDetalhado.map((aluno) => (
                   <AlunoPreViagemRow key={aluno.id} aluno={aluno} />
                 ))}

@@ -37,7 +37,7 @@ export function CriarEmpresaWebViewScreen({ navigation }: Props): JSX.Element {
           styles.footer,
           {
             backgroundColor: theme.colors.surface,
-            borderTopColor: theme.colors.border,
+            borderTopColor: theme.colors.hairline,
             padding: theme.spacing[4],
           },
         ]}

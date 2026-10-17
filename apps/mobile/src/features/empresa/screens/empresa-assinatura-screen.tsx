@@ -182,7 +182,7 @@ export function EmpresaAssinaturaScreen(): JSX.Element {
                 styles.linha,
                 index > 0
                   ? {
-                      borderTopColor: theme.colors.border,
+                      borderTopColor: theme.colors.hairline,
                       borderTopWidth: StyleSheet.hairlineWidth,
                     }
                   : null,

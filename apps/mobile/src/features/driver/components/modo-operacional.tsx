@@ -386,7 +386,7 @@ export function ModoOperacionalFullScreen({
 
         {paradaAlvo ? (
           <View style={{ gap: 12 }}>
-            <View style={[styles.fsAlvoHeader, { borderTopColor: theme.colors.border }]}>
+            <View style={[styles.fsAlvoHeader, { borderTopColor: theme.colors.hairline }]}>
               <View style={{ flex: 1 }}>
                 <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
                   {chegouNaEscola ? "Próximo destino · Escola" : "Próxima parada"}
@@ -436,7 +436,7 @@ export function ModoOperacionalFullScreen({
             ))}
           </View>
         ) : (
-          <View style={[styles.fsConcluido, { borderTopColor: theme.colors.border }]}>
+          <View style={[styles.fsConcluido, { borderTopColor: theme.colors.hairline }]}>
             <Check size={28} color={theme.colors.driverSuccess} />
             <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
               Todos os alunos foram desembarcados.
@@ -460,7 +460,7 @@ export function ModoOperacionalFullScreen({
         )}
 
         {verTodosAlunos ? (
-          <View style={[styles.rosterCompleto, { borderTopColor: theme.colors.border }]}>
+          <View style={[styles.rosterCompleto, { borderTopColor: theme.colors.hairline }]}>
             <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
               Todas as paradas da rota
             </Texto>

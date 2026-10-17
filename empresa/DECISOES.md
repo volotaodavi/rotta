@@ -5,6 +5,59 @@ apagado: é a memória da companhia entre disparos, e é por isso que um
 diretor que acorda sem contexto nenhum consegue continuar de onde a
 companhia parou.
 
+## 2026-10-17 — CTO: o app ganhou letra, e o resto das telas foi atrás
+
+O fundador disse três vezes que o app estava "com cara de IA". Nas duas
+primeiras eu mexi no miolo das telas. Na terceira fui procurar o que eu
+não tinha olhado, e achei duas coisas que estavam em TODAS as telas.
+
+**O app nunca carregou fonte nenhuma.** Todo texto da Rotta, em mais de
+cem telas, era Roboto no Android e SF Pro no iOS. Um aplicativo inteiro
+na fonte padrão do sistema se parece com todo aplicativo que nunca
+escolheu uma letra, e tipografia é a camada que mais carrega
+identidade. Agora é Plus Jakarta Sans, cinco pesos embutidos, licença
+SIL Open Font (a SF Pro da Apple a licença proíbe embutir). A troca foi
+mecânica: `<Text>` virou `<Texto>` em 119 arquivos, porque no React
+Native com fonte própria cada peso é uma família registrada, e pedir
+negrito numa família que só tem o regular produz um borrão sintético.
+
+**A moldura era a padrão do React Navigation.** Barra de abas e
+cabeçalho, em cima e embaixo de tudo, exatamente como vieram da
+biblioteca. Enquanto fossem as padrão, qualquer trabalho no miolo
+continuava emoldurado por um aplicativo genérico.
+
+**Decidi sozinho:** a fonte do sistema deixou de ser a escolha
+registrada do app. A decisão anterior, de 15/09/2026, era defensável
+("usar os recursos de design da Apple"), mas o conceito que o fundador
+aprovou não é escrito em SF Pro nem em Roboto, e o brief do fundador
+vence a minha decisão anterior.
+
+**Também entrou nesta leva:** entrada e recuperação de conta, Viagens
+do Responsável (que usava pílulas verdes num app de seleção azul),
+próxima viagem do Motorista em três blocos de número, e duas mudanças
+de uso no Modo Operacional — o número de embarcados virou linha inteira
+e "Navegar" virou botão de largura total, porque era um quadrado de 40
+pontos para quem está dirigindo.
+
+**Achados de verdade no caminho:**
+
+- A tela de erro carregava uma cópia dos tokens do tema ESCURO. O app é
+  sempre claro: quem batia num erro via o aplicativo branco virar uma
+  tela preta, que parece o aplicativo morrendo.
+- Quatorze listas ainda diziam "Nenhum X ainda." numa frase solta.
+  Viraram estado vazio com título, próximo passo e ícone do assunto.
+- O selo colorido das notificações pintava o fundo com a cor do ícone
+  mais um sufixo de opacidade em hexadecimal — o mesmo defeito que o
+  `StatusPill` tinha, ainda vivo ali.
+
+**Verificado:** 25 suítes e 155 testes no app, `tsc` limpo em theme,
+ui, web, admin e mobile, lint sem erro. `DESIGN.md` do app reescrito
+para descrever o sistema que existe, com a procedência de cada valor.
+
+**Preciso do fundador:** abrir o app e olhar. Não tenho emulador nesta
+máquina, então toda a verificação visual daqui é reprodução em HTML com
+os mesmos tokens do código, nunca um print do aparelho.
+
 ## 2026-10-16 — CTO: as seis telas de dinheiro passam a falar a mesma língua
 
 O fundador perguntou se as outras telas do financeiro, as que ficaram
