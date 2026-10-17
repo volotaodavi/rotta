@@ -2,6 +2,7 @@
 
 import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Card, Spinner, Typography } from "@rotta/ui/web";
+import { lerPosicao } from "@rotta/utils";
 import { useMemo, useState } from "react";
 
 import type { MapVehicle } from "@rotta/api-client";
@@ -82,10 +83,20 @@ export default function VeiculosMapaPage(): JSX.Element {
                 {selected.routeNome} ({selected.turno}), motorista {selected.motoristaNome}
                 {selected.monitorNome ? `, monitor ${selected.monitorNome}` : ""}
               </Typography>
-              <Typography variant="bodySmall" color="muted">
-                {selected.ultimaPosicaoEm
-                  ? `Última posição: ${new Date(selected.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
-                  : "Aguardando primeira posição"}
+              {/* Mesma regra do mapa do Responsável: a hora crua obriga
+                  quem lê a fazer a subtração. O gestor precisa saber que
+                  não está vendo o veículo, e sim o último lugar onde ele
+                  deu sinal. */}
+              <Typography
+                variant="bodySmall"
+                color="muted"
+                className={
+                  lerPosicao(selected.ultimaPosicaoEm).frescor === "parada"
+                    ? "font-semibold text-warning"
+                    : undefined
+                }
+              >
+                {lerPosicao(selected.ultimaPosicaoEm).rotulo}
               </Typography>
             </div>
           ) : null}

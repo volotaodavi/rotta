@@ -11,6 +11,7 @@ import {
 } from "@rotta/icons";
 import { type RottaMapMarker } from "@rotta/maps/types";
 import { Badge, Card, EmptyState, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
+import { lerPosicao } from "@rotta/utils";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -266,6 +267,13 @@ export default function AlunoMapaPage(): JSX.Element {
   const { data: proximasEtas } = useTripProximasEtas(viagem?.tripId);
   const [mapKey, setMapKey] = useState(0);
 
+  /* Quanto tempo tem a posição que está sendo desenhada. Até aqui a
+     tela mostrava o veículo sem nunca dizer isso, e o dado já vinha da
+     API: com o GPS do motorista parado (sinal, bateria, app encerrado
+     pelo sistema), a família via a van paradinha numa esquina e
+     concluía que ela estava parada ali. */
+  const posicao = lerPosicao(viagem?.ultimaPosicaoEm);
+
   const markers = useMemo<RottaMapMarker[]>(() => {
     if (!viagem?.latitude || !viagem.longitude) return [];
     return [
@@ -274,10 +282,12 @@ export default function AlunoMapaPage(): JSX.Element {
         titulo: `${viagem.placa}: ${viagem.motoristaNome}`,
         latitude: viagem.latitude,
         longitude: viagem.longitude,
-        emMovimento: true,
+        /* A animação de "andando" é uma afirmação sobre o agora: com
+           posição velha, o marcador fica parado de propósito. */
+        emMovimento: posicao.frescor === "ao-vivo",
       },
     ];
-  }, [viagem]);
+  }, [viagem, posicao.frescor]);
 
   const proximaParada = proximasEtas?.[0];
 
@@ -388,7 +398,9 @@ export default function AlunoMapaPage(): JSX.Element {
         </div>
         <Card.Body className="flex flex-col gap-2.5">
           <div className="flex items-center justify-between gap-3">
-            <Badge variant="success">Em viagem agora</Badge>
+            <Badge variant={posicao.frescor === "parada" ? "warning" : "success"}>
+              {posicao.frescor === "parada" ? "Viagem em andamento" : "Em viagem agora"}
+            </Badge>
             {proximaParada ? (
               <div className="flex items-center gap-1 text-success">
                 <Clock size={14} />
@@ -410,6 +422,15 @@ export default function AlunoMapaPage(): JSX.Element {
               <Typography variant="caption" color="muted">
                 Motorista: {viagem.motoristaNome}
                 {viagem.monitorNome ? ` · Monitor: ${viagem.monitorNome}` : ""}
+              </Typography>
+              {/* `Typography` não tem tom de aviso; a cor vem da classe,
+                  que é o mesmo `warning` do resto do painel. */}
+              <Typography
+                variant="caption"
+                color="muted"
+                className={posicao.frescor === "parada" ? "font-semibold text-warning" : undefined}
+              >
+                {posicao.rotulo}
               </Typography>
             </div>
           </div>

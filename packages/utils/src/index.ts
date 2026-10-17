@@ -5,6 +5,8 @@
  * testavel unitariamente em isolamento completo (Dossie 23, Secao 10).
  *
  *   dinheiro.ts  Leitura e escrita de valor em reais/centavos.
+ *   posicao.ts   Ha quanto tempo a posicao do veiculo foi capturada.
  */
 
 export * from "./dinheiro";
+export * from "./posicao";

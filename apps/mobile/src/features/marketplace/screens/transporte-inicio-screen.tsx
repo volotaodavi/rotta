@@ -8,6 +8,7 @@ import {
 import { Bus, ChevronLeft, Clock, MapPin, Navigation, Star, User } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
 import { EmptyState, FilterTabs, SectionHeader, Timeline } from "@rotta/ui/native";
+import { lerPosicao } from "@rotta/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
@@ -369,6 +370,7 @@ function DetalhesContrato({ contrato }: { contrato: Contract }): JSX.Element {
 export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX.Element {
   const { theme } = useTheme();
   const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
+  const posicao = lerPosicao(viagem?.ultimaPosicaoEm);
   const { data: aluno } = useStudent(contrato.studentId);
   const { data: proximasEtas } = useProximasEtasResponsavel(viagem?.tripId);
   const proximaParada = proximasEtas?.[0];
@@ -551,10 +553,18 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
               </View>
             ) : null}
 
-            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-              {viagem.ultimaPosicaoEm
-                ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
-                : "Aguardando a primeira posição do motorista"}
+            {/* A hora crua ("Última posição: 07:12") obrigava quem lê a
+                fazer a subtração e a perceber sozinho que o GPS parou.
+                `lerPosicao` diz a idade em palavras e muda de cor
+                quando a posição deixa de valer como "onde a van está". */}
+            <Texto
+              style={{
+                color: posicao.frescor === "parada" ? theme.colors.warning : theme.colors.textMuted,
+                fontSize: 12,
+                fontWeight: posicao.frescor === "parada" ? "600" : "400",
+              }}
+            >
+              {posicao.rotulo}
             </Texto>
           </>
         )}
@@ -594,6 +604,7 @@ export function TripTrackingOverlay({
   const { theme } = useTheme();
   const insets = useSafeAreaInsets();
   const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
+  const posicao = lerPosicao(viagem?.ultimaPosicaoEm);
   const { data: proximasEtas } = useProximasEtasResponsavel(viagem?.tripId);
   const [mapKey, setMapKey] = useState(0);
   const proximaParada = proximasEtas?.[0];
@@ -715,10 +726,15 @@ export function TripTrackingOverlay({
                     Monitor: {viagem.monitorNome}
                   </Texto>
                 ) : null}
-                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  {viagem.ultimaPosicaoEm
-                    ? `Última posição: ${new Date(viagem.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
-                    : "Aguardando a primeira posição do motorista"}
+                <Texto
+                  style={{
+                    color:
+                      posicao.frescor === "parada" ? theme.colors.warning : theme.colors.textMuted,
+                    fontSize: 12,
+                    fontWeight: posicao.frescor === "parada" ? "600" : "400",
+                  }}
+                >
+                  {posicao.rotulo}
                 </Texto>
               </View>
             </View>

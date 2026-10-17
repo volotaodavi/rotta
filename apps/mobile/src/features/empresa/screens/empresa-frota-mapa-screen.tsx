@@ -1,4 +1,5 @@
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
+import { lerPosicao } from "@rotta/utils";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
@@ -89,10 +90,21 @@ export function EmpresaFrotaMapaScreen(): JSX.Element {
             {selecionado.routeNome} ({selecionado.turno}), motorista {selecionado.motoristaNome}
             {selecionado.monitorNome ? `, monitor ${selecionado.monitorNome}` : ""}
           </Texto>
-          <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-            {selecionado.ultimaPosicaoEm
-              ? `Última posição: ${new Date(selecionado.ultimaPosicaoEm).toLocaleTimeString("pt-BR")}`
-              : "Aguardando primeira posição"}
+          {/* Mesma regra do mapa do Responsável: hora crua obriga quem
+              lê a fazer a subtração e a perceber sozinho que o GPS
+              parou. Aqui quem lê é o gestor, que precisa saber que não
+              está vendo o veículo, e sim o último lugar onde ele deu
+              sinal. */}
+          <Texto
+            style={{
+              color:
+                lerPosicao(selecionado.ultimaPosicaoEm).frescor === "parada"
+                  ? theme.colors.warning
+                  : theme.colors.textMuted,
+              fontSize: 12,
+            }}
+          >
+            {lerPosicao(selecionado.ultimaPosicaoEm).rotulo}
           </Texto>
         </VehicleCard>
       ) : null}
