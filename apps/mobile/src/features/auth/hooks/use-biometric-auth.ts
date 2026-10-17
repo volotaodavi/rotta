@@ -26,15 +26,35 @@ export function useBiometricAuth(): {
   useEffect(() => {
     let cancelled = false;
     async function checkAvailability(): Promise<void> {
-      const [hasHardware, isEnrolled, types] = await Promise.all([
-        LocalAuthentication.hasHardwareAsync(),
-        LocalAuthentication.isEnrolledAsync(),
-        LocalAuthentication.supportedAuthenticationTypesAsync(),
-      ]);
-      if (cancelled) return;
-      setIsAvailable(hasHardware && isEnrolled);
-      const temFacial = types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION);
-      setLabel(Platform.OS === "ios" ? (temFacial ? "Face ID" : "Touch ID") : "digital");
+      /*
+        As três perguntas ao sistema operacional vão num `try`, e a falha
+        de qualquer uma só significa "este aparelho não oferece
+        biometria". Sem isto, a rejeição ficava sem tratamento (o
+        `void` abaixo descarta a promessa) e, pior, `setIsAvailable`
+        nunca rodava: numa tela de BLOQUEIO, o botão de digital
+        simplesmente não aparecia, calado, exatamente nos aparelhos em
+        que algo está fora do lugar.
+      */
+      try {
+        const [hasHardware, isEnrolled, types] = await Promise.all([
+          LocalAuthentication.hasHardwareAsync(),
+          LocalAuthentication.isEnrolledAsync(),
+          LocalAuthentication.supportedAuthenticationTypesAsync(),
+        ]);
+        if (cancelled) return;
+        setIsAvailable(hasHardware && isEnrolled);
+        /* `?? []`: o tipo promete um array, e um módulo nativo ausente
+           ou uma versão antiga devolvem `undefined` — `.includes` em
+           cima disso derruba a checagem inteira por causa do RÓTULO,
+           que é o detalhe menos importante dela. */
+        const temFacial = (types ?? []).includes(
+          LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION,
+        );
+        setLabel(Platform.OS === "ios" ? (temFacial ? "Face ID" : "Touch ID") : "digital");
+      } catch {
+        if (cancelled) return;
+        setIsAvailable(false);
+      }
     }
     void checkAvailability();
     return () => {
