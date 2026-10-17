@@ -52,7 +52,24 @@ export default (): ExpoConfig => ({
   // app. A 1.3.0 leva a tela `ConverterEmTransportadora`, que cria a
   // `Company` dela na mesma conta, pedindo só o endereço (commit
   // 49424f0).
-  version: "1.3.0",
+  //
+  // 1.3.0 -> 1.4.0 (17/10/2026). O que a 1.3.0 não leva, e que não é
+  // cosmético nenhum deles:
+  //
+  // - O checklist do veículo gravava calado. A tela não tinha `onError`:
+  //   o motorista apertava "Registrar", nada acontecia, e ele saía em
+  //   viagem achando que o checklist estava salvo. Na 1.4.0 o checklist
+  //   pertence à viagem, zera a cada viagem nova e mostra a anterior
+  //   como informativo.
+  // - Motorista e monitor não conseguiam abrir chamado de suporte, que
+  //   é justamente quem está na rua e vê o problema primeiro.
+  // - O ETA que o responsável via vinha de um endpoint que recusava o
+  //   papel dele (não funcionava) e que, quando respondia, trazia o
+  //   endereço das outras famílias da rota.
+  // - A tela de Pagamentos existia sem nenhuma fatura, porque cobrança
+  //   da família não existia no banco. Na 1.4.0 a família vê quanto
+  //   deve, quando vence e paga por Pix.
+  version: "1.4.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
