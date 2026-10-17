@@ -1,14 +1,8 @@
 import { fonteNativa } from "@rotta/theme";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import {
-  Animated,
-  Dimensions,
-  PanResponder,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Animated, Dimensions, PanResponder, Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -146,7 +140,9 @@ export function BottomSheet({
       >
         <View {...panResponder.panHandlers} style={styles.header}>
           <View style={[styles.handle, { backgroundColor: theme.colors.border }]} />
-          {title ? <Text style={[styles.title, { color: theme.colors.text }]}>{title}</Text> : null}
+          {title ? (
+            <Texto style={[styles.title, { color: theme.colors.text }]}>{title}</Texto>
+          ) : null}
         </View>
         <View style={styles.content}>{children}</View>
       </Animated.View>

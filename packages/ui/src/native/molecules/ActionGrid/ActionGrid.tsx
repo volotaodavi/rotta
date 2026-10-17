@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -69,12 +71,12 @@ export function ActionGrid({ items, theme }: ActionGridProps): JSX.Element {
             >
               {item.icon}
             </View>
-            <Text
+            <Texto
               numberOfLines={1}
               style={[styles.rotulo, { color: theme.colors.text, marginTop: theme.spacing[2] }]}
             >
               {item.label}
-            </Text>
+            </Texto>
           </Pressable>
         );
       })}

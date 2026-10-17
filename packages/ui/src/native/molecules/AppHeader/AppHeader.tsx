@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -74,9 +76,9 @@ export function AppHeader({
       <View style={styles.esquerda}>
         {iconeMarca}
         <View style={styles.textos}>
-          <Text numberOfLines={1} style={[styles.titulo, { color: theme.colors.text }]}>
+          <Texto numberOfLines={1} style={[styles.titulo, { color: theme.colors.text }]}>
             {titulo}
-          </Text>
+          </Texto>
 
           {perfilAtivo ? (
             <Pressable
@@ -89,12 +91,12 @@ export function AppHeader({
               style={styles.perfil}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Text
+              <Texto
                 numberOfLines={1}
                 style={[styles.perfilTexto, { color: theme.colors.textMuted }]}
               >
                 {perfilAtivo}
-              </Text>
+              </Texto>
               {podeTrocar ? iconeTrocarPerfil : null}
             </Pressable>
           ) : null}
@@ -117,9 +119,9 @@ export function AppHeader({
                   { backgroundColor: theme.colors.danger, borderRadius: theme.radius.full },
                 ]}
               >
-                <Text style={[styles.bolinhaTexto, { color: theme.colors.onPrimary }]}>
+                <Texto style={[styles.bolinhaTexto, { color: theme.colors.onPrimary }]}>
                   {contagem}
-                </Text>
+                </Texto>
               </View>
             ) : null}
           </Pressable>
@@ -138,9 +140,9 @@ export function AppHeader({
               },
             ]}
           >
-            <Text style={[styles.avatarTexto, { color: theme.colors.primary }]}>
+            <Texto style={[styles.avatarTexto, { color: theme.colors.primary }]}>
               {iniciais ?? "?"}
-            </Text>
+            </Texto>
           </Pressable>
         ) : null}
       </View>

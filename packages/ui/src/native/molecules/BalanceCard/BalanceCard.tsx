@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -67,7 +69,7 @@ export function BalanceCard({
       ]}
     >
       <View style={styles.topo}>
-        <Text style={[styles.rotulo, { color: theme.colors.onPrimary }]}>{label}</Text>
+        <Texto style={[styles.rotulo, { color: theme.colors.onPrimary }]}>{label}</Texto>
 
         <Pressable
           accessibilityRole="button"
@@ -80,13 +82,13 @@ export function BalanceCard({
       </View>
 
       <View style={[styles.linhaValor, { marginTop: theme.spacing[2] }]}>
-        <Text
+        <Texto
           accessibilityLabel={visivel ? valorFormatado : "Saldo oculto"}
           numberOfLines={1}
           style={[styles.valor, { color: theme.colors.onPrimary }]}
         >
           {visivel ? valorFormatado : "••••••"}
-        </Text>
+        </Texto>
 
         {onPress ? (
           <Pressable

@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -68,14 +70,14 @@ export function EmptyState({
         </View>
       ) : null}
 
-      <Text style={[styles.titulo, { color: theme.colors.text }]}>{title}</Text>
+      <Texto style={[styles.titulo, { color: theme.colors.text }]}>{title}</Texto>
 
       {description ? (
-        <Text
+        <Texto
           style={[styles.descricao, { color: theme.colors.textMuted, marginTop: theme.spacing[2] }]}
         >
           {description}
-        </Text>
+        </Texto>
       ) : null}
 
       {temAcao ? (
@@ -94,7 +96,9 @@ export function EmptyState({
             },
           ]}
         >
-          <Text style={[styles.textoBotao, { color: theme.colors.onPrimary }]}>{actionLabel}</Text>
+          <Texto style={[styles.textoBotao, { color: theme.colors.onPrimary }]}>
+            {actionLabel}
+          </Texto>
         </Pressable>
       ) : null}
     </View>

@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -74,25 +76,27 @@ export function MovementRow({
       ) : null}
 
       <View style={styles.meio}>
-        <Text numberOfLines={1} style={[styles.titulo, { color: theme.colors.text }]}>
+        <Texto numberOfLines={1} style={[styles.titulo, { color: theme.colors.text }]}>
           {titulo}
-        </Text>
+        </Texto>
         {subtitulo ? (
-          <Text numberOfLines={1} style={[styles.subtitulo, { color: theme.colors.textMuted }]}>
+          <Texto numberOfLines={1} style={[styles.subtitulo, { color: theme.colors.textMuted }]}>
             {subtitulo}
-          </Text>
+          </Texto>
         ) : null}
       </View>
 
       <View style={styles.direita}>
-        <Text
+        <Texto
           accessibilityLabel={`${entrada ? "Entrada" : "Saída"} de ${valorFormatado}`}
           numberOfLines={1}
           style={[styles.valor, { color: entrada ? theme.colors.success : theme.colors.text }]}
         >
           {valorComSinal}
-        </Text>
-        {data ? <Text style={[styles.data, { color: theme.colors.textMuted }]}>{data}</Text> : null}
+        </Texto>
+        {data ? (
+          <Texto style={[styles.data, { color: theme.colors.textMuted }]}>{data}</Texto>
+        ) : null}
       </View>
     </View>
   );

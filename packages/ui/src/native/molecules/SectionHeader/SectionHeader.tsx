@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -33,13 +35,13 @@ export function SectionHeader({
 
   return (
     <View style={[styles.linha, { marginBottom: theme.spacing[3] }]}>
-      <Text
+      <Texto
         accessibilityRole="header"
         numberOfLines={1}
         style={[styles.titulo, { color: theme.colors.text }]}
       >
         {title}
-      </Text>
+      </Texto>
       {temAcao ? (
         <Pressable
           accessibilityRole="button"
@@ -52,7 +54,7 @@ export function SectionHeader({
           */
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Text style={[styles.acao, { color: theme.colors.primary }]}>{actionLabel}</Text>
+          <Texto style={[styles.acao, { color: theme.colors.primary }]}>{actionLabel}</Texto>
         </Pressable>
       ) : null}
     </View>

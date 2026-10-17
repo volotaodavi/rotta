@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -129,9 +131,9 @@ export function AccountHeader({
           {iconeMarca}
 
           <View style={styles.textos}>
-            <Text numberOfLines={1} style={[styles.titulo, { color: theme.colors.onPrimary }]}>
+            <Texto numberOfLines={1} style={[styles.titulo, { color: theme.colors.onPrimary }]}>
               {titulo}
-            </Text>
+            </Texto>
             {perfilAtivo ? (
               <Pressable
                 accessibilityRole={podeTrocar ? "button" : "text"}
@@ -143,12 +145,12 @@ export function AccountHeader({
                 style={styles.perfil}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text
+                <Texto
                   numberOfLines={1}
                   style={[styles.perfilTexto, { color: theme.colors.onBrandMuted }]}
                 >
                   {perfilAtivo}
-                </Text>
+                </Texto>
                 {podeTrocar ? iconeTrocarPerfil : null}
               </Pressable>
             ) : null}
@@ -173,9 +175,9 @@ export function AccountHeader({
                     { backgroundColor: theme.colors.danger, borderRadius: theme.radius.full },
                   ]}
                 >
-                  <Text style={[styles.bolinhaTexto, { color: theme.colors.onPrimary }]}>
+                  <Texto style={[styles.bolinhaTexto, { color: theme.colors.onPrimary }]}>
                     {contagem}
-                  </Text>
+                  </Texto>
                 </View>
               ) : null}
             </Pressable>
@@ -191,9 +193,9 @@ export function AccountHeader({
                 { backgroundColor: theme.colors.brandBand, borderRadius: theme.radius.full },
               ]}
             >
-              <Text style={[styles.avatarTexto, { color: theme.colors.onPrimary }]}>
+              <Texto style={[styles.avatarTexto, { color: theme.colors.onPrimary }]}>
                 {iniciais ?? "?"}
-              </Text>
+              </Texto>
             </Pressable>
           ) : null}
         </View>
@@ -213,7 +215,9 @@ export function AccountHeader({
       >
         <View style={styles.faixaTextos}>
           <View style={styles.faixaRotulo}>
-            <Text style={[styles.rotulo, { color: theme.colors.onPrimary }]}>{rotuloDoSaldo}</Text>
+            <Texto style={[styles.rotulo, { color: theme.colors.onPrimary }]}>
+              {rotuloDoSaldo}
+            </Texto>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={visivel ? "Esconder saldo" : "Mostrar saldo"}
@@ -224,13 +228,13 @@ export function AccountHeader({
             </Pressable>
           </View>
 
-          <Text
+          <Texto
             accessibilityLabel={visivel ? valorFormatado : "Saldo oculto"}
             numberOfLines={1}
             style={[styles.valor, { color: theme.colors.onPrimary }]}
           >
             {visivel ? valorFormatado : "••••••"}
-          </Text>
+          </Texto>
         </View>
 
         {onAbrirDetalhe ? (

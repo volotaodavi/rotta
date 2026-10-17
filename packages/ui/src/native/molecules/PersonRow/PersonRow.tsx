@@ -1,7 +1,8 @@
 import { fonteNativa } from "@rotta/theme";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 
 import { StatusPill, type StatusTone } from "../../atoms/StatusPill";
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -81,25 +82,27 @@ export function PersonRow({
             style={[styles.foto, { borderRadius: theme.radius.full }]}
           />
         ) : (
-          <Text style={[styles.iniciais, { color: theme.colors.primary }]}>{iniciaisDe(nome)}</Text>
+          <Texto style={[styles.iniciais, { color: theme.colors.primary }]}>
+            {iniciaisDe(nome)}
+          </Texto>
         )}
       </View>
 
       <View style={styles.meio}>
-        <Text numberOfLines={1} style={[styles.nome, { color: theme.colors.text }]}>
+        <Texto numberOfLines={1} style={[styles.nome, { color: theme.colors.text }]}>
           {nome}
-        </Text>
+        </Texto>
         {subtitulo ? (
-          <Text numberOfLines={1} style={[styles.subtitulo, { color: theme.colors.textMuted }]}>
+          <Texto numberOfLines={1} style={[styles.subtitulo, { color: theme.colors.textMuted }]}>
             {subtitulo}
-          </Text>
+          </Texto>
         ) : null}
       </View>
 
       <View style={[styles.direita, { gap: theme.spacing[1] }]}>
         {status ? <StatusPill label={status.label} tone={status.tone} theme={theme} /> : null}
         {horario ? (
-          <Text style={[styles.horario, { color: theme.colors.textMuted }]}>{horario}</Text>
+          <Texto style={[styles.horario, { color: theme.colors.textMuted }]}>{horario}</Texto>
         ) : null}
       </View>
 

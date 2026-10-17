@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -132,20 +134,20 @@ export function ListRow({
       ) : null}
 
       <View style={styles.meio}>
-        <Text numberOfLines={1} style={[styles.rotulo, { color: corDoTexto }]}>
+        <Texto numberOfLines={1} style={[styles.rotulo, { color: corDoTexto }]}>
           {rotulo}
-        </Text>
+        </Texto>
         {descricao ? (
-          <Text numberOfLines={1} style={[styles.descricao, { color: theme.colors.textMuted }]}>
+          <Texto numberOfLines={1} style={[styles.descricao, { color: theme.colors.textMuted }]}>
             {descricao}
-          </Text>
+          </Texto>
         ) : null}
       </View>
 
       {valor ? (
-        <Text numberOfLines={1} style={[styles.valor, { color: theme.colors.textMuted }]}>
+        <Texto numberOfLines={1} style={[styles.valor, { color: theme.colors.textMuted }]}>
           {valor}
-        </Text>
+        </Texto>
       ) : null}
 
       {acessorio}

@@ -1,4 +1,7 @@
-import { StyleSheet, Text, View } from "react-native";
+import { fonteNativa } from "@rotta/theme";
+import { StyleSheet, View } from "react-native";
+
+import { Texto } from "../Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -89,9 +92,9 @@ export function StatusPill({ label, tone, size = "sm", theme }: StatusPillProps)
         },
       ]}
     >
-      <Text numberOfLines={1} style={[styles.texto, { color: texto, fontSize: denso ? 11 : 13 }]}>
+      <Texto numberOfLines={1} style={[styles.texto, { color: texto, fontSize: denso ? 11 : 13 }]}>
         {label}
-      </Text>
+      </Texto>
     </View>
   );
 }
@@ -101,7 +104,10 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
   },
   texto: {
-    fontWeight: "600",
+    /* Família explícita, e nenhum `fontWeight`: é assim em todo o
+       pacote. Com fonte própria o peso não engrossa a letra, ele pede
+       ao sistema para engrossar o arquivo regular por software. */
+    fontFamily: fonteNativa(600),
     /* Sem `letterSpacing` grande: etiqueta curta em português já é
        larga, e espaçar faz quebrar linha em celular de 360 pontos. */
     letterSpacing: 0.2,

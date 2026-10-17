@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -62,7 +64,7 @@ export function Timeline({ steps, theme }: TimelineProps): JSX.Element {
               {!isLast ? <View style={[styles.line, { backgroundColor: lineColor }]} /> : null}
             </View>
             <View style={[styles.content, { paddingBottom: isLast ? 0 : theme.spacing[4] }]}>
-              <Text
+              <Texto
                 style={[
                   styles.label,
                   {
@@ -72,11 +74,11 @@ export function Timeline({ steps, theme }: TimelineProps): JSX.Element {
                 ]}
               >
                 {step.label}
-              </Text>
+              </Texto>
               {step.description ? (
-                <Text style={[styles.description, { color: theme.colors.textMuted }]}>
+                <Texto style={[styles.description, { color: theme.colors.textMuted }]}>
                   {step.description}
-                </Text>
+                </Texto>
               ) : null}
             </View>
           </View>

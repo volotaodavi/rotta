@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -75,7 +77,7 @@ export function FilterTabs({ options, value, onChange, theme }: FilterTabsProps)
               },
             ]}
           >
-            <Text
+            <Texto
               numberOfLines={1}
               style={[
                 styles.rotulo,
@@ -83,7 +85,7 @@ export function FilterTabs({ options, value, onChange, theme }: FilterTabsProps)
               ]}
             >
               {option.label}
-            </Text>
+            </Texto>
 
             {option.count === undefined ? null : (
               <View
@@ -95,14 +97,14 @@ export function FilterTabs({ options, value, onChange, theme }: FilterTabsProps)
                   },
                 ]}
               >
-                <Text
+                <Texto
                   style={[
                     styles.numero,
                     { color: ativo ? theme.colors.primary : theme.colors.textMuted },
                   ]}
                 >
                   {option.count}
-                </Text>
+                </Texto>
               </View>
             )}
           </Pressable>

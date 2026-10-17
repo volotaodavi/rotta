@@ -1,6 +1,9 @@
 import { ChevronsRight } from "@rotta/icons/native";
+import { fonteNativa } from "@rotta/theme";
 import { useRef, useState } from "react";
-import { ActivityIndicator, Animated, PanResponder, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, PanResponder, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -101,15 +104,15 @@ export function SlideToAction({
       ]}
     >
       <View style={styles.labelWrap} pointerEvents="none">
-        <Text
+        <Texto
           style={{
             color: isInteractive ? theme.colors.textMuted : theme.colors.disabled.text,
+            fontFamily: fonteNativa(600),
             fontSize: 14,
-            fontWeight: "600",
           }}
         >
           {showCompletedLabel ? completedLabel : label}
-        </Text>
+        </Texto>
       </View>
       <Animated.View
         {...panResponder.panHandlers}

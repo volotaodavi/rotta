@@ -44,6 +44,24 @@ describe("Texto", () => {
     expect(estilo.fontSize).toBe(20);
   });
 
+  it("respeita a família que o estilo já escolheu, em vez de derivar do peso", () => {
+    /*
+      Esta é a regra que quase custou a tipografia inteira do sistema de
+      design. Todo componente de `@rotta/ui/native` escreve
+      `fontFamily: fonteNativa(600)` no `StyleSheet` e NÃO escreve
+      `fontWeight`. Se `Texto` derivasse do peso em cima disso, cada
+      rótulo em negrito do sistema cairia no 400, porque sem
+      `fontWeight` a derivação devolve o regular: o cabeçalho azul da
+      carteira, as linhas de movimentação e as abas de filtro viravam
+      texto fino de uma vez, sem erro nenhum para avisar.
+    */
+    render(<Texto style={{ fontFamily: fonteNativa(600) }}>Recebimentos</Texto>);
+
+    expect(estiloDe(screen.getByText("Recebimentos")).fontFamily).toBe(
+      "PlusJakartaSans_600SemiBold",
+    );
+  });
+
   it("peso que a Rotta não carrega cai no mais próximo, não no regular", () => {
     /* Pedir 900 e receber texto fino seria pior que receber o extrabold. */
     expect(fonteNativa(900)).toBe("PlusJakartaSans_800ExtraBold");

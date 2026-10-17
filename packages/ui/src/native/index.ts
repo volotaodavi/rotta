@@ -24,6 +24,7 @@
  */
 
 export * from "./atoms/ContentSheet";
+export * from "./atoms/Texto";
 export * from "./atoms/StatusPill";
 export * from "./molecules/ActionGrid";
 export * from "./molecules/AppHeader";

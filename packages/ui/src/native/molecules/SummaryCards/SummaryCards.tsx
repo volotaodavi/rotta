@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { StatusTone } from "../../atoms/StatusPill";
 import type { Theme } from "@rotta/theme";
@@ -100,16 +102,16 @@ export function SummaryCards({ items, theme }: SummaryCardsProps): JSX.Element {
               a ordem em que a pergunta chega. A pessoa não olha "3" e
               depois descobre do que; ela procura "Pagas" e lê quantas.
             */}
-            <Text numberOfLines={1} style={[styles.rotulo, { color: corDoValor(item, theme) }]}>
+            <Texto numberOfLines={1} style={[styles.rotulo, { color: corDoValor(item, theme) }]}>
               {item.label}
-            </Text>
-            <Text style={[styles.valor, { color: corDoValor(item, theme) }]}>
+            </Texto>
+            <Texto style={[styles.valor, { color: corDoValor(item, theme) }]}>
               {item.valor === null ? "-" : item.valor}
-            </Text>
+            </Texto>
             {item.detalhe ? (
-              <Text numberOfLines={1} style={[styles.detalhe, { color: corDoValor(item, theme) }]}>
+              <Texto numberOfLines={1} style={[styles.detalhe, { color: corDoValor(item, theme) }]}>
                 {item.detalhe}
-              </Text>
+              </Texto>
             ) : null}
           </View>
         );

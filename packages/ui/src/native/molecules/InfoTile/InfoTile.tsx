@@ -1,5 +1,7 @@
 import { fonteNativa } from "@rotta/theme";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+import { Texto } from "../../atoms/Texto";
 
 import type { Theme } from "@rotta/theme";
 
@@ -58,13 +60,13 @@ export function InfoTile({
     <View style={styles.dentro}>
       {icon ? <View style={styles.icone}>{icon}</View> : null}
       <View style={styles.textos}>
-        <Text numberOfLines={1} style={[styles.titulo, { color: theme.colors.text }]}>
+        <Texto numberOfLines={1} style={[styles.titulo, { color: theme.colors.text }]}>
           {titulo}
-        </Text>
+        </Texto>
         {subtitulo ? (
-          <Text numberOfLines={1} style={[styles.subtitulo, { color: theme.colors.textMuted }]}>
+          <Texto numberOfLines={1} style={[styles.subtitulo, { color: theme.colors.textMuted }]}>
             {subtitulo}
-          </Text>
+          </Texto>
         ) : null}
       </View>
     </View>
