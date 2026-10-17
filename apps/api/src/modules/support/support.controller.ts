@@ -34,16 +34,39 @@ function requestMeta(req: Request): RequestMeta {
  * próprios chamados, nunca o tenant inteiro, ver
  * `SupportService.resolveTicketScope`).
  */
-const SUPPORT_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA, Role.RESPONSAVEL] as const;
+const SUPPORT_ROLES = [
+  Role.EMPRESA,
+  Role.GESTOR,
+  Role.ADMIN_ROTTA,
+  Role.RESPONSAVEL,
+  Role.MOTORISTA,
+  Role.MONITOR,
+] as const;
+
+/**
+ * Quem abre chamado. Motorista e Monitor entraram em 17/10/2026: o app
+ * sempre mostrou "Suporte" no perfil dos dois e a tela "Novo chamado",
+ * e o backend recusava com "Apenas Empresa/Gestor/Responsável podem
+ * abrir chamados". Quem está na estrada com as crianças é justamente
+ * quem mais precisa de um canal, e a porta estava desenhada e trancada.
+ */
+const OPEN_ROLES = [
+  Role.EMPRESA,
+  Role.GESTOR,
+  Role.RESPONSAVEL,
+  Role.MOTORISTA,
+  Role.MONITOR,
+] as const;
 
 /** Arquivar/desarquivar (pedido do usuário 02/09/2026) — nunca pelo Responsável, ver `SupportService.setArquivado`. */
 const ARCHIVE_ROLES = [Role.EMPRESA, Role.GESTOR, Role.ADMIN_ROTTA] as const;
 
 /**
  * API REST do módulo Suporte (Dossiê 20, `SUP-01` a `SUP-03`/`ADM-04`;
- * Dossiê 29). Abrir um chamado: Empresa/Gestor (próprio tenant) e
- * Responsável (Epic B — Motorista/Monitor seguem fora de escopo);
- * responder/listar/encerrar é comum a todas as partes envolvidas.
+ * Dossiê 29). Abrir um chamado: Empresa/Gestor e Motorista/Monitor
+ * (todos pelo próprio tenant) e Responsável (pela transportadora do
+ * contrato ativo); responder/listar/encerrar é comum a todas as partes
+ * envolvidas.
  */
 @ApiTags("support")
 @ApiBearerAuth()
@@ -58,7 +81,7 @@ export class SupportController {
   constructor(private readonly supportService: SupportService) {}
 
   @Post()
-  @Roles(Role.EMPRESA, Role.GESTOR, Role.RESPONSAVEL)
+  @Roles(...OPEN_ROLES)
   create(
     @Body() dto: CreateSupportTicketDto,
     @CurrentUser() actor: AuthenticatedUser,

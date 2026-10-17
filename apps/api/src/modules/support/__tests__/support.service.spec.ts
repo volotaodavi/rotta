@@ -215,11 +215,34 @@ describe("SupportService", () => {
       expect(result.status).toBe("ABERTO");
     });
 
-    it("rejeita quando o ator não é Empresa/Gestor", async () => {
+    it("Motorista abre chamado na própria transportadora", async () => {
+      /*
+        Até 17/10/2026 este teste exigia o contrário, e travava um
+        defeito: o app sempre mostrou "Suporte" no perfil de Motorista
+        e Monitor e a tela "Novo chamado", e o backend recusava. Quem
+        está na estrada com as crianças é quem mais precisa do canal.
+        Os dois têm `tenantId`, então o chamado nasce na empresa deles
+        sem nenhuma resolução extra (diferente do Responsável, que
+        precisa do contrato ativo).
+      */
+      ticketRepository.create.mockResolvedValue(buildTicket());
+
+      await service.createTicket(
+        { assunto: "Van quebrou", descricao: "detalhe suficiente aqui", categoria: "DUVIDA" },
+        motoristaActor,
+        {},
+      );
+
+      expect(ticketRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1", abertoPorUserId: "driver-1" }),
+      );
+    });
+
+    it("Motorista sem empresa vinculada não abre chamado", async () => {
       await expect(
         service.createTicket(
           { assunto: "x", descricao: "detalhe suficiente aqui", categoria: "DUVIDA" },
-          motoristaActor,
+          { ...motoristaActor, tenantId: undefined },
           {},
         ),
       ).rejects.toThrow(ForbiddenException);

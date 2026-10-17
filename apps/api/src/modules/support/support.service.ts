@@ -33,6 +33,7 @@ import type {
 } from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
+
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import { EmailService } from "@/infra/email/email.service";
 import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";
@@ -119,7 +120,19 @@ export class SupportService {
     if (actor.role === Role.ADMIN_ROTTA) {
       return { companyId: companyIdFilter };
     }
-    if (actor.role === Role.RESPONSAVEL) {
+    /*
+      Responsável, Motorista e Monitor veem só o que eles mesmos
+      abriram. Para os dois últimos isto não é detalhe: eles SÃO
+      membros do tenant, então cair no `companyId` abaixo faria o
+      motorista enxergar todo chamado da transportadora, inclusive os
+      que o gestor abriu sobre ele. Quem vê o tenant inteiro é quem
+      responde por ele: Empresa e Gestor.
+    */
+    if (
+      actor.role === Role.RESPONSAVEL ||
+      actor.role === Role.MOTORISTA ||
+      actor.role === Role.MONITOR
+    ) {
       return { abertoPorUserId: actor.sub };
     }
     if (!actor.tenantId) {
@@ -380,10 +393,16 @@ export class SupportService {
       return this.finishCreateTicket(ticket, actor, meta, true);
     }
 
-    if (actor.role !== Role.EMPRESA && actor.role !== Role.GESTOR) {
-      throw new ForbiddenException(
-        "Apenas Empresa/Gestor/Responsável podem abrir chamados de suporte.",
-      );
+    /*
+      Motorista e Monitor abrem chamado desde 17/10/2026, pelo mesmo
+      caminho de Empresa/Gestor: os três têm `tenantId` (são membros de
+      uma transportadora), então o chamado nasce na empresa deles sem
+      nenhuma resolução extra. O app sempre ofereceu "Suporte" no perfil
+      dos dois; era só o backend que recusava.
+    */
+    const PODEM_ABRIR = [Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR];
+    if (!PODEM_ABRIR.includes(actor.role)) {
+      throw new ForbiddenException("Este perfil não pode abrir chamados de suporte.");
     }
     if (!actor.tenantId) {
       throw new ForbiddenException("Usuário sem empresa vinculada.");
