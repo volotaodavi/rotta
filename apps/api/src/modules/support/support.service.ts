@@ -33,7 +33,6 @@ import type {
 } from "./repositories/support-ticket.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
-
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import { EmailService } from "@/infra/email/email.service";
 import { renderNotificationEmailHtml } from "@/infra/email/templates/notification-email.template";

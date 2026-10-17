@@ -43,7 +43,6 @@ import type { CreateTripData, TripRepository } from "./repositories/trip.reposit
 import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
 import type { RouteStudentResponseDto } from "../routes/dto/route-student-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService } from "@/modules/companies/companies.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
@@ -54,6 +53,7 @@ import { RoutesService } from "@/modules/routes/routes.service";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
+
 import { Role } from "@/shared/enums";
 import { haversineDistanceKm } from "@/shared/utils/geo.util";
 

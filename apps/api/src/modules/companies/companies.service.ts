@@ -49,7 +49,6 @@ import type {
   ListAuditLogsResponseDto,
 } from "@/common/dto/audit-log-response.dto";
 import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log.repository";
-
 import { PrismaService } from "@/infra/database/prisma.service";
 import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import {
@@ -63,6 +62,7 @@ import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/co
 import { MessagePersonalizationService } from "@/modules/notifications/message-personalization.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
+
 import { Role } from "@/shared/enums";
 
 export interface RequestMeta {

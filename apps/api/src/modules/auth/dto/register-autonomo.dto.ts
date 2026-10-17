@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   Equals,
   IsBoolean,
-  IsEmail,
   IsIn,
   IsNotEmpty,
   IsOptional,
@@ -10,7 +9,7 @@ import {
   MaxLength,
 } from "class-validator";
 
-import { IsBrazilianMobile, IsCpf, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianMobile, IsCpf, IsLoginEmail, IsStrongPassword } from "@/common/validators";
 import { Role } from "@/shared/enums";
 
 /** Só quem dirige/acompanha; nunca `Role.EMPRESA` (esse cria a Company junto, ver `RegisterEmpresaDto`). */
@@ -39,7 +38,7 @@ export class RegisterAutonomoDto {
   nome!: string;
 
   @ApiProperty({ example: "joao@email.com" })
-  @IsEmail()
+  @IsLoginEmail()
   email!: string;
 
   @ApiProperty({ example: "11987654321" })

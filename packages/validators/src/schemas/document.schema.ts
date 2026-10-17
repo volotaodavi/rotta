@@ -8,9 +8,21 @@ import { z } from "zod";
  * dois lados (Dossiê 22, Seção 5.5).
  */
 
-function onlyDigits(value: string): string {
+/**
+ * Documento só com os dígitos, do jeito que ele é gravado.
+ *
+ * Exportada, e não mais privada deste arquivo, porque o `apps/api`
+ * precisa dela: os schemas Zod daqui já normalizavam antes de validar,
+ * mas os decoradores de DTO do NestJS só validavam. CPF é um dos três
+ * identificadores de login da Rotta, então "123.456.789-00" gravado
+ * com máscara é uma conta que o login, que procura por dígitos, nunca
+ * mais encontra.
+ */
+export function normalizarDocumento(value: string): string {
   return value.replace(/\D/g, "");
 }
+
+const onlyDigits = normalizarDocumento;
 
 function computeCpfCheckDigit(base: string): number {
   let sum = 0;

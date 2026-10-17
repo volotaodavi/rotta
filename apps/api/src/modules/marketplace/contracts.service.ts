@@ -22,7 +22,6 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { CompanyRepository } from "@/modules/companies/repositories/company.repository";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { Contract } from "@prisma/client";
-
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { AuthentiqueService } from "@/modules/authentique/authentique.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
@@ -33,6 +32,7 @@ import { RottaAiService } from "@/modules/rotta-ai/rotta-ai.service";
 import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
+
 import { WalletService } from "@/modules/wallet/wallet.service";
 import { Role } from "@/shared/enums";
 

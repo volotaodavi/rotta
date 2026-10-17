@@ -1,10 +1,10 @@
 import { ApiProperty, ApiPropertyOptional, OmitType } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsEmail, IsOptional, IsString, MaxLength, ValidateNested } from "class-validator";
+import { IsOptional, IsString, MaxLength, ValidateNested } from "class-validator";
 
 import { CreateStudentDto } from "./create-student.dto";
 
-import { IsBrazilianMobile } from "@/common/validators";
+import { IsBrazilianMobile, IsLoginEmail } from "@/common/validators";
 
 /**
  * Dados do Responsável quando ele ainda não tem conta na Rotta (pedido
@@ -27,7 +27,7 @@ export class NovoResponsavelDto {
   nome!: string;
 
   @ApiProperty({ example: "ana@email.com" })
-  @IsEmail()
+  @IsLoginEmail()
   email!: string;
 
   @ApiProperty({ example: "11987654321" })

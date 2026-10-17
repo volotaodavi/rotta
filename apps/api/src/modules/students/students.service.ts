@@ -51,7 +51,6 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { ListAuditLogsResponseDto } from "@/common/dto/audit-log-response.dto";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { StudentPreRegistrationRepository } from "@/modules/student-pre-registrations/repositories/student-pre-registration.repository";
-
 import { PrismaService } from "@/infra/database/prisma.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";

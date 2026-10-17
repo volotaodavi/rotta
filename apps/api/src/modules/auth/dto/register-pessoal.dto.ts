@@ -1,15 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import {
-  Equals,
-  IsBoolean,
-  IsEmail,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  MaxLength,
-} from "class-validator";
+import { Equals, IsBoolean, IsNotEmpty, IsOptional, IsString, MaxLength } from "class-validator";
 
-import { IsBrazilianMobile, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianMobile, IsLoginEmail, IsStrongPassword } from "@/common/validators";
 
 /**
  * Cadastro self-service da Área Pessoal (briefing "Marketplace" —
@@ -33,7 +25,7 @@ export class RegisterPessoalDto {
   nome!: string;
 
   @ApiProperty({ example: "ana@email.com" })
-  @IsEmail()
+  @IsLoginEmail()
   email!: string;
 
   @ApiProperty({ example: "11987654321" })

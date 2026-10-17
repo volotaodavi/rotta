@@ -1,6 +1,11 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import { CompanyType } from "@prisma/client";
-import { passwordEqualsIdentifier, normalizarTelefone } from "@rotta/validators";
+import {
+  normalizarDocumento,
+  normalizarEmail,
+  normalizarTelefone,
+  passwordEqualsIdentifier,
+} from "@rotta/validators";
 
 import { duracaoDoBloqueioMs } from "./lockout.util";
 import {
@@ -80,7 +85,23 @@ export class UsersService {
 
   findByIdentifier(identifier: string): Promise<User | null> {
     if (identifier.includes("@")) {
-      return this.userRepository.findByEmail(identifier);
+      /*
+        `trim().toLowerCase()` pelo mesmo motivo do telefone logo
+        abaixo: o e-mail é gravado assim em TODO caminho de cadastro
+        (`auth.service`, `companies.service`, `invites.service`,
+        `school-portal.service`), e aqui era procurado exatamente como
+        a pessoa digitou.
+
+        O teclado de celular capitaliza a primeira letra por padrão,
+        então "Ana@email.com" é o que sai de um iPhone sem esforço
+        nenhum, e colar o e-mail costuma trazer um espaço junto.
+        Resultado: "não foi possível entrar" com a senha certa, numa
+        conta que existe. A recuperação de senha já normalizava
+        (`AuthService.requestPasswordReset`), então a mesma pessoa
+        conseguia pedir a troca de senha e continuava sem conseguir
+        entrar, o que tornava o defeito ainda mais difícil de entender.
+      */
+      return this.userRepository.findByEmail(identifier.trim().toLowerCase());
     }
 
     /*
@@ -115,15 +136,20 @@ export class UsersService {
    */
   async assertNoDuplicateIdentity(email: string, telefone: string, cpf?: string): Promise<void> {
     /*
-      Normaliza antes de comparar. Sem isto, "(21) 99709-9557" e
+      Normaliza os TRÊS antes de comparar. Sem isto, "(21) 99709-9557" e
       "21997099557" são duas strings diferentes para o índice único, e
       a mesma pessoa conseguia duas contas — cada uma impossível de
       achar pela outra.
+
+      O telefone já era normalizado aqui; e-mail e CPF não eram, e são
+      identificadores de login iguais a ele. "Ana@email.com" e
+      "ana@email.com" passavam como pessoas diferentes, e
+      "123.456.789-00" e "12345678900" também.
     */
     const [byEmail, byTelefone, byCpf] = await Promise.all([
-      this.userRepository.findByEmail(email),
+      this.userRepository.findByEmail(normalizarEmail(email)),
       this.userRepository.findByTelefone(normalizarTelefone(telefone)),
-      cpf ? this.userRepository.findByCpf(cpf) : Promise.resolve(null),
+      cpf ? this.userRepository.findByCpf(normalizarDocumento(cpf)) : Promise.resolve(null),
     ]);
 
     if (byEmail) {
@@ -156,12 +182,21 @@ export class UsersService {
 
     const passwordHash = await this.passwordHasher.hash(input.senha);
 
+    /*
+      Normaliza na GRAVAÇÃO, e não só em cada chamador. Os decoradores
+      de DTO já normalizam o que entra pela API, mas este método é o
+      único portão por onde toda conta da Rotta nasce, e nem todo
+      chamador lembrava: a criação de conta de Admin Rotta gravava o
+      e-mail exatamente como foi digitado. Uma conta gravada com
+      maiúscula é uma conta que o login, que procura em minúscula,
+      nunca mais encontra.
+    */
     return this.userRepository.create(
       {
         nome: input.nome,
-        email: input.email,
-        telefone: input.telefone,
-        cpf: input.cpf,
+        email: normalizarEmail(input.email),
+        telefone: normalizarTelefone(input.telefone),
+        cpf: input.cpf ? normalizarDocumento(input.cpf) : input.cpf,
         passwordHash,
         avatarUrl: input.avatarUrl,
         isResponsavel: input.isResponsavel,

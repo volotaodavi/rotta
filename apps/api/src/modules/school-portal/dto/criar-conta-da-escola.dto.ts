@@ -1,8 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { SchoolStaffRole } from "@prisma/client";
-import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, Length, MinLength } from "class-validator";
+import { IsEnum, IsOptional, IsString, IsUUID, Length, MinLength } from "class-validator";
 
-import { IsBrazilianMobile } from "@/common/validators";
+import { IsBrazilianMobile, IsLoginEmail } from "@/common/validators";
 
 /**
  * Criação direta de uma conta do Portal da Escola (pedido do usuário
@@ -27,7 +27,7 @@ export class CriarContaDaEscolaDto {
   nome!: string;
 
   @ApiProperty({ example: "diretoria@emefjardim.rj.gov.br" })
-  @IsEmail()
+  @IsLoginEmail()
   email!: string;
 
   @ApiProperty({

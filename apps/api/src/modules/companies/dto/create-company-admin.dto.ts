@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsEmail, IsNotEmpty, IsString, MaxLength } from "class-validator";
+import { IsNotEmpty, IsString, MaxLength } from "class-validator";
 
-import { IsBrazilianMobile, IsCpf, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianMobile, IsCpf, IsLoginEmail, IsStrongPassword } from "@/common/validators";
 
 /**
  * Dados do primeiro usuário administrador criado junto da Empresa
@@ -17,7 +17,7 @@ export class CreateCompanyAdminDto {
   nome!: string;
 
   @ApiProperty({ example: "ana@transportadora.com.br" })
-  @IsEmail()
+  @IsLoginEmail()
   email!: string;
 
   @ApiProperty({ example: "11987654321" })
