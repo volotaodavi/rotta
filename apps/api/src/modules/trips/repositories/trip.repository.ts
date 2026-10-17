@@ -47,8 +47,18 @@ export interface ActiveTripWithDetails extends Trip {
 
 /**
  * `trips` tem RLS por `companyId` (mesmo mecanismo de `vehicles`/`routes`).
- * `@@unique([routeId, data])` no schema garante no máximo UMA viagem por
- * rota por dia — ver nota de limitação conhecida em `TripsService.start`.
+ *
+ * **Não** existe `@@unique([routeId, data])`. Existiu, e foi removido de
+ * propósito: ele impedia a volta da tarde na mesma rota da ida da manhã
+ * (a segunda `Trip` do dia sempre falhava no banco, mesmo com a
+ * primeira já finalizada). Ver a nota do `model Trip` no
+ * `schema.prisma`.
+ *
+ * Quem garante a regra que de fato importa é `TripsService.start`:
+ * nunca duas viagens ATIVAS (`EM_ANDAMENTO`/`PAUSADA`) ao mesmo tempo
+ * para a mesma rota. Este comentário dizia o contrário até 17/10/2026,
+ * e uma garantia de banco que não existe é o tipo de coisa em que o
+ * código seguinte se apoia sem conferir.
  */
 export interface TripRepository {
   create(data: CreateTripData): Promise<Trip>;
