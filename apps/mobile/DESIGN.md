@@ -166,8 +166,25 @@ andares — é a letra que o conceito desenha.
 peso não é propriedade: cada peso É uma família registrada. Pedir 700
 numa família que só tem o regular faz o Android desenhar um negrito
 sintético, que é o borrão que denuncia app mal feito. Por isso todo
-texto do app passa por `Texto` (`src/components/texto.tsx`), que lê o
-`fontWeight` do estilo, escolhe o arquivo certo e **remove o peso**.
+texto do app passa por `Texto`, que lê o `fontWeight` do estilo,
+escolhe o arquivo certo e **remove o peso**.
+
+`Texto` mora em `@rotta/ui/native`, e não no app, por um motivo
+aprendido do jeito ruim: enquanto morava no app, a troca de letra
+chegou às telas e não chegou a duas peças compartilhadas. `StatusPill`,
+a etiqueta de estado que aparece em quase toda tela do produto, e o
+`SlideToAction` ficaram desenhando na fonte do sistema dentro de telas
+na fonte da marca. Nada avisou: texto sem fonte herda a do sistema em
+silêncio. `src/components/texto.tsx` continua existindo como
+reexporte, para o caminho de importação das telas não mudar.
+
+Dentro do pacote a família é sempre **explícita**
+(`fontFamily: fonteNativa(600)`), e o peso não entra; nas telas é o
+contrário, escreve-se `fontWeight` e `Texto` deriva. Por isso a família
+explícita vence a derivação: sem essa precedência, o reexporte teria
+jogado todo rótulo em negrito do sistema de design para o regular, de
+uma vez e em silêncio. Dois testes em `@rotta/ui` seguram as duas
+pontas da regra.
 
 ## Elevation & Depth
 

@@ -1,109 +1,109 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-09T21:12:28Z",
+  "generatedAt": "2026-10-17T05:00:00Z",
   "title": "Design System: Rotta Mobile",
   "extensions": {
     "colorMeta": {
       "primary": {
         "role": "primary",
-        "displayName": "Azul Elétrico",
-        "canonical": "#3B6EF6",
+        "displayName": "Azul Rotta",
+        "canonical": "#1769FF",
         "tonalRamp": [
-          "#12214A",
-          "#213E8A",
-          "#2F58C5",
-          "#3B6EF6",
-          "#6A91F8",
-          "#99B4FA",
-          "#C4D4FC",
-          "#EBF1FE"
+          "#071E4D",
+          "#0A3B85",
+          "#0954DC",
+          "#1769FF",
+          "#1180FE",
+          "#A9C6F5",
+          "#EDF4FF",
+          "#F7FAFF"
         ]
       },
-      "driver-primary": {
-        "role": "primary",
-        "displayName": "Azul Estrada",
-        "canonical": "#4C86FF",
+      "brand-deep": {
+        "role": "secondary",
+        "displayName": "Azul Profundo da Conta",
+        "canonical": "#0A3B85",
+        "tonalRamp": ["#04142C", "#071E4D", "#0A3B85", "#0E52B5", "#1180FE"]
+      },
+      "text": {
+        "role": "neutral",
+        "displayName": "Tinta Azul-Marinho",
+        "canonical": "#0F2748",
         "tonalRamp": [
-          "#17284D",
-          "#2B4B8F",
-          "#3D6BCC",
-          "#4C86FF",
-          "#77A3FF",
-          "#A2C0FF",
-          "#C9DBFF",
-          "#EDF3FF"
+          "#0F2748",
+          "#51637E",
+          "#8794A5",
+          "#A3AEBE",
+          "#D3DCE9",
+          "#E6ECF5",
+          "#F0F3F8",
+          "#FFFFFF"
         ]
       },
-      "driver-success": {
+      "success": {
         "role": "success",
-        "displayName": "Verde Embarque",
-        "canonical": "#22C55E",
-        "tonalRamp": [
-          "#0A3B1C",
-          "#136E35",
-          "#1B9E4B",
-          "#22C55E",
-          "#57D385",
-          "#8CE1AB",
-          "#BDEECF",
-          "#E9F9EF"
-        ]
+        "displayName": "Verde Pago",
+        "canonical": "#0FA36B",
+        "tonalRamp": ["#063A26", "#0A6C47", "#0FA36B", "#5CC79C", "#E8F9F1"]
       },
-      "driver-danger": {
+      "warning": {
+        "role": "warning",
+        "displayName": "Ambar A Vencer",
+        "canonical": "#D98C0E",
+        "tonalRamp": ["#4D3104", "#8F5C09", "#D98C0E", "#EBB65C", "#FFF4E4"]
+      },
+      "danger": {
         "role": "danger",
-        "displayName": "Vermelho Parada",
-        "canonical": "#EF4444",
-        "tonalRamp": [
-          "#481414",
-          "#862626",
-          "#BF3636",
-          "#EF4444",
-          "#F37171",
-          "#F79E9E",
-          "#FAC7C7",
-          "#FDECEC"
-        ]
+        "displayName": "Vermelho Nao Paga",
+        "canonical": "#E5484D",
+        "tonalRamp": ["#4D1819", "#8F2B2E", "#E5484D", "#F08B8E", "#FFE6E6"]
       },
       "monitor-accent": {
         "role": "secondary",
         "displayName": "Roxo Monitor",
         "canonical": "#8B5CF6",
-        "tonalRamp": [
-          "#2A1C4A",
-          "#4E348A",
-          "#6F4AC5",
-          "#8B5CF6",
-          "#A783F8",
-          "#C3AAFA",
-          "#DCCEFC",
-          "#F3EFFE"
-        ]
+        "tonalRamp": ["#2A1C4A", "#4E348A", "#6F4AC5", "#8B5CF6", "#C3AAFA", "#F3EFFE"]
       }
     },
     "typographyMeta": {
       "headline": {
-        "displayName": "Headline Mobile",
-        "purpose": "Título de tela (26px, menor que o web pra caber melhor)."
+        "displayName": "Headline",
+        "purpose": "Titulo de tela (22px, PlusJakartaSans_700Bold)."
       },
-      "title": { "displayName": "Title", "purpose": "Título de card/bloco." },
-      "body": { "displayName": "Body", "purpose": "Texto corrido padrão." },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Titulo de cartao ou bloco (17px, PlusJakartaSans_700Bold)."
+      },
+      "section": {
+        "displayName": "Section",
+        "purpose": "Cabecalho de secao dentro da tela (16px, PlusJakartaSans_700Bold)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Texto corrido (14px, PlusJakartaSans_400Regular)."
+      },
       "label": {
-        "displayName": "Overline/Label",
-        "purpose": "Rótulo de categoria/etapa, uppercase."
+        "displayName": "Label",
+        "purpose": "Rotulo curto acima de numero ou dentro de etiqueta (11px, PlusJakartaSans_600SemiBold)."
       }
     },
     "shadows": [
       {
+        "name": "soft",
+        "value": "shadowColor #0A2C63, shadowOpacity 0.07, shadowRadius 14, shadowOffset {0,4}, elevation 2",
+        "purpose": "A sombra do conceito. Separa cartao do fundo em vez de borda cinza forte; azulada, nao preta."
+      },
+      {
         "name": "driver-map-card",
         "value": "shadowOpacity 0.12, shadowRadius 20, shadowOffset {0,8}, elevation 8",
-        "purpose": "Único componente com sombra própria — cartão de mapa/bottom sheet do Motorista."
+        "purpose": "Mais funda e exclusiva do cartao flutuante de mapa do Modo Operacional, que precisa se descolar do mapa."
       }
     ],
     "motion": [
       {
         "name": "slide-release-spring",
         "value": "Animated.spring(bounciness: 4)",
-        "purpose": "SlideToAction volta ao início quando solto antes do limiar de 82%."
+        "purpose": "SlideToAction volta ao inicio quando solto antes do limiar de 82%."
       }
     ],
     "breakpoints": []
@@ -113,59 +113,97 @@
       "name": "Slide To Action",
       "kind": "custom",
       "refersTo": "slide-to-action",
-      "description": "Confirmação por arrasto (82% do percurso) — iniciar/encerrar viagem, confirmar embarque em lote.",
+      "description": "Confirmacao por arrasto (82% do percurso) para iniciar/encerrar viagem e confirmar embarque em lote.",
       "html": "<div class=\"ds-slide-track\"><span class=\"ds-slide-label\">Deslize para iniciar</span><div class=\"ds-slide-thumb\"><svg width=\"22\" height=\"22\" viewBox=\"0 0 24 24\" fill=\"none\"><path d=\"M9 6l6 6-6 6\" stroke=\"#fff\" stroke-width=\"2.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg></div></div>",
-      "css": ".ds-slide-track { position: relative; height: 56px; width: 100%; border-radius: 9999px; background: #1A2029; border: 1px solid #232A35; display: flex; align-items: center; justify-content: center; overflow: hidden; } .ds-slide-label { color: #9AA4B2; font-family: 'Inter', system-ui, sans-serif; font-size: 14px; font-weight: 600; padding: 0 64px; } .ds-slide-thumb { position: absolute; left: 0; top: 0; width: 56px; height: 56px; border-radius: 9999px; background: #4C86FF; display: flex; align-items: center; justify-content: center; }"
+      "css": ".ds-slide-track { position: relative; height: 56px; width: 100%; border-radius: 9999px; background: #FFFFFF; border: 1px solid #E6ECF5; display: flex; align-items: center; justify-content: center; overflow: hidden; } .ds-slide-label { color: #8794A5; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 14px; font-weight: 600; padding: 0 64px; } .ds-slide-thumb { position: absolute; left: 0; top: 0; width: 56px; height: 56px; border-radius: 9999px; background: #1769FF; display: flex; align-items: center; justify-content: center; }"
     },
     {
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "Botão principal fora do Modo Operacional (ex. \"Entrar\" no acesso rápido).",
-      "html": "<button class=\"ds-btn-primary\">Entrar</button>",
-      "css": ".ds-btn-primary { background: #3B6EF6; color: #fff; height: 48px; padding: 0 24px; border-radius: 10px; border: none; font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 16px; } .ds-btn-primary:active { transform: scale(0.98); }"
+      "description": "Botao principal de qualquer tela fora do Modo Operacional.",
+      "html": "<button class=\"ds-btn-primary\">Pagar agora R$ 660,00</button>",
+      "css": ".ds-btn-primary { background: #1769FF; color: #fff; height: 52px; padding: 0 24px; border-radius: 16px; border: none; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 700; font-size: 15px; } .ds-btn-primary:active { opacity: 0.9; }"
     },
     {
       "name": "Card",
       "kind": "card",
       "refersTo": "card",
-      "description": "Container padrão de conteúdo — plano no repouso.",
-      "html": "<div class=\"ds-card\"><p class=\"ds-card-title\">Próxima viagem</p><p class=\"ds-card-body\">07:15 — Rota Centro</p></div>",
-      "css": ".ds-card { background: #151A22; border-radius: 16px; padding: 16px; } .ds-card-title { font-family: 'Inter', system-ui, sans-serif; font-weight: 600; font-size: 16px; color: #F5F7FA; margin: 0 0 4px; } .ds-card-body { font-family: 'Inter', system-ui, sans-serif; font-weight: 400; font-size: 14px; color: #9AA4B2; margin: 0; }"
+      "description": "Container padrao de conteudo: branco sobre branco, separado por fio clarissimo e sombra macia.",
+      "html": "<div class=\"ds-card\"><p class=\"ds-card-title\">A receber (pendente)</p><p class=\"ds-card-value\">R$ 660,00</p></div>",
+      "css": ".ds-card { background: #FFFFFF; border: 1px solid #F0F3F8; border-radius: 16px; padding: 16px; box-shadow: 0 4px 14px rgba(10,44,99,.07); } .ds-card-title { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 600; font-size: 11px; color: #8794A5; margin: 0 0 2px; } .ds-card-value { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-weight: 700; font-size: 20px; color: #0F2748; margin: 0; }"
+    },
+    {
+      "name": "Status Pill",
+      "kind": "badge",
+      "refersTo": "status-pill",
+      "description": "Etiqueta de estado. O tom vem sempre de um enum do backend, nunca de escolha da tela.",
+      "html": "<span class=\"ds-pill ds-pill-ok\">Paga</span>",
+      "css": ".ds-pill { border-radius: 9999px; font-size: 13px; font-weight: 600; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; padding: 4px 10px; white-space: nowrap; } .ds-pill-ok { background: #E8F9F1; color: #0FA36B; }"
+    },
+    {
+      "name": "Account Header",
+      "kind": "custom",
+      "refersTo": "account-header",
+      "description": "O topo azul profundo das telas de dinheiro, que sangra ate a barra de status e carrega a faixa de saldo; a folha branca da tela sobe por cima dele.",
+      "html": "<div class=\"ds-acct\"><div class=\"ds-acct-top\"><b>Rotta</b><span>Transportadora</span></div><div class=\"ds-acct-band\"><span class=\"ds-acct-rot\">Saldo disponivel</span><span class=\"ds-acct-val\">R$ 1.248,00</span></div></div>",
+      "css": ".ds-acct { background: #0A3B85; padding: 16px 16px 26px; } .ds-acct-top { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; color: #FFFFFF; font-weight: 700; } .ds-acct-top span { color: #A9C6F5; display: block; font-size: 11px; font-weight: 400; } .ds-acct-band { background: #1180FE; border-radius: 16px; margin-top: 12px; padding: 16px; } .ds-acct-rot { color: #FFFFFF; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 13px; font-weight: 600; opacity: .92; display: block; } .ds-acct-val { color: #FFFFFF; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; font-size: 27px; font-weight: 700; }"
     }
   ],
   "narrative": {
-    "northStar": "A Torre de Controle",
-    "overview": "Mesmo sistema visual do apps/web/apps/admin (mesmos tokens, packages/theme) — escuro por padrão, azul único como marca, profundidade por tom de superfície, Inter em tudo. O app troca inteiramente de navegação por papel (Motorista, Monitor, Responsável, Admin reduzido), mas a linguagem visual de base é uma só.\n\nA única exceção deliberada é o Modo Operacional (telas de Motorista/Monitor durante a viagem): usa uma paleta driver* própria, pedida explicitamente pelo usuário com valores hex exatos — nunca aproximar. Essa identidade fica isolada nessas telas; Responsável e Admin reduzido nunca a herdam.",
+    "northStar": "O conceito do fundador, ao pe da letra",
+    "overview": "App unico pra Motorista, Monitor, Responsavel, Gestor e Admin Rotta reduzido. Sempre claro: o tema escuro continua existindo em packages/theme, mas nenhuma tela chega nele, porque o conceito aprovado e inteiramente claro.\n\nNenhum valor deste sistema foi escolhido por gosto. Em 16/10/2026 o fundador olhou o app depois de duas levas de redesenho e disse, tres vezes, que estava com cara de IA. Estava. Os dois prints de conceito que ele tinha mandado foram recuperados do transcrito da sessao e amostrados pixel a pixel com Pillow, contando a cor mais frequente de cada regiao. O azul que saiu dai, #1769FF, e exatamente o que ele mesmo ja tinha dado como identidade em 31/08/2026: o conceito nao trouxe azul novo, trouxe o azul da marca aplicado ao app inteiro.\n\nQuatro camadas que o app nunca tinha escolhido: a letra (era a fonte do sistema em todas as telas), a tinta (era preto neutro, agora e azul-marinho), a profundidade (era borda cinza, agora e sombra macia azulada) e a moldura (barra de abas e cabecalho eram os padroes do React Navigation).\n\nA unica excecao deliberada e o Modo Operacional (Motorista/Monitor durante a viagem), que usa a paleta driver* propria, com valores exatos dados pelo fundador. Essa identidade fica isolada nessas telas; Responsavel, Gestor e Admin reduzido nunca a herdam.",
     "keyCharacteristics": [
-      "Um app, quatro papéis, uma linguagem visual — navegação muda, tokens de base não.",
-      "Modo Operacional (Motorista/Monitor) tem paleta driver* exclusiva, com valores exatos do usuário.",
-      "Componente de assinatura: SlideToAction — confirmação por arrasto, nunca por toque simples.",
-      "PIN/biometria são atalhos opcionais de reentrada — nunca obrigatórios.",
-      "Nenhum gráfico/histórico mostra dado fabricado — sempre real ou estado vazio honesto."
+      "Um app, cinco papeis, uma linguagem visual: a navegacao muda, os tokens de base nao.",
+      "Sempre claro. O tema escuro existe no pacote e nenhuma tela chega nele.",
+      "Plus Jakarta Sans em todo texto, e cada peso e uma familia registrada, nao um numero.",
+      "Modo Operacional tem paleta driver* exclusiva, com valores exatos do fundador.",
+      "Componente de assinatura: SlideToAction, confirmacao por arrasto e nunca por toque simples.",
+      "Todo estado semantico tem par: a cor do texto e o fundo tingido dela.",
+      "Nenhum grafico ou contador mostra dado fabricado: sempre real ou estado vazio honesto."
     ],
     "rules": [
       {
+        "name": "The Weight-Is-A-Family Rule",
+        "body": "No React Native com fonte propria o peso nao e propriedade: cada peso e uma familia registrada (PlusJakartaSans_600SemiBold, nao 'Plus Jakarta Sans' + 600). Pedir peso 700 numa familia que so tem o regular faz o Android engrossar por software e sai o borrao que denuncia app mal feito. Todo texto passa por Texto, que mora em @rotta/ui/native pra valer tambem dentro dos componentes compartilhados: familia explicita no estilo vence, e a derivacao por peso entra quando ninguem escolheu familia.",
+        "section": "typography"
+      },
+      {
         "name": "The Driver Isolation Rule",
-        "body": "A paleta driver* só existe nas telas de Modo Operacional. Nunca vaza pra Responsável, Admin reduzido, ou qualquer tela fora desse contexto.",
+        "body": "A paleta driver* so existe nas telas de Modo Operacional. Nunca vaza pra Responsavel, Gestor, Admin reduzido ou qualquer tela fora desse contexto.",
         "section": "colors"
       },
       {
+        "name": "The Tinted State Rule",
+        "body": "Todo estado semantico tem um par: a cor do texto (success) e o fundo tingido dela (successMuted). Fundo de estado nunca se faz com cor mais sufixo de opacidade, que no React Native rende cor invalida e cai no transparente.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two-Line Rule",
+        "body": "border separa o cartao do fundo; hairline separa linhas dentro do cartao. Usar border dentro de um cartao devolve a aparencia de tabela que o conceito justamente abandonou.",
+        "section": "elevation"
+      },
+      {
         "name": "The Discrete Map-Card Rule",
-        "body": "Só o cartão flutuante de mapa/bottom sheet do Modo Operacional recebe sombra própria e discreta; todo o resto segue a regra geral de sem sombra em card padrão.",
+        "body": "A sombra padrao de cartao e a soft, macia e azulada. So o cartao flutuante de mapa do Modo Operacional usa a driver-map-card, mais funda, porque precisa se descolar do mapa.",
         "section": "elevation"
       }
     ],
     "dos": [
-      "Do manter a paleta driver* restrita às telas de Modo Operacional.",
-      "Do usar SlideToAction (não um botão de toque simples) pra qualquer ação irreversível/crítica de viagem.",
-      "Do manter PIN e biometria como atalhos opcionais.",
-      "Do mostrar sempre dado real ou estado vazio honesto em gráficos/históricos."
+      "Do passar todo texto por Texto, incluindo dentro de @rotta/ui/native.",
+      "Do usar EmptyState sempre que uma lista pode estar vazia, com uma frase que ensina o proximo passo.",
+      "Do mostrar o que nao existe apagado, com o motivo a mostra, em vez de esconder ou deixar ativo e dar erro no toque.",
+      "Do manter a paleta driver* restrita ao Modo Operacional.",
+      "Do usar SlideToAction pra qualquer acao irreversivel de viagem.",
+      "Do manter PIN e biometria como atalhos opcionais de reentrada."
     ],
     "donts": [
-      "Don't deixar a paleta driver* vazar pra telas de Responsável ou Admin reduzido.",
-      "Don't adicionar sombra genérica em card fora do cartão de mapa do Motorista.",
-      "Don't tornar PIN ou biometria obrigatório, ou condicionar login a eles."
+      "Don't declarar fontFamily a mao numa tela: quem resolve familia e Texto.",
+      "Don't pintar fundo com cor mais sufixo de opacidade.",
+      "Don't usar border como divisoria dentro de um cartao.",
+      "Don't deixar a paleta driver* vazar pra telas de Responsavel, Gestor ou Admin reduzido.",
+      "Don't inventar numero: dado que falta aparece como traco, nunca como zero.",
+      "Don't tornar PIN ou biometria obrigatorio, ou condicionar login a eles."
     ]
   }
 }
