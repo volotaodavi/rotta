@@ -15,9 +15,11 @@ import { useTheme } from "@/providers/theme-provider";
  * "app ainda não iniciou"; esta cobre "app já iniciou, mas ainda
  * decidindo pra onde navegar", que a splash nativa não sabe fazer.
  *
- * Fundo azul da marca (`theme.colors.primary`) + símbolo "R" centralizado
- * (Seção 1: "fundo azul Rotta, símbolo R centralizado, nome ROTTA
- * abaixo"), com um fade + scale muito sutil (nunca giro/3D/partículas) —
+ * Fundo azul da marca + símbolo "R" centralizado com a assinatura
+ * oficial abaixo (Seção 1: "fundo azul Rotta, símbolo R centralizado,
+ * nome ROTTA abaixo" — o nome vem do arquivo da assinatura, na versão
+ * de letras brancas, e não digitado na fonte da interface), com um
+ * fade + scale muito sutil (nunca giro/3D/partículas) —
  * respeita `prefers-reduced-motion` (`AccessibilityInfo.isReduceMotionEnabled`,
  * equivalente nativo) pulando direto pro estado final quando ativado.
  *
@@ -66,7 +68,7 @@ export function AppSplashScreen(): JSX.Element {
       accessibilityLabel="Carregando a Rotta"
     >
       <Animated.View style={{ opacity, transform: [{ scale }] }}>
-        <RottaLogo size={88} variant="full" textColor={theme.colors.onPrimary} />
+        <RottaLogo size={88} variant="full" tom="claro" />
       </Animated.View>
     </View>
   );

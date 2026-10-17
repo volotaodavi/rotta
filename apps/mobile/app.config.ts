@@ -60,7 +60,12 @@ export default (): ExpoConfig => ({
   icon: "./assets/icon.png",
   splash: {
     image: "./assets/splash-icon.png",
-    backgroundColor: "#0B0F14",
+    // O azul profundo da marca, o MESMO de `AppSplashScreen`
+    // (`theme.colors.brandDeep`). Era "#0B0F14", o quase-preto do tema
+    // escuro que nenhuma tela do app usa mais: o sistema abria em preto
+    // e, quando o bundle carregava, a tela virava azul de uma vez. Duas
+    // splashes seguidas de cores diferentes a cada abertura fria.
+    backgroundColor: "#0A3B85",
     resizeMode: "contain",
   },
   ios: {
