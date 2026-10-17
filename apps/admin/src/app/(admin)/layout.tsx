@@ -202,6 +202,7 @@ function TopbarSearch(): JSX.Element {
         type="search"
         value={valor}
         onChange={(event) => setValor(event.target.value)}
+        aria-label="Buscar empresa por nome ou CNPJ"
         placeholder="Buscar empresa por nome ou CNPJ"
         className="w-full bg-transparent text-sm text-text placeholder:text-placeholder outline-none"
       />

@@ -106,6 +106,7 @@ export default function MonitoramentoPage(): JSX.Element {
                 setQuery(event.target.value);
                 setSelectedTripId(null);
               }}
+              aria-label="Buscar viagem por transportadora, cidade, motorista, placa ou CNPJ"
               placeholder="Nome da transportadora, cidade, motorista, placa ou CNPJ"
               className="h-11 w-full rounded-md border border-border bg-surface pl-10 pr-4 text-sm text-text outline-none transition-colors duration-150 placeholder:text-placeholder focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
             />

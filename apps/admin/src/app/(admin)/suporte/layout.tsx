@@ -74,6 +74,7 @@ export default function SuporteLayout({ children }: { children: ReactNode }): JS
               type="search"
               value={busca}
               onChange={(event) => setBusca(event.target.value)}
+              aria-label="Buscar conversa"
               placeholder="Buscar conversa"
               className="w-full bg-transparent text-sm text-text placeholder:text-placeholder outline-none"
             />

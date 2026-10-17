@@ -72,6 +72,7 @@ export default function VerificacaoIdentidadeListPage(): JSX.Element {
             setPage(1);
             setSearch(event.target.value);
           }}
+          aria-label="Buscar pessoa por nome, e-mail ou CPF"
           placeholder="Buscar por nome, e-mail ou CPF..."
           className="h-11 w-full max-w-md rounded-md border border-border bg-surface px-4 text-sm text-text placeholder:text-placeholder outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
         />
