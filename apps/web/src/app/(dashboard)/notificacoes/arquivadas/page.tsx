@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
+import { Button, buttonVariants, Card, EmptyState, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 
 import { NotificationPriorityBadge } from "@/features/notifications/components/notification-priority-badge";
@@ -35,9 +35,10 @@ export default function NotificacoesArquivadasPage(): JSX.Element {
               <Spinner size="lg" />
             </div>
           ) : data.items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhuma notificação arquivada ainda.
-            </Typography>
+            <EmptyState
+              title="Nenhuma notificação arquivada"
+              description="O que você arquivar na Central de Notificações fica guardado aqui, fora da sua caixa de entrada."
+            />
           ) : (
             <div className="flex flex-col gap-2">
               {data.items.map((notification) => (

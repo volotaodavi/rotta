@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@rotta/auth/web";
-import { Badge, Button, Card, ErrorState, Spinner, Typography } from "@rotta/ui/web";
+import { Badge, Button, Card, EmptyState, ErrorState, Spinner, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { IdentityVerificationStatus } from "@rotta/api-client";
@@ -116,9 +116,10 @@ export default function EquipePage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : !equipe || equipe.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhum motorista, monitor ou gestor cadastrado ainda.
-            </Typography>
+            <EmptyState
+              title="Sua equipe está vazia"
+              description="Convide um motorista, monitor ou gestor e ele aparece aqui assim que aceitar o convite."
+            />
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {equipe.map((membro) => (

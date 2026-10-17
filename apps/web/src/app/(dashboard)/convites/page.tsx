@@ -6,6 +6,7 @@ import {
   Badge,
   Button,
   Card,
+  EmptyState,
   ErrorState,
   FormField,
   Input,
@@ -164,9 +165,10 @@ export default function ConvitesPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : !items || items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhum convite ainda.
-            </Typography>
+            <EmptyState
+              title="Nenhum convite ainda"
+              description="Pré-cadastre o celular de um motorista ou monitor e o vínculo dele é liberado na hora em que ele informar o código da sua empresa."
+            />
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {items.map((item) => (

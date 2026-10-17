@@ -1,6 +1,15 @@
 "use client";
 
-import { Card, ErrorState, Pagination, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import {
+  Card,
+  EmptyState,
+  ErrorState,
+  Pagination,
+  Select,
+  Spinner,
+  Table,
+  Typography,
+} from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { TransportRequest, TransportRequestStatus } from "@rotta/api-client";
@@ -64,9 +73,10 @@ export default function SolicitacoesTransportePage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : data && data.items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhuma solicitação de transporte recebida ainda.
-            </Typography>
+            <EmptyState
+              title="Nenhuma solicitação recebida ainda"
+              description="Famílias que encontrarem sua transportadora no Marketplace aparecem aqui para você aceitar ou recusar."
+            />
           ) : (
             data && (
               <>

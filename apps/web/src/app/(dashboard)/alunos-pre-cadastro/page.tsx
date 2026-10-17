@@ -6,6 +6,7 @@ import {
   Badge,
   Button,
   Card,
+  EmptyState,
   ErrorState,
   FormField,
   Input,
@@ -164,9 +165,10 @@ export default function AlunosPreCadastroPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : !items || items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhum pré-cadastro ainda.
-            </Typography>
+            <EmptyState
+              title="Nenhum pré-cadastro ainda"
+              description="Use o formulário acima para adiantar o cadastro de um aluno antes de a família ter conta na Rotta."
+            />
           ) : (
             <div className="flex flex-col divide-y divide-border">
               {items.map((item) => (

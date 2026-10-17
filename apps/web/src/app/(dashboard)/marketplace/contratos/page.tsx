@@ -1,6 +1,6 @@
 "use client";
 
-import { Card, ErrorState, Select, Spinner, Table, Typography } from "@rotta/ui/web";
+import { Card, EmptyState, ErrorState, Select, Spinner, Table, Typography } from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { Contract, ContractStatus } from "@rotta/api-client";
@@ -59,9 +59,10 @@ export default function ContratosPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : !items || items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhum contrato encontrado.
-            </Typography>
+            <EmptyState
+              title="Nenhum contrato encontrado"
+              description="Um contrato nasce quando você aceita uma solicitação de transporte. Nenhuma foi aceita até agora."
+            />
           ) : (
             <Table<Contract>
               columns={[

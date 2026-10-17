@@ -4,6 +4,7 @@ import {
   Badge,
   Button,
   Card,
+  EmptyState,
   ErrorState,
   Modal,
   Pagination,
@@ -122,9 +123,10 @@ function CompanyPlansSection(): JSX.Element {
             isRetrying={isFetching}
           />
         ) : data && data.items.length === 0 ? (
-          <Typography variant="body" color="muted">
-            Nenhuma empresa encontrada.
-          </Typography>
+          <EmptyState
+            title="Nenhuma empresa encontrada"
+            description="Nenhuma transportadora bate com a busca atual."
+          />
         ) : (
           <div className="divide-y divide-border">
             {data?.items.map((company) => (
@@ -274,9 +276,10 @@ function PlanNoticesSection(): JSX.Element {
             isRetrying={isFetching}
           />
         ) : data && data.items.length === 0 ? (
-          <Typography variant="body" color="muted">
-            Nenhum aviso criado ainda.
-          </Typography>
+          <EmptyState
+            title="Nenhum aviso de plano criado"
+            description="Avisos de plano aparecem para a transportadora dentro do painel dela."
+          />
         ) : (
           <div className="divide-y divide-border">
             {data?.items.map((notice) => (

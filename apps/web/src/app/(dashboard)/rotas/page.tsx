@@ -3,12 +3,13 @@
 import {
   Badge,
   Button,
+  buttonVariants,
   Card,
+  EmptyState,
   ErrorState,
   Spinner,
   Table,
   Typography,
-  buttonVariants,
 } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
@@ -135,9 +136,10 @@ export default function RotasPage(): JSX.Element {
               isRetrying={isFetching}
             />
           ) : items.length === 0 ? (
-            <Typography variant="body" color="muted">
-              Nenhuma rota ainda.
-            </Typography>
+            <EmptyState
+              title="Nenhuma rota cadastrada"
+              description="Quem cadastra rota na Rotta é o suporte. Fale com a gente e a rota aparece aqui com as paradas já no mapa."
+            />
           ) : (
             <Table<Route>
               columns={[
