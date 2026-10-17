@@ -1,3 +1,5 @@
+import { LifeBuoy } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import type { AdminSupportStackParamList } from "@/navigation/types";
@@ -49,7 +51,12 @@ export function AdminChamadosScreen({ navigation }: Props): JSX.Element {
   return (
     <VehicleScreen>
       {!data || data.items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum chamado no momento.</Texto>
+        <EmptyState
+          title="Nenhum chamado aberto"
+          description="Quando alguém pedir suporte pelo app, o chamado aparece aqui."
+          icon={<LifeBuoy size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         data.items.map((ticket) => (
           <Pressable

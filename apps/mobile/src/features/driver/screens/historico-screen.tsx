@@ -1,6 +1,8 @@
 import { useAuth } from "@rotta/auth/native";
+import { Bus } from "@rotta/icons/native";
 import { RottaMap, type RottaMapMarker } from "@rotta/maps/native";
 import { driverShadow } from "@rotta/theme";
+import { EmptyState } from "@rotta/ui/native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
@@ -147,7 +149,12 @@ function RouteHistorySection({ rota, filtro }: { rota: Route; filtro: FiltroStat
       {isLoading ? (
         <ActivityIndicator color={accentColor} />
       ) : viagens.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhuma viagem nesta aba.</Texto>
+        <EmptyState
+          title="Nenhuma viagem aqui"
+          description="As viagens aparecem assim que você iniciar a primeira."
+          icon={<Bus size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         viagens.map((trip) => <TripHistoryCard key={trip.id} trip={trip} />)
       )}

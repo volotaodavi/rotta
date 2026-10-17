@@ -1,3 +1,5 @@
+import { ClipboardCheck } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { useState } from "react";
 import { StyleSheet, Switch, View } from "react-native";
 
@@ -87,7 +89,12 @@ export function ChecklistScreen(): JSX.Element {
       </VehicleCard>
 
       {checklists?.items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum checklist registrado ainda.</Texto>
+        <EmptyState
+          title="Nenhum checklist registrado"
+          description="O checklist antes de sair é o que prova que o veículo saiu em ordem."
+          icon={<ClipboardCheck size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : null}
 
       {checklists?.items.map((checklist) => (

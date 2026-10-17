@@ -1,4 +1,6 @@
 import { ApiError } from "@rotta/api-client";
+import { Users } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -111,7 +113,12 @@ export function EmpresaVeiculoVinculosScreen({ route }: Props): JSX.Element {
         Histórico
       </Texto>
       {!history || history.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum vínculo registrado ainda.</Texto>
+        <EmptyState
+          title="Nenhum vínculo registrado"
+          description="Vincule um motorista ou monitor para ele operar este veículo."
+          icon={<Users size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         history.map((a) => (
           <VehicleCard key={a.id} style={styles.card}>

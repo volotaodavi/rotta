@@ -1,4 +1,5 @@
 import { Star } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { useTransporterDetail } from "../hooks/use-transporters";
@@ -198,7 +199,12 @@ export function TransportadorDetalhesScreen({ route, navigation }: Props): JSX.E
       <View style={styles.secaoAvaliacoes}>
         <Texto style={[styles.secao, { color: theme.colors.text }]}>Avaliações recentes</Texto>
         {data.avaliacoesRecentes.length === 0 ? (
-          <Texto style={{ color: theme.colors.textMuted }}>Nenhuma avaliação ainda.</Texto>
+          <EmptyState
+            title="Nenhuma avaliação ainda"
+            description="As famílias avaliam depois que o transporte começa."
+            icon={<Star size={28} color={theme.colors.primary} />}
+            theme={theme}
+          />
         ) : (
           data.avaliacoesRecentes.map((avaliacao, index) => (
             <VehicleCard key={`${avaliacao.responsavelNome}-${index}`}>

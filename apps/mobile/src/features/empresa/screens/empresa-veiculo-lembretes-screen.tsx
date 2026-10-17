@@ -1,3 +1,5 @@
+import { Bell } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -76,7 +78,12 @@ export function EmpresaVeiculoLembretesScreen({ route }: Props): JSX.Element {
       </VehicleCard>
 
       {!reminders || reminders.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum lembrete cadastrado ainda.</Texto>
+        <EmptyState
+          title="Nenhum lembrete"
+          description="Cadastre vencimentos para não perder licenciamento e manutenção."
+          icon={<Bell size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         reminders.map((r) => (
           <VehicleCard key={r.id} style={styles.card}>

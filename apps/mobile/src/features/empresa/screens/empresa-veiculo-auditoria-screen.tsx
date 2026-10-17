@@ -1,5 +1,8 @@
 import {} from "react-native";
 
+import { History } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
+
 import type { EmpresaFrotaStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
@@ -24,7 +27,12 @@ export function EmpresaVeiculoAuditoriaScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       {!data || data.items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhuma alteração registrada ainda.</Texto>
+        <EmptyState
+          title="Nenhuma alteração registrada"
+          description="Toda mudança neste veículo passa a aparecer aqui, com autor e data."
+          icon={<History size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         data.items.map((log) => (
           <VehicleCard key={log.id} style={{ gap: 4 }}>

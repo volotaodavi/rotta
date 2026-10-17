@@ -1,4 +1,5 @@
 import { GraduationCap, MapPin } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
@@ -242,7 +243,12 @@ export function EmpresaRotaDetalheScreen({ route }: Props): JSX.Element {
         <SentidoSwitch value={sentido} onChange={setSentido} />
 
         {paradasNoSentido.length === 0 ? (
-          <Texto style={{ color: theme.colors.textMuted }}>Nenhuma parada cadastrada ainda.</Texto>
+          <EmptyState
+            title="Nenhuma parada cadastrada"
+            description="A rota precisa de paradas para o motorista saber onde ir."
+            icon={<MapPin size={28} color={theme.colors.primary} />}
+            theme={theme}
+          />
         ) : (
           paradasNoSentido.map((parada, indice) => {
             const direcao = getStopDirection(parada, alunos);

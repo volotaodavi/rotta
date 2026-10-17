@@ -1,3 +1,5 @@
+import { FileText } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
@@ -81,7 +83,12 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
       </View>
 
       {!items || items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum contrato encontrado.</Texto>
+        <EmptyState
+          title="Nenhum contrato"
+          description="Os contratos aparecem quando uma família aceita a sua proposta."
+          icon={<FileText size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         items.map((contract) => (
           <Pressable

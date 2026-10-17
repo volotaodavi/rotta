@@ -161,12 +161,20 @@ function montarRastro(error: Error, errorInfo: ErrorInfo): string {
   return `${tecnico}\n--- component stack ---${secao}`;
 }
 
-/** Cópia literal dos tokens do tema escuro (`packages/theme/src/tokens/colors.ts`) — ver nota da classe acima sobre o porquê de não vir de `useTheme`. */
+/**
+ * Cópia literal dos tokens do app (`providers/paleta-do-conceito.ts`) —
+ * ver nota da classe acima sobre o porquê de não vir de `useTheme`.
+ *
+ * Eram os tokens do tema ESCURO, copiados numa época em que o app
+ * seguia o sistema operacional. O app é sempre claro desde 15/09/2026:
+ * quem batia nesta tela via o aplicativo inteiro branco virar uma tela
+ * preta, e tela preta depois de um erro parece o aplicativo morrendo.
+ */
 const COLORS = {
-  background: "#0B0F14",
-  text: "#F5F7FA",
-  textMuted: "#9AA4B2",
-  primary: "#3B6EF6",
+  background: "#FFFFFF",
+  text: "#0F2748",
+  textMuted: "#8794A5",
+  primary: "#1769FF",
 };
 /** Texto do botão fica sempre branco em cima de `COLORS.primary` — extraído da `StyleSheet` porque é o único tom que não tem token dedicado (mesmo padrão de `AuthButton`). */
 const BOTAO_TEXT_COLOR = "#FFFFFF";

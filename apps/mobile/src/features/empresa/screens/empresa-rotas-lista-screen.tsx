@@ -1,3 +1,5 @@
+import { Route } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useRoutesList } from "../hooks/use-empresa-routes";
@@ -61,7 +63,12 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
       <VehicleButton label="+ Nova rota" onPress={() => navigation.navigate("Novo")} />
 
       {!data || data.items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhuma rota cadastrada ainda.</Texto>
+        <EmptyState
+          title="Nenhuma rota cadastrada"
+          description="A rota é o que liga veículo, motorista, escola e alunos."
+          icon={<Route size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         data.items.map((route) => (
           <Pressable

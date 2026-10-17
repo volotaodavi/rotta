@@ -1,3 +1,5 @@
+import { Backpack } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useStudentsList } from "../hooks/use-students";
@@ -46,7 +48,12 @@ export function AlunosListaScreen({ navigation }: Props): JSX.Element {
       <VehicleButton label="+ Adicionar aluno" onPress={() => navigation.navigate("AlunoNovo")} />
 
       {!data || data.items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum aluno cadastrado ainda.</Texto>
+        <EmptyState
+          title="Nenhum aluno cadastrado"
+          description="Cadastre o aluno para solicitar transporte e acompanhar a viagem."
+          icon={<Backpack size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         data.items.map((aluno) => (
           <Pressable

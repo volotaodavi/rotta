@@ -207,6 +207,11 @@ export function RecenterButton({
   );
 }
 
+/* O cartão é sempre azul (ver `CardGradientBackground`), então aqui o
+   branco não depende de tema: é o mesmo `onPrimary` da paleta, extraído
+   para fora da StyleSheet porque ela não enxerga o tema. */
+const BRANCO_SOBRE_AZUL = "#FFFFFF";
+
 const styles = StyleSheet.create({
   card: { padding: 16 },
   cardRow: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
@@ -216,7 +221,7 @@ const styles = StyleSheet.create({
   dotDestino: { borderRadius: 5, height: 10, width: 10 },
   dotOrigem: {
     backgroundColor: "transparent",
-    borderColor: "#ffffff",
+    borderColor: BRANCO_SOBRE_AZUL,
     borderRadius: 4,
     borderWidth: 2,
     height: 8,

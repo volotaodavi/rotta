@@ -1,4 +1,5 @@
-import { Plus } from "@rotta/icons/native";
+import { Plus, LifeBuoy } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { useSupportTickets } from "../hooks/use-support";
@@ -58,7 +59,12 @@ export function ChamadosScreen({ navigation }: Props): JSX.Element {
       />
 
       {!data || data.items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum chamado registrado ainda.</Texto>
+        <EmptyState
+          title="Nenhum chamado aberto"
+          description="Se algo der errado, abra um chamado e a Rotta responde por aqui."
+          icon={<LifeBuoy size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         data.items.map((ticket) => (
           <Pressable

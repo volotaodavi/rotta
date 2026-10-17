@@ -1,3 +1,5 @@
+import { UserPlus } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import { isValidBrazilianMobile } from "@rotta/validators";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -119,7 +121,12 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
       </VehicleCard>
 
       {!data || data.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum pré-cadastro ainda.</Texto>
+        <EmptyState
+          title="Nenhum pré-cadastro"
+          description="Cadastre o aluno e o celular do responsável antes de ele ter conta."
+          icon={<UserPlus size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         data.map((item) => (
           <VehicleCard key={item.id}>

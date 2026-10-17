@@ -59,12 +59,14 @@ export function AppSplashScreen(): JSX.Element {
 
   return (
     <View
-      style={[styles.container, { backgroundColor: theme.colors.primary }]}
+      /* Azul profundo, como a tela 01 do conceito: a abertura é o
+         tom escuro da marca, não o azul de botão. */
+      style={[styles.container, { backgroundColor: theme.colors.brandDeep }]}
       accessibilityRole="none"
       accessibilityLabel="Carregando a Rotta"
     >
       <Animated.View style={{ opacity, transform: [{ scale }] }}>
-        <RottaLogo size={88} variant="full" textColor="#FFFFFF" />
+        <RottaLogo size={88} variant="full" textColor={theme.colors.onPrimary} />
       </Animated.View>
     </View>
   );

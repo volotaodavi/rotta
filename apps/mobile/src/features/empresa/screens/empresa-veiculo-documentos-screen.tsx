@@ -1,3 +1,5 @@
+import { FileText } from "@rotta/icons/native";
+import { EmptyState } from "@rotta/ui/native";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
@@ -123,7 +125,12 @@ export function EmpresaVeiculoDocumentosScreen({ route }: Props): JSX.Element {
           <VehicleButton label="Tentar novamente" onPress={() => void refetch()} />
         </View>
       ) : !data || data.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>Nenhum documento enviado ainda.</Texto>
+        <EmptyState
+          title="Nenhum documento enviado"
+          description="CRLV e seguro ficam aqui, à mão numa fiscalização."
+          icon={<FileText size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         data.map((document) => (
           <VehicleCard key={document.id}>
