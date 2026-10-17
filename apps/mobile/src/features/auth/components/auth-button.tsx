@@ -49,7 +49,7 @@ export function AuthButton({
           borderColor,
           borderWidth: variant === "secondary" ? 1 : 0,
           opacity: isDisabled ? 0.6 : pressed ? 0.85 : 1,
-          paddingVertical: theme.spacing[3] + 2,
+          paddingVertical: theme.spacing[4],
           paddingHorizontal: theme.spacing[6],
           // `radius.lg` (Dossiê 15 — redesign 15/09/2026, print de
           // referência real da Rotta anexado pelo usuário: botão
@@ -75,6 +75,9 @@ export function AuthButton({
 }
 
 const styles = StyleSheet.create({
-  base: { alignItems: "center", justifyContent: "center" },
-  label: { fontWeight: "600" },
+  /* 52 de altura e peso 700, igual ao botão do resto do app: no
+     conceito o botão primário é a peça mais pesada da tela, e a
+     entrada é a primeira tela que qualquer pessoa vê. */
+  base: { alignItems: "center", justifyContent: "center", minHeight: 52 },
+  label: { fontWeight: "700" },
 });

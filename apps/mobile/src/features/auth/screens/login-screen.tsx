@@ -219,18 +219,21 @@ export function LoginScreen({ navigation }: Props): JSX.Element {
         leftIcon={<Lock size={18} color={theme.colors.textMuted} />}
       />
 
+      {/* Alinhado à direita, logo abaixo da senha e ANTES do botão,
+          como na tela 03 do conceito: é ali que a pessoa procura,
+          enquanto ainda está olhando o campo que ela não lembra. */}
+      <Texto
+        style={[styles.linkDaSenha, { color: theme.colors.primary }]}
+        onPress={() => navigation.navigate("EsqueciSenha")}
+      >
+        Esqueceu sua senha?
+      </Texto>
+
       {errorMessage ? (
         <Texto style={[styles.error, { color: theme.colors.danger }]}>{errorMessage}</Texto>
       ) : null}
 
       <AuthButton label="Entrar" onPress={() => void handleLogin()} isLoading={isSubmitting} />
-
-      <Texto
-        style={[styles.link, { color: theme.colors.primary }]}
-        onPress={() => navigation.navigate("EsqueciSenha")}
-      >
-        Esqueci minha senha
-      </Texto>
 
       <Texto style={[styles.footer, { color: theme.colors.textMuted }]}>
         Não tem uma conta?{" "}
@@ -250,7 +253,7 @@ const styles = StyleSheet.create({
   footer: { fontSize: 14, marginTop: 4, textAlign: "center" },
   footerLink: { fontWeight: "700" },
   headingBlock: { gap: 4, marginBottom: 4, marginTop: 8 },
-  link: { fontSize: 14, fontWeight: "600", textAlign: "center" },
+  linkDaSenha: { alignSelf: "flex-end", fontSize: 13, fontWeight: "600", marginTop: -8 },
   profileList: { gap: 12 },
   subtitle: { fontSize: 14 },
   title: { fontWeight: "700" },

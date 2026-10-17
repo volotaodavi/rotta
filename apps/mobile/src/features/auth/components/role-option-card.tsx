@@ -36,9 +36,10 @@ export function RoleOptionCard({
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
+        theme.elevation.soft.native,
         {
-          backgroundColor: theme.colors.surfaceElevated,
-          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.card,
+          borderColor: theme.colors.hairline,
           borderRadius: theme.radius.lg,
           padding: theme.spacing[4],
           gap: theme.spacing[3],

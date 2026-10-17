@@ -92,9 +92,7 @@ export function OnboardingScreen({ navigation }: Props): JSX.Element {
 
   return (
     <View style={[styles.flex, { backgroundColor: theme.colors.background }]}>
-      <View style={[styles.progressRow, { paddingTop: insets.top + theme.spacing[4] }]}>
-        <ProgressDots total={SLIDES.length} activeIndex={activeIndex} />
-      </View>
+      <View style={{ paddingTop: insets.top + theme.spacing[4] }} />
 
       <ScrollView
         ref={scrollRef}
@@ -139,6 +137,13 @@ export function OnboardingScreen({ navigation }: Props): JSX.Element {
           {!isLastSlide ? (
             <AuthButton label="Pular" variant="ghost" onPress={() => void goToRoleSelection()} />
           ) : null}
+        </View>
+
+        {/* Os pontos vão embaixo do botão, como na tela 02 do conceito:
+            em cima eles competem com a ilustração e ninguém lê "estou
+            no primeiro de três" antes de olhar a imagem. */}
+        <View style={styles.progressRow}>
+          <ProgressDots total={SLIDES.length} activeIndex={activeIndex} />
         </View>
       </View>
     </View>

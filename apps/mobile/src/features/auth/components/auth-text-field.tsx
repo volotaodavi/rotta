@@ -58,7 +58,7 @@ export function AuthTextField({
               // (mesmo raciocínio de escopo isolado de `auth-button.tsx`).
               borderRadius: theme.radius.lg,
               paddingHorizontal: theme.spacing[4],
-              paddingVertical: theme.spacing[3] + 2,
+              paddingVertical: theme.spacing[4],
               fontSize: theme.typography.body.fontSize,
             },
             leftIcon ? styles.inputWithLeftIcon : null,
