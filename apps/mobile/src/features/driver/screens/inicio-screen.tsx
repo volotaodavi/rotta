@@ -100,7 +100,11 @@ export function DriverInicioScreen(): JSX.Element {
         <PanelGreeting nome={user?.nome ?? ""} />
         <Texto style={[styles.titulo, { color: theme.colors.text }]}>Suas rotas</Texto>
         {rotas.map((rota) => (
-          <Pressable key={rota.id} onPress={() => setSelectedRouteId(rota.id)}>
+          <Pressable
+            accessibilityRole="button"
+            key={rota.id}
+            onPress={() => setSelectedRouteId(rota.id)}
+          >
             <VehicleCard
               style={[
                 inicioStyles.driverCard,

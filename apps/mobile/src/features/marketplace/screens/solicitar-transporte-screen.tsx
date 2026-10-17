@@ -206,7 +206,11 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
         ) : (
           <View style={styles.lista}>
             {students.map((student) => (
-              <Pressable key={student.id} onPress={() => setSelectedStudentId(student.id)}>
+              <Pressable
+                accessibilityRole="button"
+                key={student.id}
+                onPress={() => setSelectedStudentId(student.id)}
+              >
                 <VehicleCard
                   style={
                     selectedStudentId === student.id
@@ -269,6 +273,7 @@ export function SolicitarTransporteScreen({ route, navigation }: Props): JSX.Ele
               <View style={styles.lista}>
                 {(schoolResults?.items ?? []).map((school) => (
                   <Pressable
+                    accessibilityRole="button"
                     key={school.id}
                     onPress={() => {
                       setSchoolId(school.id);

@@ -75,6 +75,7 @@ export function HistoricoScreen({ navigation }: Props): JSX.Element {
         return (
           <VehicleCard key={notification.id}>
             <Pressable
+              accessibilityRole="button"
               onPress={() => navigation.navigate("Detalhes", { notificationId: notification.id })}
             >
               <View style={styles.linhaTitulo}>

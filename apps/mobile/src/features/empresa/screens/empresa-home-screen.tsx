@@ -139,7 +139,7 @@ export function EmpresaHomeScreen({ navigation }: Props): JSX.Element {
             </Pressable>
           </View>
           {rotasAtivas.items.map((rota) => (
-            <Pressable key={rota.id} onPress={() => irParaAba("Rotas")}>
+            <Pressable accessibilityRole="button" key={rota.id} onPress={() => irParaAba("Rotas")}>
               <VehicleCard style={styles.rotaCard}>
                 <Texto style={{ color: theme.colors.text, fontWeight: "600" }} numberOfLines={1}>
                   {rota.nome}

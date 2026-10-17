@@ -726,6 +726,7 @@ function AlunoParadaRow({
           <View style={styles.ausenciaPresetsRow}>
             {MOTIVO_AUSENCIA_PRESETS.map((preset) => (
               <Pressable
+                accessibilityRole="button"
                 key={preset}
                 onPress={() => setMotivoAusencia(preset)}
                 style={[
@@ -753,6 +754,7 @@ function AlunoParadaRow({
             ))}
           </View>
           <TextInput
+            accessibilityLabel="Comentário sobre a ausência"
             value={motivoAusencia}
             onChangeText={setMotivoAusencia}
             placeholder="Ou escreva um comentário (opcional)"
@@ -781,6 +783,7 @@ function AlunoParadaRow({
               )}
             </Pressable>
             <Pressable
+              accessibilityRole="button"
               onPress={() => {
                 setFormularioAusenciaAberto(false);
                 setMotivoAusencia("");

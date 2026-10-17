@@ -362,6 +362,7 @@ export function TripStatsGrid({
           e com o modelo de referência ("Suporte / Falar com a central",
           linha própria abaixo da grade 2x2) — faltava aqui no mobile. */}
       <Pressable
+        accessibilityRole="button"
         onPress={handleSuporte}
         style={[
           styles.statsSuporteRow,
@@ -662,6 +663,7 @@ export function RegistrarOcorrenciaButton({
               <>
                 <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Título</Texto>
                 <TextInput
+                  accessibilityLabel="Título da ocorrência"
                   value={titulo}
                   onChangeText={setTitulo}
                   placeholder="Ex.: Pneu furado, aluno passou mal…"
@@ -676,6 +678,7 @@ export function RegistrarOcorrenciaButton({
 
             <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>Descrição</Texto>
             <TextInput
+              accessibilityLabel="Descrição da ocorrência"
               value={descricao}
               onChangeText={setDescricao}
               multiline

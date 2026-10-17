@@ -85,6 +85,7 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
         {alunos && alunos.items.length > 0
           ? alunos.items.map((aluno) => (
               <Pressable
+                accessibilityRole="button"
                 key={aluno.id}
                 onPress={() => navigation.navigate("AlunoDetalhe", { studentId: aluno.id })}
               >

@@ -341,6 +341,7 @@ export function CentralScreen({ navigation }: Props): JSX.Element {
             const corTipo = resolveToneColor(theme, tomDoTipo(notification.tipo));
             return (
               <Pressable
+                accessibilityRole="button"
                 key={notification.id}
                 onPress={() => handleAbrir(notification.id, notification.lida)}
                 style={[

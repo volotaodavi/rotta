@@ -60,6 +60,7 @@ export function AdminChamadosScreen({ navigation }: Props): JSX.Element {
       ) : (
         data.items.map((ticket) => (
           <Pressable
+            accessibilityRole="button"
             key={ticket.id}
             onPress={() => navigation.navigate("Detalhes", { ticketId: ticket.id })}
           >

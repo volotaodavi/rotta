@@ -177,6 +177,7 @@ export function AlunoNovoScreen({ navigation }: Props): JSX.Element {
           <View style={styles.lista}>
             {(schoolResults?.items ?? []).map((school) => (
               <Pressable
+                accessibilityRole="button"
                 key={school.id}
                 onPress={() => {
                   setSchoolId(school.id);

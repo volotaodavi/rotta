@@ -198,6 +198,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
         >
           <Search size={18} color={theme.colors.textMuted} />
           <TextInput
+            accessibilityLabel="Buscar escola"
             value={
               selectedSchool
                 ? (selectedSchool.nomeFantasia ?? selectedSchool.nomeOficial)
@@ -252,6 +253,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
               <ScrollView keyboardShouldPersistTaps="handled" style={styles.resultsList}>
                 {(schoolResults?.items ?? []).map((school) => (
                   <Pressable
+                    accessibilityRole="button"
                     key={school.id}
                     onPress={() => handleSelectSchool(school)}
                     style={[styles.resultRow, { borderColor: theme.colors.border }]}
@@ -275,6 +277,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
 
       {!sheetOpen ? (
         <Pressable
+          accessibilityRole="button"
           onPress={() => setSheetOpen(true)}
           style={[
             styles.reabrirPill,
@@ -333,6 +336,7 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
           ) : (
             data.items.map((transportador) => (
               <Pressable
+                accessibilityRole="button"
                 key={transportador.id}
                 onPress={() =>
                   navigation.navigate("TransportadorDetalhes", {

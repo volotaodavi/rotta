@@ -90,6 +90,7 @@ export function EmpresaMarketplaceSolicitacoesScreen({ navigation }: Props): JSX
       ) : (
         data.items.map((request) => (
           <Pressable
+            accessibilityRole="button"
             key={request.id}
             onPress={() =>
               navigation.navigate("MarketplaceSolicitacaoDetalhe", {

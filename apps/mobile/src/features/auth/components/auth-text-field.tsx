@@ -45,6 +45,16 @@ export function AuthTextField({
       <View style={styles.inputRow}>
         {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <TextInput
+          /*
+            O rótulo acima é um `Texto` solto: visualmente ele etiqueta
+            o campo, e para o leitor de tela não etiqueta nada. Sem esta
+            linha, quem usa TalkBack chega na tela de entrada e ouve
+            "campo de edição" duas vezes, sem saber qual é o e-mail e
+            qual é a senha. O mesmo conserto já tinha sido feito em
+            `VehicleTextField` em 16/10/2026; aqui, que é a PRIMEIRA
+            tela do app, tinha passado batido.
+          */
+          accessibilityLabel={label}
           placeholderTextColor={theme.colors.placeholder}
           style={[
             styles.input,

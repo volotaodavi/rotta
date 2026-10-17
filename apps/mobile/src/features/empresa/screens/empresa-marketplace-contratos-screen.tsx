@@ -92,6 +92,7 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
       ) : (
         items.map((contract) => (
           <Pressable
+            accessibilityRole="button"
             key={contract.id}
             onPress={() =>
               navigation.navigate("MarketplaceContratoDetalhe", { contractId: contract.id })

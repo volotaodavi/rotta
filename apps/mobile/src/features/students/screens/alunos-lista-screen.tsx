@@ -57,6 +57,7 @@ export function AlunosListaScreen({ navigation }: Props): JSX.Element {
       ) : (
         data.items.map((aluno) => (
           <Pressable
+            accessibilityRole="button"
             key={aluno.id}
             onPress={() => navigation.navigate("AlunoDetalhe", { studentId: aluno.id })}
           >

@@ -72,6 +72,7 @@ export function EmpresaRotasListaScreen({ navigation }: Props): JSX.Element {
       ) : (
         data.items.map((route) => (
           <Pressable
+            accessibilityRole="button"
             key={route.id}
             onPress={() => navigation.navigate("Detalhe", { routeId: route.id })}
           >
