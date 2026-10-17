@@ -43,6 +43,7 @@ import type { CreateTripData, TripRepository } from "./repositories/trip.reposit
 import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
 import type { RouteStudentResponseDto } from "../routes/dto/route-student-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
+
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { CompaniesService } from "@/modules/companies/companies.service";
 import { GeoEngineService } from "@/modules/geo/geo-engine.service";
@@ -53,7 +54,6 @@ import { RoutesService } from "@/modules/routes/routes.service";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
-
 import { Role } from "@/shared/enums";
 import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
@@ -1854,15 +1854,22 @@ export class TripsService {
     actor: AuthenticatedUser,
     companyIdParam?: string,
   ): Promise<MapVehicleResponseDto[]> {
+    /* Só as viagens de HOJE: `EM_ANDAMENTO` é um estado que ninguém
+       fecha sozinho, e motorista que esquece de encerrar deixava a
+       viagem aparecendo no mapa como veículo em rota indefinidamente.
+       O localizador do Responsável sempre filtrou por hoje; este mapa
+       não, e as duas telas discordavam sobre a mesma van. */
+    const data = today();
+
     if (actor.role === Role.ADMIN_ROTTA && !companyIdParam) {
-      const nationwide = await this.tripRepository.listActiveNationwide();
+      const nationwide = await this.tripRepository.listActiveNationwide(data);
       return nationwide.map(toMapVehicleResponseDto);
     }
     const companyId = actor.role === Role.ADMIN_ROTTA ? companyIdParam : actor.tenantId;
     if (!companyId) {
       throw new BadRequestException("Não foi possível determinar a empresa para o mapa.");
     }
-    const trips = await this.tripRepository.listActiveByCompany(companyId);
+    const trips = await this.tripRepository.listActiveByCompany(companyId, data);
     return trips.map(toMapVehicleResponseDto);
   }
 

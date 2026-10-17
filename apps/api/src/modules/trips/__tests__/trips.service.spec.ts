@@ -1817,12 +1817,37 @@ describe("TripsService", () => {
   });
 
   describe("listActiveForMap", () => {
+    it("pede só as viagens de HOJE, nas duas formas do mapa", async () => {
+      /*
+        `EM_ANDAMENTO` é um estado que ninguém fecha sozinho. Motorista
+        que esquece de encerrar deixa a viagem aberta para sempre, e sem
+        o filtro de dia ela seguia aparecendo no mapa da frota na terça,
+        na quarta e no mês seguinte, como veículo em rota. Pior: o
+        localizador do Responsável SEMPRE filtrou por hoje, então as
+        duas telas discordavam sobre a mesma van.
+      */
+      const meiaNoiteDeHoje = new Date();
+      meiaNoiteDeHoje.setUTCHours(0, 0, 0, 0);
+
+      tripRepository.listActiveByCompany.mockResolvedValue([]);
+      tripRepository.listActiveNationwide.mockResolvedValue([]);
+
+      await service.listActiveForMap(empresaActor);
+      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith("company-1", meiaNoiteDeHoje);
+
+      await service.listActiveForMap(adminActor);
+      expect(tripRepository.listActiveNationwide).toHaveBeenCalledWith(meiaNoiteDeHoje);
+    });
+
     it("Empresa/Gestor: usa sempre o próprio tenantId, nunca lê `companyIdParam`", async () => {
       tripRepository.listActiveByCompany.mockResolvedValue([]);
 
       await service.listActiveForMap(empresaActor, "outra-empresa-tentando-passar-por-query");
 
-      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith("company-1");
+      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith(
+        "company-1",
+        expect.any(Date),
+      );
       expect(tripRepository.listActiveNationwide).not.toHaveBeenCalled();
     });
 
@@ -1831,7 +1856,10 @@ describe("TripsService", () => {
 
       await service.listActiveForMap(adminActor, "company-9");
 
-      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith("company-9");
+      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith(
+        "company-9",
+        expect.any(Date),
+      );
       expect(tripRepository.listActiveNationwide).not.toHaveBeenCalled();
     });
 

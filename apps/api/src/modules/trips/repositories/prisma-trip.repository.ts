@@ -53,10 +53,10 @@ export class PrismaTripRepository implements TripRepository {
     return this.prisma.withTenant(this.prisma.trip.update({ where: { id }, data }));
   }
 
-  listActiveByCompany(companyId: string): Promise<ActiveTripWithDetails[]> {
+  listActiveByCompany(companyId: string, data: Date): Promise<ActiveTripWithDetails[]> {
     return this.prisma.withTenant(
       this.prisma.trip.findMany({
-        where: { companyId, status: "EM_ANDAMENTO" },
+        where: { companyId, status: "EM_ANDAMENTO", data },
         include: {
           veiculo: true,
           route: { select: { id: true, nome: true, turno: true } },
@@ -75,10 +75,10 @@ export class PrismaTripRepository implements TripRepository {
    * histórico completo), então não precisa de paginação/janela por
    * bounding box como o mapa nacional de Escolas.
    */
-  listActiveNationwide(): Promise<ActiveTripWithDetails[]> {
+  listActiveNationwide(data: Date): Promise<ActiveTripWithDetails[]> {
     return this.prisma.withBypass(
       this.prisma.trip.findMany({
-        where: { status: "EM_ANDAMENTO" },
+        where: { status: "EM_ANDAMENTO", data },
         include: {
           veiculo: true,
           route: { select: { id: true, nome: true, turno: true } },

@@ -55,16 +55,31 @@ export interface TripRepository {
   findById(id: string): Promise<Trip | null>;
   findByRouteAndDate(routeId: string, data: Date): Promise<Trip | null>;
   update(id: string, data: UpdateTripData): Promise<Trip>;
-  /** Todas as viagens EM_ANDAMENTO do tenant, com dados do veículo/rota/motorista/monitor — usado pelo mapa. */
-  listActiveByCompany(companyId: string): Promise<ActiveTripWithDetails[]>;
+  /**
+   * As viagens EM_ANDAMENTO **de um dia** do tenant, com dados do
+   * veículo/rota/motorista/monitor — usado pelo mapa ao vivo.
+   *
+   * `data` não é enfeite: `EM_ANDAMENTO` é um estado que ninguém fecha
+   * sozinho. Motorista que esquece de encerrar deixa a viagem aberta
+   * para sempre, e sem o filtro de dia ela continuava aparecendo no
+   * mapa da frota na terça, na quarta e no mês seguinte, como veículo
+   * em rota. O localizador do Responsável sempre filtrou por hoje, o
+   * mapa da empresa não: as duas telas discordavam sobre a mesma van.
+   */
+  listActiveByCompany(companyId: string, data: Date): Promise<ActiveTripWithDetails[]>;
   /**
    * Todas as viagens EM_ANDAMENTO de TODAS as empresas — "Mapa Nacional
    * de Veículos" do Admin Rotta (mesmo escopo cross-tenant do "Mapa
    * Nacional de Escolas", `GeoController`/`MapIntelligenceService`).
    * Nunca chamado para Empresa/Gestor (só `listActiveForMap` decide
    * isso, com base em `actor.role`).
+   *
+   * Mesmo filtro de dia de `listActiveByCompany`, e aqui ele também
+   * sustenta a premissa de volume do parágrafo acima: sem ele, toda
+   * viagem que alguém esqueceu de encerrar, de qualquer empresa, se
+   * acumula nesta lista para sempre.
    */
-  listActiveNationwide(): Promise<ActiveTripWithDetails[]>;
+  listActiveNationwide(data: Date): Promise<ActiveTripWithDetails[]>;
   /** A viagem EM_ANDAMENTO de hoje para uma rota específica, já enriquecida — usado pelo localizador do Responsável. */
   findActiveDetailedByRouteId(routeId: string, data: Date): Promise<ActiveTripWithDetails | null>;
   /** Histórico de viagens de uma rota (mais recentes primeiro) — GPS-07/histórico. */
