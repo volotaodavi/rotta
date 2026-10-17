@@ -3,6 +3,7 @@
 import { ApiError } from "@rotta/api-client";
 import { Check, Search } from "@rotta/icons";
 import { Button, Card, FormField, Input, PhoneInput, Typography } from "@rotta/ui/web";
+import { isValidBrazilianMobile } from "@rotta/validators";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -43,6 +44,16 @@ export default function VincularTransportePage(): JSX.Element {
   async function handleBuscar(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setErrorMessage(null);
+    /* Sem esta checagem, um celular incompleto vira uma busca que não
+       acha nada, e a tela responde "não encontramos nenhum
+       pré-cadastro" — a família conclui que a transportadora não
+       cadastrou, quando o que faltou foi um dígito. O pré-cadastro é
+       sempre gravado como celular (`IsBrazilianMobile`), então um fixo
+       também nunca casaria. */
+    if (!isValidBrazilianMobile(celular)) {
+      setErrorMessage("Confira o celular: precisa ser DDD + 9 dígitos, ex. (11) 91234-5678.");
+      return;
+    }
     try {
       const encontrado = await lookup.mutateAsync({
         codigoInterno: codigoInterno.trim().toUpperCase(),

@@ -1,5 +1,6 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
+import { isValidBrazilianMobile } from "@rotta/validators";
 import { useState } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 
@@ -71,11 +72,15 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
       setErroBusca("Informe o código da transportadora.");
       return;
     }
-    /* `celular` agora é só dígitos (`propsDeTelefone`), então contar
-       caracteres é contar dígitos de verdade — antes a máscara digitada
-       à mão passava desta checagem com qualquer coisa dentro. */
-    if (celular.length < 10) {
-      setErroBusca("Telefone incompleto: digite o DDD e o celular.");
+    /* A checagem anterior era `celular.trim().length < 10`, sobre um
+       texto com máscara: "(11) 9..." tem onze caracteres e passava.
+       Pior, dez dígitos (fixo) também passava, e o pré-cadastro é
+       sempre gravado como celular (`IsBrazilianMobile`), então um fixo
+       nunca casa — a pessoa digitava, a busca não achava nada, e a tela
+       dizia que não existia pré-cadastro em vez de dizer que o número
+       estava errado. */
+    if (!isValidBrazilianMobile(celular)) {
+      setErroBusca("Confira o celular: precisa ser DDD + 9 dígitos, ex. (11) 91234-5678.");
       return;
     }
 
