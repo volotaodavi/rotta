@@ -50,6 +50,13 @@ export class PrismaRouteStopRepository implements RouteStopRepository {
     );
   }
 
+  /** Bypass deliberado — o motivo está na interface. */
+  listByRouteAcrossTenants(routeId: string): Promise<RouteStop[]> {
+    return this.prisma.withBypass(
+      this.prisma.routeStop.findMany({ where: { routeId }, orderBy: { ordem: "asc" } }),
+    );
+  }
+
   async delete(id: string): Promise<void> {
     await this.prisma.withTenant(this.prisma.routeStop.delete({ where: { id } }));
   }

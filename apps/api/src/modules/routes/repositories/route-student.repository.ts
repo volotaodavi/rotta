@@ -28,6 +28,14 @@ export interface RouteStudentRepository {
   update(id: string, data: UpdateRouteStudentData): Promise<RouteStudent>;
   listByRoute(routeId: string): Promise<RouteStudent[]>;
   /**
+   * Bypass de RLS, pelo mesmo motivo de
+   * `listActiveByStudentAcrossTenants`: quem chama é o localizador do
+   * Responsável, que não é membro de nenhuma transportadora. A posse do
+   * aluno já foi provada antes, e o `routeId` veio do vínculo ativo
+   * dele, nunca do cliente.
+   */
+  listByRouteAcrossTenants(routeId: string): Promise<RouteStudent[]>;
+  /**
    * RN-26 ("um aluno não pode estar em duas rotas ativas do mesmo
    * turno") precisa ver TODAS as rotas do aluno, de qualquer tenant —
    * chamada sempre via `PrismaService.withBypass` no repositório, nunca

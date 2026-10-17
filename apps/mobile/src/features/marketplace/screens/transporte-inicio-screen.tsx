@@ -38,7 +38,7 @@ import {
   VehicleScreen,
   VehicleTextField,
 } from "@/features/vehicles/components";
-import { tripsApi } from "@/lib/api-client";
+import { gpsApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
 
 function formatarHora(iso: string): string {
@@ -160,13 +160,23 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
   );
 }
 
-/** Mesmo endpoint de `driver/hooks/use-driver-trip.ts#useTripProximasEtas` (Frente L/M) — já usado pelo Responsável no Painel Web, faltava só o app nativo. */
-function useProximasEtasResponsavel(tripId: string | undefined) {
+/**
+ * A ETA da parada do próprio filho.
+ *
+ * Era `tripsApi.getProximasEtas(tripId)`, e nunca funcionou para o
+ * Responsável: aquele endpoint exige papel de operação e escopa por
+ * tenant, que o Responsável não tem. O comentário aqui dizia "já usado
+ * pelo Responsável no Painel Web" — lá também respondia erro, ninguém
+ * tinha conferido. Agora é `gpsApi.getEtaForStudent`, que resolve a
+ * viagem a partir do ALUNO (posse provada no backend) e devolve só a
+ * parada dele, sem o endereço das outras famílias da rota.
+ */
+function useEtaDoFilho(studentId: string | undefined) {
   return useQuery({
-    queryKey: ["responsavel", "trips", tripId, "proximas-etas"],
-    queryFn: () => tripsApi.getProximasEtas(tripId as string),
-    enabled: Boolean(tripId),
-    refetchInterval: tripId ? 30_000 : false,
+    queryKey: ["responsavel", "students", studentId, "eta"],
+    queryFn: () => gpsApi.getEtaForStudent(studentId as string),
+    enabled: Boolean(studentId),
+    refetchInterval: studentId ? 30_000 : false,
   });
 }
 
@@ -372,8 +382,8 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
   const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
   const posicao = lerPosicao(viagem?.ultimaPosicaoEm);
   const { data: aluno } = useStudent(contrato.studentId);
-  const { data: proximasEtas } = useProximasEtasResponsavel(viagem?.tripId);
-  const proximaParada = proximasEtas?.[0];
+  const { data: etaDoFilho } = useEtaDoFilho(contrato.studentId);
+  const proximaParada = etaDoFilho ?? undefined;
 
   // A linha azul de verdade (pedido do usuário: "a linha azul é igual GPS
   // mesmo... para os responsáveis... isso deve ser para web e app") —
@@ -605,9 +615,9 @@ export function TripTrackingOverlay({
   const insets = useSafeAreaInsets();
   const { data: viagem, isLoading } = useGpsForStudent(contrato.studentId);
   const posicao = lerPosicao(viagem?.ultimaPosicaoEm);
-  const { data: proximasEtas } = useProximasEtasResponsavel(viagem?.tripId);
+  const { data: etaDoFilho } = useEtaDoFilho(contrato.studentId);
   const [mapKey, setMapKey] = useState(0);
-  const proximaParada = proximasEtas?.[0];
+  const proximaParada = etaDoFilho ?? undefined;
 
   // Mesma linha azul de `AcompanhamentoSection` — aqui é a versão tela
   // cheia, mas o trajeto é o mesmo trecho (veículo -> próxima parada).
@@ -779,27 +789,13 @@ export function TripTrackingOverlay({
               </View>
             ) : null}
 
-            {proximasEtas && proximasEtas.length > 1 ? (
-              <View style={{ gap: 6 }}>
-                <Texto style={{ color: theme.colors.textMuted, fontSize: 11 }}>
-                  Próximas paradas
-                </Texto>
-                {proximasEtas.slice(0, 4).map((eta) => (
-                  <View key={eta.routeStopId} style={styles.paradaRow}>
-                    <MapPin size={14} color={theme.colors.textMuted} />
-                    <Texto
-                      style={{ color: theme.colors.text, fontSize: 12, flex: 1 }}
-                      numberOfLines={1}
-                    >
-                      {eta.endereco}
-                    </Texto>
-                    <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                      {formatarHora(eta.etaPrevista)}
-                    </Texto>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+            {/* A lista "Próximas paradas" saiu daqui em 17/10/2026. Ela
+                mostrava endereço e horário das OUTRAS famílias da rota
+                para o Responsável, que não tem nada que ver isso. Na
+                prática nunca chegou a aparecer (o endpoint recusava o
+                papel), mas o desenho estava pronto para vazar. O que o
+                Responsável acompanha é a parada do próprio filho, logo
+                acima. */}
           </>
         )}
       </View>

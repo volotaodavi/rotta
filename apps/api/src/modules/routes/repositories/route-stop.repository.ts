@@ -32,6 +32,17 @@ export interface RouteStopRepository {
   findById(id: string): Promise<RouteStop | null>;
   update(id: string, data: UpdateRouteStopData): Promise<RouteStop>;
   listByRoute(routeId: string): Promise<RouteStop[]>;
+  /**
+   * Bypass de RLS, ao contrário do resto desta interface.
+   *
+   * Quem chama é o localizador do Responsável: ele não é membro de
+   * nenhuma transportadora, então `withTenant` devolveria vazio para a
+   * rota do próprio filho. A posse já foi provada antes
+   * (`StudentsService.findByIdOrThrow`), e o `routeId` não veio do
+   * cliente: veio do vínculo ativo do aluno. Mesmo raciocínio e mesmo
+   * cuidado de `RouteStudentRepository.listActiveByStudentAcrossTenants`.
+   */
+  listByRouteAcrossTenants(routeId: string): Promise<RouteStop[]>;
   /** Usado por `RoutesService.removeStop` — nunca soft-delete (paradas não têm histórico próprio; ver nota do schema). */
   delete(id: string): Promise<void>;
   /** Reordenação em lote — usado ao inserir/remover uma parada no meio da sequência. */

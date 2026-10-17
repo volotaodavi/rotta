@@ -20,12 +20,15 @@ import type { StudentEventsHistoryRange, TripStudentEventType } from "@rotta/api
 
 import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { RecenterButton } from "@/components/route-screen-chrome";
-import { useGpsForStudent, useStudentEventsHistory } from "@/features/gps/hooks/use-gps";
+import {
+  useGpsForStudent,
+  useStudentEventsHistory,
+  useEtaDoFilho,
+} from "@/features/gps/hooks/use-gps";
 import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useSchool } from "@/features/schools/hooks/use-schools";
 import { useRoutePreview } from "@/features/students/hooks/use-route-preview";
 import { useStudent } from "@/features/students/hooks/use-students";
-import { useTripProximasEtas } from "@/features/trips/hooks/use-trips";
 
 const EVENT_LABEL: Record<TripStudentEventType, string> = {
   EMBARCOU: "Embarcou",
@@ -264,7 +267,12 @@ export default function AlunoMapaPage(): JSX.Element {
   const { data: student } = useStudent(studentId);
   const { data: school } = useSchool(student?.schoolId ?? "");
   const { data: viagem, isLoading } = useGpsForStudent(studentId);
-  const { data: proximasEtas } = useTripProximasEtas(viagem?.tripId);
+  /* Era `useTripProximasEtas(tripId)`, que exige papel de operação e
+     escopa por tenant: o Responsável nunca teve acesso, então o "chega
+     às 07:12" simplesmente não aparecia aqui. Agora o caminho resolve a
+     viagem pelo ALUNO (posse provada no backend) e devolve só a parada
+     dele. */
+  const { data: etaDoFilho } = useEtaDoFilho(studentId);
   const [mapKey, setMapKey] = useState(0);
 
   /* Quanto tempo tem a posição que está sendo desenhada. Até aqui a
@@ -289,7 +297,7 @@ export default function AlunoMapaPage(): JSX.Element {
     ];
   }, [viagem, posicao.frescor]);
 
-  const proximaParada = proximasEtas?.[0];
+  const proximaParada = etaDoFilho ?? undefined;
 
   // A linha azul de verdade (pedido do usuário: "a linha azul é igual GPS
   // mesmo") — do transporte até a parada do próprio filho, seguindo as
@@ -435,21 +443,10 @@ export default function AlunoMapaPage(): JSX.Element {
             </div>
           </div>
 
-          {proximasEtas && proximasEtas.length > 0 ? (
-            <div className="flex flex-col gap-2">
-              {proximasEtas.slice(0, 2).map((eta) => (
-                <div key={eta.routeStopId} className="flex items-center gap-2">
-                  <MapPin size={14} className="shrink-0 text-text-muted" />
-                  <Typography variant="caption" className="flex-1 truncate">
-                    {eta.endereco}
-                  </Typography>
-                  <Typography variant="caption" color="muted" className="shrink-0">
-                    {formatarHora(eta.etaPrevista)}
-                  </Typography>
-                </div>
-              ))}
-            </div>
-          ) : null}
+          {/* A lista de próximas paradas saiu daqui em 17/10/2026:
+              mostrava endereço e horário das OUTRAS famílias da rota
+              para o Responsável. Nunca chegou a aparecer (o endpoint
+              recusava o papel), mas estava pronta para vazar. */}
 
           <Link
             href="/chamados/novo"

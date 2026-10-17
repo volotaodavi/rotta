@@ -1302,6 +1302,7 @@ export class TripsService {
   private async listPendenciasPorAluno(
     trip: Trip,
     actor: AuthenticatedUser,
+    paraResponsavel = false,
   ): Promise<
     Array<{
       vinculo: RouteStudentResponseDto;
@@ -1314,10 +1315,18 @@ export class TripsService {
       horarioPrevisto: string;
     }>
   > {
+    /* `paraResponsavel`: o Responsável não é membro da transportadora,
+       então a leitura por tenant devolveria vazio para a rota do
+       próprio filho. Ver `RoutesService.listStopsAndStudentsForResponsavel`
+       — e note que quem chama nesse modo FILTRA o resultado para a
+       parada do próprio filho antes de responder. */
+    const leitura = paraResponsavel
+      ? await this.routesService.listStopsAndStudentsForResponsavel(trip.routeId)
+      : null;
     const [vinculos, eventos, stops] = await Promise.all([
-      this.routesService.listStudents(trip.routeId, actor),
+      leitura ? leitura.students : this.routesService.listStudents(trip.routeId, actor),
       this.studentEventRepository.listByTrip(trip.id),
-      this.routesService.listStops(trip.routeId, actor),
+      leitura ? leitura.stops : this.routesService.listStops(trip.routeId, actor),
     ]);
     const stopsById = new Map(stops.map((stop) => [stop.id, stop]));
     const overridesByStudent = await this.studentsService.listAddressOverridesByStudentsAndDate(
@@ -1450,10 +1459,15 @@ export class TripsService {
   private async listParadasPendentes(
     trip: Trip,
     actor: AuthenticatedUser,
+    paraResponsavel = false,
   ): Promise<RouteStopResponseDto[]> {
     const [stops, pendencias] = await Promise.all([
-      this.routesService.listStops(trip.routeId, actor),
-      this.listPendenciasPorAluno(trip, actor),
+      paraResponsavel
+        ? this.routesService
+            .listStopsAndStudentsForResponsavel(trip.routeId)
+            .then((leitura) => leitura.stops)
+        : this.routesService.listStops(trip.routeId, actor),
+      this.listPendenciasPorAluno(trip, actor, paraResponsavel),
     ]);
 
     const pendenciasPorRouteStop = new Map<string, typeof pendencias>();
@@ -1556,6 +1570,7 @@ export class TripsService {
   private async computeProximasEtas(
     trip: Trip,
     actor: AuthenticatedUser,
+    paraResponsavel = false,
   ): Promise<NextEtaResponseDto[]> {
     const ultimaPosicao = await this.positionRepository.findLatestByTrip(trip.id);
     if (!ultimaPosicao) {
@@ -1567,7 +1582,11 @@ export class TripsService {
       longitude: Number(ultimaPosicao.longitude),
     };
 
-    const pendentesNaOrdemCadastrada = await this.listParadasPendentes(trip, actor);
+    const pendentesNaOrdemCadastrada = await this.listParadasPendentes(
+      trip,
+      actor,
+      paraResponsavel,
+    );
     if (pendentesNaOrdemCadastrada.length === 0) {
       return [];
     }
@@ -1884,6 +1903,54 @@ export class TripsService {
    * viagem `EM_ANDAMENTO` hoje, ou `null` se nenhuma estiver em curso
    * agora.
    */
+  /**
+   * "Chega às 07:12" na tela do Responsável — a ETA da parada DO
+   * PRÓPRIO FILHO, e só dela.
+   *
+   * ## Por que não dá pra reusar `GET /trips/:id/proximas-etas`
+   *
+   * Por dois motivos, e os dois importam:
+   *
+   * 1. **Posse.** Aquele endpoint recebe um `tripId` do cliente e
+   *    escopa por `tenantId`. O Responsável não tem tenant, então ele
+   *    levava 404 na viagem do próprio filho (o papel nem estava em
+   *    `@Roles`, então na prática levava 403 antes disso). Aqui a
+   *    entrada é o `studentId`, cuja posse `findByIdOrThrow` já prova,
+   *    e a viagem é RESOLVIDA a partir dele — nunca aceita de fora.
+   *
+   * 2. **Privacidade.** A resposta daquele endpoint é a lista inteira
+   *    de paradas pendentes, com `endereco`, `latitude` e `longitude`
+   *    de cada uma. Entregar isso a um Responsável é entregar o
+   *    endereço das outras famílias da rota. Por isso aqui a lista é
+   *    calculada inteira (a conta de tempo precisa de todas as pernas)
+   *    e só a parada do próprio filho atravessa.
+   */
+  async findEtaForStudent(
+    studentId: string,
+    actor: AuthenticatedUser,
+  ): Promise<NextEtaResponseDto | null> {
+    await this.studentsService.findByIdOrThrow(studentId, actor);
+
+    const routeIds = await this.routesService.findActiveRouteIdsForStudent(studentId);
+    const data = today();
+    for (const routeId of routeIds) {
+      const trip = await this.tripRepository.findActiveDetailedByRouteId(routeId, data);
+      if (!trip) continue;
+
+      const etas = await this.computeProximasEtas(trip, actor, true);
+      if (etas.length === 0) return null;
+
+      /* A parada pendente deste aluno nesta viagem. `listPendenciasPorAluno`
+         já resolve desvio de endereço do dia e sentido (ida/volta). */
+      const pendencias = await this.listPendenciasPorAluno(trip, actor, true);
+      const minha = pendencias.find((p) => p.vinculo.studentId === studentId);
+      if (!minha) return null;
+
+      return etas.find((eta) => eta.routeStopId === minha.routeStopId) ?? null;
+    }
+    return null;
+  }
+
   async findActiveTripForStudent(
     studentId: string,
     actor: AuthenticatedUser,

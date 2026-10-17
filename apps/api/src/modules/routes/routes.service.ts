@@ -540,6 +540,34 @@ export class RoutesService {
     return stops.map(toRouteStopResponseDto);
   }
 
+  /**
+   * Paradas e alunos de uma rota SEM o filtro de tenant, para o
+   * localizador do Responsável.
+   *
+   * Sem actor de propósito, igual a `findActiveRouteIdsForStudent` logo
+   * abaixo: o Responsável não é membro de nenhuma transportadora, então
+   * `listStops`/`listStudents` devolveriam vazio para a rota do próprio
+   * filho. Quem chama já provou a posse do aluno
+   * (`StudentsService.findByIdOrThrow`) e tirou o `routeId` do vínculo
+   * ativo dele — nunca de um parâmetro do cliente.
+   *
+   * O que sai daqui NUNCA vai inteiro para o Responsável: quem chama
+   * filtra para a parada do próprio filho antes de responder. A lista
+   * completa traz endereço e coordenada das outras famílias da rota.
+   */
+  async listStopsAndStudentsForResponsavel(
+    routeId: string,
+  ): Promise<{ stops: RouteStopResponseDto[]; students: RouteStudentResponseDto[] }> {
+    const [stops, students] = await Promise.all([
+      this.routeStopRepository.listByRouteAcrossTenants(routeId),
+      this.routeStudentRepository.listByRouteAcrossTenants(routeId),
+    ]);
+    return {
+      stops: stops.map(toRouteStopResponseDto),
+      students: students.map(toRouteStudentResponseDto),
+    };
+  }
+
   async updateStop(
     routeId: string,
     stopId: string,

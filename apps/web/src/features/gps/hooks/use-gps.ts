@@ -114,3 +114,20 @@ export function useGpsForStudents(students: { id: string; nome: string }[]) {
     }),
   });
 }
+
+/**
+ * "Chega às 07:12" da parada do próprio filho.
+ *
+ * Não confundir com `useTripProximasEtas`: aquele recebe `tripId`,
+ * exige papel de operação e devolve a rota inteira (com endereço das
+ * outras famílias). Para o Responsável é sempre este, que resolve a
+ * viagem a partir do aluno e já vem filtrado pelo backend.
+ */
+export function useEtaDoFilho(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ["gps", "student", studentId, "eta"],
+    queryFn: () => gpsApi.getEtaForStudent(studentId as string),
+    enabled: Boolean(studentId),
+    refetchInterval: GPS_LIVE_POLL_INTERVAL_MS * 10,
+  });
+}

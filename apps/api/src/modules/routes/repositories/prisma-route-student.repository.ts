@@ -35,6 +35,13 @@ export class PrismaRouteStudentRepository implements RouteStudentRepository {
     );
   }
 
+  /** Bypass deliberado — o motivo está na interface. */
+  listByRouteAcrossTenants(routeId: string): Promise<RouteStudent[]> {
+    return this.prisma.withBypass(
+      this.prisma.routeStudent.findMany({ where: { routeId, ativo: true } }),
+    );
+  }
+
   listActiveByStudentAcrossTenants(
     studentId: string,
   ): Promise<(RouteStudent & { route: { turno: string; companyId: string } })[]> {

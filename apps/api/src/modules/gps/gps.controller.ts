@@ -37,6 +37,26 @@ export class GpsController {
     return this.tripsService.findActiveTripForStudent(studentId, actor);
   }
 
+  /**
+   * "Chega às 07:12" da parada do PRÓPRIO filho — e só dela.
+   *
+   * Vive aqui, e não em `TripsController`, pelo mesmo motivo de
+   * `getForStudent` logo acima: a entrada é o aluno (cuja posse o
+   * serviço prova), e a viagem é resolvida a partir dele. O endpoint
+   * equivalente de `TripsController` (`:id/proximas-etas`) recebe um
+   * `tripId` do cliente, escopa por tenant e devolve a lista INTEIRA de
+   * paradas, com endereço e coordenada das outras famílias — nada
+   * disso serve para o Responsável.
+   */
+  @Get("students/:studentId/eta")
+  @Roles(Role.RESPONSAVEL, Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR)
+  getEtaForStudent(
+    @Param("studentId", ParseUUIDPipe) studentId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.findEtaForStudent(studentId, actor);
+  }
+
   /** Trilha histórica de uma viagem específica (linha completa percorrida). */
   @Get("trips/:tripId/track")
   @Roles(Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR, Role.MOTORISTA, Role.MONITOR)

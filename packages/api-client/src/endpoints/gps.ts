@@ -1,6 +1,6 @@
 import { buildQueryString } from "../query.util";
 
-import type { TripPosition, TripStudentEvent } from "./trips";
+import type { NextEta, TripPosition, TripStudentEvent } from "./trips";
 import type { ApiClient } from "../http";
 
 /** Janela de tempo do histórico de embarque/desembarque do Responsável. */
@@ -51,6 +51,16 @@ export function createGpsEndpoints(apiClient: ApiClient) {
     /** Localizador do Responsável — posição atual do transporte do próprio filho, se houver viagem em curso. */
     getForStudent: async (studentId: string): Promise<MapVehicle | null> =>
       (await apiClient.request<ApiEnvelope<MapVehicle | null>>(`/gps/students/${studentId}`)).data,
+
+    /**
+     * "Chega às 07:12" da parada do próprio filho — e só dela.
+     *
+     * Não confundir com `tripsApi.getProximasEtas`, que recebe um
+     * `tripId`, exige papel de operação e devolve a rota inteira (com
+     * endereço das outras famílias). Para o Responsável é sempre este.
+     */
+    getEtaForStudent: async (studentId: string): Promise<NextEta | null> =>
+      (await apiClient.request<ApiEnvelope<NextEta | null>>(`/gps/students/${studentId}/eta`)).data,
 
     /** Trilha histórica de uma viagem específica (linha completa percorrida). */
     getTrack: async (tripId: string): Promise<TripPosition[]> =>
