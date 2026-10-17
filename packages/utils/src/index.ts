@@ -4,9 +4,7 @@
  * de data de nascimento, etc. Sem nenhuma dependencia de framework —
  * testavel unitariamente em isolamento completo (Dossie 23, Secao 10).
  *
- * Nenhuma funcao de negocio real foi implementada ainda (fase de
- * fundacao) — este arquivo existe para fixar o ponto de entrada do
- * pacote.
+ *   dinheiro.ts  Leitura e escrita de valor em reais/centavos.
  */
 
-export {};
+export * from "./dinheiro";

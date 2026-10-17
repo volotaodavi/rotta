@@ -11,6 +11,7 @@ import {
   StatTile,
   Typography,
 } from "@rotta/ui/web";
+import { formatarCentavos } from "@rotta/utils";
 
 import type { BillingProviderOverview } from "@rotta/api-client";
 
@@ -18,10 +19,6 @@ import { AsaasAccountSection } from "@/features/billing/components/asaas-account
 import { CompanyPaymentHistoryRow } from "@/features/billing/components/company-payment-history-row";
 import { useBillingAdminOverview } from "@/features/billing/hooks/use-billing";
 import { usePrivacy } from "@/providers/privacy-provider";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /**
  * Cartão de um valor financeiro agregado (recebido/taxa retida/cobranças
@@ -91,7 +88,7 @@ function ProviderCard({
                 ? "-"
                 : hidden
                   ? "R$ ••••••"
-                  : centsToBRL(overview.totalRecebidoCentavos)
+                  : formatarCentavos(overview.totalRecebidoCentavos)
             }
           />
           <StatTile
@@ -104,7 +101,7 @@ function ProviderCard({
                 ? "-"
                 : hidden
                   ? "R$ ••••••"
-                  : centsToBRL(overview.totalTaxaRetidaCentavos)
+                  : formatarCentavos(overview.totalTaxaRetidaCentavos)
             }
           />
           <StatTile
@@ -213,7 +210,9 @@ export default function FinanceiroPage(): JSX.Element {
           tone="success"
           label="Recebido hoje"
           value={
-            data.totalRecebidoCentavos === null ? null : centsToBRL(data.totalRecebidoCentavos)
+            data.totalRecebidoCentavos === null
+              ? null
+              : formatarCentavos(data.totalRecebidoCentavos)
           }
           hidden={hidden}
         />
@@ -222,7 +221,9 @@ export default function FinanceiroPage(): JSX.Element {
           tone="warning"
           label="Taxa retida hoje (Asaas)"
           value={
-            data.totalTaxaRetidaCentavos === null ? null : centsToBRL(data.totalTaxaRetidaCentavos)
+            data.totalTaxaRetidaCentavos === null
+              ? null
+              : formatarCentavos(data.totalTaxaRetidaCentavos)
           }
           hidden={hidden}
         />
@@ -248,7 +249,9 @@ export default function FinanceiroPage(): JSX.Element {
           icon={TrendingUp}
           tone="success"
           label="Lucro líquido hoje (recebido − taxas)"
-          value={data.lucroLiquidoCentavos === null ? null : centsToBRL(data.lucroLiquidoCentavos)}
+          value={
+            data.lucroLiquidoCentavos === null ? null : formatarCentavos(data.lucroLiquidoCentavos)
+          }
           hidden={hidden}
         />
       </div>

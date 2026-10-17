@@ -3,6 +3,7 @@
 import { ApiError } from "@rotta/api-client";
 import { ChevronDown, ChevronUp, CircleX, Undo2 } from "@rotta/icons";
 import { Badge, Button, Spinner, Typography } from "@rotta/ui/web";
+import { formatarCentavos } from "@rotta/utils";
 import { useState } from "react";
 
 import type { BillingAdminCompanySummary } from "@rotta/api-client";
@@ -12,10 +13,6 @@ import {
   useCompanyPaymentHistory,
   useRefundAdminPayment,
 } from "@/features/billing/hooks/use-billing";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -78,7 +75,7 @@ export function CompanyPaymentHistoryRow({
   function handleEstornar(pagamentoId: string, valorCentavos: number): void {
     setErroAcao(null);
     const confirmado = window.confirm(
-      `Estornar o pagamento de ${centsToBRL(valorCentavos)}? O valor volta pro pagador e sai da conta da Rotta.`,
+      `Estornar o pagamento de ${formatarCentavos(valorCentavos)}? O valor volta pro pagador e sai da conta da Rotta.`,
     );
     if (!confirmado) return;
     estornarPagamento.mutate(pagamentoId, {
@@ -188,13 +185,15 @@ export function CompanyPaymentHistoryRow({
                         <td className="py-1.5 pr-3">{METODO_LABEL[item.metodo] ?? item.metodo}</td>
                         <td className="py-1.5 pr-3">{STATUS_LABEL[item.status] ?? item.status}</td>
                         <td className="py-1.5 pr-3 font-medium">
-                          {centsToBRL(item.valorCentavos)}
+                          {formatarCentavos(item.valorCentavos)}
                         </td>
                         <td className="py-1.5 pr-3 text-text-muted">
-                          {item.taxaCentavos === null ? "-" : centsToBRL(item.taxaCentavos)}
+                          {item.taxaCentavos === null ? "-" : formatarCentavos(item.taxaCentavos)}
                         </td>
                         <td className="py-1.5 pr-3">
-                          {item.liquidoCentavos === null ? "-" : centsToBRL(item.liquidoCentavos)}
+                          {item.liquidoCentavos === null
+                            ? "-"
+                            : formatarCentavos(item.liquidoCentavos)}
                         </td>
                         {podeGerenciar && (
                           <td className="py-1.5">

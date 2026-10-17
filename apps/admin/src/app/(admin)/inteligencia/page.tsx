@@ -21,15 +21,12 @@ import {
   TrendBarChart,
   Typography,
 } from "@rotta/ui/web";
+import { formatarCentavos } from "@rotta/utils";
 import { useMemo, useState } from "react";
 
 import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { useNationalHeatmap, useNationalKpis } from "@/features/analytics/hooks/use-analytics";
 import { analyticsApi } from "@/lib/api-client";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function formatPercent(rate: number): string {
   return `${(rate * 100).toFixed(1)}%`;
@@ -141,8 +138,11 @@ export default function InteligenciaPage(): JSX.Element {
       )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="MRR (assinaturas ativas)" value={centsToBRL(data.negocio.mrrCentavos)} />
-        <StatTile label="ARR" value={centsToBRL(data.negocio.arrCentavos)} tone="info" />
+        <StatTile
+          label="MRR (assinaturas ativas)"
+          value={formatarCentavos(data.negocio.mrrCentavos)}
+        />
+        <StatTile label="ARR" value={formatarCentavos(data.negocio.arrCentavos)} tone="info" />
         <StatTile
           label="Empresas ativas pagantes"
           value={data.negocio.empresasAtivasPagantes}

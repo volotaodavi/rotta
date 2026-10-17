@@ -8,6 +8,7 @@ import {
   SectionHeader,
   SummaryCards,
 } from "@rotta/ui/native";
+import { formatarCentavos } from "@rotta/utils";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
@@ -27,10 +28,6 @@ import {
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AdminFinanceiroStackParamList, "Overview">;
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /**
  * Financeiro completo do Admin no app (pedido do usuário 05/09/2026:
@@ -128,7 +125,7 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
       ) : (
         <BalanceCard
           label="Saldo atual (Asaas)"
-          valorFormatado={centsToBRL(saldoCentavos)}
+          valorFormatado={formatarCentavos(saldoCentavos)}
           visivel={saldoVisivel}
           onAlternarVisibilidade={() => setSaldoVisivel((v) => !v)}
           iconeVisivel={<Eye size={18} color={theme.colors.onPrimary} />}
@@ -169,7 +166,7 @@ export function AdminFinanceiroOverviewScreen({ navigation }: Props): JSX.Elemen
         <SectionHeader title="Mensalidade da plataforma hoje" theme={theme} />
         <BarBreakdownChart
           formatValue={(v) =>
-            v === 0 && data.totalRecebidoCentavos === null ? "-" : centsToBRL(v)
+            v === 0 && data.totalRecebidoCentavos === null ? "-" : formatarCentavos(v)
           }
           items={[
             {

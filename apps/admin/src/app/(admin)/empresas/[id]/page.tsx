@@ -12,6 +12,7 @@ import {
   Typography,
   buttonVariants,
 } from "@rotta/ui/web";
+import { formatarCentavos } from "@rotta/utils";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { use, useState } from "react";
@@ -37,10 +38,6 @@ import {
 import { CompanyRoutesTab } from "@/features/routes/components/company-routes-tab";
 import { CompanyStudentsTab } from "@/features/students/components/company-students-tab";
 import { CompanyVehiclesTab } from "@/features/vehicles/components/company-vehicles-tab";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /**
  * Detalhes de uma empresa (tenant) + dashboard operacional — visão do
@@ -332,7 +329,7 @@ export default function EmpresaDetalhesPage({
             {dashboard && (
               <InfoItem
                 label="Receita estimada"
-                value={centsToBRL(dashboard.receitaEstimadaCentavos)}
+                value={formatarCentavos(dashboard.receitaEstimadaCentavos)}
               />
             )}
           </Card.Body>

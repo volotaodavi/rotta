@@ -1,6 +1,7 @@
 import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { FilterTabs, SectionHeader } from "@rotta/ui/native";
+import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
@@ -17,10 +18,6 @@ import {
   VehicleTextField,
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -69,9 +66,13 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
     );
   }
 
-  const valorCentavos = Math.round(Number(valor.replace(",", ".")) * 100);
+  /* `reaisParaCentavos` e não `Number(valor.replace(",", "."))`:
+     `replace` com string troca só a primeira ocorrência, e em
+     notação brasileira o ponto é separador de milhar. "1.234"
+     virava 1,234 reais e depois 123 centavos. */
+  const valorCentavos = reaisParaCentavos(valor);
   const formularioValido =
-    Number.isFinite(valorCentavos) && valorCentavos > 0 && chavePix.trim().length > 0;
+    valorCentavos !== null && valorCentavos > 0 && chavePix.trim().length > 0;
 
   function handleIniciar(): void {
     setSuccess(null);
@@ -84,6 +85,10 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
   }
 
   function handleConfirmar(): void {
+    /* `formularioValido` já garante isto, mas o tipo não atravessa a
+       fronteira da função, e um `!` aqui seria a mesma afirmação sem a
+       checagem. Numa tela que move dinheiro, a checagem fica. */
+    if (valorCentavos === null) return;
     createTransfer.mutate(
       { valorCentavos, chavePix: chavePix.trim(), tipoChavePix, descricao: descricao || undefined },
       {
@@ -93,7 +98,7 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
           setChavePix("");
           setDescricao("");
           setSuccess(
-            `Transferência de ${centsToBRL(valorCentavos)} criada (status: ${transfer.status}). A confirmação final chega por webhook e pode levar alguns minutos.`,
+            `Transferência de ${formatarCentavos(valorCentavos)} criada (status: ${transfer.status}). A confirmação final chega por webhook e pode levar alguns minutos.`,
           );
         },
         onError: (err) => {
@@ -104,13 +109,13 @@ export function AdminFinanceiroTransferenciaScreen(): JSX.Element {
     );
   }
 
-  if (confirmando) {
+  if (confirmando && valorCentavos !== null) {
     return (
       <VehicleScreen>
         <SectionHeader title="Confirmar transferência" theme={theme} />
         <VehicleCard>
           <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
-            Confirmar transferência de {centsToBRL(valorCentavos)} para a chave{" "}
+            Confirmar transferência de {formatarCentavos(valorCentavos)} para a chave{" "}
             {PIX_KEY_TYPE_LABEL[tipoChavePix].toLowerCase()} {chavePix}?
           </Texto>
           <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>

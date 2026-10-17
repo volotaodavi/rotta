@@ -22,6 +22,7 @@ import {
   MovementRow,
   SectionHeader,
 } from "@rotta/ui/native";
+import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { StatusBar } from "expo-status-bar";
 import { useState } from "react";
 import {
@@ -57,10 +58,6 @@ import {
   VehicleTextField,
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /** Só a data, sem hora: extrato com hora em cada linha vira ruído. */
 function comoDia(iso: string): string {
@@ -127,9 +124,13 @@ export function CarteiraScreen(): JSX.Element {
 
   async function handleSubmit(): Promise<void> {
     setFeedback(null);
-    const valorCentavos = Math.round(Number(valor.replace(",", ".")) * 100);
-    if (!valorCentavos || valorCentavos <= 0) {
-      setFeedback("Informe um valor válido.");
+    /* `reaisParaCentavos` e não `Number(valor.replace(",", "."))`:
+       `replace` com string troca só a primeira ocorrência, e em notação
+       brasileira o ponto é separador de milhar. Um saque de "1.234"
+       virava 1,234 reais, e o motorista recebia R$ 1,23. */
+    const valorCentavos = reaisParaCentavos(valor);
+    if (valorCentavos === null || valorCentavos <= 0) {
+      setFeedback("Informe um valor válido, como 1.234,56.");
       return;
     }
     try {
@@ -187,7 +188,7 @@ export function CarteiraScreen(): JSX.Element {
           onAbrirPerfil={() => undefined}
           onVoltar={() => navigation.goBack()}
           rotuloDoSaldo="Saldo disponível"
-          valorFormatado={centsToBRL(wallet.saldoDisponivelCentavos)}
+          valorFormatado={formatarCentavos(wallet.saldoDisponivelCentavos)}
           visivel={saldoVisivel}
           onAlternarVisibilidade={() => setSaldoVisivel((v) => !v)}
           iconeMarca={<RottaLogo size={32} />}
@@ -261,7 +262,7 @@ export function CarteiraScreen(): JSX.Element {
               A receber (pendente)
             </Texto>
             <Texto style={[styles.valorPendente, { color: theme.colors.text }]}>
-              {centsToBRL(wallet.saldoPendenteCentavos)}
+              {formatarCentavos(wallet.saldoPendenteCentavos)}
             </Texto>
             <Texto style={[styles.ajuda, { color: theme.colors.textMuted }]}>
               Mensalidades de contratos ativados ficam aqui até a confirmação de recebimento pela
@@ -287,7 +288,7 @@ export function CarteiraScreen(): JSX.Element {
                       key={transaction.id}
                       titulo={WALLET_TIPO_LABEL[transaction.tipo]}
                       subtitulo={WALLET_TRANSACTION_STATUS_LABEL[transaction.status]}
-                      valorFormatado={centsToBRL(transaction.valorCentavos)}
+                      valorFormatado={formatarCentavos(transaction.valorCentavos)}
                       direcao={credito ? "entrada" : "saida"}
                       data={comoDia(transaction.createdAt)}
                       icon={
@@ -331,7 +332,7 @@ export function CarteiraScreen(): JSX.Element {
                   >
                     <View style={styles.saqueTexto}>
                       <Texto style={[styles.saqueValor, { color: theme.colors.text }]}>
-                        {centsToBRL(withdrawal.valorCentavos)}
+                        {formatarCentavos(withdrawal.valorCentavos)}
                       </Texto>
                       <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
                         PIX: {withdrawal.chavePix}

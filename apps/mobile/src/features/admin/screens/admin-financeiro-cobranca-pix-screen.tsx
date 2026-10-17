@@ -1,5 +1,6 @@
 import { ApiError } from "@rotta/api-client";
 import { SectionHeader } from "@rotta/ui/native";
+import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 
@@ -15,10 +16,6 @@ import {
   VehicleTextField,
 } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -50,7 +47,7 @@ function PixChargeResult({
       />
       <Image source={{ uri: imagemQrCode }} style={styles.qrImage} />
       <Texto style={[styles.valorGrande, { color: theme.colors.text }]}>
-        {centsToBRL(status.amount)}
+        {formatarCentavos(status.amount)}
       </Texto>
       <Texto style={{ color: theme.colors.textMuted, fontSize: 12, textAlign: "center" }}>
         Código copia-e-cola (toque e segure pra selecionar e copiar):
@@ -87,9 +84,13 @@ export function AdminFinanceiroCobrancaPixScreen(): JSX.Element {
 
   const createCharge = useCreateAdminPixCharge();
 
-  const valorCentavos = Math.round(Number(valor.replace(",", ".")) * 100);
+  /* `reaisParaCentavos` e não `Number(valor.replace(",", "."))`:
+     `replace` com string troca só a primeira ocorrência, e em
+     notação brasileira o ponto é separador de milhar. "1.234"
+     virava 1,234 reais e depois 123 centavos. */
+  const valorCentavos = reaisParaCentavos(valor);
   const formularioValido =
-    Number.isFinite(valorCentavos) &&
+    valorCentavos !== null &&
     valorCentavos > 0 &&
     nomePagador.trim().length > 0 &&
     cpfCnpjPagador.trim().length > 0;

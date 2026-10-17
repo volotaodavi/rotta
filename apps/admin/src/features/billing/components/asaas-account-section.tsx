@@ -23,6 +23,7 @@ import {
   TrendAreaChart,
   Typography,
 } from "@rotta/ui/web";
+import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { useEffect, useMemo, useState } from "react";
 
 import type { BillingAdminStatementItem, PixKeyType } from "@rotta/api-client";
@@ -45,10 +46,6 @@ const TIPO_CHAVE_LABEL: Record<PixKeyType, string> = {
   PHONE: "Telefone",
   EVP: "Chave aleatória",
 };
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -183,9 +180,13 @@ function TransferForm(): JSX.Element {
 
   const createTransfer = useCreateAdminTransfer();
 
-  const valorCentavos = Math.round(Number(valor.replace(",", ".")) * 100);
+  /* `reaisParaCentavos` e não `Number(valor.replace(",", "."))`:
+     `replace` com string troca só a primeira ocorrência, e em
+     notação brasileira o ponto é separador de milhar. "1.234"
+     virava 1,234 reais e depois 123 centavos. */
+  const valorCentavos = reaisParaCentavos(valor);
   const formularioValido =
-    Number.isFinite(valorCentavos) && valorCentavos > 0 && chavePix.trim().length > 0;
+    valorCentavos !== null && valorCentavos > 0 && chavePix.trim().length > 0;
 
   function handleIniciar(): void {
     setSuccess(null);
@@ -198,6 +199,10 @@ function TransferForm(): JSX.Element {
   }
 
   function handleConfirmar(): void {
+    /* `formularioValido` já garante isto, mas o tipo não atravessa a
+       fronteira da função, e um `!` aqui seria a mesma afirmação sem a
+       checagem. Numa tela que move dinheiro, a checagem fica. */
+    if (valorCentavos === null) return;
     createTransfer.mutate(
       { valorCentavos, chavePix: chavePix.trim(), tipoChavePix, descricao: descricao || undefined },
       {
@@ -213,7 +218,7 @@ function TransferForm(): JSX.Element {
           setChavePix("");
           setDescricao("");
           setSuccess(
-            `Transferência de ${centsToBRL(valorCentavos)} criada (status: ${transfer.status}). A confirmação final chega por webhook — pode levar alguns minutos.`,
+            `Transferência de ${formatarCentavos(valorCentavos)} criada (status: ${transfer.status}). A confirmação final chega por webhook — pode levar alguns minutos.`,
           );
         },
         onError: (err) => {
@@ -224,11 +229,11 @@ function TransferForm(): JSX.Element {
     );
   }
 
-  if (confirmando) {
+  if (confirmando && valorCentavos !== null) {
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning/5 p-4">
         <Typography variant="bodySmall" className="font-medium">
-          Confirmar transferência de {centsToBRL(valorCentavos)} para a chave{" "}
+          Confirmar transferência de {formatarCentavos(valorCentavos)} para a chave{" "}
           {TIPO_CHAVE_LABEL[tipoChavePix].toLowerCase()} <strong>{chavePix}</strong>?
         </Typography>
         <Typography variant="caption" color="muted">
@@ -396,10 +401,10 @@ function LinhaExtrato({
           className={`font-semibold ${item.valorCentavos >= 0 ? "text-success" : "text-danger"}`}
         >
           {item.valorCentavos >= 0 ? "+" : "−"}
-          {hidden ? "R$ ••••••" : centsToBRL(Math.abs(item.valorCentavos))}
+          {hidden ? "R$ ••••••" : formatarCentavos(Math.abs(item.valorCentavos))}
         </Typography>
         <Typography variant="caption" color="muted">
-          saldo {hidden ? "••••••" : centsToBRL(item.saldoAposCentavos)}
+          saldo {hidden ? "••••••" : formatarCentavos(item.saldoAposCentavos)}
         </Typography>
       </div>
     </div>
@@ -507,7 +512,7 @@ function TaxasPorTipoCard({
                     {tipoLabel(tipo)}
                   </Typography>
                   <Typography variant="bodySmall" className="font-semibold text-warning">
-                    {hidden ? "R$ ••••••" : centsToBRL(totalCentavos)}
+                    {hidden ? "R$ ••••••" : formatarCentavos(totalCentavos)}
                   </Typography>
                 </div>
               </div>
@@ -634,7 +639,7 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
                   ? "-"
                   : hidden
                     ? "R$ ••••••"
-                    : centsToBRL(balance.saldoCentavos)}
+                    : formatarCentavos(balance.saldoCentavos)}
               </p>
             </div>
 
@@ -644,7 +649,7 @@ export function AsaasAccountSection({ podeTransferir }: { podeTransferir: boolea
                 height={64}
                 color="rgba(255,255,255,0.9)"
                 seriesName="Saldo"
-                valueFormatter={(value) => centsToBRL(Math.round(value * 100))}
+                valueFormatter={(value) => formatarCentavos(Math.round(value * 100))}
               />
             ) : (
               <p className="text-xs leading-4 text-white/70">

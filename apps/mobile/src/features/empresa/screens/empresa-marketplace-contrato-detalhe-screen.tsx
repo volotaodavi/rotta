@@ -1,5 +1,6 @@
 import { ApiError } from "@rotta/api-client";
 import { Star } from "@rotta/icons/native";
+import { formatarCentavos } from "@rotta/utils";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
@@ -27,10 +28,6 @@ import {
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<EmpresaHomeStackParamList, "MarketplaceContratoDetalhe">;
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /**
  * Detalhe de um contrato do Marketplace (Frente A) — dados completos,
@@ -89,7 +86,7 @@ export function EmpresaMarketplaceContratoDetalheScreen({ route }: Props): JSX.E
           />
         </View>
         <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
-          Mensalidade: {centsToBRL(contract.valorMensalidadeCentavos)}
+          Mensalidade: {formatarCentavos(contract.valorMensalidadeCentavos)}
         </Texto>
         <Texto style={{ color: theme.colors.textMuted, fontSize: 14 }}>
           Plano: {contract.planoDescricao}

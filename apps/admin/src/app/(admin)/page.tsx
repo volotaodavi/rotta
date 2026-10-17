@@ -28,6 +28,7 @@ import {
   Typography,
   buttonVariants,
 } from "@rotta/ui/web";
+import { formatarCentavos } from "@rotta/utils";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -48,10 +49,6 @@ import { useIntegrationsHealth } from "@/features/health/hooks/use-integrations-
 import { useSupportTickets } from "@/features/support/hooks/use-support";
 import { analyticsApi } from "@/lib/api-client";
 import { usePrivacy } from "@/providers/privacy-provider";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 const PERIODOS = [
   { dias: 7, label: "Últimos 7 dias" },
@@ -561,7 +558,7 @@ export default function AdminHomePage(): JSX.Element {
                       MRR
                     </Typography>
                     <Typography variant="display">
-                      {hidden ? "R$ ••••••" : centsToBRL(negocio.mrrCentavos)}
+                      {hidden ? "R$ ••••••" : formatarCentavos(negocio.mrrCentavos)}
                     </Typography>
                   </div>
                   <div>
@@ -569,7 +566,7 @@ export default function AdminHomePage(): JSX.Element {
                       ARR
                     </Typography>
                     <Typography variant="title">
-                      {hidden ? "R$ ••••••" : centsToBRL(negocio.arrCentavos)}
+                      {hidden ? "R$ ••••••" : formatarCentavos(negocio.arrCentavos)}
                     </Typography>
                   </div>
                   <div>

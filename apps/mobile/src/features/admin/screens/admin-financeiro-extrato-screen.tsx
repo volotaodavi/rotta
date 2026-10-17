@@ -1,5 +1,6 @@
 import { Receipt } from "@rotta/icons/native";
 import { EmptyState, MovementRow, SectionHeader } from "@rotta/ui/native";
+import { formatarCentavos } from "@rotta/utils";
 import { useMemo, useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
@@ -13,10 +14,6 @@ import type { Theme } from "@rotta/theme";
 import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/components";
 import { useTheme } from "@/providers/theme-provider";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function comoDia(iso: string): string {
   return new Date(iso).toLocaleDateString("pt-BR");
@@ -51,8 +48,8 @@ function LinhaExtrato({
   return (
     <MovementRow
       titulo={titulo}
-      subtitulo={`${prefixo}${comoHora(item.data)} · saldo ${centsToBRL(item.saldoAposCentavos)}`}
-      valorFormatado={centsToBRL(Math.abs(item.valorCentavos))}
+      subtitulo={`${prefixo}${comoHora(item.data)} · saldo ${formatarCentavos(item.saldoAposCentavos)}`}
+      valorFormatado={formatarCentavos(Math.abs(item.valorCentavos))}
       direcao={item.valorCentavos >= 0 ? "entrada" : "saida"}
       data={comoDia(item.data)}
       theme={theme}

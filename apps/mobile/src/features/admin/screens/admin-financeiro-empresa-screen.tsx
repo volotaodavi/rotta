@@ -2,6 +2,7 @@ import { ApiError } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/native";
 import { Receipt, Undo2 } from "@rotta/icons/native";
 import { EmptyState, MovementRow, SectionHeader } from "@rotta/ui/native";
+import { formatarCentavos } from "@rotta/utils";
 import { ActivityIndicator, Alert, StyleSheet, View } from "react-native";
 
 import {
@@ -19,10 +20,6 @@ import { VehicleButton, VehicleCard, VehicleScreen } from "@/features/vehicles/c
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<AdminFinanceiroStackParamList, "Empresa">;
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -86,7 +83,7 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
   function handleEstornar(pagamentoId: string, valorCentavos: number): void {
     Alert.alert(
       "Estornar pagamento",
-      `Estornar o pagamento de ${centsToBRL(valorCentavos)}? O valor volta pro pagador e sai da conta da Rotta.`,
+      `Estornar o pagamento de ${formatarCentavos(valorCentavos)}? O valor volta pro pagador e sai da conta da Rotta.`,
       [
         { text: "Voltar", style: "cancel" },
         {
@@ -142,14 +139,15 @@ export function AdminFinanceiroEmpresaScreen({ route }: Props): JSX.Element {
         ) : (
           data.items.map((item) => {
             const estornado = item.status === "REFUNDED";
-            const liquido = item.liquidoCentavos === null ? "-" : centsToBRL(item.liquidoCentavos);
+            const liquido =
+              item.liquidoCentavos === null ? "-" : formatarCentavos(item.liquidoCentavos);
 
             return (
               <VehicleCard key={item.id}>
                 <MovementRow
                   titulo={PAYMENT_METODO_LABEL[item.metodo] ?? item.metodo}
                   subtitulo={`${PAYMENT_STATUS_LABEL[item.status] ?? item.status} · líquido ${liquido}`}
-                  valorFormatado={centsToBRL(item.valorCentavos)}
+                  valorFormatado={formatarCentavos(item.valorCentavos)}
                   /* Estornado é dinheiro que voltou pro pagador: saída,
                      e não mais uma entrada igual às outras. */
                   direcao={estornado ? "saida" : "entrada"}

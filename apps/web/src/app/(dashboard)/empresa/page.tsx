@@ -29,6 +29,7 @@ import {
   Typography,
   buttonVariants,
 } from "@rotta/ui/web";
+import { formatarCentavos } from "@rotta/utils";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
@@ -115,10 +116,6 @@ function TrialBanner({
       </Card.Body>
     </Card>
   );
-}
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 interface AtalhoTile {
@@ -452,7 +449,7 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
                   Receita estimada
                 </Typography>
                 <Typography variant="title">
-                  {centsToBRL(dashboard?.receitaEstimadaCentavos ?? 0)}
+                  {formatarCentavos(dashboard?.receitaEstimadaCentavos ?? 0)}
                 </Typography>
               </Card.Body>
             </Card>

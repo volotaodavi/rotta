@@ -1,5 +1,6 @@
 import { FileText } from "@rotta/icons/native";
 import { EmptyState } from "@rotta/ui/native";
+import { formatarCentavos } from "@rotta/utils";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
@@ -22,10 +23,6 @@ import { useTheme } from "@/providers/theme-provider";
 type Props = NativeStackScreenProps<EmpresaHomeStackParamList, "MarketplaceContratos">;
 
 const STATUS_OPTIONS: ContractStatus[] = ["AGUARDANDO_ASSINATURA", "ATIVO", "ENCERRADO"];
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /**
  * Contratos do Marketplace (Frente A) — mirror de
@@ -101,7 +98,7 @@ export function EmpresaMarketplaceContratosScreen({ navigation }: Props): JSX.El
             <VehicleCard style={styles.card}>
               <View style={styles.linha}>
                 <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
-                  {centsToBRL(contract.valorMensalidadeCentavos)}/mês
+                  {formatarCentavos(contract.valorMensalidadeCentavos)}/mês
                 </Texto>
                 <StatusPill
                   label={CONTRACT_STATUS_LABEL[contract.status]}

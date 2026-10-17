@@ -1,3 +1,4 @@
+import { formatarCentavos } from "@rotta/utils";
 import { StyleSheet } from "react-native";
 
 import { VehicleCard, VehicleScreen } from "../components";
@@ -6,10 +7,6 @@ import { VEHICLE_MAINTENANCE_TYPE_LABEL } from "../labels";
 
 import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 /**
  * Histórico de manutenções do veículo (briefing "MANUTENÇÃO"/"APP
@@ -48,7 +45,7 @@ export function HistoricoScreen(): JSX.Element {
           </Texto>
           {maintenance.valorCentavos ? (
             <Texto style={{ color: theme.colors.textMuted }}>
-              {centsToBRL(maintenance.valorCentavos)}
+              {formatarCentavos(maintenance.valorCentavos)}
             </Texto>
           ) : null}
           {maintenance.fornecedor ? (

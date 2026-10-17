@@ -3,6 +3,7 @@
 import { ApiError } from "@rotta/api-client";
 import { QrCode } from "@rotta/icons";
 import { Badge, Button, Card, Typography } from "@rotta/ui/web";
+import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { useState } from "react";
 
 import {
@@ -12,10 +13,6 @@ import {
 
 const CAMPO_CLASSNAME =
   "h-11 w-full rounded-md border border-border bg-surface px-4 text-sm text-text placeholder:text-placeholder outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30";
-
-function centsToBRL(cents: number): string {
-  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -71,7 +68,7 @@ function PixChargeQrCode({
         alt="QR Code Pix da cobrança"
         className="h-48 w-48 rounded-md border border-border"
       />
-      <Typography variant="title">{centsToBRL(status.amount)}</Typography>
+      <Typography variant="title">{formatarCentavos(status.amount)}</Typography>
       <Button variant="secondary" size="sm" onClick={() => void copiarCodigo()} fullWidth>
         {copiado ? "Código copiado!" : "Copiar código Pix"}
       </Button>
@@ -100,9 +97,13 @@ export function PixChargeCard(): JSX.Element {
 
   const createCharge = useCreateAdminPixCharge();
 
-  const valorCentavos = Math.round(Number(valor.replace(",", ".")) * 100);
+  /* `reaisParaCentavos` e não `Number(valor.replace(",", "."))`:
+     `replace` com string troca só a primeira ocorrência, e em
+     notação brasileira o ponto é separador de milhar. "1.234"
+     virava 1,234 reais e depois 123 centavos. */
+  const valorCentavos = reaisParaCentavos(valor);
   const formularioValido =
-    Number.isFinite(valorCentavos) &&
+    valorCentavos !== null &&
     valorCentavos > 0 &&
     nomePagador.trim().length > 0 &&
     cpfCnpjPagador.trim().length > 0;
