@@ -7,6 +7,7 @@ import {
   EmptyState,
   FormField,
   Input,
+  PhoneInput,
   Spinner,
   Table,
   Typography,
@@ -247,11 +248,10 @@ function FormularioDeConta({
           isRequired
           helperText="Vira identificador de login e canal de recuperação de senha."
         >
-          <Input
-            value={telefone}
-            onChange={(e) => setTelefone(e.target.value)}
-            placeholder="(21) 99999-0000"
-          />
+          {/* `PhoneInput`: este número vira o login da conta da
+              escola, como diz o helperText. Com campo livre, o Admin
+              criava contas que ninguém conseguia abrir. */}
+          <PhoneInput value={telefone} onValueChange={setTelefone} />
         </FormField>
         <FormField
           label="Senha"

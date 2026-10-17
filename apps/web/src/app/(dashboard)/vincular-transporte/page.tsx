@@ -2,7 +2,7 @@
 
 import { ApiError } from "@rotta/api-client";
 import { Check, Search } from "@rotta/icons";
-import { Button, Card, FormField, Input, Typography } from "@rotta/ui/web";
+import { Button, Card, FormField, Input, PhoneInput, Typography } from "@rotta/ui/web";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
@@ -101,13 +101,11 @@ export default function VincularTransportePage(): JSX.Element {
                   onChange={(event) => setCodigoInterno(event.target.value.toUpperCase())}
                 />
               </FormField>
+              {/* O mesmo `PhoneInput` do pré-cadastro, pelo mesmo
+                  motivo: os dois lados precisam guardar o número no
+                  mesmo formato, senão a busca não acha. */}
               <FormField label="Seu celular" isRequired>
-                <Input
-                  required
-                  placeholder="(11) 98888-7777"
-                  value={celular}
-                  onChange={(event) => setCelular(event.target.value)}
-                />
+                <PhoneInput required value={celular} onValueChange={setCelular} />
               </FormField>
               {errorMessage ? (
                 <Typography variant="bodySmall" color="danger">

@@ -131,9 +131,9 @@ export default function EditarEmpresaPage({
               />
             </FormField>
             <FormField label="WhatsApp">
-              <Input
-                value={form.whatsapp}
-                onChange={(event) => updateField("whatsapp", event.target.value)}
+              <PhoneInput
+                value={form.whatsapp ?? ""}
+                onValueChange={(digits) => updateField("whatsapp", digits)}
               />
             </FormField>
           </Card.Body>

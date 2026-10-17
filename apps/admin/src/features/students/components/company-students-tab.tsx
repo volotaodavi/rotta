@@ -8,6 +8,7 @@ import {
   FormField,
   Input,
   Modal,
+  PhoneInput,
   Select,
   Spinner,
   Typography,
@@ -691,11 +692,7 @@ function NewStudentModal({
                 />
               </FormField>
               <FormField label="Telefone do responsável" isRequired>
-                <Input
-                  placeholder="(11) 91234-5678"
-                  value={novoTelefone}
-                  onChange={(e) => setNovoTelefone(e.target.value)}
-                />
+                <PhoneInput value={novoTelefone} onValueChange={setNovoTelefone} />
               </FormField>
               <FormField
                 label="CPF do responsável"

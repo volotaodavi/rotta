@@ -7,6 +7,7 @@ import {
   ErrorState,
   FormField,
   Input,
+  PhoneInput,
   Select,
   Spinner,
   Table,
@@ -217,16 +218,20 @@ function DadosTab({ schoolId }: { schoolId: string }): JSX.Element {
                 onChange={(event) => updateField("cnpj", event.target.value)}
               />
             </FormField>
+            {/* `PhoneInput` aceita fixo (10 dígitos) e celular (11) e
+                formata os dois — é o telefone pelo qual a escola é
+                chamada, e aqui ele não precisava de nenhuma máscara
+                pra ser salvo torto. */}
             <FormField label="Telefone">
-              <Input
+              <PhoneInput
                 value={form.telefone ?? ""}
-                onChange={(event) => updateField("telefone", event.target.value)}
+                onValueChange={(digits) => updateField("telefone", digits)}
               />
             </FormField>
             <FormField label="WhatsApp">
-              <Input
+              <PhoneInput
                 value={form.whatsapp ?? ""}
-                onChange={(event) => updateField("whatsapp", event.target.value)}
+                onValueChange={(digits) => updateField("whatsapp", digits)}
               />
             </FormField>
             <FormField label="E-mail">

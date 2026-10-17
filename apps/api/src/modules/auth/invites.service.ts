@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { Prisma, SchoolAdministrativeDependency } from "@prisma/client";
+import { normalizarTelefone } from "@rotta/validators";
 
 import { INVITE_REPOSITORY } from "./auth.constants";
 import { AuthService, type AuthRequestMeta } from "./auth.service";
@@ -31,6 +32,14 @@ const CODE_LENGTH = 6;
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_CODE_GENERATION_ATTEMPTS = 5;
 
+/*
+  Telefone NUNCA passa por `onlyDigits`: ele tira a máscara e deixa o
+  "+55" (número colado do WhatsApp) e o "0" de tronco dentro, o que
+  produz uma string diferente da que `normalizarTelefone` grava em todo
+  o resto do sistema. Como o telefone é login, dois formatos do mesmo
+  número são duas pessoas diferentes para o banco. `onlyDigits` segue
+  certo para CPF, CNPJ e CEP, que não têm prefixo nenhum a remover.
+*/
 function onlyDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
@@ -188,7 +197,7 @@ export class InvitesService {
    */
   async redeem(dto: RedeemInviteDto, meta: AuthRequestMeta): Promise<AuthTokensResponseDto> {
     const email = dto.email.trim().toLowerCase();
-    const telefoneDigits = onlyDigits(dto.telefone);
+    const telefoneDigits = normalizarTelefone(dto.telefone);
     const cpfDigits = onlyDigits(dto.cpf);
 
     const result = await this.prisma.runInBypassTransaction(async (tx) => {

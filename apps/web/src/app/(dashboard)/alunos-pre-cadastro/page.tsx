@@ -9,6 +9,7 @@ import {
   ErrorState,
   FormField,
   Input,
+  PhoneInput,
   Spinner,
   Typography,
 } from "@rotta/ui/web";
@@ -124,12 +125,16 @@ export default function AlunosPreCadastroPage(): JSX.Element {
                 onChange={(event) => updateField("nomeResponsavel", event.target.value)}
               />
             </FormField>
+            {/* `PhoneInput` e não `Input`: este celular é a chave que a
+                família vai digitar em `/vincular-transporte` pra se
+                achar. Com campo livre, os dois lados podiam guardar
+                formatos diferentes do mesmo número; aqui só entram
+                dígitos, e param nos 11. */}
             <FormField label="Celular do responsável" isRequired>
-              <Input
+              <PhoneInput
                 required
-                placeholder="(11) 98888-7777"
                 value={form.celularResponsavel}
-                onChange={(event) => updateField("celularResponsavel", event.target.value)}
+                onValueChange={(digits) => updateField("celularResponsavel", digits)}
               />
             </FormField>
           </Card.Body>

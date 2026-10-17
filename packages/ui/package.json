@@ -6,7 +6,8 @@
   "license": "UNLICENSED",
   "exports": {
     "./web": "./src/web/index.ts",
-    "./native": "./src/native/index.ts"
+    "./native": "./src/native/index.ts",
+    "./shared/telefone": "./src/shared/telefone.ts"
   },
   "scripts": {
     "lint": "eslint . --ext .ts,.tsx",

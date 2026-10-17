@@ -1,7 +1,16 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Badge, Button, Card, ErrorState, Select, Spinner, Typography } from "@rotta/ui/web";
+import {
+  Badge,
+  Button,
+  Card,
+  ErrorState,
+  PhoneInput,
+  Select,
+  Spinner,
+  Typography,
+} from "@rotta/ui/web";
 import { useState } from "react";
 
 import type { AdminAccount, AdminRottaPapel } from "@rotta/api-client";
@@ -159,13 +168,10 @@ export default function AdminContasPage(): JSX.Element {
               <label className="text-sm font-medium text-text" htmlFor="telefone">
                 Telefone
               </label>
-              <input
-                id="telefone"
-                value={telefone}
-                onChange={(event) => setTelefone(event.target.value.replace(/\D/g, ""))}
-                placeholder="11987654321"
-                className={CAMPO_CLASSNAME}
-              />
+              {/* O campo já guardava só dígitos, mas sem máscara:
+                  quem digita um telefone de 11 dígitos sem nenhuma
+                  separação não tem como conferir o que digitou. */}
+              <PhoneInput id="telefone" value={telefone} onValueChange={setTelefone} />
             </div>
             <div className="flex flex-col gap-1">
               <label className="text-sm font-medium text-text" htmlFor="cpf">

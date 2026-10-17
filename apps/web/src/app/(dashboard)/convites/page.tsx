@@ -9,6 +9,7 @@ import {
   ErrorState,
   FormField,
   Input,
+  PhoneInput,
   Select,
   Spinner,
   Typography,
@@ -127,11 +128,13 @@ export default function ConvitesPage(): JSX.Element {
                 onChange={(event) => updateField("nome", event.target.value)}
               />
             </FormField>
+            {/* `PhoneInput`: o celular daqui é comparado com o que a
+                pessoa informa ao pedir vínculo. Formato diferente dos
+                dois lados = convite que nunca casa. */}
             <FormField label="Celular" helperText="Pelo menos um: nome ou celular">
-              <Input
-                placeholder="(11) 98888-7777"
-                value={form.celular}
-                onChange={(event) => updateField("celular", event.target.value)}
+              <PhoneInput
+                value={form.celular ?? ""}
+                onValueChange={(digits) => updateField("celular", digits)}
               />
             </FormField>
           </Card.Body>

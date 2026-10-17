@@ -15,6 +15,7 @@ import {
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { propsDeTelefone } from "@/components/campo-de-telefone";
 import { Texto } from "@/components/texto";
 import { authApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
@@ -122,12 +123,7 @@ export function ConvitePreviewScreen({ route }: Props): JSX.Element {
         value={email}
         onChangeText={setEmail}
       />
-      <AuthTextField
-        label="Telefone"
-        keyboardType="phone-pad"
-        value={telefone}
-        onChangeText={setTelefone}
-      />
+      <AuthTextField label="Telefone" {...propsDeTelefone(telefone, setTelefone)} />
       <AuthTextField label="CPF" keyboardType="number-pad" value={cpf} onChangeText={setCpf} />
       <PasswordInput
         label="Senha"

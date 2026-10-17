@@ -15,6 +15,7 @@ import {
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { propsDeTelefone } from "@/components/campo-de-telefone";
 import { Texto } from "@/components/texto";
 import { useTheme } from "@/providers/theme-provider";
 
@@ -95,9 +96,7 @@ export function CriarContaPessoalScreen({ navigation }: Props): JSX.Element {
       />
       <AuthTextField
         label="Telefone"
-        keyboardType="phone-pad"
-        value={telefone}
-        onChangeText={setTelefone}
+        {...propsDeTelefone(telefone, setTelefone)}
         leftIcon={<Phone size={18} color={theme.colors.textMuted} />}
       />
       <PasswordInput

@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { normalizarTelefone } from "@rotta/validators";
 
 import { COMPANY_JOIN_PRE_REGISTRATION_REPOSITORY } from "./company-join-pre-registrations.constants";
 import { toCompanyJoinPreRegistrationResponseDto } from "./mappers/company-join-pre-registration.mapper";
@@ -21,9 +22,15 @@ import type { RecordAuditLogInput } from "@/modules/audit/repositories/audit-log
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 
-function onlyDigits(value: string): string {
-  return value.replace(/\D/g, "");
-}
+/*
+  Telefone NUNCA passa por `onlyDigits`: ele tira a máscara e deixa
+  o "+55" (número colado do WhatsApp) e o "0" de tronco dentro, o que
+  produz uma string diferente da que `normalizarTelefone` grava em
+  todo o resto do sistema. Como o telefone é login e é chave de
+  pareamento, dois formatos do mesmo número são duas pessoas
+  diferentes para o banco. `onlyDigits` continua certo para CPF, CNPJ
+  e CEP, que não têm prefixo nenhum a remover.
+*/
 
 /**
  * "Convites" (pedido do usuário 02/09/2026, ver nota completa em
@@ -54,7 +61,7 @@ export class CompanyJoinPreRegistrationsService {
     }
 
     const nome = dto.nome?.trim() || null;
-    const celular = dto.celular ? onlyDigits(dto.celular) : null;
+    const celular = dto.celular ? normalizarTelefone(dto.celular) : null;
     if (!nome && !celular) {
       throw new BadRequestException("Informe ao menos o nome ou o celular da pessoa.");
     }

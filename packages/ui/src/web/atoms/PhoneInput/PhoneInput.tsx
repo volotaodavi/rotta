@@ -1,5 +1,6 @@
 import { forwardRef, type ChangeEvent, type InputHTMLAttributes } from "react";
 
+import { formatarTelefone, somenteDigitosDeTelefone } from "../../../shared/telefone";
 import { cn } from "../../utils/cn";
 
 import type { InputSize } from "../Input/Input";
@@ -11,18 +12,13 @@ const SIZE_CLASSES: Record<InputSize, string> = {
   lg: "h-[52px] px-4 text-base",
 };
 
-/** Máximo de dígitos aceitos: DDD (2) + celular com nono dígito (9). Nunca fixo, nunca código do país — só o que a pessoa precisa saber de cor. */
-const MAX_DIGITS = 11;
+/* A máscara e o limite de dígitos moram em `../../../shared/telefone`
+   e não aqui: o campo de telefone do aplicativo (`@rotta/ui/native`)
+   precisa formatar exatamente igual ao da web, porque o número é login
+   nas duas plataformas. */
 
-/** `"1198765-4321"` digitado → `"(11) 98765-4321"` exibido, sempre parando em 11 dígitos. */
-export function formatBrazilianPhoneDigits(digits: string): string {
-  const ddd = digits.slice(0, 2);
-  const local = digits.slice(2);
-  if (!ddd) return "";
-  if (digits.length <= 2) return `(${ddd}`;
-  if (local.length <= 5) return `(${ddd}) ${local}`;
-  return `(${ddd}) ${local.slice(0, 5)}-${local.slice(5)}`;
-}
+/** @deprecated Use `formatarTelefone` de `@rotta/ui/shared/telefone`. Mantido só pra não quebrar quem já importava daqui. */
+export const formatBrazilianPhoneDigits = formatarTelefone;
 
 export interface PhoneInputProps extends Omit<
   InputHTMLAttributes<HTMLInputElement>,
@@ -51,7 +47,7 @@ export const PhoneInput = forwardRef<HTMLInputElement, PhoneInputProps>(function
   ref,
 ) {
   function handleChange(event: ChangeEvent<HTMLInputElement>): void {
-    onValueChange(event.target.value.replace(/\D/g, "").slice(0, MAX_DIGITS));
+    onValueChange(somenteDigitosDeTelefone(event.target.value));
   }
 
   return (

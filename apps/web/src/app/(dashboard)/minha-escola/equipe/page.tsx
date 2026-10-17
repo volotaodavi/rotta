@@ -7,6 +7,7 @@ import {
   Card,
   FormField,
   Input,
+  PhoneInput,
   Select,
   Spinner,
   Table,
@@ -230,7 +231,10 @@ function FormularioDeAcesso({
           isRequired
           helperText="Vira o login da pessoa e o caminho para recuperar a senha."
         >
-          <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+          {/* `PhoneInput`: o helperText acima não é figura de
+              linguagem, este número vira o login da pessoa. Um número
+              salvo com máscara é uma conta que não abre mais. */}
+          <PhoneInput value={telefone} onValueChange={setTelefone} />
         </FormField>
         <FormField
           label="Senha"

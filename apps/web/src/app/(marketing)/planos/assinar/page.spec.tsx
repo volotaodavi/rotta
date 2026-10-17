@@ -29,6 +29,7 @@ vi.mock("@rotta/ui/web", async () => {
     Card,
     FormField: passa("div"),
     Input: () => createElement("input"),
+    PhoneInput: () => createElement("input", { type: "tel" }),
     Typography: passa("p"),
     useToast: () => ({ error: vi.fn(), success: vi.fn() }),
   };

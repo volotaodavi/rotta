@@ -14,6 +14,7 @@ import {
 import type { AuthStackParamList } from "@/navigation/types";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
+import { propsDeTelefone } from "@/components/campo-de-telefone";
 import { Texto } from "@/components/texto";
 import { studentPreRegistrationsApi } from "@/lib/api-client";
 import { useTheme } from "@/providers/theme-provider";
@@ -70,7 +71,10 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
       setErroBusca("Informe o código da transportadora.");
       return;
     }
-    if (celular.trim().length < 10) {
+    /* `celular` agora é só dígitos (`propsDeTelefone`), então contar
+       caracteres é contar dígitos de verdade — antes a máscara digitada
+       à mão passava desta checagem com qualquer coisa dentro. */
+    if (celular.length < 10) {
       setErroBusca("Telefone incompleto: digite o DDD e o celular.");
       return;
     }
@@ -149,13 +153,11 @@ export function ConviteTransportadoraScreen(_props: Props): JSX.Element {
           value={codigoInterno}
           onChangeText={setCodigoInterno}
         />
-        <AuthTextField
-          label="Seu celular"
-          keyboardType="phone-pad"
-          placeholder="Ex.: (11) 98765-4321"
-          value={celular}
-          onChangeText={setCelular}
-        />
+        {/* `propsDeTelefone`: este celular é comparado com o que a
+            transportadora digitou no pré-cadastro. Enquanto o campo era
+            livre, os dois lados guardavam formatos diferentes do mesmo
+            número e a busca não achava nada. */}
+        <AuthTextField label="Seu celular" {...propsDeTelefone(celular, setCelular)} />
 
         {erroBusca ? (
           <Texto style={[styles.error, { color: theme.colors.danger }]}>{erroBusca}</Texto>

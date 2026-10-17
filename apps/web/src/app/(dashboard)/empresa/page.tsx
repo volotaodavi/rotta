@@ -21,6 +21,7 @@ import {
   FormField,
   Input,
   PanelGreeting,
+  PhoneInput,
   ProgressRing,
   Select,
   Spinner,
@@ -548,16 +549,16 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
                   />
                 </FormField>
                 <FormField label="Telefone" isRequired>
-                  <Input
+                  <PhoneInput
                     required
-                    value={form.telefone}
-                    onChange={(event) => updateField("telefone", event.target.value)}
+                    value={form.telefone ?? ""}
+                    onValueChange={(digits) => updateField("telefone", digits)}
                   />
                 </FormField>
                 <FormField label="WhatsApp">
-                  <Input
-                    value={form.whatsapp}
-                    onChange={(event) => updateField("whatsapp", event.target.value)}
+                  <PhoneInput
+                    value={form.whatsapp ?? ""}
+                    onValueChange={(digits) => updateField("whatsapp", digits)}
                   />
                 </FormField>
               </Card.Body>

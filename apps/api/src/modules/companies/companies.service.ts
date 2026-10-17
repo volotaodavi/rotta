@@ -16,6 +16,7 @@ import {
   PendingSubscriptionStatus,
   type PendingSubscription,
 } from "@prisma/client";
+import { normalizarTelefone } from "@rotta/validators";
 
 import {
   COMPANY_REPOSITORY,
@@ -81,6 +82,14 @@ const ADDRESS_FIELDS = new Set([
   "longitude",
 ]);
 
+/*
+  Telefone NUNCA passa por `onlyDigits`: ele tira a máscara e deixa o
+  "+55" (número colado do WhatsApp) e o "0" de tronco dentro, o que
+  produz uma string diferente da que `normalizarTelefone` grava em todo
+  o resto do sistema. Como o telefone é login, dois formatos do mesmo
+  número são duas pessoas diferentes para o banco. `onlyDigits` segue
+  certo para CPF, CNPJ e CEP, que não têm prefixo nenhum a remover.
+*/
 function onlyDigits(value: string): string {
   return value.replace(/\D/g, "");
 }
@@ -325,7 +334,7 @@ export class CompaniesService implements OnModuleInit {
           cpfCnpj: cpfDigits,
           tipo: CompanyType.AUTONOMO,
           email: user.email,
-          telefone: onlyDigits(user.telefone),
+          telefone: normalizarTelefone(user.telefone),
           cep: onlyDigits(dto.cep),
           endereco: dto.endereco.trim(),
           numero: dto.numero.trim(),
@@ -461,7 +470,7 @@ export class CompaniesService implements OnModuleInit {
   ): Promise<CompanyResponseDto> {
     const cpfCnpjDigits = onlyDigits(dto.cpfCnpj);
     const adminCpfDigits = onlyDigits(dto.administrador.cpf);
-    const adminTelefoneDigits = onlyDigits(dto.administrador.telefone);
+    const adminTelefoneDigits = normalizarTelefone(dto.administrador.telefone);
 
     if (dto.tipo === CompanyType.AUTONOMO) {
       if (cpfCnpjDigits.length !== 11) {
@@ -513,7 +522,7 @@ export class CompaniesService implements OnModuleInit {
     const pendingSubscriptionPago = await this.findMatchingPendingSubscription({
       emails: [companyEmail, adminEmail],
       cpfCnpjs: [cpfCnpjDigits, adminCpfDigits],
-      telefones: [onlyDigits(dto.telefone), adminTelefoneDigits],
+      telefones: [normalizarTelefone(dto.telefone), adminTelefoneDigits],
     });
 
     // Company + User (administrador) + Membership são uma única unidade
@@ -538,8 +547,8 @@ export class CompaniesService implements OnModuleInit {
           cpfCnpj: cpfCnpjDigits,
           tipo: dto.tipo,
           email: companyEmail,
-          telefone: onlyDigits(dto.telefone),
-          whatsapp: dto.whatsapp ? onlyDigits(dto.whatsapp) : undefined,
+          telefone: normalizarTelefone(dto.telefone),
+          whatsapp: dto.whatsapp ? normalizarTelefone(dto.whatsapp) : undefined,
           cep: onlyDigits(dadosCadastrais.cep),
           endereco: dadosCadastrais.endereco,
           numero: dadosCadastrais.numero,
@@ -733,8 +742,8 @@ export class CompaniesService implements OnModuleInit {
     }
 
     const data: UpdateCompanyData = { ...dto };
-    if (dto.telefone) data.telefone = onlyDigits(dto.telefone);
-    if (dto.whatsapp) data.whatsapp = onlyDigits(dto.whatsapp);
+    if (dto.telefone) data.telefone = normalizarTelefone(dto.telefone);
+    if (dto.whatsapp) data.whatsapp = normalizarTelefone(dto.whatsapp);
     if (dto.cep) data.cep = onlyDigits(dto.cep);
     if (dto.estado) data.estado = dto.estado.toUpperCase();
     if (dto.email) data.email = dto.email.trim().toLowerCase();
