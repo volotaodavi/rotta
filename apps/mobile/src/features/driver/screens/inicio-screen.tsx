@@ -404,20 +404,45 @@ function RotaOperacional({
                 </Texto>
               </View>
             ) : null}
-            {meuVeiculo?.placa ? (
-              <View style={styles.proximaViagemLinha}>
-                <Bus size={14} color={theme.colors.textMuted} />
-                <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                  {meuVeiculo.placa}
+
+            {/*
+              Alunos, paradas e veículo como três blocos, e não como
+              três linhas de texto cinza do mesmo tamanho: é o desenho
+              das telas 16 e 17 do conceito, e é o que o motorista
+              confere de relance antes de encostar o dedo no deslizar.
+            */}
+            <View style={[styles.blocosDaViagem, { borderTopColor: theme.colors.hairline }]}>
+              <View style={styles.blocoDaViagem}>
+                <Texto style={[styles.blocoNumero, { color: theme.colors.text }]}>
+                  {totalAlunos}
+                </Texto>
+                <Texto style={[styles.blocoRotulo, { color: theme.colors.textMuted }]}>
+                  {totalAlunos === 1 ? "Aluno" : "Alunos"}
                 </Texto>
               </View>
-            ) : null}
-            <View style={inicioStyles.mapCardBodyRow}>
-              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-                {totalAlunos} alunos confirmados
-                {rota.monitorPadraoId ? " · 1 monitor" : ""}
-              </Texto>
+              <View style={styles.blocoDaViagem}>
+                <Texto style={[styles.blocoNumero, { color: theme.colors.text }]}>
+                  {paradasOrdenadas.length}
+                </Texto>
+                <Texto style={[styles.blocoRotulo, { color: theme.colors.textMuted }]}>
+                  {paradasOrdenadas.length === 1 ? "Parada" : "Paradas"}
+                </Texto>
+              </View>
+              <View style={styles.blocoDaViagem}>
+                <Texto style={[styles.blocoPlaca, { color: theme.colors.text }]} numberOfLines={1}>
+                  {meuVeiculo?.placa ?? "-"}
+                </Texto>
+                <Texto style={[styles.blocoRotulo, { color: theme.colors.textMuted }]}>
+                  Veículo
+                </Texto>
+              </View>
             </View>
+
+            {rota.monitorPadraoId ? (
+              <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+                1 monitor nesta viagem
+              </Texto>
+            ) : null}
             {/*
               Lista detalhada por aluno (pedido do usuário: "aparecerá
               as informações — nome dos alunos, escolas, horário,
@@ -668,6 +693,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     padding: 24,
+  },
+  blocoDaViagem: { alignItems: "center", flex: 1, gap: 2 },
+  blocoNumero: { fontSize: 20, fontVariant: ["tabular-nums"], fontWeight: "700" },
+  blocoPlaca: { fontSize: 15, fontWeight: "700", letterSpacing: 0.5 },
+  blocoRotulo: { fontSize: 11 },
+  blocosDaViagem: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 8,
+    paddingTop: 12,
   },
   controlsRow: { flexDirection: "row", gap: 8 },
   controlsSection: { gap: 8, paddingHorizontal: 16 },

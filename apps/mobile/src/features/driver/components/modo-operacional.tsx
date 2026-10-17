@@ -2,6 +2,7 @@ import { MOTIVO_AUSENCIA_PRESETS } from "@rotta/api-client";
 import {
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   LogIn,
   LogOut,
@@ -340,15 +341,23 @@ export function ModoOperacionalFullScreen({
 
       <OperationalBottomSheet expanded={verTodosAlunos} onToggleExpanded={handleToggleExpanded}>
         <View style={inicioStyles.mapCardBodyRow}>
+          {/*
+            O número de embarcados é a informação principal desta tela,
+            e estava em cinza de 12 pontos, do mesmo tamanho de tudo o
+            mais. Na tela 19 do conceito ele é uma linha inteira, com
+            seta. O motorista confere isso de relance, em movimento.
+          */}
           <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${alunosEmbarcados} de ${totalAlunos} embarcados, ${verTodosAlunos ? "ocultar" : "ver"} a lista`}
             onPress={handleToggleExpanded}
-            style={{ alignItems: "center", flexDirection: "row", gap: 6 }}
+            style={styles.linhaEmbarcados}
           >
-            <Users size={14} color={theme.colors.textMuted} />
-            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
-              {alunosEmbarcados}/{totalAlunos} embarcados ·{" "}
-              {verTodosAlunos ? "ocultar todos" : "ver todos"}
+            <Users size={18} color={accentColor} />
+            <Texto style={[styles.embarcadosTexto, { color: theme.colors.text }]}>
+              {alunosEmbarcados}/{totalAlunos} alunos embarcados
             </Texto>
+            <ChevronRight size={18} color={theme.colors.textMuted} />
           </Pressable>
           {/* Pedido do usuário: "o botão de pausar rota deverá sair de
               onde está, pois ele está muito difícil de ser clicado" —
@@ -399,15 +408,19 @@ export function ModoOperacionalFullScreen({
                   </Texto>
                 ) : null}
               </View>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Navegar até a próxima parada"
-                onPress={handleNavegar}
-                style={[inicioStyles.navegarButton, { backgroundColor: theme.colors.primaryMuted }]}
-              >
-                <Navigation size={16} color={theme.colors.driverPrimary} />
-              </Pressable>
             </View>
+
+            {/*
+              Largura total, como na tela 19. Era um quadrado de 40
+              pontos com um ícone dentro: alvo pequeno demais para quem
+              está com o celular no suporte, em movimento, e é a ação
+              que mais se usa durante a viagem.
+            */}
+            <VehicleButton
+              label="Navegar"
+              icon={<Navigation size={16} color={theme.colors.onPrimary} />}
+              onPress={handleNavegar}
+            />
 
             {alunosDaParadaAlvo.map((aluno) => (
               <AlunoParadaRow
@@ -832,6 +845,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
+  embarcadosTexto: { flex: 1, fontSize: 15, fontWeight: "700" },
   fsAlvoHeader: {
     alignItems: "flex-start",
     borderTopWidth: 1,
@@ -870,6 +884,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
+  linhaEmbarcados: { alignItems: "center", flexDirection: "row", gap: 10, paddingVertical: 4 },
   opSheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,

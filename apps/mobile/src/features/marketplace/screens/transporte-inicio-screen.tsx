@@ -7,7 +7,7 @@ import {
 } from "@rotta/api-client";
 import { Bus, ChevronLeft, Clock, MapPin, Navigation, Star, User } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
-import { Timeline } from "@rotta/ui/native";
+import { EmptyState, FilterTabs, SectionHeader, Timeline } from "@rotta/ui/native";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, TouchableOpacity, View } from "react-native";
@@ -74,41 +74,35 @@ function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element
   return (
     <VehicleCard>
       <View style={styles.viagensHeader}>
-        <Texto style={[styles.secao, { color: theme.colors.text }]}>Viagens</Texto>
-        <View style={styles.viagensAbas}>
-          {(Object.keys(HISTORY_RANGE_LABEL) as StudentEventsHistoryRange[]).map((key) => (
-            <TouchableOpacity
-              key={key}
-              onPress={() => setRange(key)}
-              style={[
-                styles.viagensAba,
-                {
-                  backgroundColor: range === key ? theme.colors.success : theme.colors.muted,
-                },
-              ]}
-            >
-              <Texto
-                style={{
-                  /* `onPrimary`, nunca "#fff" cru: ver a nota em
-                     `colors.ts`, que existe por causa deste caso. */
-                  color: range === key ? theme.colors.onPrimary : theme.colors.textMuted,
-                  fontSize: 12,
-                  fontWeight: "600",
-                }}
-              >
-                {HISTORY_RANGE_LABEL[key]}
-              </Texto>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <SectionHeader title="Viagens" theme={theme} />
+        {/*
+          Pílulas azuis, como na tela 11 do conceito. Eram verdes, de
+          uma decisão antiga que usava o verde como "cor de papel do
+          Responsável"; o conceito aprovado usa o azul da marca em toda
+          seleção, e ter uma tela com seleção verde no meio de um app
+          de seleção azul é o tipo de divergência que ninguém sabe
+          explicar depois.
+        */}
+        <FilterTabs
+          options={(Object.keys(HISTORY_RANGE_LABEL) as StudentEventsHistoryRange[]).map((key) => ({
+            key,
+            label: HISTORY_RANGE_LABEL[key],
+          }))}
+          value={range}
+          onChange={(key) => setRange(key as StudentEventsHistoryRange)}
+          theme={theme}
+        />
       </View>
 
       {isLoading ? (
         <ActivityIndicator color={theme.colors.primary} />
       ) : !eventos || eventos.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted, textAlign: "center", paddingVertical: 8 }}>
-          Nenhum embarque ou desembarque registrado neste período.
-        </Texto>
+        <EmptyState
+          title="Nada neste período"
+          description="Embarques e desembarques aparecem aqui assim que a viagem começar."
+          icon={<Clock size={28} color={theme.colors.primary} />}
+          theme={theme}
+        />
       ) : (
         /*
           Linha do tempo vertical (tela 11 da referência, "VIAGENS -
@@ -1009,12 +1003,5 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 12,
   },
-  viagensAba: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  viagensAbas: { flexDirection: "row", gap: 4 },
-  viagensHeader: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
+  viagensHeader: { gap: 4, marginBottom: 10 },
 });
