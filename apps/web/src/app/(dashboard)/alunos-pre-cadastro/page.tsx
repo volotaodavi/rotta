@@ -12,6 +12,7 @@ import {
   Spinner,
   Typography,
 } from "@rotta/ui/web";
+import { isValidBrazilianMobile } from "@rotta/validators";
 import { useState, type FormEvent } from "react";
 
 import type {
@@ -73,6 +74,17 @@ export default function AlunosPreCadastroPage(): JSX.Element {
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     setErrorMessage(null);
+    /*
+      O celular é a CHAVE pela qual a família se acha no pré-cadastro
+      depois: ela digita o código da empresa e o próprio número. Um
+      dígito errado aqui não vira erro, vira uma família que informa o
+      número certo e ouve que não existe pré-cadastro nenhum. Quem
+      digita é a transportadora, e ninguém confere.
+    */
+    if (!isValidBrazilianMobile(form.celularResponsavel)) {
+      setErrorMessage("Informe o celular do responsável com DDD, no formato (11) 91234-5678.");
+      return;
+    }
     try {
       await createPreRegistration.mutateAsync(form);
       setForm(INITIAL_FORM);

@@ -12,6 +12,7 @@ import {
   Spinner,
   Typography,
 } from "@rotta/ui/web";
+import { isValidBrazilianMobile } from "@rotta/validators";
 import { useState } from "react";
 
 import { useCreateStudentForCompany, useCompanyStudents } from "../hooks/use-students";
@@ -287,6 +288,17 @@ function NewStudentModal({
       (!novoNome.trim() || !novoEmail.trim() || !novoTelefone.trim() || !novoCpf.trim())
     ) {
       setErrorMessage("Preencha todos os dados do novo Responsável.");
+      return;
+    }
+    /*
+      O celular do responsável é LOGIN: é com ele que a pessoa entra no
+      app. Um dígito errado aqui cria uma conta que ela nunca consegue
+      abrir, e quem digitou não é ela.
+    */
+    if (responsavelMode === "novo" && !isValidBrazilianMobile(novoTelefone)) {
+      setErrorMessage(
+        "O celular do Responsável precisa ter DDD, no formato (11) 91234-5678: é com ele que a pessoa entra no app.",
+      );
       return;
     }
 
@@ -680,7 +692,7 @@ function NewStudentModal({
               </FormField>
               <FormField label="Telefone do responsável" isRequired>
                 <Input
-                  placeholder="DDD + número"
+                  placeholder="(11) 91234-5678"
                   value={novoTelefone}
                   onChange={(e) => setNovoTelefone(e.target.value)}
                 />

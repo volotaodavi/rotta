@@ -9,7 +9,7 @@ import {
   MaxLength,
 } from "class-validator";
 
-import { IsBrazilianPhone, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianMobile, IsStrongPassword } from "@/common/validators";
 
 /**
  * Cadastro self-service da Área Pessoal (briefing "Marketplace" —
@@ -37,7 +37,7 @@ export class RegisterPessoalDto {
   email!: string;
 
   @ApiProperty({ example: "11987654321" })
-  @IsBrazilianPhone()
+  @IsBrazilianMobile()
   telefone!: string;
 
   @ApiProperty({ example: "SenhaForte123", minLength: 8 })

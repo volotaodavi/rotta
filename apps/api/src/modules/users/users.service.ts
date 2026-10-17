@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
 import { CompanyType } from "@prisma/client";
-import { passwordEqualsIdentifier } from "@rotta/validators";
+import { passwordEqualsIdentifier, normalizarTelefone } from "@rotta/validators";
 
 import { duracaoDoBloqueioMs } from "./lockout.util";
 import {
@@ -83,7 +83,16 @@ export class UsersService {
       return this.userRepository.findByEmail(identifier);
     }
 
-    const digitsOnly = identifier.replace(/\D/g, "");
+    /*
+      `normalizarTelefone` em vez de só tirar os símbolos: quem copia o
+      próprio número do WhatsApp cola "+55 21 99709-9557", e quem
+      aprendeu a discar com o prefixo de tronco digita "021...". Os
+      dois viravam 13 e 12 dígitos, nenhum tamanho que o login
+      procurava, e a pessoa levava "não foi possível entrar" com a
+      senha certa. CPF não passa por aqui porque CPF não tem +55 nem
+      tronco: 11 dígitos continuam sendo 11 dígitos.
+    */
+    const digitsOnly = normalizarTelefone(identifier);
     if (digitsOnly.length === 11) {
       // CPF e celular brasileiro tem o mesmo tamanho (11 digitos) —
       // tenta CPF primeiro (Dossie 15 `AUTH-02`: "login por CPF resolve
@@ -105,9 +114,15 @@ export class UsersService {
    * (Empresa/Autônomo/Admin Rotta).
    */
   async assertNoDuplicateIdentity(email: string, telefone: string, cpf?: string): Promise<void> {
+    /*
+      Normaliza antes de comparar. Sem isto, "(21) 99709-9557" e
+      "21997099557" são duas strings diferentes para o índice único, e
+      a mesma pessoa conseguia duas contas — cada uma impossível de
+      achar pela outra.
+    */
     const [byEmail, byTelefone, byCpf] = await Promise.all([
       this.userRepository.findByEmail(email),
-      this.userRepository.findByTelefone(telefone),
+      this.userRepository.findByTelefone(normalizarTelefone(telefone)),
       cpf ? this.userRepository.findByCpf(cpf) : Promise.resolve(null),
     ]);
 

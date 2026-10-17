@@ -1,4 +1,4 @@
-import { isValidBrazilianPhone } from "./phone.schema";
+import { isValidBrazilianMobile, isValidBrazilianPhone, normalizarTelefone } from "./phone.schema";
 
 describe("isValidBrazilianPhone", () => {
   it("aceita celular com nono dígito", () => {
@@ -54,5 +54,55 @@ describe("isValidBrazilianPhone", () => {
   it("rejeita string vazia ou só símbolos (nenhum dígito)", () => {
     expect(isValidBrazilianPhone("")).toBe(false);
     expect(isValidBrazilianPhone("()--")).toBe(false);
+  });
+});
+
+describe("normalizarTelefone", () => {
+  /**
+   * Isto é o que estava faltando, e não era detalhe: o telefone é
+   * LOGIN na Rotta, e era gravado exatamente como a pessoa digitava.
+   * Quem cadastrava um responsável escrevendo a máscara gravava a
+   * máscara; o login reduz o que foi digitado a dígitos e procura
+   * outra string. A conta existia e não abria.
+   */
+  it("reduz a dígitos, tirando máscara, código do país e tronco", () => {
+    expect(normalizarTelefone("(21) 99709-9557")).toBe("21997099557");
+    expect(normalizarTelefone("+55 21 99709-9557")).toBe("21997099557");
+    expect(normalizarTelefone("021 99709-9557")).toBe("21997099557");
+    expect(normalizarTelefone("21997099557")).toBe("21997099557");
+  });
+
+  it("o mesmo número em quatro formatos vira a mesma chave", () => {
+    const formatos = ["(21) 99709-9557", "+5521997099557", "021997099557", "21 99709 9557"];
+    const chaves = new Set(formatos.map(normalizarTelefone));
+    expect(chaves.size).toBe(1);
+  });
+});
+
+describe("isValidBrazilianMobile", () => {
+  it("aceita celular com DDD e nono dígito, em qualquer formato", () => {
+    expect(isValidBrazilianMobile("21997099557")).toBe(true);
+    expect(isValidBrazilianMobile("(21) 99709-9557")).toBe(true);
+    expect(isValidBrazilianMobile("+55 21 99709-9557")).toBe(true);
+  });
+
+  it("recusa fixo: dez dígitos não recebem mensagem", () => {
+    expect(isValidBrazilianMobile("1132654321")).toBe(false);
+  });
+
+  it("recusa dígito a mais, dígito a menos e DDD esquecido", () => {
+    expect(isValidBrazilianMobile("2199709955")).toBe(false);
+    expect(isValidBrazilianMobile("219970995577")).toBe(false);
+    expect(isValidBrazilianMobile("997099557")).toBe(false);
+  });
+
+  it("recusa o que não começa em 9 depois do DDD", () => {
+    /* O nono dígito é obrigatório em todo o país desde 2016. */
+    expect(isValidBrazilianMobile("21887654321")).toBe(false);
+  });
+
+  it("recusa DDD que não existe", () => {
+    expect(isValidBrazilianMobile("01997099557")).toBe(false);
+    expect(isValidBrazilianMobile("10997099557")).toBe(false);
   });
 });

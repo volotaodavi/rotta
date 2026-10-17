@@ -1,5 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsString, MaxLength, MinLength } from "class-validator";
+import { IsNotEmpty, IsString, MaxLength } from "class-validator";
+
+import { IsBrazilianMobile } from "@/common/validators";
 
 /**
  * Pré-cadastro de aluno feito pela transportadora (pedido do usuário:
@@ -22,9 +24,10 @@ export class CreateStudentPreRegistrationDto {
   @MaxLength(160)
   nomeResponsavel!: string;
 
-  @ApiProperty({ example: "(11) 98888-7777" })
-  @IsString()
-  @MinLength(10)
-  @MaxLength(20)
+  @ApiProperty({ example: "11988887777" })
+  /* Era `@MinLength(10) @MaxLength(20)`: "0000000000" passava, e um
+     fixo também. Este número é a chave que a família vai usar para se
+     achar no pré-cadastro, e quem digita não é ela. */
+  @IsBrazilianMobile()
   celularResponsavel!: string;
 }

@@ -2,7 +2,7 @@ import { ApiProperty } from "@nestjs/swagger";
 import { AdminRottaPapel } from "@prisma/client";
 import { IsEmail, IsEnum, IsNotEmpty, IsString, MaxLength } from "class-validator";
 
-import { IsBrazilianPhone, IsCpf, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianMobile, IsCpf, IsStrongPassword } from "@/common/validators";
 
 /**
  * Cria uma nova conta `User.isAdminRotta` (pedido do usuário
@@ -24,7 +24,7 @@ export class CreateAdminAccountDto {
   email!: string;
 
   @ApiProperty({ example: "11987654321" })
-  @IsBrazilianPhone()
+  @IsBrazilianMobile()
   telefone!: string;
 
   @ApiProperty({ example: "52998224725" })

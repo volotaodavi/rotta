@@ -10,7 +10,7 @@ import {
   MaxLength,
 } from "class-validator";
 
-import { IsBrazilianPhone, IsCpf, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianMobile, IsCpf, IsStrongPassword } from "@/common/validators";
 import { Role } from "@/shared/enums";
 
 /** Só quem dirige/acompanha; nunca `Role.EMPRESA` (esse cria a Company junto, ver `RegisterEmpresaDto`). */
@@ -43,7 +43,7 @@ export class RegisterAutonomoDto {
   email!: string;
 
   @ApiProperty({ example: "11987654321" })
-  @IsBrazilianPhone()
+  @IsBrazilianMobile()
   telefone!: string;
 
   @ApiProperty({ example: "52998224725" })

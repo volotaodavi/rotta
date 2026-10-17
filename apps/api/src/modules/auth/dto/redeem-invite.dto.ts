@@ -1,7 +1,7 @@
 import { ApiProperty } from "@nestjs/swagger";
 import { Equals, IsBoolean, IsEmail, IsNotEmpty, IsString, MaxLength } from "class-validator";
 
-import { IsBrazilianPhone, IsCpf, IsStrongPassword } from "@/common/validators";
+import { IsBrazilianMobile, IsCpf, IsStrongPassword } from "@/common/validators";
 
 /**
  * Resgate de convite (Dossiê 15, `AUTH-01-A1`) — "Já fui convidado". Se
@@ -27,7 +27,7 @@ export class RedeemInviteDto {
   email!: string;
 
   @ApiProperty({ example: "11987654321" })
-  @IsBrazilianPhone()
+  @IsBrazilianMobile()
   telefone!: string;
 
   @ApiProperty({ example: "52998224725" })

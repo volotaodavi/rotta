@@ -2,6 +2,8 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { SchoolStaffRole } from "@prisma/client";
 import { IsEmail, IsEnum, IsOptional, IsString, IsUUID, Length, MinLength } from "class-validator";
 
+import { IsBrazilianMobile } from "@/common/validators";
+
 /**
  * Criação direta de uma conta do Portal da Escola (pedido do usuário
  * 22/09/2026: "não irei criar escolas... só terminar o quesito de:
@@ -29,10 +31,13 @@ export class CriarContaDaEscolaDto {
   email!: string;
 
   @ApiProperty({
+    example: "11987654321",
     description: "Celular com DDD: vira identificador de login e canal de recuperação.",
   })
-  @IsString()
-  @Length(10, 15)
+  /* Era `@Length(10, 15)` num campo que a própria descrição chama de
+     identificador de login: "0000000000" passava, e a máscara era
+     gravada junto, deixando a conta impossível de abrir. */
+  @IsBrazilianMobile()
   telefone!: string;
 
   @ApiProperty({ minLength: 8 })

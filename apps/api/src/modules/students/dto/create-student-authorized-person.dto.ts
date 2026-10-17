@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsOptional, IsString, MaxLength } from "class-validator";
 
+import { IsBrazilianPhone } from "@/common/validators";
+
 /** Pessoa autorizada a buscar/acompanhar o aluno (briefing "CADASTRO DO ALUNO" — opcional). */
 export class CreateStudentAuthorizedPersonDto {
   @ApiProperty({ example: "Ana Souza (avó)" })
@@ -14,10 +16,11 @@ export class CreateStudentAuthorizedPersonDto {
   @MaxLength(20)
   cpf?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ example: "11987654321" })
   @IsOptional()
-  @IsString()
-  @MaxLength(20)
+  /* Quem busca a criança na escola é chamado por telefone quando algo
+     foge do combinado. `@MaxLength(20)` aceitava qualquer coisa. */
+  @IsBrazilianPhone()
   telefone?: string;
 
   @ApiPropertyOptional({ example: "Avó" })

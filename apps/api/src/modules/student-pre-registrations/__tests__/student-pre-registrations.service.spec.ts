@@ -100,6 +100,26 @@ describe("StudentPreRegistrationsService", () => {
       });
     });
 
+    it("o número colado do WhatsApp (+55) vira a mesma chave que a família digita", async () => {
+      /*
+        A transportadora cola o número do WhatsApp, que vem com o
+        código do país. A mãe, depois, digita o próprio celular sem
+        ele. Antes isto gravava "5511988887777" e o pré-cadastro
+        "não existia" quando ela chegava.
+      */
+      repository.create.mockResolvedValue(buildEntity());
+
+      await service.create(buildActor({ role: Role.EMPRESA, tenantId: "company-1" }), {
+        nomeAluno: "Lucas Silva",
+        nomeResponsavel: "Ana Silva",
+        celularResponsavel: "+55 11 98888-7777",
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ celularResponsavel: "11988887777" }),
+      );
+    });
+
     it("rejeita quem não pertence a nenhuma empresa", async () => {
       await expect(
         service.create(buildActor({ tenantId: null }), {
@@ -196,6 +216,14 @@ describe("StudentPreRegistrationsService", () => {
       expect(repository.findPendingByCompanyAndCelular).not.toHaveBeenCalled();
     });
 
+    /*
+      Este teste existia e guardava o DEFEITO: ele afirmava que
+      "+55 (11) 98888-7777" vira "5511988887777" na busca, enquanto o
+      cadastro gravava "11988887777" quando a transportadora digitava
+      sem o código do país. Ou seja, provava que os dois lados NÃO
+      batiam, e passava verde. Corrigido em 17/10/2026 junto da
+      normalização de verdade.
+    */
     it("normaliza o celular buscado do mesmo jeito que foi salvo", async () => {
       companyRepository.findActiveByCodigoInterno.mockResolvedValue({
         id: "company-1",
@@ -209,7 +237,7 @@ describe("StudentPreRegistrationsService", () => {
 
       expect(repository.findPendingByCompanyAndCelular).toHaveBeenCalledWith(
         "company-1",
-        "5511988887777",
+        "11988887777",
       );
       expect(result).toEqual({
         id: "pre-1",

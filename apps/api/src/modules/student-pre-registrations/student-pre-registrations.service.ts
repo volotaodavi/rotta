@@ -5,6 +5,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { normalizarTelefone } from "@rotta/validators";
 
 import {
   toClaimStudentPreRegistrationResponseDto,
@@ -45,9 +46,20 @@ export class StudentPreRegistrationsService {
     @Inject(COMPANY_REPOSITORY) private readonly companyRepository: CompanyRepository,
   ) {}
 
-  /** Só dígitos — "(11) 98888-7777", "11988887777" e "+55 11 98888-7777" precisam bater no mesmo registro. */
+  /**
+   * "(11) 98888-7777", "11988887777" e "+55 11 98888-7777" precisam
+   * bater no mesmo registro.
+   *
+   * Era `replace(/\D/g, "")`, que faz dois terços disso: tira a
+   * máscara, mas deixa o "+55" virar 5511988887777. O comentário
+   * antigo já prometia o terceiro caso e o código não entregava —
+   * resultado: a transportadora colava o número do WhatsApp, e quando
+   * a família chegava com o próprio celular o pré-cadastro "não
+   * existia". `normalizarTelefone` tira código do país e prefixo de
+   * tronco também.
+   */
   private normalizeCelular(celular: string): string {
-    return celular.replace(/\D/g, "");
+    return normalizarTelefone(celular);
   }
 
   async create(

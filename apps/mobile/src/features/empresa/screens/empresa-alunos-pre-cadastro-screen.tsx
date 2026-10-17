@@ -1,3 +1,4 @@
+import { isValidBrazilianMobile } from "@rotta/validators";
 import { useState } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
@@ -41,12 +42,19 @@ export function EmpresaAlunosPreCadastroScreen(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   function handleSubmit(): void {
-    if (
-      nomeAluno.trim().length < 2 ||
-      nomeResponsavel.trim().length < 2 ||
-      celularResponsavel.trim().length < 10
-    ) {
-      setError("Preencha o nome do aluno, o nome e o celular do responsável.");
+    if (nomeAluno.trim().length < 2 || nomeResponsavel.trim().length < 2) {
+      setError("Preencha o nome do aluno e o nome do responsável.");
+      return;
+    }
+    /*
+      O celular é a CHAVE pela qual a família se acha no pré-cadastro
+      depois: ela digita o código da empresa e o próprio número. Um
+      dígito errado aqui não vira erro, vira uma família que informa o
+      número certo e ouve que não existe pré-cadastro nenhum. Quem
+      digita é a transportadora, e ninguém confere.
+    */
+    if (!isValidBrazilianMobile(celularResponsavel)) {
+      setError("Informe o celular do responsável com DDD, no formato (11) 91234-5678.");
       return;
     }
     setError(null);

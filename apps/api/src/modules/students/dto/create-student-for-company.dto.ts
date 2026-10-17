@@ -4,7 +4,7 @@ import { IsEmail, IsOptional, IsString, MaxLength, ValidateNested } from "class-
 
 import { CreateStudentDto } from "./create-student.dto";
 
-import { IsBrazilianPhone } from "@/common/validators";
+import { IsBrazilianMobile } from "@/common/validators";
 
 /**
  * Dados do Responsável quando ele ainda não tem conta na Rotta (pedido
@@ -31,7 +31,7 @@ export class NovoResponsavelDto {
   email!: string;
 
   @ApiProperty({ example: "11987654321" })
-  @IsBrazilianPhone()
+  @IsBrazilianMobile()
   telefone!: string;
 }
 
