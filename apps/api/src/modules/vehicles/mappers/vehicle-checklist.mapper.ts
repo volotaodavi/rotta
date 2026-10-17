@@ -1,18 +1,36 @@
 import type {
+  ChecklistViagemDto,
   ListVehicleChecklistsResponseDto,
   VehicleChecklistResponseDto,
 } from "../dto/vehicle-checklist-response.dto";
-import type { ListVehicleChecklistsResult } from "../repositories/vehicle-checklist.repository";
-import type { VehicleChecklist } from "@prisma/client";
+import type {
+  ListVehicleChecklistsResult,
+  VehicleChecklistComContexto,
+} from "../repositories/vehicle-checklist.repository";
+
+export function toChecklistViagemDto(
+  trip: NonNullable<VehicleChecklistComContexto["trip"]>,
+): ChecklistViagemDto {
+  return {
+    id: trip.id,
+    codigo: trip.codigo,
+    data: trip.data,
+    sentido: trip.sentido,
+    status: trip.status,
+    iniciadaEm: trip.iniciadaEm,
+    finalizadaEm: trip.finalizadaEm,
+  };
+}
 
 export function toVehicleChecklistResponseDto(
-  checklist: VehicleChecklist,
+  checklist: VehicleChecklistComContexto,
 ): VehicleChecklistResponseDto {
   return {
     id: checklist.id,
     vehicleId: checklist.vehicleId,
-    motoristaId: checklist.motoristaId,
-    viagemId: checklist.viagemId,
+    preenchidoPorId: checklist.preenchidoPorId,
+    preenchidoPorNome: checklist.preenchidoPor.nome,
+    viagem: checklist.trip ? toChecklistViagemDto(checklist.trip) : null,
     pneusOk: checklist.pneusOk,
     lucesOk: checklist.lucesOk,
     combustivelOk: checklist.combustivelOk,

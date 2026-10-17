@@ -103,7 +103,35 @@ describe("Vehicles (e2e)", () => {
       vinculoId: randomUUID(),
     });
 
-    return { companyId: company.id, empresaToken, motoristaUserId, motoristaToken };
+    const monitorUserId = randomUUID();
+    await prisma.user.create({
+      data: {
+        id: monitorUserId,
+        nome: "Monitor (teste)",
+        email: `monitor-${monitorUserId}@teste.com.br`,
+        telefone: `11${Math.floor(900000000 + Math.random() * 99999999)}`,
+        cpf: String(Math.floor(10000000000 + Math.random() * 89999999999)),
+        passwordHash: "x",
+      },
+    });
+    await prisma.membership.create({
+      data: { userId: monitorUserId, companyId: company.id, role: Role.MONITOR },
+    });
+    const monitorToken = signTestToken({
+      sub: monitorUserId,
+      tenantId: company.id,
+      role: Role.MONITOR,
+      vinculoId: randomUUID(),
+    });
+
+    return {
+      companyId: company.id,
+      empresaToken,
+      motoristaUserId,
+      motoristaToken,
+      monitorUserId,
+      monitorToken,
+    };
   }
 
   beforeAll(async () => {
@@ -141,6 +169,10 @@ describe("Vehicles (e2e)", () => {
   afterAll(async () => {
     await prisma.$executeRaw`SELECT set_config('app.bypass_rls', 'on', false)`;
     await prisma.vehicleChecklist.deleteMany();
+    // Antes dos veiculos: `Trip.veiculo` e `onDelete: Restrict`, e
+    // `Trip.route` tambem -- viagem primeiro, depois rota, depois veiculo.
+    await prisma.trip.deleteMany();
+    await prisma.route.deleteMany();
     await prisma.vehicleOccurrence.deleteMany();
     await prisma.vehicleAssignment.deleteMany();
     await prisma.vehicleReminder.deleteMany();
@@ -160,6 +192,10 @@ describe("Vehicles (e2e)", () => {
   beforeEach(async () => {
     await prisma.$executeRaw`SELECT set_config('app.bypass_rls', 'on', false)`;
     await prisma.vehicleChecklist.deleteMany();
+    // Antes dos veiculos: `Trip.veiculo` e `onDelete: Restrict`, e
+    // `Trip.route` tambem -- viagem primeiro, depois rota, depois veiculo.
+    await prisma.trip.deleteMany();
+    await prisma.route.deleteMany();
     await prisma.vehicleOccurrence.deleteMany();
     await prisma.vehicleAssignment.deleteMany();
     await prisma.vehicleReminder.deleteMany();
@@ -434,7 +470,7 @@ describe("Vehicles (e2e)", () => {
     });
   });
 
-  describe("Checklist do motorista", () => {
+  describe("Checklist de quem vai na van", () => {
     it("permite ao motorista vinculado registrar um checklist, sempre em seu próprio nome", async () => {
       const { empresaToken, motoristaUserId, motoristaToken } = await createCompanyWithMembers();
       const createResponse = await request(app.getHttpServer())
@@ -463,11 +499,181 @@ describe("Vehicles (e2e)", () => {
         })
         .expect(201);
 
-      expect(checklist.body.data.motoristaId).toBe(motoristaUserId);
+      expect(checklist.body.data.preenchidoPorId).toBe(motoristaUserId);
       expect(checklist.body.data.lucesOk).toBe(false);
+      // Sem viagem iniciada, o checklist e pre-viagem: fica sem viagem
+      // ate que `TripsService.start` o adote.
+      expect(checklist.body.data.viagem).toBeNull();
     });
 
-    it("EMPRESA não pode criar checklist (apenas o Motorista pode)", async () => {
+    it("o ciclo comeca vazio e nao inventa viagem anterior", async () => {
+      const { empresaToken, motoristaUserId, motoristaToken } = await createCompanyWithMembers();
+      const createResponse = await request(app.getHttpServer())
+        .post("/v1/vehicles")
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send(validVehiclePayload())
+        .expect(201);
+      const vehicleId = createResponse.body.data.id as string;
+
+      await request(app.getHttpServer())
+        .post(`/v1/vehicles/${vehicleId}/assignments`)
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send({ papel: "MOTORISTA", userId: motoristaUserId })
+        .expect(201);
+
+      const vazio = await request(app.getHttpServer())
+        .get(`/v1/vehicles/${vehicleId}/checklists/atual`)
+        .set("Authorization", `Bearer ${motoristaToken}`)
+        .expect(200);
+
+      expect(vazio.body.data).toMatchObject({
+        viagemAtual: null,
+        atual: null,
+        anterior: null,
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/vehicles/${vehicleId}/checklists`)
+        .set("Authorization", `Bearer ${motoristaToken}`)
+        .send({
+          pneusOk: true,
+          lucesOk: true,
+          combustivelOk: true,
+          limpezaOk: false,
+          equipamentosObrigatoriosOk: true,
+        })
+        .expect(201);
+
+      const comPreViagem = await request(app.getHttpServer())
+        .get(`/v1/vehicles/${vehicleId}/checklists/atual`)
+        .set("Authorization", `Bearer ${motoristaToken}`)
+        .expect(200);
+
+      expect(comPreViagem.body.data.atual.limpezaOk).toBe(false);
+      expect(comPreViagem.body.data.atual.viagem).toBeNull();
+      expect(comPreViagem.body.data.anterior).toBeNull();
+    });
+
+    it("Monitor vinculado também registra o checklist", async () => {
+      const { empresaToken, monitorUserId, monitorToken } = await createCompanyWithMembers();
+      const createResponse = await request(app.getHttpServer())
+        .post("/v1/vehicles")
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send(validVehiclePayload())
+        .expect(201);
+      const vehicleId = createResponse.body.data.id as string;
+
+      await request(app.getHttpServer())
+        .post(`/v1/vehicles/${vehicleId}/assignments`)
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send({ papel: "MONITOR", userId: monitorUserId })
+        .expect(201);
+
+      const checklist = await request(app.getHttpServer())
+        .post(`/v1/vehicles/${vehicleId}/checklists`)
+        .set("Authorization", `Bearer ${monitorToken}`)
+        .send({
+          pneusOk: true,
+          lucesOk: true,
+          combustivelOk: true,
+          limpezaOk: true,
+          equipamentosObrigatoriosOk: false,
+        })
+        .expect(201);
+
+      expect(checklist.body.data.preenchidoPorId).toBe(monitorUserId);
+    });
+
+    /**
+     * A regra que o usuario pediu, no banco de verdade: "a cada viagem
+     * finalizada o checklist reinicia para zero, porem mostra um
+     * informativo da viagem anterior".
+     *
+     * A viagem e inserida direto pelo Prisma (o bypass de RLS deste
+     * spec ja esta ligado) porque o que precisa ser provado aqui e a
+     * consulta do ciclo, nao o fluxo de iniciar viagem -- esse tem os
+     * testes dele no modulo Trips.
+     */
+    it("viagem finalizada: o atual zera e a anterior fica como informativo", async () => {
+      const { companyId, empresaToken, motoristaUserId, motoristaToken } =
+        await createCompanyWithMembers();
+      const createResponse = await request(app.getHttpServer())
+        .post("/v1/vehicles")
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send(validVehiclePayload())
+        .expect(201);
+      const vehicleId = createResponse.body.data.id as string;
+
+      await request(app.getHttpServer())
+        .post(`/v1/vehicles/${vehicleId}/assignments`)
+        .set("Authorization", `Bearer ${empresaToken}`)
+        .send({ papel: "MOTORISTA", userId: motoristaUserId })
+        .expect(201);
+
+      const route = await prisma.route.create({
+        data: { companyId, nome: "Rota do checklist (teste)", turno: "MANHA", status: "ATIVA" },
+      });
+      const trip = await prisma.trip.create({
+        data: {
+          companyId,
+          routeId: route.id,
+          data: new Date(),
+          veiculoId: vehicleId,
+          motoristaId: motoristaUserId,
+          codigo: `T${String(Math.floor(10000 + Math.random() * 89999))}`,
+        },
+      });
+      await prisma.vehicle.update({
+        where: { id: vehicleId },
+        data: { viagemAtualId: trip.id },
+      });
+
+      await request(app.getHttpServer())
+        .post(`/v1/vehicles/${vehicleId}/checklists`)
+        .set("Authorization", `Bearer ${motoristaToken}`)
+        .send({
+          pneusOk: true,
+          lucesOk: false,
+          combustivelOk: true,
+          limpezaOk: true,
+          equipamentosObrigatoriosOk: true,
+          observacoes: "Farol queimado.",
+        })
+        .expect(201);
+
+      const emViagem = await request(app.getHttpServer())
+        .get(`/v1/vehicles/${vehicleId}/checklists/atual`)
+        .set("Authorization", `Bearer ${motoristaToken}`)
+        .expect(200);
+
+      expect(emViagem.body.data.viagemAtual.id).toBe(trip.id);
+      expect(emViagem.body.data.atual.viagem.id).toBe(trip.id);
+      expect(emViagem.body.data.atual.lucesOk).toBe(false);
+      expect(emViagem.body.data.anterior).toBeNull();
+
+      // Fim da viagem: e so isso que `TripsService.finish` faz no veiculo.
+      await prisma.trip.update({
+        where: { id: trip.id },
+        data: { status: "FINALIZADA", finalizadaEm: new Date() },
+      });
+      await prisma.vehicle.update({ where: { id: vehicleId }, data: { viagemAtualId: null } });
+
+      const depois = await request(app.getHttpServer())
+        .get(`/v1/vehicles/${vehicleId}/checklists/atual`)
+        .set("Authorization", `Bearer ${motoristaToken}`)
+        .expect(200);
+
+      expect(depois.body.data.viagemAtual).toBeNull();
+      // Zerou: o formulario volta em branco.
+      expect(depois.body.data.atual).toBeNull();
+      // E o checklist da viagem que acabou continua gravado, como informativo.
+      expect(depois.body.data.anterior.viagem.id).toBe(trip.id);
+      expect(depois.body.data.anterior.lucesOk).toBe(false);
+      expect(depois.body.data.anterior.observacoes).toBe("Farol queimado.");
+      expect(depois.body.data.anterior.preenchidoPorNome).toBe("Motorista (teste)");
+    });
+
+    it("EMPRESA não pode criar checklist (quem confere é quem vai na van)", async () => {
       const { empresaToken } = await createCompanyWithMembers();
       const createResponse = await request(app.getHttpServer())
         .post("/v1/vehicles")

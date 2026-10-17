@@ -261,14 +261,37 @@ export interface VehicleChecklistInput {
   limpezaOk: boolean;
   equipamentosObrigatoriosOk: boolean;
   observacoes?: string;
-  viagemId?: string;
+}
+
+/** A viagem a que o checklist pertence — `null` enquanto ele é pré-viagem. */
+export interface ChecklistViagem {
+  id: string;
+  codigo: string;
+  data: string;
+  sentido: "IDA" | "VOLTA";
+  status: string;
+  iniciadaEm: string;
+  finalizadaEm: string | null;
 }
 
 export interface VehicleChecklist extends VehicleChecklistInput {
   id: string;
   vehicleId: string;
-  motoristaId: string;
+  preenchidoPorId: string;
+  preenchidoPorNome: string;
+  viagem: ChecklistViagem | null;
   createdAt: string;
+}
+
+/**
+ * O ciclo de checklist de agora: a viagem em andamento, o checklist dela
+ * e o informativo da viagem anterior. `atual: null` é o formulário em
+ * branco — a viagem acabou, o checklist dela ficou no histórico.
+ */
+export interface ChecklistDoCiclo {
+  viagemAtual: ChecklistViagem | null;
+  atual: VehicleChecklist | null;
+  anterior: VehicleChecklist | null;
 }
 
 export interface ListVehicleChecklistsResult {
@@ -639,6 +662,10 @@ export function createVehiclesEndpoints(apiClient: ApiClient) {
           body: input,
         })
       ).data,
+
+    getChecklistDoCiclo: async (id: string): Promise<ChecklistDoCiclo> =>
+      (await apiClient.request<ApiEnvelope<ChecklistDoCiclo>>(`/vehicles/${id}/checklists/atual`))
+        .data,
 
     listChecklists: async (
       id: string,

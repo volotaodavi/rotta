@@ -1100,7 +1100,7 @@ model User {
   manutencoesVeiculoRegistradas      VehicleMaintenance[]                @relation("VehicleMaintenanceRegistradoPor")
   vinculosVeiculo                    VehicleAssignment[]                 @relation("VehicleAssignmentUser")
   vinculosVeiculoCriados             VehicleAssignment[]                 @relation("VehicleAssignmentCriadoPor")
-  checklistsVeiculo                  VehicleChecklist[]                  @relation("VehicleChecklistMotorista")
+  checklistsVeiculo                  VehicleChecklist[]                  @relation("VehicleChecklistPreenchidoPor")
   ocorrenciasVeiculoReportadas       VehicleOccurrence[]                 @relation("VehicleOccurrenceReportadoPor")
 
   /// Documentos de habilitação/qualificação do motorista (Dossiê 28 —
@@ -1870,20 +1870,40 @@ model VehicleAssignment {
   @@map("vehicle_assignments")
 }
 
-/// Checklist opcional pré-viagem preenchido pelo motorista (briefing
-/// "CHECKLIST") — sempre INSERT, nunca UPDATE/DELETE ("Salvar
-/// histórico"). `viagemId` segue a mesma lacuna documentada em
-/// `Vehicle.viagemAtualId` (Trips ainda não existe).
+/// Checklist pré-viagem (briefing "CHECKLIST") — nunca DELETE e nunca
+/// UPDATE de resposta ("Salvar histórico"): o que foi marcado fica como
+/// foi marcado. A única coluna que muda depois do INSERT é `tripId`, e
+/// só de `null` para a viagem que começou (ver a nota do campo) — é
+/// preencher o número da viagem na folha, não trocar a resposta.
 model VehicleChecklist {
   id        String  @id @default(uuid()) @db.Uuid
   vehicleId String  @db.Uuid
   vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   companyId String  @db.Uuid
 
-  motoristaId String @db.Uuid
-  motorista   User   @relation("VehicleChecklistMotorista", fields: [motoristaId], references: [id], onDelete: Restrict)
+  /// Quem preencheu. Chamava-se `motoristaId` e aceitava só MOTORISTA;
+  /// o monitor também confere o veículo antes de sair, e gravar o
+  /// monitor numa coluna chamada `motoristaId` seria registrar o papel
+  /// errado no histórico que depois é mostrado ao responsável.
+  preenchidoPorId String @db.Uuid
+  preenchidoPor   User   @relation("VehicleChecklistPreenchidoPor", fields: [preenchidoPorId], references: [id], onDelete: Restrict)
 
-  viagemId String?
+  /// Viagem à qual este checklist pertence.
+  ///
+  /// Era um `String?` solto, sem relação, de quando Trips não existia.
+  /// Agora é a chave da regra que o usuário pediu: "a cada viagem
+  /// finalizada o checklist reinicia para zero, porém mostra um
+  /// informativo da viagem anterior". O "checklist atual" é o da viagem
+  /// ativa; quando ela é finalizada não existe mais viagem ativa, então
+  /// o formulário volta a zero por construção, sem ninguém apagar nada.
+  ///
+  /// Fica `null` entre viagens, que é o caso normal: o checklist é
+  /// pré-viagem, feito na garagem antes de girar a chave.
+  /// `TripsService.start` adota esse checklist órfão para a viagem que
+  /// acabou de começar — é como a folha de papel funciona: preenche,
+  /// sai, e a folha é daquela viagem.
+  tripId String? @db.Uuid
+  trip   Trip?   @relation(fields: [tripId], references: [id], onDelete: SetNull)
 
   pneusOk                    Boolean @default(true)
   lucesOk                    Boolean @default(true)
@@ -1895,7 +1915,8 @@ model VehicleChecklist {
   createdAt DateTime @default(now())
 
   @@index([companyId, vehicleId, createdAt])
-  @@index([companyId, motoristaId])
+  @@index([companyId, preenchidoPorId])
+  @@index([tripId])
   @@map("vehicle_checklists")
 }
 
@@ -3008,6 +3029,7 @@ model Trip {
   eventosAluno         TripStudentEvent[]
   /// Back-relation obrigatória do Prisma para `Vehicle.viagemAtualId` — nunca usada diretamente.
   veiculosComEstaAtual Vehicle[]          @relation("VehicleViagemAtual")
+  checklists           VehicleChecklist[]
 
   @@index([routeId, data])
   @@index([companyId, status])

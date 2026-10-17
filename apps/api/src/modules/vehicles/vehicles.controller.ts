@@ -424,14 +424,31 @@ export class VehiclesController {
 
   // --- Checklist (briefing "CHECKLIST") ---
 
+  /**
+   * Motorista **e Monitor** (antes só Motorista): quem vai na van
+   * confere a van. O monitor é quem embarca os alunos, vê o cinto, o
+   * extintor e a limpeza — barrá-lo aqui era pedir que ele avisasse o
+   * motorista para marcar por ele, o que grava o autor errado no
+   * histórico que depois é mostrado ao responsável.
+   */
   @Post(":id/checklists")
-  @Roles(Role.MOTORISTA)
+  @Roles(Role.MOTORISTA, Role.MONITOR)
   createChecklist(
     @Param("id", ParseUUIDPipe) id: string,
     @Body() dto: CreateVehicleChecklistDto,
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.vehiclesService.createChecklist(id, dto, actor);
+  }
+
+  /** O ciclo de agora: viagem em andamento, checklist dela e o informativo da viagem anterior. */
+  @Get(":id/checklists/atual")
+  @Roles(...READ_ROLES)
+  getChecklistDoCiclo(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.vehiclesService.getChecklistDoCiclo(id, actor);
   }
 
   @Get(":id/checklists")

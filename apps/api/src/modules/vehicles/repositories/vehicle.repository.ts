@@ -1,3 +1,4 @@
+import type { ViagemDoChecklist } from "./vehicle-checklist.repository";
 import type {
   Vehicle,
   VehicleAdminReviewStatus,
@@ -101,6 +102,14 @@ export interface ListVehiclesResult {
 export interface VehicleRepository {
   create(data: CreateVehicleData, tx?: Prisma.TransactionClient): Promise<Vehicle>;
   findById(id: string): Promise<Vehicle | null>;
+  /**
+   * A viagem em andamento deste veículo (`Vehicle.viagemAtualId`),
+   * resumida. É o que responde "de que viagem é o checklist de agora?"
+   * sem o módulo de veículos precisar importar Trips — que importaria
+   * de volta Vehicles e fecharia um ciclo. A coluna é mantida por
+   * `TripsService.start`/`finish`/`cancel` via `setCurrentTrip`.
+   */
+  findViagemAtual(vehicleId: string): Promise<ViagemDoChecklist | null>;
   findByPlaca(placa: string): Promise<Vehicle | null>;
   /**
    * Credenciamento do rastreador — cross-tenant (IMEI é único GLOBAL:

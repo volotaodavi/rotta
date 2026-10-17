@@ -127,6 +127,8 @@ describe("TripsService", () => {
     vehiclesService = {
       findByIdOrThrow: jest.fn(),
       setCurrentTrip: jest.fn(),
+      adotarChecklistsPreViagem: jest.fn().mockResolvedValue(0),
+      findChecklistDaViagemPorRotas: jest.fn().mockResolvedValue(null),
       updateLocationFromTrip: jest.fn(),
       assertVeiculoOperavel: jest.fn(),
     } as unknown as jest.Mocked<VehiclesService>;
@@ -328,6 +330,8 @@ describe("TripsService", () => {
         expect.objectContaining({ motoristaId: "motorista-1", veiculoId: "vehicle-1" }),
       );
       expect(vehiclesService.setCurrentTrip).toHaveBeenCalledWith("vehicle-1", "trip-1");
+      // O checklist feito na garagem passa a ser o checklist desta viagem.
+      expect(vehiclesService.adotarChecklistsPreViagem).toHaveBeenCalledWith("vehicle-1", "trip-1");
       expect(result.id).toBe("trip-1");
     });
 
@@ -1992,6 +1996,42 @@ describe("TripsService", () => {
         ["student-de-outra-empresa"],
         expect.any(Date),
       );
+    });
+  });
+  describe("findChecklistForStudent (Responsável — checklist do veículo do filho)", () => {
+    it("valida a posse do aluno antes de ler o checklist", async () => {
+      studentsService.findByIdOrThrow.mockRejectedValue(new Error("não encontrado"));
+
+      await expect(service.findChecklistForStudent("student-1", empresaActor)).rejects.toThrow(
+        "não encontrado",
+      );
+
+      expect(vehiclesService.findChecklistDaViagemPorRotas).not.toHaveBeenCalled();
+    });
+
+    it("o escopo vem das rotas do próprio aluno, nunca do cliente", async () => {
+      studentsService.findByIdOrThrow.mockResolvedValue({ id: "student-1" } as never);
+      routesService.findActiveRouteIdsForStudent.mockResolvedValue(["route-1", "route-2"]);
+      vehiclesService.findChecklistDaViagemPorRotas.mockResolvedValue({
+        id: "checklist-1",
+        limpezaOk: false,
+        viagem: { codigo: "ABC234" },
+      } as never);
+
+      const result = await service.findChecklistForStudent("student-1", empresaActor);
+
+      expect(vehiclesService.findChecklistDaViagemPorRotas).toHaveBeenCalledWith([
+        "route-1",
+        "route-2",
+      ]);
+      expect(result).toMatchObject({ id: "checklist-1", limpezaOk: false });
+    });
+
+    it("sem viagem com checklist, devolve nulo em vez de inventar", async () => {
+      studentsService.findByIdOrThrow.mockResolvedValue({ id: "student-1" } as never);
+      routesService.findActiveRouteIdsForStudent.mockResolvedValue([]);
+
+      await expect(service.findChecklistForStudent("student-1", empresaActor)).resolves.toBeNull();
     });
   });
 });

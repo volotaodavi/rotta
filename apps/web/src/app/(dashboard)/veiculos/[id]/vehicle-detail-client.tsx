@@ -739,6 +739,18 @@ function ChecklistTab({ vehicleId }: { vehicleId: string }): JSX.Element {
           header: "Data",
           render: (c) => new Date(c.createdAt).toLocaleString("pt-BR"),
         },
+        {
+          // De que viagem o checklist e, e quem conferiu. Sem estas duas
+          // colunas a tabela eram linhas iguais sem como saber a qual
+          // turno e a qual pessoa cada uma pertencia.
+          key: "viagem",
+          header: "Viagem",
+          render: (c) =>
+            c.viagem
+              ? `${c.viagem.sentido === "VOLTA" ? "Volta" : "Ida"} · ${c.viagem.codigo}`
+              : "Pré-viagem",
+        },
+        { key: "autor", header: "Conferido por", render: (c) => c.preenchidoPorNome },
         { key: "pneus", header: "Pneus", render: (c) => (c.pneusOk ? "OK" : "Problema") },
         { key: "luzes", header: "Luzes", render: (c) => (c.lucesOk ? "OK" : "Problema") },
         {
@@ -760,7 +772,7 @@ function ChecklistTab({ vehicleId }: { vehicleId: string }): JSX.Element {
       ]}
       rows={data?.items ?? []}
       keyExtractor={(c) => c.id}
-      emptyMessage="Nenhum checklist registrado pelo motorista ainda."
+      emptyMessage="Nenhum checklist registrado ainda."
     />
   );
 }

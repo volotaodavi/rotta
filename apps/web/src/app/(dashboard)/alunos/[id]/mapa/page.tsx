@@ -16,14 +16,19 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import type { StudentEventsHistoryRange, TripStudentEventType } from "@rotta/api-client";
+import type {
+  StudentEventsHistoryRange,
+  TripStudentEventType,
+  VehicleChecklist,
+} from "@rotta/api-client";
 
 import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
 import { RecenterButton } from "@/components/route-screen-chrome";
 import {
+  useChecklistDoFilho,
+  useEtaDoFilho,
   useGpsForStudent,
   useStudentEventsHistory,
-  useEtaDoFilho,
 } from "@/features/gps/hooks/use-gps";
 import { useNextStopTracedRoute } from "@/features/gps/hooks/use-next-stop-traced-route";
 import { useSchool } from "@/features/schools/hooks/use-schools";
@@ -66,6 +71,69 @@ const HISTORY_RANGE_LABEL: Record<StudentEventsHistoryRange, string> = {
  * referência) em vez do azul genérico — mesmo padrão do
  * `TRIP_STATUS_BADGE`/`Badge variant="success"` já usado nesta tela.
  */
+const ITENS_DO_CHECKLIST: { chave: keyof VehicleChecklist; rotulo: string }[] = [
+  { chave: "pneusOk", rotulo: "Pneus" },
+  { chave: "lucesOk", rotulo: "Luzes" },
+  { chave: "combustivelOk", rotulo: "Combustível" },
+  { chave: "limpezaOk", rotulo: "Limpeza" },
+  { chave: "equipamentosObrigatoriosOk", rotulo: "Equipamentos obrigatórios" },
+];
+
+/**
+ * "A van saiu conferida" — paridade com o `ChecklistDaViagemCard` do app
+ * nativo. Só leitura: o checklist é de quem vai na van, aqui é a prova
+ * de que foi feito, com a viagem, a hora e quem conferiu.
+ *
+ * O cartão sempre diz de que viagem é: se a última conferência foi na
+ * viagem de ontem, aparece a data de ontem, nunca "conferido hoje".
+ */
+function ConferenciaDoVeiculoCard({ studentId }: { studentId: string }): JSX.Element | null {
+  const { data: checklist } = useChecklistDoFilho(studentId);
+
+  if (!checklist) return null;
+
+  const problemas = ITENS_DO_CHECKLIST.filter((item) => checklist[item.chave] === false);
+  const viagem = checklist.viagem;
+
+  return (
+    <Card>
+      <Card.Header title="Conferência do veículo" />
+      <Card.Body className="flex flex-col gap-2">
+        <Typography variant="caption" color="muted">
+          {viagem
+            ? `${viagem.sentido === "VOLTA" ? "Volta" : "Ida"} de ${new Date(
+                viagem.data,
+              ).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`
+            : "Antes de sair"}
+          {" · conferido por "}
+          {checklist.preenchidoPorNome}
+          {" às "}
+          {formatarHora(checklist.createdAt)}
+        </Typography>
+
+        {problemas.length === 0 ? (
+          <Badge variant="success">Tudo conferido</Badge>
+        ) : (
+          <div className="flex flex-col gap-1">
+            <Badge variant="warning">Com apontamento</Badge>
+            {problemas.map((item) => (
+              <Typography key={item.chave} variant="bodySmall" className="text-warning">
+                {item.rotulo}
+              </Typography>
+            ))}
+          </div>
+        )}
+
+        {checklist.observacoes ? (
+          <Typography variant="bodySmall" color="muted">
+            {checklist.observacoes}
+          </Typography>
+        ) : null}
+      </Card.Body>
+    </Card>
+  );
+}
+
 function HistoricoEventosCard({ studentId }: { studentId: string }): JSX.Element {
   const [range, setRange] = useState<StudentEventsHistoryRange>("hoje");
   const { data: eventos, isLoading } = useStudentEventsHistory(studentId, range);
@@ -363,6 +431,8 @@ export default function AlunoMapaPage(): JSX.Element {
             />
           </Card.Body>
         </Card>
+        <ConferenciaDoVeiculoCard studentId={studentId} />
+
         <HistoricoEventosCard studentId={studentId} />
       </div>
     );
@@ -457,6 +527,8 @@ export default function AlunoMapaPage(): JSX.Element {
           </Link>
         </Card.Body>
       </Card>
+
+      <ConferenciaDoVeiculoCard studentId={studentId} />
 
       <HistoricoEventosCard studentId={studentId} />
     </div>

@@ -4,6 +4,7 @@ import {
   type RatingTargetType,
   type StudentEventsHistoryRange,
   type TripStudentEventType,
+  type VehicleChecklist,
 } from "@rotta/api-client";
 import { Bus, ChevronLeft, Clock, MapPin, Navigation, Star, User } from "@rotta/icons/native";
 import { RottaMap } from "@rotta/maps/native";
@@ -178,6 +179,84 @@ function useEtaDoFilho(studentId: string | undefined) {
     enabled: Boolean(studentId),
     refetchInterval: studentId ? 30_000 : false,
   });
+}
+
+/**
+ * O checklist do veículo em que o filho anda. O escopo é o aluno —
+ * mesmo caminho com posse da ETA acima, nunca um `vehicleId` escolhido
+ * pelo app.
+ */
+function useChecklistDoFilho(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ["responsavel", "students", studentId, "checklist"],
+    queryFn: () => gpsApi.getChecklistForStudent(studentId as string),
+    enabled: Boolean(studentId),
+  });
+}
+
+const ITENS_DO_CHECKLIST: { chave: keyof VehicleChecklist; rotulo: string }[] = [
+  { chave: "pneusOk", rotulo: "Pneus" },
+  { chave: "lucesOk", rotulo: "Luzes" },
+  { chave: "combustivelOk", rotulo: "Combustível" },
+  { chave: "limpezaOk", rotulo: "Limpeza" },
+  { chave: "equipamentosObrigatoriosOk", rotulo: "Equipamentos obrigatórios" },
+];
+
+/**
+ * "A van saiu conferida" — só leitura, nunca um botão: o checklist é de
+ * quem vai na van (pedido do usuário: "o responsável NÃO deve ter...
+ * checklist"). O que o responsável ganha é a prova de que foi feito, com
+ * a viagem, a hora e o nome de quem conferiu.
+ *
+ * O cartão sempre diz de que viagem é. Se a última viagem conferida foi
+ * a de ontem, aparece a data de ontem — nunca "conferido hoje" sem ser
+ * verdade.
+ */
+function ChecklistDaViagemCard({ studentId }: { studentId: string }): JSX.Element | null {
+  const { theme } = useTheme();
+  const { data: checklist } = useChecklistDoFilho(studentId);
+
+  if (!checklist) return null;
+
+  const problemas = ITENS_DO_CHECKLIST.filter((item) => checklist[item.chave] === false);
+  const viagem = checklist.viagem;
+
+  return (
+    <VehicleCard>
+      <Texto style={[styles.secao, { color: theme.colors.text }]}>Conferência do veículo</Texto>
+
+      <Texto style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+        {viagem
+          ? `${viagem.sentido === "VOLTA" ? "Volta" : "Ida"} de ${new Date(
+              viagem.data,
+            ).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}`
+          : "Antes de sair"}
+        {" · conferido por "}
+        {checklist.preenchidoPorNome}
+        {" às "}
+        {formatarHora(checklist.createdAt)}
+      </Texto>
+
+      {problemas.length === 0 ? (
+        <StatusPill label="Tudo conferido" tone="success" />
+      ) : (
+        <>
+          <StatusPill label="Com apontamento" tone="warning" />
+          {problemas.map((item) => (
+            <Texto key={item.chave} style={{ color: theme.colors.warning, fontSize: 13 }}>
+              {item.rotulo}
+            </Texto>
+          ))}
+        </>
+      )}
+
+      {checklist.observacoes ? (
+        <Texto style={{ color: theme.colors.textMuted, fontSize: 13 }}>
+          {checklist.observacoes}
+        </Texto>
+      ) : null}
+    </VehicleCard>
+  );
 }
 
 type Props = BottomTabScreenProps<ParentTabParamList, "Transporte">;
@@ -579,6 +658,8 @@ export function AcompanhamentoSection({ contrato }: { contrato: Contract }): JSX
           </>
         )}
       </VehicleCard>
+
+      <ChecklistDaViagemCard studentId={contrato.studentId} />
 
       {aluno ? <AusenciaHojeCard studentId={contrato.studentId} nomeAluno={aluno.nome} /> : null}
     </>

@@ -42,6 +42,7 @@ import type { TripStudentEventRepository } from "./repositories/trip-student-eve
 import type { CreateTripData, TripRepository } from "./repositories/trip.repository";
 import type { RouteStopResponseDto } from "../routes/dto/route-stop-response.dto";
 import type { RouteStudentResponseDto } from "../routes/dto/route-student-response.dto";
+import type { VehicleChecklistResponseDto } from "../vehicles/dto/vehicle-checklist-response.dto";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -471,6 +472,13 @@ export class TripsService {
 
     await this.vehiclesService.setCurrentTrip(veiculoId, trip.id);
 
+    /* O checklist feito na garagem, antes de girar a chave, passa a ser
+       o checklist DESTA viagem — é como a folha de papel funciona:
+       preenche, sai, e a folha é daquela viagem. Best-effort: um
+       checklist que não ficou ligado é um informativo que falta, nunca
+       um motivo para a viagem não começar. */
+    await this.vehiclesService.adotarChecklistsPreViagem(veiculoId, trip.id);
+
     await this.recordAudit({
       companyId: route.companyId,
       entidadeId: trip.id,
@@ -770,6 +778,11 @@ export class TripsService {
     // O veículo anterior deixa de estar "em viagem"; o novo passa a estar.
     await this.vehiclesService.setCurrentTrip(previousVeiculoId, null);
     await this.vehiclesService.setCurrentTrip(dto.veiculoId, id);
+
+    /* Mesma adoção de `start`, e aqui ela importa mais: a van reserva
+       foi conferida na garagem agora, justamente porque a outra quebrou.
+       O checklist que acabou de ser feito nela é o desta viagem. */
+    await this.vehiclesService.adotarChecklistsPreViagem(dto.veiculoId, id);
 
     await this.recordAudit({
       companyId: trip.companyId,
@@ -1986,5 +1999,27 @@ export class TripsService {
     await this.studentsService.findByIdOrThrow(studentId, actor);
     const events = await this.studentEventRepository.listByStudentAcrossTenants(studentId, since);
     return events.map(toTripStudentEventResponseDto);
+  }
+
+  /**
+   * O checklist do veículo em que o filho anda (pedido do usuário:
+   * "isso deverá ficar salvo de verdade, para depois mostrarem aos
+   * responsáveis"). Mesma checagem de posse das outras leituras do
+   * Responsável: começa no aluno, nunca num `vehicleId`/`tripId` vindo
+   * do cliente — um responsável não pode pedir o checklist de uma van
+   * qualquer.
+   *
+   * A resposta carrega a viagem (código, data, sentido, status), então
+   * a tela nunca precisa supor que o checklist é o de hoje: se a última
+   * viagem com checklist foi a de ontem, é isso que aparece, com a data
+   * de ontem.
+   */
+  async findChecklistForStudent(
+    studentId: string,
+    actor: AuthenticatedUser,
+  ): Promise<VehicleChecklistResponseDto | null> {
+    await this.studentsService.findByIdOrThrow(studentId, actor);
+    const routeIds = await this.routesService.findActiveRouteIdsForStudent(studentId);
+    return this.vehiclesService.findChecklistDaViagemPorRotas(routeIds);
   }
 }

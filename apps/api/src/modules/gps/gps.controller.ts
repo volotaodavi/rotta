@@ -88,4 +88,18 @@ export class GpsController {
 
     return this.tripsService.listStudentEventsHistory(studentId, actor, since);
   }
+
+  /**
+   * O checklist do veículo em que o filho anda. Mesmo caminho com posse
+   * dos outros endpoints deste controller: o escopo é o aluno, nunca um
+   * `vehicleId`/`tripId` vindo do cliente.
+   */
+  @Get("students/:studentId/checklist")
+  @Roles(Role.RESPONSAVEL, Role.ADMIN_ROTTA, Role.EMPRESA, Role.GESTOR)
+  getChecklistForStudent(
+    @Param("studentId", ParseUUIDPipe) studentId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.tripsService.findChecklistForStudent(studentId, actor);
+  }
 }

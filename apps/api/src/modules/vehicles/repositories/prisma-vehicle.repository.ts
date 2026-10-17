@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
+import type { ViagemDoChecklist } from "./vehicle-checklist.repository";
 import type {
   CreateVehicleData,
   ListVehiclesFilter,
@@ -26,6 +27,28 @@ export class PrismaVehicleRepository implements VehicleRepository {
     return this.prisma.withTenant(
       this.prisma.vehicle.findFirst({ where: { id, deletedAt: null } }),
     );
+  }
+
+  async findViagemAtual(vehicleId: string): Promise<ViagemDoChecklist | null> {
+    const vehicle = await this.prisma.withTenant(
+      this.prisma.vehicle.findFirst({
+        where: { id: vehicleId, deletedAt: null },
+        select: {
+          viagemAtual: {
+            select: {
+              id: true,
+              codigo: true,
+              data: true,
+              sentido: true,
+              status: true,
+              iniciadaEm: true,
+              finalizadaEm: true,
+            },
+          },
+        },
+      }),
+    );
+    return vehicle?.viagemAtual ?? null;
   }
 
   /**

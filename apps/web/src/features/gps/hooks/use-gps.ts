@@ -131,3 +131,19 @@ export function useEtaDoFilho(studentId: string | undefined) {
     refetchInterval: GPS_LIVE_POLL_INTERVAL_MS * 10,
   });
 }
+
+/**
+ * O checklist do veículo em que o filho anda — paridade com o app
+ * nativo (`ChecklistDaViagemCard`). Só leitura: o checklist é de quem
+ * vai na van, o Responsável recebe a prova de que foi feito.
+ *
+ * Mesmo caminho com posse de `useEtaDoFilho`: o escopo é o aluno, nunca
+ * um `vehicleId` escolhido pelo cliente.
+ */
+export function useChecklistDoFilho(studentId: string | undefined) {
+  return useQuery({
+    queryKey: ["gps", "student", studentId, "checklist"],
+    queryFn: () => gpsApi.getChecklistForStudent(studentId as string),
+    enabled: Boolean(studentId),
+  });
+}

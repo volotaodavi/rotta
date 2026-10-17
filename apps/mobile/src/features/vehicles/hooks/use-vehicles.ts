@@ -91,6 +91,21 @@ export function useVehicleChecklists(vehicleId: string | undefined) {
   });
 }
 
+/**
+ * O ciclo de checklist de agora: a viagem em andamento, o checklist dela
+ * e o informativo da viagem anterior. O refetch curto existe porque a
+ * viagem pode começar ou terminar com a tela aberta, e é exatamente a
+ * virada da viagem que zera o formulário.
+ */
+export function useChecklistDoCiclo(vehicleId: string | undefined) {
+  return useQuery({
+    queryKey: ["vehicles", vehicleId, "checklist-do-ciclo"],
+    queryFn: () => vehiclesApi.getChecklistDoCiclo(vehicleId as string),
+    enabled: Boolean(vehicleId),
+    refetchInterval: vehicleId ? 30_000 : false,
+  });
+}
+
 export function useCreateVehicleChecklist(vehicleId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -98,6 +113,9 @@ export function useCreateVehicleChecklist(vehicleId: string | undefined) {
       vehiclesApi.createChecklist(vehicleId as string, input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["vehicles", vehicleId, "checklists"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["vehicles", vehicleId, "checklist-do-ciclo"],
+      });
     },
   });
 }

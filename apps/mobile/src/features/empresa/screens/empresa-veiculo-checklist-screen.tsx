@@ -13,9 +13,13 @@ type Props = NativeStackScreenProps<EmpresaFrotaStackParamList, "Checklist">;
 
 /**
  * "Checklist" (Frente C) — mirror de `ChecklistTab`: só leitura, o
- * checklist é registrado pelo próprio Motorista antes de cada viagem
- * (`vehicles/screens/checklist-screen.tsx`, do lado do Motorista) —
+ * checklist é registrado por quem vai na van, Motorista ou Monitor,
+ * antes de cada viagem (`vehicles/screens/checklist-screen.tsx`) —
  * aqui a Empresa/Gestor só acompanha.
+ *
+ * Cada cartão diz de que viagem o checklist é e quem preencheu. Sem
+ * isso a lista eram cinco cartões iguais, sem como saber a qual dia,
+ * turno e pessoa cada um pertencia.
  */
 export function EmpresaVeiculoChecklistScreen({ route }: Props): JSX.Element {
   const { theme } = useTheme();
@@ -33,14 +37,19 @@ export function EmpresaVeiculoChecklistScreen({ route }: Props): JSX.Element {
   return (
     <VehicleScreen>
       {!data || data.items.length === 0 ? (
-        <Texto style={{ color: theme.colors.textMuted }}>
-          Nenhum checklist registrado pelo motorista ainda.
-        </Texto>
+        <Texto style={{ color: theme.colors.textMuted }}>Nenhum checklist registrado ainda.</Texto>
       ) : (
         data.items.map((c: VehicleChecklist) => (
           <VehicleCard key={c.id} style={{ gap: 6 }}>
             <Texto style={{ color: theme.colors.text, fontWeight: "600" }}>
               {new Date(c.createdAt).toLocaleString("pt-BR")}
+            </Texto>
+            <Texto style={{ color: theme.colors.textMuted, fontSize: 12 }}>
+              {c.viagem
+                ? `${c.viagem.sentido === "VOLTA" ? "Volta" : "Ida"} · viagem ${c.viagem.codigo}`
+                : "Pré-viagem, sem viagem iniciada"}
+              {" · "}
+              {c.preenchidoPorNome}
             </Texto>
             <Item label="Pneus" ok={c.pneusOk} />
             <Item label="Luzes" ok={c.lucesOk} />

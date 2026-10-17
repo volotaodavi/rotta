@@ -6,6 +6,8 @@ import {
   VehicleCategory,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
+  TripSentido,
+  TripStatus,
   VehicleOccurrenceSeverity,
   VehicleStatus,
   VehicleType,
@@ -16,7 +18,10 @@ import { VehiclesService } from "../vehicles.service";
 
 import type { CreateVehicleDto } from "../dto/create-vehicle.dto";
 import type { VehicleAssignmentRepository } from "../repositories/vehicle-assignment.repository";
-import type { VehicleChecklistRepository } from "../repositories/vehicle-checklist.repository";
+import type {
+  VehicleChecklistComContexto,
+  VehicleChecklistRepository,
+} from "../repositories/vehicle-checklist.repository";
 import type { VehicleDocumentRepository } from "../repositories/vehicle-document.repository";
 import type { VehicleMaintenanceRepository } from "../repositories/vehicle-maintenance.repository";
 import type { VehicleOccurrenceRepository } from "../repositories/vehicle-occurrence.repository";
@@ -134,6 +139,13 @@ const motoristaActor: AuthenticatedUser = {
   vinculoId: "vinculo-motorista",
 };
 
+const monitorActor: AuthenticatedUser = {
+  sub: "monitor-1",
+  tenantId: "company-1",
+  role: Role.MONITOR,
+  vinculoId: "vinculo-monitor",
+};
+
 describe("VehiclesService", () => {
   let service: VehiclesService;
   let vehicleRepository: jest.Mocked<VehicleRepository>;
@@ -162,6 +174,7 @@ describe("VehiclesService", () => {
       listPendingCategoryReview: jest.fn(),
       listActiveResponsavelIds: jest.fn().mockResolvedValue([]),
       listVehiclesForResponsavel: jest.fn(),
+      findViagemAtual: jest.fn().mockResolvedValue(null),
       existsAdminReviewAcknowledgement: jest.fn(),
       createAdminReviewAcknowledgement: jest.fn(),
     };
@@ -189,7 +202,15 @@ describe("VehiclesService", () => {
       listHistoryByVehicle: jest.fn(),
       findCurrentVehicleIdForUser: jest.fn(),
     };
-    checklistRepository = { create: jest.fn(), list: jest.fn() };
+    checklistRepository = {
+      create: jest.fn(),
+      list: jest.fn(),
+      findUltimoDaViagem: jest.fn().mockResolvedValue(null),
+      findUltimoPreViagem: jest.fn().mockResolvedValue(null),
+      findUltimoDeViagemAnterior: jest.fn().mockResolvedValue(null),
+      adotarPreViagem: jest.fn().mockResolvedValue(0),
+      findUltimoPorRotasAcrossTenants: jest.fn().mockResolvedValue(null),
+    };
     occurrenceRepository = { create: jest.fn(), list: jest.fn() };
     usersService = {
       findActiveMembership: jest.fn(),
@@ -861,40 +882,141 @@ describe("VehiclesService", () => {
     });
   });
 
-  describe("createChecklist", () => {
-    it("sempre usa o ator autenticado como motorista, nunca o body", async () => {
-      vehicleRepository.findById.mockResolvedValue(buildVehicle());
-      assignmentRepository.findCurrentVehicleIdForUser.mockResolvedValue("vehicle-1");
-      checklistRepository.create.mockResolvedValue({
+  describe("checklist por viagem", () => {
+    const RESPOSTAS = {
+      pneusOk: true,
+      lucesOk: true,
+      combustivelOk: true,
+      limpezaOk: true,
+      equipamentosObrigatoriosOk: true,
+    };
+
+    const viagem = {
+      id: "trip-1",
+      codigo: "ABC234",
+      data: new Date("2026-10-17T00:00:00.000Z"),
+      sentido: TripSentido.IDA,
+      status: TripStatus.EM_ANDAMENTO,
+      iniciadaEm: new Date("2026-10-17T10:00:00.000Z"),
+      finalizadaEm: null,
+    };
+
+    function buildChecklist(
+      overrides: Partial<VehicleChecklistComContexto> = {},
+    ): VehicleChecklistComContexto {
+      return {
         id: "checklist-1",
         vehicleId: "vehicle-1",
         companyId: "company-1",
-        motoristaId: "motorista-1",
-        viagemId: null,
-        pneusOk: true,
-        lucesOk: true,
-        combustivelOk: true,
-        limpezaOk: true,
-        equipamentosObrigatoriosOk: true,
+        preenchidoPorId: "motorista-1",
+        tripId: null,
+        ...RESPOSTAS,
         observacoes: null,
-        createdAt: new Date(),
-      });
+        createdAt: new Date("2026-10-17T09:00:00.000Z"),
+        trip: null,
+        preenchidoPor: { id: "motorista-1", nome: "Carlos" },
+        ...overrides,
+      };
+    }
 
-      await service.createChecklist(
-        "vehicle-1",
-        {
-          pneusOk: true,
-          lucesOk: true,
-          combustivelOk: true,
-          limpezaOk: true,
-          equipamentosObrigatoriosOk: true,
-        },
-        motoristaActor,
-      );
+    beforeEach(() => {
+      vehicleRepository.findById.mockResolvedValue(buildVehicle());
+      assignmentRepository.findCurrentVehicleIdForUser.mockResolvedValue("vehicle-1");
+      checklistRepository.create.mockResolvedValue(buildChecklist());
+    });
+
+    it("sempre usa o ator autenticado como autor, nunca o body", async () => {
+      await service.createChecklist("vehicle-1", RESPOSTAS, motoristaActor);
 
       expect(checklistRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({ motoristaId: "motorista-1" }),
+        expect.objectContaining({ preenchidoPorId: "motorista-1" }),
       );
+    });
+
+    it("Monitor preenche o checklist do veículo em que trabalha", async () => {
+      await service.createChecklist("vehicle-1", RESPOSTAS, monitorActor);
+
+      expect(checklistRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ preenchidoPorId: "monitor-1" }),
+      );
+    });
+
+    it("grava o checklist na viagem em andamento do veículo", async () => {
+      vehicleRepository.findById.mockResolvedValue(buildVehicle({ viagemAtualId: "trip-1" }));
+
+      await service.createChecklist("vehicle-1", RESPOSTAS, motoristaActor);
+
+      expect(checklistRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tripId: "trip-1" }),
+      );
+    });
+
+    it("com viagem em andamento, o atual é o checklist dela", async () => {
+      vehicleRepository.findViagemAtual.mockResolvedValue(viagem);
+      checklistRepository.findUltimoDaViagem.mockResolvedValue(
+        buildChecklist({ tripId: "trip-1", trip: viagem }),
+      );
+
+      const ciclo = await service.getChecklistDoCiclo("vehicle-1", motoristaActor);
+
+      expect(checklistRepository.findUltimoDaViagem).toHaveBeenCalledWith("trip-1");
+      expect(checklistRepository.findUltimoPreViagem).not.toHaveBeenCalled();
+      expect(ciclo.viagemAtual?.codigo).toBe("ABC234");
+      expect(ciclo.atual?.viagem?.id).toBe("trip-1");
+    });
+
+    /* O pedido do usuário: "a cada viagem finalizada o checklist reinicia
+       para zero, porém mostra um informativo da viagem anterior". */
+    it("viagem finalizada: o atual volta a zero e a anterior fica como informativo", async () => {
+      vehicleRepository.findViagemAtual.mockResolvedValue(null);
+      checklistRepository.findUltimoPreViagem.mockResolvedValue(null);
+      checklistRepository.findUltimoDeViagemAnterior.mockResolvedValue(
+        buildChecklist({
+          id: "checklist-de-ontem",
+          tripId: "trip-0",
+          limpezaOk: false,
+          trip: {
+            ...viagem,
+            id: "trip-0",
+            codigo: "XYZ789",
+            status: TripStatus.FINALIZADA,
+            finalizadaEm: new Date("2026-10-16T12:00:00.000Z"),
+          },
+        }),
+      );
+
+      const ciclo = await service.getChecklistDoCiclo("vehicle-1", motoristaActor);
+
+      expect(ciclo.viagemAtual).toBeNull();
+      expect(ciclo.atual).toBeNull();
+      expect(ciclo.anterior?.viagem?.codigo).toBe("XYZ789");
+      expect(ciclo.anterior?.limpezaOk).toBe(false);
+    });
+
+    it("entre viagens, o checklist feito na garagem continua sendo o atual", async () => {
+      vehicleRepository.findViagemAtual.mockResolvedValue(null);
+      checklistRepository.findUltimoPreViagem.mockResolvedValue(buildChecklist());
+
+      const ciclo = await service.getChecklistDoCiclo("vehicle-1", motoristaActor);
+
+      expect(ciclo.atual?.id).toBe("checklist-1");
+      expect(ciclo.atual?.viagem).toBeNull();
+    });
+
+    it("a janela do pré-viagem é de 12 horas, nunca o histórico inteiro", async () => {
+      vehicleRepository.findViagemAtual.mockResolvedValue(null);
+
+      await service.getChecklistDoCiclo("vehicle-1", motoristaActor);
+
+      const [, desde] = checklistRepository.findUltimoPreViagem.mock.calls[0] as [string, Date];
+      const horas = (Date.now() - desde.getTime()) / 3_600_000;
+      expect(horas).toBeCloseTo(12, 1);
+    });
+
+    it("adotar o pré-viagem nunca derruba o início da viagem", async () => {
+      checklistRepository.adotarPreViagem.mockRejectedValue(new Error("banco fora"));
+
+      await expect(service.adotarChecklistsPreViagem("vehicle-1", "trip-1")).resolves.toBe(0);
     });
   });
 

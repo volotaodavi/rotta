@@ -28,6 +28,7 @@ import { isValidPlate, normalizePlate } from "@rotta/validators";
 
 import { toVehicleAssignmentResponseDto } from "./mappers/vehicle-assignment.mapper";
 import {
+  toChecklistViagemDto,
   toListVehicleChecklistsResponseDto,
   toVehicleChecklistResponseDto,
 } from "./mappers/vehicle-checklist.mapper";
@@ -52,6 +53,7 @@ import {
 import { vehiclesToCsv, vehiclesToExcelBuffer, vehiclesToPdfBuffer } from "./vehicle-export.util";
 import { VehiclePlateLookupService } from "./vehicle-plate-lookup.service";
 import {
+  inicioDaJanelaPreViagem,
   VEHICLE_ASSIGNMENT_REPOSITORY,
   VEHICLE_CHECKLIST_REPOSITORY,
   VEHICLE_DOCUMENT_REPOSITORY,
@@ -85,6 +87,7 @@ import type { UpdateVehicleDto } from "./dto/update-vehicle.dto";
 import type { VehicleAdminReviewPendingDto } from "./dto/vehicle-admin-review-pending.dto";
 import type { VehicleAssignmentResponseDto } from "./dto/vehicle-assignment-response.dto";
 import type {
+  ChecklistDoCicloResponseDto,
   ListVehicleChecklistsResponseDto,
   VehicleChecklistResponseDto,
 } from "./dto/vehicle-checklist-response.dto";
@@ -1070,8 +1073,12 @@ export class VehiclesService {
     const checklist = await this.checklistRepository.create({
       vehicleId,
       companyId: vehicle.companyId,
-      motoristaId: actor.sub,
-      viagemId: dto.viagemId,
+      preenchidoPorId: actor.sub,
+      // A viagem é a que o veículo tem em andamento AGORA, nunca uma
+      // escolhida pelo cliente. `null` quando o veículo está parado: o
+      // checklist é pré-viagem, e `adotarChecklistsPreViagem` liga as
+      // duas pontas quando a chave é girada.
+      tripId: vehicle.viagemAtualId,
       pneusOk: dto.pneusOk,
       lucesOk: dto.lucesOk,
       combustivelOk: dto.combustivelOk,
@@ -1092,6 +1099,84 @@ export class VehiclesService {
     await this.fetchOrThrow(vehicleId, actor);
     const result = await this.checklistRepository.list({ vehicleId, page, pageSize });
     return toListVehicleChecklistsResponseDto(result, page, pageSize);
+  }
+
+  /**
+   * O ciclo de checklist de agora (pedido do usuário: "a cada viagem
+   * finalizada o checklist reinicia para zero, porém mostra um
+   * informativo da viagem anterior").
+   *
+   * `atual` é o checklist da viagem em andamento. Quando a viagem é
+   * finalizada, `Vehicle.viagemAtualId` é limpo por
+   * `TripsService.finish`, então `atual` passa a olhar a janela
+   * pré-viagem, que está vazia — o formulário volta a zero por
+   * construção, sem ninguém apagar checklist nenhum. `anterior` é o
+   * checklist da última viagem que não é a de agora, e é só
+   * informativo.
+   */
+  async getChecklistDoCiclo(
+    vehicleId: string,
+    actor: AuthenticatedUser,
+  ): Promise<ChecklistDoCicloResponseDto> {
+    await this.fetchOrThrow(vehicleId, actor);
+
+    const viagemAtual = await this.vehicleRepository.findViagemAtual(vehicleId);
+    const atual = viagemAtual
+      ? await this.checklistRepository.findUltimoDaViagem(viagemAtual.id)
+      : await this.checklistRepository.findUltimoPreViagem(vehicleId, inicioDaJanelaPreViagem());
+    const anterior = await this.checklistRepository.findUltimoDeViagemAnterior(
+      vehicleId,
+      viagemAtual?.id ?? null,
+    );
+
+    return {
+      viagemAtual: viagemAtual ? toChecklistViagemDto(viagemAtual) : null,
+      atual: atual ? toVehicleChecklistResponseDto(atual) : null,
+      anterior: anterior ? toVehicleChecklistResponseDto(anterior) : null,
+    };
+  }
+
+  /**
+   * O checklist da viagem mais recente de um conjunto de rotas — o que
+   * o Responsável vê ("para depois mostrarem aos responsáveis").
+   *
+   * Sem ator, como `setCurrentTrip`: quem chama é
+   * `TripsService.findChecklistForStudent`, que já provou a posse do
+   * aluno em `StudentsService.findByIdOrThrow` e só então resolveu as
+   * rotas das matrículas ativas dele. É daí que vem o escopo — a lista
+   * de rotas nunca vem do cliente.
+   */
+  async findChecklistDaViagemPorRotas(
+    routeIds: string[],
+  ): Promise<VehicleChecklistResponseDto | null> {
+    const checklist = await this.checklistRepository.findUltimoPorRotasAcrossTenants(routeIds);
+    return checklist ? toVehicleChecklistResponseDto(checklist) : null;
+  }
+
+  /**
+   * Adota para a viagem que acabou de começar o checklist que foi
+   * preenchido na garagem, antes de girar a chave. Chamado por
+   * `TripsService.start` junto de `setCurrentTrip` — sem ator, mesma
+   * justificativa daquele método (quem chama já validou a viagem).
+   *
+   * Best-effort de propósito: um checklist que não ficou ligado à
+   * viagem é um informativo que falta, nunca um motivo para a viagem
+   * não começar.
+   */
+  async adotarChecklistsPreViagem(vehicleId: string, tripId: string): Promise<number> {
+    try {
+      return await this.checklistRepository.adotarPreViagem(
+        vehicleId,
+        tripId,
+        inicioDaJanelaPreViagem(),
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Falha ao ligar o checklist pre-viagem do veiculo ${vehicleId} a viagem ${tripId}`,
+        error as Error,
+      );
+      return 0;
+    }
   }
 
   // ---------------------------------------------------------------------

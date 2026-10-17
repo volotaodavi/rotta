@@ -738,7 +738,7 @@ export class AccountDeletionService {
         ],
         [
           "checklists de veículo",
-          () => tx.vehicleChecklist.count({ where: { motoristaId: userId } }),
+          () => tx.vehicleChecklist.count({ where: { preenchidoPorId: userId } }),
         ],
         [
           "documentos de veículo enviados",

@@ -1,6 +1,7 @@
 import { buildQueryString } from "../query.util";
 
 import type { NextEta, TripPosition, TripStudentEvent } from "./trips";
+import type { VehicleChecklist } from "./vehicles";
 import type { ApiClient } from "../http";
 
 /** Janela de tempo do histórico de embarque/desembarque do Responsável. */
@@ -61,6 +62,17 @@ export function createGpsEndpoints(apiClient: ApiClient) {
      */
     getEtaForStudent: async (studentId: string): Promise<NextEta | null> =>
       (await apiClient.request<ApiEnvelope<NextEta | null>>(`/gps/students/${studentId}/eta`)).data,
+
+    /**
+     * O checklist do veículo em que o filho anda. O escopo é o aluno:
+     * um responsável não pede o checklist de uma van qualquer.
+     */
+    getChecklistForStudent: async (studentId: string): Promise<VehicleChecklist | null> =>
+      (
+        await apiClient.request<ApiEnvelope<VehicleChecklist | null>>(
+          `/gps/students/${studentId}/checklist`,
+        )
+      ).data,
 
     /** Trilha histórica de uma viagem específica (linha completa percorrida). */
     getTrack: async (tripId: string): Promise<TripPosition[]> =>

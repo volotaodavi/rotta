@@ -1,7 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsBoolean, IsOptional, IsString, MaxLength } from "class-validator";
 
-/** Checklist opcional pré-viagem (briefing "CHECKLIST") — sempre feito pelo motorista logado. */
+/**
+ * Checklist pré-viagem (briefing "CHECKLIST") — preenchido por quem vai
+ * na van, Motorista ou Monitor, sempre com o ator autenticado como
+ * autor (Dossiê 13: "nunca o body").
+ *
+ * Não existe campo de viagem aqui, de propósito. A viagem é a que o
+ * veículo tem em andamento no instante da gravação
+ * (`Vehicle.viagemAtualId`), ou a que começar em seguida. Deixar o
+ * cliente escolher a viagem seria deixar o cliente carimbar um
+ * checklist em qualquer viagem de qualquer dia.
+ */
 export class CreateVehicleChecklistDto {
   @ApiProperty({ default: true }) @IsBoolean() pneusOk!: boolean;
   @ApiProperty({ default: true }) @IsBoolean() lucesOk!: boolean;
@@ -14,9 +24,4 @@ export class CreateVehicleChecklistDto {
   @IsString()
   @MaxLength(500)
   observacoes?: string;
-
-  @ApiPropertyOptional({ description: "Referência da viagem (Trips ainda não existe)" })
-  @IsOptional()
-  @IsString()
-  viagemId?: string;
 }
