@@ -144,16 +144,22 @@ export class RouteAssignmentsService {
   }
 
   /**
-   * `data` é `@db.Date` (sem hora). Converter com `new Date("2026-09-25")`
-   * já dá meia-noite UTC — mas passar um ISO completo com hora gravaria
-   * o dia errado para quem está em UTC-3 depois das 21h. Truncar aqui
-   * evita que a escala de amanhã vire a de hoje dependendo da hora em
-   * que o despachante clicou.
+   * `data` é `@db.Date` (sem hora), e o DTO exige `AAAA-MM-DD`
+   * (`@IsDiaDoCalendario`), então `new Date("2026-09-25")` já dá
+   * meia-noite UTC do dia certo.
+   *
+   * O truncamento abaixo era a defesa contra um ISO completo chegando
+   * aqui, e ela protegia MENOS do que a nota antiga dizia: truncar em
+   * UTC leva `2026-09-25T21:30-03:00` para o dia 26, porque em UTC já
+   * é dia 26. O despachante montava a escala de quinta às 21h30 e ela
+   * nascia na sexta. Quem resolve isso é o formato exigido na entrada,
+   * não o truncamento; ele fica como rede, agora sem ambiguidade sobre
+   * o que de fato garante o dia.
    */
   private diaSemHora(iso: string): Date {
     const data = new Date(iso);
     if (Number.isNaN(data.getTime())) {
-      throw new BadRequestException("Data inválida.");
+      throw new BadRequestException("Informe a data no formato AAAA-MM-DD, sem hora.");
     }
     return new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()));
   }

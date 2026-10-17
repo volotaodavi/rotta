@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { VehicleDocumentType } from "@prisma/client";
-import { IsDateString, IsEnum, IsOptional, IsUUID } from "class-validator";
+import { IsEnum, IsOptional, IsUUID } from "class-validator";
+
+import { IsDiaDoCalendario } from "@/common/validators";
 
 /**
  * Metadados enviados junto com o arquivo (`multipart/form-data`, campo
@@ -11,9 +13,12 @@ export class CreateVehicleDocumentDto {
   @IsEnum(VehicleDocumentType)
   tipo!: VehicleDocumentType;
 
-  @ApiPropertyOptional({ description: "Data de vencimento (CRLV/Seguro/Licenciamento/Vistoria)" })
+  @ApiPropertyOptional({
+    example: "2026-12-31",
+    description: "Data de vencimento (CRLV/Seguro/Licenciamento/Vistoria), `AAAA-MM-DD`.",
+  })
   @IsOptional()
-  @IsDateString()
+  @IsDiaDoCalendario()
   vencimentoEm?: string;
 
   @ApiPropertyOptional({ description: "Anexa este documento a uma manutenção específica" })

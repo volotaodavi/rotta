@@ -1,6 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
-import { IsDateString, IsInt, IsOptional, IsString, IsUUID, Min, MaxLength } from "class-validator";
+import { IsInt, IsOptional, IsString, IsUUID, Min, MaxLength } from "class-validator";
+
+import { IsDiaDoCalendario } from "@/common/validators";
 
 /**
  * Geração de contrato (briefing "CONTRATO") — só a partir de uma
@@ -27,12 +29,12 @@ export class CreateContractDto {
   regras!: string;
 
   @ApiProperty({ example: "2026-02-01" })
-  @IsDateString()
+  @IsDiaDoCalendario()
   vigenciaInicio!: string;
 
   @ApiPropertyOptional({ example: "2026-12-15" })
   @IsOptional()
-  @IsDateString()
+  @IsDiaDoCalendario()
   vigenciaFim?: string;
 
   @ApiPropertyOptional()

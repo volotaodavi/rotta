@@ -51,6 +51,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { ListAuditLogsResponseDto } from "@/common/dto/audit-log-response.dto";
 import type { SchoolRepository } from "@/modules/schools/repositories/school.repository";
 import type { StudentPreRegistrationRepository } from "@/modules/student-pre-registrations/repositories/student-pre-registration.repository";
+
 import { PrismaService } from "@/infra/database/prisma.service";
 import { SupabaseStorageService } from "@/infra/storage/supabase-storage.service";
 import { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -586,8 +587,23 @@ export class StudentsService {
   // ---------------------------------------------------------------------
 
   /** "2026-09-01" → meia-noite UTC daquele dia — mesma convenção de `StudentAddressOverride.data` (`@db.Date`) e do `today()` de `TripsService`. */
+  /**
+   * `"2026-09-25"` → meia-noite UTC do dia 25, que é a convenção de
+   * `StudentAddressOverride.data` e de `Trip.data`.
+   *
+   * O `@IsDiaDoCalendario` dos DTOs já garante o formato, então o
+   * `Invalid Date` aqui é inalcançável pela API. A checagem existe
+   * mesmo assim porque o custo de errar neste campo é uma criança
+   * descendo no endereço errado, e `new Date` não lança: devolve
+   * `Invalid Date` em silêncio, e o erro só apareceria lá na frente,
+   * como falha opaca do banco.
+   */
   private parseDataOnly(data: string): Date {
-    return new Date(`${data}T00:00:00.000Z`);
+    const dia = new Date(`${data}T00:00:00.000Z`);
+    if (Number.isNaN(dia.getTime())) {
+      throw new BadRequestException("Informe a data no formato AAAA-MM-DD, sem hora.");
+    }
+    return dia;
   }
 
   /**

@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { StudentAddressOverrideLocalTipo, StudentAddressOverrideTrecho } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
-  IsDateString,
   IsEnum,
   IsLatitude,
   IsLongitude,
@@ -14,7 +13,7 @@ import {
   ValidateIf,
 } from "class-validator";
 
-import { IsCep } from "@/common/validators";
+import { IsCep, IsDiaDoCalendario } from "@/common/validators";
 
 /** `localTipo` ausente é implicitamente `OUTRO` (compat com registros anteriores a esta Frente). */
 function exigeEnderecoCompleto(dto: CreateStudentAddressOverrideDto): boolean {
@@ -42,7 +41,7 @@ function exigeEnderecoCompleto(dto: CreateStudentAddressOverrideDto): boolean {
  */
 export class CreateStudentAddressOverrideDto {
   @ApiProperty({ example: "2026-09-01", description: "Dia em que o desvio vale (YYYY-MM-DD)." })
-  @IsDateString()
+  @IsDiaDoCalendario()
   data!: string;
 
   @ApiProperty({ enum: StudentAddressOverrideTrecho, example: StudentAddressOverrideTrecho.AMBOS })

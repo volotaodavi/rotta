@@ -1,6 +1,8 @@
 import { ApiPropertyOptional, ApiProperty } from "@nestjs/swagger";
 import { DriverDocumentType } from "@prisma/client";
-import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
+
+import { IsDiaDoCalendario } from "@/common/validators";
 
 /**
  * Metadados enviados junto com o arquivo (`multipart/form-data`, campo
@@ -26,6 +28,6 @@ export class CreateDriverDocumentDto {
 
   @ApiPropertyOptional({ description: "Data de vencimento (CNH/EAR/curso)" })
   @IsOptional()
-  @IsDateString()
+  @IsDiaDoCalendario()
   vencimentoEm?: string;
 }

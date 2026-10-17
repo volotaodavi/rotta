@@ -2,7 +2,6 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { SchoolShift, StudentSex } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
-  IsDateString,
   IsEnum,
   IsLatitude,
   IsLongitude,
@@ -13,7 +12,7 @@ import {
   MaxLength,
 } from "class-validator";
 
-import { IsCep } from "@/common/validators";
+import { IsCep, IsDiaDoCalendario } from "@/common/validators";
 
 /**
  * Cadastro de Aluno (briefing "CADASTRO DO ALUNO") — sempre pelo
@@ -30,7 +29,7 @@ export class CreateStudentDto {
   nome!: string;
 
   @ApiProperty({ example: "2015-03-20" })
-  @IsDateString()
+  @IsDiaDoCalendario()
   dataNascimento!: string;
 
   @ApiProperty({ enum: StudentSex, example: StudentSex.FEMININO })

@@ -1,5 +1,7 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsDateString, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+import { IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
+
+import { IsDiaDoCalendario } from "@/common/validators";
 
 /**
  * Designa ônibus, motorista e monitor para uma rota num dia (pedido do
@@ -17,7 +19,7 @@ export class DefinirEscalaDto {
   routeId!: string;
 
   @ApiProperty({ example: "2026-09-25", description: "Dia da escala, `AAAA-MM-DD`." })
-  @IsDateString()
+  @IsDiaDoCalendario()
   data!: string;
 
   @ApiProperty()

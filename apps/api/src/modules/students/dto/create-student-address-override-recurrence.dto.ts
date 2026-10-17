@@ -5,7 +5,6 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   ArrayUnique,
-  IsDateString,
   IsEnum,
   IsInt,
   IsLatitude,
@@ -18,7 +17,7 @@ import {
   Min,
 } from "class-validator";
 
-import { IsCep } from "@/common/validators";
+import { IsCep, IsDiaDoCalendario } from "@/common/validators";
 
 /**
  * Frente 10(b) — endereço alternativo RECORRENTE (pedido do usuário:
@@ -45,7 +44,7 @@ export class CreateStudentAddressOverrideRecurrenceDto {
   diasSemana!: number[];
 
   @ApiProperty({ example: "2026-09-01", description: "Início da vigência (YYYY-MM-DD)." })
-  @IsDateString()
+  @IsDiaDoCalendario()
   vigenciaInicio!: string;
 
   @ApiPropertyOptional({
@@ -53,7 +52,7 @@ export class CreateStudentAddressOverrideRecurrenceDto {
     description: "Fim da vigência (YYYY-MM-DD); ausente = por tempo indeterminado.",
   })
   @IsOptional()
-  @IsDateString()
+  @IsDiaDoCalendario()
   vigenciaFim?: string;
 
   @ApiProperty({ enum: StudentAddressOverrideTrecho, example: StudentAddressOverrideTrecho.AMBOS })
