@@ -28,20 +28,26 @@ tela.
 
 from __future__ import annotations
 
+import base64
 import html
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-AZUL = "#0A3B85"
+AZUL = "#0139E1"      # azul do simbolo (brand/README.md)
+ACENTO = "#1769FF"    # azul do produto
+TINTA = "#0F2748"     # texto sobre fundo claro
 CHROMIUM = "/opt/pw-browsers/chromium-1194/chrome-linux/chrome"
+# A assinatura horizontal da marca, com fundo transparente. O
+# `brand/README.md` e explicito: logotipo se pega de la, nunca se
+# desenha nem se escreve "ROTTA" numa fonte qualquer.
+ASSINATURA = Path("apps/web/public/brand/rotta-wordmark-dark.png")
 
 CSS = f"""
 @page {{
   size: A4;
-  margin: 20mm 18mm 18mm 18mm;
-  @bottom-center {{ content: counter(page); }}
+  margin: 13mm 18mm 12mm 18mm;
 }}
 * {{ box-sizing: border-box; }}
 body {{
@@ -51,26 +57,65 @@ body {{
   color: #15202b;
   margin: 0;
 }}
-.capa {{
-  border-bottom: 3px solid {AZUL};
-  padding-bottom: 14px;
-  margin-bottom: 26px;
+/* O timbre vive no `thead` da tabela que envolve o documento inteiro.
+   E a unica tecnica que funciona no Chrome em midia paginada: `position:
+   fixed` repete em toda pagina mas NAO reserva espaco, e o texto passa
+   por baixo do logotipo (conferido em 17/10/2026, com o PDF
+   rasterizado). `thead` repete E reserva. */
+.folha {{ width: 100%; border-collapse: collapse; }}
+.folha > thead > tr > td, .folha > tbody > tr > td, .folha > tfoot > tr > td {{
+  padding: 0;
+  border: 0;
+  background: none;
 }}
-.marca {{
-  font-family: "DejaVu Sans", Arial, sans-serif;
-  font-size: 19pt;
-  font-weight: 700;
-  letter-spacing: 3px;
-  color: {AZUL};
-  margin: 0;
+.timbre {{
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 2.5px solid {AZUL};
+  padding-bottom: 2.5mm;
+  margin-bottom: 6mm;
 }}
-.capa .sub {{
+.timbre img {{ height: 7.6mm; }}
+.timbre .etiqueta {{
   font-family: "DejaVu Sans", Arial, sans-serif;
-  font-size: 8.2pt;
-  letter-spacing: 1.1px;
+  font-size: 7pt;
+  letter-spacing: 1.4px;
   text-transform: uppercase;
-  color: #5b6b7c;
-  margin-top: 5px;
+  color: #6b7a8c;
+}}
+.rodape-fixo {{
+  margin-top: 5mm;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid #d8e0e8;
+  padding-top: 2.5mm;
+  font-family: "DejaVu Sans", Arial, sans-serif;
+  font-size: 7pt;
+  color: #6b7a8c;
+}}
+/* A faixa de abertura, so na primeira pagina. */
+.abertura {{
+  background: {AZUL};
+  color: #fff;
+  padding: 16px 18px;
+  margin: 0 0 22px;
+}}
+.abertura .eyebrow {{
+  font-family: "DejaVu Sans", Arial, sans-serif;
+  font-size: 7.4pt;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.82;
+  margin: 0 0 6px;
+}}
+.abertura h1 {{ color: #fff; margin: 0; }}
+.abertura .assinam {{
+  font-family: "DejaVu Sans", Arial, sans-serif;
+  font-size: 8.4pt;
+  margin: 10px 0 0;
+  opacity: 0.92;
 }}
 h1 {{
   font-family: "DejaVu Sans", Arial, sans-serif;
@@ -137,7 +182,7 @@ td {{
 }}
 tr:nth-child(even) td {{ background: #f7f9fc; }}
 /* Dinheiro alinha pela virgula, ou a coluna nao da para conferir. */
-td.num, th.num {{ text-align: right; font-variant-numeric: tabular-nums; }}
+td.num, th.num {{ text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }}
 .rodape {{
   margin-top: 26px;
   padding-top: 10px;
@@ -267,21 +312,48 @@ def main() -> int:
 
     origem = Path(sys.argv[1])
     destino = Path(sys.argv[2]) if len(sys.argv) > 2 else origem.with_suffix(".pdf")
+    assinam = sys.argv[3] if len(sys.argv) > 3 else ""
     markdown = origem.read_text(encoding="utf-8")
 
     corpo = converter(markdown)
+
+    # O titulo e a linha de quem assina saem do corpo e entram na faixa
+    # de abertura, para a primeira pagina ter cara de documento e nao de
+    # arquivo de texto impresso.
+    titulo = ""
+    casamento = re.match(r"\s*<h1>(.*?)</h1>", corpo, re.S)
+    if casamento:
+        titulo = casamento.group(1)
+        corpo = corpo[casamento.end():]
+
+    assinatura_b64 = base64.b64encode(ASSINATURA.read_bytes()).decode()
     pagina = f"""<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8">
 <title>{html.escape(origem.stem)}</title>
 <style>{CSS}</style></head>
 <body>
-<div class="capa">
-  <p class="marca">ROTTA</p>
-  <p class="sub">Documento interno &middot; {html.escape(origem.as_posix())}</p>
+<table class="folha">
+<thead><tr><td>
+  <div class="timbre">
+    <img src="data:image/png;base64,{assinatura_b64}" alt="Rotta">
+    <span class="etiqueta">Documento interno</span>
+  </div>
+</td></tr></thead>
+<tfoot><tr><td>
+  <div class="rodape-fixo">
+    <span>Rotta do Brasil Mobilidade Escolar</span>
+    <span>{html.escape(origem.as_posix())}</span>
+  </div>
+</td></tr></tfoot>
+<tbody><tr><td>
+<div class="abertura">
+  <p class="eyebrow">Rotta &middot; Diretoria</p>
+  <h1>{titulo}</h1>
+  <p class="assinam">{html.escape(assinam)}</p>
 </div>
 {corpo}
-<p class="rodape">Rotta do Brasil Mobilidade Escolar &middot; documento interno, gerado de
-{html.escape(origem.as_posix())} &middot; nao distribuir fora da companhia.</p>
+</td></tr></tbody>
+</table>
 </body></html>"""
 
     temporario = destino.with_suffix(".html")
