@@ -1,8 +1,8 @@
 "use client";
 
-import { KeyRound, MapPin, Plus, Radio } from "@rotta/icons";
+import { KeyRound, MapPin, Plus, Radio, Users } from "@rotta/icons";
 import { type RottaMapMarker } from "@rotta/maps/types";
-import { Badge, Card, Input, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
+import { Badge, Card, EmptyState, Input, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -63,25 +63,32 @@ export default function AlunosPage(): JSX.Element {
         </div>
       ) : data.items.length === 0 ? (
         <Card>
-          <Card.Body className="flex flex-col items-center gap-3 py-12 text-center">
-            <Typography variant="subtitle">Nenhum aluno cadastrado ainda</Typography>
-            <Typography variant="bodySmall" color="muted" className="max-w-sm">
-              Cadastre seu filho ou dependente para acompanhar o transporte escolar dele em tempo
-              real assim que a viagem começar.
-            </Typography>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Link
-                href="/vincular-transporte"
-                className={buttonVariants({ variant: "secondary" })}
-              >
-                <KeyRound className="h-4 w-4" />
-                Tenho um código de transporte
-              </Link>
-              <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
-                <Plus className="h-4 w-4" />
-                Adicionar aluno
-              </Link>
-            </div>
+          {/* `EmptyState` e não um `Card.Body` montado à mão: era uma
+              cópia do componente compartilhado, sem o ícone. Esta é a
+              primeira tela do Responsável recém-cadastrado, então as
+              duas portas de entrada (código de transporte e cadastro)
+              ficam aqui como `action`. */}
+          <Card.Body className="p-0">
+            <EmptyState
+              icon={Users}
+              title="Nenhum aluno cadastrado ainda"
+              description="Cadastre seu filho ou dependente para acompanhar o transporte escolar dele em tempo real assim que a viagem começar."
+              action={
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Link
+                    href="/vincular-transporte"
+                    className={buttonVariants({ variant: "secondary" })}
+                  >
+                    <KeyRound className="h-4 w-4" />
+                    Tenho um código de transporte
+                  </Link>
+                  <Link href="/alunos/novo" className={buttonVariants({ variant: "primary" })}>
+                    <Plus className="h-4 w-4" />
+                    Adicionar aluno
+                  </Link>
+                </div>
+              }
+            />
           </Card.Body>
         </Card>
       ) : (

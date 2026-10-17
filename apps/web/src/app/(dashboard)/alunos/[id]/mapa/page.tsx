@@ -10,7 +10,7 @@ import {
   UserX,
 } from "@rotta/icons";
 import { type RottaMapMarker } from "@rotta/maps/types";
-import { Badge, Card, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
+import { Badge, Card, EmptyState, Spinner, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -333,12 +333,16 @@ export default function AlunoMapaPage(): JSX.Element {
         <VoltarLink studentId={studentId} nome={student?.nome} />
         <Typography variant="title">Localização em tempo real</Typography>
         <Card>
-          <Card.Body className="flex flex-col items-center gap-2 py-12 text-center">
-            <Typography variant="subtitle">Nenhum transporte em andamento agora</Typography>
-            <Typography variant="bodySmall" color="muted" className="max-w-sm">
-              O mapa aparece aqui automaticamente assim que a viagem do dia começar. Esta página
-              atualiza sozinha a cada 10 segundos.
-            </Typography>
+          {/* `EmptyState` e não um `Card.Body` montado à mão: este bloco
+              era uma cópia do componente compartilhado sem o ícone, e
+              "vazio" aqui é o estado normal da tela fora do horário de
+              aula — merece a mesma cara de todo vazio do painel. */}
+          <Card.Body className="p-0">
+            <EmptyState
+              icon={MapPin}
+              title="Nenhum transporte em andamento agora"
+              description="O mapa aparece aqui automaticamente assim que a viagem do dia começar. Esta página atualiza sozinha a cada 10 segundos."
+            />
           </Card.Body>
         </Card>
         <HistoricoEventosCard studentId={studentId} />

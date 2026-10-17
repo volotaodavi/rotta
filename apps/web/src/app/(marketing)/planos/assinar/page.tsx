@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Copy } from "@rotta/icons";
-import { Button, Card, FormField, Input, Typography, useToast } from "@rotta/ui/web";
+import { Button, Card, FormField, Input, PhoneInput, Typography, useToast } from "@rotta/ui/web";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -261,7 +261,11 @@ export default function AssinarAntesDaContaPage(): JSX.Element {
                   : "Opcional."
               }
             >
-              <Input value={telefone} onChange={(e) => setTelefone(e.target.value)} />
+              {/* `PhoneInput` e não `Input`: este telefone vai para o
+                  Asaas como chave de correspondência do pagamento, e
+                  um número com máscara ou com +55 não casa com o que a
+                  mesma pessoa digita depois no cadastro. */}
+              <PhoneInput value={telefone} onValueChange={setTelefone} />
             </FormField>
           </Card.Body>
         </Card>
