@@ -41,15 +41,20 @@ const SCHEMA = resolve(AQUI, "../../../../apps/api/prisma/schema.prisma");
 function valoresDoEnumNoSchema(nome: string): string[] {
   const schema = readFileSync(SCHEMA, "utf8");
   const bloco = new RegExp(String.raw`enum\s+${nome}\s*\{([\s\S]*?)\n\}`).exec(schema);
-  if (!bloco) throw new Error(`enum ${nome} não encontrado em ${SCHEMA}`);
+  const corpo = bloco?.[1];
+  if (corpo === undefined) throw new Error(`enum ${nome} não encontrado em ${SCHEMA}`);
 
   return (
-    bloco[1]
+    corpo
       .split("\n")
       .map((linha) => linha.trim())
       /* `///` é comentário de documentação do Prisma, e o enum usa muitos. */
       .filter((linha) => linha.length > 0 && !linha.startsWith("//"))
-      .map((linha) => linha.split(/\s/)[0])
+      /* `split` devolve `string | undefined` por elemento com
+       `noUncheckedIndexedAccess`; a linha aqui nunca é vazia (foi
+       filtrada acima), então o `?? linha` nunca entra em jogo — está
+       aqui para o tipo, não para o comportamento. */
+      .map((linha) => linha.split(/\s/)[0] ?? linha)
   );
 }
 

@@ -19,6 +19,7 @@
   },
   "devDependencies": {
     "@rotta/config": "workspace:*",
+    "@types/node": "^22.10.2",
     "eslint": "^8.57.1",
     "typescript": "^5.7.2",
     "vitest": "^4"
