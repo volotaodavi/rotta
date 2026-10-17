@@ -81,6 +81,7 @@ export class PrismaWalletRepository implements WalletRepository {
           saldoDisponivelAposCentavos: wallet.saldoDisponivelCentavos,
           descricao: data.descricao,
           contractId: data.contractId,
+          contractInvoiceId: data.contractInvoiceId,
           withdrawalRequestId: data.withdrawalRequestId,
           criadaPorUserId: data.criadaPorUserId,
         },

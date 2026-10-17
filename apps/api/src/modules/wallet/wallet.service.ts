@@ -327,6 +327,52 @@ export class WalletService {
   }
 
   /**
+   * O dinheiro da mensalidade de uma família entrou, e passou pela conta
+   * da Rotta — então existe algo a repassar, e o transportador vê isso
+   * como saldo disponível no Rotta Pay.
+   *
+   * `CONCLUIDA`, não `PENDENTE`, e a diferença importa:
+   * `registrarMensalidadePendente` (abaixo) lança o valor como pendente
+   * na ATIVAÇÃO do contrato, que é uma promessa de receber. Aqui o
+   * dinheiro foi confirmado pelo provedor — virou saldo que dá para
+   * sacar.
+   *
+   * Chamado por `FamilyBillingService.confirmarPagamento`, que já se
+   * protege de webhook reentregue (fatura já paga sai antes de chegar
+   * aqui); e nunca chamado quando a cobrança saiu com split, porque aí
+   * o valor foi direto para a conta do transportador e não há repasse.
+   */
+  async creditarRecebimentoDeFatura(input: {
+    companyId: string;
+    contractId: string;
+    contractInvoiceId: string;
+    valorCentavos: number;
+    descricao: string;
+  }): Promise<void> {
+    if (input.valorCentavos <= 0) {
+      this.logger.warn(
+        `Credito de fatura ignorado: valor nao positivo (${input.valorCentavos} centavos, fatura ${input.contractInvoiceId}).`,
+      );
+      return;
+    }
+
+    const wallet = await this.walletRepository.getOrCreate({
+      ownerType: "EMPRESA",
+      companyId: input.companyId,
+    });
+    await this.walletRepository.applyTransaction(wallet.id, {
+      tipo: "CREDITO_MENSALIDADE",
+      status: "CONCLUIDA",
+      valorCentavos: input.valorCentavos,
+      descricao: input.descricao,
+      contractId: input.contractId,
+      contractInvoiceId: input.contractInvoiceId,
+      deltaSaldoDisponivelCentavos: input.valorCentavos,
+      deltaSaldoPendenteCentavos: 0,
+    });
+  }
+
+  /**
    * Best-effort, chamado por `ContractsService.tryActivateAfterBothSigned`
    * (Dossiê 26, Seção 6) — nunca bloqueia a ativação do contrato por
    * causa de uma falha aqui (mesmo padrão de `resolveNomeEmpresa`).

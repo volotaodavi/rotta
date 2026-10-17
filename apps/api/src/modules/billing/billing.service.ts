@@ -45,6 +45,11 @@ import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service"
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import {
+  FAMILY_INVOICE_WEBHOOK_EVENT,
+  type FamilyInvoiceWebhookEvent,
+} from "@/modules/family-billing/events/family-invoice-paid.event";
+import { FAMILY_INVOICE_ID_PREFIX } from "@/modules/family-billing/family-billing.constants";
+import {
   AtribuicaoDoNavegador,
   MetaConversionsService,
 } from "@/modules/marketing/meta-conversions.service";
@@ -1046,6 +1051,29 @@ export class BillingService {
    */
   async handleAsaasWebhookEvent(event: AsaasWebhookEnvelope): Promise<void> {
     const companyId = event.payment?.externalReference ?? undefined;
+
+    /* Mensalidade de uma FAMÍLIA, não assinatura da plataforma. São dois
+       fluxos de dinheiro na mesma conta Asaas, e o prefixo em
+       `externalReference` é o que os separa — sem ele, este método
+       tentaria ativar uma transportadora usando o id de uma fatura.
+
+       `emitAsync` (e não `emit`): o controller só responde 200 para a
+       Asaas depois de o pagamento ter sido gravado de verdade. Evento em
+       vez de chamada direta porque `FamilyBillingModule` já importa
+       `BillingModule` (pelo `AsaasClientService`) e chamar de volta
+       fecharia o ciclo. */
+    if (companyId?.startsWith(FAMILY_INVOICE_ID_PREFIX) && event.payment) {
+      const payload: FamilyInvoiceWebhookEvent = {
+        asaasEvent: event.event,
+        asaasPaymentId: event.payment.id,
+        valorReais: event.payment.value,
+        valorLiquidoReais: event.payment.netValue ?? null,
+        pagoEm: event.payment.paymentDate ?? null,
+      };
+      await this.eventEmitter.emitAsync(FAMILY_INVOICE_WEBHOOK_EVENT, payload);
+      return;
+    }
+
     const subscriptionId = event.payment?.subscription;
     // `payment.value` é o valor real ecoado pelo webhook — usado só pra
     // compor o texto de PAGAMENTO_*, nunca pra lógica de negócio (o

@@ -797,6 +797,10 @@ model Company {
   escalas                RouteAssignment[]
   solicitacoesTransporte TransportRequest[]
   contratos              Contract[]
+  /// Mensalidades que esta transportadora cobra das familias.
+  faturas                ContractInvoice[]
+  /// Para onde vai o dinheiro dessas mensalidades.
+  contaDeRecebimento     CompanyPaymentAccount?
   avaliacoesRecebidas    Rating[]
   /// Só alimenta o dashboard de comunicação da empresa (briefing "CENTRAL
   /// DE COMUNICAÇÃO") — nunca usado para controle de acesso ao inbox
@@ -1101,6 +1105,7 @@ model User {
   vinculosVeiculo                    VehicleAssignment[]                 @relation("VehicleAssignmentUser")
   vinculosVeiculoCriados             VehicleAssignment[]                 @relation("VehicleAssignmentCriadoPor")
   checklistsVeiculo                  VehicleChecklist[]                  @relation("VehicleChecklistPreenchidoPor")
+  faturasComoResponsavel             ContractInvoice[]                   @relation("ContractInvoiceResponsavel")
   ocorrenciasVeiculoReportadas       VehicleOccurrence[]                 @relation("VehicleOccurrenceReportadoPor")
 
   /// Documentos de habilitação/qualificação do motorista (Dossiê 28 —
@@ -2389,6 +2394,7 @@ model Student {
   desviosEndereco            StudentAddressOverride[]
   desviosEnderecoRecorrentes StudentAddressOverrideRecurrence[]
   ausenciasDiarias           StudentDailyAbsence[]
+  faturas                    ContractInvoice[]
 
   @@index([responsavelId, deletedAt])
   @@index([schoolId])
@@ -2688,6 +2694,8 @@ model Contract {
   updatedAt DateTime @updatedAt
 
   ratings            Rating[]
+  /// Mensalidades da familia geradas a partir deste contrato (uma por mes).
+  faturas            ContractInvoice[]
   vinculoRota        RouteStudent?
   /// Créditos de mensalidade gerados na carteira Rotta Pay da empresa a
   /// partir deste contrato (Dossiê 26, Seção 6) — normalmente 1 (na
@@ -3646,6 +3654,11 @@ model WalletTransaction {
   contractId String?   @db.Uuid
   contract   Contract? @relation(fields: [contractId], references: [id], onDelete: SetNull)
 
+  /// A fatura da familia que originou este credito, quando o dinheiro
+  /// passou pela conta da Rotta (ver `ContractInvoice.repasseDiretoAoTransportador`).
+  contractInvoiceId String?          @db.Uuid
+  contractInvoice   ContractInvoice? @relation(fields: [contractInvoiceId], references: [id], onDelete: SetNull)
+
   withdrawalRequestId String?            @unique @db.Uuid
   withdrawalRequest   WithdrawalRequest? @relation(fields: [withdrawalRequestId], references: [id], onDelete: SetNull)
 
@@ -4132,4 +4145,186 @@ model ClientErrorReport {
   @@index([digest])
   @@index([buildId])
   @@map("client_error_reports")
+}
+
+// =============================================================================
+// Cobrança da família (mensalidade do transporte) — Responsável paga a
+// TRANSPORTADORA, nunca a Rotta.
+//
+// Não confundir com `PendingSubscription`/`Company.asaasSubscriptionId`,
+// que são a Rotta cobrando a transportadora pelo uso da plataforma. São
+// dois fluxos de dinheiro diferentes, com pagador, recebedor e ciclo
+// diferentes, e misturá-los num modelo só seria o começo de um erro de
+// conciliação difícil de desfazer depois.
+//
+// O Rotta Pay (`Wallet`) é do TRANSPORTADOR: é onde ele vê o que
+// recebeu e pede saque. O responsável nunca tem carteira — ele vê
+// quanto deve, quando vence e como pagar.
+// =============================================================================
+
+/// Ciclo de vida de uma fatura da família.
+///
+/// O conceito visual de 16/10/2026 tinha quatro estados, sendo dois
+/// vermelhos ("Não paga" e "Vencida"), e o próprio mapa de cores do app
+/// já tratava os dois como um só, porque pedem a mesma ação da família.
+/// Aqui existe um: `VENCIDA`. `CANCELADA` e `ESTORNADA` não estavam no
+/// conceito porque são do mundo real do dinheiro, não da tela.
+enum ContractInvoiceStatus {
+  A_VENCER
+  PAGA
+  VENCIDA
+  CANCELADA
+  ESTORNADA
+}
+
+/// Como a família pagou (ou vai pagar) uma fatura. Espelha o
+/// `billingType` da Asaas, com nome em português porque é o que aparece
+/// no comprovante que a família lê.
+///
+/// `CARTAO_CREDITO`/`CARTAO_DEBITO` existem no enum, mas o fluxo de
+/// cartão NÃO está implementado: a Asaas confirmou em 16/10/2026 que
+/// não há SDK mobile nem tokenização pelo front, então o número do
+/// cartão passaria pelo servidor da Rotta e a colocaria em escopo PCI
+/// DSS. Enquanto essa decisão não for tomada, o trilho é Pix.
+enum InvoicePaymentMethod {
+  PIX
+  BOLETO
+  CARTAO_CREDITO
+  CARTAO_DEBITO
+}
+
+/// A mensalidade de um mês de um contrato — uma linha por contrato por
+/// competência (`@@unique`), que é o que torna a geração mensal
+/// idempotente: rodar o job duas vezes no mesmo mês não cria fatura
+/// dobrada para ninguém.
+model ContractInvoice {
+  id String @id @default(uuid()) @db.Uuid
+
+  companyId String  @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  contractId String   @db.Uuid
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Restrict)
+
+  /// Desnormalizados do contrato de propósito: a fatura é um documento
+  /// financeiro e precisa continuar dizendo de quem era a cobrança mesmo
+  /// que o aluno troque de responsável ou saia da rota depois.
+  studentId     String  @db.Uuid
+  student       Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
+  responsavelId String  @db.Uuid
+  responsavel   User    @relation("ContractInvoiceResponsavel", fields: [responsavelId], references: [id], onDelete: Restrict)
+
+  /// Primeiro dia do mês de competência (ex. 2026-04-01 para "Abr/2026")
+  /// — é data, não texto, para dar para ordenar e filtrar no banco.
+  competencia DateTime @db.Date
+  vencimento  DateTime @db.Date
+
+  /// Congelado da `Contract.valorMensalidadeCentavos` no momento da
+  /// geração. Um reajuste no contrato nunca muda uma fatura que já foi
+  /// emitida — isso é o que permite a família conferir o que pagou.
+  valorCentavos Int
+
+  status ContractInvoiceStatus @default(A_VENCER)
+
+  /// --- Asaas ---
+  /// `AsaasPayment.id` da cobrança criada para esta fatura. `null` até
+  /// alguém abrir o pagamento pela primeira vez: a fatura existe antes
+  /// da cobrança, e é por isso que a família vê o valor e o vencimento
+  /// mesmo sem a Asaas estar configurada.
+  asaasPaymentId  String? @unique @db.VarChar(64)
+  /// `AsaasCustomer.id` do RESPONSÁVEL (a família é o cliente nesta
+  /// cobrança, não a transportadora).
+  asaasCustomerId String? @db.VarChar(64)
+
+  meioDePagamento InvoicePaymentMethod?
+  /// `AsaasPayment.invoiceUrl` — a página da fatura hospedada pela
+  /// própria Asaas, o caminho de recuperação quando o app falha.
+  linkDaFatura    String?
+  /// Boleto: linha digitável, para a família copiar sem abrir o PDF.
+  linhaDigitavel  String?
+
+  pagoEm            DateTime?
+  valorPagoCentavos Int?
+  /// `value - netValue` da Asaas — a taxa que o provedor retém. Nunca
+  /// estimada: vem pronta na resposta deles.
+  taxaDoProvedorCentavos Int?
+  /// O que de fato sobra para o transportador. Igual a
+  /// `valorPagoCentavos - taxaDoProvedorCentavos` enquanto a Rotta não
+  /// cobrar comissão sobre a mensalidade da família (ela não cobra: a
+  /// Rotta ganha na assinatura da plataforma).
+  repasseCentavos        Int?
+
+  /// `true` quando o dinheiro foi direto para a conta Asaas do
+  /// transportador, por split, sem passar pela conta da Rotta. Nesse
+  /// caso NÃO existe crédito no Rotta Pay: não há nada a repassar, e
+  /// creditar a carteira mostraria à transportadora um saldo a sacar que
+  /// ela já recebeu.
+  repasseDiretoAoTransportador Boolean @default(false)
+
+  canceladaEm         DateTime?
+  motivoCancelamento  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transacoesCarteira WalletTransaction[]
+
+  @@unique([contractId, competencia])
+  @@index([companyId, status, vencimento])
+  @@index([responsavelId, status])
+  @@index([studentId, competencia])
+  @@map("contract_invoices")
+}
+
+/// Situação do cadastro da conta de recebimento do transportador na
+/// Asaas. `PENDENTE` é o estado de hoje para todos: o cadastro depende
+/// de informação que a Asaas ainda não enviou (subconta/white label).
+enum CompanyPaymentAccountStatus {
+  PENDENTE
+  ATIVA
+  RECUSADA
+}
+
+/// Para onde vai o dinheiro da mensalidade da família.
+///
+/// Existe separado de `Company` porque é dado bancário com ciclo de vida
+/// próprio (cadastro, aprovação, recusa) e porque `Company` já carrega
+/// os campos da Asaas do OUTRO fluxo (a Rotta cobrando a
+/// transportadora) — dois `asaasCustomerId` na mesma tabela, com
+/// significados opostos, é um erro esperando acontecer.
+///
+/// `asaasWalletId` é a peça que falta. Com ela preenchida, a cobrança é
+/// criada com split e o dinheiro cai direto na conta do transportador.
+/// Sem ela, a cobrança cai na conta da Rotta e o valor é creditado no
+/// Rotta Pay do transportador, que saca de lá — que é como funciona
+/// hoje, e está registrado como tal em cada fatura
+/// (`repasseDiretoAoTransportador`).
+model CompanyPaymentAccount {
+  id String @id @default(uuid()) @db.Uuid
+
+  companyId String  @unique @db.Uuid
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  status CompanyPaymentAccountStatus @default(PENDENTE)
+
+  /// `walletId` da subconta Asaas do transportador — o destino do split.
+  asaasWalletId String? @db.VarChar(64)
+  /// Chave Pix de saque, quando o repasse é feito pelo Rotta Pay.
+  chavePix      String?
+
+  /// Comissão da Rotta sobre a mensalidade da família, em pontos-base
+  /// (1% = 100). Fica `0` porque essa decisão é comercial e ainda não
+  /// foi tomada — e `0` não é um palpite: com zero, o transportador
+  /// recebe o valor líquido inteiro, que é exatamente o combinado hoje
+  /// (a Rotta ganha na assinatura da plataforma, não na mensalidade da
+  /// família). O dia em que houver comissão, ela entra aqui, por
+  /// transportadora, sem migração de dado.
+  taxaDaPlataformaBps Int @default(0)
+
+  observacoes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("company_payment_accounts")
 }

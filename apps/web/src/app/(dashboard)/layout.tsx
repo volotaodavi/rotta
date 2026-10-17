@@ -66,6 +66,11 @@ const PROFISSIONAL_NAV: NavLink[] = [
   // então a tela não tem o que mostrar — e o backend recusa a
   // solicitação de qualquer jeito.
   { href: "/marketplace/solicitacoes", label: "Marketplace", exigeTag: "PRIVADA" },
+  // Mensalidades das familias (17/10/2026) — contas a receber da
+  // transportadora. Exige a tag PRIVADA pelo mesmo motivo do
+  // Marketplace: numa empresa so licitada quem paga e o municipio, nao a
+  // familia, e a tela nao teria o que mostrar.
+  { href: "/mensalidades", label: "Mensalidades", exigeTag: "PRIVADA" },
   { href: "/verificacao-identidade", label: "Verificar identidade" },
   { href: "/chamados", label: "Chamados" },
 ];

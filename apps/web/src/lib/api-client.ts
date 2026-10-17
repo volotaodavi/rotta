@@ -25,6 +25,7 @@ import {
   createSupportEndpoints,
   createTripsEndpoints,
   createVehiclesEndpoints,
+  createFamilyBillingEndpoints,
   createWalletEndpoints,
 } from "@rotta/api-client";
 import { getAccessToken, requestTokenRefresh } from "@rotta/auth/web";
@@ -72,6 +73,9 @@ export const rottaAiApi = createRottaAiEndpoints(apiClient);
 export const tripsApi = createTripsEndpoints(apiClient);
 export const gpsApi = createGpsEndpoints(apiClient);
 export const walletApi = createWalletEndpoints(apiClient);
+// Mensalidade do transporte: o Responsavel paga a TRANSPORTADORA. Nao
+// confundir com `billingApi` (a Rotta cobrando a transportadora).
+export const familyBillingApi = createFamilyBillingEndpoints(apiClient);
 export const supportApi = createSupportEndpoints(apiClient);
 export const identityVerificationApi = createIdentityVerificationEndpoints(apiClient);
 export const planNoticesApi = createPlanNoticesEndpoints(apiClient);

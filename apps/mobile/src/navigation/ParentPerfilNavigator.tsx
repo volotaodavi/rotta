@@ -6,7 +6,7 @@ import { SupportNavigator } from "./SupportNavigator";
 import type { ParentPerfilStackParamList } from "./types";
 
 import { LegalWebViewScreen } from "@/features/legal/screens/legal-webview-screen";
-import { ParentPerfilScreen } from "@/features/parent/screens";
+import { PagamentosContainer, ParentPerfilScreen } from "@/features/parent/screens";
 import {
   EscolaDetalhesScreen,
   EscolaHorariosScreen,
@@ -55,6 +55,11 @@ export function ParentPerfilNavigator(): JSX.Element {
         name="Documentacao"
         component={LegalWebViewScreen}
         options={{ title: "Documentação Rotta" }}
+      />
+      <Stack.Screen
+        name="Pagamentos"
+        component={PagamentosContainer}
+        options={{ title: "Pagamentos", headerShown: false }}
       />
       <Stack.Screen name="Chamados" component={SupportNavigator} options={{ headerShown: false }} />
       <Stack.Screen

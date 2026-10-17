@@ -164,6 +164,14 @@ export type ParentPerfilStackParamList = {
    * de navegação pra elas, agora também a partir do Perfil do
    * Responsável.
    */
+  /**
+   * Pagamentos do transporte (tela 13 do conceito) — a mensalidade que a
+   * familia paga a transportadora. Entrou aqui, e nao numa aba propria,
+   * pelo mesmo motivo de `Documentacao`: o Bottom Navigation do
+   * Responsavel ja esta no limite de itens (briefing "Marketplace"
+   * §"NAVEGACAO").
+   */
+  Pagamentos: undefined;
   Escolas: undefined;
   EscolaDetalhes: { schoolId: string };
   EscolaMapa: { schoolId: string };

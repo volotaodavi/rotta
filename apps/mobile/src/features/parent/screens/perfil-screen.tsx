@@ -1,5 +1,5 @@
 import { useAuth } from "@rotta/auth/native";
-import { Bus, LifeBuoy, LogOut, School, ShieldCheck } from "@rotta/icons/native";
+import { Bus, LifeBuoy, LogOut, School, ShieldCheck, Wallet } from "@rotta/icons/native";
 import { View, StyleSheet, Pressable } from "react-native";
 
 import { SCHOOL_SHIFT_LABEL } from "../../schools/labels";
@@ -122,6 +122,11 @@ export function ParentPerfilScreen({ navigation }: Props): JSX.Element {
         items={[
           { icon: Bus, label: "Meu transporte", onPress: handleMeuTransporte },
           { icon: School, label: "Escolas", onPress: () => navigation.navigate("Escolas") },
+          {
+            icon: Wallet,
+            label: "Pagamentos",
+            onPress: () => navigation.navigate("Pagamentos"),
+          },
           {
             icon: LifeBuoy,
             label: "Suporte",

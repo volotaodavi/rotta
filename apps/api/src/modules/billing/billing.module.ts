@@ -57,6 +57,11 @@ import { UsersModule } from "@/modules/users/users.module";
   // `BillingService` exportado pra `AdminDigestModule` reaproveitar
   // (`reconciliarPagamentosAsaas`, resumo semanal/mensal do Admin
   // Rotta) sem duplicar a lógica de reconciliação Asaas.
-  exports: [BillingService, CobrancaService],
+  // `AsaasClientService` exportado (17/10/2026) para o modulo de
+  // cobranca da familia (`FamilyBillingModule`) criar cobranca Pix no
+  // MESMO cliente Asaas, com a mesma chave, o mesmo tratamento de erro
+  // e o mesmo registro de saude da integracao -- em vez de um segundo
+  // cliente HTTP falando com a mesma API.
+  exports: [BillingService, CobrancaService, AsaasClientService],
 })
 export class BillingModule {}

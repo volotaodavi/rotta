@@ -64,6 +64,7 @@ import { DataRetentionModule } from "@/modules/data-retention/data-retention.mod
 import { DocumentExpiryModule } from "@/modules/document-expiry/document-expiry.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
+import { FamilyBillingModule } from "@/modules/family-billing/family-billing.module";
 import { GeoModule } from "@/modules/geo/geo.module";
 import { GpsModule } from "@/modules/gps/gps.module";
 import { IdentityVerificationModule } from "@/modules/identity-verification/identity-verification.module";
@@ -152,6 +153,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     UsersModule,
     CompaniesModule,
     BillingModule,
+    FamilyBillingModule,
     PlataformaModule,
     AdminDigestModule,
     TrialNotificationsModule,

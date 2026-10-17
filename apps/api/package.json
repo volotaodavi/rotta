@@ -42,6 +42,7 @@
     "@nestjs/websockets": "^10.4.15",
     "@prisma/client": "^6.1.0",
     "@rotta/types": "workspace:*",
+    "@rotta/utils": "workspace:*",
     "@rotta/validators": "workspace:*",
     "@sentry/node": "^10.70.0",
     "@supabase/supabase-js": "^2.47.10",

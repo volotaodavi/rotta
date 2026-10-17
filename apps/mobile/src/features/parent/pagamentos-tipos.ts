@@ -25,32 +25,40 @@ import type { StatusTone } from "@rotta/ui/native";
  * errado em algum lugar, e aqui o erro apareceria na fatura de uma
  * família.
  */
-export type FaturaStatus = "PAGA" | "A_VENCER" | "NAO_PAGA" | "VENCIDA";
+export type FaturaStatus = "PAGA" | "A_VENCER" | "VENCIDA" | "CANCELADA" | "ESTORNADA";
 
 /**
  * O tom de cada estado, em um lugar só.
  *
- * `NAO_PAGA` e `VENCIDA` compartilham o vermelho de propósito: as duas
- * pedem a mesma ação da família, e inventar uma terceira cor para
- * diferenciá-las faria a pessoa procurar significado onde não há.
- * A diferença entre elas aparece no rótulo, que é onde deve aparecer.
+ * O conceito visual tinha quatro estados, sendo dois vermelhos ("Não
+ * paga" e "Vencida"), e este mapa já pintava os dois igual porque pedem
+ * a mesma ação da família. O backend tem um: `VENCIDA`. `NAO_PAGA` saiu
+ * daqui em 17/10/2026 por ser a mesma coisa com outro nome — manter dois
+ * rótulos para um estado faria a pessoa procurar significado onde não
+ * há.
+ *
+ * `CANCELADA` e `ESTORNADA` não estavam no conceito porque são do mundo
+ * real do dinheiro, não da tela: cinza, porque não pedem nada da
+ * família.
  */
 export const TOM_DA_FATURA: Record<FaturaStatus, StatusTone> = {
   PAGA: "success",
   A_VENCER: "warning",
-  NAO_PAGA: "danger",
   VENCIDA: "danger",
+  CANCELADA: "neutral",
+  ESTORNADA: "neutral",
 };
 
 export const ROTULO_DA_FATURA: Record<FaturaStatus, string> = {
   PAGA: "Paga",
   A_VENCER: "A vencer",
-  NAO_PAGA: "Não paga",
   VENCIDA: "Vencida",
+  CANCELADA: "Cancelada",
+  ESTORNADA: "Estornada",
 };
 
 /** Estados que ainda pedem pagamento. */
-export const FATURA_EM_ABERTO: FaturaStatus[] = ["A_VENCER", "NAO_PAGA", "VENCIDA"];
+export const FATURA_EM_ABERTO: FaturaStatus[] = ["A_VENCER", "VENCIDA"];
 
 export interface Fatura {
   id: string;

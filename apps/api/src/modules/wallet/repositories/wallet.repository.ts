@@ -19,6 +19,8 @@ export interface ApplyWalletTransactionData {
   valorCentavos: number;
   descricao: string;
   contractId?: string;
+  /** A fatura da familia que originou o credito (ver `ContractInvoice`). */
+  contractInvoiceId?: string;
   withdrawalRequestId?: string;
   /** `undefined` = evento automático do sistema. */
   criadaPorUserId?: string;

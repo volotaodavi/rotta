@@ -390,6 +390,11 @@ const TELAS: Array<[string, () => { [k: string]: unknown }, string]> = [
     () => require("@/features/parent/screens/pagamentos-screen"),
     "PagamentosScreen",
   ],
+  [
+    "pagamentos-container",
+    () => require("@/features/parent/screens/pagamentos-container"),
+    "PagamentosContainer",
+  ],
   ["perfil-screen", () => require("@/features/parent/screens/perfil-screen"), "ParentPerfilScreen"],
   [
     "detalhes-screen",
