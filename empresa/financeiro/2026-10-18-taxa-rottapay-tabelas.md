@@ -118,7 +118,53 @@ pagante, nenhuma família pagando.
 
 ---
 
-## 5. Decisão
+## 5. Crédito recorrente: é viável, com três condições
+
+Confirmado por escrito pelo time de Integrações do Asaas (14 e
+15/10/2026), e não por suposição nossa.
+
+| Pergunta                          | Resposta                                                                                                    |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| A assinatura aceita cartão?       | **Sim.** `POST /subscriptions` com `creditCard` e `creditCardHolderInfo`, ciclo `MONTHLY`, renovação nativa |
+| O split acompanha a recorrência?  | **Sim.** Configurado uma vez, o Asaas reaplica em toda cobrança gerada pela assinatura                      |
+| Precisa de job de reemissão?      | **Não.** A renovação é da própria assinatura                                                                |
+| Dá para alterar o split depois?   | **Sim**, valendo das próximas cobranças em diante                                                           |
+| Onde o cartão é tokenizado?       | **No nosso backend.** Não existe SDK mobile nem tokenização pelo front                                      |
+| Quanto tempo de retentativa?      | **Até 2 dias** após o vencimento, com evento a cada recusa                                                  |
+| Dá para testar recusa no sandbox? | **Não.** Lá toda cobrança é aprovada                                                                        |
+
+### As três condições, e o custo de cada uma
+
+| Condição                      | O que custa                                                                                                                                                        |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Escopo PCI DSS**            | O número do cartão passa pelo nosso servidor. A alternativa é o checkout hospedado em webview, que tira a Rotta do escopo e contraria a diretriz de jornada nativa |
+| **Chave de API por subconta** | A tokenização usa a chave da subconta que vai cobrar, então a Rotta guarda chave de terceiro no próprio banco                                                      |
+| **Chargeback**                | Volta em até 540 dias, e a conta principal responde se a subconta estiver negativa. Custódia reduz, não elimina                                                    |
+
+### Custo e taxa
+
+Cada cobrança da assinatura é uma cobrança à vista, então vale a mesma
+linha do quadro da seção 2.
+
+| Item                              | Valor (mensalidade de R$ 300) |
+| --------------------------------- | ----------------------------: |
+| Custo Asaas por cobrança          |                       R$ 6,46 |
+| Rotta solo (0,99%)                |                       R$ 2,91 |
+| **Total pago pelo transportador** |           **R$ 9,37 (3,12%)** |
+| Rotta por ano, por família        |                      R$ 34,92 |
+
+### A tela que precisa existir antes
+
+A retentativa dura **2 dias**. Cartão vencido ou sem limite vira
+inadimplência em 48 horas, sem ninguém perceber. Então a tela de
+atualizar cartão e o aviso ao responsável precisam estar prontos
+**antes** da primeira cobrança no cartão, e o caminho de recusa precisa
+ser testado disparando o payload do webhook contra o nosso próprio
+endpoint, porque o sandbox não recusa.
+
+---
+
+## 6. Decisão
 
 | Item                      | Recomendação                                       |
 | ------------------------- | -------------------------------------------------- |
