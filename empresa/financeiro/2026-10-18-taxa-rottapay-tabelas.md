@@ -74,8 +74,9 @@ Van de 15 famílias, R$ 300, faturamento de R$ 4.500 por mês.
 | Maquininha, crédito máximo |     4,86% |    R$ 218,70 | ela                  |
 | Proposta antiga de 5%      |     4,97% |    R$ 223,51 | a Rotta              |
 
-Com o plano de R$ 19,90 somado: **R$ 107,35 por mês, 2,39%**, ainda
-abaixo do crédito mais barato do mercado.
+Com a mensalidade da plataforma somada (**R$ 39,90**, o preço em vigor):
+**R$ 97,56 por mês, 2,17%** do faturamento dela, ainda abaixo do crédito
+mais barato do mercado.
 
 ### Por ticket, contra o crédito mais barato
 
