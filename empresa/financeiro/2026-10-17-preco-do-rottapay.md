@@ -1,379 +1,358 @@
-# O preço do RottaPay: contra o Pix pessoal e contra a maquininha
+# O preço do RottaPay: percentual competitivo, cobrado no split
 
-**Pedido do fundador em 17/10/2026,** com a objeção dita com todas as
-letras: os transportadores estão preferindo maquininha ou Pix pessoal,
-com taxa menor ou zero, e o preço tem que ser atrativo o bastante para
-ele ficar, sem prejuízo para nenhum dos dois lados. **CFO e CMO.**
+**Pedido do fundador em 17/10/2026,** em duas partes. Primeiro a
+objeção: os transportadores preferem maquininha ou Pix pessoal, com
+taxa menor ou zero, e o preço tem que ser atrativo o bastante para ele
+ficar, sem prejuízo para nenhum dos dois lados. Depois a forma:
+**percentual, com a Rotta pegando a fatia no split, depois da
+liquidação do Asaas.** CFO e CMO.
 
 Este documento **substitui a recomendação de take rate** de
-`2026-10-14-dinamica-do-split-caixa-e-risco.md`. O resto daquele
-documento continua valendo: a dinâmica do caixa, o risco de
-garantidora e o teto do MEI não mudam. O que muda é o número, e muda
-porque a conta de lá respondia à pergunta errada.
+`2026-10-14-dinamica-do-split-caixa-e-risco.md` e **a versão anterior
+deste arquivo**, que propunha taxa fixa. O resto do documento de 14/10
+continua valendo: a dinâmica do caixa, o risco de garantidora e o teto
+do MEI não mudam.
 
 ---
 
-## 1. O erro da recomendação de 14/10, em uma linha
+## 1. Duas correções, e a segunda é do fundador
 
-A conta de 14/10 comparou o take rate com a **inadimplência** que a
-transportadora já perde. Por essa régua, 5% fecha: 5% custa R$ 225 por
-mês numa van de 15 famílias, e dois atrasados crônicos são R$ 600 em
-risco.
+**A primeira é do número.** A conta de 14/10 comparou o take rate com a
+inadimplência que a transportadora já perde. Por essa régua, 5% fecha.
+O que ela não comparou foi o preço com **o que o concorrente cobra**, e
+é essa a comparação que a transportadora faz: ela não está decidindo
+entre a Rotta e a inadimplência, está decidindo entre a Rotta e a chave
+Pix que já está no bolso dela.
 
-O que ela não comparou foi o **preço com o que o concorrente cobra.** E
-essa é a comparação que a transportadora faz, porque ela não está
-decidindo entre a Rotta e a inadimplência. Ela está decidindo entre a
-Rotta e a chave Pix que já está no bolso dela.
+Somando o plano, 5% dá **R$ 263,41 por mês** numa van de 15 famílias, ou
+**5,85% do faturamento dela**, quase o dobro da maquininha mais cara da
+pesquisa. Está fora da faixa de mercado.
 
-Com o número do plano somado, a proposta antiga fica assim:
+**A segunda correção é da forma, e ela é do fundador.** A versão
+anterior deste documento concluiu que percentual era a forma errada e
+propôs taxa fixa de R$ 3,90. Estava errada por um motivo aritmético:
+**ela fazia a Rotta absorver a taxa do Asaas inteira num preço baixo
+demais**, sobrando R$ 1,91 por fatura. O percentual sobre o valor
+liquidado, cobrado no split, entrega **mais que o dobro disso** e
+continua abaixo de qualquer maquininha de crédito. Não era preciso
+escolher entre ser competitivo e ganhar.
 
-| O que a transportadora de 15 famílias paga por mês    |         Valor | % do faturamento dela |
-| ----------------------------------------------------- | ------------: | --------------------: |
-| Pix pessoal, na chave dela                            |       R$ 0,00 |                 0,00% |
-| Maquininha, débito a 1,37%                            |      R$ 61,65 |                 1,37% |
-| Maquininha, crédito à vista a 3,15%                   |     R$ 141,75 |                 3,15% |
-| **Rotta, proposta de 14/10 (5% + plano de R$ 39,90)** | **R$ 263,41** |             **5,85%** |
-
-**A proposta antiga é quase o dobro da maquininha mais cara da
-pesquisa.** Não é cara na margem: é cara fora da faixa de mercado. Uma
-transportadora que peça três orçamentos descarta a Rotta no primeiro,
-sem chegar a ouvir o argumento da inadimplência.
-
-Faturamento da van: 15 famílias a R$ 300 é R$ 4.500 por mês.
+| Modelo                              | O que a transportadora paga (R$ 300) | O que sobra para a Rotta |
+| ----------------------------------- | -----------------------------------: | -----------------------: |
+| 5% (proposta de 14/10)              |                                4,97% |                 R$ 14,90 |
+| Fixo de R$ 3,90 (versão anterior)   |                                1,30% |                  R$ 1,91 |
+| **1,99% no split (este documento)** |                            **1,99%** |              **R$ 3,98** |
 
 ---
 
-## 2. Contra o que a Rotta compete de verdade
+## 2. O mecanismo: a Rotta pega depois que o Asaas liquida
+
+A gerente de contas confirmou por escrito em 14/10 (resposta 5): **no
+split percentual, a taxa do Asaas é descontada antes da divisão.** Ou
+seja, o que se divide é o valor já liquidado.
+
+O caminho de uma mensalidade de R$ 300:
+
+| Etapa                                                  |         Valor |
+| ------------------------------------------------------ | ------------: |
+| A família paga                                         |     R$ 300,00 |
+| Taxa do Asaas, descontada na liquidação                |       R$ 1,99 |
+| Valor liquidado, que é o que o split divide            |     R$ 298,01 |
+| Fatia da Rotta no split (`percentualValue` de 1,3355%) |       R$ 3,98 |
+| **Cai na conta da transportadora**                     | **R$ 294,03** |
+
+A transportadora deixou de receber R$ 5,97 dos R$ 300, ou seja,
+**exatamente 1,99%.** A taxa do banco está dentro desse número, e quem
+a absorve somos nós.
+
+Três propriedades que isso dá, e que a taxa fixa não dava:
+
+1. **A Rotta ganha mais quando a transportadora ganha mais.** Ticket de
+   R$ 660 rende R$ 11,14 em vez de R$ 3,98. É o alinhamento que o
+   percentual tem e o fixo não.
+2. **Nada sai do nosso bolso antes.** A fatia já vem descontada do que
+   o Asaas liquidou. Não existe cobrança separada, boleto para a
+   transportadora, nem saldo a recuperar.
+3. **É um número só para ela.** "1,99% por mensalidade recebida, taxa do
+   banco inclusa" é uma frase completa, comparável linha a linha com a
+   tabela de qualquer maquininha.
+
+---
+
+## 3. Contra o que a Rotta compete
 
 ### O concorrente real é o zero
 
-Pix na chave pessoal de pessoa física **não tem taxa.** Esse é o número
-que está na mesa, e ele é certo. Toda proposta de preço da Rotta
-começa perdendo por definição, e fingir o contrário é o jeito mais
-rápido de montar uma tabela que não vende.
+Pix na chave pessoal de pessoa física **não tem taxa.** É o único número
+certo desta seção, e toda proposta de preço da Rotta começa perdendo
+para ele. Fingir o contrário é o jeito mais rápido de montar uma tabela
+que não vende.
 
-O que a Rotta pode fazer é duas coisas, e só essas duas: **ser pequena
-o bastante para não doer**, e **substituir trabalho que hoje é feito à
-mão.**
+O que a Rotta pode fazer são duas coisas: **ser pequena o bastante para
+não doer**, e **substituir trabalho que hoje é feito à mão.** A
+maquininha cobra quem está na frente dela; ela não lembra a família no
+dia 5, não avisa quem não pagou, não gera o comprovante do mês.
 
 ### A maquininha, pela pesquisa pública
 
 Números de sites comparadores consultados em 17/10/2026. **Não são
 medidos por nós**, variam por faturamento, plano e promoção, e as
-próprias fontes divergem entre si. Entram como faixa de mercado, não
-como preço de ninguém.
+próprias fontes divergem. Entram como faixa de mercado.
 
-| Meio               | Faixa encontrada  | Observação                                                                 |
-| ------------------ | ----------------- | -------------------------------------------------------------------------- |
-| Pix na maquininha  | de grátis a 0,99% | InfinitePay aparece como grátis; PagBank com 0,99%; Mercado Pago com 0,49% |
-| Débito             | 0,75% a 1,99%     | as menores exigem faturamento alto; há promoção de entrada perto de 0,57%  |
-| Crédito à vista    | 2,69% a 4,86%     | as menores exigem faturamento acima de R$ 80 mil por mês                   |
-| Prazo para receber | na hora a D+30    | é o ponto onde as fontes mais divergem                                     |
+| Meio               | Faixa encontrada  |
+| ------------------ | ----------------- |
+| Pix na maquininha  | de grátis a 0,99% |
+| Débito             | 0,75% a 1,99%     |
+| Crédito à vista    | 2,69% a 4,86%     |
+| Prazo para receber | na hora a D+30    |
 
-A faixa que interessa para comparar com a mensalidade é a do crédito,
-porque mensalidade é cobrança recorrente, não venda de balcão: **de
-2,69% a 4,86%.**
-
-### O que a maquininha não faz, e isto é o produto
-
-A maquininha cobra **quem está na frente dela.** Ela não lembra a
-família no dia 5, não avisa quem não pagou, não gera o comprovante do
-mês, não mostra à transportadora quem está em atraso sem ela abrir o
-WhatsApp um por um. A maquininha é um meio de receber; a Rotta é a
-cobrança inteira.
-
-Esse é o único terreno onde a comparação não é sobre percentual, e é
-nele que o preço precisa ficar barato o bastante para a conversa chegar
-até aqui.
+A faixa que interessa é a do **crédito**, porque mensalidade é cobrança
+recorrente e não venda de balcão: **2,69% a 4,86%.**
 
 ---
 
-## 3. Por que percentual é a forma errada de cobrar isto
+## 4. O número: 1,99%, com a taxa do banco inclusa
 
-Três motivos, e o terceiro é o que decide.
+> **1,99% por mensalidade recebida, com a taxa do banco já inclusa.
+> Mínimo de R$ 2,90. Se a família não pagar, você não paga nada.**
 
-**Percentual pune o cliente bom.** A transportadora com mensalidade de
-R$ 660 paga mais que o dobro da que cobra R$ 300, pela mesma cobrança,
-pelo mesmo aviso, pelo mesmo comprovante. O nosso custo é idêntico nos
-dois casos: R$ 1,99 de Pix. Cobrar o dobro por entregar o mesmo é o
-tipo de preço que o cliente percebe e guarda.
+**1,99% não é um número escolhido por ser redondo.** É o teto da faixa
+do débito e fica abaixo de **todo** crédito de maquininha da pesquisa,
+inclusive do mais barato, que exige faturamento acima de R$ 80 mil por
+mês para ser oferecido.
 
-**Percentual não tem como ser comparado ao zero.** "5% da sua
-mensalidade" é uma fração do dinheiro dela. "R$ 3,90 por mensalidade
-recebida" é um preço, como o diesel e o seguro. A segunda frase entra
-numa planilha; a primeira entra numa discussão.
+### Onde cada candidato cai
 
-**O nosso custo não é percentual.** A Asaas cobra R$ 1,99 fixos por
-cobrança Pix recebida. Cobrar percentual é inventar uma variação de
-preço que não existe no custo, e essa invenção é exatamente o que a
-transportadora está reclamando.
+| Taxa anunciada | Rotta por fatura de R$ 300 | Fica abaixo do crédito?           | Equilíbrio (abaixo some a margem) |
+| -------------: | -------------------------: | --------------------------------- | --------------------------------: |
+|          0,99% |                    R$ 0,98 | sim, com folga                    |                            R$ 201 |
+|          1,49% |                    R$ 2,48 | sim, com folga                    |                            R$ 134 |
+|      **1,99%** |                **R$ 3,98** | **sim, por 0,70 ponto**           |                        **R$ 100** |
+|          2,49% |                    R$ 5,48 | por 0,20 ponto, que ninguém sente |                             R$ 80 |
 
----
+**2,49% é o limite técnico e não serve**, porque empata com a
+maquininha e empate não tira cliente de lugar nenhum. **0,99% dá
+R$ 0,98 por fatura**, que não paga a operação. 1,99% é onde a
+competitividade e a margem se encontram.
 
-## 4. A proposta: R$ 3,90 por mensalidade recebida
+### Por que existe um mínimo de R$ 2,90
 
-**Uma frase, e ela é o produto inteiro:**
+Porque a taxa do Asaas é fixa em R$ 1,99 e a nossa é percentual. Abaixo
+de **R$ 100 de mensalidade**, 1,99% não cobre nem a taxa do banco, e a
+Rotta passa a pagar para receber o dinheiro da família. O mínimo de
+R$ 2,90 protege esse caso e só começa a valer abaixo de R$ 146 de
+mensalidade, que é fora da faixa normal do transporte escolar.
 
-> R$ 3,90 por mensalidade recebida, com a taxa do banco já inclusa. Se
-> a família não pagar, você não paga nada.
+### O ganho da Rotta sobe com o ticket
 
-Três propriedades que nenhuma das alternativas tem juntas:
-
-1. **Não cresce com o seu ticket.** Mensalidade de R$ 660 custa os
-   mesmos R$ 3,90 que a de R$ 250.
-2. **Só existe se o dinheiro entrou.** Fatura não paga não gera
-   cobrança nossa, o que alinha o nosso incentivo ao dela: a Rotta só
-   ganha quando a cobrança funciona.
-3. **A taxa do provedor sai daí.** A transportadora vê um número, não
-   dois. Quem administra a taxa da Asaas somos nós, que é o nosso
-   trabalho, não o dela.
-
-### O que isso significa em percentual, por ticket
-
-| Mensalidade | R$ 3,90 equivale a | Crédito na maquininha (2,69% a 4,86%) |
-| ----------: | -----------------: | ------------------------------------- |
-|      R$ 150 |              2,60% | R$ 4,04 a R$ 7,29                     |
-|      R$ 250 |              1,56% | R$ 6,72 a R$ 12,15                    |
-|      R$ 300 |              1,30% | R$ 8,07 a R$ 14,58                    |
-|      R$ 500 |              0,78% | R$ 13,45 a R$ 24,30                   |
-|      R$ 660 |              0,59% | R$ 17,75 a R$ 32,08                   |
-
-**Abaixo da faixa do crédito em todos os tickets**, e a vantagem cresce
-conforme a mensalidade sobe, que é o inverso do que acontece com
-percentual.
-
-### O preço de lançamento sai do custo, não de desconto inventado
-
-A Asaas cobra **R$ 0,99 por Pix nos três primeiros meses** e R$ 1,99
-depois. Lançar a R$ 2,90 nesse período dá à Rotta **exatamente a mesma
-margem** de R$ 1,91 por fatura que o preço cheio de R$ 3,90 dá depois.
-
-| Período                        | Preço ao transportador | Custo Asaas | **Margem Rotta** |
-| ------------------------------ | ---------------------: | ----------: | ---------------: |
-| Lançamento (promoção da Asaas) |                R$ 2,90 |     R$ 0,99 |      **R$ 1,91** |
-| Depois                         |                R$ 3,90 |     R$ 1,99 |      **R$ 1,91** |
-
-Não é desconto: é repassar uma condição que temos, por um tempo que tem
-data. E dá ao CMO uma frase honesta para a entrada, com prazo real
-atrás dela.
+| Mensalidade | Transportadora paga (1,99%) | **Rotta recebe** |
+| ----------: | --------------------------: | ---------------: |
+|      R$ 150 |                     R$ 2,99 |          R$ 1,00 |
+|      R$ 250 |                     R$ 4,98 |          R$ 2,99 |
+|      R$ 300 |                     R$ 5,97 |          R$ 3,98 |
+|      R$ 400 |                     R$ 7,96 |          R$ 5,97 |
+|      R$ 500 |                     R$ 9,95 |          R$ 7,96 |
+|      R$ 660 |                    R$ 13,13 |         R$ 11,14 |
 
 ---
 
 ## 5. O que a transportadora paga, lado a lado
 
 Van de 15 famílias, mensalidade de R$ 300, faturamento de R$ 4.500 por
-mês.
+mês. Plano da Rotta a R$ 19,90 (ver seção 9).
 
-| Opção                                        |      Por mês | % do faturamento dela | O que ela faz na mão                 |
-| -------------------------------------------- | -----------: | --------------------: | ------------------------------------ |
-| Pix pessoal                                  |      R$ 0,00 |                 0,00% | cobra, confere e lembra cada família |
-| Maquininha, débito 1,37%                     |     R$ 61,65 |                 1,37% | cobra, confere e lembra cada família |
-| **Rotta (15 × R$ 3,90 + plano de R$ 19,90)** | **R$ 78,40** |             **1,74%** | **nada**                             |
-| Maquininha, crédito 3,15%                    |    R$ 141,75 |                 3,15% | cobra, confere e lembra cada família |
-| Rotta, proposta antiga de 14/10              |    R$ 263,41 |                 5,85% | nada                                 |
+| Opção                                      |       Por mês | % do faturamento dela | Ela faz a cobrança?      |
+| ------------------------------------------ | ------------: | --------------------: | ------------------------ |
+| Pix pessoal                                |       R$ 0,00 |                 0,00% | sim, uma família por vez |
+| Maquininha, débito 1,37%                   |      R$ 61,65 |                 1,37% | sim, uma família por vez |
+| **Rotta, 1,99% + plano**                   | **R$ 109,45** |             **2,43%** | **não**                  |
+| Maquininha, crédito 2,69%                  |     R$ 121,05 |                 2,69% | sim, uma família por vez |
+| Maquininha, crédito 3,15%                  |     R$ 141,75 |                 3,15% | sim, uma família por vez |
+| Proposta de 14/10 (5% + plano de R$ 39,90) |     R$ 263,41 |                 5,85% | não                      |
 
-A Rotta fica **45% mais barata que o crédito na maquininha** e no mesmo
-patamar do débito, com a diferença de que nas duas linhas de maquininha
-ela continua fazendo a cobrança sozinha.
+**Mesmo com o plano somado, a Rotta fica abaixo do crédito mais barato
+da pesquisa**, e nas três linhas de maquininha a transportadora continua
+fazendo a cobrança sozinha.
 
 ### Contra o zero, a conta é outra
-
-Contra o Pix pessoal não existe comparação de taxa, existe comparação
-de perda:
 
 | Situação na van de 15 famílias  | Valor em jogo |
 | ------------------------------- | ------------: |
 | Uma família atrasa um mês       |     R$ 300,00 |
 | Duas famílias atrasam um mês    |     R$ 600,00 |
-| **Custo total da Rotta no mês** |  **R$ 78,40** |
+| **Custo total da Rotta no mês** | **R$ 109,45** |
 
-**Uma única mensalidade recuperada paga quase quatro meses de Rotta.**
-Essa é a frase da venda, e ela é verificável pela própria
-transportadora no extrato dela.
-
----
-
-## 6. O que a Rotta ganha, e o que deixa de ganhar
-
-Sem maquiagem: trocar 5% por R$ 3,90 **corta a receita por
-transportadora em 7,8 vezes.**
-
-| Famílias pagando | Take de 5% | **Fixo de R$ 3,90** | Diferença |
-| ---------------: | ---------: | ------------------: | --------: |
-|               10 |  R$ 149,00 |            R$ 19,10 |      7,8x |
-|               15 |  R$ 223,51 |            R$ 28,65 |      7,8x |
-|               25 |  R$ 372,51 |            R$ 47,75 |      7,8x |
-|               40 |  R$ 596,02 |            R$ 76,40 |      7,8x |
-
-Margem por fatura, já descontada a Asaas: **R$ 1,91.**
-
-### Por que o CFO recomenda mesmo assim
-
-**Porque 7,8 vezes mais de zero continua sendo zero.** Em 14/10 havia 8
-transportadoras cadastradas, 7 em trial e 1 pagante, 10 viagens em toda
-a história da plataforma e a última em 28/08/2026. Os 5 contratos
-existentes estão em R$ 0,00. Nenhuma família pagou uma mensalidade pela
-Rotta até hoje.
-
-O número que importa comparar não é 5% contra R$ 3,90. É **receita de
-uma frente que ninguém assinou contra receita de uma frente que fecha.**
-Para empatar com uma transportadora de 15 famílias a 5%, a Rotta precisa
-de 117 famílias a R$ 3,90, ou cerca de 8 transportadoras. Com uma base
-de 8 cadastradas e 1 pagante, a pergunta que decide não é quanto se
-ganha por cliente: é quantos clientes aceitam.
-
-### E o teto do MEI deixa de ser freio
-
-| Modelo          | Famílias até o teto de R$ 6.750 por mês |
-| --------------- | --------------------------------------: |
-| Take de 5%      |                                     453 |
-| Fixo de R$ 3,90 |                                   1.731 |
-
-O modelo percentual batia no teto do MEI com 453 famílias, o que numa
-curva de crescimento é cedo. O fixo leva o mesmo teto a 1.731.
+**Uma única mensalidade recuperada paga quase três meses de Rotta.**
+É a frase da venda, e a transportadora confere no próprio extrato.
 
 ---
 
-## 7. O detalhe técnico que precisa de teste antes do preço valer (CFO)
+## 6. O que a Rotta ganha
 
-A gerente de contas confirmou em 14/10 que, **no split percentual**, a
-taxa da Asaas é descontada antes da divisão, e por isso rateada. **No
-valor fixo ela não soube confirmar a regra.** Isso tem duas
-consequências possíveis, e elas mudam de quem é o R$ 1,99:
+| Famílias pagando (R$ 300) | **1,99% no split** | Fixo de R$ 3,90 | 5% de 14/10 |
+| ------------------------: | -----------------: | --------------: | ----------: |
+|                        10 |           R$ 39,80 |        R$ 19,10 |   R$ 149,00 |
+|                        15 |           R$ 59,70 |        R$ 28,65 |   R$ 223,51 |
+|                        25 |           R$ 99,50 |        R$ 47,75 |   R$ 372,51 |
+|                        40 |          R$ 159,20 |        R$ 76,40 |   R$ 596,02 |
 
-| Hipótese                            | Quem absorve a taxa | Para a transportadora dar R$ 3,90 de total, o `fixedValue` do split é |
-| ----------------------------------- | ------------------- | --------------------------------------------------------------------: |
-| A taxa sai do bruto, depois o split | a transportadora    |                                                               R$ 1,91 |
-| O split sai primeiro                | a Rotta             |                                                               R$ 3,90 |
+Receita confirmada hoje: **R$ 39,90 por mês**, de uma transportadora
+pagante. **Uma transportadora de 15 famílias a 1,99% já rende mais que
+toda a receita atual da companhia.**
 
-**A promessa ao cliente não muda em nenhuma das duas**, porque o
-`fixedValue` é escolhido para que o desconto total seja sempre R$ 3,90.
-A margem da Rotta também não muda: R$ 1,91 nos dois casos. O que muda é
-qual número vai no campo, e **isso se descobre em sandbox, em uma
-tarde, antes de a primeira cobrança sair.**
+A 1,99%, o teto do MEI (R$ 6.750 por mês) chega com **1.131 famílias**,
+contra 453 no modelo de 5%.
 
-Enquanto o teste não existir, o preço não é anunciado para ninguém.
+### O que se abre mão, dito sem maquiagem
 
----
-
-## 8. Cartão não cabe nesta taxa, e o motivo é aritmético
-
-| Mensalidade | Custo Asaas no crédito à vista | Cabe em R$ 3,90? |
-| ----------: | -----------------------------: | ---------------- |
-|      R$ 150 |                        R$ 3,48 | por R$ 0,42      |
-|      R$ 300 |                        R$ 6,46 | **não**          |
-|      R$ 500 |                       R$ 10,44 | **não**          |
-
-Taxa fixa com o provedor incluso só funciona com **Pix e boleto**, onde
-o custo também é fixo. Se o cartão entrar, ele entra com o custo do
-provedor repassado e dito na hora da assinatura, nunca descoberto no
-extrato.
-
-Isso **reforça** a recomendação de 14/10 de não aceitar cartão agora, e
-por um motivo novo que não é o chargeback: com cartão, o preço deixa de
-caber numa frase, e a frase é metade do produto.
+1,99% rende **3,7 vezes menos por transportadora** que os 5% de 14/10.
+A defesa é a mesma de antes, e continua valendo: **3,7 vezes mais de
+zero continua sendo zero.** Em 14/10 havia 8 transportadoras
+cadastradas, 7 em trial e 1 pagante, 10 viagens em toda a história da
+plataforma e a última em 28/08/2026. Os 5 contratos existentes estão em
+R$ 0,00. Nenhuma família pagou uma mensalidade pela Rotta até hoje.
 
 ---
 
-## 9. O plano mensal desce para R$ 19,90, e vira piso
+## 7. O número que vai no campo (CFO, com o CTO)
 
-Hoje o plano é R$ 39,90 (`ROTTA_SUBSCRIPTION_PRICE_CENTS`). A
-recomendação de 14/10 de baixá-lo para R$ 19,90 continua, e agora por
-um motivo mais forte: **ele passou a ser o único recebimento garantido
-da Rotta.** A receita por fatura só existe se a família pagar; o plano é
-o que segura o mês em que a van parou, a escola entrou em recesso ou a
-transportadora perdeu alunos.
+A taxa anunciada é sobre o **bruto**; o split do Asaas incide sobre o
+**líquido**. Então o `percentualValue` enviado ao Asaas não é 1,99%:
+é o percentual que faz a dedução total da transportadora fechar em
+1,99% do bruto.
 
-A R$ 19,90, uma transportadora de 15 famílias paga R$ 78,40 no total.
-A R$ 39,90, paga R$ 98,40, e o número que ela compara com a maquininha
-sobe de 1,74% para 2,19%. **Os R$ 20 de diferença no plano custam quase
-meio ponto percentual na comparação**, e a comparação é o que decide.
+```
+percentualValue = 1 − (1 − 0,0199) × M / (M − 1,99)
+```
+
+| Mensalidade | `percentualValue` no split | Transportadora recebe | Rotta recebe |
+| ----------: | -------------------------: | --------------------: | -----------: |
+|      R$ 150 |                    0,6723% |    R$ 147,01 (98,01%) |      R$ 1,00 |
+|      R$ 300 |                    1,3355% |    R$ 294,03 (98,01%) |      R$ 3,98 |
+|      R$ 660 |                    1,6936% |    R$ 646,87 (98,01%) |     R$ 11,14 |
+
+A conta é feita **uma vez por contrato**, na criação da assinatura,
+porque a mensalidade é fixa no contrato. `taxaDaPlataformaBps` guarda a
+**política** (199 pontos-base); o `percentualValue` é derivado dela e da
+mensalidade daquele contrato. Nenhum dos dois é digitado à mão.
+
+**O que precisa ser conferido em sandbox antes de o preço valer:** que o
+split percentual incide sobre o líquido e não sobre o bruto. É o que a
+resposta de 14/10 diz, e é uma tarde de teste para confirmar por conta
+própria. Se incidir sobre o bruto, o `percentualValue` passa a ser
+1,99% direto e a transportadora absorve a taxa do banco, o que muda a
+frase de venda e precisa ser dito a ela antes de assinar.
+
+---
+
+## 8. Cartão continua fora, agora por três motivos
+
+O custo do Asaas no crédito à vista é **R$ 0,49 + 1,99%**. Numa
+mensalidade de R$ 300 isso é R$ 6,46, **mais do que os R$ 5,97 que a
+transportadora pagaria no total a 1,99%**. Com cartão, o preço anunciado
+não cobre nem a taxa do provedor.
+
+Some a isso os dois motivos que já estavam na mesa: o chargeback que a
+conta principal garante, e o escopo PCI DSS. Se o cartão entrar algum
+dia, ele entra com a taxa do provedor repassada e dita na assinatura,
+nunca descoberta no extrato.
+
+---
+
+## 9. O plano mensal desce para R$ 19,90
+
+Hoje é R$ 39,90 (`ROTTA_SUBSCRIPTION_PRICE_CENTS`). A recomendação de
+14/10 de baixá-lo continua: ele é o **único recebimento garantido** da
+Rotta, porque a fatia do split só existe se a família pagar.
+
+A R$ 19,90, a van de 15 famílias paga 2,43% do faturamento dela. A
+R$ 39,90, paga 2,88%, e encosta no crédito da maquininha. **Os R$ 20 de
+diferença no plano custam quase meio ponto na comparação que decide a
+venda.**
 
 ---
 
 ## 10. Como isso se vende (CMO)
 
-**A frase de abertura não é o preço.** Continua sendo a de 14/10:
+**A frase de abertura continua não sendo o preço:**
 
 > Pare de correr atrás de mensalidade.
 
-**O preço entra na segunda pergunta, e entra inteiro:** "R$ 3,90 por
-mensalidade recebida, com a taxa do banco já inclusa, e se a família não
-pagar você não paga nada."
+**O preço entra inteiro na segunda pergunta:** "1,99% por mensalidade
+recebida, com a taxa do banco já inclusa, e se a família não pagar você
+não paga nada."
 
-**A ordem dos três pontos muda**, porque a objeção mudou:
+**Os três pontos, na ordem que a objeção pede:**
 
 1. O dinheiro cai na sua conta, não na nossa.
 2. Você paga só pelo que entrou.
 3. A família paga sozinha, todo mês, no mesmo dia.
 
-O ponto 1 subiu para primeiro. Quem já recebe no Pix pessoal pergunta
-isso antes de perguntar o preço, e responder antes de ser perguntado é o
-que mantém a conversa viva.
-
-### O que nunca dizer, agora com mais um
+### O que nunca dizer
 
 As quatro proibições de 14/10 continuam: nada de "taxa zero", nada de
-percentual solto na peça, nada de citar o provedor, nada de "garantimos
-o seu recebimento".
+citar o provedor, nada de "garantimos o seu recebimento", e o
+percentual nunca aparece sozinho numa peça sem a comparação ao lado.
 
 **A quinta, nova:** **nunca comparar a Rotta com o Pix pessoal pelo
-preço.** Perdemos essa comparação, sempre, porque o outro lado é zero.
-A comparação certa é com o que ela perde hoje, e o número dela, não o
-nosso: uma mensalidade atrasada é R$ 300; o mês inteiro de Rotta é
-R$ 78,40.
+preço.** Perdemos sempre, porque o outro lado é zero. A comparação certa
+é com o que ela perde hoje, e com o número dela: uma mensalidade
+atrasada é R$ 300; o mês inteiro de Rotta é R$ 109,45.
 
-### O teste continua sendo o mesmo, com a pergunta corrigida
+**A sexta:** **sempre dizer "taxa do banco inclusa".** Quem vem de
+maquininha está acostumado a descobrir tarifa escondida no extrato, e
+essa frase é a diferença entre um preço e uma desconfiança.
 
-A pergunta de 14/10 trazia o percentual. A nova traz o preço:
+### O teste, com a pergunta corrigida
 
 > Se a família pagasse a mensalidade pelo app, o dinheiro caísse na sua
-> conta e custasse R$ 3,90 por mensalidade recebida, com a taxa do banco
-> inclusa, você usaria?
+> conta e custasse 1,99% com a taxa do banco inclusa, você usaria?
 
 São 8 transportadoras cadastradas. **Oito conversas valem mais que este
-documento inteiro**, e quem disser não precisa ser perguntado por quê,
-com a palavra exata anotada.
+documento inteiro**, e de quem disser não é preciso anotar a palavra
+exata.
 
 ---
 
 ## 11. O que o fundador decide
 
-| Decisão                         | Recomendação de CFO e CMO                                                            |
-| ------------------------------- | ------------------------------------------------------------------------------------ |
-| Forma de cobrar                 | **Fixo por mensalidade recebida.** Não percentual                                    |
-| Preço                           | **R$ 3,90**, com lançamento a R$ 2,90 enquanto durar a promoção da Asaas             |
-| Quem absorve a taxa do provedor | **A Rotta.** A transportadora vê um número só                                        |
-| Meios aceitos                   | **Pix e boleto.** Cartão não cabe no preço fixo                                      |
-| Plano mensal                    | **R$ 19,90**, como piso garantido                                                    |
-| Contrato originado pela Rotta   | **Fica para depois.** Take de marketplace só faz sentido com base que já transaciona |
+| Decisão                         | Recomendação de CFO e CMO                                                |
+| ------------------------------- | ------------------------------------------------------------------------ |
+| Forma de cobrar                 | **Percentual, cobrado no split sobre o valor liquidado**                 |
+| Taxa                            | **1,99% do bruto, com a taxa do Asaas inclusa**                          |
+| Mínimo por fatura               | **R$ 2,90**, que só morde abaixo de R$ 146 de mensalidade                |
+| Quem absorve a taxa do provedor | **A Rotta.** É o que torna "1,99%" uma frase verdadeira                  |
+| Meios aceitos                   | **Pix e boleto.** Cartão não cabe no preço                               |
+| Plano mensal                    | **R$ 19,90**, como piso garantido                                        |
+| Contrato originado pela Rotta   | **Fica para depois.** Take de marketplace só com base que já transaciona |
 
-Nada disso é aplicável antes de: o teste de sandbox da seção 7, a
-liberação do white label pelo comercial da Asaas, o parecer do contador
-sobre MEI intermediar pagamento de terceiro, e contrato com valor
-diferente de R$ 0,00.
+Nada disso vale antes de: o teste de sandbox da seção 7, a liberação do
+white label pelo comercial do Asaas, o parecer do contador sobre MEI
+intermediar pagamento de terceiro, e contrato com valor diferente de
+R$ 0,00.
 
 ---
 
-## 12. O que não medimos, e o que isso impede
+## 12. O que não medimos
 
 | Não sabemos                                | Impede                                    | Para saber precisa de                                          |
 | ------------------------------------------ | ----------------------------------------- | -------------------------------------------------------------- |
 | Custo de infraestrutura por mês            | saber quantas faturas pagam a operação    | somar as faturas de Render, Vercel, Supabase e Asaas de um mês |
-| Tarifa recorrente de custódia por subconta | precificar o cartão algum dia             | resposta do comercial da Asaas                                 |
-| A regra do `fixedValue` no split           | pôr o número certo no campo               | teste em sandbox                                               |
-| Inadimplência real das famílias            | provar a promessa de venda com dado nosso | a primeira safra de faturas, depois do lançamento              |
+| Se o split incide sobre líquido ou bruto   | pôr o número certo no `percentualValue`   | teste em sandbox                                               |
+| Tarifa recorrente de custódia por subconta | precificar o cartão algum dia             | resposta do comercial do Asaas                                 |
+| Inadimplência real das famílias            | provar a promessa de venda com dado nosso | a primeira safra de faturas                                    |
 | Ticket médio real                          | tudo acima é premissa                     | contratos com valor. Os 5 existentes estão em R$ 0,00          |
 
-As taxas de maquininha deste documento vieram de sites comparadores
-públicos, vários com link de afiliado, e as fontes divergem entre si.
-Elas entram como faixa de mercado. **A confirmação é uma simulação
-oficial com o volume real**, e ela não foi feita.
+As taxas de maquininha vieram de sites comparadores públicos, vários com
+link de afiliado, e as fontes divergem entre si. Entram como faixa de
+mercado. **A confirmação é uma simulação oficial com o volume real**, e
+ela não foi feita.
 
 ---
 
-_17/10/2026. CFO e CMO. Taxas da Asaas pela tabela pública consultada
-nesta data. Faixa de maquininha por pesquisa pública, declarada como não
-medida. Contagem de clientes, contratos e viagens pelo banco de produção.
-Mensalidade de R$ 300 e van de 15 famílias declaradas como premissa em
-toda projeção, porque os contratos existentes estão zerados._
+_17/10/2026. CFO e CMO. Taxas do Asaas pela tabela pública consultada
+nesta data; regra do split percentual pela resposta por escrito de
+14/10; faixa de maquininha por pesquisa pública, declarada como não
+medida. Contagem de clientes, contratos e viagens pelo banco de
+produção. Mensalidade de R$ 300 e van de 15 famílias declaradas como
+premissa, porque os contratos existentes estão zerados._
