@@ -1,62 +1,66 @@
-# Taxa do RottaPay: adquirentes, Asaas e a nossa fatia
+# Taxa do RottaPay por meio de pagamento
 
-**Pedido do fundador em 18/10/2026.** Percentual baixo, competitivo em
-todo ticket, com a fatia da Rotta saindo do split. Tabelas, sem texto
-longo. CFO e CMO.
-
----
-
-## 1. O mercado
-
-Pesquisa pública de 17/10/2026 em sites comparadores. **Não medido por
-nós**, varia por faturamento e promoção, e as fontes divergem.
-
-| Meio                      | Faixa de mercado | Prazo          |
-| ------------------------- | ---------------- | -------------- |
-| Pix na chave pessoal (PF) | **0,00%**        | na hora        |
-| Pix na maquininha         | grátis a 0,99%   | na hora a D+1  |
-| Débito                    | 0,75% a 1,99%    | na hora a D+30 |
-| Crédito à vista           | 2,69% a 4,86%    | na hora a D+30 |
-
-### Asaas, tabela pública
-
-| Meio                  |                                        Taxa |
-| --------------------- | ------------------------------------------: |
-| **Pix recebido**      | **R$ 1,99** (R$ 0,99 nos 3 primeiros meses) |
-| Boleto                |     R$ 1,99 (R$ 0,99 nos 3 primeiros meses) |
-| Débito                |                             R$ 0,35 + 1,89% |
-| Crédito à vista       |                             R$ 0,49 + 1,99% |
-| Crédito 2 a 6x        |                             R$ 0,49 + 2,49% |
-| Crédito 7 a 12x       |                             R$ 0,49 + 2,99% |
-| Split                 |                          sem tarifa própria |
-| Custódia por subconta |                               não publicado |
+**Pedido do fundador em 18/10/2026.** A versão anterior deste arquivo
+modelava tudo como se fosse Pix, e por isso errava: no cartão o custo do
+Asaas sozinho passa de 2%, e a mesma taxa não se sustenta. **A taxa da
+Rotta muda conforme o meio**, como em qualquer adquirente. CFO e CMO.
 
 ---
 
-## 2. Nossa taxa solo + Asaas
+## 1. Custo do Asaas e faixa de mercado
 
-Rotta a **1,29% sobre o valor liquidado**, cobrada no split. Asaas
-descontado antes da divisão.
+| Meio            | Custo Asaas     | Faixa das adquirentes  |
+| --------------- | --------------- | ---------------------- |
+| Pix             | R$ 1,99 fixo    | grátis a 0,99%         |
+| Boleto          | R$ 1,99 fixo    | R$ 2,00 a R$ 4,00 fixo |
+| Débito          | R$ 0,35 + 1,89% | 0,75% a 1,99%          |
+| Crédito à vista | R$ 0,49 + 1,99% | 2,69% a 4,86%          |
+| Crédito 2 a 6x  | R$ 0,49 + 2,49% | acima de 4%            |
+| Crédito 7 a 12x | R$ 0,49 + 2,99% | acima de 4%            |
 
-| Mensalidade |   Asaas | Rotta solo (1,29%) | **Total pago** | **% total** | Transportadora recebe |
-| ----------: | ------: | -----------------: | -------------: | ----------: | --------------------: |
-|      R$ 150 | R$ 1,99 |            R$ 1,91 |        R$ 3,90 |   **2,60%** |             R$ 146,10 |
-|      R$ 200 | R$ 1,99 |            R$ 2,55 |        R$ 4,54 |   **2,27%** |             R$ 195,46 |
-|      R$ 250 | R$ 1,99 |            R$ 3,20 |        R$ 5,19 |   **2,08%** |             R$ 244,81 |
-|      R$ 300 | R$ 1,99 |            R$ 3,84 |        R$ 5,83 |   **1,94%** |             R$ 294,17 |
-|      R$ 400 | R$ 1,99 |            R$ 5,13 |        R$ 7,12 |   **1,78%** |             R$ 392,88 |
-|      R$ 500 | R$ 1,99 |            R$ 6,42 |        R$ 8,41 |   **1,68%** |             R$ 491,59 |
-|      R$ 660 | R$ 1,99 |            R$ 8,49 |       R$ 10,48 |   **1,59%** |             R$ 649,52 |
+Adquirentes por pesquisa pública de 17/10/2026, **não medida por nós**.
+Asaas pela tabela pública, valor cheio, sem a promoção de três meses.
 
-**Mínimo de R$ 1,99 da nossa fatia**, que só vale abaixo de R$ 156 de
-mensalidade.
+---
 
-### Faixa por volume
+## 2. Quadro de taxas por meio
 
-| Famílias ativas | Rotta solo |
-| --------------- | ---------: |
-| até 50          |      1,29% |
-| 51 ou mais      |  **0,99%** |
+Mensalidade de R$ 300.
+
+| Meio                |   Asaas |      Rotta solo |    Total |   % total | Mercado       | Veredito                                          |
+| ------------------- | ------: | --------------: | -------: | --------: | ------------- | ------------------------------------------------- |
+| **Pix**             | R$ 1,99 | 1,29% = R$ 3,84 |  R$ 5,83 | **1,94%** | 0 a 0,99%     | acima do Pix de maquininha, abaixo de todo cartão |
+| **Boleto**          | R$ 1,99 | 1,29% = R$ 3,84 |  R$ 5,83 | **1,94%** | R$ 2 a R$ 4   | competitivo                                       |
+| Débito              | R$ 6,02 | 0,49% = R$ 1,44 |  R$ 7,46 | **2,49%** | 0,75% a 1,99% | acima do mercado mesmo com a taxa mínima          |
+| **Crédito à vista** | R$ 6,46 | 0,99% = R$ 2,91 |  R$ 9,37 | **3,12%** | 2,69% a 4,86% | dentro, na mediana                                |
+| Crédito 6x          | R$ 7,96 | 0,49% = R$ 1,43 |  R$ 9,39 | **3,13%** | acima de 4%   | dentro                                            |
+| Crédito 12x         | R$ 9,46 | 0,49% = R$ 1,42 | R$ 10,88 | **3,63%** | acima de 4%   | dentro                                            |
+
+**O débito não entra.** Pela tabela do Asaas ele custa 2,00% de saída,
+contra um mercado que vai de 0,75% a 1,99%. Mesmo com a taxa da Rotta no
+mínimo o total fica acima do teto do mercado, e débito não serve para
+cobrança recorrente de aplicativo.
+
+### Total pago pelo transportador, por ticket
+
+| Mensalidade | Pix e boleto (1,29%) | Crédito à vista (0,99%) | Crédito 12x (0,49%) |
+| ----------: | -------------------: | ----------------------: | ------------------: |
+|      R$ 150 |                2,60% |                   3,28% |               4,27% |
+|      R$ 250 |                2,08% |                   3,17% |               3,86% |
+|      R$ 300 |                1,94% |                   3,12% |               3,63% |
+|      R$ 500 |                1,68% |                   3,06% |               4,05% |
+|      R$ 660 |                1,59% |                   3,03% |               3,96% |
+
+### O que a Rotta recebe
+
+| Mensalidade | Pix e boleto | Crédito à vista | Crédito 12x |
+| ----------: | -----------: | --------------: | ----------: |
+|      R$ 150 |      R$ 1,91 |         R$ 1,45 |     R$ 0,71 |
+|      R$ 300 |      R$ 3,84 |         R$ 2,91 |     R$ 1,42 |
+|      R$ 500 |      R$ 6,42 |         R$ 4,85 |     R$ 2,37 |
+|      R$ 660 |      R$ 8,49 |         R$ 6,41 |     R$ 3,13 |
+
+Mínimo da nossa fatia: R$ 1,99 em Pix e boleto, R$ 0,99 no cartão.
 
 ---
 
@@ -64,89 +68,78 @@ mensalidade.
 
 Van de 15 famílias, R$ 300, faturamento de R$ 4.500 por mês.
 
-| Opção                      |   % total |      Por mês | Quem cobra a família |
-| -------------------------- | --------: | -----------: | -------------------- |
-| Pix pessoal                |     0,00% |      R$ 0,00 | ela                  |
-| Maquininha, débito mínimo  |     0,75% |     R$ 33,75 | ela                  |
-| **Rotta, 1,29% + Asaas**   | **1,94%** | **R$ 87,30** | **a Rotta**          |
-| Maquininha, débito máximo  |     1,99% |     R$ 89,55 | ela                  |
-| Maquininha, crédito mínimo |     2,69% |    R$ 121,05 | ela                  |
-| Maquininha, crédito máximo |     4,86% |    R$ 218,70 | ela                  |
-| Proposta antiga de 5%      |     4,97% |    R$ 223,51 | a Rotta              |
+| Opção                        |         % |       Por mês | Quem cobra a família |
+| ---------------------------- | --------: | ------------: | -------------------- |
+| Pix pessoal                  |     0,00% |       R$ 0,00 | ela                  |
+| Maquininha, débito mínimo    |     0,75% |      R$ 33,75 | ela                  |
+| **Rotta no Pix**             | **1,94%** |  **R$ 87,45** | a Rotta              |
+| Maquininha, débito máximo    |     1,99% |      R$ 89,55 | ela                  |
+| Maquininha, crédito mínimo   |     2,69% |     R$ 121,05 | ela                  |
+| **Rotta no crédito à vista** | **3,12%** | **R$ 140,55** | a Rotta              |
+| Maquininha, crédito máximo   |     4,86% |     R$ 218,70 | ela                  |
 
-Com a mensalidade da plataforma somada (**R$ 39,90**, o preço em vigor):
-**R$ 97,56 por mês, 2,17%** do faturamento dela, ainda abaixo do crédito
-mais barato do mercado.
-
-### Por ticket, contra o crédito mais barato
-
-| Mensalidade | Rotta total | Crédito mínimo |  Diferença |
-| ----------: | ----------: | -------------: | ---------: |
-|      R$ 150 |       2,60% |          2,69% | 0,09 ponto |
-|      R$ 250 |       2,08% |          2,69% | 0,61 ponto |
-|      R$ 300 |       1,94% |          2,69% | 0,75 ponto |
-|      R$ 500 |       1,68% |          2,69% | 1,01 ponto |
-|      R$ 660 |       1,59% |          2,69% | 1,10 ponto |
-
-**Abaixo em todos os tickets.** A vantagem cresce com a mensalidade.
+Somando a mensalidade da plataforma (R$ 39,90, o preço em vigor):
+**R$ 127,35 no Pix, 2,83%** e **R$ 180,45 no crédito, 4,01%**.
 
 ---
 
 ## 4. Planejamento financeiro
 
-Receita mensal da Rotta, a 1,29%, mensalidade de R$ 300.
+Mensalidade de R$ 300, mix de **80% Pix e boleto, 20% crédito à vista**,
+que é a distribuição esperada com o Pix como meio padrão do app. Média
+de **R$ 3,65 por fatura**.
 
-|    Famílias pagando | Por fatura | **Receita/mês** | **Receita/ano** |
-| ------------------: | ---------: | --------------: | --------------: |
-|        15 (uma van) |    R$ 3,84 |        R$ 57,66 |       R$ 691,98 |
-|                  50 |    R$ 3,84 |       R$ 192,22 |     R$ 2.306,60 |
-|                 120 |    R$ 3,84 |       R$ 461,32 |     R$ 5.535,83 |
-|                 300 |    R$ 3,84 |     R$ 1.153,30 |    R$ 13.839,58 |
-|                 600 |    R$ 3,84 |     R$ 2.306,60 |    R$ 27.679,17 |
-| 1.756 (teto do MEI) |    R$ 3,84 |     R$ 6.750,00 |    R$ 81.000,00 |
+| Transportadoras | Famílias |       Split | Mensalidades |       Total/mês |    Total/ano |
+| --------------: | -------: | ----------: | -----------: | --------------: | -----------: |
+|               1 |       15 |    R$ 54,81 |     R$ 39,90 |    **R$ 94,71** |  R$ 1.136,52 |
+|               5 |       75 |   R$ 274,05 |    R$ 199,50 |   **R$ 473,55** |  R$ 5.682,60 |
+|              10 |      150 |   R$ 548,10 |    R$ 399,00 |   **R$ 947,10** | R$ 11.365,20 |
+|              30 |      450 | R$ 1.644,30 |  R$ 1.197,00 | **R$ 2.841,30** | R$ 34.095,60 |
+|              60 |      900 | R$ 3.288,60 |  R$ 2.394,00 | **R$ 5.682,60** | R$ 68.191,20 |
 
-Somando o plano de R$ 19,90 por transportadora:
+### Sensibilidade ao mix
 
-| Transportadoras | Famílias (15 cada) |       Split |      Planos |   **Total/mês** |
-| --------------: | -----------------: | ----------: | ----------: | --------------: |
-|               1 |                 15 |    R$ 57,66 |    R$ 19,90 |    **R$ 77,56** |
-|               5 |                 75 |   R$ 288,32 |    R$ 99,50 |   **R$ 387,82** |
-|              10 |                150 |   R$ 576,65 |   R$ 199,00 |   **R$ 775,65** |
-|              30 |                450 | R$ 1.729,95 |   R$ 597,00 | **R$ 2.326,95** |
-|              60 |                900 | R$ 3.459,90 | R$ 1.194,00 | **R$ 4.653,90** |
+Quanto mais cartão, menos sobra para a Rotta, porque o Asaas fica com a
+diferença. Com 450 famílias e 30 transportadoras:
+
+| Mix                  | Por fatura |   Split/mês | Com mensalidades |
+| -------------------- | ---------: | ----------: | ---------------: |
+| 100% Pix             |    R$ 3,84 | R$ 1.728,00 |      R$ 2.925,00 |
+| 80% Pix, 20% crédito |    R$ 3,65 | R$ 1.644,30 |      R$ 2.841,30 |
+| 50% Pix, 50% crédito |    R$ 3,38 | R$ 1.518,75 |      R$ 2.715,75 |
+| 100% crédito         |    R$ 2,91 | R$ 1.309,50 |      R$ 2.506,50 |
+
+**Entre o melhor e o pior mix há R$ 418,50 por mês.** É o argumento para
+o Pix nascer como meio padrão da tela, com o cartão como escolha
+explícita da família.
 
 Receita confirmada hoje: **R$ 39,90 por mês**, uma transportadora
-pagante, nenhuma família pagando. Os 5 contratos estão em R$ 0,00.
-
-### Sensibilidade do take
-
-| Taxa solo | Por fatura (R$ 300) |  15 famílias |    450 famílias | % total ao transportador |
-| --------: | ------------------: | -----------: | --------------: | -----------------------: |
-|     0,99% |             R$ 2,95 |     R$ 44,25 |     R$ 1.327,54 |                    1,65% |
-| **1,29%** |         **R$ 3,84** | **R$ 57,66** | **R$ 1.729,86** |                **1,94%** |
-|     1,49% |             R$ 4,44 |     R$ 66,61 |     R$ 1.998,41 |                    2,14% |
-|     1,99% |             R$ 5,93 |     R$ 88,96 |     R$ 2.668,89 |                    2,64% |
+pagante, nenhuma família pagando.
 
 ---
 
 ## 5. Decisão
 
-| Item               | Recomendação                                                                                       |
-| ------------------ | -------------------------------------------------------------------------------------------------- |
-| Taxa solo da Rotta | **1,29%**, caindo para 0,99% acima de 50 famílias                                                  |
-| Mínimo por fatura  | R$ 1,99                                                                                            |
-| Incidência         | sobre o valor liquidado, no split                                                                  |
-| Meios              | Pix e boleto. Cartão não entra: o Asaas cobra R$ 6,46 num ticket de R$ 300, mais que a nossa fatia |
-| Plano mensal       | R$ 19,90                                                                                           |
-| Campo no banco     | `taxaDaPlataformaBps` = 129                                                                        |
+| Item                      | Recomendação                                       |
+| ------------------------- | -------------------------------------------------- |
+| Pix e boleto              | **1,29%** da Rotta, mínimo de R$ 1,99              |
+| Crédito à vista           | **0,99%** da Rotta, mínimo de R$ 0,99              |
+| Crédito parcelado         | **0,49%**, e só se o fundador aceitar o chargeback |
+| Débito                    | **não oferecer**                                   |
+| Meio padrão na tela       | **Pix**                                            |
+| Incidência                | sobre o valor liquidado, no split                  |
+| Mensalidade da plataforma | **R$ 39,90**, o preço em vigor                     |
+| Campo no banco            | `taxaDaPlataformaBps` por meio: 129 / 99 / 49      |
 
-**Pendente antes de valer:** teste em sandbox confirmando que o split
-percentual incide sobre o líquido; liberação do white label pelo
-comercial do Asaas; parecer do contador sobre MEI intermediar pagamento;
-contrato com valor diferente de R$ 0,00.
+**Pendente:** teste em sandbox confirmando que o split incide sobre o
+líquido; liberação do white label; parecer do contador sobre MEI
+intermediar pagamento; contrato com valor diferente de R$ 0,00. O cartão
+ainda carrega o chargeback que a conta principal garante e o escopo PCI
+DSS, que são decisões do fundador.
 
 ---
 
 _18/10/2026. CFO e CMO. Asaas pela tabela pública; adquirentes por
-pesquisa pública declarada como não medida; contratos e clientes pelo
-banco de produção; mensalidade de R$ 300 como premissa._
+pesquisa pública declarada como não medida; clientes e contratos pelo
+banco de produção; mensalidade de R$ 300 e mix de meios declarados como
+premissa._
