@@ -11,7 +11,7 @@ import Constants from "expo-constants";
  * vazio, todos de um pacote que já continha o código que preenche esse
  * campo.
  */
-export const VERSAO_NO_CODIGO = "1.3.0";
+export const VERSAO_NO_CODIGO = "1.4.0";
 
 /**
  * Qual build do app está rodando. NUNCA devolve vazio.

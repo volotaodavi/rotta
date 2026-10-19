@@ -13,6 +13,11 @@ import { AppErrorBoundary } from "./app-error-boundary";
 
 import { Texto } from "@/components/texto";
 import { clientErrorsApi } from "@/lib/api-client";
+/* A versao vem da constante, e nao de um literal: travar "1.3.0" aqui
+   fazia o teste quebrar na proxima subida de versao sem ter achado
+   defeito nenhum. O que este teste guarda e o buildId nunca vir vazio,
+   nao qual versao esta no ar. */
+import { VERSAO_NO_CODIGO } from "@/lib/identidade-do-build";
 
 jest.mock("@/lib/api-client", () => ({
   clientErrorsApi: { report: jest.fn() },
@@ -141,7 +146,7 @@ describe("AppErrorBoundary", () => {
       campo nunca vem vazio, e o sufixo diz qual fonte respondeu.
     */
     expect(enviado.buildId).toBeTruthy();
-    expect(enviado.buildId).toContain("1.3.0");
+    expect(enviado.buildId).toContain(VERSAO_NO_CODIGO);
   });
 
   it('nomeia a tela em vez da constante "(mobile)"', () => {
