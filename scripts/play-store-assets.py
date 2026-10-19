@@ -139,14 +139,43 @@ MAPA_ROTA = "#3b6ef6"
 # ---------------------------------------------------------------------------
 
 QUADRO_L, QUADRO_A = 1080, 1920
-TELA_L, TELA_A = 390, 800
-ESCALA = 694 / TELA_L  # 1.779...
-JANELA_L, JANELA_A = 694, round(TELA_A * ESCALA)  # 694 x 1424
-BISEL = 12
-TOPO_A = QUADRO_A - (JANELA_A + BISEL * 2) - 40  # 432
+TELA_L = 390
 
 BARRA_DE_ABAS = 64  # apps/mobile/src/navigation/estilo-da-navegacao.tsx
 BARRA_DE_STATUS = 28
+
+# --- modelo "moldura": o aparelho inteiro dentro do quadro -----------------
+MOLDURA_TELA_A = 800
+MOLDURA_ESCALA = 694 / TELA_L  # 1.779...
+JANELA_L, JANELA_A = 694, round(MOLDURA_TELA_A * MOLDURA_ESCALA)  # 694 x 1424
+BISEL = 12
+TOPO_A = QUADRO_A - (JANELA_A + BISEL * 2) - 40  # 432
+
+# --- modelo "faixa": cartao sangrando, com a rota ligando os quadros -------
+#
+# O segundo modelo veio de uma referencia que o fundador mandou em
+# 19/10/2026 (a ficha do app de motorista da Uber): manchete grande a
+# esquerda, uma linha horizontal na MESMA altura em todos os quadros, e o
+# cartao da tela sangrando pelo rodape. A linha e o truque: ela continua
+# de um quadro para o outro, entao a ficha inteira vira uma peca so
+# quando a pessoa desliza.
+#
+# O que nao foi copiado e a paleta. A Uber usa preto puro e no branco; a
+# Rotta tem azul proprio, e um fundo preto com a nossa tipografia so
+# pareceria a ficha da Uber com outro logotipo. O fundo aqui e o
+# azul-marinho da tinta da marca, e o no da linha e o `#0E98FD` do ponto
+# do simbolo — a linha e a ROTA, e cada quadro e uma parada dela.
+FAIXA_MARGEM = 144
+FAIXA_CARD_L = QUADRO_L - FAIXA_MARGEM * 2  # 792
+FAIXA_ESCALA = FAIXA_CARD_L / TELA_L  # 2.0307...
+FAIXA_CARD_TOPO = 620
+FAIXA_TELA_A = round((QUADRO_A - FAIXA_CARD_TOPO) / FAIXA_ESCALA)  # 640
+FAIXA_LINHA_Y = 548
+
+# Estado do desenho, trocado por `main()` antes de montar cada modelo. As
+# telas leem daqui em vez de receber mais dois parametros cada uma.
+TELA_A = MOLDURA_TELA_A
+COM_CROMO = True
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +445,8 @@ def barra_de_status(hora: str = "07:06", sobre_mapa: bool = False) -> str:
     o respiro vem de `insets.top` aplicado ao conteudo, nao de uma faixa
     branca empurrando o mapa para baixo.
     """
+    if not COM_CROMO:
+        return ""
     cor = C["text"]
     classe = "statusbar sobreposta" if sobre_mapa else "statusbar"
     return f"""
@@ -428,7 +459,7 @@ def barra_de_status(hora: str = "07:06", sobre_mapa: bool = False) -> str:
 
 def rodape_do_sistema() -> str:
     """A barra de gestos do Android, que todo print de celular tem."""
-    return '<div class="gesto"><span></span></div>'
+    return '<div class="gesto"><span></span></div>' if COM_CROMO else ""
 
 
 def pill(rotulo: str, tom: str) -> str:
@@ -587,6 +618,8 @@ def barra_de_abas(itens: list[tuple[str, str]], ativa: int, badge: dict[int, int
     pinta o selo de azul e o icone de branco; as outras ficam no cinza de
     apoio, que e o `tabBarInactiveTintColor`.
     """
+    if not COM_CROMO:
+        return ""
     badge = badge or {}
     partes = []
     for indice, (nome_do_icone, rotulo) in enumerate(itens):
@@ -666,7 +699,10 @@ def tela_rastreio() -> str:
     e a folha de baixo com raio 24 no topo, alca de 40x4 e os tres blocos
     (estado, veiculo, proxima parada).
     """
-    altura_do_mapa = 492
+    # A folha de baixo pede ~290 pontos para os tres blocos; o mapa fica
+    # com o resto. Derivado, e nao fixo, para a mesma tela servir aos dois
+    # modelos de quadro.
+    altura_do_mapa = TELA_A - 290 - (18 if COM_CROMO else 0)
     mapa, caminho, veiculo = _mapa_da_viagem(TELA_L, altura_do_mapa)
     recentrar = (
         f'<div class="recentrar">{icone("locate-fixed", 20, C["text"])}</div>'
@@ -875,7 +911,7 @@ def tela_modo_operacional() -> str:
     mapa), a proxima parada e um aluno por linha, com o botao de
     Embarque/Desembarque em pilula.
     """
-    altura_do_mapa = 358
+    altura_do_mapa = TELA_A - 360 - (BARRA_DE_ABAS + 18 if COM_CROMO else 0)
     mapa, caminho, veiculo = _mapa_da_viagem(TELA_L, altura_do_mapa, zoom=15)
     topo = barra_de_status(sobre_mapa=True) + f"""
       <div class="op-topo">
@@ -1335,13 +1371,96 @@ body{{width:{QUADRO_L}px;height:{QUADRO_A}px;background:{fundo};color:{cor_texto
   inset 0 0 0 1px rgba(255,255,255,.10)}}
 .janela{{width:{JANELA_L}px;height:{JANELA_A}px;border-radius:43px;overflow:hidden;
   background:#FFF;position:relative}}
-.escala{{transform:scale({ESCALA});transform-origin:top left}}
+.escala{{transform:scale({MOLDURA_ESCALA});transform-origin:top left}}
 .marca-centro{{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
   justify-content:center;padding:0 90px}}
 .simbolo{{width:300px;height:300px;border-radius:68px;margin-bottom:64px;
   box-shadow:0 30px 80px rgba(0,0,0,.35)}}
 .assinatura{{width:300px;margin-top:92px;opacity:.9}}
 </style></head><body><div class="selo"></div>{corpo}</body></html>"""
+
+
+def quadro_faixa_html(
+    chamada: str, apoio: str, monta_tela, indice: int, total: int
+) -> str:
+    """O segundo modelo: manchete a esquerda, rota contínua, cartão sangrando.
+
+    A linha fica na MESMA altura em todos os quadros e o nó anda da
+    esquerda para a direita, um passo por quadro. Quem desliza a ficha vê
+    uma rota sendo percorrida, e não oito imagens soltas: é o mesmo
+    recurso da referência, com o sentido que ele tem aqui — a Rotta é
+    rota, e cada quadro é uma parada.
+
+    O cartão não tem moldura de aparelho e sangra pelo rodapé. Isso troca
+    o enquadramento: em vez de mostrar o celular inteiro pequeno, mostra
+    a tela grande e cortada, que é o que faz o texto do app continuar
+    legível na miniatura da loja.
+    """
+    primeiro, ultimo = indice == 0, indice == total - 1
+    # Primeiro e ultimo quadro nao tem linha antes/depois: a rota comeca
+    # e termina neles.
+    vao = QUADRO_L - FAIXA_MARGEM * 2
+    no_x = FAIXA_MARGEM + round(vao * indice / (total - 1))
+    linha_esq = (
+        ""
+        if primeiro
+        else f'<div class="rota-linha" style="left:0;width:{no_x - 17}px"></div>'
+    )
+    linha_dir = (
+        ""
+        if ultimo
+        else f'<div class="rota-linha" style="left:{no_x + 17}px;right:0"></div>'
+    )
+
+    if monta_tela is None:
+        corpo = f"""
+        <div class="faixa-marca">
+          <img src="data:image/png;base64,{b64(SIMBOLO)}">
+          <p class="faixa-chamada">{chamada}</p>
+          <p class="faixa-apoio">{apoio}</p>
+        </div>"""
+    else:
+        corpo = f"""
+        <div class="faixa-topo">
+          <p class="faixa-chamada">{chamada}</p>
+          <p class="faixa-apoio">{apoio}</p>
+        </div>
+        <div class="faixa-cartao"><div class="faixa-escala">{monta_tela()}</div></div>"""
+
+    return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+{css_das_fontes()}
+{css_da_tela()}
+body{{width:{QUADRO_L}px;height:{QUADRO_A}px;overflow:hidden;position:relative;
+  font-family:"Jakarta",sans-serif;color:#FFFFFF;-webkit-font-smoothing:antialiased;
+  background:radial-gradient(130% 90% at 18% 0%,#0B2E78 0%,#071B45 46%,#040E26 100%)}}
+/* A manchete e ancorada no TOPO, e nao centrada no espaco que sobra:
+   com uma linha ou com duas ela comeca na mesma altura, e e isso que faz
+   os oito quadros parecerem a mesma peca quando a pessoa desliza. */
+.faixa-topo{{position:absolute;left:{FAIXA_MARGEM}px;top:0;width:{QUADRO_L - FAIXA_MARGEM * 2}px;
+  height:{FAIXA_LINHA_Y - 40}px;display:flex;flex-direction:column;justify-content:flex-start;
+  padding-top:196px}}
+.faixa-chamada{{font-size:94px;font-weight:800;line-height:1.0;letter-spacing:-3.2px;
+  text-wrap:balance}}
+.faixa-apoio{{font-size:32px;font-weight:400;line-height:1.32;margin-top:32px;
+  max-width:{QUADRO_L - FAIXA_MARGEM * 2}px;color:#A9C6F5}}
+/* A rota: a linha fica na mesma altura em todo quadro, e so o no anda. */
+.rota-linha{{position:absolute;top:{FAIXA_LINHA_Y - 2}px;height:4px;
+  background:rgba(169,198,245,.45)}}
+.rota-no{{position:absolute;top:{FAIXA_LINHA_Y - 15}px;width:30px;height:30px;border-radius:9px;
+  background:{PONTO};box-shadow:0 8px 24px rgba(14,152,253,.55)}}
+.faixa-cartao{{position:absolute;left:{FAIXA_MARGEM}px;top:{FAIXA_CARD_TOPO}px;
+  width:{FAIXA_CARD_L}px;height:{QUADRO_A - FAIXA_CARD_TOPO}px;border-radius:40px 40px 0 0;
+  overflow:hidden;background:#FFFFFF;box-shadow:0 30px 90px rgba(2,10,30,.6)}}
+.faixa-escala{{transform:scale({FAIXA_ESCALA});transform-origin:top left}}
+.faixa-marca{{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;padding:0 110px;text-align:center}}
+.faixa-marca img{{width:280px;height:280px;border-radius:64px;margin-bottom:60px;
+  box-shadow:0 30px 80px rgba(2,10,30,.6)}}
+.faixa-marca .faixa-apoio{{max-width:720px}}
+</style></head><body>
+{linha_esq}{linha_dir}<div class="rota-no" style="left:{no_x - 15}px"></div>
+{corpo}</body></html>"""
 
 
 def feature_html() -> str:
@@ -1365,6 +1484,38 @@ h1{{color:#fff;font-size:54px;font-weight:800;letter-spacing:-2px;line-height:1.
 p{{color:rgba(255,255,255,.84);font-size:28px;font-weight:400;margin-top:18px;line-height:1.32}}
 </style></head><body>
 <div class="bolha"></div><div class="bolha2"></div>
+<img src="data:image/png;base64,{b64(SIMBOLO)}">
+<div class="texto">
+  <h1>Transporte escolar<br>que a família acompanha</h1>
+  <p>Mapa ao vivo, avisos de embarque e mensalidade no app</p>
+</div>
+</body></html>"""
+
+
+def feature_faixa_html() -> str:
+    """O banner do modelo faixa: mesma rota do carrossel atravessando ele.
+
+    O banner fica acima das capturas na ficha, entao a linha sai dele e
+    continua no primeiro quadro. E o mesmo recurso da referencia, um
+    degrau acima: a rota comeca antes da primeira tela.
+    """
+    return f"""<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
+*{{margin:0;padding:0;box-sizing:border-box}}
+{css_das_fontes()}
+body{{width:1024px;height:500px;font-family:"Jakarta",sans-serif;-webkit-font-smoothing:antialiased;
+  color:#FFFFFF;overflow:hidden;position:relative;display:flex;align-items:center;gap:48px;
+  padding:0 72px;background:radial-gradient(130% 120% at 16% 0%,#0B2E78 0%,#071B45 48%,#040E26 100%)}}
+.rota{{position:absolute;left:0;right:0;bottom:74px;height:4px;background:rgba(169,198,245,.4)}}
+.no{{position:absolute;left:150px;bottom:61px;width:30px;height:30px;border-radius:9px;
+  background:{PONTO};box-shadow:0 8px 24px rgba(14,152,253,.55)}}
+img{{width:180px;height:180px;border-radius:42px;position:relative;z-index:2;
+  box-shadow:0 22px 56px rgba(2,10,30,.6)}}
+.texto{{position:relative;z-index:2;padding-bottom:52px}}
+h1{{font-size:54px;font-weight:800;letter-spacing:-2px;line-height:1.06}}
+p{{color:#A9C6F5;font-size:27px;font-weight:400;margin-top:16px;line-height:1.32;
+  max-width:600px}}
+</style></head><body>
+<div class="rota"></div><div class="no"></div>
 <img src="data:image/png;base64,{b64(SIMBOLO)}">
 <div class="texto">
   <h1>Transporte escolar<br>que a família acompanha</h1>
@@ -1465,22 +1616,44 @@ def folha_de_contato(saida: Path) -> None:
     folha.save(saida / "contato.png", optimize=True)
 
 
-def main() -> int:
-    saida = Path(sys.argv[1] if len(sys.argv) > 1 else "play-store").resolve()
-    saida.mkdir(parents=True, exist_ok=True)
+def gerar(modelo: str, saida: Path) -> None:
+    """Monta um jogo completo de pecas num dos dois modelos de quadro."""
+    global TELA_A, COM_CROMO
 
-    render(feature_html(), saida / "feature-graphic.png", 1024, 500)
-    print("feature-graphic.png  1024x500")
+    # O modelo "moldura" mostra o aparelho inteiro, entao a tela leva a
+    # barra de status, a barra de abas e a barra de gestos. O modelo
+    # "faixa" mostra um recorte da tela, sem nada do sistema — e por isso
+    # o conteudo do app sai maior, e legivel na miniatura.
+    TELA_A = MOLDURA_TELA_A if modelo == "moldura" else FAIXA_TELA_A
+    COM_CROMO = modelo == "moldura"
+
+    saida.mkdir(parents=True, exist_ok=True)
+    banner = feature_html() if modelo == "moldura" else feature_faixa_html()
+    render(banner, saida / "feature-graphic.png", 1024, 500)
+    print(f"{modelo}/feature-graphic.png  1024x500")
 
     for n, (chamada, apoio, tom, monta_tela) in enumerate(QUADROS, start=1):
         arquivo = saida / f"frame-{n}.png"
-        render(quadro_html(chamada, apoio, tom, monta_tela), arquivo, QUADRO_L, QUADRO_A)
-        print(f"frame-{n}.png  {QUADRO_L}x{QUADRO_A}  {chamada}")
+        if modelo == "moldura":
+            html = quadro_html(chamada, apoio, tom, monta_tela)
+        else:
+            html = quadro_faixa_html(chamada, apoio, monta_tela, n - 1, len(QUADROS))
+        render(html, arquivo, QUADRO_L, QUADRO_A)
+        print(f"{modelo}/frame-{n}.png  {QUADRO_L}x{QUADRO_A}  {chamada}")
 
     folha_de_contato(saida)
-    print("contato.png  conferencia do conjunto, nao sobe para a loja")
+    print(f"{modelo}/contato.png  conferencia do conjunto, nao sobe para a loja")
 
-    print(f"\n{len(QUADROS) + 1} pecas em {saida}/")
+
+def main() -> int:
+    raiz = Path(sys.argv[1] if len(sys.argv) > 1 else "play-store").resolve()
+    escolhido = sys.argv[2] if len(sys.argv) > 2 else "ambos"
+    modelos = ["moldura", "faixa"] if escolhido == "ambos" else [escolhido]
+
+    for modelo in modelos:
+        gerar(modelo, raiz / modelo)
+
+    print(f"\n{len(modelos)} jogo(s) de {len(QUADROS) + 1} pecas em {raiz}/")
     return 0
 
 

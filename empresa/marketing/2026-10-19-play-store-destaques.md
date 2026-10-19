@@ -17,7 +17,8 @@ OpenStreetMap que o app mostra hoje e a rota traçada pelo mesmo OSRM que
 a API usa. Nada foi desenhado "parecido".
 
 Tudo sai de `scripts/play-store-assets.py`, e os PNGs estão em
-`play-store/`.
+`play-store/`, em **dois modelos de quadro** (seção 2.1), para o
+fundador escolher um.
 
 ---
 
@@ -53,6 +54,39 @@ consenso entre elas e entrou no nosso desenho:
 |   6 | **Checklist antes de sair**      | Fica salvo, viagem por viagem                      | Motorista, `ChecklistScreen`               | claro  |
 |   7 | **A frota inteira na tela**      | Onde cada van está, agora                          | Empresa, `EmpresaFrotaMapaScreen`          | escuro |
 |   8 | **Feito para quem leva criança** | Transporte escolar, do cadastro ao pagamento       | nenhuma, é o fecho de marca                | marca  |
+
+### Os dois modelos de quadro
+
+Em 19/10/2026 o fundador mandou a ficha do app de motorista da Uber e
+disse que algo naquele modelo ficaria bom também. Os dois estão gerados,
+com as mesmas oito telas e as mesmas chamadas, e o que muda é só o
+enquadramento.
+
+|                  | `play-store/moldura/`                    | `play-store/faixa/`                       |
+| ---------------- | ---------------------------------------- | ----------------------------------------- |
+| Fundo            | azul da marca, alternando claro e escuro | azul-marinho, igual nos oito              |
+| Chamada          | centrada, 78px                           | à esquerda, 94px, ancorada no topo        |
+| A tela           | aparelho inteiro, com barra de abas      | cartão sem moldura, sangrando pelo rodapé |
+| Escala da tela   | 1,78x                                    | 2,03x                                     |
+| Liga um ao outro | não                                      | sim, pela linha da rota                   |
+
+**O recurso do segundo modelo é a linha.** Ela fica na mesma altura nos
+oito quadros e o nó anda um passo por quadro, então quem desliza a ficha
+vê uma rota sendo percorrida, e não oito imagens soltas. É o truque da
+referência, e aqui ele tem sentido literal: a Rotta é rota, cada quadro é
+uma parada, e o nó é o ponto azul do símbolo da marca.
+
+**O que não foi copiado é a paleta.** A referência é preto puro com texto
+branco. Um fundo preto com a nossa tipografia seria a ficha da Uber com
+outro logotipo. O fundo aqui é o azul-marinho da tinta da marca.
+
+**Qual escolher.** O modelo `faixa` mostra a tela 14% maior e passa no
+teste da miniatura com folga, que é a regra de ASO que mais pesa. O
+modelo `moldura` deixa claro que é um aplicativo de celular, e mostra a
+barra de abas, que é o que prova que o app tem as quatro funções. A
+decisão é do fundador; os dois estão prontos para subir.
+
+---
 
 ### Por que esta ordem
 
