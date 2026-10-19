@@ -191,6 +191,23 @@ COM_CROMO = True
 # aceita. O 1x continua a um argumento de distancia.
 FATOR = 2
 
+# Decisao do fundador em 19/10/2026: "pode deixar tudo aceso, deixe nada
+# apagado". Com `True`, as acoes que o app desenha esmaecidas entram nas
+# pecas com opacidade cheia.
+#
+# Sao duas: o "Cartao recorrente" dos Pagamentos ("em avaliacao") e as
+# tres acoes da Carteira que dependem de parceiro bancario (Transferir,
+# Pagar, Cartao). No aplicativo elas estao desabilitadas, com
+# `opacity: 0.45` e o motivo a mostra.
+#
+# O risco esta registrado e e do fundador, nao meu: a politica de ficha
+# da Play pede que a captura represente o aplicativo como ele e, e uma
+# acao acesa que nao funciona e o tipo de divergencia que reprova
+# revisao e vira avaliacao de uma estrela. Trocar para `False` devolve o
+# esmaecido, e `empresa/marketing/2026-10-19-play-store-destaques.md`
+# guarda a conversa.
+TUDO_ACESO = True
+
 
 # ---------------------------------------------------------------------------
 # Fonte e icones, lidos de node_modules
@@ -569,7 +586,7 @@ def bloco_de_meio(nome_do_icone: str, titulo: str, sub: str, apoio: bool, opaco:
     """`packages/ui/src/native/molecules/InfoTile`."""
     cor = C["textMuted"] if apoio else C["primary"]
     classe = "tile apoio" if apoio else "tile"
-    if opaco:
+    if opaco and not TUDO_ACESO:
         classe += " opaco"
     linha2 = f'<div class="tile-sub">{sub}</div>' if sub else ""
     return (
@@ -1092,7 +1109,7 @@ def tela_carteira() -> str:
         ("receipt", "Pagar", True),
         ("credit-card", "Cartão", True),
     ]:
-        classe = "acao apagada" if indisponivel else "acao"
+        classe = "acao apagada" if indisponivel and not TUDO_ACESO else "acao"
         acoes.append(
             f'<div class="{classe}"><span class="acao-bolha">'
             f'{icone(nome_do_icone, 22, C["primary"])}</span>'

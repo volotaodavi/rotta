@@ -217,6 +217,36 @@ publicada tem que sair de um build que já tenha a correção.
 
 ---
 
+## 3.3. Decisão: tudo aceso
+
+**Pedido do fundador em 19/10/2026:** "pode deixar tudo aceso, deixe
+nada apagado". Feito. As peças saem com opacidade cheia em tudo.
+
+Duas coisas mudaram de estado, e é bom que fique escrito qual é cada
+uma, porque elas não são iguais:
+
+| Onde                 | O que o app faz                                                         | O que a peça mostra agora |
+| -------------------- | ----------------------------------------------------------------------- | ------------------------- |
+| Pagamentos, quadro 4 | "Cartão recorrente" desabilitado, motivo "em avaliação"                 | aceso                     |
+| Carteira, quadro 8   | Transferir, Pagar e Cartão desabilitados, dependem de parceiro bancário | acesos                    |
+
+**O risco, dito uma vez.** A política de ficha da Play pede que a
+captura represente o aplicativo como ele é. Uma ação acesa que não
+funciona é o tipo de divergência que reprova revisão, e é também a
+primeira reclamação de quem baixa e toca nela. A decisão é do fundador e
+está tomada; o registro existe para que, se a revisão apontar, ninguém
+precise redescobrir o motivo.
+
+**Como voltar atrás em um minuto.** `TUDO_ACESO = False` em
+`scripts/play-store-assets.py` devolve o esmaecido, e os quadros 4 e 8
+são gerados de novo.
+
+**Um terceiro caminho, se a revisão reclamar:** em vez de esmaecer, tirar
+os blocos indisponíveis. Aí nada fica apagado e nada é prometido. O custo
+é que a Carteira ficaria com uma ação só.
+
+---
+
 ## 4. Texto da ficha
 
 **Título (30 caracteres):**
