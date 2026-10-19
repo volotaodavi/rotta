@@ -163,14 +163,28 @@ regra. Os valores são da página de ajuda da Play Console, lida em
 | ----------------------------------------- | -------------------- |
 | No máximo 8 capturas por tipo de aparelho | 8                    |
 | JPEG ou PNG de 24 bits, **sem alfa**      | PNG RGB              |
-| Menor lado ≥ 320 px, maior ≤ 3840 px      | 1080 e 1920          |
-| Maior lado ≤ **o dobro** do menor         | 1920 = 1,78x de 1080 |
+| Menor lado ≥ 320 px, maior ≤ 3840 px      | 2160 e 3840          |
+| Maior lado ≤ **o dobro** do menor         | 3840 = 1,78x de 2160 |
 | Recomendado 9:16, pelo menos 4 capturas   | 9:16, oito capturas  |
 | Gráfico de recurso 1024x500               | 1024x500             |
 
 O "sem alfa" é o que mais derruba upload, e era um risco real aqui: o
 Chromium devolve o screenshot em RGBA. A conversão passou a ser
 incondicional, e não mais um efeito colateral do recorte.
+
+**As capturas saem em 2160x3840**, que é 4K UHD em retrato e o teto do
+que a loja aceita: o lado maior não pode passar de 3840. Quem dobra é o
+`--force-device-scale-factor` do Chromium, então letra, ícone e sombra
+continuam vetoriais; o mapa, que é imagem, teve a densidade dobrada
+junto, senão sairia borrado no meio de uma peça onde todo o resto é
+nítido. O banner **não** acompanha: a Play exige 1024x500 exatos, e foi
+a própria conferência que pegou isso na primeira execução em 4K.
+
+**Não existe HDR na ficha.** A Play Console documenta dois formatos para
+captura, JPEG ou PNG de 24 bits sem alfa, e não descreve suporte a Ultra
+HDR nem a mapa de ganho. Fabricar um mapa de ganho a partir de um
+desenho que nasceu em SDR inventaria brilho que o original não tem. O
+que dá para entregar de verdade é resolução, e ela está no teto.
 
 A ordem de upload e os nomes dos arquivos estão em `play-store/README.md`.
 

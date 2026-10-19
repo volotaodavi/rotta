@@ -8,6 +8,17 @@ ela inteira; não misture as duas.
 | `faixa/`   | manchete à esquerda, cartão sangrando, rota ligando tudo |
 | `moldura/` | aparelho inteiro, com a barra de abas à mostra           |
 
+As capturas saem em **2160x3840**, que é 4K UHD em retrato e o maior
+tamanho que a Play Console aceita. Para gerar também a versão de
+1080x1920, que é a que a Google recomenda, rode com `ambos`:
+
+```
+python3 scripts/play-store-assets.py play-store ambos ambos
+```
+
+Ela cai em `faixa-1080/` e `moldura-1080/`. É o mesmo desenho, só com
+metade dos pixels.
+
 ---
 
 ## Ordem de upload
@@ -29,9 +40,12 @@ ordem do nome do arquivo:
 
 E o banner, que vai no campo separado:
 
-| Campo              | Arquivo               |
-| ------------------ | --------------------- |
-| Gráfico de recurso | `feature-graphic.png` |
+| Campo              | Arquivo               | Tamanho  |
+| ------------------ | --------------------- | -------- |
+| Gráfico de recurso | `feature-graphic.png` | 1024x500 |
+
+O banner **não** acompanha o 4K: a Play Console exige 1024x500 exatos, e
+2048x1000 é recusado.
 
 `contato.png` **não sobe.** É a folha de conferência, com tudo junto.
 
@@ -53,22 +67,33 @@ O script confere sozinho a cada execução e termina com erro se alguma
 peça sair da regra. O que ele checa, contra a página de ajuda da Play
 Console lida em 19/10/2026:
 
-| Regra                                     | O que entregamos     |
-| ----------------------------------------- | -------------------- |
-| No máximo 8 capturas por tipo de aparelho | 8                    |
-| JPEG ou PNG de 24 bits, **sem alfa**      | PNG RGB, sem alfa    |
-| Menor lado ≥ 320 px, maior lado ≤ 3840 px | 1080 e 1920          |
-| Maior lado ≤ **o dobro** do menor         | 1920 = 1,78x de 1080 |
-| Recomendado: 9:16 retrato, pelo menos 4   | 9:16, oito capturas  |
-| Gráfico de recurso 1024x500               | 1024x500             |
-
-Nenhum arquivo passa de 1,2 MB.
+| Regra                                     | O que entregamos       |
+| ----------------------------------------- | ---------------------- |
+| No máximo 8 capturas por tipo de aparelho | 8                      |
+| JPEG ou PNG de 24 bits, **sem alfa**      | PNG RGB, sem alfa      |
+| Menor lado ≥ 320 px, maior lado ≤ 3840 px | 2160 e 3840            |
+| Maior lado ≤ **o dobro** do menor         | 3840 = 1,78x de 2160   |
+| Recomendado: 9:16 retrato, pelo menos 4   | 9:16, oito capturas    |
+| Gráfico de recurso 1024x500               | 1024x500               |
+| Tamanho de arquivo                        | nenhum passa de 3,5 MB |
 
 Para repetir a conferência:
 
 ```
 python3 scripts/play-store-assets.py play-store
 ```
+
+### Sobre HDR
+
+A ficha da loja **não tem HDR**. A Play Console documenta exatamente
+dois formatos para captura, "JPEG ou PNG de 24 bits (sem alfa)", e não
+descreve suporte a Ultra HDR nem a mapa de ganho. As peças são sRGB de 8
+bits por canal, que é o que a loja exibe.
+
+Fabricar um mapa de ganho a partir de um desenho que nasceu em SDR não
+acrescentaria faixa dinâmica nenhuma: inventaria brilho que o original
+não tem. O que dá para entregar de verdade é resolução, e ela está no
+teto do que a loja aceita.
 
 ---
 

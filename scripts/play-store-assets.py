@@ -179,6 +179,18 @@ FAIXA_LINHA_Y = 548
 TELA_A = MOLDURA_TELA_A
 COM_CROMO = True
 
+# Fator de resolucao. 2 entrega 2160x3840, que e 4K UHD em retrato e o
+# MAIOR tamanho que a Play Console aceita (o lado maior nao pode passar
+# de 3840); 1 entrega 1080x1920, o tamanho que a propria Google
+# recomenda. O desenho nao muda entre os dois: o layout continua em
+# pixels de CSS e quem dobra e o `--force-device-scale-factor` do
+# Chromium, entao letra, icone e sombra saem vetoriais nos dois. O que
+# precisa acompanhar na mao e o mapa, que e imagem (ver `Mapa`).
+#
+# O padrao e 2, porque a peca entregue e a de maior qualidade que a loja
+# aceita. O 1x continua a um argumento de distancia.
+FATOR = 2
+
 
 # ---------------------------------------------------------------------------
 # Fonte e icones, lidos de node_modules
@@ -323,7 +335,10 @@ class Mapa:
     """
 
     def __init__(self, lat: float, lon: float, zoom: int, largura: int, altura: int) -> None:
-        self.densidade = 2
+        # A tela ainda e ampliada pela escala do quadro (1,78x ou 2,03x) e
+        # depois pelo fator de resolucao. Sem acompanhar os dois, o mapa
+        # sairia borrado no meio de uma peca onde todo o resto e vetor.
+        self.densidade = 2 * FATOR
         self.zoom = zoom + 1
         self.largura, self.altura = largura, altura
         px, py = self._mundo(lat, lon)
@@ -1675,7 +1690,7 @@ def render(html: str, destino: Path, largura: int, altura: int) -> None:
         [
             CHROMIUM, "--headless", "--disable-gpu", "--no-sandbox",
             f"--window-size={largura},{altura + FOLGA_DA_JANELA}",
-            "--hide-scrollbars", "--force-device-scale-factor=1",
+            "--hide-scrollbars", f"--force-device-scale-factor={FATOR}",
             f"--screenshot={destino}", temporario.as_uri(),
         ],
         check=True,
@@ -1688,7 +1703,9 @@ def render(html: str, destino: Path, largura: int, altura: int) -> None:
     # Chromium sai em RGBA. Deixar isso dependendo de um `if` e deixar a
     # recusa depender de sorte.
     with Image.open(destino) as bruto:
-        bruto.convert("RGB").crop((0, 0, largura, altura)).save(destino, optimize=True)
+        bruto.convert("RGB").crop((0, 0, largura * FATOR, altura * FATOR)).save(
+            destino, optimize=True
+        )
 
 
 def folha_de_contato(saida: Path) -> None:
@@ -1764,9 +1781,16 @@ def gerar(modelo: str, saida: Path) -> None:
     COM_CROMO = modelo == "moldura"
 
     saida.mkdir(parents=True, exist_ok=True)
+
+    # O banner nao acompanha o fator de resolucao: a Play Console exige
+    # 1024x500 EXATOS, e 2048x1000 e recusado. Quem apanhou isso foi a
+    # conferencia do fim, na primeira vez que o 4K rodou.
+    global FATOR
+    fator_pedido, FATOR = FATOR, 1
     banner = feature_html() if modelo == "moldura" else feature_faixa_html()
     render(banner, saida / "feature-graphic.png", 1024, 500)
-    print(f"{modelo}/feature-graphic.png  1024x500")
+    FATOR = fator_pedido
+    print(f"{saida.name}/feature-graphic.png  1024x500")
 
     for n, (chamada, apoio, tom, monta_tela) in enumerate(QUADROS, start=1):
         arquivo = saida / f"frame-{n}.png"
@@ -1775,10 +1799,10 @@ def gerar(modelo: str, saida: Path) -> None:
         else:
             html = quadro_faixa_html(chamada, apoio, monta_tela, n - 1, len(QUADROS))
         render(html, arquivo, QUADRO_L, QUADRO_A)
-        print(f"{modelo}/frame-{n}.png  {QUADRO_L}x{QUADRO_A}  {chamada}")
+        print(f"{saida.name}/frame-{n}.png  {QUADRO_L * FATOR}x{QUADRO_A * FATOR}  {chamada}")
 
     folha_de_contato(saida)
-    print(f"{modelo}/contato.png  conferencia do conjunto, nao sobe para a loja")
+    print(f"{saida.name}/contato.png  conferencia do conjunto, nao sobe para a loja")
 
 
 # Regras da ficha, da pagina de ajuda da Play Console (conferida em
@@ -1838,16 +1862,28 @@ def conferir(saida: Path) -> bool:
 
 
 def main() -> int:
+    """Uso: play-store-assets.py [pasta] [moldura|faixa|ambos] [4k|1080|ambos]."""
+    global FATOR
+
     raiz = Path(sys.argv[1] if len(sys.argv) > 1 else "play-store").resolve()
     escolhido = sys.argv[2] if len(sys.argv) > 2 else "ambos"
+    resolucao = sys.argv[3] if len(sys.argv) > 3 else "4k"
+
     modelos = ["moldura", "faixa"] if escolhido == "ambos" else [escolhido]
+    fatores = {"4k": [2], "1080": [1], "ambos": [2, 1]}[resolucao]
 
     tudo_certo = True
-    for modelo in modelos:
-        gerar(modelo, raiz / modelo)
-        tudo_certo = conferir(raiz / modelo) and tudo_certo
+    for fator in fatores:
+        FATOR = fator
+        for modelo in modelos:
+            # O 4K fica na pasta de nome limpo, porque e o que se sobe;
+            # o 1080 ganha sufixo, para os dois conviverem sem ninguem
+            # subir o errado sem perceber.
+            pasta = raiz / (modelo if fator == 2 else f"{modelo}-1080")
+            gerar(modelo, pasta)
+            tudo_certo = conferir(pasta) and tudo_certo
 
-    print(f"\n{len(modelos)} jogo(s) de {len(QUADROS) + 1} pecas em {raiz}/")
+    print(f"\n{len(modelos) * len(fatores)} jogo(s) de {len(QUADROS) + 1} pecas em {raiz}/")
     return 0 if tudo_certo else 1
 
 
