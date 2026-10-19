@@ -59,3 +59,7 @@ pnpm-debug.log*
 *.tsbuildinfo
 .vercel
 *.rdb
+
+# Python (scripts/)
+__pycache__/
+*.pyc
