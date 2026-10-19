@@ -1404,6 +1404,67 @@ def render(html: str, destino: Path, largura: int, altura: int) -> None:
             bruto.convert("RGB").crop((0, 0, largura, altura)).save(destino, optimize=True)
 
 
+def folha_de_contato(saida: Path) -> None:
+    """Junta as nove pecas numa imagem so, para conferir o conjunto.
+
+    Serve para duas coisas. A primeira e olhar a ficha como ela aparece
+    na loja, em sequencia, e nao um quadro de cada vez: o que a pesquisa
+    de ASO chama de consistencia so da para julgar com tudo lado a lado.
+    A segunda e o teste da miniatura — se a chamada nao for legivel
+    nestes 300 pontos de largura, ela nao e legivel na loja.
+
+    Nao e peca de publicacao. Nenhum destes pixels sobe para o Play
+    Console; o que sobe sao os PNGs em tamanho cheio.
+    """
+    from PIL import Image, ImageDraw, ImageFont
+
+    base = _primeiro(
+        "@expo-google-fonts+plus-jakarta-sans@*/node_modules/@expo-google-fonts/plus-jakarta-sans"
+    )
+    fonte = ImageFont.truetype(
+        str(base / "600SemiBold" / "PlusJakartaSans_600SemiBold.ttf"), 18
+    )
+
+    largura_do_quadro, altura_do_quadro = 300, 533
+    margem, altura_do_rotulo = 24, 34
+    colunas, linhas = 4, 2
+
+    largura = colunas * largura_do_quadro + (colunas + 1) * margem
+    banner_l = largura - 2 * margem
+    banner_a = round(banner_l * 500 / 1024)
+    altura = (
+        margem
+        + linhas * (altura_do_quadro + altura_do_rotulo + margem)
+        + banner_a
+        + altura_do_rotulo
+        + margem
+    )
+
+    folha = Image.new("RGB", (largura, altura), TINTA)
+    pincel = ImageDraw.Draw(folha)
+
+    for indice in range(len(QUADROS)):
+        coluna, linha = indice % colunas, indice // colunas
+        x = margem + coluna * (largura_do_quadro + margem)
+        y = margem + linha * (altura_do_quadro + altura_do_rotulo + margem)
+        with Image.open(saida / f"frame-{indice + 1}.png") as quadro:
+            folha.paste(
+                quadro.convert("RGB").resize((largura_do_quadro, altura_do_quadro)), (x, y)
+            )
+        pincel.text(
+            (x, y + altura_do_quadro + 8), f"frame-{indice + 1}.png", font=fonte, fill="#A9C6F5"
+        )
+
+    y_do_banner = margem + linhas * (altura_do_quadro + altura_do_rotulo + margem)
+    with Image.open(saida / "feature-graphic.png") as banner:
+        folha.paste(banner.convert("RGB").resize((banner_l, banner_a)), (margem, y_do_banner))
+    pincel.text(
+        (margem, y_do_banner + banner_a + 8), "feature-graphic.png", font=fonte, fill="#A9C6F5"
+    )
+
+    folha.save(saida / "contato.png", optimize=True)
+
+
 def main() -> int:
     saida = Path(sys.argv[1] if len(sys.argv) > 1 else "play-store").resolve()
     saida.mkdir(parents=True, exist_ok=True)
@@ -1415,6 +1476,9 @@ def main() -> int:
         arquivo = saida / f"frame-{n}.png"
         render(quadro_html(chamada, apoio, tom, monta_tela), arquivo, QUADRO_L, QUADRO_A)
         print(f"frame-{n}.png  {QUADRO_L}x{QUADRO_A}  {chamada}")
+
+    folha_de_contato(saida)
+    print("contato.png  conferencia do conjunto, nao sobe para a loja")
 
     print(f"\n{len(QUADROS) + 1} pecas em {saida}/")
     return 0
