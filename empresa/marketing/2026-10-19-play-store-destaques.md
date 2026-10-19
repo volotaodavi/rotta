@@ -44,16 +44,16 @@ consenso entre elas e entrou no nosso desenho:
 
 ## 2. Os oito quadros
 
-|   # | Chamada                          | Apoio                                              | Tela montada no quadro                     | Fundo  |
-| --: | -------------------------------- | -------------------------------------------------- | ------------------------------------------ | ------ |
-|   1 | **Veja a van ao vivo**           | Mapa em tempo real, do portão até a escola         | Responsável, `AcompanharViagemScreen`      | escuro |
-|   2 | **Chega às 07:12**               | Previsão calculada pelo trânsito, não pelo relógio | Responsável, cartão Acompanhamento         | claro  |
-|   3 | **Embarcou. Desembarcou.**       | Você recebe no mesmo instante                      | Responsável, `HistoricoEventosCard`        | escuro |
-|   4 | **A mensalidade pelo app**       | Pix, comprovante e histórico no mesmo lugar        | Responsável, `PagamentosScreen`            | claro  |
-|   5 | **O motorista só dirige**        | Lista do dia, rota traçada e um toque por aluno    | Motorista, `ModoOperacional` em tela cheia | escuro |
-|   6 | **Checklist antes de sair**      | Fica salvo, viagem por viagem                      | Motorista, `ChecklistScreen`               | claro  |
-|   7 | **A frota inteira na tela**      | Onde cada van está, agora                          | Empresa, `EmpresaFrotaMapaScreen`          | escuro |
-|   8 | **Feito para quem leva criança** | Transporte escolar, do cadastro ao pagamento       | nenhuma, é o fecho de marca                | marca  |
+|   # | Chamada                       | Apoio                                              | Tela montada no quadro                     | Fundo  |
+| --: | ----------------------------- | -------------------------------------------------- | ------------------------------------------ | ------ |
+|   1 | **Veja a van ao vivo**        | Mapa em tempo real, do portão até a escola         | Responsável, `AcompanharViagemScreen`      | escuro |
+|   2 | **Chega às 07:12**            | Previsão calculada pelo trânsito, não pelo relógio | Responsável, cartão Acompanhamento         | claro  |
+|   3 | **Embarcou. Desembarcou.**    | Você recebe no mesmo instante                      | Responsável, `HistoricoEventosCard`        | escuro |
+|   4 | **A mensalidade pelo app**    | Pix, comprovante e histórico no mesmo lugar        | Responsável, `PagamentosScreen`            | claro  |
+|   5 | **O motorista só dirige**     | Lista do dia, rota traçada e um toque por aluno    | Motorista, `ModoOperacional` em tela cheia | escuro |
+|   6 | **Checklist antes de sair**   | Fica salvo, viagem por viagem                      | Motorista, `ChecklistScreen`               | claro  |
+|   7 | **A frota inteira na tela**   | Onde cada van está, agora                          | Empresa, `EmpresaFrotaMapaScreen`          | escuro |
+|   8 | **O caixa da transportadora** | Saldo, a receber e cada movimentação no app        | Transportadora, `CarteiraScreen`           | claro  |
 
 ### Os dois modelos de quadro
 
@@ -100,9 +100,16 @@ O quadro 2 usa um horário, e não "previsão de chegada". Número lido na
 miniatura vale mais que substantivo abstrato.
 
 O quadro 4 entra agora porque a tela existe de verdade desde a 1.4.0. Se
-a cobrança não estiver ligada no dia da publicação, **este quadro sai**,
-e o 8 sobe. Mostrar tela que não funciona é o caminho mais rápido para
-avaliação de uma estrela.
+a cobrança não estiver ligada no dia da publicação, **este quadro sai** e
+a ficha vai com sete. Mostrar tela que não funciona é o caminho mais
+rápido para avaliação de uma estrela.
+
+O quadro 8 é o dinheiro da transportadora, e fecha a ficha nele de
+propósito: a família já foi convencida nos quatro primeiros, e quem
+chega até o fim rolando é quem vai operar. **O fecho de marca que estava
+aqui saiu**, porque a Play Console aceita no máximo oito capturas por
+tipo de aparelho e ele era o que menos mostrava o produto. O gráfico de
+recurso, no topo da ficha, já faz esse papel.
 
 ---
 
@@ -145,6 +152,30 @@ tela é bonita.
 
 ---
 
+## 3.2. Regras da Play Console, conferidas pelo script
+
+A pergunta "o console vai recusar?" não é respondida por promessa: o
+script confere a cada execução e termina com erro se alguma peça sair da
+regra. Os valores são da página de ajuda da Play Console, lida em
+19/10/2026.
+
+| Regra                                     | O que entregamos     |
+| ----------------------------------------- | -------------------- |
+| No máximo 8 capturas por tipo de aparelho | 8                    |
+| JPEG ou PNG de 24 bits, **sem alfa**      | PNG RGB              |
+| Menor lado ≥ 320 px, maior ≤ 3840 px      | 1080 e 1920          |
+| Maior lado ≤ **o dobro** do menor         | 1920 = 1,78x de 1080 |
+| Recomendado 9:16, pelo menos 4 capturas   | 9:16, oito capturas  |
+| Gráfico de recurso 1024x500               | 1024x500             |
+
+O "sem alfa" é o que mais derruba upload, e era um risco real aqui: o
+Chromium devolve o screenshot em RGBA. A conversão passou a ser
+incondicional, e não mais um efeito colateral do recorte.
+
+A ordem de upload e os nomes dos arquivos estão em `play-store/README.md`.
+
+---
+
 ## 3.1. O que a reconstrução encontrou no app
 
 Montar a tela com os valores reais expõe o que um desenho "parecido"
@@ -156,7 +187,16 @@ app faz hoje**, sem maquiagem:
 | Pagamentos, formas de pagamento | Com três blocos por linha, o rótulo não cabe: sai "QR Co…" e "Chave …"                                                                     | sobra 56 pt para um texto de 57,3 pt ("QR Code") e 60,9 ("Chave Pix") |
 | Empresa, mapa da frota          | O turno aparece cru, do banco: "(MANHA)", sem acento. O app já tem `TURNO_LABEL` em `driver/screens/inicio-screen.tsx`, mas a tela não usa | —                                                                     |
 
-As duas são decisão de produto, não de marketing, e por isso não foram
+Uma terceira apareceu ao montar o quadro 8: a **Carteira Rotta Pay só é
+alcançável com `role === "empresa"`**, isto é, pelo dono autônomo/MEI em
+Modo Ação, por Perfil > Veículo > Rotta Pay (`VeiculoNavigator`). A
+transportadora com funcionários, que entra por `EmpresaNavigator`, não
+chega nessa tela por caminho nenhum. O app não tem aba de financeiro, e
+é por isso que o quadro 8 mostra a aba **Perfil** acesa. Se a ideia é
+vender o financeiro para transportadora, isso é uma lacuna de produto, e
+não de peça gráfica.
+
+As três são decisão de produto, não de marketing, e por isso não foram
 tocadas aqui. Se forem corrigidas, os quadros 4 e 7 precisam ser gerados
 de novo (`python3 scripts/play-store-assets.py play-store`) e a peça
 publicada tem que sair de um build que já tenha a correção.

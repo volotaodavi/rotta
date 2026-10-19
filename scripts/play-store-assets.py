@@ -97,6 +97,8 @@ C = {
     "primaryMuted": "#EDF4FF",
     "onPrimary": "#FFFFFF",
     "brandDeep": "#0A3B85",
+    "brandBand": "#1180FE",
+    "onBrandMuted": "#A9C6F5",
     "text": "#0F2748",
     "textMuted": "#8794A5",
     "placeholder": "#A3AEBE",
@@ -437,7 +439,7 @@ def painel_de_mapa(
 # ---------------------------------------------------------------------------
 
 
-def barra_de_status(hora: str = "07:06", sobre_mapa: bool = False) -> str:
+def barra_de_status(hora: str = "07:06", sobre_mapa: bool = False, claro: bool = False) -> str:
     """A barra do sistema.
 
     Nas telas de mapa cheio ela fica POR CIMA do mapa, porque e isso que
@@ -447,7 +449,9 @@ def barra_de_status(hora: str = "07:06", sobre_mapa: bool = False) -> str:
     """
     if not COM_CROMO:
         return ""
-    cor = C["text"]
+    # `claro` e o `<StatusBar style="light" />` da Carteira: sobre o azul
+    # profundo do cabecalho, icone escuro simplesmente some.
+    cor = C["onPrimary"] if claro else C["text"]
     classe = "statusbar sobreposta" if sobre_mapa else "statusbar"
     return f"""
     <div class="{classe}" style="color:{cor}">
@@ -995,7 +999,7 @@ def tela_checklist() -> str:
           </div>
         </div>
       </div>
-      {barra_de_abas(ABAS_MOTORISTA, 0)}
+      {barra_de_abas(ABAS_MOTORISTA, 3)}
       {rodape_do_sistema()}
     </div>"""
 
@@ -1036,6 +1040,109 @@ def tela_frota() -> str:
     </div>"""
 
 
+def tela_carteira() -> str:
+    """Transportadora, Carteira Rotta Pay.
+
+    `apps/mobile/src/features/wallet/screens/carteira-screen.tsx`: o
+    `AccountHeader` com o topo em `brandDeep`, a faixa de saldo em
+    `brandBand` com o olho de esconder, a `ContentSheet` subindo 26
+    pontos por cima do azul, a `ActionGrid` de quatro acoes, o cartao do
+    pendente e as `MovementRow` de cada entrada e saida.
+
+    ## Onde esta tela mora, e por que isso importa
+
+    Ela e alcancada por Perfil > Veiculo > Rotta Pay, e **so** com
+    `role === "empresa"`, que e o dono autonomo/MEI em Modo Acao
+    (`VeiculoNavigator`). E por isso que a aba acesa e Perfil, e nao uma
+    aba de financeiro: o app nao tem uma.
+
+    ## Tres das quatro acoes aparecem apagadas, de proposito
+
+    Transferir, Pagar e Cartao dependem de parceiro bancario e estao
+    indisponiveis no app. A `ActionGrid` as desenha com opacidade 0,45 e
+    e assim que elas entram aqui. Esconder as tres daria um quadro mais
+    bonito e uma loja mentindo sobre o que o aplicativo faz.
+
+    ## Nenhuma taxa aparece
+
+    A movimentacao de tarifa existe no app (`DEBITO_TARIFA`), mas o
+    percentual do RottaPay ainda e recomendacao do CFO, nao decisao do
+    fundador. Numero de taxa numa ficha de loja vira promessa de preco,
+    entao as linhas mostradas sao mensalidade e saque.
+    """
+    acoes = []
+    for nome_do_icone, rotulo, indisponivel in [
+        ("arrow-down-to-line", "Sacar", False),
+        ("arrow-up-from-line", "Transferir", True),
+        ("receipt", "Pagar", True),
+        ("credit-card", "Cartão", True),
+    ]:
+        classe = "acao apagada" if indisponivel else "acao"
+        acoes.append(
+            f'<div class="{classe}"><span class="acao-bolha">'
+            f'{icone(nome_do_icone, 22, C["primary"])}</span>'
+            f'<span class="acao-rot">{rotulo}</span></div>'
+        )
+
+    movimentos = []
+    for titulo, estado, valor, entrada, dia in [
+        ("Mensalidade recebida", "Concluída", "R$ 320,00", True, "18/10/2026"),
+        ("Mensalidade recebida", "Concluída", "R$ 320,00", True, "18/10/2026"),
+        ("Mensalidade recebida", "Pendente", "R$ 320,00", True, "17/10/2026"),
+        ("Saque", "Concluída", "R$ 2.500,00", False, "16/10/2026"),
+    ]:
+        cor = C["success"] if entrada else C["primary"]
+        seta = "arrow-down-to-line" if entrada else "arrow-up-from-line"
+        sinal = "+" if entrada else "-"
+        movimentos.append(
+            f'<div class="mov"><span class="mov-ic">{icone(seta, 18, cor)}</span>'
+            f'<div class="mov-tx"><div class="mov-tit">{titulo}</div>'
+            f'<div class="mov-sub">{estado}</div></div>'
+            f'<div class="mov-dir"><div class="mov-val" style="color:{cor}">{sinal} {valor}</div>'
+            f'<div class="mov-data">{dia}</div></div></div>'
+        )
+
+    return f"""
+    <div class="app" style="background:{C['brandDeep']}">
+      {barra_de_status(claro=True)}
+      <div class="conta-topo">
+        <div class="conta-barra">
+          <div class="conta-esq">
+            {icone("chevron-left", 24, C["onPrimary"])}
+            <img class="conta-marca" src="data:image/png;base64,{b64(SIMBOLO)}">
+            <div>
+              <div class="conta-tit">Rotta</div>
+              <div class="conta-perfil">Transportadora{icone("chevron-down", 14, C["onBrandMuted"])}</div>
+            </div>
+          </div>
+          <div class="conta-dir">
+            {icone("bell", 20, C["onPrimary"])}
+            <span class="conta-avatar">CA</span>
+          </div>
+        </div>
+        <div class="conta-faixa">
+          <div class="conta-faixa-rot">Saldo disponível{icone("eye", 16, C["onPrimary"])}</div>
+          <div class="conta-saldo">R$ 4.280,00</div>
+        </div>
+      </div>
+      <div class="folha">
+        <div class="acoes">{"".join(acoes)}</div>
+        <div class="cartao">
+          <div class="pend-rot">A receber (pendente)</div>
+          <div class="pend-val">R$ 9.600,00</div>
+          <div class="pend-ajuda">Mensalidades de contratos ativados ficam aqui até a confirmação
+            de recebimento pela Rotta.</div>
+        </div>
+        <div>
+          {secao("Movimentações")}
+          <div class="cartao">{"".join(movimentos)}</div>
+        </div>
+      </div>
+      {barra_de_abas(ABAS_MOTORISTA, 3)}
+      {rodape_do_sistema()}
+    </div>"""
+
+
 # ---------------------------------------------------------------------------
 # Os quadros
 # ---------------------------------------------------------------------------
@@ -1054,8 +1161,13 @@ QUADROS = [
     ("O motorista só dirige", "Lista do dia, rota traçada e um toque por aluno", "escuro", tela_modo_operacional),
     ("Checklist antes de sair", "Fica salvo, viagem por viagem", "claro", tela_checklist),
     ("A frota inteira na tela", "Onde cada van está, agora", "escuro", tela_frota),
-    ("Feito para quem leva criança", "Transporte escolar, do cadastro ao pagamento", "marca", None),
+    ("O caixa da transportadora", "Saldo, a receber e cada movimentação no app", "claro", tela_carteira),
 ]
+# Eram nove, com um fecho de marca no fim. A Play Console aceita no
+# maximo OITO capturas por tipo de aparelho, entao um tinha que sair, e
+# o fecho de marca e o que menos converte: ele nao mostra o produto, e o
+# banner (`feature-graphic`) ja faz esse papel no topo da ficha. O
+# financeiro da transportadora entrou no lugar dele.
 
 
 def css_da_tela() -> str:
@@ -1313,6 +1425,45 @@ def css_da_tela() -> str:
 .campo-caixa{{border:1px solid {C['border']};border-radius:{R['lg']}px;padding:14px 16px;
   font-size:16px;background:{C['surfaceElevated']};min-height:72px}}
 
+/* carteira (AccountHeader + ContentSheet + ActionGrid + MovementRow) */
+.conta-topo{{flex:none;background:{C['brandDeep']};padding:8px 0 26px}}
+.conta-barra{{min-height:44px;display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:0 16px}}
+.conta-esq{{display:flex;align-items:center;gap:10px}}
+.conta-marca{{width:32px;height:32px;border-radius:7px}}
+.conta-tit{{font-size:17px;font-weight:700;color:{C['onPrimary']}}}
+.conta-perfil{{display:flex;align-items:center;gap:4px;font-size:12px;color:{C['onBrandMuted']}}}
+.conta-dir{{display:flex;align-items:center;gap:12px}}
+.conta-avatar{{width:36px;height:36px;border-radius:9999px;background:{C['brandBand']};
+  color:{C['onPrimary']};font-size:13px;font-weight:700;display:flex;align-items:center;
+  justify-content:center}}
+.conta-faixa{{margin:16px 16px 0;padding:16px;border-radius:{R['lg']}px;
+  background:{C['brandBand']}}}
+.conta-faixa-rot{{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;
+  color:{C['onPrimary']};opacity:.92}}
+.conta-saldo{{font-size:28px;font-weight:700;letter-spacing:-.5px;margin-top:4px;
+  color:{C['onPrimary']};font-variant-numeric:tabular-nums}}
+/* A folha sobe 26 pontos por cima do azul, como `sobreposicaoDaFolha`. */
+.folha{{flex:1;margin-top:-26px;padding:16px;display:flex;flex-direction:column;gap:16px;
+  background:{C['background']};border-radius:{R['xl']}px {R['xl']}px 0 0;overflow:hidden}}
+.acoes{{display:flex;gap:8px}}
+.acao{{flex:1;display:flex;flex-direction:column;align-items:center}}
+.acao.apagada{{opacity:.45}}
+.acao-bolha{{width:54px;height:54px;border-radius:{R['lg']}px;background:{C['primaryMuted']};
+  display:flex;align-items:center;justify-content:center}}
+.acao-rot{{font-size:12px;font-weight:600;margin-top:8px;text-align:center}}
+.pend-rot{{font-size:11px;font-weight:600;color:{C['textMuted']}}}
+.pend-val{{font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}}
+.pend-ajuda{{font-size:11px;line-height:1.45;color:{C['textMuted']}}}
+.mov{{display:flex;align-items:center;gap:12px}}
+.mov-ic{{width:38px;height:38px;display:flex;align-items:center;justify-content:center;flex:none}}
+.mov-tx{{flex:1;min-width:0}}
+.mov-tit{{font-size:14px;font-weight:600}}
+.mov-sub{{font-size:12px;color:{C['textMuted']};margin-top:2px}}
+.mov-dir{{display:flex;flex-direction:column;align-items:flex-end}}
+.mov-val{{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}}
+.mov-data{{font-size:11px;color:{C['textMuted']};margin-top:2px;font-variant-numeric:tabular-nums}}
+
 /* frota */
 .frota-contagem{{font-size:14px;color:{C['textMuted']}}}
 .frota-mapa{{height:420px;border-radius:{R['lg']}px;overflow:hidden;position:relative;flex:none}}
@@ -1324,7 +1475,7 @@ def css_da_tela() -> str:
 
 
 def quadro_html(chamada: str, apoio: str, tom: str, monta_tela) -> str:
-    escuro = tom in ("escuro", "marca")
+    escuro = tom == "escuro"
     fundo = (
         f"linear-gradient(158deg,{AZUL_MARCA} 0%,#0127AC 52%,#011C7E 100%)"
         if escuro
@@ -1372,11 +1523,6 @@ body{{width:{QUADRO_L}px;height:{QUADRO_A}px;background:{fundo};color:{cor_texto
 .janela{{width:{JANELA_L}px;height:{JANELA_A}px;border-radius:43px;overflow:hidden;
   background:#FFF;position:relative}}
 .escala{{transform:scale({MOLDURA_ESCALA});transform-origin:top left}}
-.marca-centro{{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;padding:0 90px}}
-.simbolo{{width:300px;height:300px;border-radius:68px;margin-bottom:64px;
-  box-shadow:0 30px 80px rgba(0,0,0,.35)}}
-.assinatura{{width:300px;margin-top:92px;opacity:.9}}
 </style></head><body><div class="selo"></div>{corpo}</body></html>"""
 
 
@@ -1412,15 +1558,7 @@ def quadro_faixa_html(
         else f'<div class="rota-linha" style="left:{no_x + 17}px;right:0"></div>'
     )
 
-    if monta_tela is None:
-        corpo = f"""
-        <div class="faixa-marca">
-          <img src="data:image/png;base64,{b64(SIMBOLO)}">
-          <p class="faixa-chamada">{chamada}</p>
-          <p class="faixa-apoio">{apoio}</p>
-        </div>"""
-    else:
-        corpo = f"""
+    corpo = f"""
         <div class="faixa-topo">
           <p class="faixa-chamada">{chamada}</p>
           <p class="faixa-apoio">{apoio}</p>
@@ -1453,11 +1591,6 @@ body{{width:{QUADRO_L}px;height:{QUADRO_A}px;overflow:hidden;position:relative;
   width:{FAIXA_CARD_L}px;height:{QUADRO_A - FAIXA_CARD_TOPO}px;border-radius:40px 40px 0 0;
   overflow:hidden;background:#FFFFFF;box-shadow:0 30px 90px rgba(2,10,30,.6)}}
 .faixa-escala{{transform:scale({FAIXA_ESCALA});transform-origin:top left}}
-.faixa-marca{{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;
-  justify-content:center;padding:0 110px;text-align:center}}
-.faixa-marca img{{width:280px;height:280px;border-radius:64px;margin-bottom:60px;
-  box-shadow:0 30px 80px rgba(2,10,30,.6)}}
-.faixa-marca .faixa-apoio{{max-width:720px}}
 </style></head><body>
 {linha_esq}{linha_dir}<div class="rota-no" style="left:{no_x - 15}px"></div>
 {corpo}</body></html>"""
@@ -1550,9 +1683,12 @@ def render(html: str, destino: Path, largura: int, altura: int) -> None:
     )
     temporario.unlink()
 
+    # Recorte e conversao SEMPRE, mesmo quando a medida ja bate: a Play
+    # Console exige "JPEG ou PNG de 24 bits (sem alfa)", e o screenshot do
+    # Chromium sai em RGBA. Deixar isso dependendo de um `if` e deixar a
+    # recusa depender de sorte.
     with Image.open(destino) as bruto:
-        if bruto.size != (largura, altura):
-            bruto.convert("RGB").crop((0, 0, largura, altura)).save(destino, optimize=True)
+        bruto.convert("RGB").crop((0, 0, largura, altura)).save(destino, optimize=True)
 
 
 def folha_de_contato(saida: Path) -> None:
@@ -1645,16 +1781,74 @@ def gerar(modelo: str, saida: Path) -> None:
     print(f"{modelo}/contato.png  conferencia do conjunto, nao sobe para a loja")
 
 
+# Regras da ficha, da pagina de ajuda da Play Console (conferida em
+# 19/10/2026): no maximo 8 capturas por tipo de aparelho, JPEG ou PNG de
+# 24 bits sem alfa, menor lado >= 320 e maior <= 3840, e o maior lado nao
+# pode passar do DOBRO do menor. Banner de 1024x500.
+MAXIMO_DE_CAPTURAS = 8
+LADO_MINIMO, LADO_MAXIMO = 320, 3840
+TAMANHO_MAXIMO_MB = 8
+
+
+def conferir(saida: Path) -> bool:
+    """Confere as pecas contra as regras da Play Console antes de entregar.
+
+    Existe para que a resposta a "vai dar erro no console?" seja uma
+    verificacao, e nao uma promessa. Qualquer linha fora da regra sai
+    marcada e o script termina com codigo de erro.
+    """
+    from PIL import Image
+
+    print("\nConferencia das regras da Play Console")
+    tudo_certo = True
+    capturas = sorted(saida.glob("frame-*.png"))
+
+    if len(capturas) > MAXIMO_DE_CAPTURAS:
+        print(f"  FALHA  {len(capturas)} capturas, o maximo e {MAXIMO_DE_CAPTURAS}")
+        tudo_certo = False
+
+    for arquivo in capturas + [saida / "feature-graphic.png"]:
+        with Image.open(arquivo) as imagem:
+            largura, altura = imagem.size
+            modo = imagem.mode
+        megabytes = arquivo.stat().st_size / 1_000_000
+        menor, maior = min(largura, altura), max(largura, altura)
+        banner = arquivo.name == "feature-graphic.png"
+
+        problemas = []
+        if modo != "RGB":
+            problemas.append(f"canal alfa ({modo})")
+        if megabytes > TAMANHO_MAXIMO_MB:
+            problemas.append(f"{megabytes:.1f} MB")
+        if banner:
+            if (largura, altura) != (1024, 500):
+                problemas.append("o banner tem que ser 1024x500")
+        else:
+            if menor < LADO_MINIMO or maior > LADO_MAXIMO:
+                problemas.append(f"lado fora de {LADO_MINIMO}..{LADO_MAXIMO}")
+            if maior > menor * 2:
+                problemas.append("o maior lado passa do dobro do menor")
+
+        marca = "ok    " if not problemas else "FALHA "
+        tudo_certo = tudo_certo and not problemas
+        detalhe = "; ".join(problemas) or f"{largura}x{altura} {modo} {megabytes:.2f} MB"
+        print(f"  {marca} {arquivo.parent.name}/{arquivo.name:<20} {detalhe}")
+
+    return tudo_certo
+
+
 def main() -> int:
     raiz = Path(sys.argv[1] if len(sys.argv) > 1 else "play-store").resolve()
     escolhido = sys.argv[2] if len(sys.argv) > 2 else "ambos"
     modelos = ["moldura", "faixa"] if escolhido == "ambos" else [escolhido]
 
+    tudo_certo = True
     for modelo in modelos:
         gerar(modelo, raiz / modelo)
+        tudo_certo = conferir(raiz / modelo) and tudo_certo
 
     print(f"\n{len(modelos)} jogo(s) de {len(QUADROS) + 1} pecas em {raiz}/")
-    return 0
+    return 0 if tudo_certo else 1
 
 
 if __name__ == "__main__":
