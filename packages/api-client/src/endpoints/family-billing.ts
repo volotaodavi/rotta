@@ -93,11 +93,32 @@ export interface ListContractInvoicesResult {
 export interface CompanyPaymentAccount {
   id: string;
   companyId: string;
-  status: "PENDENTE" | "ATIVA" | "RECUSADA";
-  /** A subconta Asaas do transportador — o destino do split. `null` enquanto a Asaas não libera. */
+  status: "PENDENTE" | "EM_ANALISE" | "ATIVA" | "RECUSADA";
+  /** A subconta Asaas do transportador — o destino do split. `null` enquanto ela não existir. */
   asaasWalletId: string | null;
+  /** O `id` da subconta, para conferir no painel da Asaas. */
+  asaasAccountId: string | null;
+  /** Para onde o transportador conclui o cadastro, quando a Asaas devolve o link. */
+  asaasOnboardingUrl: string | null;
+  /**
+   * Se dá para emitir cobrança em nome da subconta.
+   *
+   * É um booleano, e não a chave: a chave de API da subconta fica
+   * cifrada no servidor e NUNCA sai em resposta de API. A tela precisa
+   * saber se pode, não qual é.
+   */
+  podeEmitirPelaSubconta: boolean;
   chavePix: string | null;
+  /** Quem figura como emissor: a Rotta, ou a subconta do transportador (único modelo com custódia). */
+  emissorDaCobranca: "ROTTA" | "SUBCONTA";
+  custodiaAtiva: boolean;
+  custodiaDiasParaLiberar: number | null;
   taxaDaPlataformaBps: number;
+  /** Taxa da Rotta por meio, em pontos-base (1% = 100). */
+  taxaPixBps: number;
+  taxaBoletoBps: number;
+  taxaCreditoVistaBps: number;
+  taxaCreditoParceladoBps: number;
   observacoes: string | null;
 }
 

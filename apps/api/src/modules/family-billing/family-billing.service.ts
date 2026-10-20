@@ -16,6 +16,10 @@ import {
   FAMILY_INVOICE_ID_PREFIX,
 } from "./family-billing.constants";
 import {
+  toContaDeRecebimentoResponse,
+  type ContaDeRecebimentoResponse,
+} from "./mappers/company-payment-account.mapper";
+import {
   FATURA_EM_ABERTO,
   toContractInvoiceResponseDto,
   toListContractInvoicesResponseDto,
@@ -33,7 +37,7 @@ import type {
 } from "./repositories/company-payment-account.repository";
 import type { ContractInvoiceRepository } from "./repositories/contract-invoice.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { CompanyPaymentAccount, ContractInvoiceStatus } from "@prisma/client";
+import type { ContractInvoiceStatus } from "@prisma/client";
 
 import asaasConfig from "@/config/asaas.config";
 import { AsaasClientService } from "@/modules/billing/asaas-client.service";
@@ -485,8 +489,19 @@ export class FamilyBillingService {
   // Conta de recebimento do transportador
   // ---------------------------------------------------------------------
 
-  async getContaDeRecebimento(actor: AuthenticatedUser): Promise<CompanyPaymentAccount | null> {
-    return this.paymentAccountRepository.findByCompanyId(this.companyIdDoAtor(actor));
+  /**
+   * Passa pelo mapeador, e não devolve a linha do banco.
+   *
+   * Desde 20/10/2026 a tabela guarda `asaasApiKeyCifrada`, a chave de
+   * API da subconta do transportador. Entregar o objeto cru punha essa
+   * chave na resposta HTTP, contra o compromisso de "nunca em log nem
+   * em resposta de API" assumido quando o fundador autorizou guardá-la.
+   */
+  async getContaDeRecebimento(
+    actor: AuthenticatedUser,
+  ): Promise<ContaDeRecebimentoResponse | null> {
+    const conta = await this.paymentAccountRepository.findByCompanyId(this.companyIdDoAtor(actor));
+    return conta ? toContaDeRecebimentoResponse(conta) : null;
   }
 
   /**
@@ -499,10 +514,12 @@ export class FamilyBillingService {
   async salvarContaDeRecebimento(
     actor: AuthenticatedUser,
     dados: { chavePix: string },
-  ): Promise<CompanyPaymentAccount> {
+  ): Promise<ContaDeRecebimentoResponse> {
     const companyId = this.companyIdDoAtor(actor);
     const update: UpsertCompanyPaymentAccountData = { chavePix: dados.chavePix };
-    return this.paymentAccountRepository.upsert(companyId, update);
+    return toContaDeRecebimentoResponse(
+      await this.paymentAccountRepository.upsert(companyId, update),
+    );
   }
 
   private companyIdDoAtor(actor: AuthenticatedUser): string {

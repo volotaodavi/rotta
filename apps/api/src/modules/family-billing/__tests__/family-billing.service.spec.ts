@@ -136,6 +136,68 @@ describe("FamilyBillingService", () => {
     );
   });
 
+  /*
+    Este teste existe por causa de um defeito real, criado e consertado
+    em 20/10/2026: a tabela ganhou `asaasApiKeyCifrada` e o endpoint
+    devolvia a linha do banco inteira, pondo a chave de API da subconta
+    do transportador na resposta HTTP.
+
+    Cifrada nao e desculpa, porque a chave de cifra mora no mesmo
+    servidor. O compromisso assumido quando o fundador autorizou guardar
+    chave de terceiro foi "nunca em log nem em resposta de API", e e
+    isso que este teste guarda.
+  */
+  describe("a chave da subconta nunca sai na resposta", () => {
+    const contaComChave = {
+      id: "conta-1",
+      companyId: "empresa-1",
+      status: "ATIVA",
+      asaasWalletId: "wallet-1",
+      asaasAccountId: "acc_1",
+      asaasApiKeyCifrada: "iv:tag:SEGREDO",
+      asaasOnboardingUrl: null,
+      chavePix: "chave@pix",
+      emissorDaCobranca: "ROTTA",
+      custodiaAtiva: false,
+      custodiaDiasParaLiberar: null,
+      taxaDaPlataformaBps: 0,
+      taxaPixBps: 129,
+      taxaBoletoBps: 129,
+      taxaCreditoVistaBps: 99,
+      taxaCreditoParceladoBps: 49,
+      observacoes: null,
+    };
+
+    const atorDaEmpresa = {
+      id: "user-1",
+      role: Role.EMPRESA,
+      tenantId: "empresa-1",
+    } as AuthenticatedUser;
+
+    it("ao ler a conta de recebimento", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(contaComChave as never);
+
+      const resposta = await service.getContaDeRecebimento(atorDaEmpresa);
+
+      expect(JSON.stringify(resposta)).not.toContain("SEGREDO");
+      expect(resposta).not.toHaveProperty("asaasApiKeyCifrada");
+      /* O que a tela precisa saber e se DA para emitir pela subconta,
+         e para isso nao precisa ver a chave. */
+      expect(resposta?.podeEmitirPelaSubconta).toBe(true);
+    });
+
+    it("ao salvar a chave Pix", async () => {
+      paymentAccountRepository.upsert.mockResolvedValue(contaComChave as never);
+
+      const resposta = await service.salvarContaDeRecebimento(atorDaEmpresa, {
+        chavePix: "nova@pix",
+      });
+
+      expect(JSON.stringify(resposta)).not.toContain("SEGREDO");
+      expect(resposta).not.toHaveProperty("asaasApiKeyCifrada");
+    });
+  });
+
   it("os tokens de injecao existem (o modulo nao sobe sem eles)", () => {
     expect(CONTRACT_INVOICE_REPOSITORY).toBeDefined();
     expect(COMPANY_PAYMENT_ACCOUNT_REPOSITORY).toBeDefined();
@@ -526,6 +588,14 @@ describe("FamilyBillingService", () => {
     });
 
     it("a chave Pix é o único dado que o transportador escreve na conta de recebimento", async () => {
+      /* O `upsert` passou a ter o retorno mapeado, então o dublê precisa
+         devolver uma conta de verdade em vez de `undefined`. */
+      paymentAccountRepository.upsert.mockResolvedValue({
+        id: "conta-1",
+        companyId: "company-1",
+        status: "ATIVA",
+      } as never);
+
       await service.salvarContaDeRecebimento(empresaActor, { chavePix: "11999998888" });
 
       expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
