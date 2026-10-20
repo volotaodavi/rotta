@@ -247,14 +247,42 @@ export interface AsaasListEnvelope<T> {
 }
 
 /**
+ * Situação cadastral de uma conta, como chega nos eventos
+ * `ACCOUNT_STATUS_*` (`docs.asaas.com/docs/account-status-events`,
+ * conferido em 20/10/2026).
+ *
+ * Os quatro campos são texto cru, e não uniões fechadas, de propósito:
+ * o contrato é da Asaas, e valor novo num caminho de webhook deve virar
+ * aviso no log, nunca erro de runtime. Os valores documentados hoje são
+ * `APPROVED`, `AWAITING_APPROVAL`, `PENDING` e `REJECTED`.
+ */
+export interface AsaasAccountStatus {
+  id: string;
+  /** A aprovação da conta como um todo — a única que move o estado na Rotta. */
+  general?: string;
+  /** Etapas da aprovação geral, úteis para diagnóstico, não para decidir estado. */
+  commercialInfo?: string;
+  bankAccountInfo?: string;
+  documentation?: string;
+}
+
+/**
  * Envelope de webhook da Asaas (`docs.asaas.com/docs/webhook`) —
  * eventos de assinatura/pagamento chegam com o mesmo formato
  * `{event, payment}` (assinatura não manda um objeto próprio de evento,
  * o `payment.subscription` é o vínculo de volta pra ela).
+ *
+ * Eventos de situação de conta (`ACCOUNT_STATUS_*`) chegam sem
+ * `payment`, com `account` e `accountStatus`. Em `account.id` vem o `id`
+ * da conta cuja situação mudou, que para uma subconta nossa é o
+ * `CompanyPaymentAccount.asaasAccountId`; `ownerId` é a conta pai,
+ * `null` quando o evento é da própria conta principal.
  */
 export interface AsaasWebhookEnvelope {
   event: string;
   payment?: AsaasPayment;
+  account?: { id: string; ownerId?: string | null };
+  accountStatus?: AsaasAccountStatus;
 }
 
 /**

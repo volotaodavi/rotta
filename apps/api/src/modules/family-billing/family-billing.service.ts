@@ -37,11 +37,12 @@ import type {
 } from "./repositories/company-payment-account.repository";
 import type { ContractInvoiceRepository } from "./repositories/contract-invoice.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { ContractInvoiceStatus } from "@prisma/client";
+import type { CompanyPaymentAccountStatus, ContractInvoiceStatus } from "@prisma/client";
 
 import asaasConfig from "@/config/asaas.config";
 import { AsaasClientService } from "@/modules/billing/asaas-client.service";
 import { AsaasSubcontasService } from "@/modules/billing/asaas-subcontas.service";
+import { CompaniesService } from "@/modules/companies/companies.service";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { WalletService } from "@/modules/wallet/wallet.service";
@@ -53,6 +54,37 @@ export interface ResultadoDaGeracao {
   faturasCriadas: number;
   falhas: number;
 }
+
+/**
+ * O que o formulário de subconta traz. Tudo opcional menos o
+ * faturamento: o resto vem do cadastro da transportadora.
+ */
+export interface DadosDaSubconta {
+  faturamentoMensalCentavos: number;
+  email?: string;
+  telefone?: string;
+}
+
+/**
+ * `accountStatus.general` do Asaas traduzido para o estado da conta de
+ * recebimento.
+ *
+ * Os quatro valores vêm da documentação de eventos de situação da conta,
+ * conferida em 20/10/2026: `APPROVED`, `AWAITING_APPROVAL`, `PENDING` e
+ * `REJECTED`.
+ *
+ * `PENDING` e `AWAITING_APPROVAL` caem no mesmo `EM_ANALISE` de
+ * propósito. A diferença entre eles é de quem está esperando quem — num
+ * cadastro que a Rotta preencheu inteiro, pelos dados que já tinha, não
+ * há ação do transportador que os distinga, e inventar dois estados na
+ * tela seria fingir uma escolha que ele não tem.
+ */
+const SITUACAO_GERAL_DA_SUBCONTA: Record<string, CompanyPaymentAccountStatus | undefined> = {
+  APPROVED: "ATIVA",
+  AWAITING_APPROVAL: "EM_ANALISE",
+  PENDING: "EM_ANALISE",
+  REJECTED: "RECUSADA",
+};
 
 /**
  * Primeiro dia do mês, em UTC — a chave de competência. UTC de
@@ -131,6 +163,10 @@ export class FamilyBillingService {
     private readonly studentsService: StudentsService,
     private readonly usersService: UsersService,
     private readonly walletService: WalletService,
+    /* Só para a subconta: é de `Company` que saem razão social,
+       documento e endereço do titular, e é `CompaniesService` que decide
+       se este ator pode mexer nesta empresa. */
+    private readonly companiesService: CompaniesService,
   ) {}
 
   // ---------------------------------------------------------------------
@@ -505,6 +541,22 @@ export class FamilyBillingService {
   }
 
   /**
+   * A mesma conta, pelo painel do Admin Rotta.
+   *
+   * `findByIdOrThrow` primeiro, e não só por cortesia: é ele que diz
+   * "empresa não encontrada" em vez de devolver `null` como se a
+   * transportadora existisse e não tivesse conta.
+   */
+  async getContaDeRecebimentoDaEmpresa(
+    companyId: string,
+    actor: AuthenticatedUser,
+  ): Promise<ContaDeRecebimentoResponse | null> {
+    await this.companiesService.findByIdOrThrow(companyId, actor);
+    const conta = await this.paymentAccountRepository.findByCompanyId(companyId);
+    return conta ? toContaDeRecebimentoResponse(conta) : null;
+  }
+
+  /**
    * O transportador informa a chave Pix de saque. `asaasWalletId` e
    * `taxaDaPlataformaBps` NÃO entram por aqui de propósito: subconta e
    * comissão são decisões da Rotta, não do cliente, e um transportador
@@ -519,6 +571,151 @@ export class FamilyBillingService {
     const update: UpsertCompanyPaymentAccountData = { chavePix: dados.chavePix };
     return toContaDeRecebimentoResponse(
       await this.paymentAccountRepository.upsert(companyId, update),
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // Subconta Asaas do transportador
+  // ---------------------------------------------------------------------
+
+  /** A transportadora cria a própria subconta, pelo painel dela. */
+  async criarSubcontaDaPropriaEmpresa(
+    actor: AuthenticatedUser,
+    dados: DadosDaSubconta,
+  ): Promise<ContaDeRecebimentoResponse> {
+    return this.criarSubconta(this.companyIdDoAtor(actor), actor, dados);
+  }
+
+  /**
+   * O Admin Rotta cria a subconta PELA transportadora.
+   *
+   * Existe porque o fundador pediu, em 20/10/2026, poder ajudar o
+   * transportador na hora de montar a cobrança: "consigo fazer isso
+   * dentro do painel do admin como admin master?". Quem decide se este
+   * ator pode mexer nesta empresa é `CompaniesService`, como em todo
+   * endpoint por empresa — este método não julga papel por conta
+   * própria.
+   */
+  async criarSubcontaParaEmpresa(
+    companyId: string,
+    actor: AuthenticatedUser,
+    dados: DadosDaSubconta,
+  ): Promise<ContaDeRecebimentoResponse> {
+    return this.criarSubconta(companyId, actor, dados);
+  }
+
+  /**
+   * Cria a subconta no Asaas e grava, numa operação, tudo o que ela
+   * devolveu.
+   *
+   * ## Por que recusa a segunda
+   *
+   * Porque a chave de API só aparece na resposta da criação, e não
+   * existe endpoint para pedir de novo. Criar a segunda subconta de uma
+   * transportadora que já tem uma deixaria a primeira órfã no Asaas,
+   * possivelmente já com saldo, e não há desfazer. Então a checagem vem
+   * antes da chamada, e a mensagem diz o que fazer.
+   *
+   * ## Por que o formulário tem um campo só
+   *
+   * Os outros onze já estão no cadastro da transportadora, conferidos na
+   * Receita quando ela entrou. É isso que faz o transportador nunca
+   * precisar abrir o Asaas: a conta dele nasce do que a Rotta já sabe.
+   */
+  private async criarSubconta(
+    companyId: string,
+    actor: AuthenticatedUser,
+    dados: DadosDaSubconta,
+  ): Promise<ContaDeRecebimentoResponse> {
+    const existente = await this.paymentAccountRepository.findByCompanyId(companyId);
+    if (existente?.asaasAccountId) {
+      throw new BadRequestException(
+        "Esta transportadora já tem subconta no Asaas. Não é possível criar uma segunda: a chave de acesso só aparece na criação, e a primeira ficaria inacessível.",
+      );
+    }
+
+    const empresa = await this.companiesService.findByIdOrThrow(companyId, actor);
+
+    const subconta = await this.subcontas.criarSubconta({
+      /* Razão social, e não nome fantasia: para o Asaas este é o
+         titular de uma conta de pagamento, e o nome tem que bater com o
+         documento. */
+      nome: empresa.razaoSocial,
+      email: dados.email ?? empresa.email,
+      cpfCnpj: empresa.cpfCnpj,
+      telefone: dados.telefone ?? empresa.telefone,
+      endereco: empresa.endereco,
+      numero: empresa.numero,
+      complemento: empresa.complemento ?? undefined,
+      bairro: empresa.bairro,
+      cep: empresa.cep,
+      faturamentoMensalCentavos: dados.faturamentoMensalCentavos,
+    });
+
+    /* `EM_ANALISE`, nunca `ATIVA`: a conta nasce aguardando a análise do
+       Asaas, que leva até dois dias úteis e termina chegando pelo
+       webhook de situação da conta. Dizer "ativa" aqui seria prometer
+       recebimento que ainda não existe. */
+    const conta = await this.paymentAccountRepository.upsert(companyId, {
+      status: "EM_ANALISE",
+      asaasAccountId: subconta.asaasAccountId,
+      asaasWalletId: subconta.asaasWalletId,
+      asaasApiKeyCifrada: subconta.asaasApiKeyCifrada,
+      asaasOnboardingUrl: subconta.asaasOnboardingUrl,
+    });
+
+    this.logger.log(
+      `Subconta Asaas ${subconta.asaasAccountId} criada para a empresa ${companyId} por ${actor.role} ${actor.sub}.`,
+    );
+
+    return toContaDeRecebimentoResponse(conta);
+  }
+
+  /**
+   * O Asaas avisou que a situação de uma subconta mudou.
+   *
+   * Chega do webhook, sem ator e sem `companyId`: o único identificador
+   * do evento é o `id` da subconta, e é por ele que a conta é
+   * encontrada, fora do tenant.
+   *
+   * Só a aprovação geral (`accountStatus.general`) move o estado. As
+   * outras três situações que o evento traz (documentação, dados
+   * comerciais, conta bancária) são etapas dela, e reagir a cada uma
+   * faria o estado oscilar: a conta ficaria "recusada" porque falta um
+   * documento, e voltaria a "em análise" no evento seguinte.
+   *
+   * Evento desconhecido não mexe em nada. O Asaas acrescenta eventos sem
+   * avisar, e mudar o estado de uma conta de recebimento por um nome que
+   * ninguém leu é pior do que não mudar.
+   */
+  async aplicarSituacaoDaSubconta(dados: {
+    asaasAccountId: string;
+    situacaoGeral: string;
+    eventoDaAsaas: string;
+  }): Promise<void> {
+    const conta = await this.paymentAccountRepository.findByAsaasAccountIdAcrossTenants(
+      dados.asaasAccountId,
+    );
+    if (!conta) {
+      this.logger.warn(
+        `Webhook de situacao da conta para a subconta ${dados.asaasAccountId}, que nao pertence a nenhuma transportadora da Rotta (evento "${dados.eventoDaAsaas}"). Ignorado.`,
+      );
+      return;
+    }
+
+    const status = SITUACAO_GERAL_DA_SUBCONTA[dados.situacaoGeral];
+    if (!status) {
+      this.logger.warn(
+        `Situacao geral desconhecida "${dados.situacaoGeral}" na subconta ${dados.asaasAccountId} (evento "${dados.eventoDaAsaas}"). Estado da conta mantido em ${conta.status}.`,
+      );
+      return;
+    }
+
+    if (conta.status === status) return;
+
+    await this.paymentAccountRepository.upsertAcrossTenants(conta.companyId, { status });
+    this.logger.log(
+      `Conta de recebimento da empresa ${conta.companyId}: ${conta.status} -> ${status} (evento "${dados.eventoDaAsaas}").`,
     );
   }
 

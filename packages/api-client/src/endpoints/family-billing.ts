@@ -122,6 +122,25 @@ export interface CompanyPaymentAccount {
   observacoes: string | null;
 }
 
+/**
+ * O que o formulário de subconta manda.
+ *
+ * Um campo obrigatório, e não doze: razão social, documento, endereço e
+ * contato já estão no cadastro da transportadora, conferidos na Receita
+ * quando ela entrou. O faturamento mensal é o único que a Rotta nunca
+ * coletou, e o único que o Asaas exige.
+ *
+ * `walletId`, `accountId` e chave de API não entram aqui de propósito:
+ * vêm da resposta do Asaas, nunca do cliente.
+ */
+export interface CriarSubcontaAsaasInput {
+  faturamentoMensalCentavos: number;
+  /** Só quando o financeiro é outro e-mail: é para cá que o Asaas manda os avisos da conta. */
+  email?: string;
+  /** Só quando o financeiro é outro celular. Dígitos com DDD. */
+  telefone?: string;
+}
+
 export function createFamilyBillingEndpoints(apiClient: ApiClient) {
   return {
     /** Quanto a família deve, quando vence e como está cada fatura — escopo pelo ALUNO. */
@@ -169,6 +188,48 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
         await apiClient.request<ApiEnvelope<CompanyPaymentAccount>>(
           "/family-billing/conta-de-recebimento",
           { method: "PUT", body: input },
+        )
+      ).data,
+
+    /**
+     * Abre a conta de recebimento da transportadora no Asaas, sem ela
+     * sair da Rotta.
+     *
+     * O corpo pede um campo porque os outros já estão no cadastro da
+     * transportadora. A conta nasce `EM_ANALISE` e o estado muda sozinho
+     * quando o Asaas termina a análise. Chamar de novo com subconta já
+     * criada é recusado: a chave de acesso só aparece na criação, e a
+     * primeira ficaria inacessível.
+     */
+    criarSubcontaAsaas: async (input: CriarSubcontaAsaasInput): Promise<CompanyPaymentAccount> =>
+      (
+        await apiClient.request<ApiEnvelope<CompanyPaymentAccount>>(
+          "/family-billing/conta-de-recebimento/subconta",
+          { method: "POST", body: input },
+        )
+      ).data,
+
+    // --- Admin Rotta ---
+
+    /** A conta de recebimento de uma transportadora, pelo painel do Admin. */
+    getContaDeRecebimentoDaEmpresa: async (
+      companyId: string,
+    ): Promise<CompanyPaymentAccount | null> =>
+      (
+        await apiClient.request<ApiEnvelope<CompanyPaymentAccount | null>>(
+          `/family-billing/admin/companies/${companyId}/conta-de-recebimento`,
+        )
+      ).data,
+
+    /** O mesmo que `criarSubcontaAsaas`, mas PELA transportadora, do painel do Admin. */
+    criarSubcontaAsaasParaEmpresa: async (
+      companyId: string,
+      input: CriarSubcontaAsaasInput,
+    ): Promise<CompanyPaymentAccount> =>
+      (
+        await apiClient.request<ApiEnvelope<CompanyPaymentAccount>>(
+          `/family-billing/admin/companies/${companyId}/subconta`,
+          { method: "POST", body: input },
         )
       ).data,
   };

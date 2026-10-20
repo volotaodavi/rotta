@@ -10,6 +10,7 @@ import {
   createClientErrorsEndpoints,
   createCompaniesEndpoints,
   createCompanyServiceAreasEndpoints,
+  createFamilyBillingEndpoints,
   createSchoolPortalContasEndpoints,
   createGeoEndpoints,
   createGpsEndpoints,
@@ -76,6 +77,9 @@ export const authApi = createAuthEndpoints(apiClient);
 export const clientErrorsApi = createClientErrorsEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);
 export const companyServiceAreasApi = createCompanyServiceAreasEndpoints(apiClient);
+/* Só os endpoints de admin: a conta de recebimento de UMA transportadora
+   e a criação da subconta por ela. O painel nunca lê fatura de família. */
+export const familyBillingApi = createFamilyBillingEndpoints(apiClient);
 export const schoolPortalContasApi = createSchoolPortalContasEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
 export const schoolsApi = createSchoolsEndpoints(apiClient);

@@ -13,6 +13,8 @@ import type {
 } from "../repositories/contract-invoice.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AsaasClientService } from "@/modules/billing/asaas-client.service";
+import type { AsaasSubcontasService } from "@/modules/billing/asaas-subcontas.service";
+import type { CompaniesService } from "@/modules/companies/companies.service";
 import type { StudentsService } from "@/modules/students/students.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { WalletService } from "@/modules/wallet/wallet.service";
@@ -71,7 +73,8 @@ describe("FamilyBillingService", () => {
   /* Só os dois métodos que este serviço chama: o dublê não precisa
      fingir a classe inteira, e declarar menos deixa o teste dizer o que
      realmente depende. */
-  let subcontas: Pick<AsaasSubcontasService, "montarSplit" | "chaveDaSubconta">;
+  let subcontas: Pick<AsaasSubcontasService, "montarSplit" | "chaveDaSubconta" | "criarSubconta">;
+  let companiesService: Pick<CompaniesService, "findByIdOrThrow">;
   let invoiceRepository: jest.Mocked<ContractInvoiceRepository>;
   let paymentAccountRepository: jest.Mocked<CompanyPaymentAccountRepository>;
   let asaasClient: jest.Mocked<AsaasClientService>;
@@ -95,6 +98,8 @@ describe("FamilyBillingService", () => {
       findByCompanyId: jest.fn(),
       upsert: jest.fn(),
       findByCompanyIdAcrossTenants: jest.fn().mockResolvedValue(null),
+      findByAsaasAccountIdAcrossTenants: jest.fn().mockResolvedValue(null),
+      upsertAcrossTenants: jest.fn(),
     };
     asaasClient = {
       isConfigured: jest.fn().mockReturnValue(true),
@@ -122,6 +127,25 @@ describe("FamilyBillingService", () => {
     subcontas = {
       montarSplit: jest.fn().mockReturnValue(undefined),
       chaveDaSubconta: jest.fn(),
+      criarSubconta: jest.fn(),
+    };
+
+    /* O cadastro da transportadora é a fonte dos dados do titular da
+       subconta: é por isso que o formulário pede um campo só. */
+    companiesService = {
+      findByIdOrThrow: jest.fn().mockResolvedValue({
+        id: "company-1",
+        razaoSocial: "Transportes Lima LTDA",
+        nomeFantasia: "Transportes Lima",
+        cpfCnpj: "12345678000190",
+        email: "contato@lima.com.br",
+        telefone: "21999990000",
+        cep: "24900000",
+        endereco: "Avenida Roberto Silveira",
+        numero: "1180",
+        complemento: null,
+        bairro: "Centro",
+      }),
     };
 
     service = new FamilyBillingService(
@@ -133,6 +157,7 @@ describe("FamilyBillingService", () => {
       studentsService,
       usersService,
       walletService,
+      companiesService as CompaniesService,
     );
   });
 
@@ -601,6 +626,260 @@ describe("FamilyBillingService", () => {
       expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
         chavePix: "11999998888",
       });
+    });
+  });
+
+  /*
+    O que estes testes guardam e a conta de recebimento do
+    transportador: criar a segunda subconta perde a primeira para
+    sempre, e gravar menos do que o Asaas devolveu perde a chave, que
+    tambem nao tem segunda chance.
+  */
+  describe("criarSubcontaDaPropriaEmpresa", () => {
+    const subcontaCriada = {
+      asaasAccountId: "acc_novo",
+      asaasWalletId: "wallet_novo",
+      asaasApiKeyCifrada: "iv:tag:cifra",
+      asaasOnboardingUrl: null,
+    };
+
+    beforeEach(() => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(null);
+      (subcontas.criarSubconta as jest.Mock).mockResolvedValue(subcontaCriada);
+      paymentAccountRepository.upsert.mockResolvedValue({
+        id: "conta-1",
+        companyId: "company-1",
+        status: "EM_ANALISE",
+        ...subcontaCriada,
+      } as never);
+    });
+
+    it("grava numa operacao tudo o que o Asaas devolveu, e nasce EM_ANALISE", async () => {
+      await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
+        faturamentoMensalCentavos: 450_000,
+      });
+
+      expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
+        status: "EM_ANALISE",
+        ...subcontaCriada,
+      });
+    });
+
+    it("o formulario pede um campo, o resto vem do cadastro da transportadora", async () => {
+      await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
+        faturamentoMensalCentavos: 450_000,
+      });
+
+      expect(subcontas.criarSubconta).toHaveBeenCalledWith({
+        nome: "Transportes Lima LTDA",
+        email: "contato@lima.com.br",
+        cpfCnpj: "12345678000190",
+        telefone: "21999990000",
+        endereco: "Avenida Roberto Silveira",
+        numero: "1180",
+        complemento: undefined,
+        bairro: "Centro",
+        cep: "24900000",
+        faturamentoMensalCentavos: 450_000,
+      });
+    });
+
+    it("razao social, e nao nome fantasia: para o Asaas o nome tem que bater com o documento", async () => {
+      await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
+        faturamentoMensalCentavos: 450_000,
+      });
+
+      expect(subcontas.criarSubconta).toHaveBeenCalledWith(
+        expect.objectContaining({ nome: "Transportes Lima LTDA" }),
+      );
+    });
+
+    it("o e-mail do financeiro, quando informado, vence o da transportadora", async () => {
+      await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
+        faturamentoMensalCentavos: 450_000,
+        email: "financeiro@lima.com.br",
+        telefone: "21988887777",
+      });
+
+      expect(subcontas.criarSubconta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "financeiro@lima.com.br",
+          telefone: "21988887777",
+        }),
+      );
+    });
+
+    /*
+      A chave de API da subconta so aparece na resposta da criacao, e
+      nao ha endpoint para pedir de novo. Criar a segunda deixaria a
+      primeira orfa no Asaas, possivelmente com saldo, sem desfazer.
+    */
+    it("recusa a segunda subconta, antes de chamar o Asaas", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue({
+        id: "conta-1",
+        companyId: "company-1",
+        asaasAccountId: "acc_ja_existe",
+      } as never);
+
+      await expect(
+        service.criarSubcontaDaPropriaEmpresa(empresaActor, { faturamentoMensalCentavos: 450_000 }),
+      ).rejects.toThrow(BadRequestException);
+      expect(subcontas.criarSubconta).not.toHaveBeenCalled();
+    });
+
+    it("conta de recebimento sem subconta nao conta como subconta existente", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue({
+        id: "conta-1",
+        companyId: "company-1",
+        asaasAccountId: null,
+        chavePix: "11999998888",
+      } as never);
+
+      await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
+        faturamentoMensalCentavos: 450_000,
+      });
+
+      expect(subcontas.criarSubconta).toHaveBeenCalled();
+    });
+
+    it("a resposta passa pelo mapeador: nunca a chave", async () => {
+      const resposta = await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
+        faturamentoMensalCentavos: 450_000,
+      });
+
+      expect(JSON.stringify(resposta)).not.toContain("iv:tag:cifra");
+      expect(resposta.podeEmitirPelaSubconta).toBe(true);
+    });
+
+    it("só a transportadora cria a própria: outro papel é recusado antes de tudo", async () => {
+      await expect(
+        service.criarSubcontaDaPropriaEmpresa(responsavelActor, {
+          faturamentoMensalCentavos: 450_000,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(subcontas.criarSubconta).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("criarSubcontaParaEmpresa (Admin Rotta)", () => {
+    it("quem decide se o ator pode mexer nesta empresa e o CompaniesService", async () => {
+      const naoAutorizado = new ForbiddenException("Sem acesso a esta empresa.");
+      (companiesService.findByIdOrThrow as jest.Mock).mockRejectedValue(naoAutorizado);
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(null);
+
+      await expect(
+        service.criarSubcontaParaEmpresa("company-9", empresaActor, {
+          faturamentoMensalCentavos: 450_000,
+        }),
+      ).rejects.toThrow(ForbiddenException);
+      expect(subcontas.criarSubconta).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    Sem isto, uma subconta aprovada continuaria aparecendo como "em
+    analise" ate alguem abrir o painel do Asaas para conferir.
+  */
+  describe("aplicarSituacaoDaSubconta", () => {
+    const contaEmAnalise = {
+      id: "conta-1",
+      companyId: "company-1",
+      status: "EM_ANALISE",
+      asaasAccountId: "acc_1",
+    };
+
+    it("aprovacao geral aprovada ativa a conta", async () => {
+      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
+        contaEmAnalise as never,
+      );
+
+      await service.aplicarSituacaoDaSubconta({
+        asaasAccountId: "acc_1",
+        situacaoGeral: "APPROVED",
+        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
+      });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
+        status: "ATIVA",
+      });
+    });
+
+    it("recusada vira RECUSADA", async () => {
+      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
+        contaEmAnalise as never,
+      );
+
+      await service.aplicarSituacaoDaSubconta({
+        asaasAccountId: "acc_1",
+        situacaoGeral: "REJECTED",
+        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED",
+      });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
+        status: "RECUSADA",
+      });
+    });
+
+    it("PENDING e AWAITING_APPROVAL caem no mesmo EM_ANALISE", async () => {
+      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue({
+        ...contaEmAnalise,
+        status: "ATIVA",
+      } as never);
+
+      await service.aplicarSituacaoDaSubconta({
+        asaasAccountId: "acc_1",
+        situacaoGeral: "PENDING",
+        eventoDaAsaas: "ACCOUNT_STATUS_DOCUMENT_PENDING",
+      });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
+        status: "EM_ANALISE",
+      });
+    });
+
+    it("mesmo estado nao grava nada: o Asaas reentrega o mesmo evento", async () => {
+      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
+        contaEmAnalise as never,
+      );
+
+      await service.aplicarSituacaoDaSubconta({
+        asaasAccountId: "acc_1",
+        situacaoGeral: "PENDING",
+        eventoDaAsaas: "ACCOUNT_STATUS_DOCUMENT_PENDING",
+      });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    /*
+      O Asaas acrescenta valores sem avisar, e mudar o estado de uma
+      conta de recebimento por um nome que ninguem leu e pior do que
+      nao mudar.
+    */
+    it("situacao desconhecida nao mexe em nada", async () => {
+      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
+        contaEmAnalise as never,
+      );
+
+      await service.aplicarSituacaoDaSubconta({
+        asaasAccountId: "acc_1",
+        situacaoGeral: "SOMETHING_NEW",
+        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_SOMETHING",
+      });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    it("subconta que nao e de nenhuma transportadora nossa e ignorada", async () => {
+      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(null);
+
+      await service.aplicarSituacaoDaSubconta({
+        asaasAccountId: "acc_de_outro",
+        situacaoGeral: "APPROVED",
+        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
+      });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
     });
   });
 });

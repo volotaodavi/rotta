@@ -12,6 +12,8 @@ import type { MessagePersonalizationService } from "@/modules/notifications/mess
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 
+import { ASAAS_ACCOUNT_STATUS_EVENT } from "@/modules/family-billing/events/asaas-account-status.event";
+
 /** "Zere os dados e só conte os dados a partir do dia de hoje" (pedido do usuário 03/09/2026) — toda cobrança PAGA que os testes esperam contar precisa de uma data de hoje, senão o filtro novo do serviço a descarta. */
 const HOJE_ISO = new Date().toISOString();
 
@@ -38,6 +40,7 @@ describe("BillingService", () => {
     pendingSubscription: { create: jest.Mock; update: jest.Mock; delete: jest.Mock };
   };
   let auditLogService: jest.Mocked<AuditLogService>;
+  let eventEmitter: jest.Mocked<EventEmitter2>;
   let service: BillingService;
 
   beforeEach(() => {
@@ -83,7 +86,13 @@ describe("BillingService", () => {
       pagamentoRecusado: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
       pagamentoPendente: jest.fn().mockReturnValue({ titulo: "", corpo: "" }),
     } as unknown as jest.Mocked<MessagePersonalizationService>;
-    const eventEmitter = { emit: jest.fn() } as unknown as jest.Mocked<EventEmitter2>;
+    eventEmitter = {
+      emit: jest.fn(),
+      /* `emitAsync` é o caminho dos eventos que a Asaas traz para outro
+         módulo (fatura da família, situação da subconta): o webhook só
+         responde 200 depois de o listener ter gravado. */
+      emitAsync: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<EventEmitter2>;
     const adminInboxEmailService = {
       send: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AdminInboxEmailService>;
@@ -280,6 +289,60 @@ describe("BillingService", () => {
       expect(asaasClient.createSubscription).toHaveBeenCalledWith(
         expect.objectContaining({ customer: "cus_existente" }),
       );
+    });
+  });
+
+  /*
+    Eventos de situação de conta (`ACCOUNT_STATUS_*`) chegam SEM
+    `payment`. Se caírem no caminho de pagamento, `event.payment.id`
+    estoura, a Asaas recebe 5xx e reentrega o mesmo evento por 14 dias.
+    Por isso a saída é a primeira coisa do método, e é isso que estes
+    testes guardam.
+  */
+  describe("handleAsaasWebhookEvent: situação da subconta", () => {
+    const evento = {
+      event: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
+      account: { id: "acc_1", ownerId: "conta-pai-da-rotta" },
+      accountStatus: {
+        id: "status-1",
+        commercialInfo: "APPROVED",
+        bankAccountInfo: "APPROVED",
+        documentation: "APPROVED",
+        general: "APPROVED",
+      },
+    };
+
+    it("repassa a situação geral pelo barramento, sem tocar na empresa", async () => {
+      await service.handleAsaasWebhookEvent(evento);
+
+      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(ASAAS_ACCOUNT_STATUS_EVENT, {
+        asaasEvent: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
+        asaasAccountId: "acc_1",
+        situacaoGeral: "APPROVED",
+      });
+      expect(companyRepository.update).not.toHaveBeenCalled();
+    });
+
+    /* O estado vem de `accountStatus.general`, não do nome do evento:
+       os dezoito eventos carregam o mesmo objeto completo. */
+    it("evento de etapa também vale: o que decide é o general", async () => {
+      await service.handleAsaasWebhookEvent({
+        ...evento,
+        event: "ACCOUNT_STATUS_DOCUMENT_PENDING",
+        accountStatus: { ...evento.accountStatus, documentation: "PENDING", general: "PENDING" },
+      });
+
+      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
+        ASAAS_ACCOUNT_STATUS_EVENT,
+        expect.objectContaining({ situacaoGeral: "PENDING" }),
+      );
+    });
+
+    it("sem account.id ou sem general, não emite nada e não estoura", async () => {
+      await service.handleAsaasWebhookEvent({ event: "ACCOUNT_STATUS_DOCUMENT_APPROVED" });
+
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
+      expect(companyRepository.update).not.toHaveBeenCalled();
     });
   });
 

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ContractInvoiceStatus } from "@rotta/api-client";
+import type { ContractInvoiceStatus, CriarSubcontaAsaasInput } from "@rotta/api-client";
 
 import { familyBillingApi } from "@/lib/api-client";
 
@@ -40,6 +40,24 @@ export function useSalvarContaDeRecebimento() {
       void queryClient.invalidateQueries({
         queryKey: ["family-billing", "conta-de-recebimento"],
       });
+    },
+  });
+}
+
+/**
+ * Abre a conta de recebimento no Asaas, de dentro da Rotta.
+ *
+ * O formulário pede um campo porque os outros já estão no cadastro da
+ * transportadora. A resposta já traz a conta com o estado novo, então
+ * ela entra direto no cache em vez de esperar um segundo GET: a tela
+ * muda de "sem conta" para "em análise" no mesmo instante.
+ */
+export function useCriarSubcontaAsaas() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CriarSubcontaAsaasInput) => familyBillingApi.criarSubcontaAsaas(input),
+    onSuccess: (conta) => {
+      queryClient.setQueryData(["family-billing", "conta-de-recebimento"], conta);
     },
   });
 }

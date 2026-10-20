@@ -106,27 +106,59 @@ para onde vai a nossa taxa.
 
 ---
 
-## Passo 3. Onboarding da subconta, de ponta a ponta
+## Passo 3. Onboarding da subconta, de ponta a ponta — FEITO
 
-**Quem faz: eu.** Não depende do comercial.
+**Quem fez: eu**, em 20/10/2026. Não dependia do comercial.
 
-1. Campo novo no cadastro da transportadora: faturamento mensal
-   (`incomeValue` é o único campo que a documentação marca como
-   obrigatório, e hoje não coletamos).
-2. `POST /companies/me/subconta-asaas`, que cria a subconta, cifra a
-   chave e grava `asaasAccountId`, `asaasWalletId` e a chave na mesma
-   operação. A chave só aparece na resposta da criação: perdeu, não tem
-   segunda chance.
-3. `POST /admin/companies/:id/subconta-asaas`, o mesmo pelo painel, para
-   o fundador criar pela transportadora.
-4. Tela no painel da transportadora e no admin, mostrando o estado:
-   pendente, em análise, ativa ou recusada.
-5. Webhook de situação da conta, para o estado mudar sozinho em vez de
-   alguém ficar conferindo.
+| O que                                                          | Onde                                               |
+| -------------------------------------------------------------- | -------------------------------------------------- |
+| `POST /family-billing/conta-de-recebimento/subconta`           | A transportadora abre a própria conta              |
+| `POST /family-billing/admin/companies/:id/subconta`            | O fundador abre pela transportadora                |
+| `GET /family-billing/admin/companies/:id/conta-de-recebimento` | O estado de uma transportadora, pelo painel        |
+| Tela no painel da transportadora                               | `/mensalidades`                                    |
+| Tela no app nativo                                             | Rotta Pay, acima do "a receber"                    |
+| Aba no painel do Admin                                         | Empresa, aba "Recebimento"                         |
+| Webhook `ACCOUNT_STATUS_*`                                     | O estado muda sozinho, por `accountStatus.general` |
+
+### O formulário tem um campo, e não doze
+
+`POST /v3/accounts` aceita nome, documento, e-mail, telefone, endereço e
+faturamento. Onze desses doze já estão no cadastro da transportadora,
+conferidos na Receita quando ela entrou: a subconta nasce com a razão
+social, o CNPJ e o endereço que a Rotta já tem. O formulário pede só o
+faturamento mensal, que é o único obrigatório do Asaas e o único que a
+Rotta nunca coletou. E-mail e celular do financeiro entram como opção,
+porque o financeiro costuma ser outra pessoa.
+
+### Três decisões que estão no código, não na cabeça de ninguém
+
+1. **A segunda subconta é recusada**, com a razão na mensagem. A chave de
+   API só aparece na resposta da criação e não há endpoint para pedir de
+   novo: criar a segunda deixaria a primeira órfã no Asaas, possivelmente
+   já com saldo, sem desfazer. A API recusa antes de chamar o Asaas, e
+   nenhuma das três telas oferece o botão.
+2. **A conta nasce `EM_ANALISE`, nunca `ATIVA`.** Dizer "ativa" na
+   criação seria prometer recebimento que ainda não existe.
+3. **O estado vem de `accountStatus.general`**, e não do nome do evento.
+   Os dezoito eventos `ACCOUNT_STATUS_*` carregam o mesmo objeto
+   completo, e reagir a cada etapa (documento, dados comerciais, conta
+   bancária) faria o estado oscilar: a conta ficaria "recusada" por falta
+   de um documento e voltaria a "em análise" no evento seguinte.
+   `PENDING` e `AWAITING_APPROVAL` caem no mesmo `EM_ANALISE`, porque num
+   cadastro que a Rotta preencheu inteiro não há ação do transportador
+   que os distinga.
 
 **Resultado:** a transportadora entra pela Rotta e recebe split. O único
 momento em que ela vê o Asaas é o envio de documento, e isso só sai com
 o passo 1.
+
+### Falta uma coisa, e é do fundador
+
+No painel do Asaas, marcar os eventos de **situação da conta** no webhook
+que já existe (`https://api.rottabr.com.br/v1/webhooks/asaas`). Sem isso
+o endpoint está pronto e nunca é chamado, e o estado da conta fica
+parado em "em análise" até alguém conferir na mão. Nenhum valor novo
+precisa ser gerado: é a mesma URL e o mesmo token.
 
 ---
 
@@ -196,13 +228,15 @@ pagar, ou cobrar delas, por base parada.
 ```
 1. E-mail ao comercial        fundador   destrava tudo
 2. Variáveis no Render        fundador   destrava o passo 5
-3. Onboarding da subconta     eu         independente
-4. Split nos outros meios     eu         independente
+3. Onboarding da subconta     eu         FEITO em 20/10
+3b. Eventos de conta no        fundador   um clique no painel do Asaas
+    webhook do Asaas
+4. Split nos outros meios     eu         independente, em andamento
 5. Teste em sandbox           eu         depende do 2
 6. Ligar, uma por vez         fundador   depende de 1, 3, 4, 5
 ```
 
-Os passos 3 e 4 eu começo agora: não dependem de ninguém.
+O passo 4 eu sigo agora: não depende de ninguém.
 
 ---
 

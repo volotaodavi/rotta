@@ -5,8 +5,10 @@ import { useState } from "react";
 
 import type { ContractInvoiceStatus } from "@rotta/api-client";
 
+import { ContaDeRecebimentoCard } from "@/features/family-billing/components/conta-de-recebimento-card";
 import {
   useContaDeRecebimento,
+  useCriarSubcontaAsaas,
   useFaturasDaEmpresa,
   useSalvarContaDeRecebimento,
 } from "@/features/family-billing/hooks/use-family-billing";
@@ -58,11 +60,10 @@ export default function MensalidadesPage(): JSX.Element {
   const { data, isLoading } = useFaturasDaEmpresa({
     status: filtro === "TODAS" ? undefined : filtro,
   });
-  const { data: conta } = useContaDeRecebimento();
+  const { data: conta, isLoading: contaCarregando } = useContaDeRecebimento();
   const salvarConta = useSalvarContaDeRecebimento();
+  const criarSubconta = useCriarSubcontaAsaas();
   const [chavePix, setChavePix] = useState("");
-
-  const splitAtivo = Boolean(conta?.asaasWalletId);
 
   function salvar(): void {
     if (!chavePix.trim()) {
@@ -88,23 +89,29 @@ export default function MensalidadesPage(): JSX.Element {
         </Typography>
       </div>
 
-      <Card>
-        <Card.Header title="Para onde vai o dinheiro" />
-        <Card.Body className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <Badge variant={splitAtivo ? "success" : "warning"}>
-              {splitAtivo ? "Repasse direto" : "Repasse pelo Rotta Pay"}
-            </Badge>
-            <Typography variant="bodySmall" color="muted">
-              {splitAtivo
-                ? "O pagamento da família cai direto na sua conta, sem passar pela Rotta."
-                : "O pagamento cai na conta da Rotta e entra como saldo no seu Rotta Pay, de onde você saca."}
-            </Typography>
-          </div>
+      <ContaDeRecebimentoCard
+        conta={conta}
+        isLoading={contaCarregando}
+        isAbrindoConta={criarSubconta.isPending}
+        onAbrirConta={async (input) => {
+          const aberta = await criarSubconta.mutateAsync(input);
+          toast.success("Conta aberta. A análise costuma levar até dois dias úteis.");
+          return aberta;
+        }}
+      />
 
+      <Card>
+        <Card.Header title="Chave Pix para saque" />
+        <Card.Body className="flex flex-col gap-4">
+          {/* Continua valendo com a conta de recebimento aberta: é por
+              aqui que sai o saldo que já entrou no Rotta Pay antes
+              dela, e o que entrar se o repasse direto for desligado. */}
+          <Typography variant="bodySmall" color="muted">
+            Para onde o saldo do seu Rotta Pay é transferido quando você pede saque.
+          </Typography>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="flex-1">
-              <FormField label="Chave Pix para saque">
+              <FormField label="Chave Pix">
                 <Input
                   value={chavePix}
                   onChange={(event) => setChavePix(event.target.value)}

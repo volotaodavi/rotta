@@ -74,6 +74,14 @@ const mocks = {
     },
   },
   saques: { data: [] as unknown[] },
+  /* A conta de recebimento entrou em 20/10/2026. `null` é o estado de
+     toda transportadora cadastrada antes dela, e por isso é o padrão
+     dos testes que já existiam. */
+  conta: { data: null as unknown },
+  /* Dentro de `mocks` porque a fábrica de `jest.mock` é içada para
+     antes das declarações do arquivo, e só nomes começando com "mock"
+     podem ser lidos de dentro dela. */
+  criarSubconta: jest.fn().mockResolvedValue({}),
 };
 
 jest.mock("../../hooks/use-wallet", () => ({
@@ -81,6 +89,11 @@ jest.mock("../../hooks/use-wallet", () => ({
   useMyWalletTransactions: () => mocks.transacoes,
   useMyWithdrawalRequests: () => mocks.saques,
   useRequestWithdrawal: () => ({ mutateAsync: jest.fn(), isPending: false }),
+}));
+
+jest.mock("../../hooks/use-conta-de-recebimento", () => ({
+  useContaDeRecebimento: () => mocks.conta,
+  useCriarSubcontaAsaas: () => ({ mutateAsync: mocks.criarSubconta, isPending: false }),
 }));
 
 // eslint-disable-next-line import/first -- o mock precisa existir antes do import da tela.
@@ -146,5 +159,85 @@ describe("Carteira do transportador", () => {
     montar();
 
     expect(screen.getByText("Nenhum saque solicitado")).toBeTruthy();
+  });
+
+  /*
+    A conta de recebimento é o que decide por onde o dinheiro da família
+    passa. Dois erros aqui não são de layout:
+
+    1. **Oferecer abrir a segunda conta.** A chave de acesso só aparece
+       na criação e não tem segunda chance: a primeira ficaria perdida.
+       A API recusa, e a tela não pode nem oferecer.
+    2. **Prometer saldo que não vai aparecer.** Com o repasse direto
+       ativo, a mensalidade não passa mais pelo Rotta Pay, e dizer que
+       "fica aqui até a confirmação" seria mandar a pessoa esperar um
+       saldo que nunca chega.
+  */
+  describe("conta de recebimento", () => {
+    afterEach(() => {
+      mocks.conta = { data: null };
+      mocks.criarSubconta.mockClear();
+    });
+
+    it("sem conta aberta, o formulário pede um campo e diz onde o dinheiro cai hoje", () => {
+      montar();
+
+      expect(screen.getByText("Conta não aberta")).toBeTruthy();
+      expect(screen.getByLabelText("Faturamento mensal")).toBeTruthy();
+      expect(screen.getByText("Abrir conta")).toBeTruthy();
+    });
+
+    it("abre a conta com o faturamento em centavos, lido da notação brasileira", () => {
+      montar();
+
+      fireEvent.changeText(screen.getByLabelText("Faturamento mensal"), "4.500,00");
+      fireEvent.press(screen.getByText("Abrir conta"));
+
+      expect(mocks.criarSubconta).toHaveBeenCalledWith({ faturamentoMensalCentavos: 450_000 });
+    });
+
+    it("sem valor legível, recusa na tela e não chama a API", () => {
+      montar();
+
+      fireEvent.changeText(screen.getByLabelText("Faturamento mensal"), "abc");
+      fireEvent.press(screen.getByText("Abrir conta"));
+
+      expect(mocks.criarSubconta).not.toHaveBeenCalled();
+      expect(screen.getByText(/Informe o faturamento mensal/)).toBeTruthy();
+    });
+
+    it("em análise, não oferece abrir de novo", () => {
+      mocks.conta = {
+        data: {
+          id: "conta-1",
+          status: "EM_ANALISE",
+          asaasAccountId: "acc_1",
+          asaasWalletId: "wallet_1",
+          asaasOnboardingUrl: null,
+        },
+      };
+      montar();
+
+      expect(screen.getByText("Em análise")).toBeTruthy();
+      expect(screen.queryByText("Abrir conta")).toBeNull();
+      expect(screen.queryByLabelText("Faturamento mensal")).toBeNull();
+    });
+
+    it("com repasse direto, o pendente deixa de prometer a mensalidade", () => {
+      mocks.conta = {
+        data: {
+          id: "conta-1",
+          status: "ATIVA",
+          asaasAccountId: "acc_1",
+          asaasWalletId: "wallet_1",
+          asaasOnboardingUrl: null,
+        },
+      };
+      montar();
+
+      expect(screen.getByText("Recebendo direto")).toBeTruthy();
+      expect(screen.getByText(/vão direto para a sua conta de recebimento/)).toBeTruthy();
+      expect(screen.queryByText(/ficam aqui até a confirmação/)).toBeNull();
+    });
   });
 });

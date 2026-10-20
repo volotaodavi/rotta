@@ -25,7 +25,7 @@ import {
 import { useAccessAsSupport } from "@/features/backoffice/hooks/use-backoffice";
 
 /** Abas da tela de empresa. `atuacao` entrou com o fluxo público (24/09/2026). */
-type AbaDaEmpresa = "dados" | "alunos" | "rotas" | "veiculos" | "atuacao";
+type AbaDaEmpresa = "dados" | "alunos" | "rotas" | "veiculos" | "atuacao" | "recebimento";
 import { CompanyServiceAreasTab } from "@/features/companies/components/company-service-areas-tab";
 import { CompanyStatusBadge } from "@/features/companies/components/company-status-badge";
 import { CompanyTagsCard } from "@/features/companies/components/company-tags-card";
@@ -35,6 +35,7 @@ import {
   useReactivateCompany,
   useSuspendCompany,
 } from "@/features/companies/hooks/use-companies";
+import { CompanyRecebimentoTab } from "@/features/family-billing/components/company-recebimento-tab";
 import { CompanyRoutesTab } from "@/features/routes/components/company-routes-tab";
 import { CompanyStudentsTab } from "@/features/students/components/company-students-tab";
 import { CompanyVehiclesTab } from "@/features/vehicles/components/company-vehicles-tab";
@@ -278,6 +279,9 @@ export default function EmpresaDetalhesPage({
           // quem não a tem tornaria impossível concedê-la — o conteúdo
           // de área de atuação é que se adapta, dentro do componente.
           { id: "atuacao", label: "Habilitações e atuação" },
+          // Por onde o dinheiro da família passa, e o atalho para abrir
+          // a conta de recebimento PELA transportadora (20/10/2026).
+          { id: "recebimento", label: "Recebimento" },
         ]}
         activeId={activeTab}
         onChange={(id) => setActiveTab(id as AbaDaEmpresa)}
@@ -344,6 +348,8 @@ export default function EmpresaDetalhesPage({
             tags={company.tags}
           />
         </div>
+      ) : activeTab === "recebimento" ? (
+        <CompanyRecebimentoTab companyId={id} />
       ) : activeTab === "alunos" ? (
         <CompanyStudentsTab companyId={id} />
       ) : activeTab === "rotas" ? (

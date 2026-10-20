@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 /* Import de VALOR, nao `import type`: o `ValidationPipe` le os
    metadados da classe em tempo de execucao, e com `import type` o DTO
    desaparece do bundle e nada e validado. */
+import { CriarSubcontaAsaasDto } from "./dto/criar-subconta-asaas.dto";
 import { ListInvoicesQueryDto } from "./dto/list-invoices-query.dto";
 import { SalvarContaDeRecebimentoDto } from "./dto/salvar-conta-de-recebimento.dto";
 import { FamilyBillingService } from "./family-billing.service";
@@ -103,5 +104,46 @@ export class FamilyBillingController {
     @Body() dto: SalvarContaDeRecebimentoDto,
   ) {
     return this.familyBillingService.salvarContaDeRecebimento(actor, dto);
+  }
+
+  @ApiOperation({
+    summary: "Abre a conta de recebimento da transportadora, sem sair da Rotta",
+    description:
+      "Cria a subconta no Asaas com os dados que a Rotta já tem do cadastro, por isso o corpo pede só o faturamento mensal. A conta nasce `EM_ANALISE`: o Asaas analisa em até dois dias úteis, e o estado muda sozinho pelo webhook. Recusa quando já existe subconta, porque a chave de acesso só aparece na criação e a primeira ficaria inacessível.",
+  })
+  @Post("conta-de-recebimento/subconta")
+  @Roles(...TRANSPORTADOR_ROLES)
+  criarSubconta(@CurrentUser() actor: AuthenticatedUser, @Body() dto: CriarSubcontaAsaasDto) {
+    return this.familyBillingService.criarSubcontaDaPropriaEmpresa(actor, dto);
+  }
+
+  // --- Admin Rotta ---
+
+  @ApiOperation({
+    summary: "Abre a conta de recebimento PELA transportadora",
+    description:
+      "O mesmo que o endpoint da transportadora, pelo painel do Admin Rotta, para quando o transportador precisa de ajuda. Mora neste módulo, e não no Backoffice, para a regra de 'nunca a segunda subconta' ter um lugar só.",
+  })
+  @Post("admin/companies/:companyId/subconta")
+  @Roles(Role.ADMIN_ROTTA)
+  criarSubcontaParaEmpresa(
+    @Param("companyId", ParseUUIDPipe) companyId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Body() dto: CriarSubcontaAsaasDto,
+  ) {
+    return this.familyBillingService.criarSubcontaParaEmpresa(companyId, actor, dto);
+  }
+
+  @ApiOperation({
+    summary: "A conta de recebimento de uma transportadora, pelo painel do Admin",
+    description: "Nunca a chave da subconta: só se ela existe (`podeEmitirPelaSubconta`).",
+  })
+  @Get("admin/companies/:companyId/conta-de-recebimento")
+  @Roles(Role.ADMIN_ROTTA)
+  getContaDeRecebimentoDaEmpresa(
+    @Param("companyId", ParseUUIDPipe) companyId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.familyBillingService.getContaDeRecebimentoDaEmpresa(companyId, actor);
   }
 }

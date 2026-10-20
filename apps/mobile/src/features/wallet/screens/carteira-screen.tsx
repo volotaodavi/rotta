@@ -35,6 +35,8 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ContaDeRecebimentoCard } from "../components/conta-de-recebimento-card";
+import { useContaDeRecebimento, useCriarSubcontaAsaas } from "../hooks/use-conta-de-recebimento";
 import {
   useMyWallet,
   useMyWalletTransactions,
@@ -113,6 +115,10 @@ export function CarteiraScreen(): JSX.Element {
   const { data: transactionsResult } = useMyWalletTransactions();
   const { data: withdrawalRequests } = useMyWithdrawalRequests();
   const requestWithdrawal = useRequestWithdrawal();
+  const { data: conta } = useContaDeRecebimento();
+  const criarSubconta = useCriarSubcontaAsaas();
+  /* Ativa, e não apenas criada: em análise o dinheiro ainda cai aqui. */
+  const repasseDireto = conta?.status === "ATIVA" && Boolean(conta.asaasWalletId);
 
   const [showForm, setShowForm] = useState(false);
   /* Estado de sessão, e não preferência guardada: esconder o saldo é
@@ -257,6 +263,14 @@ export function CarteiraScreen(): JSX.Element {
             </VehicleCard>
           ) : null}
 
+          <ContaDeRecebimentoCard
+            conta={conta}
+            isAbrindoConta={criarSubconta.isPending}
+            onAbrirConta={async (input) => {
+              await criarSubconta.mutateAsync(input);
+            }}
+          />
+
           <VehicleCard>
             <Texto style={[styles.rotuloPendente, { color: theme.colors.textMuted }]}>
               A receber (pendente)
@@ -264,9 +278,14 @@ export function CarteiraScreen(): JSX.Element {
             <Texto style={[styles.valorPendente, { color: theme.colors.text }]}>
               {formatarCentavos(wallet.saldoPendenteCentavos)}
             </Texto>
+            {/* O texto muda com a conta de recebimento, porque o
+                caminho do dinheiro muda: com ela ativa, a mensalidade
+                não passa mais por aqui, e dizer que passa seria
+                prometer um saldo que nunca vai aparecer. */}
             <Texto style={[styles.ajuda, { color: theme.colors.textMuted }]}>
-              Mensalidades de contratos ativados ficam aqui até a confirmação de recebimento pela
-              Rotta.
+              {repasseDireto
+                ? "Mensalidades vão direto para a sua conta de recebimento e não entram aqui. O que estiver pendente é de antes dela."
+                : "Mensalidades de contratos ativados ficam aqui até a confirmação de recebimento pela Rotta."}
             </Texto>
           </VehicleCard>
 

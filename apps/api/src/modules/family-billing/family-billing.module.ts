@@ -8,11 +8,13 @@ import {
 } from "./family-billing.constants";
 import { FamilyBillingController } from "./family-billing.controller";
 import { FamilyBillingService } from "./family-billing.service";
+import { AsaasAccountStatusListener } from "./listeners/asaas-account-status.listener";
 import { FamilyInvoiceWebhookListener } from "./listeners/family-invoice-webhook.listener";
 import { PrismaCompanyPaymentAccountRepository } from "./repositories/prisma-company-payment-account.repository";
 import { PrismaContractInvoiceRepository } from "./repositories/prisma-contract-invoice.repository";
 
 import { BillingModule } from "@/modules/billing/billing.module";
+import { CompaniesModule } from "@/modules/companies/companies.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { WalletModule } from "@/modules/wallet/wallet.module";
@@ -33,17 +35,25 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
  * split). `StudentsModule` é quem prova a posse do aluno nas leituras do
  * Responsável — este módulo nunca decide isso por conta própria.
  *
+ * `CompaniesModule` entra pela subconta Asaas do transportador: razão
+ * social, documento e endereço do titular saem de `Company`, e é por
+ * isso que o formulário de subconta pede um campo só. Sem ciclo —
+ * `CompaniesModule` não importa este, e nem poderia: `BillingModule`
+ * já importa `CompaniesModule`.
+ *
  * Sem ciclo: `BillingModule` não importa este. A volta (o webhook da
- * Asaas avisando que uma fatura foi paga) acontece pelo barramento de
- * eventos — ver `FamilyInvoiceWebhookListener`.
+ * Asaas avisando que uma fatura foi paga, ou que a situação de uma
+ * subconta mudou) acontece pelo barramento de eventos — ver
+ * `FamilyInvoiceWebhookListener` e `AsaasAccountStatusListener`.
  */
 @Module({
-  imports: [BillingModule, WalletModule, StudentsModule, UsersModule],
+  imports: [BillingModule, WalletModule, StudentsModule, UsersModule, CompaniesModule],
   controllers: [FamilyBillingController, FamilyBillingQueueController],
   providers: [
     FamilyBillingService,
     FamilyBillingSchedulerService,
     FamilyInvoiceWebhookListener,
+    AsaasAccountStatusListener,
     { provide: CONTRACT_INVOICE_REPOSITORY, useClass: PrismaContractInvoiceRepository },
     {
       provide: COMPANY_PAYMENT_ACCOUNT_REPOSITORY,

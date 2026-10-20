@@ -45,6 +45,10 @@ import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service"
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import {
+  ASAAS_ACCOUNT_STATUS_EVENT,
+  type AsaasAccountStatusEvent,
+} from "@/modules/family-billing/events/asaas-account-status.event";
+import {
   FAMILY_INVOICE_WEBHOOK_EVENT,
   type FamilyInvoiceWebhookEvent,
 } from "@/modules/family-billing/events/family-invoice-paid.event";
@@ -1050,6 +1054,34 @@ export class BillingService {
    * `asaasSubscriptionId`, nunca duplica nada.
    */
   async handleAsaasWebhookEvent(event: AsaasWebhookEnvelope): Promise<void> {
+    /* Situação de uma SUBCONTA (a transportadora), e não pagamento
+       nenhum. Chega sem `payment`, então precisa sair antes de qualquer
+       coisa que leia `event.payment`.
+
+       O estado é decidido por `accountStatus.general`, não pelo nome do
+       evento: os dezoito eventos `ACCOUNT_STATUS_*` carregam o mesmo
+       objeto completo, e reagir a cada etapa (documento, dados
+       comerciais, conta bancária) faria o estado da conta oscilar.
+
+       `emitAsync` e evento, pelo mesmo motivo da fatura da família:
+       `FamilyBillingModule` já importa este módulo, e chamar de volta
+       fecharia o ciclo. */
+    if (event.event.startsWith("ACCOUNT_STATUS_")) {
+      if (event.account?.id && event.accountStatus?.general) {
+        const payload: AsaasAccountStatusEvent = {
+          asaasEvent: event.event,
+          asaasAccountId: event.account.id,
+          situacaoGeral: event.accountStatus.general,
+        };
+        await this.eventEmitter.emitAsync(ASAAS_ACCOUNT_STATUS_EVENT, payload);
+      } else {
+        this.logger.warn(
+          `Evento Asaas "${event.event}" sem account.id ou accountStatus.general: nada a aplicar.`,
+        );
+      }
+      return;
+    }
+
     const companyId = event.payment?.externalReference ?? undefined;
 
     /* Mensalidade de uma FAMÍLIA, não assinatura da plataforma. São dois
