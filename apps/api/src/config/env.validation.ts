@@ -255,6 +255,30 @@ export const envSchema = z.object({
   ASAAS_BASE_URL: z.string().url().default("https://api-sandbox.asaas.com/v3"),
   ASAAS_WEBHOOK_TOKEN: z.string().optional(),
 
+  // Subconta da transportadora (20/10/2026).
+  //
+  // `ASAAS_SUBCONTA_ENCRYPTION_KEY` cifra a chave de API de cada
+  // subconta antes de ela encostar no banco. Vive separada da
+  // `MFA_ENCRYPTION_KEY` de propósito: são segredos de donos
+  // diferentes, e girar uma não pode derrubar a outra. Validada aqui
+  // como base64 de 32 bytes exatos, porque uma chave de tamanho errado
+  // só apareceria na hora de criar a primeira subconta, que é a única
+  // operação que não tem segunda chance (a chave da subconta só é
+  // exibida na resposta da criação).
+  //
+  // `ASAAS_ROTTA_WALLET_ID` é a carteira da própria Rotta, obtida em
+  // `GET /v3/wallets/`. Só é usada quando a cobrança é emitida pela
+  // subconta: aí o split precisa dizer para onde vai a NOSSA parte.
+  // Sem ela, a cobrança sai sem split em vez de inventar um destino.
+  ASAAS_SUBCONTA_ENCRYPTION_KEY: z
+    .string()
+    .optional()
+    .refine(
+      (valor) => valor === undefined || Buffer.from(valor, "base64").length === 32,
+      "ASAAS_SUBCONTA_ENCRYPTION_KEY precisa decodificar para exatamente 32 bytes (gere com `openssl rand -base64 32`).",
+    ),
+  ASAAS_ROTTA_WALLET_ID: z.string().optional(),
+
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
 });
 
