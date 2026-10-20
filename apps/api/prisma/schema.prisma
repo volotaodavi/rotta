@@ -4243,8 +4243,8 @@ model ContractInvoice {
   /// Boleto: linha digitável, para a família copiar sem abrir o PDF.
   linhaDigitavel  String?
 
-  pagoEm            DateTime?
-  valorPagoCentavos Int?
+  pagoEm                 DateTime?
+  valorPagoCentavos      Int?
   /// `value - netValue` da Asaas — a taxa que o provedor retém. Nunca
   /// estimada: vem pronta na resposta deles.
   taxaDoProvedorCentavos Int?
@@ -4261,8 +4261,8 @@ model ContractInvoice {
   /// ela já recebeu.
   repasseDiretoAoTransportador Boolean @default(false)
 
-  canceladaEm         DateTime?
-  motivoCancelamento  String?
+  canceladaEm        DateTime?
+  motivoCancelamento String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -4281,8 +4281,41 @@ model ContractInvoice {
 /// de informação que a Asaas ainda não enviou (subconta/white label).
 enum CompanyPaymentAccountStatus {
   PENDENTE
+  /// Subconta criada no Asaas, aguardando a analise dele (ate 2 dias uteis).
+  EM_ANALISE
   ATIVA
   RECUSADA
+}
+
+/// Quem figura como emissor da cobranca da familia no Asaas.
+///
+/// A escolha nao e estetica, e de risco. A documentacao de conta escrow
+/// diz que "apenas as subcontas com o recurso habilitado terao seus
+/// recebimentos submetidos ao fluxo de retencao": a custodia segue a
+/// conta que RECEBE, e a conta pai nao tem custodia.
+///
+/// - `ROTTA`: a Rotta cria a cobranca com split para a transportadora. O
+///   dinheiro dela cai na hora, nao existe retencao, e a conta pai da
+///   Rotta responde sozinha por chargeback de ate 540 dias.
+/// - `SUBCONTA`: a cobranca e criada com a chave da subconta da
+///   transportadora, com split para a Rotta. E o unico modelo em que a
+///   custodia existe. Depende da liberacao do white label pelo comercial
+///   do Asaas (confirmado em 16/10/2026: nao e self-service).
+///
+/// Fica por transportadora, e nao global, para virar a chave uma a uma
+/// conforme o comercial liberar, sem migracao de dado.
+enum EmissorDaCobranca {
+  ROTTA
+  SUBCONTA
+}
+
+/// Quem paga a tarifa recorrente da custodia, por subconta com o recurso
+/// ligado. A documentacao confirma que a tarifa existe ("a Conta Escrow
+/// possui cobranca recorrente para as subcontas com a funcionalidade
+/// habilitada") e NAO publica o valor.
+enum PagadorDaTarifaDeCustodia {
+  CONTA_PRINCIPAL
+  SUBCONTA
 }
 
 /// Para onde vai o dinheiro da mensalidade da família.
@@ -4308,9 +4341,47 @@ model CompanyPaymentAccount {
   status CompanyPaymentAccountStatus @default(PENDENTE)
 
   /// `walletId` da subconta Asaas do transportador — o destino do split.
-  asaasWalletId String? @db.VarChar(64)
+  asaasWalletId  String? @db.VarChar(64)
+  /// `id` da subconta no Asaas, que e o que `POST /v3/accounts/{id}/escrow`
+  /// pede. Vem na mesma resposta de criacao que traz o `walletId`.
+  asaasAccountId String? @db.VarChar(64)
+
+  /// A chave de API da subconta, CIFRADA (AES-256-GCM, `SecretCipherService`).
+  ///
+  /// Ela nasce na resposta de `POST /v3/accounts` e e capturada ali: a
+  /// Rotta nunca pede chave ao transportador, e ele nunca abre o Asaas.
+  /// E com ela que a cobranca e criada em nome da subconta, que e o
+  /// unico jeito de a custodia valer.
+  ///
+  /// Autorizado pelo fundador em 20/10/2026, com tres controles: cifrada
+  /// em repouso, nunca escrita em log nem em resposta de API, e todo uso
+  /// registrado em auditoria. Nenhum DTO expoe este campo.
+  asaasApiKeyCifrada String?
+
+  /// A URL de onboarding devolvida pelo Asaas, quando houver. A pagina
+  /// publica de criacao de subconta NAO cita este campo; ele veio da
+  /// resposta do time de Integracoes em 15/10/2026, e por isso e
+  /// opcional ate a primeira criacao real confirmar que vem.
+  asaasOnboardingUrl String?
+
   /// Chave Pix de saque, quando o repasse é feito pelo Rotta Pay.
-  chavePix      String?
+  chavePix String?
+
+  /// Quem emite a cobranca desta transportadora. Comeca em `ROTTA`
+  /// porque e o que funciona sem depender de liberacao de ninguem.
+  emissorDaCobranca EmissorDaCobranca @default(ROTTA)
+
+  /// Custodia (conta escrow) desta subconta. So faz sentido com
+  /// `emissorDaCobranca = SUBCONTA`.
+  ///
+  /// Fica por subconta de proposito. Existe um endpoint que liga
+  /// custodia em TODAS de uma vez, e usar ele seria caro: em 14/10/2026,
+  /// de 8 transportadoras cadastradas, 7 nao transacionavam. Ligar tudo
+  /// significaria tarifa recorrente sobre base parada.
+  custodiaAtiva           Boolean                   @default(false)
+  /// `daysToExpire`: dias de retencao antes de liberar para a subconta.
+  custodiaDiasParaLiberar Int?
+  custodiaTarifaPagaPor   PagadorDaTarifaDeCustodia @default(CONTA_PRINCIPAL)
 
   /// Comissão da Rotta sobre a mensalidade da família, em pontos-base
   /// (1% = 100). Fica `0` porque essa decisão é comercial e ainda não
@@ -4320,6 +4391,27 @@ model CompanyPaymentAccount {
   /// família). O dia em que houver comissão, ela entra aqui, por
   /// transportadora, sem migração de dado.
   taxaDaPlataformaBps Int @default(0)
+
+  /// A taxa da Rotta por MEIO de pagamento, em pontos-base (1% = 100).
+  ///
+  /// Uma taxa so para todos os meios era errado e o quadro de 18/10/2026
+  /// mostrou por que: no cartao o custo do proprio Asaas passa de 2%, e
+  /// o mesmo percentual nao se sustenta. Valores aprovados pelo fundador
+  /// em 20/10/2026, da tabela do CFO:
+  ///
+  ///   Pix e boleto      1,29%  (129 bps)
+  ///   Credito a vista   0,99%  ( 99 bps)
+  ///   Credito parcelado 0,49%  ( 49 bps)
+  ///   Debito            nao oferecido: o Asaas sozinho custa 2,01%,
+  ///                     contra um teto de mercado de 1,99%
+  ///
+  /// Comecam em 0 para nao mexer no bolso de ninguem sem o fundador
+  /// ligar por transportadora. `taxaDaPlataformaBps` continua como
+  /// piso geral de compatibilidade.
+  taxaPixBps              Int @default(0)
+  taxaBoletoBps           Int @default(0)
+  taxaCreditoVistaBps     Int @default(0)
+  taxaCreditoParceladoBps Int @default(0)
 
   observacoes String?
 

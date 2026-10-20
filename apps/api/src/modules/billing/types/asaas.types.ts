@@ -89,6 +89,25 @@ export interface AsaasCreditCardHolderInfoInput {
  * "posso também pedir o recebimento de transferências... incluindo o
  * QR Code pix?").
  */
+/**
+ * Um recebedor do split, no formato que a Asaas aceita dentro do array
+ * `split` de uma cobranca ou assinatura.
+ *
+ * O time de Integracoes confirmou em 16/10/2026 que split NAO precisa de
+ * ativacao nem de homologacao: basta mandar o array com o `walletId` do
+ * recebedor. E confirmou que `fixedValue` pode ir junto com
+ * `percentualValue`, o que garante piso por transacao.
+ *
+ * Atencao ao que o percentual incide: a taxa do provedor e descontada
+ * ANTES da divisao, entao ela e rateada entre as partes. O percentual
+ * daqui e sobre o valor liquidado, nao sobre o bruto.
+ */
+export interface AsaasSplitInput {
+  walletId: string;
+  percentualValue?: number;
+  fixedValue?: number;
+}
+
 export interface CreateAsaasPaymentInput {
   customer: string;
   billingType: AsaasBillingType;
@@ -96,6 +115,69 @@ export interface CreateAsaasPaymentInput {
   dueDate: string;
   description?: string;
   externalReference?: string;
+  split?: AsaasSplitInput[];
+}
+
+/**
+ * `POST /v3/accounts` — criacao de subconta.
+ *
+ * `incomeValue` e o unico campo que a documentacao marca explicitamente
+ * como obrigatorio. A conta pai precisa ser pessoa juridica: "contas de
+ * pessoa fisica (CPF) nao podem criar subcontas". A Rotta e PJ.
+ */
+export interface CreateAsaasSubaccountInput {
+  name: string;
+  email: string;
+  cpfCnpj: string;
+  companyType?: string;
+  phone?: string;
+  mobilePhone?: string;
+  address?: string;
+  addressNumber?: string;
+  complement?: string;
+  province?: string;
+  postalCode?: string;
+  incomeValue: number;
+}
+
+/**
+ * A resposta da criacao de subconta.
+ *
+ * `apiKey` so aparece AQUI: a documentacao diz que ela "e exibida na
+ * resposta da criacao e deve ser capturada nesse momento". Perdeu, nao
+ * tem segunda chance pela API. E por isso que a gravacao cifrada
+ * acontece na mesma transacao da criacao.
+ *
+ * `onboardingUrl` nao e citada na pagina publica de criacao de subconta;
+ * veio da resposta do time de Integracoes em 15/10/2026. Fica opcional
+ * ate a primeira criacao real confirmar.
+ */
+export interface AsaasSubaccount {
+  id: string;
+  walletId: string;
+  apiKey?: string;
+  onboardingUrl?: string;
+  accountNumber?: { agency?: string; account?: string; accountDigit?: string };
+}
+
+/**
+ * `POST /v3/accounts/{id}/escrow` — liga a custodia de UMA subconta.
+ *
+ * Existe tambem `POST /v3/accounts/escrow`, que liga em todas de uma vez,
+ * e ele nao e usado de proposito: em 14/10/2026, de 8 transportadoras
+ * cadastradas, 7 nao transacionavam, e a custodia tem tarifa recorrente
+ * por subconta ligada. Ligar tudo seria pagar (ou cobrar) por base parada.
+ */
+export interface ConfigurarCustodiaAsaasInput {
+  enabled: boolean;
+  /** Dias de retencao antes de liberar o valor para a subconta. */
+  daysToExpire?: number;
+  /**
+   * `true` joga a tarifa recorrente da custodia na propria subconta;
+   * `false` mantem na conta principal. O valor da tarifa NAO e publico:
+   * a documentacao confirma que ela existe e remete a outra pagina.
+   */
+  isFeePayer?: boolean;
 }
 
 export interface CreateAsaasSubscriptionInput {

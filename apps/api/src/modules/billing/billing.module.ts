@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 
 import { AsaasClientService } from "./asaas-client.service";
+import { AsaasSubcontasService } from "./asaas-subcontas.service";
 import { AsaasWebhookController } from "./asaas-webhook.controller";
 import { AsaasWebhookGuard } from "./asaas-webhook.guard";
 import { BillingQueueController } from "./billing-queue.controller";
@@ -11,6 +12,7 @@ import { CobrancaController } from "./cobranca.controller";
 import { CobrancaService } from "./cobranca.service";
 
 import { EmailModule } from "@/infra/email/email.module";
+import { SecurityModule } from "@/infra/security/security.module";
 import { AuditModule } from "@/modules/audit/audit.module";
 import { DiretoriaReadGuard } from "@/modules/client-errors/diretoria-read.guard";
 import { CompaniesModule } from "@/modules/companies/companies.module";
@@ -39,6 +41,7 @@ import { UsersModule } from "@/modules/users/users.module";
     EmailModule,
     AuditModule,
     MarketingModule,
+    SecurityModule,
   ],
   controllers: [
     BillingController,
@@ -53,6 +56,7 @@ import { UsersModule } from "@/modules/users/users.module";
     BillingSchedulerService,
     CobrancaService,
     DiretoriaReadGuard,
+    AsaasSubcontasService,
   ],
   // `BillingService` exportado pra `AdminDigestModule` reaproveitar
   // (`reconciliarPagamentosAsaas`, resumo semanal/mensal do Admin
@@ -62,6 +66,9 @@ import { UsersModule } from "@/modules/users/users.module";
   // MESMO cliente Asaas, com a mesma chave, o mesmo tratamento de erro
   // e o mesmo registro de saude da integracao -- em vez de um segundo
   // cliente HTTP falando com a mesma API.
-  exports: [BillingService, CobrancaService, AsaasClientService],
+  // `AsaasSubcontasService` exportado (20/10/2026) para a cobranca da
+  // familia montar o split da fatura. A subconta e a chave vivem aqui,
+  // junto do cliente Asaas, e nao duplicadas la.
+  exports: [BillingService, CobrancaService, AsaasClientService, AsaasSubcontasService],
 })
 export class BillingModule {}

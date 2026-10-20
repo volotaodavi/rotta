@@ -6,6 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
 import { formatarCentavos } from "@rotta/utils";
 
 import {
@@ -34,7 +35,9 @@ import type { ContractInvoiceRepository } from "./repositories/contract-invoice.
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { CompanyPaymentAccount, ContractInvoiceStatus } from "@prisma/client";
 
+import asaasConfig from "@/config/asaas.config";
 import { AsaasClientService } from "@/modules/billing/asaas-client.service";
+import { AsaasSubcontasService } from "@/modules/billing/asaas-subcontas.service";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { WalletService } from "@/modules/wallet/wallet.service";
@@ -118,6 +121,9 @@ export class FamilyBillingService {
     @Inject(COMPANY_PAYMENT_ACCOUNT_REPOSITORY)
     private readonly paymentAccountRepository: CompanyPaymentAccountRepository,
     private readonly asaasClient: AsaasClientService,
+    private readonly subcontas: AsaasSubcontasService,
+    @Inject(asaasConfig.KEY)
+    private readonly config: ConfigType<typeof asaasConfig>,
     private readonly studentsService: StudentsService,
     private readonly usersService: UsersService,
     private readonly walletService: WalletService,
@@ -328,16 +334,43 @@ export class FamilyBillingService {
       fatura.companyId,
     );
 
-    const payment = await this.asaasClient.createPayment({
-      customer: customerId,
-      billingType: "PIX",
-      value: fatura.valorCentavos / 100,
-      dueDate: fatura.vencimento.toISOString().slice(0, 10),
-      description: `Transporte escolar, ${fatura.company.nomeFantasia}`,
-      /* O prefixo é o que diz ao webhook de que fluxo este pagamento é
-         (ver `FAMILY_INVOICE_ID_PREFIX`). */
-      externalReference: `${FAMILY_INVOICE_ID_PREFIX}${fatura.id}`,
-    });
+    /*
+      O split e o emissor andam juntos, e a ordem importa.
+
+      Quando a transportadora tem subconta e `emissorDaCobranca` é
+      `SUBCONTA`, a cobrança é criada COM A CHAVE DELA: é o único jeito
+      de a custódia valer, porque a documentação de conta escrow diz que
+      só as subcontas habilitadas têm os próprios recebimentos retidos.
+      Nesse caso o split manda a nossa taxa para a Rotta.
+
+      Quando o emissor é `ROTTA` (o padrão, e o que funciona sem
+      depender da liberação de white label pelo comercial do Asaas), a
+      cobrança é da conta principal e o split manda para a subconta o
+      que sobra depois da nossa taxa.
+    */
+    const split = this.subcontas.montarSplit(conta, "PIX", this.config.rottaWalletId);
+    const emitirPelaSubconta = conta?.emissorDaCobranca === "SUBCONTA";
+    const chaveDaSubconta = emitirPelaSubconta
+      ? this.subcontas.chaveDaSubconta(
+          conta,
+          `emitir a cobranca Pix da fatura ${fatura.id} em nome da subconta`,
+        )
+      : undefined;
+
+    const payment = await this.asaasClient.createPayment(
+      {
+        customer: customerId,
+        billingType: "PIX",
+        value: fatura.valorCentavos / 100,
+        dueDate: fatura.vencimento.toISOString().slice(0, 10),
+        description: `Transporte escolar, ${fatura.company.nomeFantasia}`,
+        /* O prefixo é o que diz ao webhook de que fluxo este pagamento é
+           (ver `FAMILY_INVOICE_ID_PREFIX`). */
+        externalReference: `${FAMILY_INVOICE_ID_PREFIX}${fatura.id}`,
+        split,
+      },
+      chaveDaSubconta,
+    );
 
     await this.invoiceRepository.update(fatura.id, {
       asaasPaymentId: payment.id,

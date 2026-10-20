@@ -3,6 +3,9 @@ import { ConfigType } from "@nestjs/config";
 
 import type {
   AsaasBalance,
+  AsaasSubaccount,
+  ConfigurarCustodiaAsaasInput,
+  CreateAsaasSubaccountInput,
   AsaasCustomer,
   AsaasErrorEnvelope,
   AsaasFinancialTransaction,
@@ -87,9 +90,25 @@ export class AsaasClientService {
    */
   private async request<T>(
     path: string,
-    init: { method: "GET" | "POST" | "DELETE"; body?: unknown },
+    init: {
+      method: "GET" | "POST" | "DELETE";
+      body?: unknown;
+      /**
+       * Chave de API a usar no lugar da chave da conta principal.
+       *
+       * Existe por causa da inversão da arquitetura de custódia: a
+       * documentação de conta escrow diz que "apenas as subcontas com o
+       * recurso habilitado terão seus recebimentos submetidos ao fluxo
+       * de retenção". Ou seja, para haver retenção, quem recebe tem que
+       * ser a subconta — e a cobrança precisa ser criada com a chave
+       * DELA, não com a da conta pai.
+       *
+       * Nunca é logada, nem aqui nem em `IntegrationHealthService`.
+       */
+      accessToken?: string;
+    },
   ): Promise<T> {
-    this.assertConfigured();
+    if (!init.accessToken) this.assertConfigured();
 
     const startedAt = Date.now();
 
@@ -121,7 +140,7 @@ export class AsaasClientService {
       response = await fetch(`${this.config.baseUrl}${path}`, {
         method: init.method,
         headers: {
-          access_token: this.config.apiKey as string,
+          access_token: (init.accessToken ?? this.config.apiKey) as string,
           "Content-Type": "application/json",
           Accept: "application/json",
         },
@@ -186,8 +205,45 @@ export class AsaasClientService {
    * nenhuma mensalidade (pedido do usuário 03/09/2026: "posso pedir o
    * recebimento de transferências... incluindo o QR Code pix?").
    */
-  createPayment(input: CreateAsaasPaymentInput): Promise<AsaasPayment> {
-    return this.request<AsaasPayment>("/payments", { method: "POST", body: input });
+  /**
+   * `accessToken` chega quando a cobranca tem que ser criada EM NOME da
+   * subconta, que e o unico jeito de a custodia valer (ver `request`).
+   * Sem ele, a cobranca e da conta principal, com split para a subconta
+   * e sem nenhuma retencao.
+   */
+  createPayment(input: CreateAsaasPaymentInput, accessToken?: string): Promise<AsaasPayment> {
+    return this.request<AsaasPayment>("/payments", { method: "POST", body: input, accessToken });
+  }
+
+  /**
+   * Cria a subconta do transportador — `POST /v3/accounts`.
+   *
+   * O retorno traz `apiKey` e `walletId`, e a `apiKey` **so aparece
+   * aqui**. Quem chama tem a obrigacao de persistir cifrada na mesma
+   * operacao: nao existe endpoint para pedir de novo.
+   *
+   * Isto e o que faz o transportador nunca precisar abrir o Asaas: a
+   * conta dele nasce de um formulario dentro da Rotta.
+   */
+  createSubaccount(input: CreateAsaasSubaccountInput): Promise<AsaasSubaccount> {
+    return this.request<AsaasSubaccount>("/accounts", { method: "POST", body: input });
+  }
+
+  /**
+   * Liga ou desliga a custodia de UMA subconta —
+   * `POST /v3/accounts/{id}/escrow`, com a chave da conta principal.
+   *
+   * Nunca o endpoint que configura todas de uma vez: ver
+   * `ConfigurarCustodiaAsaasInput`.
+   */
+  configurarCustodiaDaSubconta(
+    accountId: string,
+    input: ConfigurarCustodiaAsaasInput,
+  ): Promise<unknown> {
+    return this.request<unknown>(`/accounts/${encodeURIComponent(accountId)}/escrow`, {
+      method: "POST",
+      body: input,
+    });
   }
 
   /**

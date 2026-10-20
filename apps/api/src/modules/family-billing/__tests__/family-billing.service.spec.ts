@@ -68,6 +68,10 @@ function buildFatura(
 
 describe("FamilyBillingService", () => {
   let service: FamilyBillingService;
+  /* Só os dois métodos que este serviço chama: o dublê não precisa
+     fingir a classe inteira, e declarar menos deixa o teste dizer o que
+     realmente depende. */
+  let subcontas: Pick<AsaasSubcontasService, "montarSplit" | "chaveDaSubconta">;
   let invoiceRepository: jest.Mocked<ContractInvoiceRepository>;
   let paymentAccountRepository: jest.Mocked<CompanyPaymentAccountRepository>;
   let asaasClient: jest.Mocked<AsaasClientService>;
@@ -109,10 +113,23 @@ describe("FamilyBillingService", () => {
       creditarRecebimentoDeFatura: jest.fn(),
     } as unknown as jest.Mocked<WalletService>;
 
+    /*
+      `subcontas` e `config` entraram em 20/10/2026, com o split. O
+      duble devolve `undefined` em `montarSplit` para que o
+      comportamento padrao do teste continue sendo "cobranca sem split",
+      que e o que a transportadora sem subconta tem hoje.
+    */
+    subcontas = {
+      montarSplit: jest.fn().mockReturnValue(undefined),
+      chaveDaSubconta: jest.fn(),
+    };
+
     service = new FamilyBillingService(
       invoiceRepository,
       paymentAccountRepository,
       asaasClient,
+      subcontas as AsaasSubcontasService,
+      { rottaWalletId: undefined } as never,
       studentsService,
       usersService,
       walletService,
@@ -301,7 +318,36 @@ describe("FamilyBillingService", () => {
           dueDate: "2026-04-05",
           externalReference: "fatura:fatura-1",
         }),
+        /* Segundo argumento: a chave da subconta. `undefined` aqui é o
+           caso de hoje, em que a Rotta é a emissora. */
+        undefined,
       );
+    });
+
+    it("sem subconta, a cobrança sai sem split", async () => {
+      await service.abrirPagamentoPix("fatura-1", responsavelActor);
+
+      const [payload] = (asaasClient.createPayment as jest.Mock).mock.calls[0];
+      expect(payload.split).toBeUndefined();
+    });
+
+    /*
+      O split é o que faz o dinheiro da família chegar na transportadora
+      sem passar pela mão de ninguém. Se ele for montado e não for
+      enviado, o valor inteiro fica na conta da Rotta, e ninguém percebe
+      até o fim do mês.
+    */
+    it("quando há split montado, ele vai junto na cobrança", async () => {
+      (subcontas.montarSplit as jest.Mock).mockReturnValue([
+        { walletId: "wallet-da-transportadora", percentualValue: 98.71 },
+      ]);
+
+      await service.abrirPagamentoPix("fatura-1", responsavelActor);
+
+      const [payload] = (asaasClient.createPayment as jest.Mock).mock.calls[0];
+      expect(payload.split).toEqual([
+        { walletId: "wallet-da-transportadora", percentualValue: 98.71 },
+      ]);
     });
 
     /* Duas tentativas de pagar a mesma fatura não podem gerar duas
