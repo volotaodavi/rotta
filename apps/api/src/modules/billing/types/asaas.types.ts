@@ -119,46 +119,113 @@ export interface CreateAsaasPaymentInput {
 }
 
 /**
+ * Os quatro tipos de empresa que o Asaas aceita, e **somente quando o
+ * titular e pessoa juridica** (`AccountSaveRequestDTO`, conferido em
+ * 20/10/2026). Para CPF o campo nao vai.
+ */
+export type AsaasCompanyType = "MEI" | "LIMITED" | "INDIVIDUAL" | "ASSOCIATION";
+
+/**
  * `POST /v3/accounts` — criacao de subconta.
  *
- * `incomeValue` e o unico campo que a documentacao marca explicitamente
- * como obrigatorio. A conta pai precisa ser pessoa juridica: "contas de
- * pessoa fisica (CPF) nao podem criar subcontas". A Rotta e PJ.
+ * ## Obrigatorios, pelo schema da referencia
+ *
+ * `name`, `email`, `cpfCnpj`, `mobilePhone`, `incomeValue`, `address`,
+ * `addressNumber`, `province` e `postalCode`. Sao nove, e nao um: o
+ * guia so destaca `incomeValue`, mas o schema marca os outros oito
+ * tambem. Por isso eles sao obrigatorios AQUI, e nao opcionais com uma
+ * esperanca: faltar um deles e um 400 do Asaas no meio da criacao, que
+ * e a pior hora para descobrir.
+ *
+ * A conta pai precisa ser pessoa juridica: "contas de pessoa fisica
+ * (CPF) nao podem criar subcontas". A Rotta e PJ.
  */
 export interface CreateAsaasSubaccountInput {
   name: string;
   email: string;
   cpfCnpj: string;
-  companyType?: string;
-  phone?: string;
-  mobilePhone?: string;
-  address?: string;
-  addressNumber?: string;
-  complement?: string;
-  province?: string;
-  postalCode?: string;
+  mobilePhone: string;
+  address: string;
+  addressNumber: string;
+  province: string;
+  postalCode: string;
   incomeValue: number;
+  /** Só para PJ. Em CPF o Asaas não aceita o campo. */
+  companyType?: AsaasCompanyType;
+  /** Só para PF, e a Rotta não coleta data de nascimento de transportadora. */
+  birthDate?: string;
+  phone?: string;
+  complement?: string;
 }
 
 /**
  * A resposta da criacao de subconta.
  *
- * `apiKey` so aparece AQUI: a documentacao diz que ela "e exibida na
- * resposta da criacao e deve ser capturada nesse momento". Perdeu, nao
- * tem segunda chance pela API. E por isso que a gravacao cifrada
- * acontece na mesma transacao da criacao.
+ * ## A chave vem em DOIS lugares possiveis, e isso nao e preciosismo
  *
- * `onboardingUrl` nao e citada na pagina publica de criacao de subconta;
- * veio da resposta do time de Integracoes em 15/10/2026. Fica opcional
- * ate a primeira criacao real confirmar.
+ * O guia de criacao de subconta diz, em texto, que "a resposta contem
+ * `apiKey` e `walletId`". O schema da referencia da mesma API
+ * (`AccountSaveResponseDTO`, conferido em 20/10/2026) **nao tem `apiKey`
+ * no topo**: tem `accessToken`, um objeto, com `apiKey` dentro.
+ *
+ * As duas paginas se contradizem, e a propria referencia avisa para
+ * conferir a resposta real antes de escrever codigo que dependa dela.
+ * Entao o tipo aceita as duas formas e quem le tenta as duas.
+ *
+ * O preco de errar aqui e alto e silencioso: a chave so e exibida na
+ * criacao, ler o campo errado gravaria `null`, a subconta nasceria sem
+ * poder emitir cobranca, e ninguem saberia por que. Recuperar depois
+ * exige `POST /v3/accounts/{id}/accessTokens`, que fica bloqueado por
+ * padrao e precisa ser liberado na interface web, com validade de 2
+ * horas.
+ *
+ * ## `onboardingUrl` NAO vem aqui
+ *
+ * Ela nao esta no schema da resposta, e a pagina de onboarding explica
+ * por que: o link vive em `GET /v3/myAccount/documents`, consultado com
+ * a chave DA SUBCONTA, pelo menos 15 segundos depois da criacao. Ver
+ * `AsaasDocumentoPendente`.
  */
 export interface AsaasSubaccount {
   id: string;
   walletId: string;
+  /** A forma que o guia descreve. */
   apiKey?: string;
-  onboardingUrl?: string;
+  /** A forma que o schema da referencia descreve. */
+  accessToken?: { id?: string; apiKey?: string };
   accountNumber?: { agency?: string; account?: string; accountDigit?: string };
 }
+
+/**
+ * `GET /v3/myAccount/documents` — o que falta para a subconta ser
+ * aprovada, consultado COM A CHAVE DELA.
+ *
+ * Um documento com `onboardingUrl` tem que ser enviado por aquele link:
+ * a documentacao diz que o envio pela API "sera rejeitado". Um sem
+ * `onboardingUrl` aceita `POST /v3/myAccount/documents/{id}`.
+ *
+ * A Rotta so usa o link: subir arquivo de documento de terceiro pela
+ * nossa API significaria o documento passar pelo nosso servidor, e nao
+ * ha motivo para isso existir.
+ */
+export interface AsaasDocumentoPendente {
+  id: string;
+  status?: string;
+  type?: string;
+  description?: string;
+  onboardingUrl?: string;
+}
+
+/**
+ * `GET /v3/myAccount/status` — a situacao cadastral da propria conta,
+ * consultada com a chave dela.
+ *
+ * E a alternativa ao webhook: enquanto os eventos de situacao da conta
+ * nao estiverem marcados no painel do Asaas, e isto que diz se a conta
+ * foi aprovada. Mesmos campos do objeto `accountStatus` que o webhook
+ * entrega.
+ */
+export type AsaasSituacaoDaConta = AsaasAccountStatus;
 
 /**
  * `POST /v3/accounts/{id}/escrow` — liga a custodia de UMA subconta.

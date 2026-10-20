@@ -37,7 +37,13 @@ import type {
 } from "./repositories/company-payment-account.repository";
 import type { ContractInvoiceRepository } from "./repositories/contract-invoice.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { CompanyPaymentAccountStatus, ContractInvoiceStatus } from "@prisma/client";
+import type { AsaasCompanyType } from "@/modules/billing/types/asaas.types";
+import type {
+  CompanyPaymentAccount,
+  CompanyPaymentAccountStatus,
+  CompanyType,
+  ContractInvoiceStatus,
+} from "@prisma/client";
 
 import asaasConfig from "@/config/asaas.config";
 import { AsaasClientService } from "@/modules/billing/asaas-client.service";
@@ -84,6 +90,29 @@ const SITUACAO_GERAL_DA_SUBCONTA: Record<string, CompanyPaymentAccountStatus | u
   AWAITING_APPROVAL: "EM_ANALISE",
   PENDING: "EM_ANALISE",
   REJECTED: "RECUSADA",
+};
+
+/**
+ * O tipo de empresa da Rotta traduzido para o do Asaas.
+ *
+ * O Asaas aceita quatro valores, e **só quando o titular é pessoa
+ * jurídica** (`AccountSaveRequestDTO`, conferido em 20/10/2026). Em CPF
+ * o campo não vai, e é por isso que `AUTONOMO` mapeia para `undefined`
+ * em vez de para algum valor parecido.
+ *
+ * `SOCIEDADE_SIMPLES` e `OUTRO` caem em `LIMITED` porque é o que mais se
+ * aproxima de uma sociedade comum, e `COOPERATIVA` em `ASSOCIATION`.
+ * Nenhum dos dois é exato; errar para o mais próximo é melhor que
+ * omitir um campo que o Asaas pede de PJ.
+ */
+const TIPO_DE_EMPRESA_NO_ASAAS: Record<CompanyType, AsaasCompanyType | undefined> = {
+  AUTONOMO: undefined,
+  MEI: "MEI",
+  LTDA: "LIMITED",
+  SA: "LIMITED",
+  COOPERATIVA: "ASSOCIATION",
+  SOCIEDADE_SIMPLES: "LIMITED",
+  OUTRO: "LIMITED",
 };
 
 /**
@@ -537,7 +566,8 @@ export class FamilyBillingService {
     actor: AuthenticatedUser,
   ): Promise<ContaDeRecebimentoResponse | null> {
     const conta = await this.paymentAccountRepository.findByCompanyId(this.companyIdDoAtor(actor));
-    return conta ? toContaDeRecebimentoResponse(conta) : null;
+    if (!conta) return null;
+    return toContaDeRecebimentoResponse(await this.sincronizarSubconta(conta));
   }
 
   /**
@@ -553,7 +583,55 @@ export class FamilyBillingService {
   ): Promise<ContaDeRecebimentoResponse | null> {
     await this.companiesService.findByIdOrThrow(companyId, actor);
     const conta = await this.paymentAccountRepository.findByCompanyId(companyId);
-    return conta ? toContaDeRecebimentoResponse(conta) : null;
+    if (!conta) return null;
+    return toContaDeRecebimentoResponse(await this.sincronizarSubconta(conta));
+  }
+
+  /**
+   * Pergunta ao Asaas o que falta nesta subconta, e grava o que voltou.
+   *
+   * ## Por que uma leitura escreve
+   *
+   * Porque os dois dados que ela busca não chegam de outro jeito:
+   *
+   * - `onboardingUrl` **não existe** na resposta de criação da subconta.
+   *   Ela vive em `GET /v3/myAccount/documents`, e sem esta chamada o
+   *   botão "enviar os documentos" nunca apareceria para ninguém.
+   * - a situação cadastral só muda sozinha se os eventos de conta
+   *   estiverem marcados no painel do Asaas, que é tarefa de uma pessoa.
+   *   Enquanto não estiverem, `GET /v3/myAccount/status` é o que tira a
+   *   conta de "em análise".
+   *
+   * É cache, não regra de negócio: o que vem do Asaas é a verdade, e
+   * isto só guarda a resposta para a próxima tela não precisar pedir de
+   * novo.
+   *
+   * ## Por que só enquanto não está ativa
+   *
+   * Conta ativa com link já guardado não tem o que sincronizar, e
+   * cobrar duas chamadas de rede do Asaas a cada abertura da tela de
+   * dinheiro seria pagar por nada. Conta recusada também para: o
+   * caminho dali é o suporte, não uma consulta.
+   */
+  private async sincronizarSubconta(conta: CompanyPaymentAccount): Promise<CompanyPaymentAccount> {
+    const precisa = conta.asaasAccountId && conta.status === "EM_ANALISE";
+    if (!precisa) return conta;
+
+    const { onboardingUrl, situacaoGeral } = await this.subcontas.sincronizar(conta);
+
+    const status = situacaoGeral ? SITUACAO_GERAL_DA_SUBCONTA[situacaoGeral] : undefined;
+    const mudancas: UpsertCompanyPaymentAccountData = {};
+    if (onboardingUrl && onboardingUrl !== conta.asaasOnboardingUrl) {
+      mudancas.asaasOnboardingUrl = onboardingUrl;
+    }
+    if (status && status !== conta.status) mudancas.status = status;
+
+    if (Object.keys(mudancas).length === 0) return conta;
+
+    this.logger.log(
+      `Subconta ${conta.asaasAccountId} (empresa ${conta.companyId}) sincronizada: ${Object.keys(mudancas).join(", ")}.`,
+    );
+    return this.paymentAccountRepository.upsert(conta.companyId, mudancas);
   }
 
   /**
@@ -649,19 +727,23 @@ export class FamilyBillingService {
       complemento: empresa.complemento ?? undefined,
       bairro: empresa.bairro,
       cep: empresa.cep,
+      companyType: TIPO_DE_EMPRESA_NO_ASAAS[empresa.tipo],
       faturamentoMensalCentavos: dados.faturamentoMensalCentavos,
     });
 
     /* `EM_ANALISE`, nunca `ATIVA`: a conta nasce aguardando a análise do
        Asaas, que leva até dois dias úteis e termina chegando pelo
        webhook de situação da conta. Dizer "ativa" aqui seria prometer
-       recebimento que ainda não existe. */
+       recebimento que ainda não existe.
+
+       `asaasOnboardingUrl` não entra aqui porque não existe na resposta
+       da criação: ela é preenchida na primeira leitura da tela, por
+       `sincronizarSubconta`. */
     const conta = await this.paymentAccountRepository.upsert(companyId, {
       status: "EM_ANALISE",
       asaasAccountId: subconta.asaasAccountId,
       asaasWalletId: subconta.asaasWalletId,
       asaasApiKeyCifrada: subconta.asaasApiKeyCifrada,
-      asaasOnboardingUrl: subconta.asaasOnboardingUrl,
     });
 
     this.logger.log(

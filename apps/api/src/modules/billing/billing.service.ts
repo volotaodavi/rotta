@@ -1082,6 +1082,31 @@ export class BillingService {
       return;
     }
 
+    /* Eventos de SPLIT. Não mudam estado de fatura nem de empresa, mas
+       um deles é dinheiro parado, e até 20/10/2026 todos os quatro
+       caíam no `default` com log de depuração, que ninguém lê.
+
+       `PAYMENT_SPLIT_DIVERGENCE_BLOCK` é o grave: quando o split
+       configurado passa do valor líquido, o Asaas bloqueia o repasse e
+       dá **2 dias úteis** para corrigir. Sem correção, os splits são
+       cancelados e o valor fica na conta de quem criou a cobrança. Isso
+       é a mensalidade de uma família não chegando na transportadora, e
+       precisa ser aviso, não depuração. */
+    if (event.event.startsWith("PAYMENT_SPLIT_")) {
+      const cobranca = event.payment?.id ?? "desconhecida";
+      if (
+        event.event === "PAYMENT_SPLIT_DIVERGENCE_BLOCK" ||
+        event.event === "PAYMENT_SPLIT_CANCELLED"
+      ) {
+        this.logger.warn(
+          `Asaas "${event.event}" na cobranca ${cobranca}: o repasse para a transportadora NAO aconteceu. No bloqueio por divergencia o prazo para corrigir e de 2 dias uteis, depois os splits sao cancelados e o valor fica na conta da Rotta.`,
+        );
+      } else {
+        this.logger.log(`Asaas "${event.event}" na cobranca ${cobranca}.`);
+      }
+      return;
+    }
+
     const companyId = event.payment?.externalReference ?? undefined;
 
     /* Mensalidade de uma FAMÍLIA, não assinatura da plataforma. São dois

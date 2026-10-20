@@ -346,6 +346,60 @@ describe("BillingService", () => {
     });
   });
 
+  /*
+    Os quatro eventos `PAYMENT_SPLIT_*` caíam no `default` com log de
+    depuração até 20/10/2026. Um deles é dinheiro parado:
+    `PAYMENT_SPLIT_DIVERGENCE_BLOCK` significa que o repasse para a
+    transportadora não aconteceu, e que há 2 dias úteis para corrigir
+    antes de os splits serem cancelados e o valor ficar na conta da
+    Rotta. Depuração é o nível de quem não vai ler.
+  */
+  describe("handleAsaasWebhookEvent: eventos de split", () => {
+    const cobranca = {
+      id: "pay_1",
+      customer: "cus_1",
+      status: "RECEIVED" as const,
+      billingType: "PIX" as const,
+      value: 660,
+      externalReference: "fatura:fatura-1",
+    };
+
+    it("bloqueio por divergencia vira aviso, e nao depuracao", async () => {
+      const aviso = jest.spyOn(service["logger"], "warn").mockImplementation(() => undefined);
+
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_SPLIT_DIVERGENCE_BLOCK",
+        payment: cobranca,
+      });
+
+      expect(aviso).toHaveBeenCalledWith(expect.stringContaining("PAYMENT_SPLIT_DIVERGENCE_BLOCK"));
+      expect(aviso.mock.calls[0]?.[0]).toContain("2 dias uteis");
+    });
+
+    it("split cancelado tambem e aviso: o repasse nao aconteceu", async () => {
+      const aviso = jest.spyOn(service["logger"], "warn").mockImplementation(() => undefined);
+
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_SPLIT_CANCELLED",
+        payment: cobranca,
+      });
+
+      expect(aviso).toHaveBeenCalled();
+    });
+
+    /* Split liquidado é o caminho feliz: registra, e não mexe em
+       fatura nem em empresa — quem muda a fatura é `PAYMENT_RECEIVED`. */
+    it("split liquidado nao mexe na empresa nem emite evento de fatura", async () => {
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_SPLIT_DONE",
+        payment: cobranca,
+      });
+
+      expect(companyRepository.update).not.toHaveBeenCalled();
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
+    });
+  });
+
   describe("handleAsaasWebhookEvent", () => {
     it("ativa a empresa em PAYMENT_CONFIRMED", async () => {
       await service.handleAsaasWebhookEvent({

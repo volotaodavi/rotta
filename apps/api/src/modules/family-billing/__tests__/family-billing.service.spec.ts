@@ -73,7 +73,10 @@ describe("FamilyBillingService", () => {
   /* Só os dois métodos que este serviço chama: o dublê não precisa
      fingir a classe inteira, e declarar menos deixa o teste dizer o que
      realmente depende. */
-  let subcontas: Pick<AsaasSubcontasService, "montarSplit" | "chaveDaSubconta" | "criarSubconta">;
+  let subcontas: Pick<
+    AsaasSubcontasService,
+    "montarSplit" | "chaveDaSubconta" | "criarSubconta" | "sincronizar"
+  >;
   let companiesService: Pick<CompaniesService, "findByIdOrThrow">;
   let invoiceRepository: jest.Mocked<ContractInvoiceRepository>;
   let paymentAccountRepository: jest.Mocked<CompanyPaymentAccountRepository>;
@@ -128,6 +131,10 @@ describe("FamilyBillingService", () => {
       montarSplit: jest.fn().mockReturnValue(undefined),
       chaveDaSubconta: jest.fn(),
       criarSubconta: jest.fn(),
+      /* `sincronizar` nao faz nada por padrao: a maioria dos testes nao
+         e sobre a conversa com o Asaas, e o estado gravado continua
+         valendo quando ela nao traz nada. */
+      sincronizar: jest.fn().mockResolvedValue({ onboardingUrl: null, situacaoGeral: null }),
     };
 
     /* O cadastro da transportadora é a fonte dos dados do titular da
@@ -640,7 +647,6 @@ describe("FamilyBillingService", () => {
       asaasAccountId: "acc_novo",
       asaasWalletId: "wallet_novo",
       asaasApiKeyCifrada: "iv:tag:cifra",
-      asaasOnboardingUrl: null,
     };
 
     beforeEach(() => {
@@ -758,6 +764,118 @@ describe("FamilyBillingService", () => {
         }),
       ).rejects.toThrow(ForbiddenException);
       expect(subcontas.criarSubconta).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    Dois defeitos reais, encontrados em 20/10/2026 ao conferir o schema
+    da referencia do Asaas contra o que o codigo lia:
+
+    1. `onboardingUrl` NAO vem na resposta de criacao da subconta. O
+       codigo gravava um campo que nunca chegava, e o botao "enviar os
+       documentos" nunca aparecia para ninguem.
+    2. A situacao da conta so mudava sozinha pelo webhook, e os eventos
+       de conta precisam ser marcados a mao no painel do Asaas. Enquanto
+       nao estiverem, a conta ficava presa em "em analise" para sempre.
+
+    `GET /v3/myAccount/documents` e `GET /v3/myAccount/status` resolvem
+    os dois, e e a leitura da tela que os dispara.
+  */
+  describe("sincronizacao da subconta na leitura da tela", () => {
+    const emAnalise = {
+      id: "conta-1",
+      companyId: "company-1",
+      status: "EM_ANALISE",
+      asaasAccountId: "acc_1",
+      asaasApiKeyCifrada: "iv:tag:cifra",
+      asaasOnboardingUrl: null,
+    };
+
+    it("grava o link de documentos que a criacao nunca devolveu", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
+      (subcontas.sincronizar as jest.Mock).mockResolvedValue({
+        onboardingUrl: "https://asaas.com/onboarding/abc",
+        situacaoGeral: null,
+      });
+      paymentAccountRepository.upsert.mockResolvedValue({
+        ...emAnalise,
+        asaasOnboardingUrl: "https://asaas.com/onboarding/abc",
+      } as never);
+
+      const conta = await service.getContaDeRecebimento(empresaActor);
+
+      expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
+        asaasOnboardingUrl: "https://asaas.com/onboarding/abc",
+      });
+      expect(conta?.asaasOnboardingUrl).toBe("https://asaas.com/onboarding/abc");
+    });
+
+    it("aprovada no Asaas, ativa aqui, mesmo sem o webhook configurado", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
+      (subcontas.sincronizar as jest.Mock).mockResolvedValue({
+        onboardingUrl: null,
+        situacaoGeral: "APPROVED",
+      });
+      paymentAccountRepository.upsert.mockResolvedValue({
+        ...emAnalise,
+        status: "ATIVA",
+      } as never);
+
+      const conta = await service.getContaDeRecebimento(empresaActor);
+
+      expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
+        status: "ATIVA",
+      });
+      expect(conta?.status).toBe("ATIVA");
+    });
+
+    it("sem novidade, nao grava nada: a tela de dinheiro abre muito", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
+
+      await service.getContaDeRecebimento(empresaActor);
+
+      expect(paymentAccountRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    /* Conta ativa com link guardado nao tem o que sincronizar, e duas
+       chamadas ao Asaas por abertura de tela seriam pagas por nada. */
+    it("conta ativa nao consulta o Asaas de novo", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue({
+        ...emAnalise,
+        status: "ATIVA",
+      } as never);
+
+      await service.getContaDeRecebimento(empresaActor);
+
+      expect(subcontas.sincronizar).not.toHaveBeenCalled();
+    });
+
+    it("conta sem subconta nenhuma nao consulta o Asaas", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue({
+        ...emAnalise,
+        asaasAccountId: null,
+        status: "PENDENTE",
+      } as never);
+
+      await service.getContaDeRecebimento(empresaActor);
+
+      expect(subcontas.sincronizar).not.toHaveBeenCalled();
+    });
+
+    it("vale igual pelo painel do Admin", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
+      (subcontas.sincronizar as jest.Mock).mockResolvedValue({
+        onboardingUrl: null,
+        situacaoGeral: "REJECTED",
+      });
+      paymentAccountRepository.upsert.mockResolvedValue({
+        ...emAnalise,
+        status: "RECUSADA",
+      } as never);
+
+      const conta = await service.getContaDeRecebimentoDaEmpresa("company-1", empresaActor);
+
+      expect(conta?.status).toBe("RECUSADA");
     });
   });
 

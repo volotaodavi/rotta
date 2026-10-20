@@ -124,6 +124,11 @@ describe("AsaasSubcontasService", () => {
       nome: "Transportes Andrade",
       email: "contato@exemplo.com.br",
       cpfCnpj: "12345678000190",
+      telefone: "21999998888",
+      endereco: "Avenida Roberto Silveira",
+      numero: "1180",
+      bairro: "Centro",
+      cep: "24900000",
       faturamentoMensalCentavos: 450000,
     };
 
@@ -141,8 +146,80 @@ describe("AsaasSubcontasService", () => {
         asaasAccountId: "acc_1",
         asaasWalletId: "wallet-1",
         asaasApiKeyCifrada: "cifrado",
-        asaasOnboardingUrl: null,
       });
+    });
+
+    /*
+      Este teste existe por causa de uma contradicao na documentacao do
+      Asaas, encontrada em 20/10/2026. O guia de criacao de subconta diz
+      em texto que "a resposta contem `apiKey` e `walletId`". O schema da
+      referencia da MESMA API nao tem `apiKey` no topo: tem `accessToken`,
+      um objeto, com `apiKey` dentro -- e a propria referencia avisa para
+      conferir a resposta real antes de confiar.
+
+      Ler so o topo, como o codigo fazia, gravaria `null` em silencio.
+      A subconta nasceria sem poder emitir cobranca, sem custodia, e sem
+      ninguem saber por que: a chave so e exibida uma vez, e recuperar
+      exige liberar na interface web do Asaas um acesso que vale 2 horas.
+    */
+    it("acha a chave em accessToken.apiKey, que e onde o schema da referencia a poe", async () => {
+      asaasClient.createSubaccount.mockResolvedValue({
+        id: "acc_1",
+        walletId: "wallet-1",
+        accessToken: { id: "key_1", apiKey: "chave-aninhada" },
+      });
+
+      const resultado = await service.criarSubconta(dados);
+
+      expect(secretCipher.encrypt).toHaveBeenCalledWith("chave-aninhada", "subconta-asaas");
+      expect(resultado.asaasApiKeyCifrada).toBe("cifrado");
+    });
+
+    it("com as duas formas presentes, a aninhada vence: e a que o schema promete", async () => {
+      asaasClient.createSubaccount.mockResolvedValue({
+        id: "acc_1",
+        walletId: "wallet-1",
+        apiKey: "chave-do-topo",
+        accessToken: { apiKey: "chave-aninhada" },
+      });
+
+      await service.criarSubconta(dados);
+
+      expect(secretCipher.encrypt).toHaveBeenCalledWith("chave-aninhada", "subconta-asaas");
+    });
+
+    it("manda companyType quando a transportadora e PJ, e omite quando nao e", async () => {
+      asaasClient.createSubaccount.mockResolvedValue({ id: "acc_1", walletId: "w" });
+
+      await service.criarSubconta({ ...dados, companyType: "MEI" });
+      expect(asaasClient.createSubaccount).toHaveBeenCalledWith(
+        expect.objectContaining({ companyType: "MEI" }),
+      );
+
+      await service.criarSubconta(dados);
+      expect(asaasClient.createSubaccount).toHaveBeenLastCalledWith(
+        expect.objectContaining({ companyType: undefined }),
+      );
+    });
+
+    it("manda os nove obrigatorios do schema, e nao so o faturamento", async () => {
+      asaasClient.createSubaccount.mockResolvedValue({ id: "acc_1", walletId: "w" });
+
+      await service.criarSubconta(dados);
+
+      expect(asaasClient.createSubaccount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: "Transportes Andrade",
+          email: "contato@exemplo.com.br",
+          cpfCnpj: "12345678000190",
+          mobilePhone: "21999998888",
+          address: "Avenida Roberto Silveira",
+          addressNumber: "1180",
+          province: "Centro",
+          postalCode: "24900000",
+          incomeValue: 4500,
+        }),
+      );
     });
 
     it("manda o faturamento em reais, que é a unidade da API deles", async () => {
@@ -174,6 +251,90 @@ describe("AsaasSubcontasService", () => {
 
       expect(resultado.asaasApiKeyCifrada).toBeNull();
       expect(secretCipher.encrypt).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    `sincronizar` existe por causa de um defeito real, encontrado em
+    20/10/2026 ao conferir o schema da referencia: `onboardingUrl` NAO
+    vem na resposta de `POST /v3/accounts`. O codigo lia um campo que
+    nunca existiu, entao o botao "enviar os documentos" nunca aparecia
+    para ninguem. O link vive em `GET /v3/myAccount/documents`,
+    consultado com a chave DA SUBCONTA.
+
+    A situacao vem junto porque `GET /v3/myAccount/status` e a unica
+    forma de a conta sair de "em analise" enquanto os eventos de conta
+    nao estiverem marcados no painel do Asaas -- e marcar aquilo e
+    tarefa de uma pessoa.
+  */
+  describe("sincronizar", () => {
+    beforeEach(() => {
+      asaasClient.listarDocumentosPendentes = jest.fn().mockResolvedValue([]);
+      asaasClient.consultarSituacaoDaConta = jest.fn().mockResolvedValue({ id: "st_1" });
+    });
+
+    it("consulta os dois endpoints com a chave da SUBCONTA, nunca com a da Rotta", async () => {
+      await service.sincronizar(contaBase);
+
+      expect(asaasClient.listarDocumentosPendentes).toHaveBeenCalledWith("chave-em-claro");
+      expect(asaasClient.consultarSituacaoDaConta).toHaveBeenCalledWith("chave-em-claro");
+    });
+
+    it("acha o link de envio de documentos entre as pendencias", async () => {
+      asaasClient.listarDocumentosPendentes = jest.fn().mockResolvedValue([
+        { id: "doc_1", type: "IDENTIFICATION" },
+        { id: "doc_2", onboardingUrl: "https://asaas.com/onboarding/abc" },
+      ]);
+
+      const resultado = await service.sincronizar(contaBase);
+
+      expect(resultado.onboardingUrl).toBe("https://asaas.com/onboarding/abc");
+    });
+
+    it("devolve a situacao geral, que e o que decide o estado da conta", async () => {
+      asaasClient.consultarSituacaoDaConta = jest
+        .fn()
+        .mockResolvedValue({ id: "st_1", general: "APPROVED", documentation: "APPROVED" });
+
+      expect((await service.sincronizar(contaBase)).situacaoGeral).toBe("APPROVED");
+    });
+
+    /*
+      Isto roda na leitura da tela de dinheiro da transportadora. Uma
+      indisponibilidade do Asaas, ou uma subconta criada antes do BaaS
+      estar ligado, nao pode derrubar a tela: sem resposta, vale o que
+      ja estava gravado.
+    */
+    it("o Asaas fora do ar nao derruba a tela: devolve nulo nos dois", async () => {
+      asaasClient.listarDocumentosPendentes = jest.fn().mockRejectedValue(new Error("502"));
+      asaasClient.consultarSituacaoDaConta = jest.fn().mockRejectedValue(new Error("502"));
+
+      await expect(service.sincronizar(contaBase)).resolves.toEqual({
+        onboardingUrl: null,
+        situacaoGeral: null,
+      });
+    });
+
+    it("um endpoint fora do ar nao perde a resposta do outro", async () => {
+      asaasClient.listarDocumentosPendentes = jest.fn().mockRejectedValue(new Error("502"));
+      asaasClient.consultarSituacaoDaConta = jest
+        .fn()
+        .mockResolvedValue({ id: "st_1", general: "APPROVED" });
+
+      await expect(service.sincronizar(contaBase)).resolves.toEqual({
+        onboardingUrl: null,
+        situacaoGeral: "APPROVED",
+      });
+    });
+
+    it("sem chave guardada nao chama nada: as duas consultas sao em nome da subconta", async () => {
+      const conta = { ...contaBase, asaasApiKeyCifrada: null };
+
+      await expect(service.sincronizar(conta)).resolves.toEqual({
+        onboardingUrl: null,
+        situacaoGeral: null,
+      });
+      expect(asaasClient.listarDocumentosPendentes).not.toHaveBeenCalled();
     });
   });
 

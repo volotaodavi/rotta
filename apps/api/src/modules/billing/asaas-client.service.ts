@@ -3,6 +3,8 @@ import { ConfigType } from "@nestjs/config";
 
 import type {
   AsaasBalance,
+  AsaasDocumentoPendente,
+  AsaasSituacaoDaConta,
   AsaasSubaccount,
   ConfigurarCustodiaAsaasInput,
   CreateAsaasSubaccountInput,
@@ -218,15 +220,54 @@ export class AsaasClientService {
   /**
    * Cria a subconta do transportador — `POST /v3/accounts`.
    *
-   * O retorno traz `apiKey` e `walletId`, e a `apiKey` **so aparece
-   * aqui**. Quem chama tem a obrigacao de persistir cifrada na mesma
-   * operacao: nao existe endpoint para pedir de novo.
+   * O retorno traz `walletId` e a chave de API, e a chave **so aparece
+   * aqui**: recuperar depois exige `POST /v3/accounts/{id}/accessTokens`,
+   * que fica bloqueado por padrao, precisa ser liberado na interface web
+   * e vale 2 horas. Quem chama tem a obrigacao de persistir cifrada na
+   * mesma operacao. Ver `AsaasSubaccount` para os DOIS lugares em que a
+   * chave pode vir.
    *
    * Isto e o que faz o transportador nunca precisar abrir o Asaas: a
    * conta dele nasce de um formulario dentro da Rotta.
    */
   createSubaccount(input: CreateAsaasSubaccountInput): Promise<AsaasSubaccount> {
     return this.request<AsaasSubaccount>("/accounts", { method: "POST", body: input });
+  }
+
+  /**
+   * O que falta para a subconta ser aprovada —
+   * `GET /v3/myAccount/documents`, COM A CHAVE DELA.
+   *
+   * `myAccount` significa "a conta de quem assina a requisicao": e por
+   * isso que a chave da subconta e obrigatoria aqui, e nao a da conta
+   * principal. E daqui que sai o `onboardingUrl`, que NAO vem na
+   * resposta da criacao.
+   *
+   * A documentacao pede pelo menos 15 segundos depois da criacao antes
+   * de consultar.
+   */
+  async listarDocumentosPendentes(accessToken: string): Promise<AsaasDocumentoPendente[]> {
+    const { data } = await this.request<AsaasListEnvelope<AsaasDocumentoPendente>>(
+      "/myAccount/documents",
+      { method: "GET", accessToken },
+    );
+    return data;
+  }
+
+  /**
+   * A situacao cadastral da subconta — `GET /v3/myAccount/status`, COM A
+   * CHAVE DELA.
+   *
+   * E a alternativa ao webhook de situacao da conta: enquanto os eventos
+   * nao estiverem marcados no painel do Asaas, e esta consulta que diz
+   * se a conta foi aprovada. A conta esta aprovada quando `general` e
+   * `APPROVED`.
+   */
+  consultarSituacaoDaConta(accessToken: string): Promise<AsaasSituacaoDaConta> {
+    return this.request<AsaasSituacaoDaConta>("/myAccount/status", {
+      method: "GET",
+      accessToken,
+    });
   }
 
   /**

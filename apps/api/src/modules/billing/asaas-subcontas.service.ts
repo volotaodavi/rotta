@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 
 import { AsaasClientService } from "./asaas-client.service";
 
-import type { AsaasSplitInput } from "./types/asaas.types";
+import type { AsaasCompanyType, AsaasSplitInput } from "./types/asaas.types";
 import type { CompanyPaymentAccount, InvoicePaymentMethod } from "@prisma/client";
 
 import { SecretCipherService } from "@/infra/security/secret-cipher.service";
@@ -69,18 +69,19 @@ export class AsaasSubcontasService {
     nome: string;
     email: string;
     cpfCnpj: string;
-    telefone?: string;
-    endereco?: string;
-    numero?: string;
+    telefone: string;
+    endereco: string;
+    numero: string;
     complemento?: string;
-    bairro?: string;
-    cep?: string;
+    bairro: string;
+    cep: string;
+    /** `undefined` para pessoa física: o Asaas não aceita o campo em CPF. */
+    companyType?: AsaasCompanyType;
     faturamentoMensalCentavos: number;
   }): Promise<{
     asaasAccountId: string;
     asaasWalletId: string;
     asaasApiKeyCifrada: string | null;
-    asaasOnboardingUrl: string | null;
   }> {
     const subconta = await this.asaasClient.createSubaccount({
       name: dados.nome,
@@ -92,8 +93,10 @@ export class AsaasSubcontasService {
       complement: dados.complemento,
       province: dados.bairro,
       postalCode: dados.cep,
-      /* `incomeValue` é o único campo que a documentação marca como
-         obrigatório, e vai em reais, como todo valor da API deles. */
+      companyType: dados.companyType,
+      /* Em reais, como todo valor da API deles. Os nove campos acima
+         são os obrigatórios do schema, e não só este: ver
+         `CreateAsaasSubaccountInput`. */
       incomeValue: dados.faturamentoMensalCentavos / 100,
     });
 
@@ -104,18 +107,28 @@ export class AsaasSubcontasService {
     }
 
     /*
-      A chave pode não vir (a documentação diz que vem, mas o contrato
-      não é nosso). Se não vier, a subconta ainda serve para receber
-      split; o que não dá é emitir cobrança em nome dela. Falhar aqui
-      jogaria fora uma subconta já criada, que é pior.
+      A chave pode vir em dois lugares, e as duas paginas da
+      documentacao se contradizem: o guia diz `apiKey` no topo, o schema
+      da referencia diz `accessToken.apiKey`. Ler so um dos dois
+      gravaria `null` em silencio, e a chave nao se repete.
     */
-    const cifrada = subconta.apiKey
-      ? this.secretCipher.encrypt(subconta.apiKey, "subconta-asaas")
-      : null;
+    const chave = subconta.accessToken?.apiKey ?? subconta.apiKey;
+
+    /*
+      Se nao vier em nenhum dos dois, a subconta ainda serve para
+      receber split; o que nao da e emitir cobranca em nome dela, que e
+      o unico modelo com custodia. Falhar aqui jogaria fora uma subconta
+      ja criada, que e pior -- e, ao contrario do que esta classe
+      supunha antes, a perda nao e definitiva: da para criar uma chave
+      nova com `POST /v3/accounts/{id}/accessTokens`, que fica bloqueado
+      por padrao e precisa ser liberado na interface web do Asaas, com
+      validade de 2 horas.
+    */
+    const cifrada = chave ? this.secretCipher.encrypt(chave, "subconta-asaas") : null;
 
     if (!cifrada) {
       this.logger.warn(
-        `Subconta ${subconta.id} criada SEM apiKey na resposta. Ela recebe split, mas nao pode emitir cobranca propria, entao custodia fica indisponivel para esta transportadora.`,
+        `Subconta ${subconta.id} criada SEM chave na resposta, nem em apiKey nem em accessToken.apiKey. Ela recebe split, mas nao pode emitir cobranca propria, entao custodia fica indisponivel. Para destravar: liberar o acesso a chaves de API na interface do Asaas e criar uma chave nova para esta subconta.`,
       );
     }
 
@@ -123,8 +136,68 @@ export class AsaasSubcontasService {
       asaasAccountId: subconta.id,
       asaasWalletId: subconta.walletId,
       asaasApiKeyCifrada: cifrada,
-      asaasOnboardingUrl: subconta.onboardingUrl ?? null,
     };
+  }
+
+  /**
+   * O que o Asaas ainda espera desta subconta, e em que situação ela
+   * está.
+   *
+   * ## Por que isto não saiu da criação
+   *
+   * Porque `onboardingUrl` não existe na resposta de `POST /v3/accounts`
+   * — conferido no schema da referência em 20/10/2026. O link vive em
+   * `GET /v3/myAccount/documents`, consultado **com a chave da
+   * subconta**, e a documentação pede pelo menos 15 segundos depois da
+   * criação. Era por isso que o botão "enviar os documentos" nunca
+   * aparecia: o campo lido na criação vinha sempre vazio.
+   *
+   * ## Por que a situação vem junto
+   *
+   * `GET /v3/myAccount/status` responde "esta conta foi aprovada?" sem
+   * depender de webhook nenhum. Enquanto os eventos de situação da conta
+   * não estiverem marcados no painel do Asaas, é a única forma de o
+   * estado sair de "em análise" — e marcar aquilo é tarefa de uma
+   * pessoa, não do código.
+   *
+   * ## Por que nada aqui estoura
+   *
+   * Isto roda na leitura de uma tela. Uma indisponibilidade do Asaas, ou
+   * uma subconta criada antes de o BaaS estar ligado, não pode derrubar a
+   * tela de dinheiro da transportadora: sem resposta, o estado continua
+   * sendo o que já estava gravado.
+   */
+  async sincronizar(conta: CompanyPaymentAccount): Promise<{
+    onboardingUrl: string | null;
+    situacaoGeral: string | null;
+  }> {
+    if (!conta.asaasApiKeyCifrada) return { onboardingUrl: null, situacaoGeral: null };
+
+    const chave = this.chaveDaSubconta(conta, "consultar documentos e situacao da subconta");
+
+    const [documentos, situacao] = await Promise.all([
+      this.asaasClient
+        .listarDocumentosPendentes(chave)
+        .catch((erro: Error) => this.semResposta("documentos", conta, erro)),
+      this.asaasClient
+        .consultarSituacaoDaConta(chave)
+        .catch((erro: Error) => this.semResposta("situacao", conta, erro)),
+    ]);
+
+    return {
+      /* O primeiro link serve: a tela manda a pessoa para o fluxo do
+         Asaas, que lista lá dentro tudo o que falta. */
+      onboardingUrl:
+        documentos?.find((documento) => documento.onboardingUrl)?.onboardingUrl ?? null,
+      situacaoGeral: situacao?.general ?? null,
+    };
+  }
+
+  private semResposta(oQue: string, conta: CompanyPaymentAccount, erro: Error): null {
+    this.logger.warn(
+      `Nao foi possivel consultar ${oQue} da subconta ${conta.asaasAccountId} (empresa ${conta.companyId}): ${erro.message}. O estado gravado continua valendo.`,
+    );
+    return null;
   }
 
   /**
