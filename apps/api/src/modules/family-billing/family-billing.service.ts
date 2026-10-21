@@ -123,6 +123,24 @@ export interface ConfigurarRecebimentoDados {
   };
 }
 
+/** Uma linha da tela de cobrança mensal. Sem CPF: ver `listarContratosParaCobrar`. */
+export interface ContratoParaCobrarResponse {
+  contractId: string;
+  alunoNome: string;
+  responsavelNome: string;
+  responsavelTelefone: string;
+  valorCentavos: number;
+  valorFormatado: string;
+  statusDoContrato: string;
+  vigenciaFim: string | null;
+  cobrancaMensalAtiva: boolean;
+  statusDaAssinatura: string | null;
+  /** `true` quando o formulário vai precisar pedir o CPF de quem paga. */
+  precisaDeCpf: boolean;
+  /** O que impede ligar agora, em uma frase. `null` quando dá para ligar. */
+  impedimento: string | null;
+}
+
 export interface AssinaturaDaFamiliaResponse {
   contractId: string;
   asaasSubscriptionId: string;
@@ -1139,6 +1157,59 @@ export class FamilyBillingService {
   // ---------------------------------------------------------------------
   // A assinatura da família: a recorrência que cobra sozinha
   // ---------------------------------------------------------------------
+
+  /**
+   * Os contratos da transportadora, com o estado da cobrança mensal de
+   * cada um.
+   *
+   * É a tela em que ela liga a recorrência das famílias que já estão
+   * cadastradas: a Rotta já sabe quem é o aluno, quem paga e quanto é,
+   * então a única coisa que a tela pede, e só quando falta, é o CPF de
+   * quem paga.
+   *
+   * O CPF nunca sai daqui como valor — só como `precisaDeCpf`. Devolver
+   * documento de pessoa física numa listagem seria expor mais do que a
+   * tela precisa para funcionar.
+   */
+  async listarContratosParaCobrar(actor: AuthenticatedUser): Promise<ContratoParaCobrarResponse[]> {
+    const companyId = this.companyIdDoAtor(actor);
+    const contratos = await this.invoiceRepository.listContratosParaCobrar(companyId);
+
+    return contratos.map((contrato) => ({
+      contractId: contrato.id,
+      alunoNome: contrato.student.nome,
+      responsavelNome: contrato.responsavel.nome,
+      responsavelTelefone: contrato.responsavel.telefone,
+      valorCentavos: contrato.valorMensalidadeCentavos,
+      valorFormatado: formatarCentavos(contrato.valorMensalidadeCentavos),
+      statusDoContrato: contrato.status,
+      vigenciaFim: contrato.vigenciaFim ? contrato.vigenciaFim.toISOString().slice(0, 10) : null,
+      cobrancaMensalAtiva: Boolean(contrato.asaasSubscriptionId),
+      statusDaAssinatura: contrato.asaasSubscriptionStatus,
+      precisaDeCpf: !contrato.responsavel.cpf,
+      /* O que impede ligar agora, em uma frase, para a tela não ter que
+         repetir as regras do serviço e poder divergir delas. */
+      impedimento: this.impedimentoParaCobrar(contrato),
+    }));
+  }
+
+  private impedimentoParaCobrar(contrato: {
+    status: string;
+    valorMensalidadeCentavos: number;
+    asaasSubscriptionId: string | null;
+  }): string | null {
+    if (contrato.asaasSubscriptionId) return null;
+    if (contrato.status !== "ATIVO") {
+      return "O contrato precisa estar ativo.";
+    }
+    if (contrato.valorMensalidadeCentavos <= 0) {
+      return "A mensalidade está em R$ 0,00: combine o valor com a família e registre no contrato.";
+    }
+    if (!this.asaasClient.isConfigured()) {
+      return "A cobrança automática ainda não está disponível nesta implantação.";
+    }
+    return null;
+  }
 
   /** A transportadora cria a recorrência de um contrato dela. */
   async criarAssinaturaDoProprioContrato(

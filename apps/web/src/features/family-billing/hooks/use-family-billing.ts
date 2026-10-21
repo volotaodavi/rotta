@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   ContaDeRecebimentoComConvite,
   ContractInvoiceStatus,
+  CriarAssinaturaDaFamiliaInput,
   CriarSubcontaAsaasInput,
 } from "@rotta/api-client";
 
@@ -68,6 +69,40 @@ export function useCriarSubcontaAsaas() {
         ["family-billing", "conta-de-recebimento"],
         { conta },
       );
+    },
+  });
+}
+
+/** Os contratos da transportadora, com o estado da cobrança mensal de cada um. */
+export function useContratosParaCobrar() {
+  return useQuery({
+    queryKey: ["family-billing", "contratos-para-cobrar"],
+    queryFn: () => familyBillingApi.listarContratosParaCobrar(),
+  });
+}
+
+/**
+ * Liga a cobrança mensal automática de um contrato.
+ *
+ * Invalida a lista e as faturas: a recorrência já cria a cobrança do
+ * primeiro mês (o provedor gera até 40 dias antes do vencimento), então
+ * a tabela de mensalidades pode mudar junto.
+ */
+export function useCriarAssinaturaDoContrato() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      contractId,
+      input,
+    }: {
+      contractId: string;
+      input: CriarAssinaturaDaFamiliaInput;
+    }) => familyBillingApi.criarAssinaturaDoContrato(contractId, input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["family-billing", "contratos-para-cobrar"],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["family-billing", "invoices"] });
     },
   });
 }

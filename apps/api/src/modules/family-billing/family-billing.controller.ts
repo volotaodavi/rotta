@@ -181,6 +181,17 @@ export class FamilyBillingController {
   // --- A cobrança mensal automática de um contrato ---
 
   @ApiOperation({
+    summary: "Os contratos da transportadora, com o estado da cobrança mensal",
+    description:
+      "A tela em que a transportadora liga a recorrência das famílias que já estão cadastradas. `precisaDeCpf` diz quando o formulário vai pedir o CPF de quem paga, e `impedimento` traz numa frase o que falta para poder ligar. O CPF nunca sai nesta resposta.",
+  })
+  @Get("contracts")
+  @Roles(...TRANSPORTADOR_ROLES)
+  listarContratosParaCobrar(@CurrentUser() actor: AuthenticatedUser) {
+    return this.familyBillingService.listarContratosParaCobrar(actor);
+  }
+
+  @ApiOperation({
     summary: "Liga a cobrança mensal automática de um contrato",
     description:
       "Cria a assinatura no Asaas: a partir daí a cobrança de cada mês nasce sozinha, com o split já aplicado, e **o responsável não precisa de conta na Rotta** — ele paga pelo link da cobrança. Recusa quando o contrato já tem recorrência (cobraria a família duas vezes), quando não está ativo, e quando a mensalidade está em R$ 0,00. O primeiro vencimento pula mês que já tenha cobrança emitida.",

@@ -220,6 +220,28 @@ export interface ConfigurarRecebimentoInput {
   };
 }
 
+/**
+ * Uma linha da tela de cobrança mensal da transportadora.
+ *
+ * O CPF de quem paga não vem nesta resposta: `precisaDeCpf` diz apenas
+ * se o formulário vai ter que pedir.
+ */
+export interface ContratoParaCobrar {
+  contractId: string;
+  alunoNome: string;
+  responsavelNome: string;
+  responsavelTelefone: string;
+  valorCentavos: number;
+  valorFormatado: string;
+  statusDoContrato: string;
+  vigenciaFim: string | null;
+  cobrancaMensalAtiva: boolean;
+  statusDaAssinatura: string | null;
+  precisaDeCpf: boolean;
+  /** O que impede ligar agora, em uma frase. `null` quando dá para ligar. */
+  impedimento: string | null;
+}
+
 export interface AssinaturaDaFamilia {
   contractId: string;
   asaasSubscriptionId: string;
@@ -271,6 +293,14 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
           { method: "POST" },
         )
       ).data,
+
+    /**
+     * Os contratos da transportadora com o estado da cobrança mensal —
+     * a tela em que ela liga a recorrência das famílias já cadastradas.
+     */
+    listarContratosParaCobrar: async (): Promise<ContratoParaCobrar[]> =>
+      (await apiClient.request<ApiEnvelope<ContratoParaCobrar[]>>("/family-billing/contracts"))
+        .data,
 
     /**
      * Liga a cobrança mensal automática de um contrato: a partir daí o

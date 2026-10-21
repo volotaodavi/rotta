@@ -81,6 +81,28 @@ export interface ContratoParaAssinar {
   company: { id: string; nomeFantasia: string };
 }
 
+/**
+ * A linha da tela "cobrança mensal": um contrato, quem paga, e se a
+ * recorrência já está ligada.
+ *
+ * `responsavel` traz nome e telefone porque é por eles que a
+ * transportadora reconhece a família e fala com ela — dados que ela já
+ * tem do contrato em papel. O CPF **não** vem: a tela só precisa saber
+ * se falta, e devolver documento de pessoa física numa listagem é
+ * expor mais do que a decisão pede.
+ */
+export interface ContratoParaCobrar {
+  id: string;
+  valorMensalidadeCentavos: number;
+  status: ContractStatus;
+  vigenciaFim: Date | null;
+  asaasSubscriptionId: string | null;
+  asaasSubscriptionStatus: string | null;
+  assinaturaCriadaEm: Date | null;
+  student: { id: string; nome: string };
+  responsavel: { id: string; nome: string; telefone: string; cpf: string | null };
+}
+
 export interface AtualizarAssinaturaDoContratoData {
   asaasSubscriptionId?: string | null;
   asaasSubscriptionStatus?: string | null;
@@ -178,6 +200,15 @@ export interface ContractInvoiceRepository {
   findContratoPorAssinaturaAcrossTenants(
     asaasSubscriptionId: string,
   ): Promise<ContratoParaAssinar | null>;
+
+  /**
+   * Os contratos de uma transportadora para a tela de cobrança mensal.
+   *
+   * Encerrado fica de fora: contrato encerrado não ganha recorrência, e
+   * listá-lo só para mostrar um botão desabilitado enche a tela de linha
+   * que não tem ação.
+   */
+  listContratosParaCobrar(companyId: string): Promise<ContratoParaCobrar[]>;
 
   /** Grava o vínculo da recorrência no contrato. Cruza tenants: ver acima. */
   atualizarAssinaturaDoContratoAcrossTenants(

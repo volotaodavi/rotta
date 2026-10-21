@@ -5,6 +5,7 @@ import type {
   ContractInvoiceComContexto,
   ContractInvoiceRepository,
   ContratoParaAssinar,
+  ContratoParaCobrar,
   ContratoParaFaturar,
   CreateContractInvoiceData,
   ListContractInvoicesFilter,
@@ -156,6 +157,26 @@ export class PrismaContractInvoiceRepository implements ContractInvoiceRepositor
   ): Promise<ContratoParaAssinar | null> {
     return this.prisma.withBypass(
       this.prisma.contract.findUnique({ where: { asaasSubscriptionId }, select: PARA_ASSINAR }),
+    );
+  }
+
+  listContratosParaCobrar(companyId: string): Promise<ContratoParaCobrar[]> {
+    return this.prisma.withTenant(
+      this.prisma.contract.findMany({
+        where: { companyId, status: { not: "ENCERRADO" } },
+        select: {
+          id: true,
+          valorMensalidadeCentavos: true,
+          status: true,
+          vigenciaFim: true,
+          asaasSubscriptionId: true,
+          asaasSubscriptionStatus: true,
+          assinaturaCriadaEm: true,
+          student: { select: { id: true, nome: true } },
+          responsavel: { select: { id: true, nome: true, telefone: true, cpf: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
     );
   }
 

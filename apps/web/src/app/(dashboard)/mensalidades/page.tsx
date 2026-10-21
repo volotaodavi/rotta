@@ -5,9 +5,12 @@ import { useState } from "react";
 
 import type { ContractInvoiceStatus } from "@rotta/api-client";
 
+import { CobrancaMensalCard } from "@/features/family-billing/components/cobranca-mensal-card";
 import { ContaDeRecebimentoCard } from "@/features/family-billing/components/conta-de-recebimento-card";
 import {
   useContaDeRecebimento,
+  useContratosParaCobrar,
+  useCriarAssinaturaDoContrato,
   useCriarSubcontaAsaas,
   useFaturasDaEmpresa,
   useSalvarContaDeRecebimento,
@@ -64,6 +67,8 @@ export default function MensalidadesPage(): JSX.Element {
   const conta = recebimento?.conta;
   const salvarConta = useSalvarContaDeRecebimento();
   const criarSubconta = useCriarSubcontaAsaas();
+  const { data: contratos, isLoading: contratosCarregando } = useContratosParaCobrar();
+  const criarAssinatura = useCriarAssinaturaDoContrato();
   const [chavePix, setChavePix] = useState("");
 
   function salvar(): void {
@@ -99,6 +104,19 @@ export default function MensalidadesPage(): JSX.Element {
           const aberta = await criarSubconta.mutateAsync(input);
           toast.success("Conta aberta. A análise costuma levar até dois dias úteis.");
           return aberta;
+        }}
+      />
+
+      <CobrancaMensalCard
+        contratos={contratos}
+        isLoading={contratosCarregando}
+        isLigando={criarAssinatura.isPending}
+        onLigarCobranca={async (entrada) => {
+          const assinatura = await criarAssinatura.mutateAsync(entrada);
+          toast.success(
+            `Cobrança mensal ligada. A primeira vence em ${diaBrasileiro(assinatura.primeiroVencimento)}.`,
+          );
+          return assinatura;
         }}
       />
 
