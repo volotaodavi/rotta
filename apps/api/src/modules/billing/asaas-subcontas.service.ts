@@ -1,4 +1,9 @@
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 
 import { AsaasClientService } from "./asaas-client.service";
 
@@ -64,6 +69,27 @@ export class AsaasSubcontasService {
    * repositório, e porque a `apiKey` não pode sobreviver a uma falha de
    * escrita: ou a mesma operação persiste tudo, ou a subconta fica órfã
    * no Asaas com uma chave que ninguém mais consegue recuperar.
+   *
+   * ## A checagem antes da chamada, e por que ela não é zelo
+   *
+   * Defeito real, encontrado em 21/10/2026 ao responder "existe alguma
+   * subconta hoje?". Criar subconta no Asaas é **irreversível**, e isto
+   * acontecia antes de a chave ser cifrada. Com
+   * `ASAAS_SUBCONTA_ENCRYPTION_KEY` ausente — que era o estado da
+   * produção —, a sequência real era:
+   *
+   * 1. a subconta nascia no Asaas;
+   * 2. a cifra estourava;
+   * 3. nada era gravado.
+   *
+   * Resultado: subconta órfã no provedor, sem registro na Rotta. E como
+   * `asaasAccountId` nunca chegava ao banco, a recusa da "segunda
+   * subconta" não disparava: a tentativa seguinte criava **outra** órfã.
+   * Cada uma queimaria uma das 10 vagas do Período de Avaliação e
+   * iniciaria o relógio de 60 dias.
+   *
+   * Por isso a pergunta vem antes da chamada. O que não pode falhar
+   * depois de um efeito irreversível tem que ser conferido antes dele.
    */
   async criarSubconta(dados: {
     nome: string;
@@ -75,6 +101,15 @@ export class AsaasSubcontasService {
     complemento?: string;
     bairro: string;
     cep: string;
+    /**
+     * O e-mail que fica como LOGIN da conta.
+     *
+     * Separado de `email` porque, quando o transportador aponta um
+     * e-mail de financeiro, é `email` que vira o login do Asaas — e o
+     * dono perderia o acesso à própria conta de recebimento para o
+     * contador. Aqui o login fica com a empresa.
+     */
+    emailDeLogin: string;
     /** `undefined` para pessoa física: o Asaas não aceita o campo em CPF. */
     companyType?: AsaasCompanyType;
     faturamentoMensalCentavos: number;
@@ -83,9 +118,16 @@ export class AsaasSubcontasService {
     asaasWalletId: string;
     asaasApiKeyCifrada: string | null;
   }> {
+    if (!this.secretCipher.podeCifrar("subconta-asaas")) {
+      throw new ServiceUnavailableException(
+        "A abertura de conta de recebimento ainda não está disponível nesta implantação. Nada foi criado: fale com o suporte da Rotta.",
+      );
+    }
+
     const subconta = await this.asaasClient.createSubaccount({
       name: dados.nome,
       email: dados.email,
+      loginEmail: dados.emailDeLogin,
       cpfCnpj: dados.cpfCnpj,
       mobilePhone: dados.telefone,
       address: dados.endereco,
@@ -99,6 +141,21 @@ export class AsaasSubcontasService {
          `CreateAsaasSubaccountInput`. */
       incomeValue: dados.faturamentoMensalCentavos / 100,
     });
+
+    /*
+      Registrado ANTES de qualquer coisa que possa falhar, e no nível de
+      aviso. Daqui para frente existe uma subconta no Asaas que a Rotta
+      ainda não gravou, e criar subconta não tem desfazer: se a gravação
+      cair (banco fora, RLS, qualquer coisa), esta linha é a única pista
+      de qual conta ficou órfã no provedor. Sem ela, a recuperação seria
+      comparar a lista de subcontas do painel com a nossa tabela, na mão.
+
+      O `id` não é segredo: é o mesmo que aparece no painel do Asaas. A
+      chave, essa sim, nunca é registrada.
+    */
+    this.logger.warn(
+      `Subconta ${subconta.id} criada no Asaas para "${dados.nome}" (${dados.cpfCnpj}). Se nao houver uma linha de confirmacao logo abaixo desta, ela ficou ORFA no provedor. Subconta nao-BaaS encerrada em ate 48 HORAS da criacao, e que nunca fez login, nao gera a taxa de criacao: e a janela para desfazer sem custo.`,
+    );
 
     if (!subconta.walletId) {
       throw new BadRequestException(

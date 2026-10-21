@@ -757,6 +757,11 @@ export class FamilyBillingService {
          documento. */
       nome: empresa.razaoSocial,
       email: dados.email ?? empresa.email,
+      /* O login fica SEMPRE com a empresa, mesmo quando ela aponta um
+         e-mail de financeiro acima. Sem isto, o Asaas usaria o e-mail do
+         financeiro como login e a transportadora perderia o acesso à
+         própria conta de recebimento para o contador. */
+      emailDeLogin: empresa.email,
       cpfCnpj: empresa.cpfCnpj,
       telefone: dados.telefone ?? empresa.telefone,
       endereco: empresa.endereco,
@@ -784,7 +789,10 @@ export class FamilyBillingService {
     });
 
     this.logger.log(
-      `Subconta Asaas ${subconta.asaasAccountId} criada para a empresa ${companyId} por ${actor.role} ${actor.sub}.`,
+      /* Esta é a "linha de confirmação" que o aviso de
+         `AsaasSubcontasService.criarSubconta` promete: se ela não
+         aparecer, a subconta ficou órfã no provedor. */
+      `Subconta Asaas ${subconta.asaasAccountId} GRAVADA para a empresa ${companyId} por ${actor.role} ${actor.sub}.`,
     );
 
     return toContaDeRecebimentoResponse(conta);

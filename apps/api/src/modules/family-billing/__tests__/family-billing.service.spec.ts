@@ -681,6 +681,7 @@ describe("FamilyBillingService", () => {
       expect(subcontas.criarSubconta).toHaveBeenCalledWith({
         nome: "Transportes Lima LTDA",
         email: "contato@lima.com.br",
+        emailDeLogin: "contato@lima.com.br",
         cpfCnpj: "12345678000190",
         telefone: "21999990000",
         endereco: "Avenida Roberto Silveira",
@@ -713,6 +714,27 @@ describe("FamilyBillingService", () => {
         expect.objectContaining({
           email: "financeiro@lima.com.br",
           telefone: "21988887777",
+        }),
+      );
+    });
+
+    /*
+      O schema de `POST /v3/accounts` diz que `loginEmail`, "caso nao
+      informado", usa o `email` da subconta. Ou seja: apontar um e-mail
+      de financeiro faria o CONTADOR virar o login da conta de
+      recebimento, e o dono perderia o acesso a propria conta. O login
+      fica com a empresa, sempre.
+    */
+    it("o login da conta fica com a empresa, nunca com o financeiro", async () => {
+      await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
+        faturamentoMensalCentavos: 450_000,
+        email: "financeiro@lima.com.br",
+      });
+
+      expect(subcontas.criarSubconta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          email: "financeiro@lima.com.br",
+          emailDeLogin: "contato@lima.com.br",
         }),
       );
     });

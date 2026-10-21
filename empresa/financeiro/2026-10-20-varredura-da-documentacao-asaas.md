@@ -8,13 +8,63 @@ indexa cada seção. Foram lidas 25 páginas, escolhidas pelas que podiam
 (a) invalidar algo que já está no ar, (b) responder uma das sete
 perguntas abertas do comercial, ou (c) destravar o passo 4.
 
-**Resultado em uma linha:** três defeitos reais no que foi entregue hoje
-de manhã, um limite de produção que ninguém sabia que existia, e duas
-das sete perguntas do e-mail respondidas sem precisar do comercial.
+**Resultado em uma linha:** quatro defeitos reais no que foi entregue
+ontem, um deles grave, um limite de produção que ninguém sabia que
+existia, e duas das sete perguntas do e-mail respondidas sem precisar do
+comercial.
+
+**Adendo de 21/10/2026.** O fundador pediu a página de referência
+completa, e não resumo. A página traz a **definição OpenAPI** do
+endpoint, que é a fonte de verdade legível por máquina — e ela confirmou
+o defeito 1.1 de forma definitiva, além de revelar o defeito 1.5 e dois
+campos que mudaram comportamento. Ver seção 1.0 e 10.
 
 ---
 
-## 1. Três defeitos reais, encontrados e corrigidos
+## 1.0 A definição OpenAPI, extraída da própria página
+
+`docs.asaas.com/reference/criar-subconta.md` embute a especificação
+inteira. Extraída e lida campo a campo:
+
+**`AccountSaveRequestDTO.required`**, verbatim:
+
+```
+["name","email","cpfCnpj","mobilePhone","incomeValue",
+ "address","addressNumber","province","postalCode"]
+```
+
+Nove, como já estava no código. A Rotta tem os nove.
+
+**`AccountSaveResponseDTO`**: 24 campos, e **nenhum deles se chama
+`apiKey`**. O único campo com chave é `accessToken`, que é um
+`CustomerApiAccessTokenSaveResponseDTO` com `apiKey` dentro. Isto encerra
+a contradição com o texto da própria página, que diz "a resposta inclui
+a `apiKey`": o texto está errado, o schema está certo. Nosso código lê
+os dois, com o aninhado ganhando.
+
+**Enums, verbatim:**
+
+| Campo                   | Valores                                              |
+| ----------------------- | ---------------------------------------------------- |
+| `companyType` (só PJ)   | `MEI`, `LIMITED`, `INDIVIDUAL`, `ASSOCIATION`        |
+| `personType` (resposta) | `JURIDICA`, `FISICA`                                 |
+| `taxRegime`             | `MEI`, `NATIONAL_SIMPLE`, `NORMAL_REGIME`, `UNKNOWN` |
+
+**Dois avisos no corpo da página, que não estavam nos guias:**
+
+1. **O CEP tem que ser válido.** "O Asaas utiliza esse valor para
+   identificar a cidade do endereço e retorna `400` quando o CEP não pode
+   ser localizado." CEP errado no cadastro da transportadora derruba a
+   criação.
+2. **Existe taxa de criação de subconta, e existe uma janela para
+   desfazer.** Subconta não-BaaS encerrada em até **48 horas** da
+   criação, e que **nunca fez login**, não gera a taxa. É a janela para
+   consertar uma criação errada sem custo — e por isso ela entrou na
+   mensagem de aviso de subconta órfã.
+
+---
+
+## 1. Quatro defeitos reais, encontrados e corrigidos
 
 ### 1.1 A chave da subconta era lida no lugar errado
 
@@ -77,6 +127,65 @@ A Rotta já tem os nove — oito do cadastro da transportadora e o
 faturamento do formulário. Os tipos foram apertados para obrigatórios, de
 modo que faltar um deles seja erro de compilação aqui, e não um 400 do
 Asaas no meio da criação.
+
+### 1.5 O GRAVE: a subconta nascia órfã, e a tentativa seguinte criava outra
+
+**Como apareceu.** O fundador perguntou "existe alguma subconta hoje?" —
+e conferir isso obrigou a olhar a ordem das operações.
+
+**O achado.** Criar subconta no Asaas é **irreversível**, e a cifra da
+chave acontecia **depois**. Sem `ASAAS_SUBCONTA_ENCRYPTION_KEY`
+configurada — que era exatamente o estado da produção, porque o passo 2
+do plano ainda não tinha sido feito — a sequência real era:
+
+1. `POST /v3/accounts` → a subconta nasce no Asaas;
+2. cifrar a chave → **estoura**;
+3. a exceção sobe, o `upsert` nunca roda → **nada gravado**.
+
+Resultado: subconta órfã no provedor, sem registro na Rotta. E como
+`asaasAccountId` nunca chegava ao banco, a recusa da "segunda subconta"
+não disparava: a tentativa seguinte criava **outra** órfã. Cada uma
+queimaria uma das 10 vagas do Período de Avaliação e iniciaria o relógio
+de 60 dias.
+
+O botão estava no ar. Nenhuma transportadora apertou — mas isso foi
+sorte, não projeto.
+
+**Correção, em duas camadas:**
+
+1. **A pergunta vem antes da chamada.** `SecretCipherService.podeCifrar`
+   diz se o ambiente sabe cifrar, e `criarSubconta` recusa com
+   `503` e mensagem clara **antes** de falar com o Asaas. O que não pode
+   falhar depois de um efeito irreversível é conferido antes dele.
+2. **A órfã fica rastreável.** O `id` da subconta vai para o log, em
+   nível de aviso, no instante em que a resposta chega e antes de
+   qualquer coisa que possa falhar — com a janela de 48 horas na própria
+   mensagem. Se a gravação cair (banco fora, RLS, qualquer coisa), aquela
+   linha é a única pista de qual conta ficou órfã. A chave nunca é
+   registrada, e há teste que varre as mensagens para garantir.
+
+### 1.6 O financeiro virava o dono da conta
+
+**O achado**, no schema: `loginEmail`, "caso não informado será utilizado
+o email da subconta".
+
+O formulário deixa o transportador apontar um e-mail de financeiro, que
+ia em `email`. Sem `loginEmail`, esse e-mail viraria o **login** da conta
+de recebimento: o contador passaria a ser o dono do acesso, e a
+transportadora perderia a entrada na própria conta.
+
+**Correção.** `loginEmail` é sempre o e-mail da empresa. Os avisos vão
+para o financeiro, o acesso fica com quem é dono.
+
+### 1.7 `taxRegime` existe, e a Rotta deliberadamente não envia
+
+O schema aceita `MEI`, `NATIONAL_SIMPLE`, `NORMAL_REGIME` e `UNKNOWN`.
+
+Não enviamos, e não é esquecimento: regime tributário é declaração fiscal
+da transportadora, não dado de cadastro que a Rotta possa inferir.
+`CompanyType.MEI` sugere `MEI`, mas os outros não sugerem nada, e
+declarar errado pelo cliente é pior que não declarar. Entra quando a
+Rotta coletar o regime de verdade — e é decisão do fundador, não minha.
 
 ---
 

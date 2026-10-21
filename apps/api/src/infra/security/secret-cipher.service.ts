@@ -66,6 +66,33 @@ export class SecretCipherService {
     return key;
   }
 
+  /**
+   * Este ambiente consegue cifrar para esta finalidade?
+   *
+   * ## Por que isto existe
+   *
+   * Por causa de um defeito real, encontrado em 21/10/2026. A criação de
+   * subconta no Asaas é irreversível, e ela acontecia ANTES de a chave
+   * ser cifrada. Sem `ASAAS_SUBCONTA_ENCRYPTION_KEY` configurada, a
+   * sequência era: subconta criada no provedor, cifra estoura, nada
+   * gravado. Resultado: subconta órfã no Asaas, sem registro na Rotta —
+   * e, como `asaasAccountId` nunca era gravado, a tentativa seguinte
+   * criava outra.
+   *
+   * Perguntar antes resolve, e perguntar é diferente de tentar: um
+   * `encrypt` de teste gastaria entropia e deixaria lixo no log de quem
+   * estiver olhando. Aqui só se confere que a variável existe e tem o
+   * tamanho certo.
+   */
+  podeCifrar(finalidade: FinalidadeDoSegredo): boolean {
+    try {
+      this.resolveKey(finalidade);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /** Retorna `iv:authTag:cipherText`, tudo em base64, separado por `:` (formato só interno, nunca exposto). */
   encrypt(plainText: string, finalidade: FinalidadeDoSegredo = "mfa"): string {
     const key = this.resolveKey(finalidade);

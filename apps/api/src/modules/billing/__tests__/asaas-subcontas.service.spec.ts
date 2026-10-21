@@ -1,4 +1,4 @@
-import { BadRequestException } from "@nestjs/common";
+import { BadRequestException, ServiceUnavailableException } from "@nestjs/common";
 
 import { AsaasSubcontasService } from "../asaas-subcontas.service";
 
@@ -41,6 +41,9 @@ describe("AsaasSubcontasService", () => {
     secretCipher = {
       encrypt: jest.fn().mockReturnValue("cifrado"),
       decrypt: jest.fn().mockReturnValue("chave-em-claro"),
+      /* O ambiente sabe cifrar, no caso normal. O teste que importa é
+         justamente o contrário, logo abaixo. */
+      podeCifrar: jest.fn().mockReturnValue(true),
     } as unknown as jest.Mocked<SecretCipherService>;
 
     service = new AsaasSubcontasService(asaasClient, secretCipher);
@@ -124,6 +127,7 @@ describe("AsaasSubcontasService", () => {
       nome: "Transportes Andrade",
       email: "contato@exemplo.com.br",
       cpfCnpj: "12345678000190",
+      emailDeLogin: "contato@exemplo.com.br",
       telefone: "21999998888",
       endereco: "Avenida Roberto Silveira",
       numero: "1180",
@@ -131,6 +135,69 @@ describe("AsaasSubcontasService", () => {
       cep: "24900000",
       faturamentoMensalCentavos: 450000,
     };
+
+    /*
+      O defeito mais grave desta frente, encontrado em 21/10/2026 ao
+      responder "existe alguma subconta hoje?".
+
+      Criar subconta no Asaas e IRREVERSIVEL, e a cifra da chave
+      acontecia DEPOIS. Sem `ASAAS_SUBCONTA_ENCRYPTION_KEY` -- que era
+      o estado da producao, porque a variavel ainda nao tinha sido
+      configurada --, a sequencia real era: subconta nasce no provedor,
+      cifra estoura, nada e gravado. Subconta orfa, sem registro na
+      Rotta.
+
+      E pior: como `asaasAccountId` nunca chegava ao banco, a recusa da
+      "segunda subconta" nao disparava. A tentativa seguinte criava
+      OUTRA orfa. Cada uma queima uma das 10 vagas do Periodo de
+      Avaliacao e inicia o relogio de 60 dias.
+    */
+    it("sem chave de cifra no ambiente, recusa ANTES de falar com o Asaas", async () => {
+      (secretCipher.podeCifrar as jest.Mock).mockReturnValue(false);
+
+      await expect(service.criarSubconta(dados)).rejects.toThrow(ServiceUnavailableException);
+      expect(asaasClient.createSubaccount).not.toHaveBeenCalled();
+    });
+
+    it("confere a finalidade certa: a chave do MFA nao serve para subconta", async () => {
+      asaasClient.createSubaccount.mockResolvedValue({ id: "acc_1", walletId: "w" });
+
+      await service.criarSubconta(dados);
+
+      expect(secretCipher.podeCifrar).toHaveBeenCalledWith("subconta-asaas");
+    });
+
+    /*
+      Risco residual: a cifra pode estar disponivel e a GRAVACAO falhar
+      (banco fora, RLS, qualquer coisa). Criar subconta nao tem desfazer,
+      entao o `id` tem que estar no log antes de qualquer coisa que possa
+      falhar -- e a unica pista de qual conta ficou orfa no provedor.
+    */
+    it("registra o id da subconta antes de qualquer coisa que possa falhar", async () => {
+      const aviso = jest.spyOn(service["logger"], "warn").mockImplementation(() => undefined);
+      asaasClient.createSubaccount.mockResolvedValue({ id: "acc_novo" } as never);
+
+      await expect(service.criarSubconta(dados)).rejects.toThrow(BadRequestException);
+
+      /* Falhou por falta de walletId, e ainda assim o id ficou no log. */
+      expect(aviso).toHaveBeenCalledWith(expect.stringContaining("acc_novo"));
+      expect(aviso.mock.calls[0]?.[0]).toContain("ORFA");
+    });
+
+    it("o log do id nunca traz a chave", async () => {
+      const aviso = jest.spyOn(service["logger"], "warn").mockImplementation(() => undefined);
+      asaasClient.createSubaccount.mockResolvedValue({
+        id: "acc_1",
+        walletId: "w",
+        accessToken: { apiKey: "CHAVE-SECRETA" },
+      });
+
+      await service.criarSubconta(dados);
+
+      for (const [mensagem] of aviso.mock.calls) {
+        expect(String(mensagem)).not.toContain("CHAVE-SECRETA");
+      }
+    });
 
     it("cifra a chave que o Asaas devolve, e devolve o que precisa ser gravado", async () => {
       asaasClient.createSubaccount.mockResolvedValue({

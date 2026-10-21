@@ -147,15 +147,43 @@ export interface CreateAsaasSubaccountInput {
   mobilePhone: string;
   address: string;
   addressNumber: string;
+  /** Bairro. */
   province: string;
+  /**
+   * CEP, e precisa ser VÁLIDO: o Asaas usa este valor para identificar a
+   * cidade e "retorna `400` quando o CEP não pode ser localizado". CEP
+   * errado no cadastro da transportadora derruba a criação.
+   */
   postalCode: string;
   incomeValue: number;
+  /**
+   * Para onde vai o e-mail de acesso. "Caso não informado será
+   * utilizado o email da subconta."
+   *
+   * A Rotta informa sempre, de propósito: quando o transportador aponta
+   * um e-mail de financeiro em `email`, é ele que passaria a ser o
+   * login da conta. O dono perderia o acesso à própria conta de
+   * recebimento para o contador. Aqui o login fica com a empresa, e só
+   * os avisos vão para o financeiro.
+   */
+  loginEmail?: string;
   /** Só para PJ. Em CPF o Asaas não aceita o campo. */
   companyType?: AsaasCompanyType;
   /** Só para PF, e a Rotta não coleta data de nascimento de transportadora. */
   birthDate?: string;
   phone?: string;
   complement?: string;
+  /**
+   * Regime tributário: `MEI`, `NATIONAL_SIMPLE`, `NORMAL_REGIME` ou
+   * `UNKNOWN`. A Rotta NÃO envia.
+   *
+   * Não é esquecimento: regime tributário é declaração fiscal da
+   * transportadora, não dado de cadastro que a Rotta possa inferir. O
+   * `CompanyType.MEI` sugere `MEI`, mas os outros não sugerem nada, e
+   * declarar errado pelo cliente é pior que não declarar. Entra quando
+   * a Rotta coletar o regime de verdade, com o fundador decidindo.
+   */
+  taxRegime?: "MEI" | "NATIONAL_SIMPLE" | "NORMAL_REGIME" | "UNKNOWN";
 }
 
 /**
