@@ -75,7 +75,7 @@ describe("FamilyBillingService", () => {
      realmente depende. */
   let subcontas: Pick<
     AsaasSubcontasService,
-    "montarSplit" | "chaveDaSubconta" | "criarSubconta" | "sincronizar"
+    "montarSplit" | "chaveDaSubconta" | "criarSubconta" | "sincronizar" | "configurarCustodia"
   >;
   let companiesService: Pick<CompaniesService, "findByIdOrThrow">;
   let invoiceRepository: jest.Mocked<ContractInvoiceRepository>;
@@ -147,6 +147,9 @@ describe("FamilyBillingService", () => {
          e sobre a conversa com o Asaas, e o estado gravado continua
          valendo quando ela nao traz nada. */
       sincronizar: jest.fn().mockResolvedValue({ onboardingUrl: null, situacaoGeral: null }),
+      /* Entrou em 21/10/2026, com as rotas de controle: ate ali
+         `configurarCustodia` existia e ninguem chamava. */
+      configurarCustodia: jest.fn().mockResolvedValue(undefined),
     };
 
     /* O cadastro da transportadora é a fonte dos dados do titular da
@@ -1479,6 +1482,314 @@ describe("FamilyBillingService", () => {
         service.criarAssinaturaDoProprioContrato("contrato-1", responsavelActor, {}),
       ).rejects.toThrow(ForbiddenException);
       expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    Até 21/10/2026 taxa por meio, emissor e custódia eram campos
+    somente lidos: nasciam no padrão da migration e nenhum endpoint os
+    escrevia, então o passo a passo de ligar uma transportadora por vez
+    só dava com SQL direto no banco.
+
+    As travas abaixo são o que impede ligar custódia em quem não retém
+    nada (e passar a pagar a tarifa recorrente por nada) e virar o
+    emissor para uma subconta que o Asaas ainda não aprovou.
+  */
+  describe("configurarRecebimentoDaEmpresa", () => {
+    const adminActor: AuthenticatedUser = {
+      sub: "admin-1",
+      tenantId: null,
+      role: Role.ADMIN_ROTTA,
+      vinculoId: "vinculo-admin",
+    };
+
+    function buildConta(overrides: Record<string, unknown> = {}) {
+      return {
+        companyId: "company-1",
+        status: "ATIVA",
+        asaasAccountId: "acc_1",
+        asaasWalletId: "wal_1",
+        asaasApiKeyCifrada: "cifrada",
+        emissorDaCobranca: "ROTTA",
+        custodiaAtiva: false,
+        custodiaDiasParaLiberar: null,
+        custodiaTarifaPagaPor: "CONTA_PRINCIPAL",
+        taxaPixBps: 0,
+        taxaBoletoBps: 0,
+        taxaCreditoVistaBps: 0,
+        taxaCreditoParceladoBps: 0,
+        taxaDaPlataformaBps: 0,
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(
+        buildConta() as never,
+      );
+      paymentAccountRepository.upsertAcrossTenants.mockImplementation((_companyId, dados) =>
+        Promise.resolve({ ...buildConta(), ...dados } as never),
+      );
+    });
+
+    it("grava as taxas por meio", async () => {
+      await service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+        taxaPixBps: 129,
+        taxaBoletoBps: 129,
+        taxaCreditoVistaBps: 99,
+        taxaCreditoParceladoBps: 49,
+      });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
+        taxaPixBps: 129,
+        taxaBoletoBps: 129,
+        taxaCreditoVistaBps: 99,
+        taxaCreditoParceladoBps: 49,
+      });
+    });
+
+    it("taxa igual a que ja esta nao e regravada", async () => {
+      await service.configurarRecebimentoDaEmpresa("company-1", adminActor, { taxaPixBps: 0 });
+
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    /*
+      A tabela aprovada vai de 49 a 129 pontos-base. Acima de 10% é quase
+      certamente centavos digitados como pontos-base — mas preço é
+      decisão do fundador, então avisa e obedece.
+    */
+    it("taxa acima de 10% passa, com aviso no log", async () => {
+      const aviso = jest.spyOn(service["logger"], "warn").mockImplementation(() => undefined);
+
+      await service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+        taxaPixBps: 12_900,
+      });
+
+      expect(aviso).toHaveBeenCalledWith(expect.stringContaining("erro de digitacao"));
+      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
+        taxaPixBps: 12_900,
+      });
+    });
+
+    /*
+      Sem a chave da subconta guardada, a cobrança não pode ser emitida
+      em nome dela — e a chave só aparece na criação da subconta.
+    */
+    it("recusa virar o emissor sem a chave da subconta", async () => {
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(
+        buildConta({ asaasApiKeyCifrada: null }) as never,
+      );
+
+      await expect(
+        service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+          emissorDaCobranca: "SUBCONTA",
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    it("recusa virar o emissor com a subconta ainda em analise", async () => {
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(
+        buildConta({ status: "EM_ANALISE" }) as never,
+      );
+
+      await expect(
+        service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+          emissorDaCobranca: "SUBCONTA",
+        }),
+      ).rejects.toThrow(/EM_ANALISE/);
+    });
+
+    /*
+      A custódia só retém o que a própria subconta recebe. Ligada com
+      emissor `ROTTA`, não reteria nada e passaria a cobrar a tarifa
+      recorrente por nada.
+    */
+    it("recusa ligar custodia com o emissor na Rotta", async () => {
+      await expect(
+        service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+          custodia: { ativa: true },
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(subcontas.configurarCustodia).not.toHaveBeenCalled();
+    });
+
+    it("liga custodia quando o emissor vira SUBCONTA na mesma chamada", async () => {
+      await service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+        emissorDaCobranca: "SUBCONTA",
+        custodia: { ativa: true, diasParaLiberar: 30, tarifaPagaPor: "SUBCONTA" },
+      });
+
+      expect(subcontas.configurarCustodia).toHaveBeenCalledWith(
+        expect.objectContaining({ companyId: "company-1" }),
+        { ativa: true, diasParaLiberar: 30, tarifaNaSubconta: true },
+      );
+      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({
+          emissorDaCobranca: "SUBCONTA",
+          custodiaAtiva: true,
+          custodiaDiasParaLiberar: 30,
+          custodiaTarifaPagaPor: "SUBCONTA",
+        }),
+      );
+    });
+
+    /*
+      Custódia é reversível, ao contrário da criação de subconta: por
+      isso a chamada ao provedor vem ANTES da escrita. Gravar "ativa" e
+      só depois descobrir que o Asaas recusou mostraria na tela uma
+      retenção que não existe.
+    */
+    it("provedor recusou: nada e gravado", async () => {
+      (subcontas.configurarCustodia as jest.Mock).mockRejectedValue(new Error("Asaas fora"));
+
+      await expect(
+        service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+          emissorDaCobranca: "SUBCONTA",
+          custodia: { ativa: true },
+        }),
+      ).rejects.toThrow("Asaas fora");
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    it("desligar custodia nao exige emissor SUBCONTA", async () => {
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(
+        buildConta({ custodiaAtiva: true }) as never,
+      );
+
+      await service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+        custodia: { ativa: false },
+      });
+
+      expect(subcontas.configurarCustodia).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ ativa: false }),
+      );
+    });
+
+    it("transportadora sem conta de recebimento e recusada", async () => {
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(null);
+
+      await expect(
+        service.configurarRecebimentoDaEmpresa("company-1", adminActor, { taxaPixBps: 129 }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it("corpo vazio nao muda nada e nao e erro", async () => {
+      const resultado = await service.configurarRecebimentoDaEmpresa("company-1", adminActor, {});
+
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
+      expect(resultado.emissorDaCobranca).toBe("ROTTA");
+    });
+  });
+
+  /*
+    O boleto é o meio que funciona sem aplicativo de banco: dá para pagar
+    na lotérica, no caixa, com dinheiro. Num produto cuja família pode
+    não ter conta em lugar nenhum, é o caminho que não exclui ninguém.
+    Até 21/10/2026 só existia Pix, e o DTO já prometia `BOLETO` com
+    `linhaDigitavel` fixo em `null`.
+  */
+  describe("abrirPagamentoBoleto", () => {
+    beforeEach(() => {
+      invoiceRepository.findByIdAcrossTenants.mockResolvedValue(buildFatura());
+      usersService.findById.mockResolvedValue({
+        id: "responsavel-1",
+        nome: "Marina Alves",
+        email: "marina@email.com",
+        telefone: "21999887766",
+        cpf: "12345678909",
+      } as never);
+      asaasClient.findCustomerByCpfCnpj.mockResolvedValue({ id: "cus_1" } as never);
+      asaasClient.createPayment.mockResolvedValue({
+        id: "pay_boleto",
+        identificationField: "34191790010104351004791020150008291070026000",
+        bankSlipUrl: "https://asaas.com/b/pdf/abc",
+        invoiceUrl: "https://asaas.com/i/abc",
+      } as never);
+      (asaasClient as unknown as { getPayment: jest.Mock }).getPayment = jest
+        .fn()
+        .mockResolvedValue({
+          id: "pay_boleto",
+          identificationField: "34191790010104351004791020150008291070026000",
+          bankSlipUrl: "https://asaas.com/b/pdf/abc",
+        });
+    });
+
+    it("cria o boleto e devolve a linha digitavel", async () => {
+      const resultado = await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
+
+      expect(asaasClient.createPayment).toHaveBeenCalledWith(
+        expect.objectContaining({ billingType: "BOLETO" }),
+        undefined,
+      );
+      expect(resultado.meioDePagamento).toBe("BOLETO");
+      expect(resultado.linhaDigitavel).toBe("34191790010104351004791020150008291070026000");
+      expect(resultado.pixPayload).toBeNull();
+    });
+
+    /*
+      A taxa da Rotta é por MEIO (tabela do CFO de 18/10). Antes de
+      21/10/2026 `montarSplit` era chamado com "PIX" fixo, e um boleto
+      sairia com o percentual do Pix.
+    */
+    it("monta o split com o meio do boleto, e nao com o do Pix", async () => {
+      await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
+
+      /* A conta vai `null` porque esta transportadora nao tem subconta,
+         que e o caso de todas hoje. O que o teste guarda e o segundo
+         argumento: o MEIO. */
+      expect(subcontas.montarSplit).toHaveBeenCalledWith(null, "BOLETO", undefined);
+    });
+
+    /*
+      O registro bancário é assíncrono do lado do Asaas: quando a linha
+      digitável não vem, inventar uma seria pior que não ter. O link da
+      fatura hospedada funciona sempre.
+    */
+    it("sem linha digitavel, devolve o link e nao grava nada", async () => {
+      asaasClient.createPayment.mockResolvedValue({
+        id: "pay_boleto",
+        invoiceUrl: "https://asaas.com/i/abc",
+      } as never);
+      (asaasClient as unknown as { getPayment: jest.Mock }).getPayment.mockResolvedValue({
+        id: "pay_boleto",
+        invoiceUrl: "https://asaas.com/i/abc",
+      });
+
+      const resultado = await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
+
+      expect(resultado.linhaDigitavel).toBeNull();
+      expect(resultado.linkDaFatura).toBe("https://asaas.com/i/abc");
+    });
+
+    /*
+      Reaproveita a cobrança que já existir, inclusive a que a assinatura
+      gerou: duas cobranças da mesma fatura fariam a família pagar duas
+      vezes.
+    */
+    it("reaproveita a cobranca que a assinatura ja criou", async () => {
+      invoiceRepository.findByIdAcrossTenants.mockResolvedValue(
+        buildFatura({ asaasPaymentId: "pay_da_assinatura" }),
+      );
+
+      await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
+
+      expect(asaasClient.createPayment).not.toHaveBeenCalled();
+      expect((asaasClient as unknown as { getPayment: jest.Mock }).getPayment).toHaveBeenCalledWith(
+        "pay_da_assinatura",
+      );
+    });
+
+    it("fatura paga nao abre boleto", async () => {
+      invoiceRepository.findByIdAcrossTenants.mockResolvedValue(buildFatura({ status: "PAGA" }));
+
+      await expect(service.abrirPagamentoBoleto("fatura-1", responsavelActor)).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(asaasClient.createPayment).not.toHaveBeenCalled();
     });
   });
 

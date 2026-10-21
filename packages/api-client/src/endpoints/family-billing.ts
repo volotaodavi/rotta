@@ -179,6 +179,61 @@ export interface CriarSubcontaAsaasInput {
   telefone?: string;
 }
 
+/**
+ * O formulário que liga a cobrança mensal automática de um contrato.
+ *
+ * Tão pouco campo porque o contrato já diz quem é o aluno, quem paga,
+ * quanto é a mensalidade e até quando vale a vigência.
+ */
+export interface CriarAssinaturaDaFamiliaInput {
+  /**
+   * CPF de quem paga, obrigatório só quando o responsável ainda não tem
+   * CPF no cadastro — e a Rotta não pede CPF de responsável desde
+   * 14/09/2026. O provedor de pagamento exige o documento do pagador.
+   */
+  cpfDoResponsavel?: string;
+  /** Dia do vencimento de cada mês. Em branco, dia 5. Máximo 28. */
+  diaDeVencimento?: number;
+  /** `UNDEFINED` deixa a família escolher na página da cobrança. */
+  meioDePagamento?: "PIX" | "BOLETO" | "UNDEFINED";
+}
+
+/**
+ * Os controles do recebimento de uma transportadora, do painel do Admin.
+ *
+ * Tudo opcional: só o que vai no corpo muda. As três são decisões do
+ * fundador — taxa é preço, o emissor decide quem responde por chargeback
+ * de até 540 dias, e a custódia tem tarifa recorrente por subconta
+ * ligada.
+ */
+export interface ConfigurarRecebimentoInput {
+  /** Pontos-base (1% = 100). Tabela aprovada em 20/10/2026: 129, 129, 99, 49. */
+  taxaPixBps?: number;
+  taxaBoletoBps?: number;
+  taxaCreditoVistaBps?: number;
+  taxaCreditoParceladoBps?: number;
+  emissorDaCobranca?: "ROTTA" | "SUBCONTA";
+  custodia?: {
+    ativa: boolean;
+    diasParaLiberar?: number;
+    tarifaPagaPor?: "CONTA_PRINCIPAL" | "SUBCONTA";
+  };
+}
+
+export interface AssinaturaDaFamilia {
+  contractId: string;
+  asaasSubscriptionId: string;
+  status: string;
+  meioDePagamento: string;
+  valorCentavos: number;
+  valorFormatado: string;
+  primeiroVencimento: string;
+  /** `null` em contrato sem fim de vigência combinado. */
+  ultimoVencimento: string | null;
+  /** `true` quando o dinheiro cai direto na conta da transportadora, por split. */
+  repasseDiretoAoTransportador: boolean;
+}
+
 export function createFamilyBillingEndpoints(apiClient: ApiClient) {
   return {
     /** Quanto a família deve, quando vence e como está cada fatura — escopo pelo ALUNO. */
@@ -198,6 +253,41 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
         await apiClient.request<ApiEnvelope<PagamentoDaFatura>>(
           `/family-billing/invoices/${invoiceId}/pagamento-pix`,
           { method: "POST" },
+        )
+      ).data,
+
+    /**
+     * Abre o boleto de uma fatura. Reaproveita a cobrança já criada,
+     * inclusive a que a assinatura gerou.
+     *
+     * `linhaDigitavel` pode voltar `null` na primeira abertura: o
+     * registro bancário é assíncrono do lado do provedor. Nesse caso use
+     * `linkDaFatura`, que funciona sempre, e a linha aparece depois.
+     */
+    abrirPagamentoBoleto: async (invoiceId: string): Promise<PagamentoDaFatura> =>
+      (
+        await apiClient.request<ApiEnvelope<PagamentoDaFatura>>(
+          `/family-billing/invoices/${invoiceId}/pagamento-boleto`,
+          { method: "POST" },
+        )
+      ).data,
+
+    /**
+     * Liga a cobrança mensal automática de um contrato: a partir daí o
+     * provedor gera a cobrança de cada mês sozinho, com o split já
+     * aplicado, e a família paga pelo link — sem precisar de conta.
+     *
+     * Recusado quando o contrato já tem recorrência, quando não está
+     * ativo, e quando a mensalidade está em R$ 0,00.
+     */
+    criarAssinaturaDoContrato: async (
+      contractId: string,
+      input: CriarAssinaturaDaFamiliaInput,
+    ): Promise<AssinaturaDaFamilia> =>
+      (
+        await apiClient.request<ApiEnvelope<AssinaturaDaFamilia>>(
+          `/family-billing/contracts/${contractId}/assinatura`,
+          { method: "POST", body: input },
         )
       ).data,
 
@@ -267,6 +357,38 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
       (
         await apiClient.request<ApiEnvelope<CompanyPaymentAccount>>(
           `/family-billing/admin/companies/${companyId}/subconta`,
+          { method: "POST", body: input },
+        )
+      ).data,
+
+    /**
+     * Taxa por meio, emissor da cobrança e custódia de uma
+     * transportadora. Só Admin Rotta.
+     *
+     * Tudo opcional: só o que vai no corpo muda. Virar o emissor para
+     * `SUBCONTA` exige a chave da subconta guardada e a conta já
+     * aprovada; ligar custódia exige emissor `SUBCONTA`, porque a
+     * retenção segue a conta que recebe.
+     */
+    configurarRecebimentoDaEmpresa: async (
+      companyId: string,
+      input: ConfigurarRecebimentoInput,
+    ): Promise<CompanyPaymentAccount> =>
+      (
+        await apiClient.request<ApiEnvelope<CompanyPaymentAccount>>(
+          `/family-billing/admin/companies/${companyId}/recebimento`,
+          { method: "PUT", body: input },
+        )
+      ).data,
+
+    /** O mesmo que `criarAssinaturaDoContrato`, pelo painel do Admin. */
+    criarAssinaturaParaContrato: async (
+      contractId: string,
+      input: CriarAssinaturaDaFamiliaInput,
+    ): Promise<AssinaturaDaFamilia> =>
+      (
+        await apiClient.request<ApiEnvelope<AssinaturaDaFamilia>>(
+          `/family-billing/admin/contracts/${contractId}/assinatura`,
           { method: "POST", body: input },
         )
       ).data,

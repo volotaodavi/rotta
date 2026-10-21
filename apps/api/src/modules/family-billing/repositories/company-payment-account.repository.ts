@@ -1,4 +1,9 @@
-import type { CompanyPaymentAccount, CompanyPaymentAccountStatus } from "@prisma/client";
+import type {
+  CompanyPaymentAccount,
+  CompanyPaymentAccountStatus,
+  EmissorDaCobranca,
+  PagadorDaTarifaDeCustodia,
+} from "@prisma/client";
 
 export interface UpsertCompanyPaymentAccountData {
   status?: CompanyPaymentAccountStatus;
@@ -17,6 +22,28 @@ export interface UpsertCompanyPaymentAccountData {
   chavePix?: string | null;
   taxaDaPlataformaBps?: number;
   observacoes?: string | null;
+
+  /**
+   * Os controles que o Admin Rotta opera
+   * (`FamilyBillingService.configurarRecebimentoDaEmpresa`).
+   *
+   * Até 21/10/2026 eles eram somente lidos: nasciam no padrão da
+   * migration e nenhum caminho os escrevia, então ligar uma
+   * transportadora por vez só dava com SQL direto no banco.
+   *
+   * Nenhuma rota deixa a própria transportadora escrever estes campos.
+   * Taxa é decisão de preço, o emissor decide quem responde por
+   * chargeback de até 540 dias, e a custódia tem tarifa recorrente por
+   * subconta ligada — nada disso é escolha de quem é cobrado por elas.
+   */
+  taxaPixBps?: number;
+  taxaBoletoBps?: number;
+  taxaCreditoVistaBps?: number;
+  taxaCreditoParceladoBps?: number;
+  emissorDaCobranca?: EmissorDaCobranca;
+  custodiaAtiva?: boolean;
+  custodiaDiasParaLiberar?: number | null;
+  custodiaTarifaPagaPor?: PagadorDaTarifaDeCustodia;
 }
 
 /** `company_payment_accounts` tem RLS por `companyId`, uma linha por transportadora (`@unique`). */

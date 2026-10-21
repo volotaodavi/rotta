@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 /* Import de VALOR, nao `import type`: o `ValidationPipe` le os
    metadados da classe em tempo de execucao, e com `import type` o DTO
    desaparece do bundle e nada e validado. */
+import { ConfigurarRecebimentoDto } from "./dto/configurar-recebimento.dto";
 import { CriarAssinaturaDaFamiliaDto } from "./dto/criar-assinatura-da-familia.dto";
 import { CriarSubcontaAsaasDto } from "./dto/criar-subconta-asaas.dto";
 import { ListInvoicesQueryDto } from "./dto/list-invoices-query.dto";
@@ -64,6 +65,20 @@ export class FamilyBillingController {
     description:
       "Reaproveita a cobrança já criada para a mesma fatura — duas tentativas de pagar nunca geram duas cobranças.",
   })
+  @ApiOperation({
+    summary: "Abre o boleto da fatura",
+    description:
+      "Reaproveita a cobrança que já existir na fatura, inclusive a que a assinatura gerou. A linha digitável pode vir vazia na primeira abertura, porque o registro bancário é assíncrono do lado do provedor: nesse caso o link da fatura hospedada funciona do mesmo jeito, e a linha aparece na abertura seguinte.",
+  })
+  @Post("invoices/:id/pagamento-boleto")
+  @Roles(...LEITURA_POR_ALUNO)
+  abrirPagamentoBoleto(
+    @Param("id", ParseUUIDPipe) id: string,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.familyBillingService.abrirPagamentoBoleto(id, actor);
+  }
+
   @Post("invoices/:id/pagamento-pix")
   @Roles(...LEITURA_POR_ALUNO)
   abrirPagamentoPix(
@@ -146,6 +161,21 @@ export class FamilyBillingController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.familyBillingService.getContaDeRecebimentoDaEmpresa(companyId, actor);
+  }
+
+  @ApiOperation({
+    summary: "Taxa por meio, emissor da cobrança e custódia de uma transportadora",
+    description:
+      "Só o Admin Rotta: taxa é decisão de preço, o emissor decide quem responde por chargeback de até 540 dias, e a custódia tem tarifa recorrente por subconta ligada. Tudo opcional, só o que vem no corpo muda. Virar o emissor para `SUBCONTA` exige a chave da subconta guardada e a conta já aprovada; ligar custódia exige emissor `SUBCONTA`, porque a retenção segue a conta que recebe.",
+  })
+  @Put("admin/companies/:companyId/recebimento")
+  @Roles(Role.ADMIN_ROTTA)
+  configurarRecebimentoDaEmpresa(
+    @Param("companyId", ParseUUIDPipe) companyId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Body() dto: ConfigurarRecebimentoDto,
+  ) {
+    return this.familyBillingService.configurarRecebimentoDaEmpresa(companyId, actor, dto);
   }
 
   // --- A cobrança mensal automática de um contrato ---

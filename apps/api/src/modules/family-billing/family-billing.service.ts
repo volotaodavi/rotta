@@ -38,7 +38,10 @@ import type {
   CompanyPaymentAccountRepository,
   UpsertCompanyPaymentAccountData,
 } from "./repositories/company-payment-account.repository";
-import type { ContractInvoiceRepository } from "./repositories/contract-invoice.repository";
+import type {
+  ContractInvoiceComContexto,
+  ContractInvoiceRepository,
+} from "./repositories/contract-invoice.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
 import type { AsaasCompanyType } from "@/modules/billing/types/asaas.types";
 import type {
@@ -91,6 +94,33 @@ export interface DadosDaAssinaturaDaFamilia {
    * página da cobrança.
    */
   meioDePagamento?: "PIX" | "BOLETO" | "UNDEFINED";
+}
+
+/**
+ * As quatro taxas configuráveis, numa lista só.
+ *
+ * Existe para o laço que as aplica não precisar de quatro blocos iguais
+ * — e para que uma taxa nova no schema apareça aqui, e não seja
+ * esquecida em um dos quatro.
+ */
+const TAXAS_CONFIGURAVEIS = [
+  "taxaPixBps",
+  "taxaBoletoBps",
+  "taxaCreditoVistaBps",
+  "taxaCreditoParceladoBps",
+] as const;
+
+export interface ConfigurarRecebimentoDados {
+  taxaPixBps?: number;
+  taxaBoletoBps?: number;
+  taxaCreditoVistaBps?: number;
+  taxaCreditoParceladoBps?: number;
+  emissorDaCobranca?: "ROTTA" | "SUBCONTA";
+  custodia?: {
+    ativa: boolean;
+    diasParaLiberar?: number;
+    tarifaPagaPor?: "CONTA_PRINCIPAL" | "SUBCONTA";
+  };
 }
 
 export interface AssinaturaDaFamiliaResponse {
@@ -369,7 +399,7 @@ export class FamilyBillingService {
    * não podem gerar duas cobranças na Asaas, ou a família paga duas
    * vezes. `asaasPaymentId` guardado na fatura é a trava.
    *
-   * Só Pix nesta entrega. Cartão exigiria o número passando pelo nosso
+   * Cartão continua de fora. Exigiria o número passando pelo nosso
    * servidor (a Asaas confirmou em 16/10/2026 que não há SDK mobile nem
    * tokenização pelo front), o que colocaria a Rotta em escopo PCI DSS
    * — uma decisão que não é técnica e não foi tomada.
@@ -378,27 +408,9 @@ export class FamilyBillingService {
     invoiceId: string,
     actor: AuthenticatedUser,
   ): Promise<PagamentoDaFaturaResponseDto> {
-    const fatura = await this.invoiceRepository.findByIdAcrossTenants(invoiceId);
-    if (!fatura) throw new NotFoundException("Fatura não encontrada.");
+    const fatura = await this.faturaParaPagar(invoiceId, actor);
 
-    /* A posse é checada pelo ALUNO da fatura, não pelo id dela: é a
-       mesma prova usada na leitura, e é o que impede um responsável de
-       abrir o Pix da fatura de outra família. */
-    await this.studentsService.findByIdOrThrow(fatura.studentId, actor);
-
-    if (fatura.status === "PAGA") {
-      throw new BadRequestException("Esta fatura já está paga.");
-    }
-    if (fatura.status === "CANCELADA" || fatura.status === "ESTORNADA") {
-      throw new BadRequestException("Esta fatura não pode mais ser paga.");
-    }
-    if (!this.asaasClient.isConfigured()) {
-      throw new BadRequestException(
-        "Pagamento pelo app ainda não disponível: combine a mensalidade direto com a transportadora.",
-      );
-    }
-
-    const asaasPaymentId = fatura.asaasPaymentId ?? (await this.criarCobrancaPix(fatura));
+    const asaasPaymentId = fatura.asaasPaymentId ?? (await this.criarCobranca(fatura, "PIX"));
     const qrCode = await this.asaasClient.getPixQrCode(asaasPaymentId);
 
     return {
@@ -416,21 +428,114 @@ export class FamilyBillingService {
   }
 
   /**
+   * Abre (ou reaproveita) o boleto de uma fatura e devolve a linha
+   * digitável e o PDF.
+   *
+   * ## Por que o boleto existe
+   *
+   * Nem toda família usa Pix, e o boleto é o meio que funciona sem
+   * aplicativo de banco: dá para pagar na lotérica, no caixa, com
+   * dinheiro. Num produto cuja família pode não ter conta em lugar
+   * nenhum, esse é o caminho que não exclui ninguém.
+   *
+   * ## A linha digitável nem sempre vem na hora
+   *
+   * O Asaas registra o boleto no banco de forma assíncrona. Quando a
+   * resposta da criação não traz `identificationField`, isto não inventa
+   * nada: devolve o link da fatura hospedada, que funciona sempre, e a
+   * linha digitável aparece na próxima abertura.
+   */
+  async abrirPagamentoBoleto(
+    invoiceId: string,
+    actor: AuthenticatedUser,
+  ): Promise<PagamentoDaFaturaResponseDto> {
+    const fatura = await this.faturaParaPagar(invoiceId, actor);
+
+    const asaasPaymentId = fatura.asaasPaymentId ?? (await this.criarCobranca(fatura, "BOLETO"));
+
+    /* A fatura em memória pode ser de antes da criação da cobrança, e a
+       cobrança que já existia pode ter sido criada pela assinatura (ou
+       num dia em que o registro bancário ainda não tinha saído). Em
+       todos esses casos a verdade da linha digitável está no provedor. */
+    const cobranca = await this.asaasClient.getPayment(asaasPaymentId);
+    const linhaDigitavel = cobranca.identificationField ?? fatura.linhaDigitavel ?? null;
+    const linkDaFatura = cobranca.bankSlipUrl ?? cobranca.invoiceUrl ?? fatura.linkDaFatura ?? null;
+
+    /* Guarda o que voltou, para a próxima abertura e para a tela de
+       faturas não precisarem de outra chamada ao Asaas. */
+    if (linhaDigitavel && linhaDigitavel !== fatura.linhaDigitavel) {
+      await this.invoiceRepository.update(fatura.id, { linhaDigitavel, linkDaFatura });
+    }
+
+    return {
+      invoiceId: fatura.id,
+      meioDePagamento: "BOLETO",
+      valorCentavos: fatura.valorCentavos,
+      valorFormatado: formatarCentavos(fatura.valorCentavos),
+      pixPayload: null,
+      pixQrCodeBase64: null,
+      pixExpiraEm: null,
+      linhaDigitavel,
+      linkDaFatura,
+      status: fatura.status,
+    };
+  }
+
+  /**
+   * As checagens que valem para qualquer meio de pagamento: a fatura
+   * existe, é desta família, ainda pode ser paga, e a Asaas está
+   * configurada.
+   *
+   * Existe separado porque errar uma delas em um dos meios e não no
+   * outro é o tipo de diferença que ninguém nota até alguém pagar a
+   * fatura de outra pessoa.
+   */
+  private async faturaParaPagar(
+    invoiceId: string,
+    actor: AuthenticatedUser,
+  ): Promise<ContractInvoiceComContexto> {
+    const fatura = await this.invoiceRepository.findByIdAcrossTenants(invoiceId);
+    if (!fatura) throw new NotFoundException("Fatura não encontrada.");
+
+    /* A posse é checada pelo ALUNO da fatura, não pelo id dela: é a
+       mesma prova usada na leitura, e é o que impede um responsável de
+       abrir a cobrança da fatura de outra família. */
+    await this.studentsService.findByIdOrThrow(fatura.studentId, actor);
+
+    if (fatura.status === "PAGA") {
+      throw new BadRequestException("Esta fatura já está paga.");
+    }
+    if (fatura.status === "CANCELADA" || fatura.status === "ESTORNADA") {
+      throw new BadRequestException("Esta fatura não pode mais ser paga.");
+    }
+    if (!this.asaasClient.isConfigured()) {
+      throw new BadRequestException(
+        "Pagamento pelo app ainda não disponível: combine a mensalidade direto com a transportadora.",
+      );
+    }
+
+    return fatura;
+  }
+
+  /**
    * Cria a cobrança na Asaas e grava o vínculo na fatura.
    *
    * O cliente da cobrança é o RESPONSÁVEL (a família é quem paga), não
    * a transportadora — por isso o `AsaasCustomer` é buscado pelo CPF
    * dele e reaproveitado quando já existe.
    */
-  private async criarCobrancaPix(fatura: {
-    id: string;
-    companyId: string;
-    responsavelId: string;
-    valorCentavos: number;
-    vencimento: Date;
-    asaasCustomerId: string | null;
-    company: { nomeFantasia: string };
-  }): Promise<string> {
+  private async criarCobranca(
+    fatura: {
+      id: string;
+      companyId: string;
+      responsavelId: string;
+      valorCentavos: number;
+      vencimento: Date;
+      asaasCustomerId: string | null;
+      company: { nomeFantasia: string };
+    },
+    meio: "PIX" | "BOLETO",
+  ): Promise<string> {
     const customerId =
       fatura.asaasCustomerId ?? (await this.resolverClienteAsaas(fatura.responsavelId));
 
@@ -452,19 +557,22 @@ export class FamilyBillingService {
       cobrança é da conta principal e o split manda para a subconta o
       que sobra depois da nossa taxa.
     */
-    const split = this.subcontas.montarSplit(conta, "PIX", this.config.rottaWalletId);
+    /* O percentual da Rotta é por MEIO de pagamento (tabela do CFO de
+       18/10: Pix e boleto 1,29%), então o meio precisa chegar até aqui.
+       Antes era "PIX" fixo, e um boleto sairia com a taxa do Pix. */
+    const split = this.subcontas.montarSplit(conta, meio, this.config.rottaWalletId);
     const emitirPelaSubconta = conta?.emissorDaCobranca === "SUBCONTA";
     const chaveDaSubconta = emitirPelaSubconta
       ? this.subcontas.chaveDaSubconta(
           conta,
-          `emitir a cobranca Pix da fatura ${fatura.id} em nome da subconta`,
+          `emitir a cobranca ${meio} da fatura ${fatura.id} em nome da subconta`,
         )
       : undefined;
 
     const payment = await this.asaasClient.createPayment(
       {
         customer: customerId,
-        billingType: "PIX",
+        billingType: meio,
         value: fatura.valorCentavos / 100,
         dueDate: fatura.vencimento.toISOString().slice(0, 10),
         description: `Transporte escolar, ${fatura.company.nomeFantasia}`,
@@ -479,8 +587,11 @@ export class FamilyBillingService {
     await this.invoiceRepository.update(fatura.id, {
       asaasPaymentId: payment.id,
       asaasCustomerId: customerId,
-      meioDePagamento: "PIX",
+      meioDePagamento: meio,
       linkDaFatura: payment.invoiceUrl ?? null,
+      /* Só o boleto tem linha digitável, e ela pode não vir na criação:
+         o registro bancário é assíncrono do lado do Asaas. */
+      linhaDigitavel: payment.identificationField ?? null,
       /* Registrado na criação, não na confirmação: é no momento de criar
          a cobrança que o split existe ou não existe. */
       repasseDiretoAoTransportador: Boolean(conta?.asaasWalletId),
@@ -917,6 +1028,112 @@ export class FamilyBillingService {
     this.logger.log(
       `Conta de recebimento da empresa ${conta.companyId}: ${conta.status} -> ${status} (evento "${dados.eventoDaAsaas}").`,
     );
+  }
+
+  // ---------------------------------------------------------------------
+  // Os controles do recebimento (Admin Rotta)
+  // ---------------------------------------------------------------------
+
+  /**
+   * Muda a taxa por meio, o emissor da cobrança e a custódia de uma
+   * transportadora.
+   *
+   * ## Por que as três moram no mesmo lugar
+   *
+   * Porque elas se condicionam. Custódia só existe com emissor
+   * `SUBCONTA`, e emissor `SUBCONTA` só funciona com a chave da subconta
+   * guardada. Em endpoints separados daria para ligar custódia numa
+   * transportadora cuja cobrança é emitida pela Rotta, o que não retém
+   * nada e passa a cobrar a tarifa recorrente por nada.
+   *
+   * ## A ordem: provedor primeiro, banco depois
+   *
+   * Ao contrário da criação de subconta, custódia é reversível. Então a
+   * chamada ao Asaas vem antes da escrita: gravar "custódia ativa" e só
+   * depois descobrir que o provedor recusou mostraria na tela uma
+   * retenção que não existe.
+   */
+  async configurarRecebimentoDaEmpresa(
+    companyId: string,
+    actor: AuthenticatedUser,
+    dados: ConfigurarRecebimentoDados,
+  ): Promise<ContaDeRecebimentoResponse> {
+    await this.companiesService.findByIdOrThrow(companyId, actor);
+
+    const conta = await this.paymentAccountRepository.findByCompanyIdAcrossTenants(companyId);
+    if (!conta) {
+      throw new BadRequestException(
+        "Esta transportadora ainda não tem conta de recebimento. Abra a conta antes de configurar taxa, emissor ou custódia.",
+      );
+    }
+
+    const mudancas: UpsertCompanyPaymentAccountData = {};
+
+    for (const campo of TAXAS_CONFIGURAVEIS) {
+      const valor = dados[campo];
+      if (valor === undefined || valor === conta[campo]) continue;
+      mudancas[campo] = valor;
+      /* A tabela aprovada em 20/10/2026 vai de 49 a 129 pontos-base.
+         Acima de 10% é quase certamente centavos digitados como
+         pontos-base, e quem confere o log precisa ver isso — mas a
+         decisão de preço é do fundador, então avisa e obedece. */
+      if (valor > 1_000) {
+        this.logger.warn(
+          `Taxa ${campo} da empresa ${companyId} definida em ${valor} pontos-base (${valor / 100}%), acima de 10%. A tabela aprovada vai de 49 a 129. Conferir se nao e erro de digitacao.`,
+        );
+      }
+    }
+
+    if (dados.emissorDaCobranca && dados.emissorDaCobranca !== conta.emissorDaCobranca) {
+      if (dados.emissorDaCobranca === "SUBCONTA") {
+        if (!conta.asaasApiKeyCifrada) {
+          throw new BadRequestException(
+            "Para a transportadora emitir a própria cobrança é preciso ter a chave da subconta guardada, e esta conta não tem. Abra a subconta pela Rotta: a chave só aparece na criação.",
+          );
+        }
+        if (conta.status !== "ATIVA") {
+          throw new BadRequestException(
+            `A subconta desta transportadora está em "${conta.status}". Enquanto o Asaas não aprovar, a cobrança emitida por ela não é paga. Espere a aprovação antes de virar o emissor.`,
+          );
+        }
+      }
+      mudancas.emissorDaCobranca = dados.emissorDaCobranca;
+    }
+
+    const emissorFinal = mudancas.emissorDaCobranca ?? conta.emissorDaCobranca;
+
+    if (dados.custodia) {
+      if (dados.custodia.ativa && emissorFinal !== "SUBCONTA") {
+        throw new BadRequestException(
+          "A custódia só retém o que a própria subconta recebe, e com o emissor `ROTTA` a cobrança é da conta principal. Vire o emissor para `SUBCONTA` na mesma chamada, ou antes dela.",
+        );
+      }
+
+      const tarifaPagaPor = dados.custodia.tarifaPagaPor ?? conta.custodiaTarifaPagaPor;
+
+      await this.subcontas.configurarCustodia(conta, {
+        ativa: dados.custodia.ativa,
+        diasParaLiberar:
+          dados.custodia.diasParaLiberar ?? conta.custodiaDiasParaLiberar ?? undefined,
+        tarifaNaSubconta: tarifaPagaPor === "SUBCONTA",
+      });
+
+      mudancas.custodiaAtiva = dados.custodia.ativa;
+      mudancas.custodiaTarifaPagaPor = tarifaPagaPor;
+      if (dados.custodia.diasParaLiberar !== undefined) {
+        mudancas.custodiaDiasParaLiberar = dados.custodia.diasParaLiberar;
+      }
+    }
+
+    if (Object.keys(mudancas).length === 0) {
+      return toContaDeRecebimentoResponse(conta);
+    }
+
+    const atualizada = await this.paymentAccountRepository.upsertAcrossTenants(companyId, mudancas);
+    this.logger.log(
+      `Admin ${actor.sub} mudou o recebimento da empresa ${companyId}: ${Object.keys(mudancas).join(", ")}.`,
+    );
+    return toContaDeRecebimentoResponse(atualizada);
   }
 
   // ---------------------------------------------------------------------
