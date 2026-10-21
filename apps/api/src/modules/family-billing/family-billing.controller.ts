@@ -4,6 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 /* Import de VALOR, nao `import type`: o `ValidationPipe` le os
    metadados da classe em tempo de execucao, e com `import type` o DTO
    desaparece do bundle e nada e validado. */
+import { CriarAssinaturaDaFamiliaDto } from "./dto/criar-assinatura-da-familia.dto";
 import { CriarSubcontaAsaasDto } from "./dto/criar-subconta-asaas.dto";
 import { ListInvoicesQueryDto } from "./dto/list-invoices-query.dto";
 import { SalvarContaDeRecebimentoDto } from "./dto/salvar-conta-de-recebimento.dto";
@@ -145,5 +146,37 @@ export class FamilyBillingController {
     @CurrentUser() actor: AuthenticatedUser,
   ) {
     return this.familyBillingService.getContaDeRecebimentoDaEmpresa(companyId, actor);
+  }
+
+  // --- A cobrança mensal automática de um contrato ---
+
+  @ApiOperation({
+    summary: "Liga a cobrança mensal automática de um contrato",
+    description:
+      "Cria a assinatura no Asaas: a partir daí a cobrança de cada mês nasce sozinha, com o split já aplicado, e **o responsável não precisa de conta na Rotta** — ele paga pelo link da cobrança. Recusa quando o contrato já tem recorrência (cobraria a família duas vezes), quando não está ativo, e quando a mensalidade está em R$ 0,00. O primeiro vencimento pula mês que já tenha cobrança emitida.",
+  })
+  @Post("contracts/:contractId/assinatura")
+  @Roles(...TRANSPORTADOR_ROLES)
+  criarAssinaturaDoProprioContrato(
+    @Param("contractId", ParseUUIDPipe) contractId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Body() dto: CriarAssinaturaDaFamiliaDto,
+  ) {
+    return this.familyBillingService.criarAssinaturaDoProprioContrato(contractId, actor, dto);
+  }
+
+  @ApiOperation({
+    summary: "Liga a cobrança mensal automática PELA transportadora",
+    description:
+      "O mesmo que a rota da transportadora, pelo painel do Admin Rotta, para quando o transportador precisa de ajuda. Mora neste módulo para a regra de 'nunca a segunda assinatura' ter um lugar só.",
+  })
+  @Post("admin/contracts/:contractId/assinatura")
+  @Roles(Role.ADMIN_ROTTA)
+  criarAssinaturaParaContrato(
+    @Param("contractId", ParseUUIDPipe) contractId: string,
+    @CurrentUser() actor: AuthenticatedUser,
+    @Body() dto: CriarAssinaturaDaFamiliaDto,
+  ) {
+    return this.familyBillingService.criarAssinaturaParaContrato(contractId, actor, dto);
   }
 }

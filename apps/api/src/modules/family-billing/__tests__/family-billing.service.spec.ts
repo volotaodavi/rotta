@@ -96,6 +96,16 @@ describe("FamilyBillingService", () => {
       findByAsaasPaymentIdAcrossTenants: jest.fn(),
       listContratosSemFaturaAcrossTenants: jest.fn().mockResolvedValue([]),
       marcarVencidasAcrossTenants: jest.fn().mockResolvedValue(0),
+      findContratoParaAssinarAcrossTenants: jest.fn(),
+      findContratoPorAssinaturaAcrossTenants: jest.fn(),
+      atualizarAssinaturaDoContratoAcrossTenants: jest.fn(),
+      findPorContratoECompetenciaAcrossTenants: jest.fn().mockResolvedValue(null),
+      /* O webhook escreve por estes dois, e nao por `update`/`create`:
+         a rota dele e `@Public()`, nao tem contexto de tenant, e a
+         politica de RLS de `contract_invoices` seria falsa para toda
+         linha. Ver a nota no repositorio. */
+      updateAcrossTenants: jest.fn(),
+      createAcrossTenants: jest.fn(),
     };
     paymentAccountRepository = {
       findByCompanyId: jest.fn(),
@@ -107,6 +117,7 @@ describe("FamilyBillingService", () => {
     asaasClient = {
       isConfigured: jest.fn().mockReturnValue(true),
       createPayment: jest.fn(),
+      createSubscription: jest.fn(),
       getPixQrCode: jest.fn(),
       findCustomerByCpfCnpj: jest.fn(),
       createCustomer: jest.fn(),
@@ -116,6 +127,7 @@ describe("FamilyBillingService", () => {
     } as unknown as jest.Mocked<StudentsService>;
     usersService = {
       findById: jest.fn(),
+      registrarCpfDoResponsavel: jest.fn(),
     } as unknown as jest.Mocked<UsersService>;
     walletService = {
       creditarRecebimentoDeFatura: jest.fn(),
@@ -467,6 +479,9 @@ describe("FamilyBillingService", () => {
 
       await service.abrirPagamentoPix("fatura-1", responsavelActor);
 
+      /* `update`, e nao `updateAcrossTenants`: este caminho e HTTP, com
+         ator autenticado e contexto de tenant. Bypass aqui seria
+         escrever em tabela com RLS sem precisar. */
       expect(invoiceRepository.update).toHaveBeenCalledWith(
         "fatura-1",
         expect.objectContaining({ repasseDiretoAoTransportador: true }),
@@ -515,7 +530,7 @@ describe("FamilyBillingService", () => {
         pagoEm: new Date("2026-04-03T12:00:00.000Z"),
       });
 
-      expect(invoiceRepository.update).toHaveBeenCalledWith(
+      expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
         "fatura-1",
         expect.objectContaining({
           status: "PAGA",
@@ -547,7 +562,7 @@ describe("FamilyBillingService", () => {
         pagoEm: new Date(),
       });
 
-      expect(invoiceRepository.update).toHaveBeenCalled();
+      expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalled();
       expect(walletService.creditarRecebimentoDeFatura).not.toHaveBeenCalled();
     });
 
@@ -565,7 +580,7 @@ describe("FamilyBillingService", () => {
         pagoEm: new Date(),
       });
 
-      expect(invoiceRepository.update).not.toHaveBeenCalled();
+      expect(invoiceRepository.updateAcrossTenants).not.toHaveBeenCalled();
       expect(walletService.creditarRecebimentoDeFatura).not.toHaveBeenCalled();
     });
 
@@ -592,7 +607,7 @@ describe("FamilyBillingService", () => {
         pagoEm: new Date(),
       });
 
-      expect(invoiceRepository.update).toHaveBeenCalledWith(
+      expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
         "fatura-1",
         expect.objectContaining({ repasseCentavos: 66_000, taxaDoProvedorCentavos: null }),
       );
@@ -1128,6 +1143,519 @@ describe("FamilyBillingService", () => {
       });
 
       expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    A cobrança mensal automática (pedido do fundador em 21/10/2026): o
+    transportador, ou o Admin ajudando, liga a recorrência de um contrato
+    e a partir dali o Asaas cobra a família todo mês. O responsável nunca
+    precisa de conta: ele paga pelo link.
+
+    Os testes abaixo cobrem os casos em que errar custa dinheiro de uma
+    família de verdade — cobrança dobrada, cobrança depois do fim do
+    contrato, e recorrência órfã no provedor.
+  */
+  describe("criarAssinaturaDoProprioContrato", () => {
+    function buildContrato(overrides: Record<string, unknown> = {}) {
+      return {
+        id: "contrato-1",
+        companyId: "company-1",
+        studentId: "student-1",
+        responsavelId: "responsavel-1",
+        valorMensalidadeCentavos: 66_000,
+        planoDescricao: "Ida e volta",
+        status: "ATIVO",
+        vigenciaInicio: new Date("2026-02-01T00:00:00.000Z"),
+        vigenciaFim: null,
+        asaasSubscriptionId: null,
+        asaasSubscriptionStatus: null,
+        student: { id: "student-1", nome: "Ana" },
+        company: { id: "company-1", nomeFantasia: "Transportes Lima" },
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date("2026-04-01T09:00:00.000Z"));
+      invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(
+        buildContrato() as never,
+      );
+      usersService.findById.mockResolvedValue({
+        id: "responsavel-1",
+        nome: "Marina Alves",
+        email: "marina@email.com",
+        telefone: "21999887766",
+        cpf: "12345678909",
+      } as never);
+      asaasClient.findCustomerByCpfCnpj.mockResolvedValue({ id: "cus_1" } as never);
+      asaasClient.createSubscription.mockResolvedValue({
+        id: "sub_1",
+        customer: "cus_1",
+        status: "ACTIVE",
+        billingType: "PIX",
+        value: 660,
+        nextDueDate: "2026-04-05",
+      } as never);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("cria a recorrencia e grava o id no contrato", async () => {
+      const resultado = await service.criarAssinaturaDoProprioContrato(
+        "contrato-1",
+        empresaActor,
+        {},
+      );
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customer: "cus_1",
+          billingType: "PIX",
+          value: 660,
+          cycle: "MONTHLY",
+          nextDueDate: "2026-04-05",
+          externalReference: "contrato:contrato-1",
+        }),
+        undefined,
+      );
+      expect(invoiceRepository.atualizarAssinaturaDoContratoAcrossTenants).toHaveBeenCalledWith(
+        "contrato-1",
+        expect.objectContaining({
+          asaasSubscriptionId: "sub_1",
+          asaasSubscriptionStatus: "ACTIVE",
+        }),
+      );
+      expect(resultado.asaasSubscriptionId).toBe("sub_1");
+      /* `formatarCentavos` usa espaco nao separavel (U+00A0) entre o
+         "R$" e o numero: comparar com um espaco comum falha com as duas
+         strings parecendo iguais na saida do teste. */
+      expect(resultado.valorFormatado).toMatch(/^R\$\s660,00$/);
+    });
+
+    /*
+      Duas recorrências no mesmo contrato cobram a mesma família duas
+      vezes por mês, e o estrago aparece no extrato dela. A recusa vem
+      ANTES da chamada ao Asaas, porque depois não há como desfazer.
+    */
+    it("recusa a segunda assinatura, sem chamar o Asaas", async () => {
+      invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(
+        buildContrato({ asaasSubscriptionId: "sub_ja_existe" }) as never,
+      );
+
+      await expect(
+        service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+    });
+
+    it("recusa contrato que nao esta ativo", async () => {
+      invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(
+        buildContrato({ status: "ENCERRADO" }) as never,
+      );
+
+      await expect(
+        service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+    });
+
+    /*
+      Os contratos de hoje estão todos em R$ 0,00 (o valor nunca foi
+      negociado de verdade no produto). Ligar recorrência de zero real
+      mandaria a família pagar nada, todo mês.
+    */
+    it("recusa mensalidade em zero", async () => {
+      invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(
+        buildContrato({ valorMensalidadeCentavos: 0 }) as never,
+      );
+
+      await expect(
+        service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+    });
+
+    /*
+      Sem `endDate`, a recorrência continua cobrando a família depois de
+      o contrato acabar. É o campo que liga `Contract.vigenciaFim` ao
+      Asaas.
+    */
+    it("manda endDate quando o contrato tem fim de vigencia", async () => {
+      invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(
+        buildContrato({ vigenciaFim: new Date("2026-12-20T00:00:00.000Z") }) as never,
+      );
+
+      const resultado = await service.criarAssinaturaDoProprioContrato(
+        "contrato-1",
+        empresaActor,
+        {},
+      );
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ endDate: "2026-12-20" }),
+        undefined,
+      );
+      expect(resultado.ultimoVencimento).toBe("2026-12-20");
+    });
+
+    it("nao manda endDate quando o contrato nao tem fim combinado", async () => {
+      await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
+
+      const [corpo] = asaasClient.createSubscription.mock.calls[0] as [Record<string, unknown>];
+      expect(corpo).not.toHaveProperty("endDate");
+    });
+
+    /*
+      Se o Responsável já abriu o Pix deste mês, existe cobrança no
+      Asaas. Começar a recorrência no mesmo mês cobraria a família duas
+      vezes pela mesma competência.
+    */
+    it("pula o mes que ja tem cobranca emitida", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockImplementation(
+        (_contrato, competencia) =>
+          Promise.resolve(
+            competencia.getUTCMonth() === 3 ? ({ asaasPaymentId: "pay_de_abril" } as never) : null,
+          ),
+      );
+
+      await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ nextDueDate: "2026-05-05" }),
+        undefined,
+      );
+    });
+
+    /*
+      Fatura sem `asaasPaymentId` é só a nossa linha de razão: não existe
+      cobrança no provedor, então a recorrência pode cobrir o mês.
+    */
+    it("nao pula o mes quando a fatura existe mas nunca virou cobranca", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
+        asaasPaymentId: null,
+      } as never);
+
+      await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ nextDueDate: "2026-04-05" }),
+        undefined,
+      );
+    });
+
+    /*
+      Vencimento no passado faria a recorrência nascer vencida, gerando
+      cobrança atrasada para um mês que a família talvez já tenha
+      combinado de outro jeito.
+    */
+    it("nao usa vencimento que ja passou", async () => {
+      jest.setSystemTime(new Date("2026-04-20T09:00:00.000Z"));
+
+      await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ nextDueDate: "2026-05-05" }),
+        undefined,
+      );
+    });
+
+    /*
+      O Asaas exige `cpfCnpj` para criar o cliente da cobrança
+      (`CustomerSaveRequestDTO`), e desde 14/09/2026 a Rotta não coleta
+      CPF de Responsável. Sem o documento não existe cobrança para essa
+      família por nenhum caminho.
+    */
+    it("recusa com mensagem nomeando quem esta sem CPF", async () => {
+      usersService.findById.mockResolvedValue({
+        id: "responsavel-1",
+        nome: "Marina Alves",
+        email: "marina@email.com",
+        telefone: "21999887766",
+        cpf: null,
+      } as never);
+
+      await expect(
+        service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
+      ).rejects.toThrow(/Marina Alves/);
+      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+    });
+
+    it("grava o CPF informado no formulario e segue", async () => {
+      usersService.findById.mockResolvedValue({
+        id: "responsavel-1",
+        nome: "Marina Alves",
+        email: "marina@email.com",
+        telefone: "21999887766",
+        cpf: null,
+      } as never);
+      usersService.registrarCpfDoResponsavel.mockResolvedValue({
+        id: "responsavel-1",
+        nome: "Marina Alves",
+        email: "marina@email.com",
+        telefone: "21999887766",
+        cpf: "12345678909",
+      } as never);
+
+      await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {
+        cpfDoResponsavel: "123.456.789-09",
+      });
+
+      expect(usersService.registrarCpfDoResponsavel).toHaveBeenCalledWith(
+        "responsavel-1",
+        "123.456.789-09",
+      );
+      expect(asaasClient.createSubscription).toHaveBeenCalled();
+    });
+
+    /*
+      O celular vai no cliente do Asaas porque é por ele que o provedor
+      avisa a família da cobrança — e a família sem conta na Rotta
+      depende desse aviso para receber o link.
+    */
+    it("manda o celular do responsavel ao criar o cliente", async () => {
+      asaasClient.findCustomerByCpfCnpj.mockResolvedValue(null);
+      asaasClient.createCustomer.mockResolvedValue({ id: "cus_novo" } as never);
+
+      await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
+
+      expect(asaasClient.createCustomer).toHaveBeenCalledWith(
+        expect.objectContaining({ cpfCnpj: "12345678909", mobilePhone: "21999887766" }),
+      );
+    });
+
+    /*
+      Com `emissorDaCobranca = SUBCONTA` a recorrência tem que ser criada
+      COM A CHAVE DELA: é o único jeito de a custódia valer, porque a
+      retenção segue a conta que recebe.
+    */
+    it("emite pela subconta quando o emissor dela e SUBCONTA", async () => {
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue({
+        companyId: "company-1",
+        asaasWalletId: "wallet-da-transportadora",
+        emissorDaCobranca: "SUBCONTA",
+      } as never);
+      (subcontas.chaveDaSubconta as jest.Mock).mockReturnValue("chave-da-subconta");
+      (subcontas.montarSplit as jest.Mock).mockReturnValue([
+        { walletId: "wallet-da-rotta", percentualValue: 1.29 },
+      ]);
+
+      const resultado = await service.criarAssinaturaDoProprioContrato(
+        "contrato-1",
+        empresaActor,
+        {},
+      );
+
+      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({
+          split: [{ walletId: "wallet-da-rotta", percentualValue: 1.29 }],
+        }),
+        "chave-da-subconta",
+      );
+      expect(resultado.repasseDiretoAoTransportador).toBe(true);
+    });
+
+    it("contrato inexistente da 404", async () => {
+      invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(null);
+
+      await expect(
+        service.criarAssinaturaDoProprioContrato("contrato-9", empresaActor, {}),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it("sem a Asaas configurada, nada e criado", async () => {
+      asaasClient.isConfigured.mockReturnValue(false);
+
+      await expect(
+        service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
+      ).rejects.toThrow(BadRequestException);
+      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+    });
+
+    it("responsavel nao pode ligar cobranca de contrato nenhum", async () => {
+      await expect(
+        service.criarAssinaturaDoProprioContrato("contrato-1", responsavelActor, {}),
+      ).rejects.toThrow(ForbiddenException);
+      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    A cobrança que a recorrência gera chega por webhook, por padrão 40
+    dias antes do vencimento. Sem ligá-la à fatura do mês, ela existe no
+    Asaas e não aparece em lugar nenhum da Rotta: a família não tem link
+    para pagar e a transportadora não vê a cobrança.
+  */
+  describe("vincularCobrancaDaAssinatura", () => {
+    const evento = {
+      asaasEvent: "PAYMENT_CREATED",
+      asaasSubscriptionId: "sub_1",
+      asaasPaymentId: "pay_maio",
+      contractId: "contrato-1",
+      vencimento: "2026-05-05",
+      valorReais: 660,
+      linkDaFatura: "https://asaas.com/i/abc",
+      linhaDigitavel: null,
+      meioDePagamento: "PIX",
+    };
+
+    beforeEach(() => {
+      invoiceRepository.findContratoPorAssinaturaAcrossTenants.mockResolvedValue({
+        id: "contrato-1",
+        companyId: "company-1",
+        studentId: "student-1",
+        responsavelId: "responsavel-1",
+        valorMensalidadeCentavos: 66_000,
+        planoDescricao: "Ida e volta",
+        status: "ATIVO",
+        vigenciaInicio: new Date("2026-02-01T00:00:00.000Z"),
+        vigenciaFim: null,
+        asaasSubscriptionId: "sub_1",
+        asaasSubscriptionStatus: "ACTIVE",
+        student: { id: "student-1", nome: "Ana" },
+        company: { id: "company-1", nomeFantasia: "Transportes Lima" },
+      } as never);
+    });
+
+    it("liga a cobranca a fatura que ja existe no mes", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
+        id: "fatura-maio",
+        asaasPaymentId: null,
+      } as never);
+
+      await service.vincularCobrancaDaAssinatura(evento);
+
+      expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
+        "fatura-maio",
+        expect.objectContaining({
+          asaasPaymentId: "pay_maio",
+          linkDaFatura: "https://asaas.com/i/abc",
+          meioDePagamento: "PIX",
+        }),
+      );
+      expect(invoiceRepository.createAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    /*
+      A recorrência gera a cobrança até 40 dias antes do vencimento,
+      então o mês dela muitas vezes ainda não tem fatura: a rotina mensal
+      gera a do mês corrente, não a de dois meses à frente.
+    */
+    it("cria a fatura do mes quando ela ainda nao existe", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue(null);
+      invoiceRepository.createAcrossTenants.mockResolvedValue({ id: "fatura-nova" } as never);
+
+      await service.vincularCobrancaDaAssinatura(evento);
+
+      expect(invoiceRepository.createAcrossTenants).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contractId: "contrato-1",
+          companyId: "company-1",
+          competencia: new Date("2026-05-01T00:00:00.000Z"),
+          vencimento: new Date("2026-05-05T00:00:00.000Z"),
+          /* O valor vem do CONTRATO, nunca do payload: a fatura e
+             documento financeiro nosso. */
+          valorCentavos: 66_000,
+        }),
+      );
+      expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
+        "fatura-nova",
+        expect.objectContaining({ asaasPaymentId: "pay_maio" }),
+      );
+    });
+
+    it("webhook reentregue nao escreve de novo", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
+        id: "fatura-maio",
+        asaasPaymentId: "pay_maio",
+      } as never);
+
+      await service.vincularCobrancaDaAssinatura(evento);
+
+      expect(invoiceRepository.updateAcrossTenants).not.toHaveBeenCalled();
+      expect(invoiceRepository.createAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    /*
+      Sobrescrever deixaria a primeira cobrança órfã no provedor,
+      possivelmente já paga pela família e sem fatura nenhuma apontando
+      para ela.
+    */
+    it("nao sobrescreve cobranca diferente ja gravada no mes", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
+        id: "fatura-maio",
+        asaasPaymentId: "pay_que_ja_estava",
+      } as never);
+
+      await service.vincularCobrancaDaAssinatura(evento);
+
+      expect(invoiceRepository.updateAcrossTenants).not.toHaveBeenCalled();
+      expect(invoiceRepository.createAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    it("assinatura que nao e de nenhum contrato nosso e ignorada", async () => {
+      invoiceRepository.findContratoPorAssinaturaAcrossTenants.mockResolvedValue(null);
+
+      await service.vincularCobrancaDaAssinatura(evento);
+
+      expect(invoiceRepository.updateAcrossTenants).not.toHaveBeenCalled();
+      expect(invoiceRepository.createAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    /*
+      Se a referência do pagamento e a assinatura gravada discordam,
+      alguma das pontas aponta para o contrato errado — e gravar seria
+      lançar a cobrança de uma família na fatura de outra.
+    */
+    it("recusa quando a referencia aponta outro contrato", async () => {
+      await service.vincularCobrancaDaAssinatura({ ...evento, contractId: "contrato-de-outro" });
+
+      expect(invoiceRepository.updateAcrossTenants).not.toHaveBeenCalled();
+      expect(invoiceRepository.createAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    it("vencimento ilegivel nao liga nada", async () => {
+      await service.vincularCobrancaDaAssinatura({ ...evento, vencimento: "nao-e-data" });
+
+      expect(invoiceRepository.updateAcrossTenants).not.toHaveBeenCalled();
+      expect(invoiceRepository.createAcrossTenants).not.toHaveBeenCalled();
+    });
+
+    /*
+      `UNDEFINED` significa que o pagador ainda não escolheu. Gravar um
+      meio aí seria afirmar na tela da família algo que não aconteceu.
+    */
+    it("meio UNDEFINED fica nulo na fatura", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
+        id: "fatura-maio",
+        asaasPaymentId: null,
+      } as never);
+
+      await service.vincularCobrancaDaAssinatura({ ...evento, meioDePagamento: "UNDEFINED" });
+
+      expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
+        "fatura-maio",
+        expect.objectContaining({ meioDePagamento: null }),
+      );
+    });
+
+    it("registra se a cobranca gerada vai direto para a subconta", async () => {
+      invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
+        id: "fatura-maio",
+        asaasPaymentId: null,
+      } as never);
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue({
+        asaasWalletId: "wal_1",
+      } as never);
+
+      await service.vincularCobrancaDaAssinatura(evento);
+
+      expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
+        "fatura-maio",
+        expect.objectContaining({ repasseDiretoAoTransportador: true }),
+      );
     });
   });
 });

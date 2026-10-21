@@ -2690,6 +2690,24 @@ model Contract {
   ativadoEm             DateTime?
   encerradoEm           DateTime?
 
+  /// --- Asaas: a recorrência da mensalidade da família ---
+  ///
+  /// `sub_...` da assinatura que o Asaas usa para gerar a cobrança de
+  /// cada mês sozinho. Mora no CONTRATO, e não na fatura, porque um
+  /// contrato é uma recorrência: é o campo que impede a segunda
+  /// assinatura para a mesma família, que cobraria em dobro.
+  ///
+  /// `null` é o estado normal de quem ainda cobra avulso — a geração
+  /// mensal da própria Rotta (`FamilyBillingSchedulerService`) continua
+  /// valendo e é o que funciona sem a Asaas configurada.
+  asaasSubscriptionId     String?   @unique @db.VarChar(64)
+  /// `ACTIVE`, `EXPIRED` ou `INACTIVE`, como o Asaas devolve. Guardado
+  /// para a tela dizer por que a cobrança parou de chegar sem precisar
+  /// consultar a API (que consome cota).
+  asaasSubscriptionStatus String?   @db.VarChar(32)
+  /// Quando a recorrência foi criada, para auditoria de dinheiro.
+  assinaturaCriadaEm      DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

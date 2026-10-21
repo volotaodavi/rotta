@@ -52,7 +52,14 @@ import {
   FAMILY_INVOICE_WEBHOOK_EVENT,
   type FamilyInvoiceWebhookEvent,
 } from "@/modules/family-billing/events/family-invoice-paid.event";
-import { FAMILY_INVOICE_ID_PREFIX } from "@/modules/family-billing/family-billing.constants";
+import {
+  FAMILY_SUBSCRIPTION_CHARGE_EVENT,
+  type FamilySubscriptionChargeEvent,
+} from "@/modules/family-billing/events/family-subscription-charge.event";
+import {
+  FAMILY_CONTRACT_ID_PREFIX,
+  FAMILY_INVOICE_ID_PREFIX,
+} from "@/modules/family-billing/family-billing.constants";
 import {
   AtribuicaoDoNavegador,
   MetaConversionsService,
@@ -1120,6 +1127,53 @@ export class BillingService {
        `BillingModule` (pelo `AsaasClientService`) e chamar de volta
        fecharia o ciclo. */
     if (companyId?.startsWith(FAMILY_INVOICE_ID_PREFIX) && event.payment) {
+      const payload: FamilyInvoiceWebhookEvent = {
+        asaasEvent: event.event,
+        asaasPaymentId: event.payment.id,
+        valorReais: event.payment.value,
+        valorLiquidoReais: event.payment.netValue ?? null,
+        pagoEm: event.payment.paymentDate ?? null,
+      };
+      await this.eventEmitter.emitAsync(FAMILY_INVOICE_WEBHOOK_EVENT, payload);
+      return;
+    }
+
+    /* Cobrança gerada pela ASSINATURA de um contrato da família. Outro
+       prefixo porque a referência aponta para o contrato, e não para uma
+       fatura: toda cobrança que a recorrência gera herda o mesmo valor,
+       então ele não pode identificar um mês.
+
+       `PAYMENT_CREATED` é o evento que importa aqui, e é o único do
+       grupo que a Rotta não tratava: é ele que diz que a cobrança do mês
+       passou a existir, por padrão 40 dias antes do vencimento. Sem
+       ligá-la à fatura, a família não tem link para pagar.
+
+       Os outros eventos de pagamento (confirmado, vencido, estornado)
+       seguem pelo caminho que já existe e funciona, que acha a fatura
+       pelo `asaasPaymentId` gravado nessa ligação. */
+    if (companyId?.startsWith(FAMILY_CONTRACT_ID_PREFIX) && event.payment) {
+      if (event.event === "PAYMENT_CREATED") {
+        if (!event.payment.subscription || !event.payment.dueDate) {
+          this.logger.warn(
+            `Asaas "PAYMENT_CREATED" na cobranca ${event.payment.id} com referencia de contrato mas sem subscription ou dueDate: nao da para saber de qual recorrencia nem de qual mes. Nada foi ligado.`,
+          );
+          return;
+        }
+        const payload: FamilySubscriptionChargeEvent = {
+          asaasEvent: event.event,
+          asaasSubscriptionId: event.payment.subscription,
+          asaasPaymentId: event.payment.id,
+          contractId: companyId.slice(FAMILY_CONTRACT_ID_PREFIX.length),
+          vencimento: event.payment.dueDate,
+          valorReais: event.payment.value,
+          linkDaFatura: event.payment.invoiceUrl ?? null,
+          linhaDigitavel: event.payment.identificationField ?? null,
+          meioDePagamento: event.payment.billingType ?? null,
+        };
+        await this.eventEmitter.emitAsync(FAMILY_SUBSCRIPTION_CHARGE_EVENT, payload);
+        return;
+      }
+
       const payload: FamilyInvoiceWebhookEvent = {
         asaasEvent: event.event,
         asaasPaymentId: event.payment.id,

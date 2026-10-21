@@ -26,10 +26,22 @@ export interface AsaasCustomer {
   externalReference?: string;
 }
 
+/**
+ * `POST /v3/customers`. Obrigatorios pelo `CustomerSaveRequestDTO`,
+ * conferido na referencia em 21/10/2026: **`name` e `cpfCnpj`**, e so
+ * eles. Nao ha como criar cliente sem documento, e e isso que torna o
+ * CPF do Responsavel inescapavel para cobrar a familia.
+ */
 export interface CreateAsaasCustomerInput {
   name: string;
   cpfCnpj: string;
   email?: string;
+  /**
+   * Celular. E por ele que o Asaas avisa o pagador da cobranca, o que
+   * importa justamente para a familia que nao tem conta na Rotta e
+   * depende do aviso para receber o link.
+   */
+  mobilePhone?: string;
   /** `company.id` — correlação de volta no webhook (`externalReference`), sem outra consulta. */
   externalReference: string;
 }
@@ -47,7 +59,7 @@ export interface CreateAsaasCustomerInput {
  * inválida/desatualizada em produção). Assinatura mensal nativa da
  * Asaas — renova sozinha, sem nenhum job de reemissão manual.
  */
-export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO" | "PIX";
+export type AsaasBillingType = "CREDIT_CARD" | "DEBIT_CARD" | "BOLETO" | "PIX" | "UNDEFINED";
 
 /**
  * `GET /payments/{id}/pixQrCode` — só existe pra um `payment`/primeira
@@ -275,8 +287,40 @@ export interface ConfigurarCustodiaAsaasInput {
   isFeePayer?: boolean;
 }
 
+/**
+ * `POST /v3/subscriptions` — recorrencia.
+ *
+ * Obrigatorios pelo `SubscriptionSaveRequestDTO`, conferido na
+ * referencia em 21/10/2026: `customer`, `billingType`, `value`,
+ * `nextDueDate` e `cycle`. Os demais sao opcionais.
+ *
+ * ## A cobranca nasce 40 dias antes do vencimento
+ *
+ * O FAQ de assinaturas diz que, por padrao, cada cobranca da recorrencia
+ * e criada **40 dias antes** do vencimento, e que a conta pode mudar
+ * isso para 14 ou 7 dias. Duas consequencias que mudam codigo:
+ *
+ * 1. O `PAYMENT_CREATED` chega muito antes do mes de competencia, entao
+ *    quem reconcilia precisa saber CRIAR a fatura do mes, e nao apenas
+ *    achar uma que ja exista.
+ * 2. O limite do Periodo de Avaliacao conta cobranca CRIADA, nao paga.
+ *    Com 40 dias de antecedencia, o teto de R$ 2.000,00 por subconta e
+ *    consumido antes de a familia pagar qualquer coisa.
+ *
+ * ## O que a Rotta deliberadamente nao envia
+ *
+ * `discount`, `fine` e `interest` existem no schema e ficam de fora:
+ * desconto, multa e juros sao decisao de preco, e preco e do fundador.
+ * Mandar um default aqui seria decidir no lugar dele.
+ */
 export interface CreateAsaasSubscriptionInput {
   customer: string;
+  /**
+   * `UNDEFINED` deixa o pagador escolher na pagina da cobranca, que e o
+   * que serve a familia sem conta. Nao confirmado em sandbox ainda: o
+   * FAQ de assinaturas lista boleto, Pix e cartao, e so o schema cita
+   * `UNDEFINED`.
+   */
   billingType: AsaasBillingType;
   value: number;
   /** Único ciclo em uso — sem alternativa por ora (plano único Starter). */
@@ -284,10 +328,48 @@ export interface CreateAsaasSubscriptionInput {
   nextDueDate: string;
   description?: string;
   externalReference?: string;
+  /**
+   * Molde, e nao retroativo: cada cobranca NOVA que a recorrencia gerar
+   * nasce com este split. As ja geradas mantem o antigo, e mudar uma
+   * delas exige alterar a cobranca, nao a assinatura.
+   */
+  split?: AsaasSplitInput[];
+  /**
+   * Data limite de vencimento das cobrancas. E onde entra a
+   * `Contract.vigenciaFim`: sem ela, a recorrencia continua cobrando a
+   * familia depois de o contrato acabar.
+   */
+  endDate?: string;
+  /** Teto de cobrancas geradas. */
+  maxPayments?: number;
   creditCard?: AsaasCreditCardInput;
   creditCardHolderInfo?: AsaasCreditCardHolderInfoInput;
 }
 
+/**
+ * `PUT /v3/subscriptions/{id}`.
+ *
+ * Tres comportamentos onde seria facil supor dois, e a documentacao de
+ * split em assinaturas e explicita: **omitir `split` mantem** o que
+ * esta configurado, enquanto `null` ou `[]` **desliga**. Por isso o
+ * campo e opcional e aceita `null` de proposito.
+ *
+ * `updatePendingPayments` aplica o que for suportado tambem as
+ * cobrancas pendentes que a recorrencia ja gerou. Sem ele, so as
+ * proximas mudam.
+ */
+export interface UpdateAsaasSubscriptionInput {
+  value?: number;
+  billingType?: AsaasBillingType;
+  nextDueDate?: string;
+  description?: string;
+  endDate?: string | null;
+  status?: "ACTIVE" | "INACTIVE";
+  split?: AsaasSplitInput[] | null;
+  updatePendingPayments?: boolean;
+}
+
+/** `SubscriptionGetResponseDTO`, conferido na referencia em 21/10/2026. */
 export interface AsaasSubscription {
   id: string;
   customer: string;
@@ -295,6 +377,20 @@ export interface AsaasSubscription {
   billingType: AsaasBillingType;
   value: number;
   nextDueDate: string;
+  cycle?: string;
+  endDate?: string | null;
+  description?: string | null;
+  externalReference?: string | null;
+  /** `true` quando a assinatura foi removida no Asaas. */
+  deleted?: boolean;
+  maxPayments?: number | null;
+  /**
+   * Id do link de pagamentos ao qual a assinatura pertence, e **nao**
+   * uma URL: a assinatura nao tem pagina propria de pagamento. Quem tem
+   * pagina e cada cobranca gerada, pelo `invoiceUrl` dela.
+   */
+  paymentLink?: string | null;
+  split?: AsaasSplitInput[];
 }
 
 export interface AsaasPayment {
@@ -315,6 +411,15 @@ export interface AsaasPayment {
   value: number;
   /** Quando a cobrança foi criada — sempre presente. */
   dateCreated?: string;
+  /**
+   * Vencimento, `YYYY-MM-DD`.
+   *
+   * E o que identifica o MES de uma cobranca gerada por assinatura:
+   * toda cobranca da recorrencia herda o mesmo `externalReference` da
+   * assinatura, entao o vencimento e o unico campo que diz de qual
+   * competencia ela e.
+   */
+  dueDate?: string;
   /** Quando o pagamento foi de fato confirmado — só presente após `status` virar pago; usado pra filtrar "a partir de hoje" (pedido do usuário 03/09/2026). */
   paymentDate?: string | null;
   /**

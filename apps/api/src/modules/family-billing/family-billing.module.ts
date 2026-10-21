@@ -10,6 +10,7 @@ import { FamilyBillingController } from "./family-billing.controller";
 import { FamilyBillingService } from "./family-billing.service";
 import { AsaasAccountStatusListener } from "./listeners/asaas-account-status.listener";
 import { FamilyInvoiceWebhookListener } from "./listeners/family-invoice-webhook.listener";
+import { FamilySubscriptionChargeListener } from "./listeners/family-subscription-charge.listener";
 import { PrismaCompanyPaymentAccountRepository } from "./repositories/prisma-company-payment-account.repository";
 import { PrismaContractInvoiceRepository } from "./repositories/prisma-contract-invoice.repository";
 
@@ -54,6 +55,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     FamilyBillingSchedulerService,
     FamilyInvoiceWebhookListener,
     AsaasAccountStatusListener,
+    FamilySubscriptionChargeListener,
     { provide: CONTRACT_INVOICE_REPOSITORY, useClass: PrismaContractInvoiceRepository },
     {
       provide: COMPANY_PAYMENT_ACCOUNT_REPOSITORY,

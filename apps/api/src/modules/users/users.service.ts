@@ -1,4 +1,10 @@
-import { BadRequestException, ConflictException, Inject, Injectable } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { CompanyType } from "@prisma/client";
 import {
   normalizarDocumento,
@@ -223,6 +229,51 @@ export class UsersService {
   /** Portal da Escola — cargo interno. Ver `SchoolPortalService.criarConta`. */
   definirPapelNaEscola(userId: string, papel: SchoolStaffRole): Promise<User> {
     return this.userRepository.updateSchoolStaffRole(userId, papel);
+  }
+
+  /**
+   * Grava o CPF de um Responsável que não tinha, para a cobrança poder
+   * ser emitida.
+   *
+   * ## Por que isto existe
+   *
+   * Desde 14/09/2026 o Responsável não informa CPF no cadastro, por
+   * decisão do fundador ("para os responsáveis não pegamos esses dados,
+   * apenas o nome e telefone"). Só que o Asaas exige `cpfCnpj` para
+   * criar o cliente da cobrança (`CustomerSaveRequestDTO`, conferido em
+   * 21/10/2026: `name` e `cpfCnpj` são os dois obrigatórios). Sem o CPF
+   * não existe cobrança para essa família, de nenhum jeito.
+   *
+   * Então o documento é coletado **no momento da cobrança**, por quem já
+   * o tem em mãos (a transportadora, do contrato em papel) ou pela
+   * própria família, e não de volta no cadastro de todo mundo.
+   *
+   * ## O que ele recusa
+   *
+   * CPF que já pertence a OUTRA conta. O campo é `@unique` no banco, e
+   * sem esta checagem o erro apareceria como falha de constraint no meio
+   * da criação da assinatura — depois de a transportadora já ter
+   * apertado o botão.
+   *
+   * Idempotente: CPF igual ao que já está lá sai sem escrever.
+   */
+  async registrarCpfDoResponsavel(userId: string, cpf: string): Promise<User> {
+    const normalizado = normalizarDocumento(cpf);
+
+    const usuario = await this.userRepository.findById(userId);
+    if (!usuario) {
+      throw new NotFoundException("Responsável não encontrado.");
+    }
+    if (usuario.cpf === normalizado) return usuario;
+
+    const deOutro = await this.userRepository.findByCpf(normalizado);
+    if (deOutro && deOutro.id !== userId) {
+      throw new ConflictException(
+        "Este CPF já está em outra conta na Rotta. Confira o número antes de seguir.",
+      );
+    }
+
+    return this.userRepository.registrarCpf(userId, normalizado);
   }
 
   /**

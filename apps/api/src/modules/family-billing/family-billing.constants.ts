@@ -16,6 +16,19 @@ export const COMPANY_PAYMENT_ACCOUNT_REPOSITORY = Symbol("COMPANY_PAYMENT_ACCOUN
 export const FAMILY_INVOICE_ID_PREFIX = "fatura:";
 
 /**
+ * Prefixo de `externalReference` na ASSINATURA da família.
+ *
+ * Aponta para o CONTRATO, e não para uma fatura, por um motivo que o
+ * código não pode esquecer: toda cobrança que a recorrência gera herda o
+ * `externalReference` da assinatura. Se ele identificasse um mês, todas
+ * as cobranças de todos os meses chegariam no webhook dizendo que são do
+ * mesmo mês.
+ *
+ * Quem identifica o mês de uma cobrança gerada é o vencimento dela.
+ */
+export const FAMILY_CONTRACT_ID_PREFIX = "contrato:";
+
+/**
  * Dia do mês em que a mensalidade vence, quando o contrato não diz
  * outro.
  *

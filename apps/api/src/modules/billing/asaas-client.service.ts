@@ -20,6 +20,7 @@ import type {
   CreateAsaasPaymentInput,
   CreateAsaasSubscriptionInput,
   CreateAsaasTransferInput,
+  UpdateAsaasSubscriptionInput,
 } from "./types/asaas.types";
 
 import asaasConfig from "@/config/asaas.config";
@@ -93,7 +94,7 @@ export class AsaasClientService {
   private async request<T>(
     path: string,
     init: {
-      method: "GET" | "POST" | "DELETE";
+      method: "GET" | "POST" | "PUT" | "DELETE";
       body?: unknown;
       /**
        * Chave de API a usar no lugar da chave da conta principal.
@@ -196,8 +197,67 @@ export class AsaasClientService {
     return this.request<AsaasCustomer>("/customers", { method: "POST", body: input });
   }
 
-  createSubscription(input: CreateAsaasSubscriptionInput): Promise<AsaasSubscription> {
-    return this.request<AsaasSubscription>("/subscriptions", { method: "POST", body: input });
+  /**
+   * `accessToken` chega quando a recorrencia tem que ser criada EM NOME
+   * da subconta, pelo mesmo motivo de `createPayment`: a custodia segue
+   * a conta que RECEBE, e a conta pai nao tem custodia.
+   *
+   * Sem ele, a assinatura e da conta principal, com split para a
+   * subconta e sem nenhuma retencao.
+   */
+  createSubscription(
+    input: CreateAsaasSubscriptionInput,
+    accessToken?: string,
+  ): Promise<AsaasSubscription> {
+    return this.request<AsaasSubscription>("/subscriptions", {
+      method: "POST",
+      body: input,
+      accessToken,
+    });
+  }
+
+  /**
+   * `PUT /v3/subscriptions/{id}`.
+   *
+   * Cuidado com `split`: omitir mantem, `null` ou `[]` desliga (ver
+   * `UpdateAsaasSubscriptionInput`). Quem monta o corpo tem que decidir
+   * entre os tres casos de proposito, nunca por acidente de um campo
+   * `undefined` que virou `null` no caminho.
+   *
+   * O `accessToken` e obrigatorio quando a assinatura foi criada pela
+   * subconta: uma assinatura so e visivel para a conta que a emitiu.
+   */
+  updateSubscription(
+    subscriptionId: string,
+    input: UpdateAsaasSubscriptionInput,
+    accessToken?: string,
+  ): Promise<AsaasSubscription> {
+    return this.request<AsaasSubscription>(`/subscriptions/${encodeURIComponent(subscriptionId)}`, {
+      method: "PUT",
+      body: input,
+      accessToken,
+    });
+  }
+
+  /**
+   * As cobrancas que a recorrencia JA gerou —
+   * `GET /v3/subscriptions/{id}/payments`.
+   *
+   * A documentacao avisa que cobranca futura ainda nao criada nao
+   * aparece aqui, e que consulta tambem consome cota (25.000
+   * requisicoes a cada 12 horas por conta). Por isso isto e para
+   * conciliacao pontual, nunca para acompanhar estado: quem acompanha e
+   * o webhook.
+   */
+  async listarCobrancasDaAssinatura(
+    subscriptionId: string,
+    accessToken?: string,
+  ): Promise<AsaasPayment[]> {
+    const { data } = await this.request<AsaasListEnvelope<AsaasPayment>>(
+      `/subscriptions/${encodeURIComponent(subscriptionId)}/payments`,
+      { method: "GET", accessToken },
+    );
+    return data;
   }
 
   /**

@@ -68,6 +68,16 @@ export interface UserRepository {
   linkToSchool(id: string, escolaId: string, tx?: Prisma.TransactionClient): Promise<User>;
   /** Portal da Escola — cargo interno (`DIRETOR`/`COORDENADOR`/`AJUDANTE`), ver `User.escolaPapel`. */
   updateSchoolStaffRole(id: string, papel: SchoolStaffRole): Promise<User>;
+  /**
+   * Grava o CPF de quem não tinha — hoje, na prática, só o Responsável,
+   * que desde 14/09/2026 não informa CPF no cadastro (ver `User.cpf`).
+   *
+   * Método próprio pelo mesmo motivo de `linkToSchool`: não é estado de
+   * autenticação, é um documento de pessoa física entrando no cadastro
+   * por um caminho novo (a cobrança), e merece um ponto único e fácil de
+   * auditar. Já normalizado por quem chama.
+   */
+  registrarCpf(id: string, cpf: string): Promise<User>;
   /** IDs de todo Admin Rotta ativo (`User.isAdminRotta`) — usado pra fan-out cross-tenant (Suporte, Avisos). */
   listAdminRottaIds(): Promise<string[]>;
   /** IDs de todo `User` ativo, sem filtro de papel — usado pelo público `TODOS` de um `Announcement`. */

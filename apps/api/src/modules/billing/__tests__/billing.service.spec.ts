@@ -13,6 +13,8 @@ import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 
 import { ASAAS_ACCOUNT_STATUS_EVENT } from "@/modules/family-billing/events/asaas-account-status.event";
+import { FAMILY_INVOICE_WEBHOOK_EVENT } from "@/modules/family-billing/events/family-invoice-paid.event";
+import { FAMILY_SUBSCRIPTION_CHARGE_EVENT } from "@/modules/family-billing/events/family-subscription-charge.event";
 
 /** "Zere os dados e só conte os dados a partir do dia de hoje" (pedido do usuário 03/09/2026) — toda cobrança PAGA que os testes esperam contar precisa de uma data de hoje, senão o filtro novo do serviço a descarta. */
 const HOJE_ISO = new Date().toISOString();
@@ -397,6 +399,87 @@ describe("BillingService", () => {
 
       expect(companyRepository.update).not.toHaveBeenCalled();
       expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    Cobrança gerada pela ASSINATURA de um contrato da família. Prefixo
+    `contrato:`, e não `fatura:`, porque a referência da assinatura é
+    herdada por toda cobrança que ela gera — então não pode identificar
+    um mês. Quem identifica o mês é o vencimento.
+  */
+  describe("handleAsaasWebhookEvent: cobranca de assinatura da familia", () => {
+    const gerada = {
+      id: "pay_maio",
+      customer: "cus_1",
+      subscription: "sub_1",
+      status: "PENDING" as const,
+      billingType: "PIX" as const,
+      value: 660,
+      dueDate: "2026-05-05",
+      invoiceUrl: "https://asaas.com/i/abc",
+      externalReference: "contrato:contrato-1",
+    };
+
+    it("PAYMENT_CREATED vai para o evento de ligar a cobranca ao mes", async () => {
+      await service.handleAsaasWebhookEvent({ event: "PAYMENT_CREATED", payment: gerada });
+
+      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
+        FAMILY_SUBSCRIPTION_CHARGE_EVENT,
+        expect.objectContaining({
+          asaasSubscriptionId: "sub_1",
+          asaasPaymentId: "pay_maio",
+          contractId: "contrato-1",
+          vencimento: "2026-05-05",
+          linkDaFatura: "https://asaas.com/i/abc",
+        }),
+      );
+    });
+
+    /* Sem `subscription` nao da para saber de qual recorrencia e, e sem
+       `dueDate` nao da para saber de qual mes: ligar no escuro poria a
+       cobranca de uma familia na fatura de outro mes. */
+    it("PAYMENT_CREATED sem subscription ou sem dueDate nao liga nada", async () => {
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CREATED",
+        payment: { ...gerada, subscription: undefined },
+      });
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CREATED",
+        payment: { ...gerada, dueDate: undefined },
+      });
+
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
+    });
+
+    /* Confirmado, vencido e estornado seguem pelo caminho que ja existe
+       e funciona, que acha a fatura pelo `asaasPaymentId` gravado na
+       ligacao. */
+    it("pagamento confirmado segue pelo caminho de fatura da familia", async () => {
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CONFIRMED",
+        payment: { ...gerada, status: "CONFIRMED", paymentDate: "2026-05-04" },
+      });
+
+      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
+        FAMILY_INVOICE_WEBHOOK_EVENT,
+        expect.objectContaining({ asaasPaymentId: "pay_maio" }),
+      );
+    });
+
+    /* A cobranca avulsa da familia continua com o prefixo antigo, e
+       `PAYMENT_CREATED` nela nao tem nada a ligar: ela nasce de alguem
+       tocando em "pagar", com a fatura ja na mao. */
+    it("PAYMENT_CREATED de cobranca avulsa nao emite o evento de assinatura", async () => {
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CREATED",
+        payment: { ...gerada, externalReference: "fatura:fatura-1" },
+      });
+
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalledWith(
+        FAMILY_SUBSCRIPTION_CHARGE_EVENT,
+        expect.anything(),
+      );
     });
   });
 

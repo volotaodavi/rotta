@@ -47,6 +47,10 @@ export class PrismaUserRepository implements UserRepository {
     return this.prisma.user.update({ where: { id }, data: { escolaPapel: papel } });
   }
 
+  registrarCpf(id: string, cpf: string): Promise<User> {
+    return this.prisma.user.update({ where: { id }, data: { cpf } });
+  }
+
   async listAdminRottaIds(): Promise<string[]> {
     const admins = await this.prisma.user.findMany({
       where: { isAdminRotta: true, status: "ATIVO" },

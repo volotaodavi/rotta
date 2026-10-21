@@ -13,6 +13,7 @@ import {
   COMPANY_PAYMENT_ACCOUNT_REPOSITORY,
   CONTRACT_INVOICE_REPOSITORY,
   DIA_DE_VENCIMENTO_PADRAO,
+  FAMILY_CONTRACT_ID_PREFIX,
   FAMILY_INVOICE_ID_PREFIX,
 } from "./family-billing.constants";
 import {
@@ -45,6 +46,7 @@ import type {
   CompanyPaymentAccountStatus,
   CompanyType,
   ContractInvoiceStatus,
+  InvoicePaymentMethod,
 } from "@prisma/client";
 
 import asaasConfig from "@/config/asaas.config";
@@ -71,6 +73,37 @@ export interface DadosDaSubconta {
   faturamentoMensalCentavos: number;
   email?: string;
   telefone?: string;
+}
+
+/** O que o formulário de cobrança mensal automática traz. */
+export interface DadosDaAssinaturaDaFamilia {
+  /**
+   * CPF do Responsável, obrigatório quando ele ainda não tem um no
+   * cadastro — e desde 14/09/2026 nenhum Responsável novo tem. O Asaas
+   * exige `cpfCnpj` para criar o cliente da cobrança, então sem este
+   * número não existe cobrança para essa família.
+   */
+  cpfDoResponsavel?: string;
+  /** Dia do vencimento. `DIA_DE_VENCIMENTO_PADRAO` quando não vem. */
+  diaDeVencimento?: number;
+  /**
+   * `PIX` (padrão), `BOLETO`, ou `UNDEFINED` para o pagador escolher na
+   * página da cobrança.
+   */
+  meioDePagamento?: "PIX" | "BOLETO" | "UNDEFINED";
+}
+
+export interface AssinaturaDaFamiliaResponse {
+  contractId: string;
+  asaasSubscriptionId: string;
+  status: string;
+  meioDePagamento: string;
+  valorCentavos: number;
+  valorFormatado: string;
+  primeiroVencimento: string;
+  /** `null` em contrato sem fim de vigência combinado. */
+  ultimoVencimento: string | null;
+  repasseDiretoAoTransportador: boolean;
 }
 
 /**
@@ -462,15 +495,45 @@ export class FamilyBillingService {
     return payment.id;
   }
 
-  /** O `AsaasCustomer` do responsável — reaproveitado pelo CPF, nunca duplicado. */
-  private async resolverClienteAsaas(responsavelId: string): Promise<string> {
-    const responsavel = await this.usersService.findById(responsavelId);
+  /**
+   * O `AsaasCustomer` do responsável — reaproveitado pelo CPF, nunca
+   * duplicado.
+   *
+   * ## O CPF é o único bloqueio real da cobrança da família
+   *
+   * O Asaas exige `name` e `cpfCnpj` para criar um cliente
+   * (`CustomerSaveRequestDTO`, conferido na referência em 21/10/2026).
+   * E desde 14/09/2026, por decisão do fundador, a Rotta **não coleta
+   * CPF de Responsável** no cadastro: "para os responsáveis não pegamos
+   * esses dados, apenas o nome e telefone".
+   *
+   * Então quem chega aqui sem CPF não tem como ser cobrado por nenhum
+   * caminho. `cpfInformado` é a saída: quem está criando a cobrança
+   * (transportadora, que tem o contrato em mãos, ou o Admin Rotta)
+   * informa o número, ele é gravado no cadastro e serve da próxima vez.
+   *
+   * O celular vai junto porque é por ele que o Asaas avisa a família da
+   * cobrança — e uma família sem conta na Rotta depende desse aviso.
+   */
+  private async resolverClienteAsaas(
+    responsavelId: string,
+    opcoes?: { cpfInformado?: string },
+  ): Promise<string> {
+    let responsavel = await this.usersService.findById(responsavelId);
     if (!responsavel) {
       throw new NotFoundException("Responsável da fatura não encontrado.");
     }
+
+    if (!responsavel.cpf && opcoes?.cpfInformado) {
+      responsavel = await this.usersService.registrarCpfDoResponsavel(
+        responsavelId,
+        opcoes.cpfInformado,
+      );
+    }
+
     if (!responsavel.cpf) {
       throw new BadRequestException(
-        "O responsável precisa ter CPF cadastrado para a cobrança ser emitida.",
+        `Falta o CPF de ${responsavel.nome} para a cobrança ser emitida. O provedor de pagamento exige o documento de quem paga, e a Rotta não pede CPF de responsável no cadastro.`,
       );
     }
 
@@ -481,6 +544,7 @@ export class FamilyBillingService {
       name: responsavel.nome,
       cpfCnpj: responsavel.cpf,
       email: responsavel.email,
+      mobilePhone: responsavel.telefone,
       externalReference: responsavel.id,
     });
     return criado.id;
@@ -515,7 +579,14 @@ export class FamilyBillingService {
 
     const repasseCentavos = input.valorPagoCentavos - (input.taxaDoProvedorCentavos ?? 0);
 
-    await this.invoiceRepository.update(fatura.id, {
+    /* `updateAcrossTenants`, e nao `update`: quem chama isto e o webhook
+       da Asaas, que entra por rota `@Public()` e por isso nao tem
+       contexto de tenant. Com `update`, a politica de RLS de
+       `contract_invoices` seria falsa para toda linha, a escrita
+       levantaria erro e o webhook responderia 500 -- e quinze
+       respostas nao-200 seguidas pausam a fila inteira. Ver a nota do
+       metodo no repositorio. */
+    await this.invoiceRepository.updateAcrossTenants(fatura.id, {
       status: "PAGA",
       pagoEm: input.pagoEm,
       valorPagoCentavos: input.valorPagoCentavos,
@@ -546,7 +617,9 @@ export class FamilyBillingService {
   async registrarEstorno(asaasPaymentId: string): Promise<void> {
     const fatura = await this.invoiceRepository.findByAsaasPaymentIdAcrossTenants(asaasPaymentId);
     if (!fatura) return;
-    await this.invoiceRepository.update(fatura.id, { status: "ESTORNADA" });
+    /* `updateAcrossTenants` pelo mesmo motivo de `confirmarPagamento`:
+       chamado pelo webhook, que nao tem contexto de tenant. */
+    await this.invoiceRepository.updateAcrossTenants(fatura.id, { status: "ESTORNADA" });
     this.logger.warn(
       `Fatura ${fatura.id} estornada na Asaas. O credito correspondente no Rotta Pay, se houver, precisa de ajuste manual (Admin Rotta) -- estorno automatico de carteira nao esta implementado.`,
     );
@@ -843,6 +916,367 @@ export class FamilyBillingService {
     await this.paymentAccountRepository.upsertAcrossTenants(conta.companyId, { status });
     this.logger.log(
       `Conta de recebimento da empresa ${conta.companyId}: ${conta.status} -> ${status} (evento "${dados.eventoDaAsaas}").`,
+    );
+  }
+
+  // ---------------------------------------------------------------------
+  // A assinatura da família: a recorrência que cobra sozinha
+  // ---------------------------------------------------------------------
+
+  /** A transportadora cria a recorrência de um contrato dela. */
+  async criarAssinaturaDoProprioContrato(
+    contractId: string,
+    actor: AuthenticatedUser,
+    dados: DadosDaAssinaturaDaFamilia,
+  ): Promise<AssinaturaDaFamiliaResponse> {
+    this.companyIdDoAtor(actor);
+    return this.criarAssinaturaDaFamilia(contractId, actor, dados);
+  }
+
+  /**
+   * O Admin Rotta cria a recorrência PELA transportadora, para quando o
+   * transportador precisa de ajuda. Pedido do fundador em 21/10/2026:
+   * "podemos ajudar (admins master), porém as subcontas também poderão".
+   */
+  async criarAssinaturaParaContrato(
+    contractId: string,
+    actor: AuthenticatedUser,
+    dados: DadosDaAssinaturaDaFamilia,
+  ): Promise<AssinaturaDaFamiliaResponse> {
+    return this.criarAssinaturaDaFamilia(contractId, actor, dados);
+  }
+
+  /**
+   * Cria no Asaas a recorrência que cobra a família todo mês.
+   *
+   * ## O que isto muda para a família
+   *
+   * Hoje a cobrança só existe quando o Responsável abre o app e toca em
+   * "pagar": é ele que dispara a criação. Com a recorrência, o Asaas
+   * gera a cobrança de cada mês sozinho, e **o Responsável não precisa
+   * de conta na Rotta para nada** — ele recebe o link da cobrança
+   * hospedada e paga ali, por Pix ou boleto.
+   *
+   * Quem precisa de conta é só o transportador, e a dele é a subconta
+   * (autônomo, MEI ou sociedade).
+   *
+   * ## A ordem das operações não é arbitrária
+   *
+   * Criar assinatura no Asaas é irreversível de um jeito pior que criar
+   * subconta: subconta órfã fica parada, **assinatura órfã cobra a
+   * família todo mês** e ninguém na Rotta sabe que ela existe. Por isso
+   * tudo que pode falhar acontece ANTES da chamada, e o `id` vai para o
+   * log no instante em que a resposta chega.
+   *
+   * ## Por que a segunda assinatura é recusada
+   *
+   * Duas recorrências no mesmo contrato cobram a mesma família duas
+   * vezes por mês, e o estrago aparece no extrato dela, não no nosso.
+   * `Contract.asaasSubscriptionId` é `@unique` e a recusa vem antes da
+   * chamada ao Asaas.
+   */
+  private async criarAssinaturaDaFamilia(
+    contractId: string,
+    actor: AuthenticatedUser,
+    dados: DadosDaAssinaturaDaFamilia,
+  ): Promise<AssinaturaDaFamiliaResponse> {
+    const contrato = await this.invoiceRepository.findContratoParaAssinarAcrossTenants(contractId);
+    if (!contrato) throw new NotFoundException("Contrato não encontrado.");
+
+    /* Prova o acesso à transportadora do contrato. Para o Admin Rotta o
+       guard já publica bypass; para a transportadora isto é o que
+       impede criar recorrência no contrato de outra empresa. */
+    await this.companiesService.findByIdOrThrow(contrato.companyId, actor);
+
+    if (contrato.asaasSubscriptionId) {
+      throw new BadRequestException(
+        "Este contrato já tem uma cobrança mensal automática. Criar outra cobraria a família duas vezes no mesmo mês.",
+      );
+    }
+    if (contrato.status !== "ATIVO") {
+      throw new BadRequestException(
+        "Só contrato ativo pode ter cobrança mensal automática. Ative o contrato antes.",
+      );
+    }
+    if (contrato.valorMensalidadeCentavos <= 0) {
+      throw new BadRequestException(
+        "A mensalidade deste contrato está em R$ 0,00. Combine o valor com a família e registre no contrato antes de ligar a cobrança automática.",
+      );
+    }
+    if (!this.asaasClient.isConfigured()) {
+      throw new BadRequestException(
+        "A cobrança automática ainda não está disponível nesta implantação. Nada foi criado.",
+      );
+    }
+
+    const customerId = await this.resolverClienteAsaas(contrato.responsavelId, {
+      cpfInformado: dados.cpfDoResponsavel,
+    });
+
+    const conta = await this.paymentAccountRepository.findByCompanyIdAcrossTenants(
+      contrato.companyId,
+    );
+
+    const meio = dados.meioDePagamento ?? "PIX";
+    /* `UNDEFINED` deixa o pagador escolher na página; para a conta da
+       Rotta o percentual é o do Pix, que é o meio que a família usa. */
+    const split = this.subcontas.montarSplit(
+      conta,
+      meio === "BOLETO" ? "BOLETO" : "PIX",
+      this.config.rottaWalletId,
+    );
+    const emitirPelaSubconta = conta?.emissorDaCobranca === "SUBCONTA";
+    const chaveDaSubconta = emitirPelaSubconta
+      ? this.subcontas.chaveDaSubconta(
+          conta,
+          `emitir a assinatura do contrato ${contrato.id} em nome da subconta`,
+        )
+      : undefined;
+
+    const primeiroVencimento = await this.primeiroVencimentoDaAssinatura(
+      contrato.id,
+      dados.diaDeVencimento ?? DIA_DE_VENCIMENTO_PADRAO,
+    );
+
+    const assinatura = await this.asaasClient.createSubscription(
+      {
+        customer: customerId,
+        billingType: meio,
+        value: contrato.valorMensalidadeCentavos / 100,
+        cycle: "MONTHLY",
+        nextDueDate: primeiroVencimento.toISOString().slice(0, 10),
+        description: `Transporte escolar de ${contrato.student.nome}, ${contrato.company.nomeFantasia}`,
+        /* O mesmo prefixo das cobranças avulsas, mas apontando para o
+           CONTRATO: toda cobrança que a recorrência gerar herda este
+           valor, então ele não pode identificar um mês. Quem identifica
+           o mês é o vencimento da cobrança gerada. */
+        externalReference: `${FAMILY_CONTRACT_ID_PREFIX}${contrato.id}`,
+        split,
+        /* Sem isto a recorrência continua cobrando depois de o contrato
+           acabar. `vigenciaFim` é `null` em contrato sem fim combinado,
+           e aí não há limite a mandar. */
+        ...(contrato.vigenciaFim
+          ? { endDate: contrato.vigenciaFim.toISOString().slice(0, 10) }
+          : {}),
+      },
+      chaveDaSubconta,
+    );
+
+    /* Antes de qualquer coisa que possa falhar: uma assinatura criada
+       que não foi gravada aqui é uma recorrência invisível cobrando uma
+       família de verdade. Mesma lição da subconta órfã, com
+       consequência pior porque esta repete todo mês. */
+    this.logger.warn(
+      `Assinatura ${assinatura.id} criada no Asaas para o contrato ${contrato.id} (aluno ${contrato.studentId}, responsavel ${contrato.responsavelId}). Se nao houver uma linha de confirmacao logo abaixo desta, ela ficou ORFA no provedor e seguira cobrando a familia todo mes: cancele por DELETE /v3/subscriptions/${assinatura.id}.`,
+    );
+
+    await this.invoiceRepository.atualizarAssinaturaDoContratoAcrossTenants(contrato.id, {
+      asaasSubscriptionId: assinatura.id,
+      asaasSubscriptionStatus: assinatura.status,
+      assinaturaCriadaEm: new Date(),
+    });
+
+    this.logger.log(
+      `Assinatura Asaas ${assinatura.id} GRAVADA no contrato ${contrato.id}: ${meio}, ${formatarCentavos(contrato.valorMensalidadeCentavos)}/mes, primeiro vencimento ${primeiroVencimento.toISOString().slice(0, 10)}, split ${split ? "sim" : "nao"}, emissor ${emitirPelaSubconta ? "SUBCONTA" : "ROTTA"}.`,
+    );
+
+    return {
+      contractId: contrato.id,
+      asaasSubscriptionId: assinatura.id,
+      status: assinatura.status,
+      meioDePagamento: meio,
+      valorCentavos: contrato.valorMensalidadeCentavos,
+      valorFormatado: formatarCentavos(contrato.valorMensalidadeCentavos),
+      primeiroVencimento: primeiroVencimento.toISOString().slice(0, 10),
+      ultimoVencimento: contrato.vigenciaFim
+        ? contrato.vigenciaFim.toISOString().slice(0, 10)
+        : null,
+      repasseDiretoAoTransportador: Boolean(conta?.asaasWalletId),
+    };
+  }
+
+  /**
+   * Liga ao mês certo a cobrança que a recorrência gerou.
+   *
+   * ## Por que não dá para só gravar
+   *
+   * A cobrança nasce no Asaas **até 40 dias antes do vencimento**, então
+   * quando ela chega a fatura daquele mês muitas vezes ainda não existe:
+   * a rotina mensal da Rotta gera a fatura do mês corrente, não a de
+   * dois meses à frente. Por isso aqui acha **ou cria**.
+   *
+   * ## A cobrança divergente não sobrescreve nada
+   *
+   * Se o mês já tem outra cobrança gravada, sobrescrever deixaria a
+   * primeira órfã no provedor — possivelmente já paga pela família, e
+   * sem fatura nenhuma apontando para ela. Nesse caso isto só avisa, com
+   * os dois ids na mensagem, e não mexe.
+   *
+   * Idempotente: a mesma cobrança reentregue sai sem escrever.
+   */
+  async vincularCobrancaDaAssinatura(evento: {
+    asaasEvent: string;
+    asaasSubscriptionId: string;
+    asaasPaymentId: string;
+    contractId: string;
+    vencimento: string;
+    valorReais: number;
+    linkDaFatura?: string | null;
+    linhaDigitavel?: string | null;
+    meioDePagamento?: string | null;
+  }): Promise<void> {
+    const contrato = await this.invoiceRepository.findContratoPorAssinaturaAcrossTenants(
+      evento.asaasSubscriptionId,
+    );
+    if (!contrato) {
+      this.logger.warn(
+        `Cobranca ${evento.asaasPaymentId} gerada pela assinatura ${evento.asaasSubscriptionId}, que nao pertence a nenhum contrato da Rotta (evento "${evento.asaasEvent}"). Ignorada.`,
+      );
+      return;
+    }
+
+    /* A referencia vem do payload e a assinatura vem do banco: se as
+       duas discordam, alguma das pontas esta apontando para o contrato
+       errado, e gravar seria cobrar uma familia na fatura de outra. */
+    if (contrato.id !== evento.contractId) {
+      this.logger.warn(
+        `Cobranca ${evento.asaasPaymentId}: a assinatura ${evento.asaasSubscriptionId} esta no contrato ${contrato.id}, mas a referencia do pagamento diz contrato ${evento.contractId}. Nada foi ligado.`,
+      );
+      return;
+    }
+
+    const vencimento = new Date(`${evento.vencimento}T00:00:00.000Z`);
+    if (Number.isNaN(vencimento.getTime())) {
+      this.logger.warn(
+        `Cobranca ${evento.asaasPaymentId} com vencimento ilegivel ("${evento.vencimento}"): nao da para saber de qual mes e. Nada foi ligado.`,
+      );
+      return;
+    }
+    const competencia = competenciaDe(vencimento);
+
+    const existente = await this.invoiceRepository.findPorContratoECompetenciaAcrossTenants(
+      contrato.id,
+      competencia,
+    );
+
+    if (existente?.asaasPaymentId === evento.asaasPaymentId) {
+      this.logger.debug(
+        `Cobranca ${evento.asaasPaymentId} ja estava ligada a fatura ${existente.id}: webhook reentregue, nada a fazer.`,
+      );
+      return;
+    }
+    if (existente?.asaasPaymentId) {
+      this.logger.warn(
+        `Fatura ${existente.id} (contrato ${contrato.id}, competencia ${competencia.toISOString().slice(0, 10)}) ja tem a cobranca ${existente.asaasPaymentId}, e a assinatura gerou outra (${evento.asaasPaymentId}). A familia pode ter DUAS cobrancas do mesmo mes. Nada foi sobrescrito: confira no painel do Asaas e apague a que nao for usada.`,
+      );
+      return;
+    }
+
+    const conta = await this.paymentAccountRepository.findByCompanyIdAcrossTenants(
+      contrato.companyId,
+    );
+
+    const dados = {
+      asaasPaymentId: evento.asaasPaymentId,
+      linkDaFatura: evento.linkDaFatura ?? null,
+      linhaDigitavel: evento.linhaDigitavel ?? null,
+      meioDePagamento: this.meioDaCobranca(evento.meioDePagamento),
+      repasseDiretoAoTransportador: Boolean(conta?.asaasWalletId),
+    };
+
+    if (existente) {
+      await this.invoiceRepository.updateAcrossTenants(existente.id, dados);
+      this.logger.log(
+        `Cobranca ${evento.asaasPaymentId} da assinatura ${evento.asaasSubscriptionId} ligada a fatura ${existente.id} (competencia ${competencia.toISOString().slice(0, 10)}).`,
+      );
+      return;
+    }
+
+    /* O mes ainda nao tinha fatura: a recorrencia gerou a cobranca antes
+       de a rotina mensal chegar nesse mes. O valor vem do CONTRATO, nao
+       do payload, pelo mesmo motivo de `gerarFaturasDaCompetencia`: a
+       fatura e documento financeiro nosso, e o valor dela e o combinado
+       no contrato. */
+    const criada = await this.invoiceRepository.createAcrossTenants({
+      companyId: contrato.companyId,
+      contractId: contrato.id,
+      studentId: contrato.studentId,
+      responsavelId: contrato.responsavelId,
+      competencia,
+      vencimento,
+      valorCentavos: contrato.valorMensalidadeCentavos,
+    });
+    await this.invoiceRepository.updateAcrossTenants(criada.id, dados);
+
+    this.logger.log(
+      `Fatura ${criada.id} criada pela assinatura ${evento.asaasSubscriptionId} (contrato ${contrato.id}, competencia ${competencia.toISOString().slice(0, 10)}, vencimento ${evento.vencimento}) e ligada a cobranca ${evento.asaasPaymentId}.`,
+    );
+  }
+
+  /**
+   * O meio da cobrança do Asaas traduzido para o da fatura.
+   *
+   * `UNDEFINED` vira `null` de propósito: significa que o pagador ainda
+   * não escolheu, e gravar um meio nesse caso seria afirmar na tela algo
+   * que não aconteceu. O meio real chega no evento de pagamento.
+   */
+  private meioDaCobranca(meio: string | null | undefined): InvoicePaymentMethod | null {
+    const conhecidos: Record<string, InvoicePaymentMethod> = {
+      PIX: "PIX",
+      BOLETO: "BOLETO",
+      CREDIT_CARD: "CARTAO_CREDITO",
+      DEBIT_CARD: "CARTAO_DEBITO",
+    };
+    return meio ? (conhecidos[meio] ?? null) : null;
+  }
+
+  /**
+   * O vencimento da primeira cobrança da recorrência.
+   *
+   * Duas regras, e as duas existem para não cobrar a família duas vezes
+   * pelo mesmo mês:
+   *
+   * 1. **Mês que já tem cobrança no Asaas é pulado.** Se o Responsável
+   *    já abriu o Pix deste mês, existe cobrança lá; a recorrência
+   *    começa no mês seguinte.
+   * 2. **Vencimento no passado é pulado.** Uma recorrência que nasce
+   *    vencida gera cobrança atrasada na hora, para um mês que a família
+   *    talvez já tenha combinado de outro jeito.
+   *
+   * Procura no máximo doze meses à frente: além disso é contrato que não
+   * deveria estar ligando cobrança automática hoje.
+   */
+  private async primeiroVencimentoDaAssinatura(
+    contractId: string,
+    diaDeVencimento: number,
+  ): Promise<Date> {
+    const hoje = new Date();
+    const hojeUtc = new Date(
+      Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()),
+    );
+
+    for (let salto = 0; salto < 12; salto += 1) {
+      const competencia = new Date(
+        Date.UTC(hojeUtc.getUTCFullYear(), hojeUtc.getUTCMonth() + salto, 1),
+      );
+      const vencimento = vencimentoDe(competencia, diaDeVencimento);
+
+      if (vencimento < hojeUtc) continue;
+
+      const fatura = await this.invoiceRepository.findPorContratoECompetenciaAcrossTenants(
+        contractId,
+        competencia,
+      );
+      /* Fatura sem `asaasPaymentId` é só a nossa linha de razão: não
+         existe cobrança no provedor, então a recorrência pode cobrir
+         este mês. */
+      if (fatura?.asaasPaymentId) continue;
+
+      return vencimento;
+    }
+
+    throw new BadRequestException(
+      "Não foi possível achar um mês livre para a primeira cobrança nos próximos doze meses. Confira as faturas já emitidas deste contrato.",
     );
   }
 

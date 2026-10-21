@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
 
 import type {
+  AtualizarAssinaturaDoContratoData,
   ContractInvoiceComContexto,
   ContractInvoiceRepository,
+  ContratoParaAssinar,
   ContratoParaFaturar,
   CreateContractInvoiceData,
   ListContractInvoicesFilter,
@@ -16,6 +18,26 @@ import { PrismaService } from "@/infra/database/prisma.service";
 const COM_CONTEXTO = {
   student: { select: { id: true, nome: true } },
   company: { select: { id: true, nomeFantasia: true } },
+} as const;
+
+/**
+ * O recorte do contrato que o fluxo de assinatura usa. Explícito, e não
+ * o registro inteiro, porque `Contract` carrega motorista, monitor,
+ * veículo e o documento do termo — nada disso tem a ver com cobrança.
+ */
+const PARA_ASSINAR = {
+  id: true,
+  companyId: true,
+  studentId: true,
+  responsavelId: true,
+  valorMensalidadeCentavos: true,
+  planoDescricao: true,
+  status: true,
+  vigenciaInicio: true,
+  vigenciaFim: true,
+  asaasSubscriptionId: true,
+  asaasSubscriptionStatus: true,
+  ...COM_CONTEXTO,
 } as const;
 
 @Injectable()
@@ -84,6 +106,14 @@ export class PrismaContractInvoiceRepository implements ContractInvoiceRepositor
     );
   }
 
+  updateAcrossTenants(id: string, data: UpdateContractInvoiceData): Promise<ContractInvoice> {
+    return this.prisma.withBypass(this.prisma.contractInvoice.update({ where: { id }, data }));
+  }
+
+  createAcrossTenants(data: CreateContractInvoiceData): Promise<ContractInvoice> {
+    return this.prisma.withBypass(this.prisma.contractInvoice.create({ data }));
+  }
+
   listContratosSemFaturaAcrossTenants(competencia: Date): Promise<ContratoParaFaturar[]> {
     return this.prisma.withBypass(
       this.prisma.contract.findMany({
@@ -111,5 +141,39 @@ export class PrismaContractInvoiceRepository implements ContractInvoiceRepositor
       }),
     );
     return count;
+  }
+
+  // --- A assinatura da família, que mora no contrato ---
+
+  findContratoParaAssinarAcrossTenants(contractId: string): Promise<ContratoParaAssinar | null> {
+    return this.prisma.withBypass(
+      this.prisma.contract.findUnique({ where: { id: contractId }, select: PARA_ASSINAR }),
+    );
+  }
+
+  findContratoPorAssinaturaAcrossTenants(
+    asaasSubscriptionId: string,
+  ): Promise<ContratoParaAssinar | null> {
+    return this.prisma.withBypass(
+      this.prisma.contract.findUnique({ where: { asaasSubscriptionId }, select: PARA_ASSINAR }),
+    );
+  }
+
+  async atualizarAssinaturaDoContratoAcrossTenants(
+    contractId: string,
+    data: AtualizarAssinaturaDoContratoData,
+  ): Promise<void> {
+    await this.prisma.withBypass(this.prisma.contract.update({ where: { id: contractId }, data }));
+  }
+
+  findPorContratoECompetenciaAcrossTenants(
+    contractId: string,
+    competencia: Date,
+  ): Promise<ContractInvoice | null> {
+    return this.prisma.withBypass(
+      this.prisma.contractInvoice.findUnique({
+        where: { contractId_competencia: { contractId, competencia } },
+      }),
+    );
   }
 }
