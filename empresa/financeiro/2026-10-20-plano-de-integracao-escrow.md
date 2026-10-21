@@ -191,14 +191,72 @@ acha que é golpe.
 
 ---
 
-## Passo 4. Split nos outros meios
+## Passo 4. A cobrança da família, de verdade — FEITO
 
-**Quem faz: eu.** Hoje o split só entra na cobrança Pix da família.
+**Quem fez: eu**, em 21/10/2026, a partir do pedido do fundador: o
+transportador (ou o Admin ajudando) liga a cobrança dos responsáveis que
+já estão cadastrados, e **o responsável não precisa de conta** — ele paga
+por link. Quem precisa de conta é só o transportador.
 
-Falta levar para a cobrança avulsa, para a assinatura (o split vale para
-todas as cobranças que ela gera) e para o boleto. A conta por meio já
-está pronta: Pix e boleto 1,29%, crédito à vista 0,99%, parcelado 0,49%,
-débito fora.
+O passo estava descrito errado neste plano. Não faltava "levar o split
+para os outros meios": o split já cobria todos eles (`percentualDaRotta`
+tem Pix, boleto e crédito). O que faltava eram os **meios** e a
+**recorrência**.
+
+| O que                                                | Onde                                    |
+| ---------------------------------------------------- | --------------------------------------- |
+| `POST family-billing/contracts/:id/assinatura`       | A transportadora liga a cobrança mensal |
+| `POST family-billing/admin/contracts/:id/assinatura` | O fundador liga pela transportadora     |
+| `GET family-billing/contracts`                       | A lista, com o estado de cada contrato  |
+| `POST family-billing/invoices/:id/pagamento-boleto`  | O boleto, que não existia               |
+| `PUT family-billing/admin/companies/:id/recebimento` | Taxa, emissor e custódia                |
+| Tela em `/mensalidades`                              | Um botão por família                    |
+| Webhook `PAYMENT_CREATED`                            | Liga a cobrança gerada à fatura do mês  |
+| Tabela `asaas_webhook_events`                        | Idempotência pelo `id` do evento        |
+
+### O CPF era o bloqueio real, e ninguém sabia
+
+`POST /v3/customers` exige **`name` e `cpfCnpj`**, e só eles
+(`CustomerSaveRequestDTO`, conferido na referência em 21/10/2026). E
+desde 14/09/2026 a Rotta **não coleta CPF de responsável**, por decisão
+do fundador ("para os responsáveis não pegamos esses dados, apenas o
+nome e telefone").
+
+Ou seja: nenhuma família podia ser cobrada, por nenhum caminho. O
+documento agora é coletado no momento da cobrança, por quem o tem em
+mãos, e fica guardado — com recusa clara quando já pertence a outra
+conta. A tela pede o CPF só nas famílias em que ele falta.
+
+### A cobrança nasce 40 dias antes do vencimento
+
+O FAQ de assinaturas diz que cada cobrança da recorrência é criada **40
+dias antes** do vencimento, configurável para 14 ou 7. Duas
+consequências:
+
+1. Quem liga a cobrança à fatura precisa saber **criar** a fatura do mês,
+   e não só achar uma que exista.
+2. O limite do Período de Avaliação conta cobrança **criada**, não paga.
+   Com 40 dias de antecedência, o teto por subconta é consumido antes de
+   a família pagar qualquer coisa.
+
+### Três defeitos corrigidos de passagem
+
+1. **`confirmarPagamento` e `registrarEstorno` escreviam com `update`**,
+   e quem os chama é o webhook, que entra por rota `@Public()` e por isso
+   não tem contexto de tenant. A política de RLS de `contract_invoices`
+   (`FORCE ROW LEVEL SECURITY`) seria falsa para toda linha: a escrita
+   levantaria erro, o webhook responderia 500, e **quinze respostas
+   não-200 seguidas pausam a fila inteira** — inclusive a cobrança da
+   assinatura da própria Rotta. Nunca disparou porque nenhuma fatura de
+   família foi gerada ainda (contratos em R$ 0,00), e dispararia no
+   primeiro pagamento real.
+2. **`montarSplit` era chamado com `"PIX"` fixo** na criação da
+   cobrança. Como a taxa é por meio, um boleto sairia com o percentual do
+   Pix.
+3. **Taxa, emissor e custódia eram campos somente lidos.** Nasciam no
+   padrão da migration e nenhum endpoint os escrevia;
+   `configurarCustodia` existia e não tinha chamador. O passo 6 abaixo
+   não podia ser executado pelo painel, só com SQL direto no banco.
 
 ---
 
@@ -224,14 +282,19 @@ baixo antes de liberar para qualquer cliente.
 
 ## Passo 6. Ligar, uma transportadora por vez
 
-**Quem decide: o fundador.**
+**Quem decide: o fundador.** Desde 21/10/2026 os quatro passos abaixo
+têm rota no painel, e nenhum precisa de SQL.
 
 1. Escolher **uma** transportadora, de preferência a que já é pagante.
 2. Criar a subconta dela e conferir o split numa cobrança real de valor
    baixo.
-3. Ligar as taxas (`taxaPixBps` e companhia) só nessa.
+3. Ligar as taxas só nessa, por `PUT admin/companies/:id/recebimento`.
 4. Com o white label liberado, virar `emissorDaCobranca` para `SUBCONTA`
-   e ligar a custódia **só nela**.
+   e ligar a custódia **só nela**, pela mesma rota. Ela recusa virar o
+   emissor sem a chave da subconta guardada ou com a conta ainda em
+   análise, e recusa ligar custódia com o emissor na Rotta — a retenção
+   segue a conta que recebe, então custódia com emissor `ROTTA` não
+   reteria nada e passaria a cobrar a tarifa recorrente por nada.
 5. Só depois repetir nas outras.
 
 **Nunca o endpoint que liga custódia em todas de uma vez.** Em
@@ -255,24 +318,38 @@ pagar, ou cobrar delas, por base parada.
 ## Resumo da ordem
 
 ```
-1. E-mail ao comercial        fundador   destrava tudo
-2. Variáveis no Render        fundador   destrava o passo 5
-3. Onboarding da subconta     eu         FEITO em 20/10
+1. E-mail ao comercial         fundador   destrava tudo
+2. Variáveis no Render         fundador   destrava o passo 5
+3. Onboarding da subconta      eu         FEITO em 20/10
 3b. Eventos de conta no        fundador   FEITO em 20/10
     webhook do Asaas
-4. Split nos outros meios     eu         independente, em andamento
-5. Teste em sandbox           eu         depende do 2
-6. Ligar, uma por vez         fundador   depende de 1, 3, 4, 5
+4. A cobrança da família       eu         FEITO em 21/10
+5. Teste em sandbox            eu         depende do 2
+6. Ligar, uma por vez          fundador   depende de 1, 4, 5
 ```
 
-O passo 4 eu sigo agora: não depende de ninguém.
+**Todo o código da minha parte está no ar.** O que falta é seu, e nesta
+ordem:
 
-**Uma pergunta nova entrou no passo 1, e é a mais urgente de todas:** a
-homologação para sair do Período de Avaliação Regulatória. São 10
-subcontas por conta-pai e R$ 2.000,00 em cobranças **por subconta** —
-com mensalidade de R$ 660, são três famílias antes de travar, e
-assinatura que bate o teto é cancelada automaticamente. Ver
-`2026-10-20-varredura-da-documentacao-asaas.md`, seção 2.
+1. **A homologação regulatória**, que é a mais urgente de tudo. São 10
+   subcontas por conta-pai e **R$ 2.000,00 por subconta** (não R$ 2.000
+   no total: o limite é individual). Com mensalidade de R$ 660, são três
+   cobranças por transportadora antes de travar — e o limite conta
+   cobrança **criada**, não paga. Pode ser pedida a qualquer momento, sem
+   esperar os 60 dias. Ver `2026-10-20-varredura-da-documentacao-asaas.md`,
+   seção 2.
+2. **As duas variáveis no Render** (`ASAAS_SUBCONTA_ENCRYPTION_KEY` e
+   `ASAAS_ROTTA_WALLET_ID`). Sem a primeira, abrir conta de recebimento é
+   recusado com mensagem clara, e nada é criado.
+3. **As variáveis de sandbox no ambiente da sessão**, para eu testar de
+   ponta a ponta. Chave de sandbox, nunca de produção: a primeira
+   subconta de teste em produção queima uma das 10 vagas e **inicia os 60
+   dias**, e isso não desfaz.
+4. **As outras seis perguntas do e-mail ao comercial**, que decidem
+   `isFeePayer`, o risco de chargeback e a saída do escopo PCI.
+5. **Ligar a cobrança de verdade**: os contratos estão todos em R$ 0,00,
+   e a cobrança mensal é recusada com mensalidade zero — de propósito,
+   porque cobrar R$ 0,00 de uma família todo mês não é cobrança.
 
 ---
 
