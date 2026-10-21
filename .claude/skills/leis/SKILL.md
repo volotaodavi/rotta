@@ -66,8 +66,8 @@ Igual em todas as esferas:
 | ------------------------ | ------------------------------------------------------------------------ |
 | Constituição Federal     | `constituicao.md`                                                        |
 | Lei federal ordinária    | `federal/leis-ordinarias/<ANO>/lei-<NUMERO>-<AAAA-MM-DD>.md`             |
-| Lei complementar federal | `federal/leis-complementares/<ANO>/...`                                  |
-| Decreto-lei federal      | `federal/decretos-lei/<ANO>/...`                                         |
+| Lei complementar federal | `federal/leis-complementares/<ANO>/lcp-<NUMERO>-<DATA>.md`               |
+| Decreto-lei federal      | `federal/decretos-lei/<ANO>/del-<NUMERO>-<DATA>.md`                      |
 | Lei estadual             | `estaduais/<UF>/leis-ordinarias/<ANO>/...`                               |
 | Constituição estadual    | `estaduais/<UF>/constituicao/...`                                        |
 | Ato de regulador         | `reguladores/<orgao>/<tipo>/...` (ex. `reguladores/contran/resolucoes/`) |
@@ -75,12 +75,28 @@ Igual em todas as esferas:
 | Jurisprudência           | `jurisprudencia/<tribunal>/...`                                          |
 | Tratado                  | `tratados/...`                                                           |
 
-O nome do arquivo de uma lei é `lei-<numero>-<data de assinatura>.md`. A Lei
-9.503/1997 é `lei-9503-1997-09-23.md`.
+**O prefixo do arquivo muda com o tipo da norma, e errar ele dá 404.** Conferido
+em 21/10/2026:
+
+| Tipo             | Prefixo | Exemplo                                                  |
+| ---------------- | ------- | -------------------------------------------------------- |
+| Lei ordinária    | `lei-`  | `federal/leis-ordinarias/1997/lei-9503-1997-09-23.md`    |
+| Lei complementar | `lcp-`  | `federal/leis-complementares/2006/lcp-123-2006-12-14.md` |
+| Decreto-lei      | `del-`  | `federal/decretos-lei/1943/del-5452-1943-05-01.md`       |
 
 **Nunca adivinhe a data para montar o caminho.** Uma URL crua errada volta 404,
 e um 404 não é "a norma não existe": é só o palpite errado. Sem a data, use o
 índice do jeito 2.
+
+## O levantamento completo já existe
+
+**Antes de pesquisar norma do zero, leia
+`empresa/juridico/2026-10-21-mapa-legal-da-rotta.md`.** Ele mapeia os doze
+segmentos que alcançam a Rotta (transporte escolar, criança e adolescente,
+educação, acessibilidade, dados, consumidor, contrato, pagamento, trabalho,
+tributário, venda a prefeitura, propriedade intelectual) com o caminho de cada
+norma já conferido, onde ela toca o produto, e o que pode ou não ser mostrado ao
+público.
 
 ## O que já está mapeado para o transporte escolar
 
