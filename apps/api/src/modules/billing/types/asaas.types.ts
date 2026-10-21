@@ -479,6 +479,19 @@ export interface AsaasAccountStatus {
  * `null` quando o evento é da própria conta principal.
  */
 export interface AsaasWebhookEnvelope {
+  /**
+   * O `id` do evento (ex. `evt_05b708...&368604920`).
+   *
+   * E a chave de idempotencia: a entrega e **at least once**, e a
+   * documentacao recomenda guardar este `id` com restricao de unicidade
+   * e responder 200 so depois de persistir.
+   *
+   * Opcional no tipo de proposito. Nem toda entrega historica traz o
+   * campo, e um envelope sem `id` tem que ser processado em vez de
+   * recusado: recusar devolveria nao-200, e quinze nao-200 seguidas
+   * pausam a fila inteira.
+   */
+  id?: string;
   event: string;
   payment?: AsaasPayment;
   account?: { id: string; ownerId?: string | null };

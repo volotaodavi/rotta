@@ -4438,3 +4438,48 @@ model CompanyPaymentAccount {
 
   @@map("company_payment_accounts")
 }
+
+/// Todo evento de webhook do Asaas que esta instalacao já recebeu.
+///
+/// ## Por que a tabela existe
+///
+/// A entrega é **at least once**: a documentação deles diz, com essas
+/// palavras, para guardar o `id` do evento com restrição de unicidade e
+/// responder 200 só depois de persistir. Sem isso, um evento reentregue
+/// passa de novo por todo o processamento — e creditar duas vezes a
+/// carteira de um transportador é o tipo de erro que só aparece no dia
+/// do saque.
+///
+/// Até 21/10/2026 a idempotência da Rotta vinha de cada caminho ser
+/// idempotente por estado (fatura já paga não é reprocessada, situação
+/// igual não é regravada). Funciona, mas depende de quem escrever o
+/// próximo caminho lembrar disso.
+///
+/// ## Por que não tem RLS
+///
+/// Não é dado de transportadora nenhuma: é o registro de entrega de um
+/// provedor para a plataforma. Quem lê é o próprio webhook, que não tem
+/// ator nem tenant.
+model AsaasWebhookEvent {
+  /// O `id` do evento, como o Asaas manda (ex. `evt_05b708...&368604920`).
+  /// É a chave primária de propósito: a unicidade É a idempotência.
+  id String @id @db.VarChar(128)
+
+  /// Nome cru do evento (`PAYMENT_CONFIRMED`, `ACCOUNT_STATUS_...`).
+  evento String @db.VarChar(64)
+
+  /// `payment.id` ou `account.id`, quando houver — para achar pela
+  /// cobrança na hora de investigar sem varrer a tabela.
+  recursoId String? @db.VarChar(64)
+
+  /// Quando o processamento terminou. `null` enquanto está em curso, o
+  /// que distingue "reentrega de evento já tratado" de "reentrega de um
+  /// evento que falhou no meio" na hora de investigar.
+  processadoEm DateTime?
+
+  recebidoEm DateTime @default(now())
+
+  @@index([evento, recebidoEm])
+  @@index([recursoId])
+  @@map("asaas_webhook_events")
+}

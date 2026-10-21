@@ -4,6 +4,7 @@ import { CompanyStatus } from "@prisma/client";
 import { BillingService } from "../billing.service";
 
 import type { AsaasClientService } from "../asaas-client.service";
+import type { AsaasWebhookEventRepository } from "../repositories/asaas-webhook-event.repository";
 import type { PrismaService } from "@/infra/database/prisma.service";
 import type { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service";
 import type { AuditLogService } from "@/modules/audit/audit-log.service";
@@ -42,6 +43,7 @@ describe("BillingService", () => {
     pendingSubscription: { create: jest.Mock; update: jest.Mock; delete: jest.Mock };
   };
   let auditLogService: jest.Mocked<AuditLogService>;
+  let webhookEventRepository: jest.Mocked<AsaasWebhookEventRepository>;
   let eventEmitter: jest.Mocked<EventEmitter2>;
   let service: BillingService;
 
@@ -102,6 +104,15 @@ describe("BillingService", () => {
       record: jest.fn().mockResolvedValue(undefined),
     } as unknown as jest.Mocked<AuditLogService>;
 
+    /* A entrega do webhook e at least once, e o `id` do evento e a chave
+       de idempotencia. O duble responde "nunca vi" por padrao, que e o
+       caminho normal: evento novo e processado. */
+    webhookEventRepository = {
+      jaRecebido: jest.fn().mockResolvedValue(false),
+      registrar: jest.fn().mockResolvedValue(undefined),
+      marcarProcessado: jest.fn().mockResolvedValue(undefined),
+    };
+
     service = new BillingService(
       asaasClient,
       companyRepository as never,
@@ -111,6 +122,11 @@ describe("BillingService", () => {
       eventEmitter,
       adminInboxEmailService,
       auditLogService,
+      /* `metaConversions` ja nao era passado antes de 21/10/2026: o
+         caminho que o usa avisa no log e segue. Explicito aqui para a
+         posicao do argumento seguinte nao depender disso. */
+      undefined as never,
+      webhookEventRepository,
     );
   });
 
@@ -375,7 +391,11 @@ describe("BillingService", () => {
       });
 
       expect(aviso).toHaveBeenCalledWith(expect.stringContaining("PAYMENT_SPLIT_DIVERGENCE_BLOCK"));
-      expect(aviso.mock.calls[0]?.[0]).toContain("2 dias uteis");
+      /* Sem depender da POSICAO do aviso: um envelope sem `id` tambem
+         gera um aviso proprio, e o que este teste guarda e que o prazo
+         de 2 dias uteis esta escrito em algum lugar da mensagem de
+         bloqueio. */
+      expect(aviso).toHaveBeenCalledWith(expect.stringContaining("2 dias uteis"));
     });
 
     it("split cancelado tambem e aviso: o repasse nao aconteceu", async () => {
@@ -399,6 +419,109 @@ describe("BillingService", () => {
 
       expect(companyRepository.update).not.toHaveBeenCalled();
       expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    A entrega do webhook é **at least once**, e a documentação do Asaas
+    recomenda guardar o `id` do evento com restrição de unicidade e
+    responder 200 só depois de persistir.
+
+    O que isso evita não é só processar duas vezes: a fila de uma
+    configuração é interrompida após 15 respostas não-200 seguidas, só
+    HTTP 200 conta como entrega, e evento guardado por mais de 14 dias é
+    apagado para sempre. A fila é uma só — um defeito num caminho
+    pausaria também a cobrança da assinatura da própria Rotta.
+  */
+  describe("handleAsaasWebhookEvent: idempotencia pelo id do evento", () => {
+    const comId = {
+      id: "evt_05b708&368604920",
+      event: "PAYMENT_SPLIT_DONE",
+      payment: {
+        id: "pay_1",
+        customer: "cus_1",
+        status: "RECEIVED" as const,
+        billingType: "PIX" as const,
+        value: 660,
+        externalReference: "fatura:fatura-1",
+      },
+    };
+
+    it("evento novo e processado e registrado", async () => {
+      await service.handleAsaasWebhookEvent(comId);
+
+      expect(webhookEventRepository.registrar).toHaveBeenCalledWith({
+        id: "evt_05b708&368604920",
+        evento: "PAYMENT_SPLIT_DONE",
+        recursoId: "pay_1",
+      });
+      expect(webhookEventRepository.marcarProcessado).toHaveBeenCalledWith("evt_05b708&368604920");
+    });
+
+    it("reentrega do mesmo evento nao reprocessa nada", async () => {
+      webhookEventRepository.jaRecebido.mockResolvedValue(true);
+
+      await service.handleAsaasWebhookEvent({
+        ...comId,
+        event: "PAYMENT_CONFIRMED",
+        payment: { ...comId.payment, status: "CONFIRMED" },
+      });
+
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
+      expect(webhookEventRepository.registrar).not.toHaveBeenCalled();
+    });
+
+    /*
+      Processa primeiro e registra depois, e nao o contrario: registrar
+      antes reservaria o id, e uma falha no meio deixaria o evento
+      marcado como visto sem nada ter acontecido -- e a reentrega, que e
+      justamente a chance de consertar, seria descartada. Evento perdido
+      e pior que evento repetido, porque a camada de baixo (idempotencia
+      por estado) absorve o repetido.
+    */
+    it("falha no processamento nao registra o evento", async () => {
+      eventEmitter.emitAsync.mockRejectedValue(new Error("banco fora"));
+
+      await expect(
+        service.handleAsaasWebhookEvent({
+          ...comId,
+          event: "PAYMENT_CONFIRMED",
+          payment: { ...comId.payment, status: "CONFIRMED" },
+        }),
+      ).rejects.toThrow("banco fora");
+
+      expect(webhookEventRepository.registrar).not.toHaveBeenCalled();
+    });
+
+    /*
+      Envelope sem `id` e processado, nao recusado: nem toda entrega traz
+      o campo, e recusar devolveria nao-200 -- quinze nao-200 seguidas
+      pausam a fila inteira.
+    */
+    it("envelope sem id e processado, com aviso", async () => {
+      const aviso = jest.spyOn(service["logger"], "warn").mockImplementation(() => undefined);
+
+      await service.handleAsaasWebhookEvent({
+        event: "PAYMENT_CONFIRMED",
+        payment: { ...comId.payment, status: "CONFIRMED" },
+      });
+
+      expect(aviso).toHaveBeenCalledWith(expect.stringContaining("sem id"));
+      expect(eventEmitter.emitAsync).toHaveBeenCalled();
+      expect(webhookEventRepository.registrar).not.toHaveBeenCalled();
+    });
+
+    it("usa o account.id como recurso quando nao ha cobranca", async () => {
+      await service.handleAsaasWebhookEvent({
+        id: "evt_conta",
+        event: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
+        account: { id: "acc_1" },
+        accountStatus: { id: "acc_1", general: "APPROVED" },
+      });
+
+      expect(webhookEventRepository.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({ recursoId: "acc_1" }),
+      );
     });
   });
 

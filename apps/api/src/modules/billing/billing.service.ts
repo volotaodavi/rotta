@@ -23,6 +23,10 @@ import {
   ROTTA_SUBSCRIPTION_PRICE_CENTS,
   ROTTA_SUBSCRIPTION_PRODUCT_NAME,
 } from "./billing.constants";
+import {
+  ASAAS_WEBHOOK_EVENT_REPOSITORY,
+  type AsaasWebhookEventRepository,
+} from "./repositories/asaas-webhook-event.repository";
 
 import type { CreateAdminPixChargeDto } from "./dto/create-admin-pix-charge.dto";
 import type { CreateAdminTransferDto } from "./dto/create-admin-transfer.dto";
@@ -209,6 +213,11 @@ export class BillingService {
     private readonly adminInboxEmailService: AdminInboxEmailService,
     private readonly auditLogService: AuditLogService,
     private readonly metaConversions: MetaConversionsService,
+    /* A idempotência do webhook pelo `id` do evento. Entrou em
+       21/10/2026: a entrega é at least once e a fila pausa depois de 15
+       respostas não-200 seguidas. */
+    @Inject(ASAAS_WEBHOOK_EVENT_REPOSITORY)
+    private readonly webhookEventRepository: AsaasWebhookEventRepository,
   ) {}
 
   /**
@@ -1056,11 +1065,65 @@ export class BillingService {
 
   /**
    * Processa um evento de webhook da Asaas já autenticado (token do
-   * header verificado pelo controller). Idempotente por design —
-   * reaplicar o mesmo evento só reescreve o mesmo `status`/
-   * `asaasSubscriptionId`, nunca duplica nada.
+   * header verificado pelo controller).
+   *
+   * ## Duas camadas de idempotência, e as duas são necessárias
+   *
+   * A de cima é o `id` do evento, guardado em `asaas_webhook_events`
+   * (ver `handleAsaasWebhookEvent` abaixo e o model em `schema.prisma`):
+   * a entrega é **at least once**, e é o desenho que a própria
+   * documentação do Asaas recomenda.
+   *
+   * A de baixo é cada caminho ser idempotente por estado — fatura já
+   * paga não é reprocessada, situação igual não é regravada. Ela não sai
+   * de cena por causa da tabela: a tabela protege a reentrega do MESMO
+   * evento, e o estado protege dois eventos diferentes que descrevem o
+   * mesmo fato (`PAYMENT_CONFIRMED` seguido de `PAYMENT_RECEIVED`, que é
+   * o caso normal de um pagamento, não uma anomalia).
    */
   async handleAsaasWebhookEvent(event: AsaasWebhookEnvelope): Promise<void> {
+    /*
+      Reentrega do mesmo evento sai aqui.
+
+      Processa primeiro e registra depois, e não o contrário: registrar
+      antes "reservaria" o id, e uma falha no meio do processamento
+      deixaria o evento marcado como visto sem nada ter acontecido — e a
+      reentrega, que é justamente a chance de consertar, seria descartada
+      por esta mesma checagem. Evento perdido é pior que evento repetido,
+      porque a camada de baixo (idempotência por estado) absorve o
+      repetido.
+
+      Envelope sem `id` é processado em vez de recusado: nem toda
+      entrega traz o campo, e recusar devolveria não-200 — quinze
+      não-200 seguidas pausam a fila inteira da configuração.
+    */
+    if (event.id) {
+      if (await this.webhookEventRepository.jaRecebido(event.id)) {
+        this.logger.log(
+          `Evento Asaas ${event.id} ("${event.event}") ja havia sido recebido: reentrega ignorada.`,
+        );
+        return;
+      }
+
+      await this.processarEventoAsaas(event);
+
+      await this.webhookEventRepository.registrar({
+        id: event.id,
+        evento: event.event,
+        recursoId: event.payment?.id ?? event.account?.id ?? null,
+      });
+      await this.webhookEventRepository.marcarProcessado(event.id);
+      return;
+    }
+
+    this.logger.warn(
+      `Evento Asaas "${event.event}" chegou sem id: processado, mas sem protecao contra reentrega.`,
+    );
+    await this.processarEventoAsaas(event);
+  }
+
+  /** O processamento em si, sem a camada de idempotência por `id`. */
+  private async processarEventoAsaas(event: AsaasWebhookEnvelope): Promise<void> {
     /* Situação de uma SUBCONTA (a transportadora), e não pagamento
        nenhum. Chega sem `payment`, então precisa sair antes de qualquer
        coisa que leia `event.payment`.

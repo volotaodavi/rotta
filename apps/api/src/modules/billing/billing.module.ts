@@ -10,6 +10,8 @@ import { BillingController } from "./billing.controller";
 import { BillingService } from "./billing.service";
 import { CobrancaController } from "./cobranca.controller";
 import { CobrancaService } from "./cobranca.service";
+import { ASAAS_WEBHOOK_EVENT_REPOSITORY } from "./repositories/asaas-webhook-event.repository";
+import { PrismaAsaasWebhookEventRepository } from "./repositories/prisma-asaas-webhook-event.repository";
 
 import { EmailModule } from "@/infra/email/email.module";
 import { SecurityModule } from "@/infra/security/security.module";
@@ -57,6 +59,10 @@ import { UsersModule } from "@/modules/users/users.module";
     CobrancaService,
     DiretoriaReadGuard,
     AsaasSubcontasService,
+    {
+      provide: ASAAS_WEBHOOK_EVENT_REPOSITORY,
+      useClass: PrismaAsaasWebhookEventRepository,
+    },
   ],
   // `BillingService` exportado pra `AdminDigestModule` reaproveitar
   // (`reconciliarPagamentosAsaas`, resumo semanal/mensal do Admin
