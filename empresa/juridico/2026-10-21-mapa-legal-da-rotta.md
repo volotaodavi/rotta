@@ -298,9 +298,18 @@ Periférico, mas é a base da licença do software e do uso de conteúdo de terc
 Duas lacunas medidas em 21/10/2026, e as duas pesam justo onde o transporte
 escolar é regulado de verdade:
 
-1. **CONTRAN: 6 arquivos** em `reguladores/contran/`. As resoluções de transporte
-   escolar (requisitos do art. 136 VII, conteúdo do curso especializado do art.
-   138 V) não estão lá. Fonte: portal do CONTRAN/Senatran.
+1. **CONTRAN: 146 atos, todos de 2020 a 2026, e nenhum sobre escolar.** São 131
+   resoluções e 15 deliberações. Li o cabeçalho de todos os 146 procurando
+   "escolar": **zero resultados**. As resoluções que regulam a condução de
+   escolares (os requisitos do art. 136, VII, e o conteúdo do curso
+   especializado do art. 138, V) são anteriores a 2020 e não estão no acervo.
+   Fonte: portal oficial do CONTRAN.
+
+   _(Correção: eu havia escrito "6 arquivos" na primeira versão deste
+   documento. Era erro meu de contagem — listei só o nível de cima da pasta,
+   que tem dois diretórios. A conclusão prática não muda, mas o número e o
+   motivo mudam: não é acervo pequeno, é recorte temporal que começa em 2020.)_
+
 2. **Municipais do RJ: 13 municípios**, e nenhum deles é Niterói, Rio, São
    Gonçalo ou Maricá. Pelo art. 139, é na lei municipal que vivem a autorização,
    a vistoria e o cadastro. Fonte: diário oficial ou site da prefeitura.

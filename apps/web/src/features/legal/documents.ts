@@ -216,6 +216,42 @@ export const LEGAL_DOCUMENTS: LegalDocumentMeta[] = [
     status: "PENDENTE_REVISAO_JURIDICA",
     palavrasChave: ["suporte", "status", "ajuda", "vulnerabilidade", "denúncia"],
   },
+  {
+    slug: "marco-legal",
+    href: "/legal/marco-legal",
+    titulo: "Marco Legal do Transporte Escolar",
+    resumo:
+      "A legislação que rege o transporte escolar no Brasil e orienta a plataforma, com as referências em norma ABNT e link para a fonte oficial de cada texto.",
+    // Nasce `PENDENTE_REVISAO_JURIDICA` por regra do registro: o
+    // documento cita norma e não pode receber selo de revisado sem
+    // revisão jurídica real registrada em `revisadoEm`. O levantamento
+    // que o originou está em
+    // `empresa/juridico/2026-10-21-mapa-legal-da-rotta.md`, com cada
+    // norma localizada e o cabeçalho conferido (título, ementa, se
+    // está revogada e a fonte).
+    versao: "1.0",
+    publicadoEm: "21/10/2026",
+    atualizadoEm: "21/10/2026",
+    status: "PENDENTE_REVISAO_JURIDICA",
+    palavrasChave: [
+      "lei",
+      "leis",
+      "legislação",
+      "ctb",
+      "código de trânsito",
+      "contran",
+      "eca",
+      "lgpd",
+      "cdc",
+      "consumidor",
+      "abnt",
+      "referências",
+      "conformidade",
+      "vistoria",
+      "autorização",
+      "escolar",
+    ],
+  },
 ];
 
 export function getLegalDocumentMeta(slug: string): LegalDocumentMeta | undefined {

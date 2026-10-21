@@ -124,11 +124,14 @@ CTB.
 O próprio projeto mede o que falta em `PROGRESSO.md` e `COBERTURA.md`. Duas
 lacunas afetam a Rotta diretamente, medidas em 21/10/2026:
 
-1. **Atos do CONTRAN: 6 arquivos em `reguladores/contran/`.** O CONTRAN tem
-   centenas de resoluções, e as de transporte escolar (vistoria, equipamento
-   obrigatório, idade do veículo) provavelmente não estão lá.
-2. **Municipais: 13 municípios do RJ.** A cidade onde a transportadora opera
-   provavelmente não está no acervo.
+1. **Atos do CONTRAN: 146, todos de 2020 a 2026, nenhum sobre escolar.** São 131
+   resoluções e 15 deliberações, e o cabeçalho de todos os 146 foi lido
+   procurando "escolar": zero resultados. As resoluções de condução de escolares
+   são anteriores a 2020. **Nunca cite resolução do CONTRAN por número sem ter
+   aberto o arquivo**: o acervo não as tem, e número de memória em documento
+   público é o pior erro possível aqui.
+2. **Municipais: 13 municípios do RJ, 143 arquivos.** A cidade onde a
+   transportadora opera provavelmente não está no acervo.
 
 Nos dois casos: **diga que não está no acervo e aponte a fonte oficial** (o
 portal do CONTRAN/Senatran, o diário oficial ou o site da prefeitura). Não
