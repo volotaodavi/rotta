@@ -17,6 +17,8 @@ import {
 } from "./family-billing.constants";
 import {
   toContaDeRecebimentoResponse,
+  toDadosParaAbrirConta,
+  type ContaDeRecebimentoComConviteResponse,
   type ContaDeRecebimentoResponse,
 } from "./mappers/company-payment-account.mapper";
 import {
@@ -564,10 +566,44 @@ export class FamilyBillingService {
    */
   async getContaDeRecebimento(
     actor: AuthenticatedUser,
-  ): Promise<ContaDeRecebimentoResponse | null> {
-    const conta = await this.paymentAccountRepository.findByCompanyId(this.companyIdDoAtor(actor));
-    if (!conta) return null;
-    return toContaDeRecebimentoResponse(await this.sincronizarSubconta(conta));
+  ): Promise<ContaDeRecebimentoComConviteResponse> {
+    return this.contaComConvite(this.companyIdDoAtor(actor), actor);
+  }
+
+  /**
+   * A conta de recebimento e, enquanto não houver subconta, o que já
+   * temos para abrir uma.
+   *
+   * ## Por que a resposta nunca é nula
+   *
+   * Porque "ainda não tem conta" é o estado de quase toda
+   * transportadora, e é quem mais precisa de resposta: é a pessoa que
+   * tem que ver o que é a conta, o que muda, e o que falta. Devolver
+   * `null` inteiro deixava a tela sem nada com que montar o convite.
+   *
+   * ## Por que a empresa só é lida quando faz falta
+   *
+   * Com a subconta criada não há o que conferir antes de enviar, e
+   * carregar o cadastro a cada abertura da tela de dinheiro seria
+   * consulta por nada. Hoje toda transportadora cai no caminho que lê;
+   * conforme elas abrirem a conta, esse caminho se apaga sozinho.
+   */
+  private async contaComConvite(
+    companyId: string,
+    actor: AuthenticatedUser,
+    empresaJaLida?: Parameters<typeof toDadosParaAbrirConta>[0],
+  ): Promise<ContaDeRecebimentoComConviteResponse> {
+    const linha = await this.paymentAccountRepository.findByCompanyId(companyId);
+    const conta = linha ? await this.sincronizarSubconta(linha) : null;
+
+    if (conta?.asaasAccountId) return { conta: toContaDeRecebimentoResponse(conta) };
+
+    const empresa =
+      empresaJaLida ?? (await this.companiesService.findByIdOrThrow(companyId, actor));
+    return {
+      conta: conta ? toContaDeRecebimentoResponse(conta) : null,
+      dadosParaAbrirConta: toDadosParaAbrirConta(empresa),
+    };
   }
 
   /**
@@ -580,11 +616,12 @@ export class FamilyBillingService {
   async getContaDeRecebimentoDaEmpresa(
     companyId: string,
     actor: AuthenticatedUser,
-  ): Promise<ContaDeRecebimentoResponse | null> {
-    await this.companiesService.findByIdOrThrow(companyId, actor);
-    const conta = await this.paymentAccountRepository.findByCompanyId(companyId);
-    if (!conta) return null;
-    return toContaDeRecebimentoResponse(await this.sincronizarSubconta(conta));
+  ): Promise<ContaDeRecebimentoComConviteResponse> {
+    /* A empresa é lida de todo jeito, para provar o acesso. Passar
+       adiante evita a segunda leitura do mesmo cadastro: o painel do
+       Admin mostra exatamente o que a transportadora veria. */
+    const empresa = await this.companiesService.findByIdOrThrow(companyId, actor);
+    return this.contaComConvite(companyId, actor, empresa);
   }
 
   /**

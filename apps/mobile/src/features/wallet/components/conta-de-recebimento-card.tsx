@@ -2,7 +2,11 @@ import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { useState } from "react";
 import { Linking, StyleSheet, View } from "react-native";
 
-import type { CompanyPaymentAccount, CriarSubcontaAsaasInput } from "@rotta/api-client";
+import type {
+  CompanyPaymentAccount,
+  CriarSubcontaAsaasInput,
+  DadosParaAbrirConta,
+} from "@rotta/api-client";
 
 import { Texto } from "@/components/texto";
 import {
@@ -58,6 +62,12 @@ const EXPLICACAO: Record<Situacao, string> = {
 
 export interface ContaDeRecebimentoCardProps {
   conta: CompanyPaymentAccount | null | undefined;
+  /**
+   * O que a Rotta já tem para abrir a conta. Vai escrito na tela porque
+   * o formulário pede um campo, e um formulário de um campo parece
+   * incompleto se a pessoa não vê o resto indo.
+   */
+  dadosParaAbrirConta?: DadosParaAbrirConta;
   onAbrirConta: (input: CriarSubcontaAsaasInput) => Promise<void>;
   isAbrindoConta?: boolean;
 }
@@ -81,6 +91,7 @@ export interface ContaDeRecebimentoCardProps {
  */
 export function ContaDeRecebimentoCard({
   conta,
+  dadosParaAbrirConta,
   onAbrirConta,
   isAbrindoConta = false,
 }: ContaDeRecebimentoCardProps): JSX.Element {
@@ -90,6 +101,8 @@ export function ContaDeRecebimentoCard({
 
   const situacao = situacaoDa(conta);
   const centavos = reaisParaCentavos(faturamento);
+  const dados = dadosParaAbrirConta;
+  const semConta = situacao === "SEM_SUBCONTA";
 
   async function abrir(): Promise<void> {
     setFeedback(null);
@@ -116,8 +129,61 @@ export function ContaDeRecebimentoCard({
         {EXPLICACAO[situacao]}
       </Texto>
 
-      {situacao === "SEM_SUBCONTA" ? (
+      {/* O que muda com a conta aberta, em três linhas. Vale só para
+          quem ainda não tem: depois de aberta, isto é o presente, e
+          descrever o presente como promessa é ruído. */}
+      {semConta ? (
+        <View style={styles.vantagens}>
+          {[
+            "A mensalidade da família cai direto na sua conta.",
+            "Você continua acompanhando cada pagamento aqui no app.",
+            "Para abrir, só falta um dado: o resto já está no seu cadastro.",
+          ].map((linha) => (
+            <View key={linha} style={styles.vantagem}>
+              <View style={[styles.marcador, { backgroundColor: theme.colors.primary }]} />
+              <Texto style={[styles.ajuda, styles.vantagemTexto, { color: theme.colors.text }]}>
+                {linha}
+              </Texto>
+            </View>
+          ))}
+        </View>
+      ) : null}
+
+      {semConta ? (
         <View style={styles.formulario}>
+          {/* Por que o formulário tem um campo: os outros já estão no
+              cadastro da transportadora, e a pessoa confere aqui em vez
+              de ter que confiar. Sem isto, um formulário de um campo
+              parece um formulário incompleto. */}
+          {dados ? (
+            <View
+              style={[
+                styles.cadastro,
+                {
+                  backgroundColor: theme.colors.surfaceElevated,
+                  borderColor: theme.colors.hairline,
+                  borderRadius: theme.radius.md,
+                },
+              ]}
+            >
+              <Texto style={[styles.cadastroTitulo, { color: theme.colors.text }]}>
+                O que vamos usar do seu cadastro
+              </Texto>
+              <DoCadastro rotulo="Titular" valor={dados.razaoSocial} />
+              <DoCadastro
+                rotulo={dados.tipoDePessoa === "FISICA" ? "CPF" : "CNPJ"}
+                valor={dados.cpfCnpj}
+              />
+              <DoCadastro rotulo="E-mail" valor={dados.email} />
+              <DoCadastro rotulo="Telefone" valor={dados.telefone} />
+              <DoCadastro rotulo="Endereço" valor={`${dados.endereco} — ${dados.cep}`} />
+              <Texto style={[styles.ajuda, { color: theme.colors.textMuted }]}>
+                Está errado? Corrija no seu perfil antes de abrir a conta: depois de aberta, esses
+                dados só mudam pelo provedor.
+              </Texto>
+            </View>
+          ) : null}
+
           <VehicleTextField
             label="Faturamento mensal"
             value={faturamento}
@@ -138,6 +204,13 @@ export function ContaDeRecebimentoCard({
             onPress={() => void abrir()}
             isLoading={isAbrindoConta}
           />
+          {/* Dito antes de a pessoa tocar no botão, e não depois: até o
+              provedor liberar o cadastro dentro da Rotta, ele manda um
+              e-mail próprio, e quem não foi avisado acha que é golpe. */}
+          <Texto style={[styles.ajuda, { color: theme.colors.textMuted }]}>
+            Você pode receber um e-mail do nosso provedor de pagamentos pedindo documento e selfie.
+            É parte da abertura, e a análise costuma levar até dois dias úteis.
+          </Texto>
         </View>
       ) : null}
 
@@ -155,9 +228,31 @@ export function ContaDeRecebimentoCard({
   );
 }
 
+/** Uma linha do cadastro: rótulo curto à esquerda, valor à direita. */
+function DoCadastro({ rotulo, valor }: { rotulo: string; valor: string }): JSX.Element {
+  const { theme } = useTheme();
+  return (
+    <View style={styles.linhaDoCadastro}>
+      <Texto style={[styles.rotuloDoCadastro, { color: theme.colors.textMuted }]}>{rotulo}</Texto>
+      <Texto style={[styles.valorDoCadastro, { color: theme.colors.text }]} numberOfLines={2}>
+        {valor}
+      </Texto>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   ajuda: { fontSize: 12, lineHeight: 17 },
+  cadastro: { borderWidth: 1, gap: 6, padding: 12 },
+  cadastroTitulo: { fontSize: 12, fontWeight: "700", marginBottom: 2 },
   formulario: { gap: 10, paddingTop: 4 },
+  linhaDoCadastro: { flexDirection: "row", gap: 10 },
+  marcador: { borderRadius: 3, height: 6, marginTop: 6, width: 6 },
+  rotuloDoCadastro: { fontSize: 12, width: 76 },
   titulo: { flex: 1, fontSize: 15, fontWeight: "700" },
   topo: { alignItems: "center", flexDirection: "row", gap: 8 },
+  valorDoCadastro: { flex: 1, fontSize: 12, fontWeight: "600" },
+  vantagem: { flexDirection: "row", gap: 8 },
+  vantagemTexto: { flex: 1 },
+  vantagens: { gap: 6, paddingTop: 2 },
 });

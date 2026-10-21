@@ -4,7 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 
 import { ContaDeRecebimentoCard } from "../components/conta-de-recebimento-card";
 
-import type { CompanyPaymentAccount, CriarSubcontaAsaasInput } from "@rotta/api-client";
+import type {
+  CompanyPaymentAccount,
+  CriarSubcontaAsaasInput,
+  DadosParaAbrirConta,
+} from "@rotta/api-client";
 
 /**
  * A conta de recebimento é o que decide por onde passa o dinheiro da
@@ -45,9 +49,19 @@ function conta(overrides: Partial<CompanyPaymentAccount> = {}): CompanyPaymentAc
 
 type AbrirConta = (input: CriarSubcontaAsaasInput) => Promise<unknown>;
 
-function montar(props: { conta: CompanyPaymentAccount | null; onAbrirConta?: AbrirConta }) {
+function montar(props: {
+  conta: CompanyPaymentAccount | null;
+  dadosParaAbrirConta?: DadosParaAbrirConta;
+  onAbrirConta?: AbrirConta;
+}) {
   const onAbrirConta = props.onAbrirConta ?? vi.fn<AbrirConta>().mockResolvedValue(conta());
-  render(<ContaDeRecebimentoCard conta={props.conta} onAbrirConta={onAbrirConta} />);
+  render(
+    <ContaDeRecebimentoCard
+      conta={props.conta}
+      dadosParaAbrirConta={props.dadosParaAbrirConta}
+      onAbrirConta={onAbrirConta}
+    />,
+  );
   return { onAbrirConta };
 }
 
@@ -58,6 +72,63 @@ describe("ContaDeRecebimentoCard", () => {
     expect(screen.getByText("Conta não aberta")).toBeTruthy();
     expect(screen.getByLabelText(/Faturamento mensal/)).toBeTruthy();
     expect(screen.getByRole("button", { name: "Abrir conta" })).toBeTruthy();
+  });
+
+  /*
+    Um formulário de um campo parece incompleto. A pessoa não tem como
+    saber que o CNPJ e o endereço dela já estão indo, e não deveria ter
+    que confiar: vão escritos, antes de ela confirmar.
+  */
+  describe("o que a Rotta já sabe vai escrito na tela", () => {
+    const dados = {
+      razaoSocial: "Transportes Lima LTDA",
+      cpfCnpj: "12345678000190",
+      email: "contato@lima.com.br",
+      telefone: "21999990000",
+      endereco: "Avenida Roberto Silveira, 1180, Centro",
+      cep: "24900000",
+      tipoDePessoa: "JURIDICA" as const,
+      faltando: ["Faturamento mensal"],
+    };
+
+    it("mostra titular, documento, contato e endereço do cadastro", () => {
+      montar({ conta: null, dadosParaAbrirConta: dados });
+
+      expect(screen.getByText("Transportes Lima LTDA")).toBeTruthy();
+      expect(screen.getByText("12345678000190")).toBeTruthy();
+      expect(screen.getByText("contato@lima.com.br")).toBeTruthy();
+      expect(screen.getByText(/Avenida Roberto Silveira, 1180, Centro/)).toBeTruthy();
+    });
+
+    it("transportador autônomo tem CPF, e o rótulo acompanha", () => {
+      montar({
+        conta: null,
+        dadosParaAbrirConta: { ...dados, tipoDePessoa: "FISICA", cpfCnpj: "12345678901" },
+      });
+
+      expect(screen.getByText("CPF")).toBeTruthy();
+      expect(screen.queryByText("CNPJ")).toBeNull();
+    });
+
+    it("diz onde corrigir, porque depois de aberta não muda mais por aqui", () => {
+      montar({ conta: null, dadosParaAbrirConta: dados });
+
+      expect(screen.getByText(/Corrija no cadastro da transportadora/)).toBeTruthy();
+    });
+
+    /* Até o provedor liberar o cadastro inteiro dentro da Rotta, ele
+       manda um e-mail próprio. Quem não foi avisado acha que é golpe. */
+    it("avisa do e-mail do provedor antes de a pessoa clicar", () => {
+      montar({ conta: null, dadosParaAbrirConta: dados });
+
+      expect(screen.getByText(/e-mail do nosso provedor de pagamentos/)).toBeTruthy();
+    });
+
+    it("com a conta já criada, o cadastro sai da tela: não há o que conferir", () => {
+      montar({ conta: conta(), dadosParaAbrirConta: undefined });
+
+      expect(screen.queryByText("O que vamos usar do cadastro")).toBeNull();
+    });
   });
 
   /* Em branco, os contatos ficam de fora: valem os do cadastro da

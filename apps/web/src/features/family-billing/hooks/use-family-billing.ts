@@ -2,7 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ContractInvoiceStatus, CriarSubcontaAsaasInput } from "@rotta/api-client";
+import type {
+  ContaDeRecebimentoComConvite,
+  ContractInvoiceStatus,
+  CriarSubcontaAsaasInput,
+} from "@rotta/api-client";
 
 import { familyBillingApi } from "@/lib/api-client";
 
@@ -56,8 +60,14 @@ export function useCriarSubcontaAsaas() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CriarSubcontaAsaasInput) => familyBillingApi.criarSubcontaAsaas(input),
+    /* A criação devolve a conta, e o cache guarda o envelope. Sem
+       `dadosParaAbrirConta`, de propósito: a subconta agora existe, e
+       não há mais o que conferir antes de enviar. */
     onSuccess: (conta) => {
-      queryClient.setQueryData(["family-billing", "conta-de-recebimento"], conta);
+      queryClient.setQueryData<ContaDeRecebimentoComConvite>(
+        ["family-billing", "conta-de-recebimento"],
+        { conta },
+      );
     },
   });
 }

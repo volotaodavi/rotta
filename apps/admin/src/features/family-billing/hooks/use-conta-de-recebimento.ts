@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { CriarSubcontaAsaasInput } from "@rotta/api-client";
+import type { ContaDeRecebimentoComConvite, CriarSubcontaAsaasInput } from "@rotta/api-client";
 
 import { familyBillingApi } from "@/lib/api-client";
 
@@ -40,8 +40,10 @@ export function useCriarSubcontaDaEmpresa(companyId: string) {
   return useMutation({
     mutationFn: (input: CriarSubcontaAsaasInput) =>
       familyBillingApi.criarSubcontaAsaasParaEmpresa(companyId, input),
+    /* Sem `dadosParaAbrirConta`: a subconta agora existe, e nao ha
+       mais cadastro para conferir antes de enviar. */
     onSuccess: (conta) => {
-      queryClient.setQueryData(chaveDa(companyId), conta);
+      queryClient.setQueryData<ContaDeRecebimentoComConvite>(chaveDa(companyId), { conta });
     },
   });
 }

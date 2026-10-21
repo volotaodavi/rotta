@@ -60,7 +60,8 @@ export default function MensalidadesPage(): JSX.Element {
   const { data, isLoading } = useFaturasDaEmpresa({
     status: filtro === "TODAS" ? undefined : filtro,
   });
-  const { data: conta, isLoading: contaCarregando } = useContaDeRecebimento();
+  const { data: recebimento, isLoading: contaCarregando } = useContaDeRecebimento();
+  const conta = recebimento?.conta;
   const salvarConta = useSalvarContaDeRecebimento();
   const criarSubconta = useCriarSubcontaAsaas();
   const [chavePix, setChavePix] = useState("");
@@ -91,6 +92,7 @@ export default function MensalidadesPage(): JSX.Element {
 
       <ContaDeRecebimentoCard
         conta={conta}
+        dadosParaAbrirConta={recebimento?.dadosParaAbrirConta}
         isLoading={contaCarregando}
         isAbrindoConta={criarSubconta.isPending}
         onAbrirConta={async (input) => {

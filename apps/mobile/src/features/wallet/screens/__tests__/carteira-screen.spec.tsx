@@ -77,7 +77,10 @@ const mocks = {
   /* A conta de recebimento entrou em 20/10/2026. `null` é o estado de
      toda transportadora cadastrada antes dela, e por isso é o padrão
      dos testes que já existiam. */
-  conta: { data: null as unknown },
+  /* O envelope, e nao a conta solta: a resposta ganhou o nivel
+     `{ conta, dadosParaAbrirConta }` para que "ainda nao tem conta"
+     deixasse de ser `null` inteiro e passasse a trazer o que falta. */
+  conta: { data: { conta: null } as unknown },
   /* Dentro de `mocks` porque a fábrica de `jest.mock` é içada para
      antes das declarações do arquivo, e só nomes começando com "mock"
      podem ser lidos de dentro dela. */
@@ -175,7 +178,7 @@ describe("Carteira do transportador", () => {
   */
   describe("conta de recebimento", () => {
     afterEach(() => {
-      mocks.conta = { data: null };
+      mocks.conta = { data: { conta: null } };
       mocks.criarSubconta.mockClear();
     });
 
@@ -185,6 +188,88 @@ describe("Carteira do transportador", () => {
       expect(screen.getByText("Conta não aberta")).toBeTruthy();
       expect(screen.getByLabelText("Faturamento mensal")).toBeTruthy();
       expect(screen.getByText("Abrir conta")).toBeTruthy();
+    });
+
+    /*
+      Pedido do fundador em 20/10/2026: quem não tem conta precisa ver,
+      antes das funcionalidades do Rotta Pay, o que é a conta e como
+      abrir. Não é layout: para essa pessoa a mensalidade está caindo na
+      conta da Rotta, e abrir a conta é a coisa mais importante da tela.
+    */
+    it("o convite explica o que muda, antes dos atalhos do Rotta Pay", () => {
+      montar();
+
+      expect(screen.getByText(/cai direto na sua conta/)).toBeTruthy();
+      expect(screen.getByText(/continua acompanhando cada pagamento/)).toBeTruthy();
+      expect(screen.getByText(/só falta um dado/)).toBeTruthy();
+    });
+
+    it("com a conta aberta, o convite sai: descrever o presente como promessa e ruido", () => {
+      mocks.conta = {
+        data: { conta: { id: "conta-1", status: "ATIVA", asaasAccountId: "acc_1" } },
+      };
+      montar();
+
+      expect(screen.queryByText(/só falta um dado/)).toBeNull();
+    });
+
+    /*
+      O formulário pede um campo porque os outros oito obrigatórios saem
+      do cadastro. Da tela isso parece incompleto, então os dados vão
+      escritos: a pessoa confere em vez de confiar.
+    */
+    it("mostra o que vai ser usado do cadastro, em vez de deixar implícito", () => {
+      mocks.conta = {
+        data: {
+          conta: null,
+          dadosParaAbrirConta: {
+            razaoSocial: "Transportes Lima LTDA",
+            cpfCnpj: "12345678000190",
+            email: "contato@lima.com.br",
+            telefone: "21999990000",
+            endereco: "Avenida Roberto Silveira, 1180, Centro",
+            cep: "24900000",
+            tipoDePessoa: "JURIDICA",
+            faltando: ["Faturamento mensal"],
+          },
+        },
+      };
+      montar();
+
+      expect(screen.getByText("Transportes Lima LTDA")).toBeTruthy();
+      expect(screen.getByText("12345678000190")).toBeTruthy();
+      expect(screen.getByText("CNPJ")).toBeTruthy();
+      expect(screen.getByText(/Corrija no seu perfil/)).toBeTruthy();
+    });
+
+    it("transportador autonomo tem CPF, e o rotulo acompanha", () => {
+      mocks.conta = {
+        data: {
+          conta: null,
+          dadosParaAbrirConta: {
+            razaoSocial: "Carlos Silva",
+            cpfCnpj: "12345678901",
+            email: "carlos@exemplo.com.br",
+            telefone: "21999990000",
+            endereco: "Rua A, 10, Centro",
+            cep: "24900000",
+            tipoDePessoa: "FISICA",
+            faltando: ["Faturamento mensal"],
+          },
+        },
+      };
+      montar();
+
+      expect(screen.getByText("CPF")).toBeTruthy();
+      expect(screen.queryByText("CNPJ")).toBeNull();
+    });
+
+    /* Até o provedor liberar o cadastro inteiro dentro da Rotta, ele
+       manda um e-mail próprio. Quem não foi avisado acha que é golpe. */
+    it("avisa do e-mail do provedor antes de a pessoa tocar no botao", () => {
+      montar();
+
+      expect(screen.getByText(/e-mail do nosso provedor de pagamentos/)).toBeTruthy();
     });
 
     it("abre a conta com o faturamento em centavos, lido da notação brasileira", () => {
@@ -209,11 +294,13 @@ describe("Carteira do transportador", () => {
     it("em análise, não oferece abrir de novo", () => {
       mocks.conta = {
         data: {
-          id: "conta-1",
-          status: "EM_ANALISE",
-          asaasAccountId: "acc_1",
-          asaasWalletId: "wallet_1",
-          asaasOnboardingUrl: null,
+          conta: {
+            id: "conta-1",
+            status: "EM_ANALISE",
+            asaasAccountId: "acc_1",
+            asaasWalletId: "wallet_1",
+            asaasOnboardingUrl: null,
+          },
         },
       };
       montar();
@@ -226,11 +313,13 @@ describe("Carteira do transportador", () => {
     it("com repasse direto, o pendente deixa de prometer a mensalidade", () => {
       mocks.conta = {
         data: {
-          id: "conta-1",
-          status: "ATIVA",
-          asaasAccountId: "acc_1",
-          asaasWalletId: "wallet_1",
-          asaasOnboardingUrl: null,
+          conta: {
+            id: "conta-1",
+            status: "ATIVA",
+            asaasAccountId: "acc_1",
+            asaasWalletId: "wallet_1",
+            asaasOnboardingUrl: null,
+          },
         },
       };
       montar();

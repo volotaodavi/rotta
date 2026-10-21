@@ -123,6 +123,44 @@ export interface CompanyPaymentAccount {
 }
 
 /**
+ * A resposta de "para onde vai o dinheiro desta transportadora".
+ *
+ * `conta` é nula quando ela ainda não tem conta de recebimento, que é o
+ * estado de quase toda transportadora — e justamente quem mais precisa
+ * de resposta. `dadosParaAbrirConta` é o que já temos para abrir uma,
+ * para a tela poder montar o convite em vez de só dizer "não tem".
+ */
+export interface ContaDeRecebimentoComConvite {
+  conta: CompanyPaymentAccount | null;
+  /** Presente enquanto não há subconta criada. */
+  dadosParaAbrirConta?: DadosParaAbrirConta;
+}
+
+/**
+ * O que a Rotta já sabe e vai mandar ao provedor quando a conta for
+ * aberta.
+ *
+ * Existe para a tela mostrar, em vez de deixar implícito: o formulário
+ * pede um campo porque os outros oito obrigatórios já estão no cadastro,
+ * e um formulário de um campo parece incompleto se a pessoa não vê o
+ * resto indo.
+ */
+export interface DadosParaAbrirConta {
+  /** Vai como nome do titular: é a razão social, porque tem que bater com o documento. */
+  razaoSocial: string;
+  cpfCnpj: string;
+  email: string;
+  telefone: string;
+  /** Uma linha, já escrita. */
+  endereco: string;
+  cep: string;
+  /** `FISICA` para transportador autônomo. Muda o que o provedor pede na análise. */
+  tipoDePessoa: "JURIDICA" | "FISICA";
+  /** O que o formulário ainda pergunta, em linguagem de tela. */
+  faltando: string[];
+}
+
+/**
  * O que o formulário de subconta manda.
  *
  * Um campo obrigatório, e não doze: razão social, documento, endereço e
@@ -176,9 +214,9 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
         )
       ).data,
 
-    getContaDeRecebimento: async (): Promise<CompanyPaymentAccount | null> =>
+    getContaDeRecebimento: async (): Promise<ContaDeRecebimentoComConvite> =>
       (
-        await apiClient.request<ApiEnvelope<CompanyPaymentAccount | null>>(
+        await apiClient.request<ApiEnvelope<ContaDeRecebimentoComConvite>>(
           "/family-billing/conta-de-recebimento",
         )
       ).data,
@@ -214,9 +252,9 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
     /** A conta de recebimento de uma transportadora, pelo painel do Admin. */
     getContaDeRecebimentoDaEmpresa: async (
       companyId: string,
-    ): Promise<CompanyPaymentAccount | null> =>
+    ): Promise<ContaDeRecebimentoComConvite> =>
       (
-        await apiClient.request<ApiEnvelope<CompanyPaymentAccount | null>>(
+        await apiClient.request<ApiEnvelope<ContaDeRecebimentoComConvite>>(
           `/family-billing/admin/companies/${companyId}/conta-de-recebimento`,
         )
       ).data,

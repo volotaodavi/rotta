@@ -115,10 +115,15 @@ export function CarteiraScreen(): JSX.Element {
   const { data: transactionsResult } = useMyWalletTransactions();
   const { data: withdrawalRequests } = useMyWithdrawalRequests();
   const requestWithdrawal = useRequestWithdrawal();
-  const { data: conta } = useContaDeRecebimento();
+  const { data: recebimento } = useContaDeRecebimento();
   const criarSubconta = useCriarSubcontaAsaas();
+  const conta = recebimento?.conta;
   /* Ativa, e não apenas criada: em análise o dinheiro ainda cai aqui. */
   const repasseDireto = conta?.status === "ATIVA" && Boolean(conta.asaasWalletId);
+  /* Sem subconta, e não sem linha no banco: a transportadora que só
+     salvou a chave Pix tem conta de recebimento e não tem subconta, e é
+     ela também que precisa do convite. */
+  const semContaDeRecebimento = !conta?.asaasAccountId;
 
   const [showForm, setShowForm] = useState(false);
   /* Estado de sessão, e não preferência guardada: esconder o saldo é
@@ -209,6 +214,27 @@ export function CarteiraScreen(): JSX.Element {
         />
 
         <ContentSheet sobreposicao={SOBREPOSICAO} theme={theme}>
+          {/*
+            Quem ainda não tem conta de recebimento vê o convite ANTES
+            dos atalhos do Rotta Pay. Não é preferência de layout: para
+            essa pessoa, a mensalidade da família está caindo na conta da
+            Rotta e virando saldo aqui, e abrir a conta é a coisa mais
+            importante desta tela. Sacar vem depois.
+
+            Com a conta aberta, o cartão desce para baixo dos atalhos
+            (ver mais abaixo) e volta a ser o que é: estado, não convite.
+          */}
+          {semContaDeRecebimento ? (
+            <ContaDeRecebimentoCard
+              conta={conta}
+              dadosParaAbrirConta={recebimento?.dadosParaAbrirConta}
+              isAbrindoConta={criarSubconta.isPending}
+              onAbrirConta={async (input) => {
+                await criarSubconta.mutateAsync(input);
+              }}
+            />
+          ) : null}
+
           <ActionGrid
             items={[
               {
@@ -263,13 +289,17 @@ export function CarteiraScreen(): JSX.Element {
             </VehicleCard>
           ) : null}
 
-          <ContaDeRecebimentoCard
-            conta={conta}
-            isAbrindoConta={criarSubconta.isPending}
-            onAbrirConta={async (input) => {
-              await criarSubconta.mutateAsync(input);
-            }}
-          />
+          {/* Com a conta já aberta, o cartão é estado e mora aqui. O
+              convite, para quem não tem, está acima dos atalhos. */}
+          {semContaDeRecebimento ? null : (
+            <ContaDeRecebimentoCard
+              conta={conta}
+              isAbrindoConta={criarSubconta.isPending}
+              onAbrirConta={async (input) => {
+                await criarSubconta.mutateAsync(input);
+              }}
+            />
+          )}
 
           <VehicleCard>
             <Texto style={[styles.rotuloPendente, { color: theme.colors.textMuted }]}>

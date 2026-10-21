@@ -4,7 +4,11 @@ import { Badge, Button, Card, FormField, Input, Typography } from "@rotta/ui/web
 import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { useState } from "react";
 
-import type { CompanyPaymentAccount, CriarSubcontaAsaasInput } from "@rotta/api-client";
+import type {
+  CompanyPaymentAccount,
+  CriarSubcontaAsaasInput,
+  DadosParaAbrirConta,
+} from "@rotta/api-client";
 
 /**
  * Estado da conta de recebimento, escrito do ponto de vista de quem
@@ -55,6 +59,12 @@ const EXPLICACAO: Record<Situacao, string> = {
 
 export interface ContaDeRecebimentoCardProps {
   conta: CompanyPaymentAccount | null | undefined;
+  /**
+   * O que a Rotta já tem para abrir a conta. Vai escrito na tela porque
+   * o formulário pede um campo, e um formulário de um campo parece
+   * incompleto se a pessoa não vê o resto indo.
+   */
+  dadosParaAbrirConta?: DadosParaAbrirConta;
   /** `true` enquanto o GET não respondeu: o cartão não oferece botão antes de saber o estado. */
   isLoading?: boolean;
   /**
@@ -96,6 +106,7 @@ export interface ContaDeRecebimentoCardProps {
  */
 export function ContaDeRecebimentoCard({
   conta,
+  dadosParaAbrirConta,
   isLoading = false,
   onAbrirConta,
   isAbrindoConta = false,
@@ -145,6 +156,35 @@ export function ContaDeRecebimentoCard({
 
         {situacao === "SEM_SUBCONTA" && !isLoading && (
           <div className="flex flex-col gap-4 border-t border-border pt-4">
+            {/* O que a Rotta já sabe, escrito. Sem isto, o formulário de
+                um campo parece incompleto: a pessoa não tem como saber
+                que o CNPJ e o endereço dela já estão indo, e não
+                deveria ter que confiar. */}
+            {dadosParaAbrirConta && (
+              <div className="flex flex-col gap-2 rounded-md bg-muted/60 p-4">
+                <Typography variant="caption" color="muted" className="font-semibold uppercase">
+                  O que vamos usar do cadastro
+                </Typography>
+                <dl className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+                  <DoCadastro rotulo="Titular" valor={dadosParaAbrirConta.razaoSocial} />
+                  <DoCadastro
+                    rotulo={dadosParaAbrirConta.tipoDePessoa === "FISICA" ? "CPF" : "CNPJ"}
+                    valor={dadosParaAbrirConta.cpfCnpj}
+                  />
+                  <DoCadastro rotulo="E-mail" valor={dadosParaAbrirConta.email} />
+                  <DoCadastro rotulo="Telefone" valor={dadosParaAbrirConta.telefone} />
+                  <DoCadastro
+                    rotulo="Endereço"
+                    valor={`${dadosParaAbrirConta.endereco} — ${dadosParaAbrirConta.cep}`}
+                  />
+                </dl>
+                <Typography variant="caption" color="muted">
+                  Está errado? Corrija no cadastro da transportadora antes de abrir a conta: depois
+                  de aberta, esses dados só mudam pelo provedor.
+                </Typography>
+              </div>
+            )}
+
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <div className="flex-1">
                 <FormField
@@ -195,6 +235,16 @@ export function ContaDeRecebimentoCard({
                 />
               </FormField>
             </div>
+
+            {/* Dito antes de a pessoa clicar, e não depois: até o
+                provedor liberar o cadastro inteiro dentro da Rotta, ele
+                manda um e-mail próprio pedindo documento e selfie, e
+                quem não foi avisado acha que é golpe. */}
+            <Typography variant="caption" color="muted">
+              A transportadora pode receber um e-mail do nosso provedor de pagamentos pedindo
+              documento e selfie. É parte da abertura, e a análise costuma levar até dois dias
+              úteis.
+            </Typography>
           </div>
         )}
 
@@ -213,5 +263,15 @@ export function ContaDeRecebimentoCard({
         )}
       </Card.Body>
     </Card>
+  );
+}
+
+/** Uma linha do que já está no cadastro: rótulo e valor. */
+function DoCadastro({ rotulo, valor }: { rotulo: string; valor: string }): JSX.Element {
+  return (
+    <div className="flex flex-col">
+      <dt className="text-xs text-text-muted">{rotulo}</dt>
+      <dd className="break-words text-sm font-medium text-text">{valor}</dd>
+    </div>
   );
 }

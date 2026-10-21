@@ -152,13 +152,42 @@ porque o financeiro costuma ser outra pessoa.
 momento em que ela vê o Asaas é o envio de documento, e isso só sai com
 o passo 1.
 
-### Falta uma coisa, e é do fundador
+### Os eventos de situação da conta: FEITO
 
-No painel do Asaas, marcar os eventos de **situação da conta** no webhook
-que já existe (`https://api.rottabr.com.br/v1/webhooks/asaas`). Sem isso
-o endpoint está pronto e nunca é chamado, e o estado da conta fica
-parado em "em análise" até alguém conferir na mão. Nenhum valor novo
-precisa ser gerado: é a mesma URL e o mesmo token.
+O fundador marcou os eventos de situação da conta no webhook que já
+existe, em 20/10/2026. O estado da conta passa a andar sozinho.
+
+Além dele, a conta também sai de "em análise" pela consulta
+`GET /v3/myAccount/status`, feita na leitura da tela — é a rede de
+segurança para o dia em que a fila de webhook estiver pausada, que a
+documentação diz acontecer depois de 15 respostas não-200 seguidas.
+
+### O formulário mostra o que a Rotta já sabe
+
+Pedido do fundador em 20/10/2026: "como os transportadores já fizeram o
+cadastro na Rotta, poderia pedir apenas as informações que faltam?".
+
+Era já o caso — o formulário pede um campo —, mas da tela isso não
+aparecia: um formulário de um campo parece incompleto, e a pessoa não
+tinha como saber que o CNPJ e o endereço dela já estavam indo. Agora os
+nove campos obrigatórios vão escritos na tela, com de onde saem, e quem
+confere decide se corrige o cadastro antes de abrir.
+
+### Quem não tem conta vê um convite, não um campo solto
+
+Mesmo pedido, segunda parte: "quem não tem conta no Asaas, aparece o quê
+antes das funcionalidades do Rotta Pay?".
+
+No app nativo, o cartão da conta de recebimento passa a vir **acima dos
+atalhos do Rotta Pay** enquanto não houver subconta, com o que muda em
+três linhas, o cadastro que será usado e o campo que falta. Com a conta
+aberta, ele desce para baixo dos atalhos e volta a ser estado, não
+convite — descrever o presente como promessa é ruído.
+
+A tela também avisa, **antes** de a pessoa tocar no botão, que ela pode
+receber um e-mail do provedor pedindo documento e selfie. Enquanto o
+BaaS não estiver ligado, esse e-mail vai chegar, e quem não foi avisado
+acha que é golpe.
 
 ---
 
@@ -229,7 +258,7 @@ pagar, ou cobrar delas, por base parada.
 1. E-mail ao comercial        fundador   destrava tudo
 2. Variáveis no Render        fundador   destrava o passo 5
 3. Onboarding da subconta     eu         FEITO em 20/10
-3b. Eventos de conta no        fundador   um clique no painel do Asaas
+3b. Eventos de conta no        fundador   FEITO em 20/10
     webhook do Asaas
 4. Split nos outros meios     eu         independente, em andamento
 5. Teste em sandbox           eu         depende do 2
@@ -237,6 +266,13 @@ pagar, ou cobrar delas, por base parada.
 ```
 
 O passo 4 eu sigo agora: não depende de ninguém.
+
+**Uma pergunta nova entrou no passo 1, e é a mais urgente de todas:** a
+homologação para sair do Período de Avaliação Regulatória. São 10
+subcontas por conta-pai e R$ 2.000,00 em cobranças **por subconta** —
+com mensalidade de R$ 660, são três famílias antes de travar, e
+assinatura que bate o teto é cancelada automaticamente. Ver
+`2026-10-20-varredura-da-documentacao-asaas.md`, seção 2.
 
 ---
 

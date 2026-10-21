@@ -93,11 +93,13 @@ function comoPercentual(bps: number): string {
  */
 export function CompanyRecebimentoTab({ companyId }: { companyId: string }): JSX.Element {
   const toast = useToast();
-  const { data: conta, isLoading } = useContaDeRecebimentoDaEmpresa(companyId);
+  const { data: recebimento, isLoading } = useContaDeRecebimentoDaEmpresa(companyId);
   const criar = useCriarSubcontaDaEmpresa(companyId);
   const [faturamento, setFaturamento] = useState("");
   const [erro, setErro] = useState<string | null>(null);
 
+  const conta = recebimento?.conta;
+  const dados = recebimento?.dadosParaAbrirConta;
   const situacao = situacaoDa(conta);
   const centavos = reaisParaCentavos(faturamento);
 
@@ -140,6 +142,25 @@ export function CompanyRecebimentoTab({ companyId }: { companyId: string }): JSX
           <Typography variant="bodySmall" color="muted">
             {CAMINHO_DO_DINHEIRO[situacao]}
           </Typography>
+
+          {/* O que vai ser enviado, escrito. No painel do Admin isto
+              vale ainda mais que na tela da transportadora: quem cria
+              pelo cliente precisa ver o cadastro que vai assinar a
+              conta antes de criar, porque depois disso o nome e o
+              documento só mudam pelo provedor. */}
+          {situacao === "SEM_SUBCONTA" && dados ? (
+            <dl className="grid gap-x-6 gap-y-1.5 rounded-md bg-muted/60 p-4 sm:grid-cols-2">
+              <Dado rotulo="Titular (razão social)" valor={dados.razaoSocial} />
+              <Dado
+                rotulo={dados.tipoDePessoa === "FISICA" ? "CPF (autônomo)" : "CNPJ"}
+                valor={dados.cpfCnpj}
+              />
+              <Dado rotulo="E-mail" valor={dados.email} />
+              <Dado rotulo="Telefone" valor={dados.telefone} />
+              <Dado rotulo="Endereço" valor={`${dados.endereco} — ${dados.cep}`} />
+              <Dado rotulo="Ainda falta" valor={dados.faltando.join(", ")} />
+            </dl>
+          ) : null}
 
           {situacao === "SEM_SUBCONTA" ? (
             <div className="flex flex-col gap-3 border-t border-border pt-4 sm:flex-row sm:items-end">

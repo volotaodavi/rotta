@@ -211,11 +211,13 @@ describe("FamilyBillingService", () => {
 
       const resposta = await service.getContaDeRecebimento(atorDaEmpresa);
 
+      /* A resposta inteira, e nao so a conta: o envelope ganhou
+         `dadosParaAbrirConta`, e um vazamento ali contaria igual. */
       expect(JSON.stringify(resposta)).not.toContain("SEGREDO");
-      expect(resposta).not.toHaveProperty("asaasApiKeyCifrada");
+      expect(resposta.conta).not.toHaveProperty("asaasApiKeyCifrada");
       /* O que a tela precisa saber e se DA para emitir pela subconta,
          e para isso nao precisa ver a chave. */
-      expect(resposta?.podeEmitirPelaSubconta).toBe(true);
+      expect(resposta.conta?.podeEmitirPelaSubconta).toBe(true);
     });
 
     it("ao salvar a chave Pix", async () => {
@@ -768,6 +770,112 @@ describe("FamilyBillingService", () => {
   });
 
   /*
+    "Ainda nao tem conta de recebimento" e o estado de quase toda
+    transportadora, e e justamente quem mais precisa de resposta: e a
+    pessoa que tem que ver o que e a conta, o que muda com ela e o que
+    falta para abrir. Antes este endpoint devolvia `null` inteiro nesse
+    caso, e a tela ficava sem nada com que montar o convite.
+
+    O formulario pede UM campo porque os outros oito obrigatorios saem
+    do cadastro. Da tela, isso parece um formulario incompleto: e por
+    isso que os dados vao escritos, para a pessoa conferir em vez de
+    confiar.
+  */
+  describe("convite para abrir a conta de recebimento", () => {
+    it("sem linha no banco, ainda assim diz o que temos para abrir", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(null);
+
+      const resposta = await service.getContaDeRecebimento(empresaActor);
+
+      expect(resposta.conta).toBeNull();
+      expect(resposta.dadosParaAbrirConta).toEqual({
+        razaoSocial: "Transportes Lima LTDA",
+        cpfCnpj: "12345678000190",
+        email: "contato@lima.com.br",
+        telefone: "21999990000",
+        endereco: "Avenida Roberto Silveira, 1180, Centro",
+        cep: "24900000",
+        tipoDePessoa: "JURIDICA",
+        faltando: ["Faturamento mensal"],
+      });
+    });
+
+    it("transportador autonomo e pessoa fisica, e a tela precisa saber", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(null);
+      (companiesService.findByIdOrThrow as jest.Mock).mockResolvedValue({
+        razaoSocial: "Carlos Silva",
+        cpfCnpj: "12345678901",
+        email: "carlos@exemplo.com.br",
+        telefone: "21999990000",
+        endereco: "Rua A",
+        numero: "10",
+        complemento: null,
+        bairro: "Centro",
+        cep: "24900000",
+        tipo: "AUTONOMO",
+      });
+
+      const resposta = await service.getContaDeRecebimento(empresaActor);
+
+      expect(resposta.dadosParaAbrirConta?.tipoDePessoa).toBe("FISICA");
+    });
+
+    it("com conta de recebimento mas sem subconta, o convite continua", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue({
+        id: "conta-1",
+        companyId: "company-1",
+        status: "PENDENTE",
+        asaasAccountId: null,
+        chavePix: "11999998888",
+      } as never);
+
+      const resposta = await service.getContaDeRecebimento(empresaActor);
+
+      expect(resposta.conta?.chavePix).toBe("11999998888");
+      expect(resposta.dadosParaAbrirConta).toBeDefined();
+    });
+
+    /* Com a subconta criada nao ha o que conferir antes de enviar, e
+       mandar o cadastro de novo seria dado pessoal numa resposta que
+       ninguem vai ler. */
+    it("com subconta criada, o convite desaparece e a empresa nem e lida", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue({
+        id: "conta-1",
+        companyId: "company-1",
+        status: "ATIVA",
+        asaasAccountId: "acc_1",
+      } as never);
+
+      const resposta = await service.getContaDeRecebimento(empresaActor);
+
+      expect(resposta.dadosParaAbrirConta).toBeUndefined();
+      expect(companiesService.findByIdOrThrow).not.toHaveBeenCalled();
+    });
+
+    it("o complemento entra no endereco quando existe, e nao deixa virgula solta quando nao", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(null);
+      (companiesService.findByIdOrThrow as jest.Mock).mockResolvedValue({
+        razaoSocial: "Transportes Lima LTDA",
+        cpfCnpj: "12345678000190",
+        email: "contato@lima.com.br",
+        telefone: "21999990000",
+        endereco: "Avenida Roberto Silveira",
+        numero: "1180",
+        complemento: "Sala 2",
+        bairro: "Centro",
+        cep: "24900000",
+        tipo: "LTDA",
+      });
+
+      const resposta = await service.getContaDeRecebimento(empresaActor);
+
+      expect(resposta.dadosParaAbrirConta?.endereco).toBe(
+        "Avenida Roberto Silveira, 1180, Sala 2, Centro",
+      );
+    });
+  });
+
+  /*
     Dois defeitos reais, encontrados em 20/10/2026 ao conferir o schema
     da referencia do Asaas contra o que o codigo lia:
 
@@ -802,7 +910,7 @@ describe("FamilyBillingService", () => {
         asaasOnboardingUrl: "https://asaas.com/onboarding/abc",
       } as never);
 
-      const conta = await service.getContaDeRecebimento(empresaActor);
+      const { conta } = await service.getContaDeRecebimento(empresaActor);
 
       expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
         asaasOnboardingUrl: "https://asaas.com/onboarding/abc",
@@ -821,7 +929,7 @@ describe("FamilyBillingService", () => {
         status: "ATIVA",
       } as never);
 
-      const conta = await service.getContaDeRecebimento(empresaActor);
+      const { conta } = await service.getContaDeRecebimento(empresaActor);
 
       expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
         status: "ATIVA",
@@ -873,7 +981,7 @@ describe("FamilyBillingService", () => {
         status: "RECUSADA",
       } as never);
 
-      const conta = await service.getContaDeRecebimentoDaEmpresa("company-1", empresaActor);
+      const { conta } = await service.getContaDeRecebimentoDaEmpresa("company-1", empresaActor);
 
       expect(conta?.status).toBe("RECUSADA");
     });
