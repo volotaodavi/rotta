@@ -226,15 +226,31 @@ export const envSchema = z.object({
   DIDIT_WORKFLOW_ID_MOTORISTA: z.string().optional(),
   DIDIT_WORKFLOW_ID_MONITOR: z.string().optional(),
 
-  // Lytex (lytex.com.br) — provedora de pagamento parceira da Rotta Pay
-  // (Dossiê 26). Opcional: sem LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET,
-  // `RottaPayProviderService` recusa a transferência com um erro claro,
-  // nunca falha o boot. `LYTEX_BASE_URL` fica sem default (`.env.example`
-  // — o contrato real da API ainda não foi verificado nesta base de
-  // código, ver nota em `lytex.config.ts`).
+  // Lytex (lytex.com.br) — a provedora que emite a mensalidade da
+  // FAMÍLIA e faz o split da taxa da Rotta desde 23/10/2026.
+  //
+  // Opcional de propósito: sem LYTEX_CLIENT_ID/LYTEX_CLIENT_SECRET a
+  // aplicação sobe normalmente, a tela da família continua mostrando
+  // valor e vencimento (dado nosso), e só o botão de pagar diz que a
+  // cobrança pelo app ainda não está disponível. Nunca falha o boot.
+  //
+  // LYTEX_BASE_URL sem valor cai no SANDBOX, pelo mesmo motivo do
+  // Asaas: um ambiente novo que suba sem a variável cobra em teste, não
+  // no dinheiro de uma família. Produção é
+  // `https://api-pay.lytex.com.br`.
   LYTEX_CLIENT_ID: z.string().optional(),
   LYTEX_CLIENT_SECRET: z.string().optional(),
   LYTEX_BASE_URL: z.string().url().optional(),
+  // Segredo combinado por NÓS, não pela Lytex: ela não assina o corpo
+  // do webhook, então esta é a única barreira possível do endpoint
+  // público. Vai no header `x-rotta-webhook-token` ou como `?token=` na
+  // URL cadastrada no painel. Sem ele o webhook recusa tudo.
+  LYTEX_WEBHOOK_TOKEN: z.string().optional(),
+  // O `_recipientId` da própria Rotta na Lytex: para onde vai a nossa
+  // taxa quando a cobrança é emitida pela subconta da transportadora.
+  // Sem ele a cobrança sai SEM split, o transportador recebe tudo, e a
+  // Rotta não retém nada. O log avisa quando isso acontece.
+  LYTEX_ROTTA_RECIPIENT_ID: z.string().optional(),
 
   // Asaas (asaas.com) — provedora ÚNICA (pedido do usuário 05/09/2026:
   // "Nós usaremos 100% Asaas, esquece a AbacatePay") que cobra a

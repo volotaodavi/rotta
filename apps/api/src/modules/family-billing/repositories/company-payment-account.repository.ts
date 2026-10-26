@@ -7,18 +7,17 @@ import type {
 
 export interface UpsertCompanyPaymentAccountData {
   status?: CompanyPaymentAccountStatus;
-  asaasWalletId?: string | null;
-  asaasAccountId?: string | null;
   /**
-   * A chave de API da subconta, JÁ CIFRADA.
+   * A subconta na Lytex, o estabelecimento que o split endereça, e se o
+   * split dela já foi liberado.
    *
-   * Entra por aqui porque é gravada na mesma operação que cria a
-   * subconta: a Asaas só exibe a chave na resposta da criação, e não há
-   * endpoint para pedir de novo. Nenhuma rota deixa o transportador
-   * escrever este campo.
+   * Nenhuma rota deixa o transportador escrever estes três campos: quem
+   * pudesse escrever o próprio `lytexRecipientId` redirecionaria o split
+   * de qualquer cobrança.
    */
-  asaasApiKeyCifrada?: string | null;
-  asaasOnboardingUrl?: string | null;
+  lytexSubAccountId?: string | null;
+  lytexRecipientId?: string | null;
+  lytexSplitLiberado?: boolean;
   chavePix?: string | null;
   taxaDaPlataformaBps?: number;
   observacoes?: string | null;
@@ -52,30 +51,23 @@ export interface CompanyPaymentAccountRepository {
   upsert(companyId: string, data: UpsertCompanyPaymentAccountData): Promise<CompanyPaymentAccount>;
   /**
    * A conta de recebimento vista de fora do tenant — usada pelo
-   * processamento do webhook da Asaas, que chega sem ator (quem fala é
+   * processamento do webhook da Lytex, que chega sem ator (quem fala é
    * o provedor). O `companyId` vem da fatura já encontrada pelo
-   * `asaasPaymentId`, nunca do corpo da requisição.
+   * `lytexInvoiceId`, nunca do corpo da requisição.
    */
   findByCompanyIdAcrossTenants(companyId: string): Promise<CompanyPaymentAccount | null>;
   /**
-   * A conta de recebimento encontrada pela subconta do Asaas, fora do
-   * tenant — usada pelo webhook de situação da conta, que chega sem ator
-   * e sem `companyId`: o único identificador que ele traz é o `id` da
-   * subconta.
-   */
-  findByAsaasAccountIdAcrossTenants(asaasAccountId: string): Promise<CompanyPaymentAccount | null>;
-  /**
-   * Grava fora do tenant — um chamador só: o webhook de situação da
-   * conta, que chega sem ator nenhum e por isso não tem o contexto de
-   * tenant que o `upsert` normal exige.
+   * Grava fora do tenant: para quando a escrita nasce de um webhook, que
+   * chega sem ator nenhum e por isso não tem o contexto de tenant que o
+   * `upsert` normal exige.
    *
    * O Admin Rotta NÃO passa por aqui, mesmo criando a subconta pela
    * transportadora: `TenantGuard` já publica `bypass: true` para
    * `ADMIN_ROTTA`, então o `upsert` normal o atende, e a diferença entre
    * os dois métodos continua sendo "tem requisição" contra "não tem".
    *
-   * O `companyId` nunca vem do corpo da requisição: vem da conta
-   * encontrada pelo `asaasAccountId`.
+   * O `companyId` nunca vem do corpo da requisição: vem da conta já
+   * encontrada pela fatura que o provedor citou.
    */
   upsertAcrossTenants(
     companyId: string,

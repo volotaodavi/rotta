@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import type {
   CompanyPaymentAccount,
-  CriarSubcontaAsaasInput,
+  CriarSubcontaInput,
   DadosParaAbrirConta,
 } from "@rotta/api-client";
 
@@ -17,12 +17,12 @@ import type {
  * O `status` do banco tem quatro valores, mas a tela tem cinco
  * situações: falta a de "conta de recebimento existe, subconta não",
  * que é onde está toda transportadora cadastrada antes de 20/10/2026.
- * `PENDENTE` com `asaasAccountId` nulo é essa.
+ * `PENDENTE` com `lytexSubAccountId` nulo é essa.
  */
 type Situacao = "SEM_SUBCONTA" | "EM_ANALISE" | "ATIVA" | "RECUSADA";
 
 function situacaoDa(conta: CompanyPaymentAccount | null | undefined): Situacao {
-  if (!conta?.asaasAccountId) return "SEM_SUBCONTA";
+  if (!conta?.lytexSubAccountId) return "SEM_SUBCONTA";
   if (conta.status === "ATIVA") return "ATIVA";
   if (conta.status === "RECUSADA") return "RECUSADA";
   return "EM_ANALISE";
@@ -75,7 +75,7 @@ export interface ContaDeRecebimentoCardProps {
    * pertence ao campo que o causou, e o aviso de sucesso é da página,
    * que é quem sabe o que mais aconteceu na tela.
    */
-  onAbrirConta: (input: CriarSubcontaAsaasInput) => Promise<unknown>;
+  onAbrirConta: (input: CriarSubcontaInput) => Promise<unknown>;
   isAbrindoConta?: boolean;
   /**
    * Quem está vendo. No painel do Admin o texto fala da transportadora
@@ -248,19 +248,10 @@ export function ContaDeRecebimentoCard({
           </div>
         )}
 
-        {/* O link só aparece quando o provedor manda um: inventar um
-            endereço de upload de documento mandaria a pessoa para uma
-            página que não existe. */}
-        {conta?.asaasOnboardingUrl && situacao !== "ATIVA" && (
-          <a
-            href={conta.asaasOnboardingUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-          >
-            Enviar os documentos da conta
-          </a>
-        )}
+        {/* Nenhum link aqui, e isso é a verdade e não falta de
+            acabamento: a API da Lytex não publica endereço de envio de
+            documento, e inventar um mandaria a pessoa para uma página
+            que não existe. O caminho é o atendimento deles. */}
       </Card.Body>
     </Card>
   );

@@ -6,7 +6,7 @@ import type {
   ContaDeRecebimentoComConvite,
   ContractInvoiceStatus,
   CriarAssinaturaDaFamiliaInput,
-  CriarSubcontaAsaasInput,
+  CriarSubcontaInput,
 } from "@rotta/api-client";
 
 import { familyBillingApi } from "@/lib/api-client";
@@ -57,10 +57,10 @@ export function useSalvarContaDeRecebimento() {
  * ela entra direto no cache em vez de esperar um segundo GET: a tela
  * muda de "sem conta" para "em análise" no mesmo instante.
  */
-export function useCriarSubcontaAsaas() {
+export function useCriarSubconta() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: CriarSubcontaAsaasInput) => familyBillingApi.criarSubcontaAsaas(input),
+    mutationFn: (input: CriarSubcontaInput) => familyBillingApi.criarSubconta(input),
     /* A criação devolve a conta, e o cache guarda o envelope. Sem
        `dadosParaAbrirConta`, de propósito: a subconta agora existe, e
        não há mais o que conferir antes de enviar. */

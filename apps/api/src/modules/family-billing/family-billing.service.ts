@@ -43,19 +43,17 @@ import type {
   ContractInvoiceRepository,
 } from "./repositories/contract-invoice.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { AsaasCompanyType } from "@/modules/billing/types/asaas.types";
+import type { LytexPaymentMethodsInput } from "@/modules/lytex/types/lytex.types";
 import type {
   CompanyPaymentAccount,
-  CompanyPaymentAccountStatus,
-  CompanyType,
   ContractInvoiceStatus,
   InvoicePaymentMethod,
 } from "@prisma/client";
 
-import asaasConfig from "@/config/asaas.config";
-import { AsaasClientService } from "@/modules/billing/asaas-client.service";
-import { AsaasSubcontasService } from "@/modules/billing/asaas-subcontas.service";
+import lytexConfig from "@/config/lytex.config";
 import { CompaniesService } from "@/modules/companies/companies.service";
+import { LytexClientService } from "@/modules/lytex/lytex-client.service";
+import { LytexSubcontasService } from "@/modules/lytex/lytex-subcontas.service";
 import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { WalletService } from "@/modules/wallet/wallet.service";
@@ -82,7 +80,7 @@ export interface DadosDaSubconta {
 export interface DadosDaAssinaturaDaFamilia {
   /**
    * CPF do Responsável, obrigatório quando ele ainda não tem um no
-   * cadastro — e desde 14/09/2026 nenhum Responsável novo tem. O Asaas
+   * cadastro, e desde 14/09/2026 nenhum Responsável novo tem. A Lytex
    * exige `cpfCnpj` para criar o cliente da cobrança, então sem este
    * número não existe cobrança para essa família.
    */
@@ -143,7 +141,7 @@ export interface ContratoParaCobrarResponse {
 
 export interface AssinaturaDaFamiliaResponse {
   contractId: string;
-  asaasSubscriptionId: string;
+  lytexSubscriptionId: string;
   status: string;
   meioDePagamento: string;
   valorCentavos: number;
@@ -155,48 +153,25 @@ export interface AssinaturaDaFamiliaResponse {
 }
 
 /**
- * `accountStatus.general` do Asaas traduzido para o estado da conta de
- * recebimento.
+ * Quais meios a cobrança aceita, no formato que a Lytex exige.
  *
- * Os quatro valores vêm da documentação de eventos de situação da conta,
- * conferida em 20/10/2026: `APPROVED`, `AWAITING_APPROVAL`, `PENDING` e
- * `REJECTED`.
+ * Os três campos são obrigatórios no esquema dela mesmo quando
+ * desligados: é `enable: false` que desliga, não a ausência da chave.
  *
- * `PENDING` e `AWAITING_APPROVAL` caem no mesmo `EM_ANALISE` de
- * propósito. A diferença entre eles é de quem está esperando quem — num
- * cadastro que a Rotta preencheu inteiro, pelos dados que já tinha, não
- * há ação do transportador que os distinga, e inventar dois estados na
- * tela seria fingir uma escolha que ele não tem.
+ * `UNDEFINED` liga Pix e boleto e deixa o pagador escolher na página da
+ * cobrança. Cartão fica de fora dos três casos, e isso é decisão, não
+ * esquecimento: o crédito custa 3,72% contra 0,62% do Pix na tabela da
+ * Lytex de 22/10/2026, e ainda rende MENOS para a Rotta, porque a taxa
+ * aprovada no crédito é menor e incide sobre um líquido já reduzido.
+ * Cartão é conveniência a oferecer, nunca caminho preferencial.
  */
-const SITUACAO_GERAL_DA_SUBCONTA: Record<string, CompanyPaymentAccountStatus | undefined> = {
-  APPROVED: "ATIVA",
-  AWAITING_APPROVAL: "EM_ANALISE",
-  PENDING: "EM_ANALISE",
-  REJECTED: "RECUSADA",
-};
-
-/**
- * O tipo de empresa da Rotta traduzido para o do Asaas.
- *
- * O Asaas aceita quatro valores, e **só quando o titular é pessoa
- * jurídica** (`AccountSaveRequestDTO`, conferido em 20/10/2026). Em CPF
- * o campo não vai, e é por isso que `AUTONOMO` mapeia para `undefined`
- * em vez de para algum valor parecido.
- *
- * `SOCIEDADE_SIMPLES` e `OUTRO` caem em `LIMITED` porque é o que mais se
- * aproxima de uma sociedade comum, e `COOPERATIVA` em `ASSOCIATION`.
- * Nenhum dos dois é exato; errar para o mais próximo é melhor que
- * omitir um campo que o Asaas pede de PJ.
- */
-const TIPO_DE_EMPRESA_NO_ASAAS: Record<CompanyType, AsaasCompanyType | undefined> = {
-  AUTONOMO: undefined,
-  MEI: "MEI",
-  LTDA: "LIMITED",
-  SA: "LIMITED",
-  COOPERATIVA: "ASSOCIATION",
-  SOCIEDADE_SIMPLES: "LIMITED",
-  OUTRO: "LIMITED",
-};
+function meiosDaCobranca(meio: "PIX" | "BOLETO" | "UNDEFINED"): LytexPaymentMethodsInput {
+  return {
+    pix: { enable: meio === "PIX" || meio === "UNDEFINED" },
+    boleto: { enable: meio === "BOLETO" || meio === "UNDEFINED" },
+    creditCard: { enable: false },
+  };
+}
 
 /**
  * Primeiro dia do mês, em UTC — a chave de competência. UTC de
@@ -227,35 +202,53 @@ export function vencimentoDe(competencia: Date, dia: number): Date {
  * ## O que é, e o que não é
  *
  * Não é o `BillingService`. Lá a Rotta cobra a transportadora pela
- * plataforma. Aqui a transportadora cobra a família pelo transporte.
- * Pagador, recebedor e ciclo são diferentes, e o único pedaço
- * compartilhado é o cliente HTTP da Asaas (`AsaasClientService`), de
- * propósito: mesma chave, mesmo tratamento de erro, mesmo registro de
- * saúde da integração.
+ * plataforma, e isso continua no **Asaas**. Aqui a transportadora cobra
+ * a família pelo transporte, e isso passou para a **Lytex** em
+ * 23/10/2026. Pagador, recebedor, ciclo e provedora são diferentes, e
+ * desde a troca os dois fluxos não compartilham mais nada.
+ *
+ * ## Por que a família saiu do Asaas
+ *
+ * Decisão do fundador, depois da comparação de cinco provedoras
+ * registrada em `empresa/financeiro/`. O que pesou, em ordem:
+ *
+ * 1. **Nenhuma chave de terceiro guardada.** No Asaas, a custódia só
+ *    existia se a cobrança fosse criada com a chave de API da subconta,
+ *    porque só a conta que recebe tem retenção. Isso obrigava a Rotta a
+ *    guardar a chave do transportador, cifrada e auditada. Na Lytex a
+ *    cobrança nasce em nome da subconta pelo header `subRecipientId`,
+ *    com a credencial da própria plataforma.
+ * 2. **Split liberado sem teto regulatório** por subconta.
+ * 3. **Retenção real**, `floatConfig`, confirmada pelo suporte em
+ *    22/10/2026: boleto D+2, Pix D+0.
+ *
+ * As colunas `asaas*` destas tabelas continuam no banco como histórico:
+ * nenhuma subconta, cobrança de família ou assinatura de família chegou
+ * a existir no Asaas em produção. Nada aqui as escreve mais.
  *
  * O Rotta Pay (`WalletService`) é do TRANSPORTADOR — autônomo, MEI ou
  * empresa. É onde ele vê o que entrou e pede saque. O Responsável nunca
  * tem carteira: ele vê quanto deve, quando vence e como pagar.
  *
- * ## O que já funciona e o que espera a Asaas
+ * ## O que já funciona e o que espera a Lytex
  *
  * Funciona hoje, sem depender de nada externo: a fatura mensal (geração
  * idempotente por competência), o estado dela (a vencer, vencida, paga),
  * a tela do Responsável, as contas a receber da transportadora, e o
  * crédito no Rotta Pay quando um pagamento é confirmado.
  *
- * Espera a Asaas em dois pontos, os dois explícitos no código em vez de
+ * Espera a Lytex em dois pontos, os dois explícitos no código em vez de
  * fingidos:
  *
- * 1. `abrirPagamento` precisa de `ASAAS_API_KEY`. Sem ela, a API diz
- *    que o pagamento pelo app ainda não está disponível — e a tela
- *    continua mostrando valor e vencimento, porque esse dado é nosso e
- *    não depende de provedor nenhum.
- * 2. O split depende de `CompanyPaymentAccount.asaasWalletId`, a
- *    subconta do transportador, que depende do comercial/white label da
- *    Asaas. Com ela preenchida, a cobrança sai com split e o dinheiro
- *    cai direto na conta dele. Sem ela, cai na conta da Rotta e vira
- *    crédito no Rotta Pay — e cada fatura registra qual dos dois
+ * 1. `abrirPagamento` precisa de `LYTEX_CLIENT_ID`/`LYTEX_CLIENT_SECRET`.
+ *    Sem elas, a API diz que o pagamento pelo app ainda não está
+ *    disponível, e a tela continua mostrando valor e vencimento, porque
+ *    esse dado é nosso e não depende de provedor nenhum.
+ * 2. O split depende de `CompanyPaymentAccount.lytexSubAccountId`, a
+ *    subconta do transportador. Com ela preenchida, a cobrança sai em
+ *    nome dele e o dinheiro cai direto na conta dele, com a taxa da
+ *    Rotta indo por split. Sem ela, a cobrança é da conta da Rotta e o
+ *    valor vira crédito no Rotta Pay. Cada fatura registra qual dos dois
  *    caminhos aconteceu (`repasseDiretoAoTransportador`), para a
  *    conciliação nunca ter que adivinhar.
  */
@@ -268,10 +261,10 @@ export class FamilyBillingService {
     private readonly invoiceRepository: ContractInvoiceRepository,
     @Inject(COMPANY_PAYMENT_ACCOUNT_REPOSITORY)
     private readonly paymentAccountRepository: CompanyPaymentAccountRepository,
-    private readonly asaasClient: AsaasClientService,
-    private readonly subcontas: AsaasSubcontasService,
-    @Inject(asaasConfig.KEY)
-    private readonly config: ConfigType<typeof asaasConfig>,
+    private readonly lytexClient: LytexClientService,
+    private readonly subcontas: LytexSubcontasService,
+    @Inject(lytexConfig.KEY)
+    private readonly config: ConfigType<typeof lytexConfig>,
     private readonly studentsService: StudentsService,
     private readonly usersService: UsersService,
     private readonly walletService: WalletService,
@@ -377,7 +370,7 @@ export class FamilyBillingService {
       totalEmAbertoCentavos,
       totalEmAbertoFormatado:
         totalEmAbertoCentavos > 0 ? formatarCentavos(totalEmAbertoCentavos) : null,
-      pagamentoNoAppDisponivel: this.asaasClient.isConfigured(),
+      pagamentoNoAppDisponivel: this.lytexClient.isConfigured(),
     };
   }
 
@@ -414,13 +407,21 @@ export class FamilyBillingService {
    * a família copia, lê ou escaneia.
    *
    * Reaproveita de propósito: duas tentativas de pagar a mesma fatura
-   * não podem gerar duas cobranças na Asaas, ou a família paga duas
-   * vezes. `asaasPaymentId` guardado na fatura é a trava.
+   * não podem gerar duas cobranças na Lytex, ou a família paga duas
+   * vezes. `lytexInvoiceId` guardado na fatura é a trava.
    *
-   * Cartão continua de fora. Exigiria o número passando pelo nosso
-   * servidor (a Asaas confirmou em 16/10/2026 que não há SDK mobile nem
-   * tokenização pelo front), o que colocaria a Rotta em escopo PCI DSS
-   * — uma decisão que não é técnica e não foi tomada.
+   * ## O QR Code vem como texto, não como imagem
+   *
+   * A Lytex devolve `paymentMethods.pix.qrcode`, que é o Pix copia e
+   * cola, e não uma imagem pronta em base64 como o Asaas devolvia. Por
+   * isso `pixQrCodeBase64` sai `null`: desenhar o QR a partir do payload
+   * é trabalho de quem mostra a tela, e inventar uma imagem aqui seria
+   * gerar um código que ninguém conferiu. O payload é o dado que
+   * importa, e é ele que o banco da família lê.
+   *
+   * Cartão continua de fora, agora por economia e não só por PCI DSS: na
+   * tabela da Lytex de 22/10/2026 o crédito custa 3,72% contra 0,62% do
+   * Pix, e ainda rende menos para a Rotta.
    */
   async abrirPagamentoPix(
     invoiceId: string,
@@ -428,19 +429,27 @@ export class FamilyBillingService {
   ): Promise<PagamentoDaFaturaResponseDto> {
     const fatura = await this.faturaParaPagar(invoiceId, actor);
 
-    const asaasPaymentId = fatura.asaasPaymentId ?? (await this.criarCobranca(fatura, "PIX"));
-    const qrCode = await this.asaasClient.getPixQrCode(asaasPaymentId);
+    const lytexInvoiceId = fatura.lytexInvoiceId ?? (await this.criarCobranca(fatura, "PIX"));
+
+    /* A fatura em memória pode ser de antes da criação, e o Pix copia e
+       cola pode não ter vindo na resposta da criação. A verdade dele
+       está no provedor, nunca no que gravamos. */
+    const cobranca = await this.lytexClient.getInvoice(
+      lytexInvoiceId,
+      await this.subRecipientDaFatura(fatura.companyId),
+    );
+    const pix = cobranca.paymentMethods?.pix;
 
     return {
       invoiceId: fatura.id,
       meioDePagamento: "PIX",
       valorCentavos: fatura.valorCentavos,
       valorFormatado: formatarCentavos(fatura.valorCentavos),
-      pixPayload: qrCode.payload,
-      pixQrCodeBase64: qrCode.encodedImage,
-      pixExpiraEm: qrCode.expirationDate,
+      pixPayload: pix?.qrcode ?? null,
+      pixQrCodeBase64: null,
+      pixExpiraEm: pix?.validUntil ?? pix?.dueDate ?? null,
       linhaDigitavel: null,
-      linkDaFatura: fatura.linkDaFatura,
+      linkDaFatura: cobranca.linkCheckout ?? fatura.linkDaFatura,
       status: fatura.status,
     };
   }
@@ -458,8 +467,8 @@ export class FamilyBillingService {
    *
    * ## A linha digitável nem sempre vem na hora
    *
-   * O Asaas registra o boleto no banco de forma assíncrona. Quando a
-   * resposta da criação não traz `identificationField`, isto não inventa
+   * O registro do boleto no banco é assíncrono do lado da Lytex. Quando
+   * a resposta da criação não traz `digitableLine`, isto não inventa
    * nada: devolve o link da fatura hospedada, que funciona sempre, e a
    * linha digitável aparece na próxima abertura.
    */
@@ -469,18 +478,23 @@ export class FamilyBillingService {
   ): Promise<PagamentoDaFaturaResponseDto> {
     const fatura = await this.faturaParaPagar(invoiceId, actor);
 
-    const asaasPaymentId = fatura.asaasPaymentId ?? (await this.criarCobranca(fatura, "BOLETO"));
+    const lytexInvoiceId = fatura.lytexInvoiceId ?? (await this.criarCobranca(fatura, "BOLETO"));
 
     /* A fatura em memória pode ser de antes da criação da cobrança, e a
        cobrança que já existia pode ter sido criada pela assinatura (ou
        num dia em que o registro bancário ainda não tinha saído). Em
        todos esses casos a verdade da linha digitável está no provedor. */
-    const cobranca = await this.asaasClient.getPayment(asaasPaymentId);
-    const linhaDigitavel = cobranca.identificationField ?? fatura.linhaDigitavel ?? null;
-    const linkDaFatura = cobranca.bankSlipUrl ?? cobranca.invoiceUrl ?? fatura.linkDaFatura ?? null;
+    const cobranca = await this.lytexClient.getInvoice(
+      lytexInvoiceId,
+      await this.subRecipientDaFatura(fatura.companyId),
+    );
+    const linhaDigitavel =
+      cobranca.paymentMethods?.boleto?.digitableLine ?? fatura.linhaDigitavel ?? null;
+    const linkDaFatura =
+      cobranca.linkBoleto ?? cobranca.linkCheckout ?? fatura.linkDaFatura ?? null;
 
     /* Guarda o que voltou, para a próxima abertura e para a tela de
-       faturas não precisarem de outra chamada ao Asaas. */
+       faturas não precisarem de outra chamada à Lytex. */
     if (linhaDigitavel && linhaDigitavel !== fatura.linhaDigitavel) {
       await this.invoiceRepository.update(fatura.id, { linhaDigitavel, linkDaFatura });
     }
@@ -500,8 +514,38 @@ export class FamilyBillingService {
   }
 
   /**
+   * O `subRecipientId` da transportadora, quando a cobrança dela é
+   * emitida em nome da subconta.
+   *
+   * Precisa existir em toda LEITURA de cobrança também, e não só na
+   * criação: uma fatura que nasceu na subconta vive sob
+   * `/v2/sub-accounts/invoices/{id}`, e pedi-la na rota da conta
+   * principal devolve "não encontrada". Errar isso quebraria a abertura
+   * do Pix de quem já está recebendo direto.
+   */
+  private async subRecipientDaFatura(companyId: string): Promise<string | undefined> {
+    const conta = await this.paymentAccountRepository.findByCompanyIdAcrossTenants(companyId);
+    return this.emissorEhSubconta(conta) ? subRecipientDe(conta) : undefined;
+  }
+
+  /**
+   * `true` quando a cobrança desta transportadora nasce em nome dela.
+   *
+   * Exige as três coisas ao mesmo tempo, e cada uma por um motivo: a
+   * subconta existe, o split já foi liberado pela Lytex (sem isso a
+   * nossa taxa não é repassada), e o emissor configurado é `SUBCONTA`.
+   */
+  private emissorEhSubconta(conta: CompanyPaymentAccount | null): boolean {
+    return Boolean(
+      conta?.lytexSubAccountId &&
+      conta.lytexSplitLiberado &&
+      conta.emissorDaCobranca === "SUBCONTA",
+    );
+  }
+
+  /**
    * As checagens que valem para qualquer meio de pagamento: a fatura
-   * existe, é desta família, ainda pode ser paga, e a Asaas está
+   * existe, é desta família, ainda pode ser paga, e a Lytex está
    * configurada.
    *
    * Existe separado porque errar uma delas em um dos meios e não no
@@ -526,7 +570,7 @@ export class FamilyBillingService {
     if (fatura.status === "CANCELADA" || fatura.status === "ESTORNADA") {
       throw new BadRequestException("Esta fatura não pode mais ser paga.");
     }
-    if (!this.asaasClient.isConfigured()) {
+    if (!this.lytexClient.isConfigured()) {
       throw new BadRequestException(
         "Pagamento pelo app ainda não disponível: combine a mensalidade direto com a transportadora.",
       );
@@ -536,11 +580,25 @@ export class FamilyBillingService {
   }
 
   /**
-   * Cria a cobrança na Asaas e grava o vínculo na fatura.
+   * Cria a cobrança na Lytex e grava o vínculo na fatura.
    *
    * O cliente da cobrança é o RESPONSÁVEL (a família é quem paga), não
-   * a transportadora — por isso o `AsaasCustomer` é buscado pelo CPF
-   * dele e reaproveitado quando já existe.
+   * a transportadora: por isso o cliente da Lytex é buscado pelo id dele
+   * na Rotta e reaproveitado quando já existe.
+   *
+   * ## Os dois caminhos, e o que muda entre eles
+   *
+   * **Emissor `SUBCONTA`**: a cobrança nasce em nome da transportadora,
+   * pelo header `subRecipientId`. O dinheiro cai na conta dela, com a
+   * retenção dela, e o split manda a NOSSA taxa para o `_recipientId` da
+   * Rotta. Não há chave de terceiro envolvida: é a credencial da
+   * plataforma que assina a chamada.
+   *
+   * **Emissor `ROTTA`**: a cobrança é da nossa conta e o split manda
+   * para a subconta o que sobra depois da nossa taxa. É o caminho de
+   * quem ainda não teve o split liberado pelo KYC, e também o da
+   * transportadora sem subconta nenhuma, que nesse caso sai sem split
+   * mesmo e vira crédito no Rotta Pay.
    */
   private async criarCobranca(
     fatura: {
@@ -549,102 +607,105 @@ export class FamilyBillingService {
       responsavelId: string;
       valorCentavos: number;
       vencimento: Date;
-      asaasCustomerId: string | null;
+      lytexClientId: string | null;
       company: { nomeFantasia: string };
     },
     meio: "PIX" | "BOLETO",
   ): Promise<string> {
-    const customerId =
-      fatura.asaasCustomerId ?? (await this.resolverClienteAsaas(fatura.responsavelId));
+    const clientId =
+      fatura.lytexClientId ?? (await this.resolverClienteLytex(fatura.responsavelId));
 
     const conta = await this.paymentAccountRepository.findByCompanyIdAcrossTenants(
       fatura.companyId,
     );
 
-    /*
-      O split e o emissor andam juntos, e a ordem importa.
-
-      Quando a transportadora tem subconta e `emissorDaCobranca` é
-      `SUBCONTA`, a cobrança é criada COM A CHAVE DELA: é o único jeito
-      de a custódia valer, porque a documentação de conta escrow diz que
-      só as subcontas habilitadas têm os próprios recebimentos retidos.
-      Nesse caso o split manda a nossa taxa para a Rotta.
-
-      Quando o emissor é `ROTTA` (o padrão, e o que funciona sem
-      depender da liberação de white label pelo comercial do Asaas), a
-      cobrança é da conta principal e o split manda para a subconta o
-      que sobra depois da nossa taxa.
-    */
+    const emitirPelaSubconta = this.emissorEhSubconta(conta);
     /* O percentual da Rotta é por MEIO de pagamento (tabela do CFO de
        18/10: Pix e boleto 1,29%), então o meio precisa chegar até aqui.
-       Antes era "PIX" fixo, e um boleto sairia com a taxa do Pix. */
-    const split = this.subcontas.montarSplit(conta, meio, this.config.rottaWalletId);
-    const emitirPelaSubconta = conta?.emissorDaCobranca === "SUBCONTA";
-    const chaveDaSubconta = emitirPelaSubconta
-      ? this.subcontas.chaveDaSubconta(
-          conta,
-          `emitir a cobranca ${meio} da fatura ${fatura.id} em nome da subconta`,
-        )
-      : undefined;
+       Um boleto emitido com a taxa do Pix seria um erro invisível. */
+    const split = this.subcontas.montarSplit(
+      conta,
+      meio,
+      emitirPelaSubconta ? "SUBCONTA" : "ROTTA",
+      this.config.rottaRecipientId,
+    );
 
-    const payment = await this.asaasClient.createPayment(
+    const cobranca = await this.lytexClient.createInvoice(
       {
-        customer: customerId,
-        billingType: meio,
-        value: fatura.valorCentavos / 100,
-        dueDate: fatura.vencimento.toISOString().slice(0, 10),
+        _clientId: clientId,
+        items: [
+          {
+            name: `Transporte escolar, ${fatura.company.nomeFantasia}`,
+            quantity: 1,
+            /* Centavos, inteiro: é assim que a Lytex trabalha, e é
+               assim que a fatura já guarda. Nenhuma divisão por 100, e
+               nenhum arredondamento no meio do caminho. */
+            value: fatura.valorCentavos,
+          },
+        ],
+        dueDate: fatura.vencimento.toISOString(),
+        paymentMethods: meiosDaCobranca(meio),
         description: `Transporte escolar, ${fatura.company.nomeFantasia}`,
-        /* O prefixo é o que diz ao webhook de que fluxo este pagamento é
+        /* O prefixo é o que diz ao webhook de que fluxo esta cobrança é
            (ver `FAMILY_INVOICE_ID_PREFIX`). */
-        externalReference: `${FAMILY_INVOICE_ID_PREFIX}${fatura.id}`,
+        referenceId: `${FAMILY_INVOICE_ID_PREFIX}${fatura.id}`,
         split,
       },
-      chaveDaSubconta,
+      emitirPelaSubconta ? subRecipientDe(conta) : undefined,
     );
 
     await this.invoiceRepository.update(fatura.id, {
-      asaasPaymentId: payment.id,
-      asaasCustomerId: customerId,
+      lytexInvoiceId: cobranca._id,
+      lytexClientId: clientId,
       meioDePagamento: meio,
-      linkDaFatura: payment.invoiceUrl ?? null,
+      linkDaFatura: cobranca.linkCheckout ?? null,
       /* Só o boleto tem linha digitável, e ela pode não vir na criação:
-         o registro bancário é assíncrono do lado do Asaas. */
-      linhaDigitavel: payment.identificationField ?? null,
+         o registro bancário é assíncrono do lado da Lytex. */
+      linhaDigitavel: cobranca.paymentMethods?.boleto?.digitableLine ?? null,
       /* Registrado na criação, não na confirmação: é no momento de criar
-         a cobrança que o split existe ou não existe. */
-      repasseDiretoAoTransportador: Boolean(conta?.asaasWalletId),
+         a cobrança que o destino do dinheiro é decidido. */
+      repasseDiretoAoTransportador: emitirPelaSubconta,
     });
 
-    if (!conta?.asaasWalletId) {
+    if (!emitirPelaSubconta) {
       this.logger.log(
-        `Fatura ${fatura.id}: cobranca criada SEM split (a transportadora ${fatura.companyId} ainda nao tem subconta Asaas). O valor cai na conta da Rotta e e creditado no Rotta Pay dela.`,
+        `Fatura ${fatura.id}: cobranca emitida pela conta da Rotta (transportadora ${fatura.companyId} ${conta?.lytexSubAccountId ? "tem subconta, mas o emissor nao e SUBCONTA ou o split ainda nao foi liberado" : "ainda nao tem subconta Lytex"}). ${split ? "O split repassa a parte dela." : "Sem split: o valor cai na conta da Rotta e e creditado no Rotta Pay."}`,
       );
     }
 
-    return payment.id;
+    return cobranca._id;
   }
 
   /**
-   * O `AsaasCustomer` do responsável — reaproveitado pelo CPF, nunca
-   * duplicado.
+   * O cliente do responsável na Lytex, reaproveitado, nunca duplicado.
    *
    * ## O CPF é o único bloqueio real da cobrança da família
    *
-   * O Asaas exige `name` e `cpfCnpj` para criar um cliente
-   * (`CustomerSaveRequestDTO`, conferido na referência em 21/10/2026).
-   * E desde 14/09/2026, por decisão do fundador, a Rotta **não coleta
-   * CPF de Responsável** no cadastro: "para os responsáveis não pegamos
-   * esses dados, apenas o nome e telefone".
+   * A Lytex exige `type`, `name` e `cpfCnpj` para criar um cliente
+   * (`POST /v2/clients`, esquema conferido em 23/10/2026). E desde
+   * 14/09/2026, por decisão do fundador, a Rotta **não coleta CPF de
+   * Responsável** no cadastro: "para os responsáveis não pegamos esses
+   * dados, apenas o nome e telefone".
    *
    * Então quem chega aqui sem CPF não tem como ser cobrado por nenhum
    * caminho. `cpfInformado` é a saída: quem está criando a cobrança
    * (transportadora, que tem o contrato em mãos, ou o Admin Rotta)
    * informa o número, ele é gravado no cadastro e serve da próxima vez.
+   * A troca de provedora não mexeu nisso: o documento de quem paga é
+   * exigência das duas.
    *
-   * O celular vai junto porque é por ele que o Asaas avisa a família da
-   * cobrança — e uma família sem conta na Rotta depende desse aviso.
+   * ## A busca é pelo nosso id, não pelo CPF
+   *
+   * `referenceId` guarda o id do Responsável na Rotta. É a nossa chave,
+   * ela não muda, e não depende de a Lytex normalizar documento do mesmo
+   * jeito que nós. Procurar por CPF acharia duas pessoas diferentes para
+   * o mesmo número digitado com e sem pontuação, e a família receberia
+   * duas cobranças.
+   *
+   * O celular vai junto porque é por ele que a provedora avisa a família
+   * da cobrança, e uma família sem conta na Rotta depende desse aviso.
    */
-  private async resolverClienteAsaas(
+  private async resolverClienteLytex(
     responsavelId: string,
     opcoes?: { cpfInformado?: string },
   ): Promise<string> {
@@ -666,38 +727,44 @@ export class FamilyBillingService {
       );
     }
 
-    const existente = await this.asaasClient.findCustomerByCpfCnpj(responsavel.cpf);
-    if (existente) return existente.id;
+    const existente = await this.lytexClient.findClientByReferenceId(responsavel.id);
+    if (existente) return existente._id;
 
-    const criado = await this.asaasClient.createCustomer({
+    const criado = await this.lytexClient.createClient({
+      /* Responsável é sempre pessoa física: quem contrata transporte
+         escolar para um filho é uma pessoa, não uma empresa. */
+      type: "pf",
       name: responsavel.nome,
-      cpfCnpj: responsavel.cpf,
+      cpfCnpj: responsavel.cpf.replace(/\D/g, ""),
       email: responsavel.email,
-      mobilePhone: responsavel.telefone,
-      externalReference: responsavel.id,
+      cellphone: responsavel.telefone.replace(/\D/g, ""),
+      /* Neutro: a Rotta não pergunta pronome de tratamento a ninguém, e
+         escolher um por conta própria erraria com metade das famílias. */
+      treatmentPronoun: "you",
+      referenceId: responsavel.id,
     });
-    return criado.id;
+    return criado._id;
   }
 
   /**
-   * O webhook da Asaas confirmou o pagamento de uma fatura da família.
+   * O webhook da Lytex confirmou o pagamento de uma fatura da família.
    *
-   * Idempotente: fatura já `PAGA` sai sem fazer nada. A Asaas reentrega
-   * webhook, e creditar duas vezes a carteira de um transportador é o
+   * Idempotente: fatura já `PAGA` sai sem fazer nada. Webhook é
+   * reentregue, e creditar duas vezes a carteira de um transportador é o
    * tipo de erro que só aparece no dia do saque.
    */
   async confirmarPagamento(input: {
-    asaasPaymentId: string;
+    lytexInvoiceId: string;
     valorPagoCentavos: number;
     taxaDoProvedorCentavos: number | null;
     pagoEm: Date;
   }): Promise<void> {
-    const fatura = await this.invoiceRepository.findByAsaasPaymentIdAcrossTenants(
-      input.asaasPaymentId,
+    const fatura = await this.invoiceRepository.findByLytexInvoiceIdAcrossTenants(
+      input.lytexInvoiceId,
     );
     if (!fatura) {
       this.logger.warn(
-        `Webhook Asaas de fatura da familia sem fatura correspondente (asaasPaymentId ${input.asaasPaymentId}).`,
+        `Webhook Lytex de fatura da familia sem fatura correspondente (lytexInvoiceId ${input.lytexInvoiceId}).`,
       );
       return;
     }
@@ -709,7 +776,7 @@ export class FamilyBillingService {
     const repasseCentavos = input.valorPagoCentavos - (input.taxaDoProvedorCentavos ?? 0);
 
     /* `updateAcrossTenants`, e nao `update`: quem chama isto e o webhook
-       da Asaas, que entra por rota `@Public()` e por isso nao tem
+       da Lytex, que entra por rota `@Public()` e por isso nao tem
        contexto de tenant. Com `update`, a politica de RLS de
        `contract_invoices` seria falsa para toda linha, a escrita
        levantaria erro e o webhook responderia 500 -- e quinze
@@ -728,7 +795,7 @@ export class FamilyBillingService {
          não há nada a repassar. Creditar a carteira aqui mostraria à
          transportadora um saldo a sacar que ela já recebeu. */
       this.logger.log(
-        `Fatura ${fatura.id} paga com split: valor foi direto para a conta Asaas da transportadora, sem credito no Rotta Pay.`,
+        `Fatura ${fatura.id} paga em nome da subconta: o valor foi direto para a conta Lytex da transportadora, sem credito no Rotta Pay.`,
       );
       return;
     }
@@ -742,15 +809,15 @@ export class FamilyBillingService {
     });
   }
 
-  /** Pagamento estornado pela Asaas — a fatura volta a existir como `ESTORNADA`, nunca é apagada. */
-  async registrarEstorno(asaasPaymentId: string): Promise<void> {
-    const fatura = await this.invoiceRepository.findByAsaasPaymentIdAcrossTenants(asaasPaymentId);
+  /** Pagamento estornado na Lytex: a fatura volta a existir como `ESTORNADA`, nunca é apagada. */
+  async registrarEstorno(lytexInvoiceId: string): Promise<void> {
+    const fatura = await this.invoiceRepository.findByLytexInvoiceIdAcrossTenants(lytexInvoiceId);
     if (!fatura) return;
     /* `updateAcrossTenants` pelo mesmo motivo de `confirmarPagamento`:
        chamado pelo webhook, que nao tem contexto de tenant. */
     await this.invoiceRepository.updateAcrossTenants(fatura.id, { status: "ESTORNADA" });
     this.logger.warn(
-      `Fatura ${fatura.id} estornada na Asaas. O credito correspondente no Rotta Pay, se houver, precisa de ajuste manual (Admin Rotta) -- estorno automatico de carteira nao esta implementado.`,
+      `Fatura ${fatura.id} estornada na Lytex. O credito correspondente no Rotta Pay, se houver, precisa de ajuste manual (Admin Rotta) -- estorno automatico de carteira nao esta implementado.`,
     );
   }
 
@@ -761,10 +828,12 @@ export class FamilyBillingService {
   /**
    * Passa pelo mapeador, e não devolve a linha do banco.
    *
-   * Desde 20/10/2026 a tabela guarda `asaasApiKeyCifrada`, a chave de
-   * API da subconta do transportador. Entregar o objeto cru punha essa
-   * chave na resposta HTTP, contra o compromisso de "nunca em log nem
-   * em resposta de API" assumido quando o fundador autorizou guardá-la.
+   * A tabela guarda `asaasApiKeyCifrada`, resto do desenho anterior, em
+   * que a custódia exigia a chave de API da subconta. Entregar o objeto
+   * cru punha essa chave na resposta HTTP. Na Lytex nenhuma chave de
+   * terceiro é guardada, mas o mapeador continua sendo o caminho único
+   * de saída: o dia em que outra coluna sensível aparecer, ela já nasce
+   * fora da resposta.
    */
   async getContaDeRecebimento(
     actor: AuthenticatedUser,
@@ -798,7 +867,7 @@ export class FamilyBillingService {
     const linha = await this.paymentAccountRepository.findByCompanyId(companyId);
     const conta = linha ? await this.sincronizarSubconta(linha) : null;
 
-    if (conta?.asaasAccountId) return { conta: toContaDeRecebimentoResponse(conta) };
+    if (conta?.lytexSubAccountId) return { conta: toContaDeRecebimentoResponse(conta) };
 
     const empresa =
       empresaJaLida ?? (await this.companiesService.findByIdOrThrow(companyId, actor));
@@ -827,57 +896,67 @@ export class FamilyBillingService {
   }
 
   /**
-   * Pergunta ao Asaas o que falta nesta subconta, e grava o que voltou.
+   * Pergunta à Lytex o que mudou nesta subconta, e grava o que voltou.
    *
    * ## Por que uma leitura escreve
    *
-   * Porque os dois dados que ela busca não chegam de outro jeito:
+   * Porque a Lytex não documenta webhook de situação de subconta. Sem
+   * esta consulta, uma conta aprovada pelo KYC ficaria em "em análise"
+   * na tela para sempre, e o transportador não teria como saber que já
+   * pode receber.
    *
-   * - `onboardingUrl` **não existe** na resposta de criação da subconta.
-   *   Ela vive em `GET /v3/myAccount/documents`, e sem esta chamada o
-   *   botão "enviar os documentos" nunca apareceria para ninguém.
-   * - a situação cadastral só muda sozinha se os eventos de conta
-   *   estiverem marcados no painel do Asaas, que é tarefa de uma pessoa.
-   *   Enquanto não estiverem, `GET /v3/myAccount/status` é o que tira a
-   *   conta de "em análise".
-   *
-   * É cache, não regra de negócio: o que vem do Asaas é a verdade, e
+   * É cache, não regra de negócio: o que vem da Lytex é a verdade, e
    * isto só guarda a resposta para a próxima tela não precisar pedir de
    * novo.
    *
    * ## Por que só enquanto não está ativa
    *
-   * Conta ativa com link já guardado não tem o que sincronizar, e
-   * cobrar duas chamadas de rede do Asaas a cada abertura da tela de
-   * dinheiro seria pagar por nada. Conta recusada também para: o
-   * caminho dali é o suporte, não uma consulta.
+   * Conta ativa não tem o que sincronizar, e cobrar uma chamada de rede
+   * a cada abertura da tela de dinheiro seria pagar por nada. Conta
+   * recusada também para: o caminho dali é o suporte, não uma consulta.
+   *
+   * ## Falha de rede não derruba a tela
+   *
+   * A tela de dinheiro mostra saldo, faturas e vencimentos, que são
+   * dados nossos. A Lytex fora do ar não pode esconder nada disso: a
+   * sincronização vira aviso no log e a conta é devolvida como está.
    */
   private async sincronizarSubconta(conta: CompanyPaymentAccount): Promise<CompanyPaymentAccount> {
-    const precisa = conta.asaasAccountId && conta.status === "EM_ANALISE";
+    const precisa = conta.lytexSubAccountId && conta.status === "EM_ANALISE";
     if (!precisa) return conta;
 
-    const { onboardingUrl, situacaoGeral } = await this.subcontas.sincronizar(conta);
-
-    const status = situacaoGeral ? SITUACAO_GERAL_DA_SUBCONTA[situacaoGeral] : undefined;
-    const mudancas: UpsertCompanyPaymentAccountData = {};
-    if (onboardingUrl && onboardingUrl !== conta.asaasOnboardingUrl) {
-      mudancas.asaasOnboardingUrl = onboardingUrl;
+    let resultado: Awaited<ReturnType<LytexSubcontasService["sincronizar"]>>;
+    try {
+      resultado = await this.subcontas.sincronizar(conta.lytexSubAccountId!);
+    } catch (erro) {
+      this.logger.warn(
+        `Nao foi possivel sincronizar a subconta ${conta.lytexSubAccountId} (empresa ${conta.companyId}): ${erro instanceof Error ? erro.message : String(erro)}. A tela segue com o estado guardado.`,
+      );
+      return conta;
     }
-    if (status && status !== conta.status) mudancas.status = status;
+
+    const mudancas: UpsertCompanyPaymentAccountData = {};
+    if (resultado.status !== conta.status) mudancas.status = resultado.status;
+    if (resultado.recipientId && resultado.recipientId !== conta.lytexRecipientId) {
+      mudancas.lytexRecipientId = resultado.recipientId;
+    }
+    if (resultado.splitLiberado !== conta.lytexSplitLiberado) {
+      mudancas.lytexSplitLiberado = resultado.splitLiberado;
+    }
 
     if (Object.keys(mudancas).length === 0) return conta;
 
     this.logger.log(
-      `Subconta ${conta.asaasAccountId} (empresa ${conta.companyId}) sincronizada: ${Object.keys(mudancas).join(", ")}.`,
+      `Subconta Lytex ${conta.lytexSubAccountId} (empresa ${conta.companyId}) sincronizada: ${Object.keys(mudancas).join(", ")}.`,
     );
     return this.paymentAccountRepository.upsert(conta.companyId, mudancas);
   }
 
   /**
-   * O transportador informa a chave Pix de saque. `asaasWalletId` e
+   * O transportador informa a chave Pix de saque. `lytexRecipientId` e
    * `taxaDaPlataformaBps` NÃO entram por aqui de propósito: subconta e
    * comissão são decisões da Rotta, não do cliente, e um transportador
-   * que pudesse escrever o próprio `asaasWalletId` redirecionaria o
+   * que pudesse escrever o próprio `lytexRecipientId` redirecionaria o
    * split de qualquer cobrança.
    */
   async salvarContaDeRecebimento(
@@ -892,7 +971,7 @@ export class FamilyBillingService {
   }
 
   // ---------------------------------------------------------------------
-  // Subconta Asaas do transportador
+  // Subconta Lytex do transportador
   // ---------------------------------------------------------------------
 
   /** A transportadora cria a própria subconta, pelo painel dela. */
@@ -922,22 +1001,23 @@ export class FamilyBillingService {
   }
 
   /**
-   * Cria a subconta no Asaas e grava, numa operação, tudo o que ela
+   * Cria a subconta na Lytex e grava, numa operação, tudo o que ela
    * devolveu.
    *
    * ## Por que recusa a segunda
    *
-   * Porque a chave de API só aparece na resposta da criação, e não
-   * existe endpoint para pedir de novo. Criar a segunda subconta de uma
-   * transportadora que já tem uma deixaria a primeira órfã no Asaas,
-   * possivelmente já com saldo, e não há desfazer. Então a checagem vem
-   * antes da chamada, e a mensagem diz o que fazer.
+   * Porque duas subcontas para o mesmo CNPJ deixariam a primeira órfã na
+   * Lytex, possivelmente já com saldo, e não há desfazer. A razão mudou
+   * com a troca de provedora (no Asaas era a chave de API que só
+   * aparecia uma vez), mas a recusa continua valendo pelo que sempre
+   * importou: saldo de transportador não pode ficar numa conta que
+   * ninguém mais consulta.
    *
    * ## Por que o formulário tem um campo só
    *
-   * Os outros onze já estão no cadastro da transportadora, conferidos na
+   * Os outros já estão no cadastro da transportadora, conferidos na
    * Receita quando ela entrou. É isso que faz o transportador nunca
-   * precisar abrir o Asaas: a conta dele nasce do que a Rotta já sabe.
+   * precisar abrir a Lytex: a conta dele nasce do que a Rotta já sabe.
    */
   private async criarSubconta(
     companyId: string,
@@ -945,107 +1025,57 @@ export class FamilyBillingService {
     dados: DadosDaSubconta,
   ): Promise<ContaDeRecebimentoResponse> {
     const existente = await this.paymentAccountRepository.findByCompanyId(companyId);
-    if (existente?.asaasAccountId) {
+    if (existente?.lytexSubAccountId) {
       throw new BadRequestException(
-        "Esta transportadora já tem subconta no Asaas. Não é possível criar uma segunda: a chave de acesso só aparece na criação, e a primeira ficaria inacessível.",
+        "Esta transportadora já tem subconta na Lytex. Criar uma segunda deixaria a primeira sem ninguém olhando, possivelmente com saldo dela dentro.",
       );
     }
 
     const empresa = await this.companiesService.findByIdOrThrow(companyId, actor);
 
     const subconta = await this.subcontas.criarSubconta({
-      /* Razão social, e não nome fantasia: para o Asaas este é o
-         titular de uma conta de pagamento, e o nome tem que bater com o
-         documento. */
-      nome: empresa.razaoSocial,
-      email: dados.email ?? empresa.email,
-      /* O login fica SEMPRE com a empresa, mesmo quando ela aponta um
-         e-mail de financeiro acima. Sem isto, o Asaas usaria o e-mail do
-         financeiro como login e a transportadora perderia o acesso à
-         própria conta de recebimento para o contador. */
-      emailDeLogin: empresa.email,
+      /* Razão social, e não nome fantasia: para a Lytex este é o titular
+         de uma conta de pagamento, e o nome tem que bater com o
+         documento. O fantasia vai no campo próprio. */
+      razaoSocial: empresa.razaoSocial,
+      nomeFantasia: empresa.nomeFantasia,
       cpfCnpj: empresa.cpfCnpj,
+      tipo: empresa.tipo,
+      /* O e-mail da empresa, e não o do financeiro que o formulário
+         pode informar: é o endereço do titular da conta. Um e-mail de
+         contador no lugar faria a transportadora perder o acesso à
+         própria conta de recebimento. */
+      email: dados.email ?? empresa.email,
       telefone: dados.telefone ?? empresa.telefone,
       endereco: empresa.endereco,
       numero: empresa.numero,
       complemento: empresa.complemento ?? undefined,
       bairro: empresa.bairro,
+      cidade: empresa.cidade,
+      uf: empresa.estado,
       cep: empresa.cep,
-      companyType: TIPO_DE_EMPRESA_NO_ASAAS[empresa.tipo],
       faturamentoMensalCentavos: dados.faturamentoMensalCentavos,
     });
 
-    /* `EM_ANALISE`, nunca `ATIVA`: a conta nasce aguardando a análise do
-       Asaas, que leva até dois dias úteis e termina chegando pelo
-       webhook de situação da conta. Dizer "ativa" aqui seria prometer
-       recebimento que ainda não existe.
-
-       `asaasOnboardingUrl` não entra aqui porque não existe na resposta
-       da criação: ela é preenchida na primeira leitura da tela, por
-       `sincronizarSubconta`. */
+    /* `EM_ANALISE`, nunca `ATIVA`: a conta nasce antes de o KYC terminar
+       e antes de o split ser liberado. Dizer "ativa" aqui seria prometer
+       recebimento que ainda não existe. Quem tira dali é
+       `sincronizarSubconta`, e só com `splitAutorization`. */
     const conta = await this.paymentAccountRepository.upsert(companyId, {
       status: "EM_ANALISE",
-      asaasAccountId: subconta.asaasAccountId,
-      asaasWalletId: subconta.asaasWalletId,
-      asaasApiKeyCifrada: subconta.asaasApiKeyCifrada,
+      lytexSubAccountId: subconta._id,
+      lytexRecipientId: subconta._recipientId ?? subconta._id,
+      lytexSplitLiberado: Boolean(subconta.splitAutorization),
     });
 
     this.logger.log(
       /* Esta é a "linha de confirmação" que o aviso de
-         `AsaasSubcontasService.criarSubconta` promete: se ela não
+         `LytexSubcontasService.criarSubconta` promete: se ela não
          aparecer, a subconta ficou órfã no provedor. */
-      `Subconta Asaas ${subconta.asaasAccountId} GRAVADA para a empresa ${companyId} por ${actor.role} ${actor.sub}.`,
+      `Subconta Lytex ${subconta._id} GRAVADA para a empresa ${companyId} por ${actor.role} ${actor.sub}.`,
     );
 
     return toContaDeRecebimentoResponse(conta);
-  }
-
-  /**
-   * O Asaas avisou que a situação de uma subconta mudou.
-   *
-   * Chega do webhook, sem ator e sem `companyId`: o único identificador
-   * do evento é o `id` da subconta, e é por ele que a conta é
-   * encontrada, fora do tenant.
-   *
-   * Só a aprovação geral (`accountStatus.general`) move o estado. As
-   * outras três situações que o evento traz (documentação, dados
-   * comerciais, conta bancária) são etapas dela, e reagir a cada uma
-   * faria o estado oscilar: a conta ficaria "recusada" porque falta um
-   * documento, e voltaria a "em análise" no evento seguinte.
-   *
-   * Evento desconhecido não mexe em nada. O Asaas acrescenta eventos sem
-   * avisar, e mudar o estado de uma conta de recebimento por um nome que
-   * ninguém leu é pior do que não mudar.
-   */
-  async aplicarSituacaoDaSubconta(dados: {
-    asaasAccountId: string;
-    situacaoGeral: string;
-    eventoDaAsaas: string;
-  }): Promise<void> {
-    const conta = await this.paymentAccountRepository.findByAsaasAccountIdAcrossTenants(
-      dados.asaasAccountId,
-    );
-    if (!conta) {
-      this.logger.warn(
-        `Webhook de situacao da conta para a subconta ${dados.asaasAccountId}, que nao pertence a nenhuma transportadora da Rotta (evento "${dados.eventoDaAsaas}"). Ignorado.`,
-      );
-      return;
-    }
-
-    const status = SITUACAO_GERAL_DA_SUBCONTA[dados.situacaoGeral];
-    if (!status) {
-      this.logger.warn(
-        `Situacao geral desconhecida "${dados.situacaoGeral}" na subconta ${dados.asaasAccountId} (evento "${dados.eventoDaAsaas}"). Estado da conta mantido em ${conta.status}.`,
-      );
-      return;
-    }
-
-    if (conta.status === status) return;
-
-    await this.paymentAccountRepository.upsertAcrossTenants(conta.companyId, { status });
-    this.logger.log(
-      `Conta de recebimento da empresa ${conta.companyId}: ${conta.status} -> ${status} (evento "${dados.eventoDaAsaas}").`,
-    );
   }
 
   // ---------------------------------------------------------------------
@@ -1058,18 +1088,21 @@ export class FamilyBillingService {
    *
    * ## Por que as três moram no mesmo lugar
    *
-   * Porque elas se condicionam. Custódia só existe com emissor
-   * `SUBCONTA`, e emissor `SUBCONTA` só funciona com a chave da subconta
-   * guardada. Em endpoints separados daria para ligar custódia numa
-   * transportadora cuja cobrança é emitida pela Rotta, o que não retém
-   * nada e passa a cobrar a tarifa recorrente por nada.
+   * Porque elas se condicionam. A retenção segue a conta que recebe, e
+   * quem recebe só é a transportadora quando o emissor é `SUBCONTA`. Em
+   * endpoints separados daria para ligar custódia numa transportadora
+   * cuja cobrança é emitida pela Rotta, o que não retém nada dela.
    *
-   * ## A ordem: provedor primeiro, banco depois
+   * ## A custódia na Lytex não é um botão nosso
    *
-   * Ao contrário da criação de subconta, custódia é reversível. Então a
-   * chamada ao Asaas vem antes da escrita: gravar "custódia ativa" e só
-   * depois descobrir que o provedor recusou mostraria na tela uma
-   * retenção que não existe.
+   * No Asaas havia um endpoint para ligar e desligar escrow por
+   * subconta. Na Lytex a retenção é o `floatConfig` da subconta, que o
+   * suporte confirmou em 22/10/2026 existir com boleto em D+2 e Pix em
+   * D+0, e que **não é configurável pela API publicada**: não há rota
+   * para escrevê-lo. Então o que este método faz com `custodia` é
+   * registrar a intenção no nosso banco, para a tela dizer a verdade, e
+   * avisar no log que a mudança efetiva é com o comercial da Lytex.
+   * Fingir que a chamada existe seria pior do que não ter o botão.
    */
   async configurarRecebimentoDaEmpresa(
     companyId: string,
@@ -1104,14 +1137,19 @@ export class FamilyBillingService {
 
     if (dados.emissorDaCobranca && dados.emissorDaCobranca !== conta.emissorDaCobranca) {
       if (dados.emissorDaCobranca === "SUBCONTA") {
-        if (!conta.asaasApiKeyCifrada) {
+        if (!conta.lytexSubAccountId) {
           throw new BadRequestException(
-            "Para a transportadora emitir a própria cobrança é preciso ter a chave da subconta guardada, e esta conta não tem. Abra a subconta pela Rotta: a chave só aparece na criação.",
+            "Para a transportadora emitir a própria cobrança é preciso ter subconta na Lytex, e esta conta não tem. Abra a subconta pela Rotta antes de virar o emissor.",
+          );
+        }
+        if (!conta.lytexSplitLiberado) {
+          throw new BadRequestException(
+            "A Lytex ainda não liberou o split desta subconta. Com o emissor em `SUBCONTA` e o split bloqueado, a cobrança sairia em nome dela e a taxa da Rotta não seria repassada. Espere a liberação do KYC.",
           );
         }
         if (conta.status !== "ATIVA") {
           throw new BadRequestException(
-            `A subconta desta transportadora está em "${conta.status}". Enquanto o Asaas não aprovar, a cobrança emitida por ela não é paga. Espere a aprovação antes de virar o emissor.`,
+            `A subconta desta transportadora está em "${conta.status}". Enquanto a Lytex não aprovar, a cobrança emitida por ela não é paga. Espere a aprovação antes de virar o emissor.`,
           );
         }
       }
@@ -1129,12 +1167,13 @@ export class FamilyBillingService {
 
       const tarifaPagaPor = dados.custodia.tarifaPagaPor ?? conta.custodiaTarifaPagaPor;
 
-      await this.subcontas.configurarCustodia(conta, {
-        ativa: dados.custodia.ativa,
-        diasParaLiberar:
-          dados.custodia.diasParaLiberar ?? conta.custodiaDiasParaLiberar ?? undefined,
-        tarifaNaSubconta: tarifaPagaPor === "SUBCONTA",
-      });
+      /* Nenhuma chamada à Lytex aqui, e isto é a honestidade do método,
+         não um atalho: `floatConfig` não tem rota de escrita na API
+         publicada. O registro vale para a tela e para a conciliação; a
+         retenção em si é combinada com o comercial. */
+      this.logger.warn(
+        `Custodia da empresa ${companyId} marcada como ${dados.custodia.ativa ? "ATIVA" : "INATIVA"} no banco da Rotta. A retencao efetiva e o floatConfig da subconta ${conta.lytexSubAccountId ?? "(sem subconta)"} na Lytex, que NAO tem endpoint de escrita: ajuste com o comercial deles.`,
+      );
 
       mudancas.custodiaAtiva = dados.custodia.ativa;
       mudancas.custodiaTarifaPagaPor = tarifaPagaPor;
@@ -1184,8 +1223,8 @@ export class FamilyBillingService {
       valorFormatado: formatarCentavos(contrato.valorMensalidadeCentavos),
       statusDoContrato: contrato.status,
       vigenciaFim: contrato.vigenciaFim ? contrato.vigenciaFim.toISOString().slice(0, 10) : null,
-      cobrancaMensalAtiva: Boolean(contrato.asaasSubscriptionId),
-      statusDaAssinatura: contrato.asaasSubscriptionStatus,
+      cobrancaMensalAtiva: Boolean(contrato.lytexSubscriptionId),
+      statusDaAssinatura: contrato.lytexSubscriptionStatus,
       precisaDeCpf: !contrato.responsavel.cpf,
       /* O que impede ligar agora, em uma frase, para a tela não ter que
          repetir as regras do serviço e poder divergir delas. */
@@ -1196,16 +1235,16 @@ export class FamilyBillingService {
   private impedimentoParaCobrar(contrato: {
     status: string;
     valorMensalidadeCentavos: number;
-    asaasSubscriptionId: string | null;
+    lytexSubscriptionId: string | null;
   }): string | null {
-    if (contrato.asaasSubscriptionId) return null;
+    if (contrato.lytexSubscriptionId) return null;
     if (contrato.status !== "ATIVO") {
       return "O contrato precisa estar ativo.";
     }
     if (contrato.valorMensalidadeCentavos <= 0) {
       return "A mensalidade está em R$ 0,00: combine o valor com a família e registre no contrato.";
     }
-    if (!this.asaasClient.isConfigured()) {
+    if (!this.lytexClient.isConfigured()) {
       return "A cobrança automática ainda não está disponível nesta implantação.";
     }
     return null;
@@ -1235,33 +1274,45 @@ export class FamilyBillingService {
   }
 
   /**
-   * Cria no Asaas a recorrência que cobra a família todo mês.
+   * Cria na Lytex a recorrência que cobra a família todo mês.
    *
    * ## O que isto muda para a família
    *
-   * Hoje a cobrança só existe quando o Responsável abre o app e toca em
-   * "pagar": é ele que dispara a criação. Com a recorrência, o Asaas
-   * gera a cobrança de cada mês sozinho, e **o Responsável não precisa
-   * de conta na Rotta para nada** — ele recebe o link da cobrança
+   * Sem ela, a cobrança só existe quando o Responsável abre o app e toca
+   * em "pagar": é ele que dispara a criação. Com a recorrência, a Lytex
+   * gera a cobrança de cada mês sozinha, e **o Responsável não precisa
+   * de conta na Rotta para nada**: ele recebe o link da cobrança
    * hospedada e paga ali, por Pix ou boleto.
    *
    * Quem precisa de conta é só o transportador, e a dele é a subconta
    * (autônomo, MEI ou sociedade).
    *
+   * ## A assinatura é emitida pela conta da Rotta, e isso não é escolha
+   *
+   * A Lytex publica `subRecipientId` para faturas, saques e consultas de
+   * subconta, **não para `/v2/subscriptions`**. Então a recorrência nasce
+   * na nossa conta, e o split manda para a subconta o que sobra depois
+   * da nossa taxa: o inverso da fatura avulsa, que nasce na conta dela.
+   *
+   * A consequência prática, para não ser descoberta num fechamento: a
+   * retenção que vale para a assinatura é a da conta da Rotta, não a da
+   * subconta. Quando a Lytex liberar assinatura por subconta, muda uma
+   * linha aqui e `montarSplit` já sabe tratar os dois sentidos.
+   *
    * ## A ordem das operações não é arbitrária
    *
-   * Criar assinatura no Asaas é irreversível de um jeito pior que criar
-   * subconta: subconta órfã fica parada, **assinatura órfã cobra a
-   * família todo mês** e ninguém na Rotta sabe que ela existe. Por isso
-   * tudo que pode falhar acontece ANTES da chamada, e o `id` vai para o
-   * log no instante em que a resposta chega.
+   * Criar assinatura é irreversível de um jeito pior que criar subconta:
+   * subconta órfã fica parada, **assinatura órfã cobra a família todo
+   * mês** e ninguém na Rotta sabe que ela existe. Por isso tudo que pode
+   * falhar acontece ANTES da chamada, e o `id` vai para o log no
+   * instante em que a resposta chega.
    *
    * ## Por que a segunda assinatura é recusada
    *
    * Duas recorrências no mesmo contrato cobram a mesma família duas
    * vezes por mês, e o estrago aparece no extrato dela, não no nosso.
-   * `Contract.asaasSubscriptionId` é `@unique` e a recusa vem antes da
-   * chamada ao Asaas.
+   * `Contract.lytexSubscriptionId` é `@unique` e a recusa vem antes da
+   * chamada à Lytex.
    */
   private async criarAssinaturaDaFamilia(
     contractId: string,
@@ -1276,7 +1327,7 @@ export class FamilyBillingService {
        impede criar recorrência no contrato de outra empresa. */
     await this.companiesService.findByIdOrThrow(contrato.companyId, actor);
 
-    if (contrato.asaasSubscriptionId) {
+    if (contrato.lytexSubscriptionId) {
       throw new BadRequestException(
         "Este contrato já tem uma cobrança mensal automática. Criar outra cobraria a família duas vezes no mesmo mês.",
       );
@@ -1291,13 +1342,13 @@ export class FamilyBillingService {
         "A mensalidade deste contrato está em R$ 0,00. Combine o valor com a família e registre no contrato antes de ligar a cobrança automática.",
       );
     }
-    if (!this.asaasClient.isConfigured()) {
+    if (!this.lytexClient.isConfigured()) {
       throw new BadRequestException(
         "A cobrança automática ainda não está disponível nesta implantação. Nada foi criado.",
       );
     }
 
-    const customerId = await this.resolverClienteAsaas(contrato.responsavelId, {
+    const clientId = await this.resolverClienteLytex(contrato.responsavelId, {
       cpfInformado: dados.cpfDoResponsavel,
     });
 
@@ -1306,72 +1357,70 @@ export class FamilyBillingService {
     );
 
     const meio = dados.meioDePagamento ?? "PIX";
-    /* `UNDEFINED` deixa o pagador escolher na página; para a conta da
-       Rotta o percentual é o do Pix, que é o meio que a família usa. */
+    const emitirPelaSubconta = this.emissorEhSubconta(conta);
+    /* `UNDEFINED` deixa o pagador escolher na página da cobrança; para
+       efeito de taxa vale o percentual do Pix, que é o meio que a
+       família de fato usa. */
     const split = this.subcontas.montarSplit(
       conta,
       meio === "BOLETO" ? "BOLETO" : "PIX",
-      this.config.rottaWalletId,
+      emitirPelaSubconta ? "SUBCONTA" : "ROTTA",
+      this.config.rottaRecipientId,
     );
-    const emitirPelaSubconta = conta?.emissorDaCobranca === "SUBCONTA";
-    const chaveDaSubconta = emitirPelaSubconta
-      ? this.subcontas.chaveDaSubconta(
-          conta,
-          `emitir a assinatura do contrato ${contrato.id} em nome da subconta`,
-        )
-      : undefined;
 
     const primeiroVencimento = await this.primeiroVencimentoDaAssinatura(
       contrato.id,
       dados.diaDeVencimento ?? DIA_DE_VENCIMENTO_PADRAO,
     );
 
-    const assinatura = await this.asaasClient.createSubscription(
-      {
-        customer: customerId,
-        billingType: meio,
-        value: contrato.valorMensalidadeCentavos / 100,
-        cycle: "MONTHLY",
-        nextDueDate: primeiroVencimento.toISOString().slice(0, 10),
-        description: `Transporte escolar de ${contrato.student.nome}, ${contrato.company.nomeFantasia}`,
-        /* O mesmo prefixo das cobranças avulsas, mas apontando para o
-           CONTRATO: toda cobrança que a recorrência gerar herda este
-           valor, então ele não pode identificar um mês. Quem identifica
-           o mês é o vencimento da cobrança gerada. */
-        externalReference: `${FAMILY_CONTRACT_ID_PREFIX}${contrato.id}`,
-        split,
-        /* Sem isto a recorrência continua cobrando depois de o contrato
-           acabar. `vigenciaFim` é `null` em contrato sem fim combinado,
-           e aí não há limite a mandar. */
-        ...(contrato.vigenciaFim
-          ? { endDate: contrato.vigenciaFim.toISOString().slice(0, 10) }
-          : {}),
-      },
-      chaveDaSubconta,
-    );
+    const assinatura = await this.lytexClient.createSubscription({
+      _clientId: clientId,
+      items: [
+        {
+          name: `Transporte escolar de ${contrato.student.nome}`,
+          quantity: 1,
+          value: contrato.valorMensalidadeCentavos,
+        },
+      ],
+      type: "monthly",
+      nextDueDate: primeiroVencimento.toISOString(),
+      /* Sem limite, a recorrência continua cobrando depois de o contrato
+         acabar. `vigenciaFim` é `null` em contrato sem fim combinado, e
+         aí `infinity` é a verdade: a cobrança para quando alguém
+         cancelar. */
+      duration: duracaoDaAssinatura(primeiroVencimento, contrato.vigenciaFim),
+      paymentMethods: meiosDaCobranca(meio),
+      description: `Transporte escolar de ${contrato.student.nome}, ${contrato.company.nomeFantasia}`,
+      /* O mesmo prefixo das cobranças avulsas, mas apontando para o
+         CONTRATO: toda cobrança que a recorrência gerar herda este
+         valor, então ele não pode identificar um mês. Quem identifica o
+         mês é o vencimento da cobrança gerada. */
+      referenceId: `${FAMILY_CONTRACT_ID_PREFIX}${contrato.id}`,
+      split,
+    });
 
     /* Antes de qualquer coisa que possa falhar: uma assinatura criada
        que não foi gravada aqui é uma recorrência invisível cobrando uma
        família de verdade. Mesma lição da subconta órfã, com
        consequência pior porque esta repete todo mês. */
     this.logger.warn(
-      `Assinatura ${assinatura.id} criada no Asaas para o contrato ${contrato.id} (aluno ${contrato.studentId}, responsavel ${contrato.responsavelId}). Se nao houver uma linha de confirmacao logo abaixo desta, ela ficou ORFA no provedor e seguira cobrando a familia todo mes: cancele por DELETE /v3/subscriptions/${assinatura.id}.`,
+      `Assinatura ${assinatura._id} criada na Lytex para o contrato ${contrato.id} (aluno ${contrato.studentId}, responsavel ${contrato.responsavelId}). Se nao houver uma linha de confirmacao logo abaixo desta, ela ficou ORFA no provedor e seguira cobrando a familia todo mes: cancele por PUT /v2/subscriptions/cancel/${assinatura._id}.`,
     );
 
     await this.invoiceRepository.atualizarAssinaturaDoContratoAcrossTenants(contrato.id, {
-      asaasSubscriptionId: assinatura.id,
-      asaasSubscriptionStatus: assinatura.status,
+      lytexSubscriptionId: assinatura._id,
+      lytexSubscriptionStatus: assinatura.status ?? null,
       assinaturaCriadaEm: new Date(),
     });
 
     this.logger.log(
-      `Assinatura Asaas ${assinatura.id} GRAVADA no contrato ${contrato.id}: ${meio}, ${formatarCentavos(contrato.valorMensalidadeCentavos)}/mes, primeiro vencimento ${primeiroVencimento.toISOString().slice(0, 10)}, split ${split ? "sim" : "nao"}, emissor ${emitirPelaSubconta ? "SUBCONTA" : "ROTTA"}.`,
+      `Assinatura Lytex ${assinatura._id} GRAVADA no contrato ${contrato.id}: ${meio}, ${formatarCentavos(contrato.valorMensalidadeCentavos)}/mes, primeiro vencimento ${primeiroVencimento.toISOString().slice(0, 10)}, split ${split ? "sim" : "nao"}, emissor ${emitirPelaSubconta ? "SUBCONTA" : "ROTTA"}.`,
     );
 
     return {
       contractId: contrato.id,
-      asaasSubscriptionId: assinatura.id,
-      status: assinatura.status,
+      lytexSubscriptionId: assinatura._id,
+      status: assinatura.status ?? "desconhecido",
       meioDePagamento: meio,
       valorCentavos: contrato.valorMensalidadeCentavos,
       valorFormatado: formatarCentavos(contrato.valorMensalidadeCentavos),
@@ -1379,7 +1428,7 @@ export class FamilyBillingService {
       ultimoVencimento: contrato.vigenciaFim
         ? contrato.vigenciaFim.toISOString().slice(0, 10)
         : null,
-      repasseDiretoAoTransportador: Boolean(conta?.asaasWalletId),
+      repasseDiretoAoTransportador: emitirPelaSubconta,
     };
   }
 
@@ -1388,7 +1437,7 @@ export class FamilyBillingService {
    *
    * ## Por que não dá para só gravar
    *
-   * A cobrança nasce no Asaas **até 40 dias antes do vencimento**, então
+   * A Lytex gera a cobrança do ciclo antes do vencimento, então
    * quando ela chega a fatura daquele mês muitas vezes ainda não existe:
    * a rotina mensal da Rotta gera a fatura do mês corrente, não a de
    * dois meses à frente. Por isso aqui acha **ou cria**.
@@ -1403,22 +1452,30 @@ export class FamilyBillingService {
    * Idempotente: a mesma cobrança reentregue sai sem escrever.
    */
   async vincularCobrancaDaAssinatura(evento: {
-    asaasEvent: string;
-    asaasSubscriptionId: string;
-    asaasPaymentId: string;
+    evento: string;
+    lytexSubscriptionId: string;
+    lytexInvoiceId: string;
     contractId: string;
     vencimento: string;
-    valorReais: number;
+    /**
+     * O valor que o provedor diz, em centavos.
+     *
+     * Chega e não é usado para gravar, de propósito: o valor da fatura
+     * vem do CONTRATO, pelo mesmo motivo de `gerarFaturasDaCompetencia`.
+     * A fatura é documento financeiro nosso, e o valor dela é o
+     * combinado com a família, não o que voltou de um webhook.
+     */
+    valorCentavos: number;
     linkDaFatura?: string | null;
     linhaDigitavel?: string | null;
     meioDePagamento?: string | null;
   }): Promise<void> {
     const contrato = await this.invoiceRepository.findContratoPorAssinaturaAcrossTenants(
-      evento.asaasSubscriptionId,
+      evento.lytexSubscriptionId,
     );
     if (!contrato) {
       this.logger.warn(
-        `Cobranca ${evento.asaasPaymentId} gerada pela assinatura ${evento.asaasSubscriptionId}, que nao pertence a nenhum contrato da Rotta (evento "${evento.asaasEvent}"). Ignorada.`,
+        `Cobranca ${evento.lytexInvoiceId} gerada pela assinatura ${evento.lytexSubscriptionId}, que nao pertence a nenhum contrato da Rotta (evento "${evento.evento}"). Ignorada.`,
       );
       return;
     }
@@ -1428,7 +1485,7 @@ export class FamilyBillingService {
        errado, e gravar seria cobrar uma familia na fatura de outra. */
     if (contrato.id !== evento.contractId) {
       this.logger.warn(
-        `Cobranca ${evento.asaasPaymentId}: a assinatura ${evento.asaasSubscriptionId} esta no contrato ${contrato.id}, mas a referencia do pagamento diz contrato ${evento.contractId}. Nada foi ligado.`,
+        `Cobranca ${evento.lytexInvoiceId}: a assinatura ${evento.lytexSubscriptionId} esta no contrato ${contrato.id}, mas a referencia da cobranca diz contrato ${evento.contractId}. Nada foi ligado.`,
       );
       return;
     }
@@ -1436,7 +1493,7 @@ export class FamilyBillingService {
     const vencimento = new Date(`${evento.vencimento}T00:00:00.000Z`);
     if (Number.isNaN(vencimento.getTime())) {
       this.logger.warn(
-        `Cobranca ${evento.asaasPaymentId} com vencimento ilegivel ("${evento.vencimento}"): nao da para saber de qual mes e. Nada foi ligado.`,
+        `Cobranca ${evento.lytexInvoiceId} com vencimento ilegivel ("${evento.vencimento}"): nao da para saber de qual mes e. Nada foi ligado.`,
       );
       return;
     }
@@ -1447,15 +1504,15 @@ export class FamilyBillingService {
       competencia,
     );
 
-    if (existente?.asaasPaymentId === evento.asaasPaymentId) {
+    if (existente?.lytexInvoiceId === evento.lytexInvoiceId) {
       this.logger.debug(
-        `Cobranca ${evento.asaasPaymentId} ja estava ligada a fatura ${existente.id}: webhook reentregue, nada a fazer.`,
+        `Cobranca ${evento.lytexInvoiceId} ja estava ligada a fatura ${existente.id}: webhook reentregue, nada a fazer.`,
       );
       return;
     }
-    if (existente?.asaasPaymentId) {
+    if (existente?.lytexInvoiceId) {
       this.logger.warn(
-        `Fatura ${existente.id} (contrato ${contrato.id}, competencia ${competencia.toISOString().slice(0, 10)}) ja tem a cobranca ${existente.asaasPaymentId}, e a assinatura gerou outra (${evento.asaasPaymentId}). A familia pode ter DUAS cobrancas do mesmo mes. Nada foi sobrescrito: confira no painel do Asaas e apague a que nao for usada.`,
+        `Fatura ${existente.id} (contrato ${contrato.id}, competencia ${competencia.toISOString().slice(0, 10)}) ja tem a cobranca ${existente.lytexInvoiceId}, e a assinatura gerou outra (${evento.lytexInvoiceId}). A familia pode ter DUAS cobrancas do mesmo mes. Nada foi sobrescrito: confira no painel da Lytex e cancele a que nao for usada.`,
       );
       return;
     }
@@ -1465,17 +1522,17 @@ export class FamilyBillingService {
     );
 
     const dados = {
-      asaasPaymentId: evento.asaasPaymentId,
+      lytexInvoiceId: evento.lytexInvoiceId,
       linkDaFatura: evento.linkDaFatura ?? null,
       linhaDigitavel: evento.linhaDigitavel ?? null,
       meioDePagamento: this.meioDaCobranca(evento.meioDePagamento),
-      repasseDiretoAoTransportador: Boolean(conta?.asaasWalletId),
+      repasseDiretoAoTransportador: this.emissorEhSubconta(conta),
     };
 
     if (existente) {
       await this.invoiceRepository.updateAcrossTenants(existente.id, dados);
       this.logger.log(
-        `Cobranca ${evento.asaasPaymentId} da assinatura ${evento.asaasSubscriptionId} ligada a fatura ${existente.id} (competencia ${competencia.toISOString().slice(0, 10)}).`,
+        `Cobranca ${evento.lytexInvoiceId} da assinatura ${evento.lytexSubscriptionId} ligada a fatura ${existente.id} (competencia ${competencia.toISOString().slice(0, 10)}).`,
       );
       return;
     }
@@ -1497,25 +1554,33 @@ export class FamilyBillingService {
     await this.invoiceRepository.updateAcrossTenants(criada.id, dados);
 
     this.logger.log(
-      `Fatura ${criada.id} criada pela assinatura ${evento.asaasSubscriptionId} (contrato ${contrato.id}, competencia ${competencia.toISOString().slice(0, 10)}, vencimento ${evento.vencimento}) e ligada a cobranca ${evento.asaasPaymentId}.`,
+      `Fatura ${criada.id} criada pela assinatura ${evento.lytexSubscriptionId} (contrato ${contrato.id}, competencia ${competencia.toISOString().slice(0, 10)}, vencimento ${evento.vencimento}) e ligada a cobranca ${evento.lytexInvoiceId}.`,
     );
   }
 
   /**
-   * O meio da cobrança do Asaas traduzido para o da fatura.
+   * O meio da cobrança da Lytex traduzido para o da fatura.
    *
-   * `UNDEFINED` vira `null` de propósito: significa que o pagador ainda
-   * não escolheu, e gravar um meio nesse caso seria afirmar na tela algo
-   * que não aconteceu. O meio real chega no evento de pagamento.
+   * Meio desconhecido ou ausente vira `null` de propósito: numa
+   * cobrança com Pix e boleto ligados, o pagador ainda não escolheu, e
+   * gravar um meio nesse caso seria afirmar na tela algo que não
+   * aconteceu. O meio real chega no evento de pagamento.
+   *
+   * Os nomes são os da Lytex, em minúsculas, mas a comparação é
+   * insensível a caixa porque o corpo do webhook dela não é
+   * documentado, e a diferença entre `pix` e `PIX` não pode decidir se
+   * a tela mostra o meio ou não.
    */
   private meioDaCobranca(meio: string | null | undefined): InvoicePaymentMethod | null {
     const conhecidos: Record<string, InvoicePaymentMethod> = {
-      PIX: "PIX",
-      BOLETO: "BOLETO",
-      CREDIT_CARD: "CARTAO_CREDITO",
-      DEBIT_CARD: "CARTAO_DEBITO",
+      pix: "PIX",
+      boleto: "BOLETO",
+      creditcard: "CARTAO_CREDITO",
+      credit_card: "CARTAO_CREDITO",
+      debitcard: "CARTAO_DEBITO",
+      debit_card: "CARTAO_DEBITO",
     };
-    return meio ? (conhecidos[meio] ?? null) : null;
+    return meio ? (conhecidos[meio.toLowerCase()] ?? null) : null;
   }
 
   /**
@@ -1524,7 +1589,7 @@ export class FamilyBillingService {
    * Duas regras, e as duas existem para não cobrar a família duas vezes
    * pelo mesmo mês:
    *
-   * 1. **Mês que já tem cobrança no Asaas é pulado.** Se o Responsável
+   * 1. **Mês que já tem cobrança na Lytex é pulado.** Se o Responsável
    *    já abriu o Pix deste mês, existe cobrança lá; a recorrência
    *    começa no mês seguinte.
    * 2. **Vencimento no passado é pulado.** Uma recorrência que nasce
@@ -1555,10 +1620,10 @@ export class FamilyBillingService {
         contractId,
         competencia,
       );
-      /* Fatura sem `asaasPaymentId` é só a nossa linha de razão: não
+      /* Fatura sem `lytexInvoiceId` é só a nossa linha de razão: não
          existe cobrança no provedor, então a recorrência pode cobrir
          este mês. */
-      if (fatura?.asaasPaymentId) continue;
+      if (fatura?.lytexInvoiceId) continue;
 
       return vencimento;
     }
@@ -1577,4 +1642,40 @@ export class FamilyBillingService {
     }
     return actor.tenantId;
   }
+}
+
+/**
+ * O `subRecipientId` de uma conta de recebimento.
+ *
+ * A Lytex devolve `_id` e `_recipientId` na criação da subconta, e nem
+ * sempre são iguais. O header quer o id da SUBCONTA; o split quer o id
+ * do ESTABELECIMENTO. Esta função existe para o primeiro, e a ordem do
+ * `??` é o que impede um ser usado no lugar do outro por descuido.
+ */
+function subRecipientDe(conta: CompanyPaymentAccount | null): string | undefined {
+  return conta?.lytexSubAccountId ?? undefined;
+}
+
+/**
+ * Por quantos meses a recorrência cobra.
+ *
+ * Contrato sem fim combinado vira `infinity`, que é a verdade: a
+ * cobrança para quando alguém cancelar. Com fim combinado, conta os
+ * meses entre o primeiro vencimento e o fim da vigência, inclusive, e
+ * nunca menos de um: uma assinatura de zero mês não cobraria nada, e um
+ * contrato que termina no mesmo mês da primeira cobrança ainda tem essa
+ * cobrança para fazer.
+ */
+function duracaoDaAssinatura(
+  primeiroVencimento: Date,
+  vigenciaFim: Date | null,
+): { unit: "months" | "years" | "infinity"; value?: number } {
+  if (!vigenciaFim) return { unit: "infinity" };
+
+  const meses =
+    (vigenciaFim.getUTCFullYear() - primeiroVencimento.getUTCFullYear()) * 12 +
+    (vigenciaFim.getUTCMonth() - primeiroVencimento.getUTCMonth()) +
+    1;
+
+  return { unit: "months", value: Math.max(1, meses) };
 }

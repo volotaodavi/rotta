@@ -25,7 +25,7 @@ export class ConfigurarCustodiaDto {
   @ApiPropertyOptional({
     enum: ["CONTA_PRINCIPAL", "SUBCONTA"],
     description:
-      "Quem paga a tarifa recorrente da custódia. O VALOR da tarifa não é publicado pelo Asaas: a documentação confirma que ela existe e remete ao comercial.",
+      "Quem paga a tarifa recorrente da custódia. O VALOR da tarifa não é publicado pela Lytex: a documentação confirma que ela existe e remete ao comercial.",
   })
   @IsOptional()
   @IsIn(["CONTA_PRINCIPAL", "SUBCONTA"])

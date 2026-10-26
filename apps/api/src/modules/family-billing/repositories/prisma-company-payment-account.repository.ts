@@ -34,12 +34,6 @@ export class PrismaCompanyPaymentAccountRepository implements CompanyPaymentAcco
     );
   }
 
-  findByAsaasAccountIdAcrossTenants(asaasAccountId: string): Promise<CompanyPaymentAccount | null> {
-    return this.prisma.withBypass(
-      this.prisma.companyPaymentAccount.findFirst({ where: { asaasAccountId } }),
-    );
-  }
-
   upsertAcrossTenants(
     companyId: string,
     data: UpsertCompanyPaymentAccountData,

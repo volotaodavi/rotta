@@ -96,7 +96,7 @@ jest.mock("../../hooks/use-wallet", () => ({
 
 jest.mock("../../hooks/use-conta-de-recebimento", () => ({
   useContaDeRecebimento: () => mocks.conta,
-  useCriarSubcontaAsaas: () => ({ mutateAsync: mocks.criarSubconta, isPending: false }),
+  useCriarSubconta: () => ({ mutateAsync: mocks.criarSubconta, isPending: false }),
 }));
 
 // eslint-disable-next-line import/first -- o mock precisa existir antes do import da tela.
@@ -206,7 +206,7 @@ describe("Carteira do transportador", () => {
 
     it("com a conta aberta, o convite sai: descrever o presente como promessa e ruido", () => {
       mocks.conta = {
-        data: { conta: { id: "conta-1", status: "ATIVA", asaasAccountId: "acc_1" } },
+        data: { conta: { id: "conta-1", status: "ATIVA", lytexSubAccountId: "sub_1" } },
       };
       montar();
 
@@ -297,9 +297,9 @@ describe("Carteira do transportador", () => {
           conta: {
             id: "conta-1",
             status: "EM_ANALISE",
-            asaasAccountId: "acc_1",
-            asaasWalletId: "wallet_1",
-            asaasOnboardingUrl: null,
+            lytexSubAccountId: "sub_1",
+            lytexRecipientId: "rec_1",
+            lytexSplitLiberado: false,
           },
         },
       };
@@ -316,9 +316,9 @@ describe("Carteira do transportador", () => {
           conta: {
             id: "conta-1",
             status: "ATIVA",
-            asaasAccountId: "acc_1",
-            asaasWalletId: "wallet_1",
-            asaasOnboardingUrl: null,
+            lytexSubAccountId: "sub_1",
+            lytexRecipientId: "rec_1",
+            lytexSplitLiberado: true,
           },
         },
       };

@@ -32,7 +32,7 @@ export class ContractInvoiceResponseDto {
 
   @ApiPropertyOptional({ enum: ["PIX", "BOLETO", "CARTAO_CREDITO", "CARTAO_DEBITO"] })
   meioDePagamento?: string | null;
-  @ApiPropertyOptional({ description: "Página da fatura hospedada pela Asaas" })
+  @ApiPropertyOptional({ description: "Página da fatura hospedada pela Lytex" })
   linkDaFatura?: string | null;
   @ApiPropertyOptional() linhaDigitavel?: string | null;
 
@@ -65,7 +65,7 @@ export class PagamentosDoResponsavelResponseDto {
   @ApiPropertyOptional({ nullable: true }) totalEmAbertoFormatado?: string | null;
   @ApiProperty({
     description:
-      "Falso quando a cobrança pelo app ainda não está ligada nesta implantação (Asaas não configurada): a tela mostra valor e vencimento, mas não oferece pagar.",
+      "Falso quando a cobrança pelo app ainda não está ligada nesta implantação (Lytex não configurada): a tela mostra valor e vencimento, mas não oferece pagar.",
   })
   pagamentoNoAppDisponivel!: boolean;
 }

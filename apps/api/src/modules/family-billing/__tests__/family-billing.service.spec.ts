@@ -12,9 +12,9 @@ import type {
   ContractInvoiceRepository,
 } from "../repositories/contract-invoice.repository";
 import type { AuthenticatedUser } from "@/common/decorators/current-user.decorator";
-import type { AsaasClientService } from "@/modules/billing/asaas-client.service";
-import type { AsaasSubcontasService } from "@/modules/billing/asaas-subcontas.service";
 import type { CompaniesService } from "@/modules/companies/companies.service";
+import type { LytexClientService } from "@/modules/lytex/lytex-client.service";
+import type { LytexSubcontasService } from "@/modules/lytex/lytex-subcontas.service";
 import type { StudentsService } from "@/modules/students/students.service";
 import type { UsersService } from "@/modules/users/users.service";
 import type { WalletService } from "@/modules/wallet/wallet.service";
@@ -48,8 +48,8 @@ function buildFatura(
     vencimento: new Date("2026-04-05T00:00:00.000Z"),
     valorCentavos: 66_000,
     status: "A_VENCER",
-    asaasPaymentId: null,
-    asaasCustomerId: null,
+    lytexInvoiceId: null,
+    lytexClientId: null,
     meioDePagamento: null,
     linkDaFatura: null,
     linhaDigitavel: null,
@@ -73,14 +73,11 @@ describe("FamilyBillingService", () => {
   /* Só os dois métodos que este serviço chama: o dublê não precisa
      fingir a classe inteira, e declarar menos deixa o teste dizer o que
      realmente depende. */
-  let subcontas: Pick<
-    AsaasSubcontasService,
-    "montarSplit" | "chaveDaSubconta" | "criarSubconta" | "sincronizar" | "configurarCustodia"
-  >;
+  let subcontas: Pick<LytexSubcontasService, "montarSplit" | "criarSubconta" | "sincronizar">;
   let companiesService: Pick<CompaniesService, "findByIdOrThrow">;
   let invoiceRepository: jest.Mocked<ContractInvoiceRepository>;
   let paymentAccountRepository: jest.Mocked<CompanyPaymentAccountRepository>;
-  let asaasClient: jest.Mocked<AsaasClientService>;
+  let lytexClient: jest.Mocked<LytexClientService>;
   let studentsService: jest.Mocked<StudentsService>;
   let usersService: jest.Mocked<UsersService>;
   let walletService: jest.Mocked<WalletService>;
@@ -93,7 +90,7 @@ describe("FamilyBillingService", () => {
       list: jest.fn().mockResolvedValue({ items: [], total: 0 }),
       listByStudentAcrossTenants: jest.fn().mockResolvedValue([]),
       findByIdAcrossTenants: jest.fn(),
-      findByAsaasPaymentIdAcrossTenants: jest.fn(),
+      findByLytexInvoiceIdAcrossTenants: jest.fn(),
       listContratosSemFaturaAcrossTenants: jest.fn().mockResolvedValue([]),
       marcarVencidasAcrossTenants: jest.fn().mockResolvedValue(0),
       findContratoParaAssinarAcrossTenants: jest.fn(),
@@ -111,17 +108,16 @@ describe("FamilyBillingService", () => {
       findByCompanyId: jest.fn(),
       upsert: jest.fn(),
       findByCompanyIdAcrossTenants: jest.fn().mockResolvedValue(null),
-      findByAsaasAccountIdAcrossTenants: jest.fn().mockResolvedValue(null),
       upsertAcrossTenants: jest.fn(),
     };
-    asaasClient = {
+    lytexClient = {
       isConfigured: jest.fn().mockReturnValue(true),
-      createPayment: jest.fn(),
+      createInvoice: jest.fn(),
+      getInvoice: jest.fn().mockResolvedValue({ _id: "inv_1", totalValue: 66_000, dueDate: "" }),
       createSubscription: jest.fn(),
-      getPixQrCode: jest.fn(),
-      findCustomerByCpfCnpj: jest.fn(),
-      createCustomer: jest.fn(),
-    } as unknown as jest.Mocked<AsaasClientService>;
+      findClientByReferenceId: jest.fn(),
+      createClient: jest.fn(),
+    } as unknown as jest.Mocked<LytexClientService>;
     studentsService = {
       findByIdOrThrow: jest.fn().mockResolvedValue({ id: "student-1", nome: "Ana" }),
     } as unknown as jest.Mocked<StudentsService>;
@@ -141,15 +137,13 @@ describe("FamilyBillingService", () => {
     */
     subcontas = {
       montarSplit: jest.fn().mockReturnValue(undefined),
-      chaveDaSubconta: jest.fn(),
       criarSubconta: jest.fn(),
-      /* `sincronizar` nao faz nada por padrao: a maioria dos testes nao
-         e sobre a conversa com o Asaas, e o estado gravado continua
-         valendo quando ela nao traz nada. */
-      sincronizar: jest.fn().mockResolvedValue({ onboardingUrl: null, situacaoGeral: null }),
-      /* Entrou em 21/10/2026, com as rotas de controle: ate ali
-         `configurarCustodia` existia e ninguem chamava. */
-      configurarCustodia: jest.fn().mockResolvedValue(undefined),
+      /* `sincronizar` devolve o estado que ja esta gravado: a maioria
+         dos testes nao e sobre a conversa com a Lytex, e assim ela nao
+         muda nada sem que o teste peca. */
+      sincronizar: jest
+        .fn()
+        .mockResolvedValue({ status: "EM_ANALISE", recipientId: null, splitLiberado: false }),
     };
 
     /* O cadastro da transportadora é a fonte dos dados do titular da
@@ -167,15 +161,18 @@ describe("FamilyBillingService", () => {
         numero: "1180",
         complemento: null,
         bairro: "Centro",
+        cidade: "Niteroi",
+        estado: "RJ",
+        tipo: "LTDA",
       }),
     };
 
     service = new FamilyBillingService(
       invoiceRepository,
       paymentAccountRepository,
-      asaasClient,
-      subcontas as AsaasSubcontasService,
-      { rottaWalletId: undefined } as never,
+      lytexClient,
+      subcontas as LytexSubcontasService,
+      { rottaRecipientId: undefined } as never,
       studentsService,
       usersService,
       walletService,
@@ -199,10 +196,13 @@ describe("FamilyBillingService", () => {
       id: "conta-1",
       companyId: "empresa-1",
       status: "ATIVA",
-      asaasWalletId: "wallet-1",
-      asaasAccountId: "acc_1",
+      lytexSubAccountId: "sub_1",
+      lytexRecipientId: "rec_1",
+      lytexSplitLiberado: true,
+      /* Resto do desenho anterior, quando a custodia exigia a chave de
+         API da subconta. A coluna segue no banco como historico, e o
+         teste guarda que ela nunca sai na resposta. */
       asaasApiKeyCifrada: "iv:tag:SEGREDO",
-      asaasOnboardingUrl: null,
       chavePix: "chave@pix",
       emissorDaCobranca: "ROTTA",
       custodiaAtiva: false,
@@ -370,7 +370,7 @@ describe("FamilyBillingService", () => {
     });
 
     it("diz que o pagamento no app não está disponível quando a Asaas não está configurada", async () => {
-      asaasClient.isConfigured.mockReturnValue(false);
+      lytexClient.isConfigured.mockReturnValue(false);
 
       const resultado = await service.getPagamentosDoAluno("student-1", responsavelActor);
 
@@ -381,22 +381,24 @@ describe("FamilyBillingService", () => {
   describe("abrirPagamentoPix", () => {
     beforeEach(() => {
       invoiceRepository.findByIdAcrossTenants.mockResolvedValue(buildFatura());
-      asaasClient.createPayment.mockResolvedValue({
-        id: "pay_1",
-        customer: "cus_1",
-        status: "PENDING",
-        billingType: "PIX",
-        value: 660,
-        invoiceUrl: "https://asaas.test/i/1",
+      lytexClient.createInvoice.mockResolvedValue({
+        _id: "inv_1",
+        totalValue: 66_000,
+        dueDate: "2026-04-05T00:00:00.000Z",
+        status: "waitingPayment",
+        linkCheckout: "https://pay.lytex.test/i/1",
       } as never);
-      asaasClient.getPixQrCode.mockResolvedValue({
-        success: true,
-        encodedImage: "base64==",
-        payload: "00020126...",
-        expirationDate: "2026-04-05 23:59:59",
+      lytexClient.getInvoice.mockResolvedValue({
+        _id: "inv_1",
+        totalValue: 66_000,
+        dueDate: "2026-04-05T00:00:00.000Z",
+        linkCheckout: "https://pay.lytex.test/i/1",
+        paymentMethods: {
+          pix: { enable: true, qrcode: "00020126...", validUntil: "2026-04-05T23:59:59.000Z" },
+        },
       });
-      asaasClient.findCustomerByCpfCnpj.mockResolvedValue({
-        id: "cus_1",
+      lytexClient.findClientByReferenceId.mockResolvedValue({
+        _id: "cli_1",
         name: "Maria",
         cpfCnpj: "12345678900",
       });
@@ -416,20 +418,25 @@ describe("FamilyBillingService", () => {
       );
 
       expect(studentsService.findByIdOrThrow).toHaveBeenCalledWith("student-1", responsavelActor);
-      expect(asaasClient.createPayment).not.toHaveBeenCalled();
+      expect(lytexClient.createInvoice).not.toHaveBeenCalled();
     });
 
     it("cria a cobrança com o prefixo que o webhook usa para reconhecer o fluxo", async () => {
       await service.abrirPagamentoPix("fatura-1", responsavelActor);
 
-      expect(asaasClient.createPayment).toHaveBeenCalledWith(
+      expect(lytexClient.createInvoice).toHaveBeenCalledWith(
         expect.objectContaining({
-          billingType: "PIX",
-          value: 660,
-          dueDate: "2026-04-05",
-          externalReference: "fatura:fatura-1",
+          _clientId: "cli_1",
+          /* Centavos, inteiro: é assim que a Lytex trabalha e é assim
+             que a fatura já guarda. Nenhuma divisão por 100. */
+          items: [expect.objectContaining({ quantity: 1, value: 66_000 })],
+          referenceId: "fatura:fatura-1",
+          paymentMethods: expect.objectContaining({
+            pix: { enable: true },
+            boleto: { enable: false },
+          }),
         }),
-        /* Segundo argumento: a chave da subconta. `undefined` aqui é o
+        /* Segundo argumento: o `subRecipientId`. `undefined` aqui é o
            caso de hoje, em que a Rotta é a emissora. */
         undefined,
       );
@@ -438,7 +445,7 @@ describe("FamilyBillingService", () => {
     it("sem subconta, a cobrança sai sem split", async () => {
       await service.abrirPagamentoPix("fatura-1", responsavelActor);
 
-      const [payload] = (asaasClient.createPayment as jest.Mock).mock.calls[0];
+      const [payload] = (lytexClient.createInvoice as jest.Mock).mock.calls[0];
       expect(payload.split).toBeUndefined();
     });
 
@@ -449,35 +456,41 @@ describe("FamilyBillingService", () => {
       até o fim do mês.
     */
     it("quando há split montado, ele vai junto na cobrança", async () => {
-      (subcontas.montarSplit as jest.Mock).mockReturnValue([
-        { walletId: "wallet-da-transportadora", percentualValue: 98.71 },
-      ]);
+      const split = {
+        type: "percentage",
+        recipients: [{ _recipientId: "rec_1", value: 98.71 }],
+      };
+      (subcontas.montarSplit as jest.Mock).mockReturnValue(split);
 
       await service.abrirPagamentoPix("fatura-1", responsavelActor);
 
-      const [payload] = (asaasClient.createPayment as jest.Mock).mock.calls[0];
-      expect(payload.split).toEqual([
-        { walletId: "wallet-da-transportadora", percentualValue: 98.71 },
-      ]);
+      const [payload] = (lytexClient.createInvoice as jest.Mock).mock.calls[0];
+      expect(payload.split).toEqual(split);
     });
 
     /* Duas tentativas de pagar a mesma fatura não podem gerar duas
        cobranças, ou a família paga duas vezes. */
     it("reaproveita a cobrança já criada para a mesma fatura", async () => {
       invoiceRepository.findByIdAcrossTenants.mockResolvedValue(
-        buildFatura({ asaasPaymentId: "pay_existente" }),
+        buildFatura({ lytexInvoiceId: "inv_existente" }),
       );
 
       const resultado = await service.abrirPagamentoPix("fatura-1", responsavelActor);
 
-      expect(asaasClient.createPayment).not.toHaveBeenCalled();
-      expect(asaasClient.getPixQrCode).toHaveBeenCalledWith("pay_existente");
+      expect(lytexClient.createInvoice).not.toHaveBeenCalled();
+      expect(lytexClient.getInvoice).toHaveBeenCalledWith("inv_existente", undefined);
       expect(resultado.pixPayload).toBe("00020126...");
     });
 
     it("registra na fatura se a cobrança saiu com split ou sem", async () => {
+      /* Emitir em nome da subconta exige as tres coisas: ela existe, o
+         split ja foi liberado pelo KYC, e o emissor configurado e
+         `SUBCONTA`. Faltando qualquer uma, a cobranca e da Rotta. */
       paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue({
-        asaasWalletId: "wal_1",
+        lytexSubAccountId: "sub_1",
+        lytexRecipientId: "rec_1",
+        lytexSplitLiberado: true,
+        emissorDaCobranca: "SUBCONTA",
       } as never);
 
       await service.abrirPagamentoPix("fatura-1", responsavelActor);
@@ -499,8 +512,8 @@ describe("FamilyBillingService", () => {
       );
     });
 
-    it("sem Asaas configurada, explica em vez de estourar", async () => {
-      asaasClient.isConfigured.mockReturnValue(false);
+    it("sem a Lytex configurada, explica em vez de estourar", async () => {
+      lytexClient.isConfigured.mockReturnValue(false);
 
       await expect(service.abrirPagamentoPix("fatura-1", responsavelActor)).rejects.toThrow(
         /ainda não disponível/,
@@ -518,16 +531,16 @@ describe("FamilyBillingService", () => {
       await expect(service.abrirPagamentoPix("fatura-1", responsavelActor)).rejects.toThrow(
         BadRequestException,
       );
-      expect(asaasClient.createCustomer).not.toHaveBeenCalled();
+      expect(lytexClient.createClient).not.toHaveBeenCalled();
     });
   });
 
   describe("confirmarPagamento", () => {
     it("marca paga, calcula o repasse e credita o Rotta Pay do transportador", async () => {
-      invoiceRepository.findByAsaasPaymentIdAcrossTenants.mockResolvedValue(buildFatura());
+      invoiceRepository.findByLytexInvoiceIdAcrossTenants.mockResolvedValue(buildFatura());
 
       await service.confirmarPagamento({
-        asaasPaymentId: "pay_1",
+        lytexInvoiceId: "inv_1",
         valorPagoCentavos: 66_000,
         taxaDoProvedorCentavos: 199,
         pagoEm: new Date("2026-04-03T12:00:00.000Z"),
@@ -554,12 +567,12 @@ describe("FamilyBillingService", () => {
     /* Com split, o dinheiro nunca passou pela conta da Rotta: creditar
        mostraria um saldo a sacar que o transportador já recebeu. */
     it("com split, não credita a carteira", async () => {
-      invoiceRepository.findByAsaasPaymentIdAcrossTenants.mockResolvedValue(
+      invoiceRepository.findByLytexInvoiceIdAcrossTenants.mockResolvedValue(
         buildFatura({ repasseDiretoAoTransportador: true }),
       );
 
       await service.confirmarPagamento({
-        asaasPaymentId: "pay_1",
+        lytexInvoiceId: "inv_1",
         valorPagoCentavos: 66_000,
         taxaDoProvedorCentavos: 199,
         pagoEm: new Date(),
@@ -569,15 +582,15 @@ describe("FamilyBillingService", () => {
       expect(walletService.creditarRecebimentoDeFatura).not.toHaveBeenCalled();
     });
 
-    /* A Asaas reentrega webhook. Creditar duas vezes só apareceria no
+    /* A provedora reentrega webhook. Creditar duas vezes só apareceria no
        dia do saque. */
     it("webhook reentregue não credita duas vezes", async () => {
-      invoiceRepository.findByAsaasPaymentIdAcrossTenants.mockResolvedValue(
+      invoiceRepository.findByLytexInvoiceIdAcrossTenants.mockResolvedValue(
         buildFatura({ status: "PAGA" }),
       );
 
       await service.confirmarPagamento({
-        asaasPaymentId: "pay_1",
+        lytexInvoiceId: "inv_1",
         valorPagoCentavos: 66_000,
         taxaDoProvedorCentavos: 199,
         pagoEm: new Date(),
@@ -588,11 +601,11 @@ describe("FamilyBillingService", () => {
     });
 
     it("pagamento sem fatura correspondente é logado, nunca estoura o webhook", async () => {
-      invoiceRepository.findByAsaasPaymentIdAcrossTenants.mockResolvedValue(null);
+      invoiceRepository.findByLytexInvoiceIdAcrossTenants.mockResolvedValue(null);
 
       await expect(
         service.confirmarPagamento({
-          asaasPaymentId: "pay_desconhecido",
+          lytexInvoiceId: "inv_desconhecida",
           valorPagoCentavos: 1000,
           taxaDoProvedorCentavos: null,
           pagoEm: new Date(),
@@ -600,11 +613,11 @@ describe("FamilyBillingService", () => {
       ).resolves.toBeUndefined();
     });
 
-    it("sem netValue da Asaas, o repasse é o valor cheio (taxa desconhecida, nunca estimada)", async () => {
-      invoiceRepository.findByAsaasPaymentIdAcrossTenants.mockResolvedValue(buildFatura());
+    it("sem o liquido da Lytex, o repasse e o valor cheio (taxa desconhecida, nunca estimada)", async () => {
+      invoiceRepository.findByLytexInvoiceIdAcrossTenants.mockResolvedValue(buildFatura());
 
       await service.confirmarPagamento({
-        asaasPaymentId: "pay_1",
+        lytexInvoiceId: "inv_1",
         valorPagoCentavos: 66_000,
         taxaDoProvedorCentavos: null,
         pagoEm: new Date(),
@@ -664,9 +677,12 @@ describe("FamilyBillingService", () => {
   */
   describe("criarSubcontaDaPropriaEmpresa", () => {
     const subcontaCriada = {
-      asaasAccountId: "acc_novo",
-      asaasWalletId: "wallet_novo",
-      asaasApiKeyCifrada: "iv:tag:cifra",
+      _id: "sub_novo",
+      _recipientId: "rec_novo",
+      status: "active",
+      /* Criada e ainda sem split liberado: e o estado real de uma
+         subconta nova, com o KYC correndo por fora. */
+      splitAutorization: false,
     };
 
     beforeEach(() => {
@@ -676,18 +692,25 @@ describe("FamilyBillingService", () => {
         id: "conta-1",
         companyId: "company-1",
         status: "EM_ANALISE",
-        ...subcontaCriada,
+        lytexSubAccountId: "sub_novo",
+        lytexRecipientId: "rec_novo",
+        lytexSplitLiberado: true,
       } as never);
     });
 
-    it("grava numa operacao tudo o que o Asaas devolveu, e nasce EM_ANALISE", async () => {
+    /* `EM_ANALISE`, nunca `ATIVA`: a conta nasce antes de o KYC
+       terminar e antes de o split ser liberado. Dizer "ativa" aqui
+       prometeria recebimento que ainda nao existe. */
+    it("grava numa operacao o que a Lytex devolveu, e nasce EM_ANALISE", async () => {
       await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
         faturamentoMensalCentavos: 450_000,
       });
 
       expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
         status: "EM_ANALISE",
-        ...subcontaCriada,
+        lytexSubAccountId: "sub_novo",
+        lytexRecipientId: "rec_novo",
+        lytexSplitLiberado: false,
       });
     });
 
@@ -697,27 +720,33 @@ describe("FamilyBillingService", () => {
       });
 
       expect(subcontas.criarSubconta).toHaveBeenCalledWith({
-        nome: "Transportes Lima LTDA",
+        razaoSocial: "Transportes Lima LTDA",
+        nomeFantasia: "Transportes Lima",
         email: "contato@lima.com.br",
-        emailDeLogin: "contato@lima.com.br",
         cpfCnpj: "12345678000190",
+        tipo: "LTDA",
         telefone: "21999990000",
         endereco: "Avenida Roberto Silveira",
         numero: "1180",
         complemento: undefined,
         bairro: "Centro",
+        cidade: "Niteroi",
+        uf: "RJ",
         cep: "24900000",
         faturamentoMensalCentavos: 450_000,
       });
     });
 
-    it("razao social, e nao nome fantasia: para o Asaas o nome tem que bater com o documento", async () => {
+    it("razao social no titular: para a Lytex o nome tem que bater com o documento", async () => {
       await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
         faturamentoMensalCentavos: 450_000,
       });
 
       expect(subcontas.criarSubconta).toHaveBeenCalledWith(
-        expect.objectContaining({ nome: "Transportes Lima LTDA" }),
+        expect.objectContaining({
+          razaoSocial: "Transportes Lima LTDA",
+          nomeFantasia: "Transportes Lima",
+        }),
       );
     });
 
@@ -737,36 +766,17 @@ describe("FamilyBillingService", () => {
     });
 
     /*
-      O schema de `POST /v3/accounts` diz que `loginEmail`, "caso nao
-      informado", usa o `email` da subconta. Ou seja: apontar um e-mail
-      de financeiro faria o CONTADOR virar o login da conta de
-      recebimento, e o dono perderia o acesso a propria conta. O login
-      fica com a empresa, sempre.
+      Duas subcontas para o mesmo CNPJ deixariam a primeira sem ninguem
+      olhando, possivelmente com saldo do transportador dentro, e nao ha
+      desfazer. A razao mudou com a troca de provedora (no Asaas era a
+      chave de API que so aparecia uma vez); a recusa continua valendo
+      pelo que sempre importou.
     */
-    it("o login da conta fica com a empresa, nunca com o financeiro", async () => {
-      await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
-        faturamentoMensalCentavos: 450_000,
-        email: "financeiro@lima.com.br",
-      });
-
-      expect(subcontas.criarSubconta).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: "financeiro@lima.com.br",
-          emailDeLogin: "contato@lima.com.br",
-        }),
-      );
-    });
-
-    /*
-      A chave de API da subconta so aparece na resposta da criacao, e
-      nao ha endpoint para pedir de novo. Criar a segunda deixaria a
-      primeira orfa no Asaas, possivelmente com saldo, sem desfazer.
-    */
-    it("recusa a segunda subconta, antes de chamar o Asaas", async () => {
+    it("recusa a segunda subconta, antes de chamar a Lytex", async () => {
       paymentAccountRepository.findByCompanyId.mockResolvedValue({
         id: "conta-1",
         companyId: "company-1",
-        asaasAccountId: "acc_ja_existe",
+        lytexSubAccountId: "sub_ja_existe",
       } as never);
 
       await expect(
@@ -779,7 +789,7 @@ describe("FamilyBillingService", () => {
       paymentAccountRepository.findByCompanyId.mockResolvedValue({
         id: "conta-1",
         companyId: "company-1",
-        asaasAccountId: null,
+        lytexSubAccountId: null,
         chavePix: "11999998888",
       } as never);
 
@@ -790,7 +800,20 @@ describe("FamilyBillingService", () => {
       expect(subcontas.criarSubconta).toHaveBeenCalled();
     });
 
-    it("a resposta passa pelo mapeador: nunca a chave", async () => {
+    /* O mapeador continua sendo o caminho unico de saida mesmo sem
+       chave de terceiro na arquitetura: a coluna cifrada segue no banco
+       como historico, e a proxima coluna sensivel vai nascer igual. */
+    it("a resposta passa pelo mapeador, campo a campo", async () => {
+      paymentAccountRepository.upsert.mockResolvedValue({
+        id: "conta-1",
+        companyId: "company-1",
+        status: "EM_ANALISE",
+        lytexSubAccountId: "sub_novo",
+        lytexRecipientId: "rec_novo",
+        lytexSplitLiberado: true,
+        asaasApiKeyCifrada: "iv:tag:cifra",
+      } as never);
+
       const resposta = await service.criarSubcontaDaPropriaEmpresa(empresaActor, {
         faturamentoMensalCentavos: 450_000,
       });
@@ -883,7 +906,7 @@ describe("FamilyBillingService", () => {
         id: "conta-1",
         companyId: "company-1",
         status: "ATIVA",
-        asaasAccountId: "acc_1",
+        lytexSubAccountId: "sub_1",
       } as never);
 
       const resposta = await service.getContaDeRecebimento(empresaActor);
@@ -916,65 +939,50 @@ describe("FamilyBillingService", () => {
   });
 
   /*
-    Dois defeitos reais, encontrados em 20/10/2026 ao conferir o schema
-    da referencia do Asaas contra o que o codigo lia:
+    A Lytex nao documenta webhook de situacao de subconta. Sem esta
+    consulta na leitura da tela, uma conta aprovada pelo KYC ficaria em
+    "em analise" para sempre, e o transportador nao teria como saber que
+    ja pode receber.
 
-    1. `onboardingUrl` NAO vem na resposta de criacao da subconta. O
-       codigo gravava um campo que nunca chegava, e o botao "enviar os
-       documentos" nunca aparecia para ninguem.
-    2. A situacao da conta so mudava sozinha pelo webhook, e os eventos
-       de conta precisam ser marcados a mao no painel do Asaas. Enquanto
-       nao estiverem, a conta ficava presa em "em analise" para sempre.
-
-    `GET /v3/myAccount/documents` e `GET /v3/myAccount/status` resolvem
-    os dois, e e a leitura da tela que os dispara.
+    `ATIVA` exige as DUAS coisas: `status: "active"` diz que a conta
+    existe e nao esta bloqueada, `splitAutorization` diz que ela pode
+    dividir. Ativa sem split recebe cobranca e nao repassa a taxa da
+    Rotta, e marca-la como ativa mostraria na tela um recebimento que
+    funciona pela metade.
   */
   describe("sincronizacao da subconta na leitura da tela", () => {
     const emAnalise = {
       id: "conta-1",
       companyId: "company-1",
       status: "EM_ANALISE",
-      asaasAccountId: "acc_1",
-      asaasApiKeyCifrada: "iv:tag:cifra",
-      asaasOnboardingUrl: null,
+      lytexSubAccountId: "sub_1",
+      lytexRecipientId: null,
+      lytexSplitLiberado: false,
     };
 
-    it("grava o link de documentos que a criacao nunca devolveu", async () => {
+    it("aprovada na Lytex com split liberado, fica ATIVA aqui", async () => {
       paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
       (subcontas.sincronizar as jest.Mock).mockResolvedValue({
-        onboardingUrl: "https://asaas.com/onboarding/abc",
-        situacaoGeral: null,
-      });
-      paymentAccountRepository.upsert.mockResolvedValue({
-        ...emAnalise,
-        asaasOnboardingUrl: "https://asaas.com/onboarding/abc",
-      } as never);
-
-      const { conta } = await service.getContaDeRecebimento(empresaActor);
-
-      expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
-        asaasOnboardingUrl: "https://asaas.com/onboarding/abc",
-      });
-      expect(conta?.asaasOnboardingUrl).toBe("https://asaas.com/onboarding/abc");
-    });
-
-    it("aprovada no Asaas, ativa aqui, mesmo sem o webhook configurado", async () => {
-      paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
-      (subcontas.sincronizar as jest.Mock).mockResolvedValue({
-        onboardingUrl: null,
-        situacaoGeral: "APPROVED",
+        status: "ATIVA",
+        recipientId: "rec_1",
+        splitLiberado: true,
       });
       paymentAccountRepository.upsert.mockResolvedValue({
         ...emAnalise,
         status: "ATIVA",
+        lytexRecipientId: "rec_1",
+        lytexSplitLiberado: true,
       } as never);
 
       const { conta } = await service.getContaDeRecebimento(empresaActor);
 
       expect(paymentAccountRepository.upsert).toHaveBeenCalledWith("company-1", {
         status: "ATIVA",
+        lytexRecipientId: "rec_1",
+        lytexSplitLiberado: true,
       });
       expect(conta?.status).toBe("ATIVA");
+      expect(conta?.podeEmitirPelaSubconta).toBe(true);
     });
 
     it("sem novidade, nao grava nada: a tela de dinheiro abre muito", async () => {
@@ -985,9 +993,21 @@ describe("FamilyBillingService", () => {
       expect(paymentAccountRepository.upsert).not.toHaveBeenCalled();
     });
 
-    /* Conta ativa com link guardado nao tem o que sincronizar, e duas
-       chamadas ao Asaas por abertura de tela seriam pagas por nada. */
-    it("conta ativa nao consulta o Asaas de novo", async () => {
+    /* A tela de dinheiro mostra saldo, faturas e vencimentos, que sao
+       dados nossos. A Lytex fora do ar nao pode esconder nada disso. */
+    it("falha na consulta nao derruba a tela: devolve o estado guardado", async () => {
+      paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
+      (subcontas.sincronizar as jest.Mock).mockRejectedValue(new Error("Lytex fora"));
+
+      const { conta } = await service.getContaDeRecebimento(empresaActor);
+
+      expect(conta?.status).toBe("EM_ANALISE");
+      expect(paymentAccountRepository.upsert).not.toHaveBeenCalled();
+    });
+
+    /* Conta ativa nao tem o que sincronizar, e uma chamada de rede por
+       abertura de tela seria paga por nada. */
+    it("conta ativa nao consulta a Lytex de novo", async () => {
       paymentAccountRepository.findByCompanyId.mockResolvedValue({
         ...emAnalise,
         status: "ATIVA",
@@ -998,10 +1018,10 @@ describe("FamilyBillingService", () => {
       expect(subcontas.sincronizar).not.toHaveBeenCalled();
     });
 
-    it("conta sem subconta nenhuma nao consulta o Asaas", async () => {
+    it("conta sem subconta nenhuma nao consulta a Lytex", async () => {
       paymentAccountRepository.findByCompanyId.mockResolvedValue({
         ...emAnalise,
-        asaasAccountId: null,
+        lytexSubAccountId: null,
         status: "PENDENTE",
       } as never);
 
@@ -1013,8 +1033,9 @@ describe("FamilyBillingService", () => {
     it("vale igual pelo painel do Admin", async () => {
       paymentAccountRepository.findByCompanyId.mockResolvedValue(emAnalise as never);
       (subcontas.sincronizar as jest.Mock).mockResolvedValue({
-        onboardingUrl: null,
-        situacaoGeral: "REJECTED",
+        status: "RECUSADA",
+        recipientId: null,
+        splitLiberado: false,
       });
       paymentAccountRepository.upsert.mockResolvedValue({
         ...emAnalise,
@@ -1042,123 +1063,6 @@ describe("FamilyBillingService", () => {
     });
   });
 
-  /*
-    Sem isto, uma subconta aprovada continuaria aparecendo como "em
-    analise" ate alguem abrir o painel do Asaas para conferir.
-  */
-  describe("aplicarSituacaoDaSubconta", () => {
-    const contaEmAnalise = {
-      id: "conta-1",
-      companyId: "company-1",
-      status: "EM_ANALISE",
-      asaasAccountId: "acc_1",
-    };
-
-    it("aprovacao geral aprovada ativa a conta", async () => {
-      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
-        contaEmAnalise as never,
-      );
-
-      await service.aplicarSituacaoDaSubconta({
-        asaasAccountId: "acc_1",
-        situacaoGeral: "APPROVED",
-        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
-      });
-
-      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
-        status: "ATIVA",
-      });
-    });
-
-    it("recusada vira RECUSADA", async () => {
-      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
-        contaEmAnalise as never,
-      );
-
-      await service.aplicarSituacaoDaSubconta({
-        asaasAccountId: "acc_1",
-        situacaoGeral: "REJECTED",
-        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_REJECTED",
-      });
-
-      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
-        status: "RECUSADA",
-      });
-    });
-
-    it("PENDING e AWAITING_APPROVAL caem no mesmo EM_ANALISE", async () => {
-      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue({
-        ...contaEmAnalise,
-        status: "ATIVA",
-      } as never);
-
-      await service.aplicarSituacaoDaSubconta({
-        asaasAccountId: "acc_1",
-        situacaoGeral: "PENDING",
-        eventoDaAsaas: "ACCOUNT_STATUS_DOCUMENT_PENDING",
-      });
-
-      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith("company-1", {
-        status: "EM_ANALISE",
-      });
-    });
-
-    it("mesmo estado nao grava nada: o Asaas reentrega o mesmo evento", async () => {
-      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
-        contaEmAnalise as never,
-      );
-
-      await service.aplicarSituacaoDaSubconta({
-        asaasAccountId: "acc_1",
-        situacaoGeral: "PENDING",
-        eventoDaAsaas: "ACCOUNT_STATUS_DOCUMENT_PENDING",
-      });
-
-      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
-    });
-
-    /*
-      O Asaas acrescenta valores sem avisar, e mudar o estado de uma
-      conta de recebimento por um nome que ninguem leu e pior do que
-      nao mudar.
-    */
-    it("situacao desconhecida nao mexe em nada", async () => {
-      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(
-        contaEmAnalise as never,
-      );
-
-      await service.aplicarSituacaoDaSubconta({
-        asaasAccountId: "acc_1",
-        situacaoGeral: "SOMETHING_NEW",
-        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_SOMETHING",
-      });
-
-      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
-    });
-
-    it("subconta que nao e de nenhuma transportadora nossa e ignorada", async () => {
-      paymentAccountRepository.findByAsaasAccountIdAcrossTenants.mockResolvedValue(null);
-
-      await service.aplicarSituacaoDaSubconta({
-        asaasAccountId: "acc_de_outro",
-        situacaoGeral: "APPROVED",
-        eventoDaAsaas: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
-      });
-
-      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
-    });
-  });
-
-  /*
-    A cobrança mensal automática (pedido do fundador em 21/10/2026): o
-    transportador, ou o Admin ajudando, liga a recorrência de um contrato
-    e a partir dali o Asaas cobra a família todo mês. O responsável nunca
-    precisa de conta: ele paga pelo link.
-
-    Os testes abaixo cobrem os casos em que errar custa dinheiro de uma
-    família de verdade — cobrança dobrada, cobrança depois do fim do
-    contrato, e recorrência órfã no provedor.
-  */
   describe("criarAssinaturaDoProprioContrato", () => {
     function buildContrato(overrides: Record<string, unknown> = {}) {
       return {
@@ -1171,8 +1075,8 @@ describe("FamilyBillingService", () => {
         status: "ATIVO",
         vigenciaInicio: new Date("2026-02-01T00:00:00.000Z"),
         vigenciaFim: null,
-        asaasSubscriptionId: null,
-        asaasSubscriptionStatus: null,
+        lytexSubscriptionId: null,
+        lytexSubscriptionStatus: null,
         student: { id: "student-1", nome: "Ana" },
         company: { id: "company-1", nomeFantasia: "Transportes Lima" },
         ...overrides,
@@ -1191,15 +1095,13 @@ describe("FamilyBillingService", () => {
         telefone: "21999887766",
         cpf: "12345678909",
       } as never);
-      asaasClient.findCustomerByCpfCnpj.mockResolvedValue({ id: "cus_1" } as never);
-      asaasClient.createSubscription.mockResolvedValue({
-        id: "sub_1",
-        customer: "cus_1",
-        status: "ACTIVE",
-        billingType: "PIX",
-        value: 660,
-        nextDueDate: "2026-04-05",
-      } as never);
+      lytexClient.findClientByReferenceId.mockResolvedValue({ _id: "cli_1" } as never);
+      lytexClient.createSubscription.mockResolvedValue({
+        _id: "sub_1",
+        _clientId: "cli_1",
+        status: "active",
+        nextDueDate: "2026-04-05T00:00:00.000Z",
+      });
     });
 
     afterEach(() => {
@@ -1213,25 +1115,23 @@ describe("FamilyBillingService", () => {
         {},
       );
 
-      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
+      expect(lytexClient.createSubscription).toHaveBeenCalledWith(
         expect.objectContaining({
-          customer: "cus_1",
-          billingType: "PIX",
-          value: 660,
-          cycle: "MONTHLY",
-          nextDueDate: "2026-04-05",
-          externalReference: "contrato:contrato-1",
+          _clientId: "cli_1",
+          type: "monthly",
+          items: [expect.objectContaining({ quantity: 1, value: 66_000 })],
+          nextDueDate: "2026-04-05T00:00:00.000Z",
+          referenceId: "contrato:contrato-1",
         }),
-        undefined,
       );
       expect(invoiceRepository.atualizarAssinaturaDoContratoAcrossTenants).toHaveBeenCalledWith(
         "contrato-1",
         expect.objectContaining({
-          asaasSubscriptionId: "sub_1",
-          asaasSubscriptionStatus: "ACTIVE",
+          lytexSubscriptionId: "sub_1",
+          lytexSubscriptionStatus: "active",
         }),
       );
-      expect(resultado.asaasSubscriptionId).toBe("sub_1");
+      expect(resultado.lytexSubscriptionId).toBe("sub_1");
       /* `formatarCentavos` usa espaco nao separavel (U+00A0) entre o
          "R$" e o numero: comparar com um espaco comum falha com as duas
          strings parecendo iguais na saida do teste. */
@@ -1241,17 +1141,17 @@ describe("FamilyBillingService", () => {
     /*
       Duas recorrências no mesmo contrato cobram a mesma família duas
       vezes por mês, e o estrago aparece no extrato dela. A recusa vem
-      ANTES da chamada ao Asaas, porque depois não há como desfazer.
+      ANTES da chamada à Lytex, porque depois não há como desfazer.
     */
-    it("recusa a segunda assinatura, sem chamar o Asaas", async () => {
+    it("recusa a segunda assinatura, sem chamar a Lytex", async () => {
       invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(
-        buildContrato({ asaasSubscriptionId: "sub_ja_existe" }) as never,
+        buildContrato({ lytexSubscriptionId: "sub_ja_existe" }) as never,
       );
 
       await expect(
         service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
       ).rejects.toThrow(BadRequestException);
-      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+      expect(lytexClient.createSubscription).not.toHaveBeenCalled();
     });
 
     it("recusa contrato que nao esta ativo", async () => {
@@ -1262,7 +1162,7 @@ describe("FamilyBillingService", () => {
       await expect(
         service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
       ).rejects.toThrow(BadRequestException);
-      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+      expect(lytexClient.createSubscription).not.toHaveBeenCalled();
     });
 
     /*
@@ -1278,15 +1178,16 @@ describe("FamilyBillingService", () => {
       await expect(
         service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
       ).rejects.toThrow(BadRequestException);
-      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+      expect(lytexClient.createSubscription).not.toHaveBeenCalled();
     });
 
     /*
-      Sem `endDate`, a recorrência continua cobrando a família depois de
-      o contrato acabar. É o campo que liga `Contract.vigenciaFim` ao
-      Asaas.
+      Sem limite de duração, a recorrência continua cobrando a família
+      depois de o contrato acabar. `duration` é o campo que liga
+      `Contract.vigenciaFim` à Lytex: de abril a dezembro são nove
+      meses, contando os dois extremos.
     */
-    it("manda endDate quando o contrato tem fim de vigencia", async () => {
+    it("a duracao vem do fim de vigencia do contrato", async () => {
       invoiceRepository.findContratoParaAssinarAcrossTenants.mockResolvedValue(
         buildContrato({ vigenciaFim: new Date("2026-12-20T00:00:00.000Z") }) as never,
       );
@@ -1297,18 +1198,20 @@ describe("FamilyBillingService", () => {
         {},
       );
 
-      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
-        expect.objectContaining({ endDate: "2026-12-20" }),
-        undefined,
+      expect(lytexClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ duration: { unit: "months", value: 9 } }),
       );
       expect(resultado.ultimoVencimento).toBe("2026-12-20");
     });
 
-    it("nao manda endDate quando o contrato nao tem fim combinado", async () => {
+    /* Sem fim combinado, `infinity` é a verdade: a cobrança para quando
+       alguém cancelar, e não numa data inventada por nós. */
+    it("sem fim combinado, a duracao e infinita", async () => {
       await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
 
-      const [corpo] = asaasClient.createSubscription.mock.calls[0] as [Record<string, unknown>];
-      expect(corpo).not.toHaveProperty("endDate");
+      expect(lytexClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ duration: { unit: "infinity" } }),
+      );
     });
 
     /*
@@ -1320,32 +1223,30 @@ describe("FamilyBillingService", () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockImplementation(
         (_contrato, competencia) =>
           Promise.resolve(
-            competencia.getUTCMonth() === 3 ? ({ asaasPaymentId: "pay_de_abril" } as never) : null,
+            competencia.getUTCMonth() === 3 ? ({ lytexInvoiceId: "inv_de_abril" } as never) : null,
           ),
       );
 
       await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
 
-      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
-        expect.objectContaining({ nextDueDate: "2026-05-05" }),
-        undefined,
+      expect(lytexClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ nextDueDate: "2026-05-05T00:00:00.000Z" }),
       );
     });
 
     /*
-      Fatura sem `asaasPaymentId` é só a nossa linha de razão: não existe
+      Fatura sem `lytexInvoiceId` é só a nossa linha de razão: não existe
       cobrança no provedor, então a recorrência pode cobrir o mês.
     */
     it("nao pula o mes quando a fatura existe mas nunca virou cobranca", async () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
-        asaasPaymentId: null,
+        lytexInvoiceId: null,
       } as never);
 
       await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
 
-      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
-        expect.objectContaining({ nextDueDate: "2026-04-05" }),
-        undefined,
+      expect(lytexClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ nextDueDate: "2026-04-05T00:00:00.000Z" }),
       );
     });
 
@@ -1359,15 +1260,14 @@ describe("FamilyBillingService", () => {
 
       await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
 
-      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
-        expect.objectContaining({ nextDueDate: "2026-05-05" }),
-        undefined,
+      expect(lytexClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ nextDueDate: "2026-05-05T00:00:00.000Z" }),
       );
     });
 
     /*
-      O Asaas exige `cpfCnpj` para criar o cliente da cobrança
-      (`CustomerSaveRequestDTO`), e desde 14/09/2026 a Rotta não coleta
+      A Lytex exige `cpfCnpj` para criar o cliente da cobrança
+      (`POST /v2/clients`), e desde 14/09/2026 a Rotta não coleta
       CPF de Responsável. Sem o documento não existe cobrança para essa
       família por nenhum caminho.
     */
@@ -1383,7 +1283,7 @@ describe("FamilyBillingService", () => {
       await expect(
         service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
       ).rejects.toThrow(/Marina Alves/);
-      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+      expect(lytexClient.createSubscription).not.toHaveBeenCalled();
     });
 
     it("grava o CPF informado no formulario e segue", async () => {
@@ -1410,40 +1310,58 @@ describe("FamilyBillingService", () => {
         "responsavel-1",
         "123.456.789-09",
       );
-      expect(asaasClient.createSubscription).toHaveBeenCalled();
+      expect(lytexClient.createSubscription).toHaveBeenCalled();
     });
 
     /*
-      O celular vai no cliente do Asaas porque é por ele que o provedor
-      avisa a família da cobrança — e a família sem conta na Rotta
+      O celular vai no cliente da Lytex porque é por ele que o provedor
+      avisa a família da cobrança, e a família sem conta na Rotta
       depende desse aviso para receber o link.
+
+      O `referenceId` é o id do Responsável aqui dentro: é por ele que o
+      cliente é reencontrado, e não pelo CPF. Procurar por documento
+      acharia duas pessoas para o mesmo número digitado com e sem
+      pontuação, e a família receberia duas cobranças.
     */
-    it("manda o celular do responsavel ao criar o cliente", async () => {
-      asaasClient.findCustomerByCpfCnpj.mockResolvedValue(null);
-      asaasClient.createCustomer.mockResolvedValue({ id: "cus_novo" } as never);
+    it("cria o cliente com documento, celular e a nossa referencia", async () => {
+      lytexClient.findClientByReferenceId.mockResolvedValue(null);
+      lytexClient.createClient.mockResolvedValue({ _id: "cli_novo" } as never);
 
       await service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {});
 
-      expect(asaasClient.createCustomer).toHaveBeenCalledWith(
-        expect.objectContaining({ cpfCnpj: "12345678909", mobilePhone: "21999887766" }),
+      expect(lytexClient.createClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: "pf",
+          cpfCnpj: "12345678909",
+          cellphone: "21999887766",
+          referenceId: "responsavel-1",
+        }),
       );
     });
 
     /*
-      Com `emissorDaCobranca = SUBCONTA` a recorrência tem que ser criada
-      COM A CHAVE DELA: é o único jeito de a custódia valer, porque a
-      retenção segue a conta que recebe.
+      A Lytex nao aceita `subRecipientId` em `/v2/subscriptions`: a rota
+      so existe sob `/v2/sub-accounts` para faturas, saques e consultas.
+      Entao a recorrencia e SEMPRE emitida pela conta da Rotta, e o
+      split e que manda a parte do transportador para a subconta dele.
+
+      O teste guarda os dois lados disso: o split vai no corpo, e
+      `montarSplit` recebe o sentido certo. Mandar `"SUBCONTA"` aqui
+      inverteria a divisao e deixaria 98,71% na conta da Rotta.
     */
-    it("emite pela subconta quando o emissor dela e SUBCONTA", async () => {
+    it("a assinatura sai pela conta da Rotta, com split para a subconta", async () => {
       paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue({
         companyId: "company-1",
-        asaasWalletId: "wallet-da-transportadora",
+        lytexSubAccountId: "sub_1",
+        lytexRecipientId: "rec_1",
+        lytexSplitLiberado: true,
         emissorDaCobranca: "SUBCONTA",
       } as never);
-      (subcontas.chaveDaSubconta as jest.Mock).mockReturnValue("chave-da-subconta");
-      (subcontas.montarSplit as jest.Mock).mockReturnValue([
-        { walletId: "wallet-da-rotta", percentualValue: 1.29 },
-      ]);
+      const split = {
+        type: "percentage",
+        recipients: [{ _recipientId: "rec_1", value: 98.71 }],
+      };
+      (subcontas.montarSplit as jest.Mock).mockReturnValue(split);
 
       const resultado = await service.criarAssinaturaDoProprioContrato(
         "contrato-1",
@@ -1451,11 +1369,14 @@ describe("FamilyBillingService", () => {
         {},
       );
 
-      expect(asaasClient.createSubscription).toHaveBeenCalledWith(
-        expect.objectContaining({
-          split: [{ walletId: "wallet-da-rotta", percentualValue: 1.29 }],
-        }),
-        "chave-da-subconta",
+      expect(lytexClient.createSubscription).toHaveBeenCalledWith(
+        expect.objectContaining({ split }),
+      );
+      expect(subcontas.montarSplit).toHaveBeenCalledWith(
+        expect.anything(),
+        "PIX",
+        "SUBCONTA",
+        undefined,
       );
       expect(resultado.repasseDiretoAoTransportador).toBe(true);
     });
@@ -1468,20 +1389,20 @@ describe("FamilyBillingService", () => {
       ).rejects.toThrow(NotFoundException);
     });
 
-    it("sem a Asaas configurada, nada e criado", async () => {
-      asaasClient.isConfigured.mockReturnValue(false);
+    it("sem a Lytex configurada, nada e criado", async () => {
+      lytexClient.isConfigured.mockReturnValue(false);
 
       await expect(
         service.criarAssinaturaDoProprioContrato("contrato-1", empresaActor, {}),
       ).rejects.toThrow(BadRequestException);
-      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+      expect(lytexClient.createSubscription).not.toHaveBeenCalled();
     });
 
     it("responsavel nao pode ligar cobranca de contrato nenhum", async () => {
       await expect(
         service.criarAssinaturaDoProprioContrato("contrato-1", responsavelActor, {}),
       ).rejects.toThrow(ForbiddenException);
-      expect(asaasClient.createSubscription).not.toHaveBeenCalled();
+      expect(lytexClient.createSubscription).not.toHaveBeenCalled();
     });
   });
 
@@ -1507,9 +1428,9 @@ describe("FamilyBillingService", () => {
       return {
         companyId: "company-1",
         status: "ATIVA",
-        asaasAccountId: "acc_1",
-        asaasWalletId: "wal_1",
-        asaasApiKeyCifrada: "cifrada",
+        lytexSubAccountId: "sub_1",
+        lytexRecipientId: "rec_1",
+        lytexSplitLiberado: true,
         emissorDaCobranca: "ROTTA",
         custodiaAtiva: false,
         custodiaDiasParaLiberar: null,
@@ -1576,9 +1497,9 @@ describe("FamilyBillingService", () => {
       Sem a chave da subconta guardada, a cobrança não pode ser emitida
       em nome dela — e a chave só aparece na criação da subconta.
     */
-    it("recusa virar o emissor sem a chave da subconta", async () => {
+    it("recusa virar o emissor sem subconta na Lytex", async () => {
       paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(
-        buildConta({ asaasApiKeyCifrada: null }) as never,
+        buildConta({ lytexSubAccountId: null }) as never,
       );
 
       await expect(
@@ -1606,25 +1527,46 @@ describe("FamilyBillingService", () => {
       emissor `ROTTA`, não reteria nada e passaria a cobrar a tarifa
       recorrente por nada.
     */
+    /* Com o split ainda bloqueado pelo KYC, a cobranca sairia em nome
+       da subconta e a taxa da Rotta NAO seria repassada. */
+    it("recusa virar o emissor com o split ainda bloqueado", async () => {
+      paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(
+        buildConta({ lytexSplitLiberado: false }) as never,
+      );
+
+      await expect(
+        service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
+          emissorDaCobranca: "SUBCONTA",
+        }),
+      ).rejects.toThrow(/split/);
+    });
+
+    /*
+      A custódia só retém o que a própria subconta recebe. Ligada com
+      emissor `ROTTA`, não reteria nada dela.
+    */
     it("recusa ligar custodia com o emissor na Rotta", async () => {
       await expect(
         service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
           custodia: { ativa: true },
         }),
       ).rejects.toThrow(BadRequestException);
-      expect(subcontas.configurarCustodia).not.toHaveBeenCalled();
+      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
     });
 
-    it("liga custodia quando o emissor vira SUBCONTA na mesma chamada", async () => {
+    /*
+      Nenhuma chamada à Lytex aqui, e isso é a honestidade do método e
+      não um atalho: a retenção dela é o `floatConfig` da subconta, que
+      NÃO tem rota de escrita na API publicada. O registro vale para a
+      tela e para a conciliação; a retenção em si é combinada com o
+      comercial, e o método avisa isso no log.
+    */
+    it("registra a custodia no banco, sem fingir uma chamada que nao existe", async () => {
       await service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
         emissorDaCobranca: "SUBCONTA",
         custodia: { ativa: true, diasParaLiberar: 30, tarifaPagaPor: "SUBCONTA" },
       });
 
-      expect(subcontas.configurarCustodia).toHaveBeenCalledWith(
-        expect.objectContaining({ companyId: "company-1" }),
-        { ativa: true, diasParaLiberar: 30, tarifaNaSubconta: true },
-      );
       expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith(
         "company-1",
         expect.objectContaining({
@@ -1636,24 +1578,6 @@ describe("FamilyBillingService", () => {
       );
     });
 
-    /*
-      Custódia é reversível, ao contrário da criação de subconta: por
-      isso a chamada ao provedor vem ANTES da escrita. Gravar "ativa" e
-      só depois descobrir que o Asaas recusou mostraria na tela uma
-      retenção que não existe.
-    */
-    it("provedor recusou: nada e gravado", async () => {
-      (subcontas.configurarCustodia as jest.Mock).mockRejectedValue(new Error("Asaas fora"));
-
-      await expect(
-        service.configurarRecebimentoDaEmpresa("company-1", adminActor, {
-          emissorDaCobranca: "SUBCONTA",
-          custodia: { ativa: true },
-        }),
-      ).rejects.toThrow("Asaas fora");
-      expect(paymentAccountRepository.upsertAcrossTenants).not.toHaveBeenCalled();
-    });
-
     it("desligar custodia nao exige emissor SUBCONTA", async () => {
       paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue(
         buildConta({ custodiaAtiva: true }) as never,
@@ -1663,9 +1587,9 @@ describe("FamilyBillingService", () => {
         custodia: { ativa: false },
       });
 
-      expect(subcontas.configurarCustodia).toHaveBeenCalledWith(
-        expect.anything(),
-        expect.objectContaining({ ativa: false }),
+      expect(paymentAccountRepository.upsertAcrossTenants).toHaveBeenCalledWith(
+        "company-1",
+        expect.objectContaining({ custodiaAtiva: false }),
       );
     });
 
@@ -1693,6 +1617,20 @@ describe("FamilyBillingService", () => {
     `linhaDigitavel` fixo em `null`.
   */
   describe("abrirPagamentoBoleto", () => {
+    const boleto = {
+      _id: "inv_boleto",
+      totalValue: 66_000,
+      dueDate: "2026-04-05T00:00:00.000Z",
+      linkCheckout: "https://pay.lytex.test/i/abc",
+      linkBoleto: "https://pay.lytex.test/b/abc",
+      paymentMethods: {
+        boleto: {
+          enable: true,
+          digitableLine: "34191790010104351004791020150008291070026000",
+        },
+      },
+    };
+
     beforeEach(() => {
       invoiceRepository.findByIdAcrossTenants.mockResolvedValue(buildFatura());
       usersService.findById.mockResolvedValue({
@@ -1702,27 +1640,21 @@ describe("FamilyBillingService", () => {
         telefone: "21999887766",
         cpf: "12345678909",
       } as never);
-      asaasClient.findCustomerByCpfCnpj.mockResolvedValue({ id: "cus_1" } as never);
-      asaasClient.createPayment.mockResolvedValue({
-        id: "pay_boleto",
-        identificationField: "34191790010104351004791020150008291070026000",
-        bankSlipUrl: "https://asaas.com/b/pdf/abc",
-        invoiceUrl: "https://asaas.com/i/abc",
-      } as never);
-      (asaasClient as unknown as { getPayment: jest.Mock }).getPayment = jest
-        .fn()
-        .mockResolvedValue({
-          id: "pay_boleto",
-          identificationField: "34191790010104351004791020150008291070026000",
-          bankSlipUrl: "https://asaas.com/b/pdf/abc",
-        });
+      lytexClient.findClientByReferenceId.mockResolvedValue({ _id: "cli_1" } as never);
+      lytexClient.createInvoice.mockResolvedValue(boleto);
+      lytexClient.getInvoice.mockResolvedValue(boleto);
     });
 
     it("cria o boleto e devolve a linha digitavel", async () => {
       const resultado = await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
 
-      expect(asaasClient.createPayment).toHaveBeenCalledWith(
-        expect.objectContaining({ billingType: "BOLETO" }),
+      expect(lytexClient.createInvoice).toHaveBeenCalledWith(
+        expect.objectContaining({
+          paymentMethods: expect.objectContaining({
+            boleto: { enable: true },
+            pix: { enable: false },
+          }),
+        }),
         undefined,
       );
       expect(resultado.meioDePagamento).toBe("BOLETO");
@@ -1734,35 +1666,32 @@ describe("FamilyBillingService", () => {
       A taxa da Rotta é por MEIO (tabela do CFO de 18/10). Antes de
       21/10/2026 `montarSplit` era chamado com "PIX" fixo, e um boleto
       sairia com o percentual do Pix.
+
+      O terceiro argumento é o SENTIDO do split: com a cobrança emitida
+      pela conta da Rotta, o split manda para a subconta o que sobra
+      depois da nossa taxa. Invertê-lo deixaria 98,71% com quem já tem o
+      dinheiro.
     */
-    it("monta o split com o meio do boleto, e nao com o do Pix", async () => {
+    it("monta o split com o meio do boleto, e no sentido de quem emitiu", async () => {
       await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
 
-      /* A conta vai `null` porque esta transportadora nao tem subconta,
-         que e o caso de todas hoje. O que o teste guarda e o segundo
-         argumento: o MEIO. */
-      expect(subcontas.montarSplit).toHaveBeenCalledWith(null, "BOLETO", undefined);
+      expect(subcontas.montarSplit).toHaveBeenCalledWith(null, "BOLETO", "ROTTA", undefined);
     });
 
     /*
-      O registro bancário é assíncrono do lado do Asaas: quando a linha
+      O registro bancário é assíncrono do lado da Lytex: quando a linha
       digitável não vem, inventar uma seria pior que não ter. O link da
       fatura hospedada funciona sempre.
     */
     it("sem linha digitavel, devolve o link e nao grava nada", async () => {
-      asaasClient.createPayment.mockResolvedValue({
-        id: "pay_boleto",
-        invoiceUrl: "https://asaas.com/i/abc",
-      } as never);
-      (asaasClient as unknown as { getPayment: jest.Mock }).getPayment.mockResolvedValue({
-        id: "pay_boleto",
-        invoiceUrl: "https://asaas.com/i/abc",
-      });
+      const semLinha = { ...boleto, paymentMethods: { boleto: { enable: true } } };
+      lytexClient.createInvoice.mockResolvedValue(semLinha);
+      lytexClient.getInvoice.mockResolvedValue(semLinha);
 
       const resultado = await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
 
       expect(resultado.linhaDigitavel).toBeNull();
-      expect(resultado.linkDaFatura).toBe("https://asaas.com/i/abc");
+      expect(resultado.linkDaFatura).toBe("https://pay.lytex.test/b/abc");
     });
 
     /*
@@ -1772,15 +1701,13 @@ describe("FamilyBillingService", () => {
     */
     it("reaproveita a cobranca que a assinatura ja criou", async () => {
       invoiceRepository.findByIdAcrossTenants.mockResolvedValue(
-        buildFatura({ asaasPaymentId: "pay_da_assinatura" }),
+        buildFatura({ lytexInvoiceId: "inv_da_assinatura" }),
       );
 
       await service.abrirPagamentoBoleto("fatura-1", responsavelActor);
 
-      expect(asaasClient.createPayment).not.toHaveBeenCalled();
-      expect((asaasClient as unknown as { getPayment: jest.Mock }).getPayment).toHaveBeenCalledWith(
-        "pay_da_assinatura",
-      );
+      expect(lytexClient.createInvoice).not.toHaveBeenCalled();
+      expect(lytexClient.getInvoice).toHaveBeenCalledWith("inv_da_assinatura", undefined);
     });
 
     it("fatura paga nao abre boleto", async () => {
@@ -1789,27 +1716,27 @@ describe("FamilyBillingService", () => {
       await expect(service.abrirPagamentoBoleto("fatura-1", responsavelActor)).rejects.toThrow(
         BadRequestException,
       );
-      expect(asaasClient.createPayment).not.toHaveBeenCalled();
+      expect(lytexClient.createInvoice).not.toHaveBeenCalled();
     });
   });
 
   /*
-    A cobrança que a recorrência gera chega por webhook, por padrão 40
-    dias antes do vencimento. Sem ligá-la à fatura do mês, ela existe no
-    Asaas e não aparece em lugar nenhum da Rotta: a família não tem link
-    para pagar e a transportadora não vê a cobrança.
+    A cobrança que a recorrência gera chega por webhook, antes do
+    vencimento. Sem ligá-la à fatura do mês, ela existe na Lytex e não
+    aparece em lugar nenhum da Rotta: a família não tem link para pagar
+    e a transportadora não vê a cobrança.
   */
   describe("vincularCobrancaDaAssinatura", () => {
     const evento = {
-      asaasEvent: "PAYMENT_CREATED",
-      asaasSubscriptionId: "sub_1",
-      asaasPaymentId: "pay_maio",
+      evento: "invoiceCreate",
+      lytexSubscriptionId: "sub_1",
+      lytexInvoiceId: "inv_maio",
       contractId: "contrato-1",
       vencimento: "2026-05-05",
-      valorReais: 660,
-      linkDaFatura: "https://asaas.com/i/abc",
+      valorCentavos: 66_000,
+      linkDaFatura: "https://pay.lytex.test/i/abc",
       linhaDigitavel: null,
-      meioDePagamento: "PIX",
+      meioDePagamento: "pix",
     };
 
     beforeEach(() => {
@@ -1823,8 +1750,8 @@ describe("FamilyBillingService", () => {
         status: "ATIVO",
         vigenciaInicio: new Date("2026-02-01T00:00:00.000Z"),
         vigenciaFim: null,
-        asaasSubscriptionId: "sub_1",
-        asaasSubscriptionStatus: "ACTIVE",
+        lytexSubscriptionId: "sub_1",
+        lytexSubscriptionStatus: "active",
         student: { id: "student-1", nome: "Ana" },
         company: { id: "company-1", nomeFantasia: "Transportes Lima" },
       } as never);
@@ -1833,7 +1760,7 @@ describe("FamilyBillingService", () => {
     it("liga a cobranca a fatura que ja existe no mes", async () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
         id: "fatura-maio",
-        asaasPaymentId: null,
+        lytexInvoiceId: null,
       } as never);
 
       await service.vincularCobrancaDaAssinatura(evento);
@@ -1841,8 +1768,8 @@ describe("FamilyBillingService", () => {
       expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
         "fatura-maio",
         expect.objectContaining({
-          asaasPaymentId: "pay_maio",
-          linkDaFatura: "https://asaas.com/i/abc",
+          lytexInvoiceId: "inv_maio",
+          linkDaFatura: "https://pay.lytex.test/i/abc",
           meioDePagamento: "PIX",
         }),
       );
@@ -1850,9 +1777,9 @@ describe("FamilyBillingService", () => {
     });
 
     /*
-      A recorrência gera a cobrança até 40 dias antes do vencimento,
-      então o mês dela muitas vezes ainda não tem fatura: a rotina mensal
-      gera a do mês corrente, não a de dois meses à frente.
+      A recorrência gera a cobrança do ciclo antes do vencimento, então
+      o mês dela muitas vezes ainda não tem fatura: a rotina mensal gera
+      a do mês corrente, não a dos meses à frente.
     */
     it("cria a fatura do mes quando ela ainda nao existe", async () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue(null);
@@ -1873,14 +1800,14 @@ describe("FamilyBillingService", () => {
       );
       expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
         "fatura-nova",
-        expect.objectContaining({ asaasPaymentId: "pay_maio" }),
+        expect.objectContaining({ lytexInvoiceId: "inv_maio" }),
       );
     });
 
     it("webhook reentregue nao escreve de novo", async () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
         id: "fatura-maio",
-        asaasPaymentId: "pay_maio",
+        lytexInvoiceId: "inv_maio",
       } as never);
 
       await service.vincularCobrancaDaAssinatura(evento);
@@ -1897,7 +1824,7 @@ describe("FamilyBillingService", () => {
     it("nao sobrescreve cobranca diferente ja gravada no mes", async () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
         id: "fatura-maio",
-        asaasPaymentId: "pay_que_ja_estava",
+        lytexInvoiceId: "inv_que_ja_estava",
       } as never);
 
       await service.vincularCobrancaDaAssinatura(evento);
@@ -1935,16 +1862,17 @@ describe("FamilyBillingService", () => {
     });
 
     /*
-      `UNDEFINED` significa que o pagador ainda não escolheu. Gravar um
-      meio aí seria afirmar na tela da família algo que não aconteceu.
+      Meio desconhecido significa que o pagador ainda não escolheu, numa
+      cobrança com Pix e boleto ligados. Gravar um meio aí seria afirmar
+      na tela da família algo que não aconteceu.
     */
-    it("meio UNDEFINED fica nulo na fatura", async () => {
+    it("meio desconhecido fica nulo na fatura", async () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
         id: "fatura-maio",
-        asaasPaymentId: null,
+        lytexInvoiceId: null,
       } as never);
 
-      await service.vincularCobrancaDaAssinatura({ ...evento, meioDePagamento: "UNDEFINED" });
+      await service.vincularCobrancaDaAssinatura({ ...evento, meioDePagamento: null });
 
       expect(invoiceRepository.updateAcrossTenants).toHaveBeenCalledWith(
         "fatura-maio",
@@ -1955,10 +1883,13 @@ describe("FamilyBillingService", () => {
     it("registra se a cobranca gerada vai direto para a subconta", async () => {
       invoiceRepository.findPorContratoECompetenciaAcrossTenants.mockResolvedValue({
         id: "fatura-maio",
-        asaasPaymentId: null,
+        lytexInvoiceId: null,
       } as never);
       paymentAccountRepository.findByCompanyIdAcrossTenants.mockResolvedValue({
-        asaasWalletId: "wal_1",
+        lytexSubAccountId: "sub_1",
+        lytexRecipientId: "rec_1",
+        lytexSplitLiberado: true,
+        emissorDaCobranca: "SUBCONTA",
       } as never);
 
       await service.vincularCobrancaDaAssinatura(evento);

@@ -17,8 +17,8 @@ export interface CreateContractInvoiceData {
 
 export interface UpdateContractInvoiceData {
   status?: ContractInvoiceStatus;
-  asaasPaymentId?: string | null;
-  asaasCustomerId?: string | null;
+  lytexInvoiceId?: string | null;
+  lytexClientId?: string | null;
   meioDePagamento?: InvoicePaymentMethod | null;
   linkDaFatura?: string | null;
   linhaDigitavel?: string | null;
@@ -75,8 +75,8 @@ export interface ContratoParaAssinar {
   vigenciaInicio: Date;
   /** `null` quando o contrato não tem fim combinado. */
   vigenciaFim: Date | null;
-  asaasSubscriptionId: string | null;
-  asaasSubscriptionStatus: string | null;
+  lytexSubscriptionId: string | null;
+  lytexSubscriptionStatus: string | null;
   student: { id: string; nome: string };
   company: { id: string; nomeFantasia: string };
 }
@@ -96,16 +96,16 @@ export interface ContratoParaCobrar {
   valorMensalidadeCentavos: number;
   status: ContractStatus;
   vigenciaFim: Date | null;
-  asaasSubscriptionId: string | null;
-  asaasSubscriptionStatus: string | null;
+  lytexSubscriptionId: string | null;
+  lytexSubscriptionStatus: string | null;
   assinaturaCriadaEm: Date | null;
   student: { id: string; nome: string };
   responsavel: { id: string; nome: string; telefone: string; cpf: string | null };
 }
 
 export interface AtualizarAssinaturaDoContratoData {
-  asaasSubscriptionId?: string | null;
-  asaasSubscriptionStatus?: string | null;
+  lytexSubscriptionId?: string | null;
+  lytexSubscriptionStatus?: string | null;
   assinaturaCriadaEm?: Date | null;
 }
 
@@ -130,14 +130,14 @@ export interface ContractInvoiceRepository {
   /** Uma fatura específica, pelo caminho do Responsável. Cruza tenants: ver nota da interface. */
   findByIdAcrossTenants(id: string): Promise<ContractInvoiceComContexto | null>;
   /**
-   * Correlação de volta do webhook da Asaas. Cruza tenants porque quem
-   * chama é a Asaas, sem ator e sem tenant — o `asaasPaymentId` é
+   * Correlação de volta do webhook da Lytex. Cruza tenants porque quem
+   * chama é a Lytex, sem ator e sem tenant: o `lytexInvoiceId` é
    * `@unique` e vem do provedor, nunca de um cliente.
    */
-  findByAsaasPaymentIdAcrossTenants(asaasPaymentId: string): Promise<ContractInvoice | null>;
+  findByLytexInvoiceIdAcrossTenants(lytexInvoiceId: string): Promise<ContractInvoice | null>;
 
   /**
-   * Escrita vinda do webhook da Asaas.
+   * Escrita vinda do webhook da Lytex.
    *
    * ## Por que `update` não serve, e isto não é preferência de estilo
    *
@@ -149,7 +149,7 @@ export interface ContractInvoiceRepository {
    * política ser falsa para TODA linha.
    *
    * Resultado de usar `update` aqui: a escrita não acha linha nenhuma, o
-   * Prisma levanta erro, o webhook responde 500, e a Asaas reentrega.
+   * Prisma levanta erro, o webhook responde 500, e a Lytex reentrega.
    * Quinze respostas não-200 seguidas **pausam a fila inteira da
    * configuração**, inclusive a confirmação de pagamento da assinatura
    * da própria Rotta, e evento guardado por mais de 14 dias é apagado
@@ -161,7 +161,7 @@ export interface ContractInvoiceRepository {
 
   /**
    * Cria a fatura de um mês a partir do webhook. Existe porque a
-   * recorrência do Asaas gera a cobrança **até 40 dias antes do
+   * recorrência da Lytex gera a cobrança do ciclo **antes do
    * vencimento**: quando ela chega, a fatura daquele mês muitas vezes
    * ainda não foi gerada pela rotina mensal da Rotta.
    *
@@ -193,12 +193,12 @@ export interface ContractInvoiceRepository {
   findContratoParaAssinarAcrossTenants(contractId: string): Promise<ContratoParaAssinar | null>;
 
   /**
-   * O contrato dono de uma assinatura do Asaas. Cruza tenants porque
+   * O contrato dono de uma assinatura da Lytex. Cruza tenants porque
    * quem chama é o webhook: sem ator, sem tenant, e o
-   * `asaasSubscriptionId` é `@unique` e veio do provedor.
+   * `lytexSubscriptionId` é `@unique` e veio do provedor.
    */
   findContratoPorAssinaturaAcrossTenants(
-    asaasSubscriptionId: string,
+    lytexSubscriptionId: string,
   ): Promise<ContratoParaAssinar | null>;
 
   /**

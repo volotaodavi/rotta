@@ -2,7 +2,7 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { IsEmail, IsInt, IsOptional, IsString, Length, Max, Min } from "class-validator";
 
 /**
- * O formulário que cria a subconta Asaas da transportadora, dentro da
+ * O formulário que cria a subconta Lytex da transportadora, dentro da
  * Rotta.
  *
  * ## Por que tem um campo só, e não doze
@@ -15,24 +15,24 @@ import { IsEmail, IsInt, IsOptional, IsString, Length, Max, Min } from "class-va
  * dele na tela.
  *
  * Sobra `incomeValue`, o faturamento mensal: é o único campo que a
- * documentação da Asaas marca como obrigatório, e o único que a Rotta
+ * documentação da Lytex marca como obrigatório, e o único que a Rotta
  * nunca coletou em lugar nenhum. Por isso ele é o formulário.
  *
  * Os dois opcionais existem porque o financeiro costuma ser outra
- * pessoa: a Asaas manda para este e-mail os avisos da conta dela, e
+ * pessoa: a Lytex manda para este e-mail os avisos da conta dela, e
  * quem recebe não é necessariamente quem atende o telefone da empresa.
  * Em branco, valem os do cadastro.
  *
  * ## O que NÃO entra aqui, de propósito
  *
  * `walletId`, `accountId` e a chave de API. Os três vêm da resposta da
- * Asaas, nunca do cliente. Um transportador que pudesse escrever o
+ * Lytex, nunca do cliente. Um transportador que pudesse escrever o
  * próprio `walletId` redirecionaria o split de qualquer cobrança.
  */
-export class CriarSubcontaAsaasDto {
+export class CriarSubcontaDto {
   @ApiProperty({
     description:
-      "Faturamento mensal em centavos. Vira `incomeValue` na Asaas, que é o único campo que a documentação deles marca como obrigatório.",
+      "Faturamento mensal em centavos. Vira `incomeValue` na Lytex, que é o único campo que a documentação deles marca como obrigatório.",
     example: 450000,
     minimum: 1,
   })
@@ -40,14 +40,14 @@ export class CriarSubcontaAsaasDto {
   @Min(1)
   /* Teto de um bilhão de reais por mês. Não é desconfiança do cliente:
      é o erro de digitação de quem informa em centavos um número que
-     pensou em reais, que a Asaas recusaria com uma mensagem nossa
+     pensou em reais, que a Lytex recusaria com uma mensagem nossa
      nenhuma. */
   @Max(100_000_000_000)
   faturamentoMensalCentavos!: number;
 
   @ApiPropertyOptional({
     description:
-      "E-mail do financeiro, se for diferente do e-mail da transportadora. É para cá que a Asaas manda os avisos da conta.",
+      "E-mail do financeiro, se for diferente do e-mail da transportadora. É para cá que a Lytex manda os avisos da conta.",
     example: "financeiro@transportesandrade.com.br",
   })
   @IsOptional()

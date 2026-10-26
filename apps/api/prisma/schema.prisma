@@ -2708,6 +2708,20 @@ model Contract {
   /// Quando a recorrência foi criada, para auditoria de dinheiro.
   assinaturaCriadaEm      DateTime?
 
+  /// --- Lytex: a mesma recorrência, na provedora que a emite ---
+  ///
+  /// `_id` da assinatura na Lytex. Mesmo papel de
+  /// `asaasSubscriptionId`, que fica como histórico do desenho anterior:
+  /// nenhuma assinatura de família chegou a ser criada no Asaas.
+  ///
+  /// `@unique` pelo mesmo motivo de lá: é esta coluna que impede a
+  /// segunda recorrência no mesmo contrato, que cobraria a família duas
+  /// vezes por mês.
+  lytexSubscriptionId     String?   @unique @db.VarChar(64)
+  /// O `status` que a Lytex devolve, guardado para a tela dizer por que
+  /// a cobrança parou de chegar sem gastar uma chamada à API.
+  lytexSubscriptionStatus String?   @db.VarChar(32)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -4254,6 +4268,16 @@ model ContractInvoice {
   /// cobrança, não a transportadora).
   asaasCustomerId String? @db.VarChar(64)
 
+  /// --- Lytex ---
+  /// `_id` da fatura na Lytex, que desde 23/10/2026 é quem emite a
+  /// mensalidade da família. As duas colunas `asaas*` acima ficam como
+  /// histórico: nenhuma cobrança de família chegou a ser criada lá.
+  lytexInvoiceId String? @unique @db.VarChar(64)
+
+  /// `_id` do cliente do RESPONSÁVEL na Lytex. A família é o cliente
+  /// desta cobrança, nunca a transportadora.
+  lytexClientId String? @db.VarChar(64)
+
   meioDePagamento InvoicePaymentMethod?
   /// `AsaasPayment.invoiceUrl` — a página da fatura hospedada pela
   /// própria Asaas, o caminho de recuperação quando o app falha.
@@ -4382,6 +4406,31 @@ model CompanyPaymentAccount {
   /// opcional ate a primeira criacao real confirmar que vem.
   asaasOnboardingUrl String?
 
+  /// --- Lytex ---
+  /// Desde 23/10/2026 o split da mensalidade da familia e da LYTEX, nao
+  /// mais do Asaas (decisao do fundador, comparacao de cinco provedoras
+  /// em `empresa/financeiro/`). As quatro colunas `asaas*` acima ficam
+  /// como historico do desenho anterior: nenhuma subconta Asaas chegou a
+  /// existir em producao, e nada no codigo as escreve mais.
+  ///
+  /// `_id` da subconta na Lytex. E ele que vai no header
+  /// `subRecipientId`, que faz a cobranca nascer EM NOME da
+  /// transportadora sem a Rotta guardar chave de API de terceiro. Essa
+  /// diferenca e o motivo tecnico da troca de provedora.
+  lytexSubAccountId String? @db.VarChar(64)
+
+  /// `_recipientId` da subconta: o endereco do split. A Lytex devolve os
+  /// dois ids na criacao, e nem sempre sao iguais, entao os dois sao
+  /// guardados em vez de um ser deduzido do outro.
+  lytexRecipientId String? @db.VarChar(64)
+
+  /// `true` quando a Lytex ja liberou o split desta subconta.
+  ///
+  /// Conta `active` com split nao liberado recebe cobranca mas nao
+  /// repassa a taxa da Rotta. Enquanto isto for `false`, o estado dela
+  /// fica em `EM_ANALISE`: e a verdade, o KYC ainda esta correndo.
+  lytexSplitLiberado Boolean @default(false)
+
   /// Chave Pix de saque, quando o repasse é feito pelo Rotta Pay.
   chavePix String?
 
@@ -4482,4 +4531,37 @@ model AsaasWebhookEvent {
   @@index([evento, recebidoEm])
   @@index([recursoId])
   @@map("asaas_webhook_events")
+}
+
+/// Idempotencia do webhook da Lytex.
+///
+/// Mesma ideia da tabela do Asaas, com uma diferenca que vale registrar:
+/// **a Lytex nao publica o esquema do corpo do webhook**, e por isso nao
+/// ha garantia de que venha um id de evento. Quando nao vem, a chave
+/// passa a ser o id da fatura somado ao status, que e o par que de fato
+/// muda alguma coisa aqui dentro (`<_id>:<status>`). Reentrega do mesmo
+/// par sai sem escrever; mudanca de status entra como evento novo, que e
+/// exatamente o que se quer.
+model LytexWebhookEvent {
+  /// Id do evento, ou `<faturaId>:<status>` quando a Lytex nao manda um.
+  id String @id @db.VarChar(128)
+
+  /// Nome cru do evento, quando houver. `desconhecido` quando o corpo
+  /// chega sem nome nenhum, que e um formato que a documentacao nao
+  /// exclui.
+  evento String @db.VarChar(64)
+
+  /// `_id` da fatura, para achar pela cobranca na hora de investigar.
+  recursoId String? @db.VarChar(64)
+
+  /// Quando o processamento terminou. `null` enquanto esta em curso, o
+  /// que distingue reentrega de evento ja tratado de reentrega de um
+  /// evento que falhou no meio.
+  processadoEm DateTime?
+
+  recebidoEm DateTime @default(now())
+
+  @@index([evento, recebidoEm])
+  @@index([recursoId])
+  @@map("lytex_webhook_events")
 }

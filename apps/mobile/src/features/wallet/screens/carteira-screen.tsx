@@ -36,7 +36,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ContaDeRecebimentoCard } from "../components/conta-de-recebimento-card";
-import { useContaDeRecebimento, useCriarSubcontaAsaas } from "../hooks/use-conta-de-recebimento";
+import { useContaDeRecebimento, useCriarSubconta } from "../hooks/use-conta-de-recebimento";
 import {
   useMyWallet,
   useMyWalletTransactions,
@@ -116,14 +116,14 @@ export function CarteiraScreen(): JSX.Element {
   const { data: withdrawalRequests } = useMyWithdrawalRequests();
   const requestWithdrawal = useRequestWithdrawal();
   const { data: recebimento } = useContaDeRecebimento();
-  const criarSubconta = useCriarSubcontaAsaas();
+  const criarSubconta = useCriarSubconta();
   const conta = recebimento?.conta;
   /* Ativa, e não apenas criada: em análise o dinheiro ainda cai aqui. */
-  const repasseDireto = conta?.status === "ATIVA" && Boolean(conta.asaasWalletId);
+  const repasseDireto = conta?.status === "ATIVA" && Boolean(conta.lytexRecipientId);
   /* Sem subconta, e não sem linha no banco: a transportadora que só
      salvou a chave Pix tem conta de recebimento e não tem subconta, e é
      ela também que precisa do convite. */
-  const semContaDeRecebimento = !conta?.asaasAccountId;
+  const semContaDeRecebimento = !conta?.lytexSubAccountId;
 
   const [showForm, setShowForm] = useState(false);
   /* Estado de sessão, e não preferência guardada: esconder o saldo é

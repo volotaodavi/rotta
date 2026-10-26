@@ -14,7 +14,7 @@ import { IsCpf } from "@/common/validators";
  *
  * ## O CPF é o único campo que pode ser inevitável
  *
- * O Asaas exige `cpfCnpj` para criar o cliente da cobrança, e desde
+ * O Lytex exige `cpfCnpj` para criar o cliente da cobrança, e desde
  * 14/09/2026 a Rotta não coleta CPF de Responsável no cadastro, por
  * decisão do fundador. Então, para a família que ainda não tem o
  * documento registrado, ele é informado aqui, por quem tem o contrato em

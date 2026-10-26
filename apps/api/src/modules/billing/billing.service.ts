@@ -49,18 +49,6 @@ import { AdminInboxEmailService } from "@/infra/email/admin-inbox-email.service"
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { COMPANY_REPOSITORY } from "@/modules/companies/companies.constants";
 import {
-  ASAAS_ACCOUNT_STATUS_EVENT,
-  type AsaasAccountStatusEvent,
-} from "@/modules/family-billing/events/asaas-account-status.event";
-import {
-  FAMILY_INVOICE_WEBHOOK_EVENT,
-  type FamilyInvoiceWebhookEvent,
-} from "@/modules/family-billing/events/family-invoice-paid.event";
-import {
-  FAMILY_SUBSCRIPTION_CHARGE_EVENT,
-  type FamilySubscriptionChargeEvent,
-} from "@/modules/family-billing/events/family-subscription-charge.event";
-import {
   FAMILY_CONTRACT_ID_PREFIX,
   FAMILY_INVOICE_ID_PREFIX,
 } from "@/modules/family-billing/family-billing.constants";
@@ -1124,31 +1112,15 @@ export class BillingService {
 
   /** O processamento em si, sem a camada de idempotência por `id`. */
   private async processarEventoAsaas(event: AsaasWebhookEnvelope): Promise<void> {
-    /* Situação de uma SUBCONTA (a transportadora), e não pagamento
-       nenhum. Chega sem `payment`, então precisa sair antes de qualquer
-       coisa que leia `event.payment`.
-
-       O estado é decidido por `accountStatus.general`, não pelo nome do
-       evento: os dezoito eventos `ACCOUNT_STATUS_*` carregam o mesmo
-       objeto completo, e reagir a cada etapa (documento, dados
-       comerciais, conta bancária) faria o estado da conta oscilar.
-
-       `emitAsync` e evento, pelo mesmo motivo da fatura da família:
-       `FamilyBillingModule` já importa este módulo, e chamar de volta
-       fecharia o ciclo. */
+    /* Situação de uma SUBCONTA do Asaas. Deixou de ter destino em
+       23/10/2026, quando a subconta da transportadora passou para a
+       Lytex: não existe mais `CompanyPaymentAccount` ligada a uma conta
+       do Asaas para este evento mover. Fica reconhecido e ignorado, em
+       vez de cair no `switch` lá embaixo e ser tratado como pagamento. */
     if (event.event.startsWith("ACCOUNT_STATUS_")) {
-      if (event.account?.id && event.accountStatus?.general) {
-        const payload: AsaasAccountStatusEvent = {
-          asaasEvent: event.event,
-          asaasAccountId: event.account.id,
-          situacaoGeral: event.accountStatus.general,
-        };
-        await this.eventEmitter.emitAsync(ASAAS_ACCOUNT_STATUS_EVENT, payload);
-      } else {
-        this.logger.warn(
-          `Evento Asaas "${event.event}" sem account.id ou accountStatus.general: nada a aplicar.`,
-        );
-      }
+      this.logger.log(
+        `Evento Asaas "${event.event}" na conta ${event.account?.id ?? "desconhecida"}: a subconta da transportadora agora e da Lytex. Ignorado.`,
+      );
       return;
     }
 
@@ -1179,72 +1151,24 @@ export class BillingService {
 
     const companyId = event.payment?.externalReference ?? undefined;
 
-    /* Mensalidade de uma FAMÍLIA, não assinatura da plataforma. São dois
-       fluxos de dinheiro na mesma conta Asaas, e o prefixo em
-       `externalReference` é o que os separa — sem ele, este método
-       tentaria ativar uma transportadora usando o id de uma fatura.
+    /* Mensalidade de uma FAMÍLIA. Desde 23/10/2026 ela é cobrada pela
+       Lytex e chega pelo webhook dela (`LytexWebhookController`), não
+       por aqui. O prefixo continua sendo reconhecido para o caso de uma
+       reentrega atrasada de um evento antigo do Asaas não ser tratada
+       como assinatura da plataforma: isso tentaria ativar uma
+       transportadora usando o id de uma fatura.
 
-       `emitAsync` (e não `emit`): o controller só responde 200 para a
-       Asaas depois de o pagamento ter sido gravado de verdade. Evento em
-       vez de chamada direta porque `FamilyBillingModule` já importa
-       `BillingModule` (pelo `AsaasClientService`) e chamar de volta
-       fecharia o ciclo. */
-    if (companyId?.startsWith(FAMILY_INVOICE_ID_PREFIX) && event.payment) {
-      const payload: FamilyInvoiceWebhookEvent = {
-        asaasEvent: event.event,
-        asaasPaymentId: event.payment.id,
-        valorReais: event.payment.value,
-        valorLiquidoReais: event.payment.netValue ?? null,
-        pagoEm: event.payment.paymentDate ?? null,
-      };
-      await this.eventEmitter.emitAsync(FAMILY_INVOICE_WEBHOOK_EVENT, payload);
-      return;
-    }
-
-    /* Cobrança gerada pela ASSINATURA de um contrato da família. Outro
-       prefixo porque a referência aponta para o contrato, e não para uma
-       fatura: toda cobrança que a recorrência gera herda o mesmo valor,
-       então ele não pode identificar um mês.
-
-       `PAYMENT_CREATED` é o evento que importa aqui, e é o único do
-       grupo que a Rotta não tratava: é ele que diz que a cobrança do mês
-       passou a existir, por padrão 40 dias antes do vencimento. Sem
-       ligá-la à fatura, a família não tem link para pagar.
-
-       Os outros eventos de pagamento (confirmado, vencido, estornado)
-       seguem pelo caminho que já existe e funciona, que acha a fatura
-       pelo `asaasPaymentId` gravado nessa ligação. */
-    if (companyId?.startsWith(FAMILY_CONTRACT_ID_PREFIX) && event.payment) {
-      if (event.event === "PAYMENT_CREATED") {
-        if (!event.payment.subscription || !event.payment.dueDate) {
-          this.logger.warn(
-            `Asaas "PAYMENT_CREATED" na cobranca ${event.payment.id} com referencia de contrato mas sem subscription ou dueDate: nao da para saber de qual recorrencia nem de qual mes. Nada foi ligado.`,
-          );
-          return;
-        }
-        const payload: FamilySubscriptionChargeEvent = {
-          asaasEvent: event.event,
-          asaasSubscriptionId: event.payment.subscription,
-          asaasPaymentId: event.payment.id,
-          contractId: companyId.slice(FAMILY_CONTRACT_ID_PREFIX.length),
-          vencimento: event.payment.dueDate,
-          valorReais: event.payment.value,
-          linkDaFatura: event.payment.invoiceUrl ?? null,
-          linhaDigitavel: event.payment.identificationField ?? null,
-          meioDePagamento: event.payment.billingType ?? null,
-        };
-        await this.eventEmitter.emitAsync(FAMILY_SUBSCRIPTION_CHARGE_EVENT, payload);
-        return;
-      }
-
-      const payload: FamilyInvoiceWebhookEvent = {
-        asaasEvent: event.event,
-        asaasPaymentId: event.payment.id,
-        valorReais: event.payment.value,
-        valorLiquidoReais: event.payment.netValue ?? null,
-        pagoEm: event.payment.paymentDate ?? null,
-      };
-      await this.eventEmitter.emitAsync(FAMILY_INVOICE_WEBHOOK_EVENT, payload);
+       Nenhuma cobrança de família chegou a ser criada no Asaas em
+       produção, então na prática este ramo nunca dispara. Ele existe
+       porque "na prática nunca" e "nunca" são coisas diferentes quando
+       o `switch` seguinte muda o estado de uma empresa. */
+    if (
+      companyId?.startsWith(FAMILY_INVOICE_ID_PREFIX) ||
+      companyId?.startsWith(FAMILY_CONTRACT_ID_PREFIX)
+    ) {
+      this.logger.warn(
+        `Evento Asaas "${event.event}" na cobranca ${event.payment?.id ?? "desconhecida"} com referencia de familia ("${companyId}"). A cobranca da familia e da Lytex desde 23/10/2026: nada foi aplicado.`,
+      );
       return;
     }
 

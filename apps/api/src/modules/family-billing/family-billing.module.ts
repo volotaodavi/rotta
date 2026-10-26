@@ -8,54 +8,50 @@ import {
 } from "./family-billing.constants";
 import { FamilyBillingController } from "./family-billing.controller";
 import { FamilyBillingService } from "./family-billing.service";
-import { AsaasAccountStatusListener } from "./listeners/asaas-account-status.listener";
-import { FamilyInvoiceWebhookListener } from "./listeners/family-invoice-webhook.listener";
-import { FamilySubscriptionChargeListener } from "./listeners/family-subscription-charge.listener";
+import { LytexWebhookController } from "./lytex-webhook.controller";
 import { PrismaCompanyPaymentAccountRepository } from "./repositories/prisma-company-payment-account.repository";
 import { PrismaContractInvoiceRepository } from "./repositories/prisma-contract-invoice.repository";
 
-import { BillingModule } from "@/modules/billing/billing.module";
 import { CompaniesModule } from "@/modules/companies/companies.module";
+import { LytexModule } from "@/modules/lytex/lytex.module";
 import { StudentsModule } from "@/modules/students/students.module";
 import { UsersModule } from "@/modules/users/users.module";
 import { WalletModule } from "@/modules/wallet/wallet.module";
 
 /**
- * Cobrança da família — a mensalidade do transporte, que o Responsável
+ * Cobrança da família: a mensalidade do transporte, que o Responsável
  * paga à TRANSPORTADORA.
  *
  * Separado de `BillingModule` (a Rotta cobrando a transportadora pela
  * plataforma) porque são dois fluxos de dinheiro com pagador, recebedor
- * e ciclo diferentes. O que eles compartilham é só o cliente HTTP da
- * Asaas, importado daqui — mesma chave, mesmo tratamento de erro, mesmo
- * registro de saúde da integração, em vez de um segundo cliente falando
- * com a mesma API.
+ * e ciclo diferentes. Desde 23/10/2026 também são duas **provedoras**:
+ * a assinatura da plataforma continua no Asaas, e a mensalidade da
+ * família passou para a Lytex. Os dois não compartilham mais nada, e
+ * este módulo não importa mais `BillingModule`.
+ *
+ * `LytexModule` traz o cliente HTTP, a subconta, o split e a guarda do
+ * webhook. O CONTROLADOR do webhook fica aqui, e não lá, porque ele
+ * precisa do serviço da família: deixá-lo do outro lado exigiria uma
+ * dependência de volta e fecharia o ciclo entre os módulos. Foi
+ * justamente esse ciclo que obrigou o desenho anterior a usar barramento
+ * de eventos; com a dependência de mão única, os eventos e os listeners
+ * da família deixaram de ser necessários e saíram.
  *
  * `WalletModule` entra porque o pagamento confirmado vira saldo no Rotta
  * Pay do transportador quando o dinheiro passa pela conta da Rotta (sem
  * split). `StudentsModule` é quem prova a posse do aluno nas leituras do
- * Responsável — este módulo nunca decide isso por conta própria.
+ * Responsável: este módulo nunca decide isso por conta própria.
  *
- * `CompaniesModule` entra pela subconta Asaas do transportador: razão
- * social, documento e endereço do titular saem de `Company`, e é por
- * isso que o formulário de subconta pede um campo só. Sem ciclo —
- * `CompaniesModule` não importa este, e nem poderia: `BillingModule`
- * já importa `CompaniesModule`.
- *
- * Sem ciclo: `BillingModule` não importa este. A volta (o webhook da
- * Asaas avisando que uma fatura foi paga, ou que a situação de uma
- * subconta mudou) acontece pelo barramento de eventos — ver
- * `FamilyInvoiceWebhookListener` e `AsaasAccountStatusListener`.
+ * `CompaniesModule` entra pela subconta do transportador: razão social,
+ * documento e endereço do titular saem de `Company`, e é por isso que o
+ * formulário de subconta pede um campo só.
  */
 @Module({
-  imports: [BillingModule, WalletModule, StudentsModule, UsersModule, CompaniesModule],
-  controllers: [FamilyBillingController, FamilyBillingQueueController],
+  imports: [LytexModule, WalletModule, StudentsModule, UsersModule, CompaniesModule],
+  controllers: [FamilyBillingController, FamilyBillingQueueController, LytexWebhookController],
   providers: [
     FamilyBillingService,
     FamilyBillingSchedulerService,
-    FamilyInvoiceWebhookListener,
-    AsaasAccountStatusListener,
-    FamilySubscriptionChargeListener,
     { provide: CONTRACT_INVOICE_REPOSITORY, useClass: PrismaContractInvoiceRepository },
     {
       provide: COMPANY_PAYMENT_ACCOUNT_REPOSITORY,

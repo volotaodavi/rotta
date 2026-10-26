@@ -11,7 +11,7 @@ import {
   useContaDeRecebimento,
   useContratosParaCobrar,
   useCriarAssinaturaDoContrato,
-  useCriarSubcontaAsaas,
+  useCriarSubconta,
   useFaturasDaEmpresa,
   useSalvarContaDeRecebimento,
 } from "@/features/family-billing/hooks/use-family-billing";
@@ -66,7 +66,7 @@ export default function MensalidadesPage(): JSX.Element {
   const { data: recebimento, isLoading: contaCarregando } = useContaDeRecebimento();
   const conta = recebimento?.conta;
   const salvarConta = useSalvarContaDeRecebimento();
-  const criarSubconta = useCriarSubcontaAsaas();
+  const criarSubconta = useCriarSubconta();
   const { data: contratos, isLoading: contratosCarregando } = useContratosParaCobrar();
   const criarAssinatura = useCriarAssinaturaDoContrato();
   const [chavePix, setChavePix] = useState("");

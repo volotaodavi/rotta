@@ -1,10 +1,10 @@
 import { formatarCentavos, reaisParaCentavos } from "@rotta/utils";
 import { useState } from "react";
-import { Linking, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import type {
   CompanyPaymentAccount,
-  CriarSubcontaAsaasInput,
+  CriarSubcontaInput,
   DadosParaAbrirConta,
 } from "@rotta/api-client";
 
@@ -28,7 +28,7 @@ import { useTheme } from "@/providers/theme-provider";
 type Situacao = "SEM_SUBCONTA" | "EM_ANALISE" | "ATIVA" | "RECUSADA";
 
 function situacaoDa(conta: CompanyPaymentAccount | null | undefined): Situacao {
-  if (!conta?.asaasAccountId) return "SEM_SUBCONTA";
+  if (!conta?.lytexSubAccountId) return "SEM_SUBCONTA";
   if (conta.status === "ATIVA") return "ATIVA";
   if (conta.status === "RECUSADA") return "RECUSADA";
   return "EM_ANALISE";
@@ -68,7 +68,7 @@ export interface ContaDeRecebimentoCardProps {
    * incompleto se a pessoa não vê o resto indo.
    */
   dadosParaAbrirConta?: DadosParaAbrirConta;
-  onAbrirConta: (input: CriarSubcontaAsaasInput) => Promise<void>;
+  onAbrirConta: (input: CriarSubcontaInput) => Promise<void>;
   isAbrindoConta?: boolean;
 }
 
@@ -214,16 +214,10 @@ export function ContaDeRecebimentoCard({
         </View>
       ) : null}
 
-      {/* O link só aparece quando o provedor manda um: inventar um
-          endereço de envio de documento mandaria a pessoa para uma
-          página que não existe. */}
-      {conta?.asaasOnboardingUrl && situacao !== "ATIVA" ? (
-        <VehicleButton
-          label="Enviar os documentos"
-          variant="secondary"
-          onPress={() => void Linking.openURL(conta.asaasOnboardingUrl as string)}
-        />
-      ) : null}
+      {/* Nenhum botão de enviar documento, e isso é a verdade: a API da
+          Lytex não publica endereço de envio, e inventar um mandaria a
+          pessoa para uma página que não existe. O caminho é o
+          atendimento deles. */}
     </VehicleCard>
   );
 }

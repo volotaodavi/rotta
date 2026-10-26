@@ -6,7 +6,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
    desaparece do bundle e nada e validado. */
 import { ConfigurarRecebimentoDto } from "./dto/configurar-recebimento.dto";
 import { CriarAssinaturaDaFamiliaDto } from "./dto/criar-assinatura-da-familia.dto";
-import { CriarSubcontaAsaasDto } from "./dto/criar-subconta-asaas.dto";
+import { CriarSubcontaDto } from "./dto/criar-subconta.dto";
 import { ListInvoicesQueryDto } from "./dto/list-invoices-query.dto";
 import { SalvarContaDeRecebimentoDto } from "./dto/salvar-conta-de-recebimento.dto";
 import { FamilyBillingService } from "./family-billing.service";
@@ -125,11 +125,11 @@ export class FamilyBillingController {
   @ApiOperation({
     summary: "Abre a conta de recebimento da transportadora, sem sair da Rotta",
     description:
-      "Cria a subconta no Asaas com os dados que a Rotta já tem do cadastro, por isso o corpo pede só o faturamento mensal. A conta nasce `EM_ANALISE`: o Asaas analisa em até dois dias úteis, e o estado muda sozinho pelo webhook. Recusa quando já existe subconta, porque a chave de acesso só aparece na criação e a primeira ficaria inacessível.",
+      "Cria a subconta na Lytex com os dados que a Rotta já tem do cadastro, por isso o corpo pede só o faturamento mensal. A conta nasce `EM_ANALISE`: a Lytex analisa em até dois dias úteis, e o estado muda sozinho pelo webhook. Recusa quando já existe subconta, porque a chave de acesso só aparece na criação e a primeira ficaria inacessível.",
   })
   @Post("conta-de-recebimento/subconta")
   @Roles(...TRANSPORTADOR_ROLES)
-  criarSubconta(@CurrentUser() actor: AuthenticatedUser, @Body() dto: CriarSubcontaAsaasDto) {
+  criarSubconta(@CurrentUser() actor: AuthenticatedUser, @Body() dto: CriarSubcontaDto) {
     return this.familyBillingService.criarSubcontaDaPropriaEmpresa(actor, dto);
   }
 
@@ -145,7 +145,7 @@ export class FamilyBillingController {
   criarSubcontaParaEmpresa(
     @Param("companyId", ParseUUIDPipe) companyId: string,
     @CurrentUser() actor: AuthenticatedUser,
-    @Body() dto: CriarSubcontaAsaasDto,
+    @Body() dto: CriarSubcontaDto,
   ) {
     return this.familyBillingService.criarSubcontaParaEmpresa(companyId, actor, dto);
   }
@@ -194,7 +194,7 @@ export class FamilyBillingController {
   @ApiOperation({
     summary: "Liga a cobrança mensal automática de um contrato",
     description:
-      "Cria a assinatura no Asaas: a partir daí a cobrança de cada mês nasce sozinha, com o split já aplicado, e **o responsável não precisa de conta na Rotta** — ele paga pelo link da cobrança. Recusa quando o contrato já tem recorrência (cobraria a família duas vezes), quando não está ativo, e quando a mensalidade está em R$ 0,00. O primeiro vencimento pula mês que já tenha cobrança emitida.",
+      "Cria a assinatura na Lytex: a partir daí a cobrança de cada mês nasce sozinha, com o split já aplicado, e **o responsável não precisa de conta na Rotta** — ele paga pelo link da cobrança. Recusa quando o contrato já tem recorrência (cobraria a família duas vezes), quando não está ativo, e quando a mensalidade está em R$ 0,00. O primeiro vencimento pula mês que já tenha cobrança emitida.",
   })
   @Post("contracts/:contractId/assinatura")
   @Roles(...TRANSPORTADOR_ROLES)

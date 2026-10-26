@@ -36,8 +36,8 @@ const PARA_ASSINAR = {
   status: true,
   vigenciaInicio: true,
   vigenciaFim: true,
-  asaasSubscriptionId: true,
-  asaasSubscriptionStatus: true,
+  lytexSubscriptionId: true,
+  lytexSubscriptionStatus: true,
   ...COM_CONTEXTO,
 } as const;
 
@@ -101,9 +101,9 @@ export class PrismaContractInvoiceRepository implements ContractInvoiceRepositor
     );
   }
 
-  findByAsaasPaymentIdAcrossTenants(asaasPaymentId: string): Promise<ContractInvoice | null> {
+  findByLytexInvoiceIdAcrossTenants(lytexInvoiceId: string): Promise<ContractInvoice | null> {
     return this.prisma.withBypass(
-      this.prisma.contractInvoice.findUnique({ where: { asaasPaymentId } }),
+      this.prisma.contractInvoice.findUnique({ where: { lytexInvoiceId } }),
     );
   }
 
@@ -153,10 +153,10 @@ export class PrismaContractInvoiceRepository implements ContractInvoiceRepositor
   }
 
   findContratoPorAssinaturaAcrossTenants(
-    asaasSubscriptionId: string,
+    lytexSubscriptionId: string,
   ): Promise<ContratoParaAssinar | null> {
     return this.prisma.withBypass(
-      this.prisma.contract.findUnique({ where: { asaasSubscriptionId }, select: PARA_ASSINAR }),
+      this.prisma.contract.findUnique({ where: { lytexSubscriptionId }, select: PARA_ASSINAR }),
     );
   }
 
@@ -169,8 +169,8 @@ export class PrismaContractInvoiceRepository implements ContractInvoiceRepositor
           valorMensalidadeCentavos: true,
           status: true,
           vigenciaFim: true,
-          asaasSubscriptionId: true,
-          asaasSubscriptionStatus: true,
+          lytexSubscriptionId: true,
+          lytexSubscriptionStatus: true,
           assinaturaCriadaEm: true,
           student: { select: { id: true, nome: true } },
           responsavel: { select: { id: true, nome: true, telefone: true, cpf: true } },

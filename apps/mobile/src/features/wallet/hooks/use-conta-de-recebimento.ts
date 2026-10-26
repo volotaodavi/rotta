@@ -1,7 +1,7 @@
 import { useAuth } from "@rotta/auth/native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ContaDeRecebimentoComConvite, CriarSubcontaAsaasInput } from "@rotta/api-client";
+import type { ContaDeRecebimentoComConvite, CriarSubcontaInput } from "@rotta/api-client";
 
 import { familyBillingApi } from "@/lib/api-client";
 
@@ -37,10 +37,10 @@ export function useContaDeRecebimento() {
  * segundo pedido de rede, que no celular é a diferença entre instantâneo
  * e piscada.
  */
-export function useCriarSubcontaAsaas() {
+export function useCriarSubconta() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: CriarSubcontaAsaasInput) => familyBillingApi.criarSubcontaAsaas(input),
+    mutationFn: (input: CriarSubcontaInput) => familyBillingApi.criarSubconta(input),
     /* Sem `dadosParaAbrirConta`, de propósito: a subconta agora existe,
        e não há mais o que conferir antes de enviar. É o que faz o
        convite sair da tela no mesmo toque. */

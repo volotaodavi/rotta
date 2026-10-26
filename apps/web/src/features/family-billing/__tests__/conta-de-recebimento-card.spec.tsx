@@ -6,7 +6,7 @@ import { ContaDeRecebimentoCard } from "../components/conta-de-recebimento-card"
 
 import type {
   CompanyPaymentAccount,
-  CriarSubcontaAsaasInput,
+  CriarSubcontaInput,
   DadosParaAbrirConta,
 } from "@rotta/api-client";
 
@@ -29,9 +29,9 @@ function conta(overrides: Partial<CompanyPaymentAccount> = {}): CompanyPaymentAc
     id: "conta-1",
     companyId: "company-1",
     status: "EM_ANALISE",
-    asaasWalletId: "wallet_1",
-    asaasAccountId: "acc_1",
-    asaasOnboardingUrl: null,
+    lytexSubAccountId: "sub_1",
+    lytexRecipientId: "rec_1",
+    lytexSplitLiberado: true,
     podeEmitirPelaSubconta: true,
     chavePix: null,
     emissorDaCobranca: "ROTTA",
@@ -47,7 +47,7 @@ function conta(overrides: Partial<CompanyPaymentAccount> = {}): CompanyPaymentAc
   };
 }
 
-type AbrirConta = (input: CriarSubcontaAsaasInput) => Promise<unknown>;
+type AbrirConta = (input: CriarSubcontaInput) => Promise<unknown>;
 
 function montar(props: {
   conta: CompanyPaymentAccount | null;
@@ -188,16 +188,16 @@ describe("ContaDeRecebimentoCard", () => {
     expect(screen.getByText(/suporte/)).toBeTruthy();
   });
 
-  /* Link inventado manda a pessoa para uma página que não existe. */
-  it("o link de documentos só aparece quando o provedor manda um", () => {
-    montar({ conta: conta({ asaasOnboardingUrl: null }) });
-    expect(screen.queryByText("Enviar os documentos da conta")).toBeNull();
+  /* A Lytex nao publica endereco de envio de documento na API, e um
+     link inventado mandaria a pessoa para uma pagina que nao existe. O
+     teste existe para que ninguem "conserte" isso com um palpite. */
+  it("nao oferece link de envio de documentos, porque a Lytex nao publica um", () => {
+    montar({ conta: conta({ status: "EM_ANALISE" }) });
+    expect(screen.queryByText(/Enviar os documentos/)).toBeNull();
   });
 
-  it("e aparece quando ele vem", () => {
-    montar({ conta: conta({ asaasOnboardingUrl: "https://exemplo.invalid/onboarding" }) });
-
-    const link = screen.getByText("Enviar os documentos da conta");
-    expect(link.getAttribute("href")).toBe("https://exemplo.invalid/onboarding");
+  it("sem subconta, a tela convida a abrir em vez de mostrar estado de conta", () => {
+    montar({ conta: conta({ lytexSubAccountId: null }) });
+    expect(screen.queryByText(/Enviar os documentos/)).toBeNull();
   });
 });

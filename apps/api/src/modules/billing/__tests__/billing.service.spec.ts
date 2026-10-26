@@ -13,10 +13,6 @@ import type { MessagePersonalizationService } from "@/modules/notifications/mess
 import type { UsersService } from "@/modules/users/users.service";
 import type { EventEmitter2 } from "@nestjs/event-emitter";
 
-import { ASAAS_ACCOUNT_STATUS_EVENT } from "@/modules/family-billing/events/asaas-account-status.event";
-import { FAMILY_INVOICE_WEBHOOK_EVENT } from "@/modules/family-billing/events/family-invoice-paid.event";
-import { FAMILY_SUBSCRIPTION_CHARGE_EVENT } from "@/modules/family-billing/events/family-subscription-charge.event";
-
 /** "Zere os dados e só conte os dados a partir do dia de hoje" (pedido do usuário 03/09/2026) — toda cobrança PAGA que os testes esperam contar precisa de uma data de hoje, senão o filtro novo do serviço a descarta. */
 const HOJE_ISO = new Date().toISOString();
 
@@ -330,37 +326,26 @@ describe("BillingService", () => {
       },
     };
 
-    it("repassa a situação geral pelo barramento, sem tocar na empresa", async () => {
+    /*
+      Desde 23/10/2026 a subconta da transportadora é da Lytex, e não há
+      mais `CompanyPaymentAccount` ligada a uma conta do Asaas para este
+      evento mover. O que importa aqui é que ele continue sendo
+      RECONHECIDO: sem o ramo, um `ACCOUNT_STATUS_*` cairia no `switch`
+      de pagamento lá embaixo e seria tratado como assinatura da
+      plataforma.
+    */
+    it("é reconhecido e ignorado, sem tocar na empresa", async () => {
       await service.handleAsaasWebhookEvent(evento);
 
-      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(ASAAS_ACCOUNT_STATUS_EVENT, {
-        asaasEvent: "ACCOUNT_STATUS_GENERAL_APPROVAL_APPROVED",
-        asaasAccountId: "acc_1",
-        situacaoGeral: "APPROVED",
-      });
       expect(companyRepository.update).not.toHaveBeenCalled();
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
     });
 
-    /* O estado vem de `accountStatus.general`, não do nome do evento:
-       os dezoito eventos carregam o mesmo objeto completo. */
-    it("evento de etapa também vale: o que decide é o general", async () => {
-      await service.handleAsaasWebhookEvent({
-        ...evento,
-        event: "ACCOUNT_STATUS_DOCUMENT_PENDING",
-        accountStatus: { ...evento.accountStatus, documentation: "PENDING", general: "PENDING" },
-      });
-
-      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
-        ASAAS_ACCOUNT_STATUS_EVENT,
-        expect.objectContaining({ situacaoGeral: "PENDING" }),
-      );
-    });
-
-    it("sem account.id ou sem general, não emite nada e não estoura", async () => {
+    it("evento de etapa também é ignorado, e não estoura sem accountStatus", async () => {
       await service.handleAsaasWebhookEvent({ event: "ACCOUNT_STATUS_DOCUMENT_APPROVED" });
 
-      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
       expect(companyRepository.update).not.toHaveBeenCalled();
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
     });
   });
 
@@ -443,7 +428,11 @@ describe("BillingService", () => {
         status: "RECEIVED" as const,
         billingType: "PIX" as const,
         value: 660,
-        externalReference: "fatura:fatura-1",
+        /* Assinatura da plataforma, e nao mensalidade de familia: desde
+           23/10/2026 a referencia de familia sai por outro ramo, e um
+           teste de idempotencia precisa de um evento que de fato
+           processa algo. */
+        externalReference: "company-1",
       },
     };
 
@@ -479,8 +468,18 @@ describe("BillingService", () => {
       e pior que evento repetido, porque a camada de baixo (idempotencia
       por estado) absorve o repetido.
     */
+    /* A falha e injetada na fronteira do processamento, e nao num
+       repositorio la dentro, de proposito: o que este teste garante e a
+       ORDEM em `handleAsaasWebhookEvent` (processa, depois registra), e
+       amarra-la a qual caminho interno por acaso propaga erro hoje faria
+       o teste morrer na proxima vez que um `try/catch` mudar de lugar. */
     it("falha no processamento nao registra o evento", async () => {
-      eventEmitter.emitAsync.mockRejectedValue(new Error("banco fora"));
+      jest
+        .spyOn(
+          service as unknown as { processarEventoAsaas: () => Promise<void> },
+          "processarEventoAsaas",
+        )
+        .mockRejectedValue(new Error("banco fora"));
 
       await expect(
         service.handleAsaasWebhookEvent({
@@ -507,7 +506,7 @@ describe("BillingService", () => {
       });
 
       expect(aviso).toHaveBeenCalledWith(expect.stringContaining("sem id"));
-      expect(eventEmitter.emitAsync).toHaveBeenCalled();
+      expect(companyRepository.update).toHaveBeenCalled();
       expect(webhookEventRepository.registrar).not.toHaveBeenCalled();
     });
 
@@ -531,7 +530,7 @@ describe("BillingService", () => {
     herdada por toda cobrança que ela gera — então não pode identificar
     um mês. Quem identifica o mês é o vencimento.
   */
-  describe("handleAsaasWebhookEvent: cobranca de assinatura da familia", () => {
+  describe("handleAsaasWebhookEvent: referencia de familia", () => {
     const gerada = {
       id: "pay_maio",
       customer: "cus_1",
@@ -544,65 +543,37 @@ describe("BillingService", () => {
       externalReference: "contrato:contrato-1",
     };
 
-    it("PAYMENT_CREATED vai para o evento de ligar a cobranca ao mes", async () => {
+    /*
+      A mensalidade da familia e da Lytex desde 23/10/2026, e chega pelo
+      webhook dela. Nenhuma cobranca de familia chegou a ser criada no
+      Asaas em producao, entao na pratica este ramo nunca dispara.
+
+      Ele existe, e e testado, porque "na pratica nunca" e "nunca" sao
+      coisas diferentes quando o `switch` seguinte MUDA O ESTADO DE UMA
+      EMPRESA: sem o ramo, uma reentrega atrasada com referencia
+      `contrato:` ou `fatura:` seria lida como assinatura da plataforma,
+      e a Rotta tentaria ativar uma transportadora usando o id de uma
+      fatura.
+    */
+    it("cobranca com referencia de contrato nao mexe em empresa nenhuma", async () => {
       await service.handleAsaasWebhookEvent({ event: "PAYMENT_CREATED", payment: gerada });
-
-      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
-        FAMILY_SUBSCRIPTION_CHARGE_EVENT,
-        expect.objectContaining({
-          asaasSubscriptionId: "sub_1",
-          asaasPaymentId: "pay_maio",
-          contractId: "contrato-1",
-          vencimento: "2026-05-05",
-          linkDaFatura: "https://asaas.com/i/abc",
-        }),
-      );
-    });
-
-    /* Sem `subscription` nao da para saber de qual recorrencia e, e sem
-       `dueDate` nao da para saber de qual mes: ligar no escuro poria a
-       cobranca de uma familia na fatura de outro mes. */
-    it("PAYMENT_CREATED sem subscription ou sem dueDate nao liga nada", async () => {
-      await service.handleAsaasWebhookEvent({
-        event: "PAYMENT_CREATED",
-        payment: { ...gerada, subscription: undefined },
-      });
-      await service.handleAsaasWebhookEvent({
-        event: "PAYMENT_CREATED",
-        payment: { ...gerada, dueDate: undefined },
-      });
-
-      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
-    });
-
-    /* Confirmado, vencido e estornado seguem pelo caminho que ja existe
-       e funciona, que acha a fatura pelo `asaasPaymentId` gravado na
-       ligacao. */
-    it("pagamento confirmado segue pelo caminho de fatura da familia", async () => {
       await service.handleAsaasWebhookEvent({
         event: "PAYMENT_CONFIRMED",
         payment: { ...gerada, status: "CONFIRMED", paymentDate: "2026-05-04" },
       });
 
-      expect(eventEmitter.emitAsync).toHaveBeenCalledWith(
-        FAMILY_INVOICE_WEBHOOK_EVENT,
-        expect.objectContaining({ asaasPaymentId: "pay_maio" }),
-      );
+      expect(companyRepository.update).not.toHaveBeenCalled();
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
     });
 
-    /* A cobranca avulsa da familia continua com o prefixo antigo, e
-       `PAYMENT_CREATED` nela nao tem nada a ligar: ela nasce de alguem
-       tocando em "pagar", com a fatura ja na mao. */
-    it("PAYMENT_CREATED de cobranca avulsa nao emite o evento de assinatura", async () => {
+    it("cobranca com referencia de fatura tambem nao", async () => {
       await service.handleAsaasWebhookEvent({
-        event: "PAYMENT_CREATED",
-        payment: { ...gerada, externalReference: "fatura:fatura-1" },
+        event: "PAYMENT_CONFIRMED",
+        payment: { ...gerada, externalReference: "fatura:fatura-1", status: "CONFIRMED" },
       });
 
-      expect(eventEmitter.emitAsync).not.toHaveBeenCalledWith(
-        FAMILY_SUBSCRIPTION_CHARGE_EVENT,
-        expect.anything(),
-      );
+      expect(companyRepository.update).not.toHaveBeenCalled();
+      expect(eventEmitter.emitAsync).not.toHaveBeenCalled();
     });
   });
 

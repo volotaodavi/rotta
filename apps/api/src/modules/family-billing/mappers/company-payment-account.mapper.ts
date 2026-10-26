@@ -11,9 +11,9 @@ import type { CompanyPaymentAccount } from "@prisma/client";
  * transportador, e a entrega crua passou a colocar essa chave na
  * resposta HTTP sem ninguém ter pedido.
  *
- * Cifrada não é desculpa: a chave de cifra vive no mesmo servidor, e o
- * compromisso assumido quando o fundador autorizou guardar chave de
- * terceiro foi "nunca em log nem em resposta de API".
+ * A troca para a Lytex em 23/10/2026 tirou a chave de terceiro da
+ * arquitetura, mas não tirou a razão desta lista: a coluna continua no
+ * banco como histórico, e a próxima coluna sensível vai nascer igual.
  *
  * Por isso a saída é montada campo a campo. Campo novo na tabela não
  * aparece aqui sozinho: alguém precisa escrever a linha, e escrever a
@@ -56,13 +56,22 @@ export interface ContaDeRecebimentoResponse {
   id: string;
   companyId: string;
   status: CompanyPaymentAccount["status"];
-  /** A subconta Asaas do transportador, que é o destino do split. */
-  asaasWalletId: string | null;
-  /** O `id` da subconta, para o admin conferir no painel da Asaas. */
-  asaasAccountId: string | null;
-  /** Para onde o transportador vai concluir o cadastro, quando houver. */
-  asaasOnboardingUrl: string | null;
-  /** `true` quando a chave da subconta está guardada: diz se dá para emitir cobrança em nome dela, sem dizer qual é. */
+  /** O `_id` da subconta na Lytex, para o admin conferir no painel dela. */
+  lytexSubAccountId: string | null;
+  /** O estabelecimento que o split endereça. */
+  lytexRecipientId: string | null;
+  /** `true` quando a Lytex já liberou o split desta subconta pelo KYC. */
+  lytexSplitLiberado: boolean;
+  /**
+   * `true` quando dá para emitir a cobrança em nome da subconta.
+   *
+   * Na Lytex isso é ter a subconta e ter o split liberado, e nada mais:
+   * o header `subRecipientId` usa a credencial da própria plataforma.
+   * No desenho anterior, com o Asaas, dependia de uma chave de API de
+   * terceiro guardada aqui dentro, e é por isso que o campo continua
+   * sendo um booleano em vez de um id: a tela precisa saber se dá, nunca
+   * com o quê.
+   */
   podeEmitirPelaSubconta: boolean;
   chavePix: string | null;
   emissorDaCobranca: CompanyPaymentAccount["emissorDaCobranca"];
@@ -104,12 +113,10 @@ export function toContaDeRecebimentoResponse(
     id: conta.id,
     companyId: conta.companyId,
     status: conta.status,
-    asaasWalletId: conta.asaasWalletId,
-    asaasAccountId: conta.asaasAccountId,
-    asaasOnboardingUrl: conta.asaasOnboardingUrl,
-    /* O booleano, e nunca o valor: a tela precisa saber se dá para
-       emitir pela subconta, e para isso não precisa ver a chave. */
-    podeEmitirPelaSubconta: Boolean(conta.asaasApiKeyCifrada),
+    lytexSubAccountId: conta.lytexSubAccountId,
+    lytexRecipientId: conta.lytexRecipientId,
+    lytexSplitLiberado: conta.lytexSplitLiberado,
+    podeEmitirPelaSubconta: Boolean(conta.lytexSubAccountId && conta.lytexSplitLiberado),
     chavePix: conta.chavePix,
     emissorDaCobranca: conta.emissorDaCobranca,
     custodiaAtiva: conta.custodiaAtiva,

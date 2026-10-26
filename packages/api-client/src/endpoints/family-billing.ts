@@ -75,7 +75,14 @@ export interface PagamentoDaFatura {
   valorFormatado: string;
   /** Pix copia e cola. */
   pixPayload: string | null;
-  /** QR em base64 puro, sem o prefixo `data:image/png;base64,`. */
+  /**
+   * QR em base64 puro, sem o prefixo `data:image/png;base64,`.
+   *
+   * Sempre `null` desde a troca para a Lytex: ela devolve o copia e cola
+   * e não uma imagem pronta. Quem mostra a tela desenha o QR a partir de
+   * `pixPayload`. O campo fica porque o contrato é público e sumir com
+   * ele quebraria quem já lê.
+   */
   pixQrCodeBase64: string | null;
   pixExpiraEm: string | null;
   linhaDigitavel: string | null;
@@ -94,18 +101,18 @@ export interface CompanyPaymentAccount {
   id: string;
   companyId: string;
   status: "PENDENTE" | "EM_ANALISE" | "ATIVA" | "RECUSADA";
-  /** A subconta Asaas do transportador — o destino do split. `null` enquanto ela não existir. */
-  asaasWalletId: string | null;
-  /** O `id` da subconta, para conferir no painel da Asaas. */
-  asaasAccountId: string | null;
-  /** Para onde o transportador conclui o cadastro, quando a Asaas devolve o link. */
-  asaasOnboardingUrl: string | null;
+  /** O `_id` da subconta na Lytex. `null` enquanto ela não existir. */
+  lytexSubAccountId: string | null;
+  /** O estabelecimento que o split endereça, para conferir no painel da Lytex. */
+  lytexRecipientId: string | null;
+  /** `true` quando a Lytex já liberou o split desta subconta pelo KYC. */
+  lytexSplitLiberado: boolean;
   /**
-   * Se dá para emitir cobrança em nome da subconta.
+   * Se dá para emitir cobrança em nome da subconta: ter a subconta e ter
+   * o split liberado.
    *
-   * É um booleano, e não a chave: a chave de API da subconta fica
-   * cifrada no servidor e NUNCA sai em resposta de API. A tela precisa
-   * saber se pode, não qual é.
+   * É um booleano, e não um identificador, porque a tela precisa saber
+   * se pode, nunca com o quê.
    */
   podeEmitirPelaSubconta: boolean;
   chavePix: string | null;
@@ -166,14 +173,14 @@ export interface DadosParaAbrirConta {
  * Um campo obrigatório, e não doze: razão social, documento, endereço e
  * contato já estão no cadastro da transportadora, conferidos na Receita
  * quando ela entrou. O faturamento mensal é o único que a Rotta nunca
- * coletou, e o único que o Asaas exige.
+ * coletou, e o único que a Lytex exige.
  *
  * `walletId`, `accountId` e chave de API não entram aqui de propósito:
- * vêm da resposta do Asaas, nunca do cliente.
+ * vêm da resposta da Lytex, nunca do cliente.
  */
-export interface CriarSubcontaAsaasInput {
+export interface CriarSubcontaInput {
   faturamentoMensalCentavos: number;
-  /** Só quando o financeiro é outro e-mail: é para cá que o Asaas manda os avisos da conta. */
+  /** Só quando o financeiro é outro e-mail: é para cá que a Lytex manda os avisos da conta. */
   email?: string;
   /** Só quando o financeiro é outro celular. Dígitos com DDD. */
   telefone?: string;
@@ -244,7 +251,7 @@ export interface ContratoParaCobrar {
 
 export interface AssinaturaDaFamilia {
   contractId: string;
-  asaasSubscriptionId: string;
+  lytexSubscriptionId: string;
   status: string;
   meioDePagamento: string;
   valorCentavos: number;
@@ -350,16 +357,16 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
       ).data,
 
     /**
-     * Abre a conta de recebimento da transportadora no Asaas, sem ela
+     * Abre a conta de recebimento da transportadora na Lytex, sem ela
      * sair da Rotta.
      *
      * O corpo pede um campo porque os outros já estão no cadastro da
      * transportadora. A conta nasce `EM_ANALISE` e o estado muda sozinho
-     * quando o Asaas termina a análise. Chamar de novo com subconta já
+     * quando a Lytex termina a análise. Chamar de novo com subconta já
      * criada é recusado: a chave de acesso só aparece na criação, e a
      * primeira ficaria inacessível.
      */
-    criarSubcontaAsaas: async (input: CriarSubcontaAsaasInput): Promise<CompanyPaymentAccount> =>
+    criarSubconta: async (input: CriarSubcontaInput): Promise<CompanyPaymentAccount> =>
       (
         await apiClient.request<ApiEnvelope<CompanyPaymentAccount>>(
           "/family-billing/conta-de-recebimento/subconta",
@@ -379,10 +386,10 @@ export function createFamilyBillingEndpoints(apiClient: ApiClient) {
         )
       ).data,
 
-    /** O mesmo que `criarSubcontaAsaas`, mas PELA transportadora, do painel do Admin. */
-    criarSubcontaAsaasParaEmpresa: async (
+    /** O mesmo que `criarSubconta`, mas PELA transportadora, do painel do Admin. */
+    criarSubcontaParaEmpresa: async (
       companyId: string,
-      input: CriarSubcontaAsaasInput,
+      input: CriarSubcontaInput,
     ): Promise<CompanyPaymentAccount> =>
       (
         await apiClient.request<ApiEnvelope<CompanyPaymentAccount>>(

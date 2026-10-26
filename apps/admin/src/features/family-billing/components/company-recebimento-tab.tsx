@@ -28,7 +28,7 @@ import {
 type Situacao = "SEM_SUBCONTA" | "EM_ANALISE" | "ATIVA" | "RECUSADA";
 
 function situacaoDa(conta: CompanyPaymentAccount | null | undefined): Situacao {
-  if (!conta?.asaasAccountId) return "SEM_SUBCONTA";
+  if (!conta?.lytexSubAccountId) return "SEM_SUBCONTA";
   if (conta.status === "ATIVA") return "ATIVA";
   if (conta.status === "RECUSADA") return "RECUSADA";
   return "EM_ANALISE";
@@ -190,15 +190,12 @@ export function CompanyRecebimentoTab({ companyId }: { companyId: string }): JSX
             </div>
           ) : null}
 
-          {conta?.asaasOnboardingUrl && situacao !== "ATIVA" ? (
-            <a
-              href={conta.asaasOnboardingUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-sm font-semibold text-primary underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30"
-            >
-              Abrir o envio de documentos desta conta
-            </a>
+          {situacao === "EM_ANALISE" ? (
+            <p className="text-sm text-muted">
+              A Lytex ainda está analisando esta conta. O envio de documentos acontece no
+              atendimento deles, e não há link para abrir por aqui: a API da Lytex não publica um.
+              Assim que o split for liberado, esta tela muda sozinha.
+            </p>
           ) : null}
         </Card.Body>
       </Card>
@@ -221,11 +218,11 @@ export function CompanyRecebimentoTab({ companyId }: { companyId: string }): JSX
             />
             <Dado
               rotulo="Pode emitir pela subconta"
-              valor={conta.podeEmitirPelaSubconta ? "Sim, a chave está guardada" : "Não"}
+              valor={conta.podeEmitirPelaSubconta ? "Sim, o split está liberado" : "Não"}
             />
             <Dado rotulo="Chave Pix de saque" valor={conta.chavePix ?? "Não informada"} />
-            <Dado rotulo="id da subconta" valor={conta.asaasAccountId ?? "—"} />
-            <Dado rotulo="walletId do split" valor={conta.asaasWalletId ?? "—"} />
+            <Dado rotulo="id da subconta na Lytex" valor={conta.lytexSubAccountId ?? "—"} />
+            <Dado rotulo="estabelecimento do split" valor={conta.lytexRecipientId ?? "—"} />
           </Card.Body>
         </Card>
       ) : null}
