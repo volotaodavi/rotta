@@ -61,6 +61,7 @@ import { CompanyServiceAreasModule } from "@/modules/company-service-areas/compa
 import { ConversationsModule } from "@/modules/conversations/conversations.module";
 import { DashboardModule } from "@/modules/dashboard/dashboard.module";
 import { DataRetentionModule } from "@/modules/data-retention/data-retention.module";
+import { DispatchModule } from "@/modules/dispatch/dispatch.module";
 import { DocumentExpiryModule } from "@/modules/document-expiry/document-expiry.module";
 import { DocumentsModule } from "@/modules/documents/documents.module";
 import { DriversModule } from "@/modules/drivers/drivers.module";
@@ -161,6 +162,10 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     SchoolsModule,
     CompanyServiceAreasModule,
     RouteAssignmentsModule,
+    // Painel Geral do Despachante (26/10/2026) — leitura agregada do
+    // dia. Fica ao lado da escala e dos rastreadores porque é a mesma
+    // operação, vista de cima.
+    DispatchModule,
     TrackersModule,
     // Portal da Escola (22/09/2026) — leitura por `escolaId`, fora do
     // isolamento por `companyId` do resto do sistema. Ver o módulo.

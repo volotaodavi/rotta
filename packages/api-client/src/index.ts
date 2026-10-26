@@ -21,6 +21,7 @@ export * from "./endpoints/company-service-areas";
 export * from "./endpoints/company-join-pre-registrations";
 export * from "./endpoints/company-join-requests";
 export * from "./endpoints/dashboard";
+export * from "./endpoints/dispatch";
 export * from "./endpoints/drivers";
 export * from "./endpoints/family-billing";
 export * from "./endpoints/geo";

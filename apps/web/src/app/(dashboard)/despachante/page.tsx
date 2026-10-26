@@ -1,372 +1,139 @@
 "use client";
 
-import {
-  Badge,
-  Button,
-  Card,
-  EmptyState,
-  ErrorState,
-  FormField,
-  Input,
-  Select,
-  Spinner,
-  Typography,
-  buttonVariants,
-  useToast,
-} from "@rotta/ui/web";
+import { ErrorState, Skeleton, Typography, buttonVariants } from "@rotta/ui/web";
 import Link from "next/link";
-import { useState } from "react";
 
-import type { Route, Vehicle } from "@rotta/api-client";
-
-import {
-  useBuscaDeVeiculos,
-  useFrotaParaSubstituicao,
-  useRotasDoVeiculo,
-  useTrocarOnibusDeHoje,
-  useTrocarOnibusPadrao,
-  useViagemDeHoje,
-} from "@/features/dispatch/hooks/use-dispatch";
-import { ROUTE_STATUS_LABEL, ROUTE_STATUS_VARIANT } from "@/features/routes/labels";
-import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
+import { AlertasDoPainel } from "@/features/dispatch/components/alertas-do-painel";
+import { EscalaDoDiaResumida } from "@/features/dispatch/components/escala-do-dia-resumida";
+import { EventosRecentes } from "@/features/dispatch/components/eventos-recentes";
+import { IndicadoresDoPainelGeral } from "@/features/dispatch/components/indicadores-do-painel";
+import { MapaDaOperacao } from "@/features/dispatch/components/mapa-da-operacao";
+import { RotasDoDia } from "@/features/dispatch/components/rotas-do-dia";
+import { usePainelDoDespachante } from "@/features/dispatch/hooks/use-painel";
+import { horaDe } from "@/features/dispatch/labels";
 
 /**
- * Painel do Despachante (pedido do usuário 22/09/2026: "colocando um
- * painel para a transportadora poder alterar a Rota através do número
- * cadastrado pelo ônibus... o despachante altera conforme o rodízio...
- * e os responsáveis sempre atualizados").
+ * Painel Geral do Despachante (26/10/2026).
  *
- * ## A ideia inteira da tela
+ * ## As cinco perguntas
  *
- * Toda outra tela da Rotta começa na ROTA. Esta começa no ÔNIBUS,
- * porque é assim que o problema chega para quem despacha: "o 412
- * quebrou", "o 118 vai para a oficina hoje". Ninguém liga para dizer o
- * nome da rota. Por isso a busca é pelo NÚMERO do ônibus (e também
- * placa/modelo, para a frota privada que não usa numeração) e, a
- * partir do carro, a tela mostra as rotas que ele atende hoje.
+ * A tela existe para responder cinco perguntas sem o despachante
+ * clicar em nada, e a disposição dos blocos é literalmente essa lista:
  *
- * ## As duas trocas são coisas diferentes, e a tela não deixa confundir
+ *  1. **Quais veículos estão em operação** — os indicadores do topo.
+ *  2. **Onde eles estão** — o mapa, com a idade de cada posição.
+ *  3. **Quais rotas estão em andamento** — a lista do lado direito do
+ *     mapa, com a atrasada no topo.
+ *  4. **Se as equipes estão completas** — a escala do dia, com monitor
+ *     ausente escrito em laranja em vez de célula vazia.
+ *  5. **O que precisa de intervenção** — os alertas, ordenados por
+ *     gravidade.
  *
- * Este é o ponto de cuidado da tela inteira, e o motivo de as duas
- * ações NUNCA aparecerem no mesmo botão:
+ * ## Por que tudo aqui é leitura
  *
- *  - **Trocar o ônibus de hoje** mexe na viagem que já está rodando.
- *    Dispara `VEICULO_ALTERADO` para os responsáveis de todos os alunos
- *    da rota — e esse evento é PUSH, chega no celular na hora. Vale só
- *    hoje; amanhã a rota volta ao carro de sempre.
- *  - **Trocar o ônibus padrão** é o rodízio planejado. Passa a valer da
- *    próxima viagem em diante e NÃO notifica ninguém — porque o carro
- *    de hoje não mudou, e avisar "o veículo mudou" enquanto a criança
- *    está dentro do carro antigo seria informação falsa na pior hora
- *    possível.
+ * Nenhum botão desta página escreve. As duas escritas da operação têm
+ * tela própria e continuam lá: `/despachante/trocar` para trocar o
+ * ônibus (que avisa as famílias quando a troca é de hoje) e
+ * `/despachante/escala` para montar a escala.
  *
- * A tela escreve essa diferença ao lado de cada botão, em português,
- * toda vez. Quem despacha faz isso correndo, no meio de um telefonema.
+ * Não é separação por organização, é por segurança: esta tela se
+ * atualiza sozinha a cada quinze segundos, e um formulário que some
+ * debaixo da mão de quem está digitando é um jeito conhecido de perder
+ * trabalho. Quem vai escrever sai daqui de propósito.
  *
- * ## Por que tudo em uma página estática
+ * ## Por que o esqueleto só aparece na primeira carga
  *
- * Nenhuma navegação para segmento dinâmico (`/despachante/[id]`) — o
- * bug do App Router do Next.js documentado em `rotas/page.tsx`
- * (renderização indeterminística de segmento dinâmico recém-criado, já
- * reproduzido ao vivo em produção três vezes) não pode alcançar uma
- * tela que a operação usa com a viagem em andamento. Tudo aqui troca
- * por estado local.
+ * `usePainelDoDespachante` mantém os dados anteriores durante a
+ * atualização. Uma tela de operação que pisca a cada quinze segundos é
+ * uma tela que ninguém consegue ler enquanto fala ao telefone.
  */
-export default function DespachantePage(): JSX.Element {
-  const [termo, setTermo] = useState("");
-  const [veiculo, setVeiculo] = useState<Vehicle | null>(null);
+export default function PainelDoDespachantePage(): JSX.Element {
+  const painel = usePainelDoDespachante();
 
-  const busca = useBuscaDeVeiculos(termo);
-  const rotas = useRotasDoVeiculo(veiculo?.id);
+  if (painel.isError && !painel.data) {
+    return (
+      <ErrorState
+        message="Não foi possível carregar o painel da operação."
+        onRetry={() => void painel.refetch()}
+        isRetrying={painel.isFetching}
+      />
+    );
+  }
+
+  if (!painel.data) {
+    return <EsqueletoDoPainel />;
+  }
+
+  const dados = painel.data;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <Typography variant="title">Despachante</Typography>
+          <Typography variant="title">Painel do despachante</Typography>
           <Typography variant="bodySmall" color="muted">
-            Busque o ônibus pelo número e altere a rota dele. A troca de hoje avisa os responsáveis
-            na hora; a troca do padrão vale a partir da próxima viagem.
+            A operação de hoje, atualizada às {horaDe(dados.atualizadoEm)}.
+            {/*
+              Quando a atualização falha mas ainda há dados na tela, a
+              pessoa precisa saber que o que ela está lendo envelheceu.
+              Sem isto, o painel continua parecendo ao vivo depois que a
+              conexão caiu, que é a pior forma de falhar.
+            */}
+            {painel.isError ? (
+              <span className="font-medium text-danger">
+                {" "}
+                A última tentativa de atualizar falhou, então estes números pararam no tempo.
+              </span>
+            ) : null}
           </Typography>
         </div>
-        {/*
-          A escala é o outro gesto: planejar o dia seguinte. Aqui se
-          mexe no que já está rodando; lá se monta o que ainda vai sair.
-        */}
-        <Link href="/despachante/escala" className={buttonVariants({ variant: "secondary" })}>
-          Escala do dia →
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/despachante/trocar" className={buttonVariants({ variant: "secondary" })}>
+            Trocar ônibus
+          </Link>
+          <Link href="/despachante/escala" className={buttonVariants({ variant: "primary" })}>
+            Montar escala
+          </Link>
+        </div>
       </div>
 
-      <Card>
-        <Card.Body className="flex flex-col gap-4">
-          <FormField
-            label="Ônibus"
-            helperText="Número do ônibus, placa ou modelo. A partir de 2 caracteres a busca começa sozinha."
-          >
-            <Input
-              value={termo}
-              onChange={(event) => {
-                setTermo(event.target.value);
-                setVeiculo(null);
-              }}
-              placeholder="412"
-            />
-          </FormField>
+      <IndicadoresDoPainelGeral indicadores={dados.indicadores} />
 
-          {termo.trim().length >= 2 && !veiculo ? (
-            busca.isLoading ? (
-              <div className="flex justify-center py-6">
-                <Spinner />
-              </div>
-            ) : busca.isError ? (
-              <ErrorState
-                message="Não foi possível buscar os ônibus."
-                onRetry={() => void busca.refetch()}
-                isRetrying={busca.isFetching}
-              />
-            ) : (busca.data?.items.length ?? 0) === 0 ? (
-              <Typography variant="body" color="muted">
-                Nenhum ônibus com esse número, placa ou modelo.
-              </Typography>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {busca.data?.items.map((item) => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => setVeiculo(item)}
-                      className="flex w-full items-center justify-between gap-4 rounded-md border border-border px-4 py-3 text-left transition-colors hover:bg-secondary/10"
-                    >
-                      <span className="flex flex-col">
-                        <span className="font-semibold text-text">{identificar(item)}</span>
-                        <span className="text-sm text-text-muted">
-                          {item.modelo} · {item.capacidadePassageiros} lugares
-                        </span>
-                      </span>
-                      <span className="flex items-center gap-2">
-                        {item.rastreadorImei ? (
-                          <Badge variant="success">Rastreador</Badge>
-                        ) : (
-                          <Badge variant="neutral">Sem rastreador</Badge>
-                        )}
-                        {item.viagemAtualId ? <Badge variant="info">Em viagem</Badge> : null}
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )
-          ) : null}
-        </Card.Body>
-      </Card>
+      {/*
+        O mapa ocupa dois terços e as rotas um terço, porque é assim
+        que o despachante olha: o mapa responde "onde", a lista responde
+        "o quê", e ele precisa das duas ao mesmo tempo sem rolar a
+        página.
+      */}
+      <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
+        <MapaDaOperacao veiculos={dados.veiculos} atualizadoEm={dados.atualizadoEm} />
+        <RotasDoDia rotas={dados.rotasDoDia} />
+      </div>
 
-      {veiculo ? (
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-4">
-            <Typography variant="subtitle">
-              Rotas do {identificar(veiculo)} ({veiculo.modelo})
-            </Typography>
-            <Button variant="ghost" size="sm" onClick={() => setVeiculo(null)}>
-              Trocar de ônibus
-            </Button>
-          </div>
+      <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
+        <EscalaDoDiaResumida escala={dados.escalaDoDia} />
+        <AlertasDoPainel alertas={dados.alertas} />
+      </div>
 
-          {rotas.isLoading ? (
-            <div className="flex justify-center py-10">
-              <Spinner size="lg" />
-            </div>
-          ) : rotas.isError ? (
-            <ErrorState
-              message="Não foi possível carregar as rotas deste ônibus."
-              onRetry={() => void rotas.refetch()}
-              isRetrying={rotas.isFetching}
-            />
-          ) : (rotas.data?.items.length ?? 0) === 0 ? (
-            <EmptyState
-              title="Nenhuma rota usa este ônibus como padrão"
-              description="Para pôr este carro numa rota, abra a rota em Rotas e defina o veículo padrão, ou troque o ônibus de hoje a partir do carro que está na rota."
-            />
-          ) : (
-            rotas.data?.items.map((rota) => (
-              <RotaDoDespachante key={rota.id} rota={rota} veiculoAtual={veiculo} />
-            ))
-          )}
-        </div>
-      ) : null}
+      <EventosRecentes eventos={dados.eventosRecentes} />
     </div>
   );
 }
 
-/**
- * Como o despachante chama este ônibus.
- *
- * No transporte público é o NÚMERO ("o 412"), e a placa vira detalhe —
- * ninguém decora placa. Na frota privada não há número, então a placa
- * volta a ser a identidade. Uma função só, usada em todo lugar da tela,
- * para os dois públicos nunca verem rótulos diferentes do mesmo carro.
- */
-function identificar(veiculo: Vehicle): string {
-  return veiculo.numeroFrota ? `Ônibus ${veiculo.numeroFrota}` : veiculo.placa;
-}
-
-/**
- * Uma rota atendida pelo ônibus buscado, com as duas trocas possíveis.
- *
- * Cada rota tem o próprio card e o próprio seletor de substituto —
- * deliberadamente, em vez de um seletor único no topo: duas rotas do
- * mesmo carro podem precisar de substitutos DIFERENTES (uma de manhã,
- * outra à tarde), e um seletor compartilhado convidaria ao erro de
- * mandar as duas para o mesmo lugar sem perceber.
- */
-function RotaDoDespachante({
-  rota,
-  veiculoAtual,
-}: {
-  rota: Route;
-  veiculoAtual: Vehicle;
-}): JSX.Element {
-  const toast = useToast();
-  const viagem = useViagemDeHoje(rota.id);
-  const frota = useFrotaParaSubstituicao();
-  const trocarHoje = useTrocarOnibusDeHoje();
-  const trocarPadrao = useTrocarOnibusPadrao();
-
-  const [substitutoId, setSubstitutoId] = useState("");
-  const [motivo, setMotivo] = useState("");
-
-  const tripDeHoje = viagem.data;
-  // Só faz sentido trocar o carro de uma viagem que ainda vai rodar ou
-  // está rodando. Numa viagem finalizada/cancelada a troca não muda
-  // nada no mundo real e só geraria um push confuso para as famílias.
-  const viagemTrocavel = tripDeHoje?.status === "EM_ANDAMENTO" || tripDeHoje?.status === "PAUSADA";
-
-  const substitutos = (frota.data?.items ?? []).filter((item) => item.id !== veiculoAtual.id);
-  const substituto = substitutos.find((item) => item.id === substitutoId);
-  const nomeDoSubstituto = substituto ? identificar(substituto) : "o ônibus escolhido";
-
+/** Só na primeira carga: depois dela o painel troca os números sem piscar. */
+function EsqueletoDoPainel(): JSX.Element {
   return (
-    <Card>
-      <Card.Body className="flex flex-col gap-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <Typography variant="subtitle">{rota.nome}</Typography>
-            <Typography variant="bodySmall" color="muted">
-              Turno {SCHOOL_SHIFT_LABEL[rota.turno]}
-            </Typography>
-          </div>
-          <Badge variant={ROUTE_STATUS_VARIANT[rota.status]}>
-            {ROUTE_STATUS_LABEL[rota.status]}
-          </Badge>
-        </div>
-
-        <div className="rounded-md bg-secondary/10 px-4 py-3">
-          {viagem.isLoading ? (
-            <Typography variant="bodySmall" color="muted">
-              Verificando a viagem de hoje…
-            </Typography>
-          ) : viagemTrocavel ? (
-            <Typography variant="bodySmall">
-              Viagem de hoje <strong>{tripDeHoje?.codigo}</strong> em andamento
-              {tripDeHoje?.status === "PAUSADA" ? " (pausada)" : ""}.
-            </Typography>
-          ) : tripDeHoje ? (
-            <Typography variant="bodySmall" color="muted">
-              A viagem de hoje já foi encerrada. Só dá para mexer no ônibus padrão.
-            </Typography>
-          ) : (
-            <Typography variant="bodySmall" color="muted">
-              Nenhuma viagem iniciada hoje nesta rota.
-            </Typography>
-          )}
-        </div>
-
-        <FormField label="Ônibus substituto">
-          <Select
-            value={substitutoId}
-            onChange={(event) => setSubstitutoId(event.target.value)}
-            disabled={frota.isLoading}
-          >
-            <option value="">Selecione o ônibus</option>
-            {substitutos.map((item) => (
-              <option key={item.id} value={item.id}>
-                {identificar(item)}, {item.modelo} ({item.capacidadePassageiros} lugares)
-              </option>
-            ))}
-          </Select>
-        </FormField>
-
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="flex flex-col gap-3">
-            <FormField
-              label="Motivo (opcional)"
-              helperText="Fica no histórico da viagem. Ex.: 'pane elétrica'."
-            >
-              <Input
-                value={motivo}
-                onChange={(event) => setMotivo(event.target.value)}
-                placeholder="Pane elétrica"
-              />
-            </FormField>
-            <Button
-              variant="primary"
-              disabled={!viagemTrocavel || !substitutoId || trocarHoje.isPending}
-              onClick={() => {
-                if (!tripDeHoje || !substitutoId) return;
-                trocarHoje.mutate(
-                  {
-                    tripId: tripDeHoje.id,
-                    veiculoId: substitutoId,
-                    ...(motivo.trim() ? { motivo: motivo.trim() } : {}),
-                  },
-                  {
-                    onSuccess: () => {
-                      setMotivo("");
-                      setSubstitutoId("");
-                      toast.success(
-                        `A viagem de hoje passou para ${nomeDoSubstituto}. Os responsáveis já foram avisados.`,
-                      );
-                    },
-                  },
-                );
-              }}
-            >
-              {trocarHoje.isPending ? "Trocando…" : "Trocar o ônibus de HOJE"}
-            </Button>
-            <Typography variant="caption" color="muted">
-              Vale só para a viagem de hoje e <strong>avisa os responsáveis na hora</strong>, no
-              celular. Amanhã a rota volta ao ônibus padrão.
-            </Typography>
-          </div>
-
-          <div className="flex flex-col justify-end gap-3">
-            <Button
-              variant="secondary"
-              disabled={!substitutoId || trocarPadrao.isPending}
-              onClick={() => {
-                if (!substitutoId) return;
-                trocarPadrao.mutate(
-                  { routeId: rota.id, veiculoId: substitutoId },
-                  {
-                    onSuccess: () => {
-                      setSubstitutoId("");
-                      toast.success(
-                        `${rota.nome} passa a sair com ${nomeDoSubstituto} a partir da próxima viagem.`,
-                      );
-                    },
-                  },
-                );
-              }}
-            >
-              {trocarPadrao.isPending ? "Trocando…" : "Trocar o ônibus PADRÃO da rota"}
-            </Button>
-            <Typography variant="caption" color="muted">
-              Rodízio planejado: vale da <strong>próxima viagem</strong> em diante e{" "}
-              <strong>não avisa ninguém agora</strong>. O carro de hoje não mudou.
-            </Typography>
-          </div>
-        </div>
-      </Card.Body>
-    </Card>
+    <div className="flex flex-col gap-5" aria-busy="true" aria-label="Carregando o painel">
+      <Skeleton className="h-10 w-64" />
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        {Array.from({ length: 5 }, (_, indice) => (
+          <Skeleton key={indice} className="h-24" />
+        ))}
+      </div>
+      <div className="grid gap-4 xl:grid-cols-[2fr_1fr]">
+        <Skeleton className="h-[520px]" />
+        <Skeleton className="h-[520px]" />
+      </div>
+    </div>
   );
 }

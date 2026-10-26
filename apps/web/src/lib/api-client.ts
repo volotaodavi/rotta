@@ -7,6 +7,7 @@ import {
   createCompaniesEndpoints,
   createCompanyJoinPreRegistrationsEndpoints,
   createCompanyJoinRequestsEndpoints,
+  createDispatchEndpoints,
   createDriversEndpoints,
   createGeoEndpoints,
   createGpsEndpoints,
@@ -56,6 +57,9 @@ export const billingApi = createBillingEndpoints(apiClient);
 export const clientErrorsApi = createClientErrorsEndpoints(apiClient);
 export const companiesApi = createCompaniesEndpoints(apiClient);
 export const driversApi = createDriversEndpoints(apiClient);
+// Painel Geral do Despachante (26/10/2026) — leitura do dia inteiro
+// numa chamada. Quem escreve continua em `tripsApi`/`escalasApi`.
+export const dispatchApi = createDispatchEndpoints(apiClient);
 export const companyJoinRequestsApi = createCompanyJoinRequestsEndpoints(apiClient);
 export const companyJoinPreRegistrationsApi = createCompanyJoinPreRegistrationsEndpoints(apiClient);
 export const vehiclesApi = createVehiclesEndpoints(apiClient);
