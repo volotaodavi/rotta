@@ -91,6 +91,27 @@ export interface RottaMapProps {
   /** URL de um estilo MapLibre (vetor, https://maplibre.org/maplibre-style-spec/) — padrão: estilo `liberty` da OpenFreeMap (`tiles.openfreemap.org`), sem token (ver nota em `./web/index.tsx`). */
   styleUrl?: string;
   /**
+   * Qual mapa base desenhar.
+   *
+   * `"padrao"` (o default) usa a chave da CARTO quando
+   * `configureRottaMaps` recebeu uma, e cai no OpenStreetMap quando
+   * não. `"osm"` ignora a chave e vai direto ao OpenStreetMap, sempre.
+   *
+   * Existe por um caso concreto, não por simetria de API: a chave da
+   * CARTO só vale nos domínios cadastrados nela, e uma chave
+   * cadastrada para o domínio errado não dá erro. Ela responde 200 e
+   * devolve o tile **carimbado com "API KEY REQUIRED"** por cima do
+   * mapa. Na landing, esse carimbo é a primeira coisa que um
+   * transportador vê. O OSM, que não precisa de chave nenhuma, é
+   * limpo, e numa página de apresentação isso vale mais que o estilo
+   * mais bonito da CARTO.
+   *
+   * Dentro do painel o padrão continua, porque lá o volume de uso
+   * justifica a CARTO (a política de tiles do OSM é para uso leve) e um
+   * carimbo discreto não custa um cliente.
+   */
+  basemap?: "padrao" | "osm";
+  /**
    * "Mapa em modo GPS" (auditoria 31/08/2026, pedido do usuário: "o mapa
    * deverá ser igual GPS mesmo... podendo centralizar o mapa de acordo
    * com a rota do veículo"). Quando `true`, a câmera acompanha

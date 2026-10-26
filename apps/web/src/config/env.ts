@@ -29,8 +29,24 @@ const envSchema = z.object({
   // carimbo "API KEY REQUIRED" do raster CARTO — peça em
   // https://carto.com/basemaps/apikey (e-mail + domínio, aprovação
   // automática, limite de uso justo de 5M requisições/mês). Sem esta
-  // variável, o mapa continua aparecendo normalmente (ruas/água/nomes de
-  // lugar reais), só com o carimbo por cima — nunca uma tela em branco.
+  // variável, o mapa cai no OpenStreetMap, que é limpo — nunca uma tela
+  // em branco.
+  //
+  // A CHAVE É POR DOMÍNIO, e é aí que ela falha em silêncio: a CARTO
+  // valida o `Referer`, então uma chave cadastrada para um domínio e
+  // usada em outro NÃO devolve erro. Ela responde 200 com o tile
+  // carimbado, exatamente como se não houvesse chave nenhuma. Foi o que
+  // aconteceu em produção: a chave existia, o servidor respondia 200, e
+  // o mapa aparecia carimbado em rottabr.com.br.
+  //
+  // Ao trocar de domínio ou publicar num novo, cadastre TODOS no painel
+  // da CARTO antes: o de produção, o `www.`, e o de prévia da Vercel.
+  // Conferir é simples: abra o DevTools na página do mapa e veja se o
+  // tile de `basemaps.cartocdn.com` volta carimbado.
+  //
+  // A landing NÃO usa esta chave de propósito (`basemap="osm"` em
+  // `hero-map-demo.tsx`): um carimbo de chave faltando na primeira tela
+  // é a pior coisa que um transportador pode ver.
   NEXT_PUBLIC_CARTO_API_KEY: z.string().optional(),
   // Cloudflare Turnstile ("não sou um robô", pedido do usuário
   // 01/09/2026) — chave pública do widget (Cloudflare → Turnstile →

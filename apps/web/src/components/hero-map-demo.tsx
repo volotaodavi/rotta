@@ -94,7 +94,20 @@ export function HeroMapDemo(): JSX.Element {
     <div className="relative aspect-square w-full max-w-md">
       <div className="absolute -inset-6 rounded-[40px] bg-primary/10 blur-2xl" aria-hidden="true" />
       <div className="relative aspect-square w-full overflow-hidden rounded-[32px] border border-border shadow-xl">
-        <RottaMap markers={markers} route={routeLine} initialZoom={13.5} />
+        {/*
+          `basemap="osm"` aqui, e não o padrão: a chave da CARTO só vale
+          nos domínios cadastrados nela, e uma chave cadastrada para o
+          domínio errado NÃO dá erro. Ela responde 200 e devolve o tile
+          carimbado com "API KEY REQUIRED" por cima do mapa. Este é o
+          primeiro mapa que um transportador vê no site, e um carimbo de
+          chave faltando na primeira tela diz sobre o produto o oposto do
+          que esta página inteira tenta dizer.
+
+          O OSM não pede chave nenhuma e vem limpo. Dentro do painel o
+          padrão continua valendo, onde o volume de uso justifica a
+          CARTO e um carimbo não custa um cliente.
+        */}
+        <RottaMap markers={markers} route={routeLine} initialZoom={13.5} basemap="osm" />
       </div>
       {/*
         Cartão flutuante (pedido do usuário 02/09/2026: "Transporte em

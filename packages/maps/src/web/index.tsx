@@ -85,9 +85,13 @@ export function configureRottaMaps(options: {
  * dado visível). Pedido explícito do usuário: "aquele que tem o
  * carimbo no mapa" — não o item 3.
  */
-function resolveDefaultStyleUrl(): string | StyleSpecification {
+function resolveDefaultStyleUrl(basemap: RottaMapProps["basemap"]): string | StyleSpecification {
   void globalMapTilerApiKey; // ver comentário acima — aceito, não usado.
-  return buildRasterStyle(globalCartoApiKey);
+  // `"osm"` ignora a chave de propósito: ver a nota de `basemap` em
+  // `../types.ts`. É o que mantém a landing sem o carimbo "API KEY
+  // REQUIRED" enquanto a chave da CARTO não estiver cadastrada para o
+  // domínio certo.
+  return buildRasterStyle(basemap === "osm" ? undefined : globalCartoApiKey);
 }
 
 /**
@@ -364,6 +368,7 @@ export function RottaMap({
   onBoundsChange,
   onMarkerPress,
   styleUrl,
+  basemap = "padrao",
   followMode = false,
 }: RottaMapProps): JSX.Element {
   // Rede de segurança final contra `(0, 0)`/"Null Island" (ver
@@ -420,7 +425,7 @@ export function RottaMap({
     try {
       map = new MapLibreMap({
         container: containerRef.current,
-        style: styleUrl ?? resolveDefaultStyleUrl(),
+        style: styleUrl ?? resolveDefaultStyleUrl(basemap),
         center: initialCenter ? [initialCenter.longitude, initialCenter.latitude] : FALLBACK_CENTER,
         zoom: initialZoom,
       });
@@ -508,7 +513,7 @@ export function RottaMap({
       previousMarkerIdsRef.current = new Set();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- setup roda só quando o estilo muda (ou "Tentar novamente" incrementa retryToken); ver refs acima para os callbacks.
-  }, [styleUrl, retryToken]);
+  }, [styleUrl, basemap, retryToken]);
 
   useEffect(() => {
     const map = mapRef.current;
