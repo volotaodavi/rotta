@@ -34,12 +34,42 @@ FMC130**.
 1. Pedir cotação de **3 unidades** primeiro, não 70. Três resolve o
    piloto: um ônibus rodando, um de reserva e um na bancada para teste.
 2. Na cotação, exigir por escrito do fornecedor:
+   - **Status de fim de vida (EOL)** do modelo que ele vai entregar.
+     Ver o alerta logo abaixo: este é o item novo e o mais importante
+     da lista.
    - **Número de homologação Anatel do modelo exato** que ele vai
      entregar. Não do fabricante, não de um modelo parecido. Do modelo.
+     Para o FMC130 o número a conferir é **20500-23-16220**: peça ao
+     fornecedor e confira você mesmo no sistema da Anatel, para a
+     unidade que será entregue.
    - Confirmação de que é **4G com Cat-M1 ou Cat-1**, não 2G/3G.
+   - **Prazo de reposição** de uma peça defeituosa, em dias.
    - Manual de instalação e o endereço/porta que o aparelho usa para
      enviar (vamos apontar para o nosso receptor).
 3. Guardar a nota e o número de homologação. A prefeitura pode pedir.
+
+**Alerta de reposição no FMC130, e o que fazer com ele.** A página
+oficial do FMC130 em teltonika-gps.com exibe marcação de **"End of
+life"**, **"Out of stock"** e **"Replacement"**, mas com os campos de
+data ("End of ordering", "End of production", "End of support")
+**vazios**, e o modelo não aparece na lista oficial de produtos
+descontinuados. Ou seja: a situação está ambígua na própria fonte do
+fabricante, e eu não consigo resolver isso daqui.
+
+O risco concreto não é o piloto, é o contrato: se o modelo sair de
+linha, a reposição de um aparelho queimado no terceiro mês de operação
+vira um problema sem solução rápida. Então, antes de comprar as 70
+unidades, exija do fornecedor, **por escrito**:
+
+- status atual de EOL do FMC130 e, se houver, as três datas;
+- qual é o substituto oficial (ao que tudo indica o **FMC13A**) e a
+  **homologação Anatel própria dele**, que é outro número e precisa ser
+  confirmado separadamente;
+- disponibilidade de estoque para reposição durante a vigência do
+  contrato.
+
+Para as **3 unidades do piloto** isso não bloqueia nada: compre e teste.
+Para as 70, não assine sem essa resposta.
 
 **Por que a exigência da Anatel não é burocracia nossa.** O Ato
 14430/2024 da Anatel vedou a homologação de aparelho que só fala 2G/3G
@@ -83,17 +113,31 @@ instalou rastreador antes.
 alguém encostar na fiação do ônibus. Não é coisa que se faça por
 chamada de vídeo.
 
+**De quem é a instalação.** Da **empresa de transporte contratada**,
+com instalador dela. A Rotta configura o aparelho, mantém o receptor e
+credencia o IMEI. Isso precisa estar combinado por escrito antes da
+primeira instalação: mexer na fiação de veículo de terceiro, em
+contrato público, é responsabilidade de quem responde pelo veículo, e
+não da plataforma.
+
 **O que fazer.**
 
 1. Combinar com a transportadora um ônibus parado por meia manhã.
-2. Exigir do instalador: **ignição ligada em entrada dedicada**, não
-   derivada da chave geral. É a ignição que abre e fecha a viagem no
-   nosso sistema. Se ela vier errada, a viagem abre quando o motorista
-   liga o rádio.
+2. Exigir do instalador a pinagem correta do FMC130 (está detalhada em
+   `infra/rastreadores/README.md`): pino 1 no positivo permanente com
+   fusível de 3 A, pino 7 no terra, e **pino 5 (DIN1) no pós-chave**.
+   É o DIN1 que abre e fecha a viagem no nosso sistema. Se o instalador
+   derivar da chave geral, a viagem abre quando o motorista liga o
+   rádio.
 3. Anotar o **IMEI** do aparelho e o **número de frota** do ônibus
    (`01.0867`, por exemplo) no mesmo papel, na hora. Esse par é o que a
    Rotta cadastra. Trocar os dois é o erro mais comum e o mais difícil
    de achar depois.
+4. Testar na bancada **antes** de ir ao ônibus: fonte de 12 V nos pinos
+   1 e 7 e conferir se o IMEI aparece em
+   `/opt/traccar/logs/tracker-server.log`. Descobrir um aparelho morto
+   na oficina custa minutos; descobrir embaixo do painel custa a
+   manhã.
 
 **Se não for feito.** Dá para testar com simulador, e eu já testei
 assim. Mas você não pode prometer à prefeitura algo que nunca andou num
