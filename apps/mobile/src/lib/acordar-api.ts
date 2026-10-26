@@ -1,3 +1,5 @@
+import { AppState, type AppStateStatus, type NativeEventSubscription } from "react-native";
+
 import { env } from "@/config/env";
 
 /** A API já inclui o prefixo `/v1` na URL; aqui só falta o caminho. */
@@ -39,4 +41,62 @@ export function acordarApi(): void {
   if (!env.EXPO_PUBLIC_API_URL) return;
 
   void fetch(`${env.EXPO_PUBLIC_API_URL}${CAMINHO}`, { method: "GET" }).catch(() => undefined);
+}
+
+/**
+ * Tempo mínimo entre duas chamadas de `acordarApi` pelo ciclo de vida.
+ *
+ * O serviço hiberna com 15 minutos de silêncio, então 10 minutos nunca
+ * deixam os 15 completarem. Mais curto que isso não acorda nada que já
+ * não estivesse acordado e só gasta a cota.
+ */
+const INTERVALO_MINIMO_MS = 10 * 60 * 1000;
+
+let ultimaChamadaEm = 0;
+
+/**
+ * Acorda a API quando o app VOLTA para o primeiro plano.
+ *
+ * ## O buraco que isto fecha
+ *
+ * `acordarApi` disparava uma vez, na abertura. Numa operação de
+ * transporte escolar isso não cobre o dia: o motorista abre o app às
+ * 5h40, bloqueia o celular, dirige duas horas, e volta ao app na
+ * escola. Nesse intervalo, se nenhuma outra requisição aconteceu, o
+ * serviço hibernou, e quem paga os 90 segundos de volta é ele, parado
+ * na porta da escola com criança esperando para descer.
+ *
+ * Durante a viagem em andamento o relato de GPS a cada 15 segundos já
+ * mantém a API acordada sozinho. O caso que sobra, e que isto cobre, é
+ * o app aberto ANTES de a viagem começar e depois de ela terminar.
+ *
+ * ## Por que o intervalo mínimo
+ *
+ * Alternar entre apps dispara `active` várias vezes por minuto, e cada
+ * uma viraria uma requisição. A cota gratuita do Render é de 750 horas
+ * de instância por mês para o workspace inteiro: desperdiçá-la em ping
+ * redundante é a mesma imprudência de manter o serviço acordado 24
+ * horas, só que mais difícil de perceber.
+ *
+ * Devolve a função que cancela a inscrição, para quem monta chamar no
+ * desmonte.
+ */
+export function acordarApiAoVoltarParaOPrimeiroPlano(): () => void {
+  const aoMudar = (estado: AppStateStatus): void => {
+    if (estado !== "active") return;
+
+    const agora = Date.now();
+    if (agora - ultimaChamadaEm < INTERVALO_MINIMO_MS) return;
+
+    ultimaChamadaEm = agora;
+    acordarApi();
+  };
+
+  const inscricao: NativeEventSubscription = AppState.addEventListener("change", aoMudar);
+  return () => inscricao.remove();
+}
+
+/** Só para teste: zera a janela do intervalo mínimo entre chamadas. */
+export function esquecerUltimaChamadaDeAcordar(): void {
+  ultimaChamadaEm = 0;
 }

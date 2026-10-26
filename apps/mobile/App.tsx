@@ -5,7 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppErrorBoundary } from "@/components/app-error-boundary";
 import { FonteDaMarca } from "@/components/fonte-da-marca";
 import { isEnvConfigValid } from "@/config/env";
-import { acordarApi } from "@/lib/acordar-api";
+import { acordarApi, acordarApiAoVoltarParaOPrimeiroPlano } from "@/lib/acordar-api";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { AppProviders } from "@/providers/app-providers";
 import { ThemeProvider } from "@/providers/theme-provider";
@@ -37,6 +37,10 @@ export default function App(): JSX.Element {
   */
   useEffect(() => {
     acordarApi();
+    /* E de novo a cada volta ao primeiro plano: o motorista abre o app
+       cedo, bloqueia o celular, dirige duas horas e volta na escola. Ver
+       `acordarApiAoVoltarParaOPrimeiroPlano`. */
+    return acordarApiAoVoltarParaOPrimeiroPlano();
   }, []);
 
   return (
