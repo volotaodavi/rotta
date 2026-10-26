@@ -5,6 +5,7 @@ import type {
   ListRoutesFilter,
   ListRoutesResult,
   RouteRepository,
+  RotaComParadas,
   UpdateRouteData,
 } from "./route.repository";
 import type { Prisma, Route } from "@prisma/client";
@@ -32,6 +33,23 @@ export class PrismaRouteRepository implements RouteRepository {
           veiculoPadraoId: veiculoId,
           status: "ATIVA",
           deletedAt: null,
+        },
+      }),
+    );
+  }
+
+  listCandidatasParaSugestaoAcrossTenants(companyId: string): Promise<RotaComParadas[]> {
+    return this.prisma.withBypass(
+      this.prisma.route.findMany({
+        where: { companyId, status: "ATIVA", deletedAt: null },
+        select: {
+          id: true,
+          nome: true,
+          turno: true,
+          paradas: {
+            select: { latitude: true, longitude: true, horarioPrevisto: true },
+            orderBy: { ordem: "asc" },
+          },
         },
       }),
     );

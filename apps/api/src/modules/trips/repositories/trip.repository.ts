@@ -60,6 +60,15 @@ export interface ActiveTripWithDetails extends Trip {
  * e uma garantia de banco que não existe é o tipo de coisa em que o
  * código seguinte se apoia sem conferir.
  */
+/** Uma viagem aberta que parou de receber posição. */
+export interface ViagemSemSinal {
+  id: string;
+  companyId: string;
+  motoristaId: string;
+  /** A última posição conhecida, ou o início quando nunca houve nenhuma. */
+  ultimoSinalEm: Date;
+}
+
 export interface TripRepository {
   create(data: CreateTripData): Promise<Trip>;
   findById(id: string): Promise<Trip | null>;
@@ -108,4 +117,21 @@ export interface TripRepository {
    * IMEI, então a lista de ids é o que mantém o bypass restrito.
    */
   listRouteIdsComViagemEncerrada(routeIds: string[], dia: Date): Promise<string[]>;
+  /**
+   * As viagens abertas que pararam de receber posição.
+   *
+   * Existe porque nem todo desligamento chega: o aparelho perde sinal
+   * ao entrar na garagem, ou o pacote de "ignição desligada" se perde.
+   * Sem isto a viagem fica `EM_ANDAMENTO` para sempre e o pai vê o
+   * ônibus parado no mesmo ponto a noite inteira.
+   *
+   * A idade é medida pela ÚLTIMA POSIÇÃO, não pelo início: uma viagem
+   * longa e saudável tem início antigo e posição recente. Viagem que
+   * nunca recebeu posição nenhuma conta pelo próprio início, senão ela
+   * nunca seria encerrada.
+   *
+   * Cruza tenants porque quem chama é um job agendado, sem ator e sem
+   * tenant. Mesmo caso do varredor de retenção.
+   */
+  listSemSinalAcrossTenants(limite: Date, max: number): Promise<ViagemSemSinal[]>;
 }

@@ -66,6 +66,18 @@ function criarServico(
     rota?: typeof rota | null;
     escalas?: unknown[];
     viagensEncerradas?: { routeId: string }[];
+    candidatas?: {
+      id: string;
+      nome: string;
+      turno: string;
+      paradas: { latitude: number; longitude: number; horarioPrevisto: string }[];
+    }[];
+    semSinal?: {
+      id: string;
+      companyId: string;
+      motoristaId: string;
+      ultimoSinalEm: Date;
+    }[];
   } = {},
 ) {
   const findByRastreadorImei = jest
@@ -84,9 +96,22 @@ function criarServico(
     .mockResolvedValue((opcoes.viagensEncerradas ?? []).map((v) => v.routeId));
 
   const vehicleRepository = { findByRastreadorImei } as unknown as VehicleRepository;
-  const routeRepository = { findAtivaPorVeiculoPadrao } as unknown as RouteRepository;
+  /* As rotas com paradas, para a sugestao por trajeto quando o onibus
+     liga a ignicao sem escala. Vazio por padrao: a maioria dos testes
+     nao e sobre isso. */
+  const listCandidatasParaSugestaoAcrossTenants = jest
+    .fn()
+    .mockResolvedValue(opcoes.candidatas ?? []);
+  const routeRepository = {
+    findAtivaPorVeiculoPadrao,
+    listCandidatasParaSugestaoAcrossTenants,
+  } as unknown as RouteRepository;
   const escalaRepository = { listDoDiaPorVeiculo } as unknown as RouteAssignmentRepository;
-  const tripRepository = { listRouteIdsComViagemEncerrada } as unknown as TripRepository;
+  const listSemSinalAcrossTenants = jest.fn().mockResolvedValue(opcoes.semSinal ?? []);
+  const tripRepository = {
+    listRouteIdsComViagemEncerrada,
+    listSemSinalAcrossTenants,
+  } as unknown as TripRepository;
 
   const vehiclesService = {
     registrarPosicaoDeRastreador: jest.fn().mockResolvedValue(undefined),
@@ -120,6 +145,8 @@ function criarServico(
     vehiclesService,
     tripsService,
     positionRepository,
+    routeRepository,
+    tripRepository,
     findAtivaPorVeiculoPadrao,
     listDoDiaPorVeiculo,
   };
@@ -223,6 +250,56 @@ describe("a ignição comanda a viagem", () => {
     // A posição do veículo ainda vale: o mapa da frota mostra o ônibus
     // manobrando na garagem mesmo fora de rota.
     expect(vehiclesService.registrarPosicaoDeRastreador).toHaveBeenCalled();
+  });
+
+  /*
+    O caso mais comum do transporte escolar municipal, e nao e excecao:
+    o despachante remaneja de manha, o carro que era da linha do Ubatiba
+    vai para a do Silvado porque outro quebrou, e a escala nao foi
+    registrada. Ate 26/10/2026 isso virava um aviso generico que ninguem
+    lia e o onibus rodava o dia inteiro sem viagem aberta.
+
+    Rastreador NAO le letreiro: nao existe sensor para isso. Mas o
+    letreiro mente (quem o escreve esquece de trocar) e o trajeto nao.
+  */
+  it("sem escala, o trajeto diz qual rota parece ser, com nome e confianca", async () => {
+    const aviso = jest.fn();
+    const { service } = criarServico({
+      rota: null,
+      candidatas: [
+        {
+          id: "rota-silvado",
+          nome: "Linha do Silvado",
+          turno: "MANHA",
+          paradas: [
+            { latitude: -22.9194, longitude: -42.8186, horarioPrevisto: "08:00" },
+            { latitude: -22.9196, longitude: -42.8188, horarioPrevisto: "08:05" },
+          ],
+        },
+      ],
+    });
+    jest.spyOn(service["logger"], "warn").mockImplementation(aviso);
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(aviso).toHaveBeenCalledWith(expect.stringContaining("Linha do Silvado"));
+    expect(aviso).toHaveBeenCalledWith(expect.stringContaining("Despachante"));
+  });
+
+  /* A sugestao e um extra. Se a consulta de rotas falhar, o aviso de
+     que o onibus ligou sem escala continua saindo, que e o que importa. */
+  it("falha ao sugerir nao engole o aviso de que o onibus ligou sem escala", async () => {
+    const aviso = jest.fn();
+    const { service, routeRepository } = criarServico({ rota: null });
+    (routeRepository.listCandidatasParaSugestaoAcrossTenants as jest.Mock).mockRejectedValue(
+      new Error("banco fora"),
+    );
+    jest.spyOn(service["logger"], "warn").mockImplementation(aviso);
+
+    const resultado = await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(resultado.aceita).toBe(true);
+    expect(aviso).toHaveBeenCalledWith(expect.stringContaining("sem escala de hoje"));
   });
 
   it("ignição desligada com viagem aberta ENCERRA a viagem", async () => {
@@ -386,5 +463,90 @@ describe("escala do dia manda na viagem", () => {
     await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
 
     expect(listDoDiaPorVeiculo).toHaveBeenCalledWith("company-1", "veiculo-1", expect.any(Date));
+  });
+});
+
+/*
+  A rede de seguranca que estava prometida e nao existia.
+
+  `TrackersConfig.minutosSemSinalParaEncerrar` estava configurado e
+  documentado desde 24/09/2026, com a explicacao do que acontece sem
+  ele, e NADA o lia. A auditoria de 26/10/2026 achou. A propria
+  documentacao da constante diz: "sem esta rede de seguranca, a viagem
+  ficaria EM_ANDAMENTO para sempre e o pai veria o onibus parado no
+  mesmo ponto a noite inteira".
+
+  Perder sinal ao entrar na garagem coberta nao e excecao, e rotina.
+*/
+describe("encerrarViagensSemSinal", () => {
+  const agora = new Date("2026-10-26T18:00:00.000Z");
+
+  it("encerra a viagem que parou de receber posicao", async () => {
+    const { service, tripsService } = criarServico({
+      semSinal: [
+        {
+          id: "trip-muda",
+          companyId: "company-1",
+          motoristaId: "motorista-1",
+          ultimoSinalEm: new Date("2026-10-26T17:00:00.000Z"),
+        },
+      ],
+    });
+
+    const resultado = await service.encerrarViagensSemSinal(agora);
+
+    expect(tripsService.finish).toHaveBeenCalledWith("trip-muda", expect.anything(), {});
+    expect(resultado).toEqual({ avaliadas: 1, encerradas: 1, falhas: 0 });
+  });
+
+  /* O corte vem de `TRACKER_TIMEOUT_MINUTOS`, e nao de um numero solto
+     aqui dentro: quem muda a configuracao muda o comportamento. */
+  it("o limite vem da configuracao, nao do codigo", async () => {
+    const { service, tripRepository } = criarServico();
+
+    await service.encerrarViagensSemSinal(agora);
+
+    expect(tripRepository.listSemSinalAcrossTenants).toHaveBeenCalledWith(
+      new Date("2026-10-26T17:40:00.000Z"),
+      expect.any(Number),
+    );
+  });
+
+  /* Sao empresas diferentes: uma viagem que falha nao pode impedir as
+     outras, e o que falhar volta na proxima rodada. */
+  it("uma viagem que falha nao impede as outras", async () => {
+    const { service, tripsService } = criarServico({
+      semSinal: [
+        {
+          id: "trip-ruim",
+          companyId: "company-1",
+          motoristaId: "motorista-1",
+          ultimoSinalEm: new Date("2026-10-26T17:00:00.000Z"),
+        },
+        {
+          id: "trip-boa",
+          companyId: "company-2",
+          motoristaId: "motorista-2",
+          ultimoSinalEm: new Date("2026-10-26T17:00:00.000Z"),
+        },
+      ],
+    });
+    (tripsService.finish as jest.Mock)
+      .mockRejectedValueOnce(new Error("banco fora"))
+      .mockResolvedValueOnce({ id: "trip-boa" });
+
+    const resultado = await service.encerrarViagensSemSinal(agora);
+
+    expect(resultado).toEqual({ avaliadas: 2, encerradas: 1, falhas: 1 });
+    expect(tripsService.finish).toHaveBeenCalledWith("trip-boa", expect.anything(), {});
+  });
+
+  it("sem viagem muda, nao mexe em nada", async () => {
+    const { service, tripsService } = criarServico();
+
+    const resultado = await service.encerrarViagensSemSinal(agora);
+
+    expect(tripsService.finish).not.toHaveBeenCalled();
+    expect(resultado).toEqual({ avaliadas: 0, encerradas: 0, falhas: 0 });
   });
 });

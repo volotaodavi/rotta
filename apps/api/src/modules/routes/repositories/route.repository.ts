@@ -1,4 +1,4 @@
-import type { Route, RouteStatus, RouteWeekday, SchoolShift } from "@prisma/client";
+import type { Prisma, Route, RouteStatus, RouteWeekday, SchoolShift } from "@prisma/client";
 
 export interface CreateRouteData {
   companyId: string;
@@ -75,4 +75,26 @@ export interface RouteRepository {
    * o que mantém o bypass restrito.
    */
   findAtivaPorVeiculoPadrao(companyId: string, veiculoId: string): Promise<Route | null>;
+  /**
+   * As rotas ativas da empresa com as paradas, para deduzir qual delas
+   * um ônibus está fazendo a partir de onde ele passou
+   * (`sugerirRotaPeloTrajeto`).
+   *
+   * Traz a geometria e o horário previsto, e nada de aluno, contrato ou
+   * motorista: quem chama é uma heurística de posição, não uma tela.
+   *
+   * Bypass de RLS pelo mesmo motivo de `findAtivaPorVeiculoPadrao`:
+   * quem chama é o rastreador, um aparelho sem ator e sem tenant. O
+   * `companyId` explícito, tirado do próprio ônibus já encontrado pelo
+   * IMEI, é o que mantém o bypass restrito a uma empresa.
+   */
+  listCandidatasParaSugestaoAcrossTenants(companyId: string): Promise<RotaComParadas[]>;
+}
+
+/** Uma rota ativa com a geometria das paradas, para a sugestão por trajeto. */
+export interface RotaComParadas {
+  id: string;
+  nome: string;
+  turno: Route["turno"];
+  paradas: { latitude: Prisma.Decimal; longitude: Prisma.Decimal; horarioPrevisto: string }[];
 }

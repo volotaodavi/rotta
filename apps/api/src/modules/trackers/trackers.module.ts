@@ -1,9 +1,12 @@
 import { Module } from "@nestjs/common";
 
 import { TrackerIngestGuard } from "./tracker-ingest.guard";
+import { TrackersQueueController } from "./trackers-queue.controller";
+import { TrackersSchedulerService } from "./trackers-scheduler.service";
 import { TrackersController } from "./trackers.controller";
 import { TrackersService } from "./trackers.service";
 
+import { QueueModule } from "@/infra/queue/queue.module";
 import { RouteAssignmentsModule } from "@/modules/route-assignments/route-assignments.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
 import { TripsModule } from "@/modules/trips/trips.module";
@@ -28,11 +31,16 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
  * deles importa este de volta.
  *
  * Nenhum outro módulo importa este: a direção é só de fora para dentro.
+ *
+ * `QueueModule` entrou em 26/10/2026, com a varredura de viagens sem
+ * sinal. `TrackersConfig.minutosSemSinalParaEncerrar` existia desde
+ * 24/09/2026, documentado, e nada o lia: a viagem de um ônibus que
+ * perdesse sinal na garagem ficava `EM_ANDAMENTO` para sempre.
  */
 @Module({
-  imports: [TripsModule, VehiclesModule, RoutesModule, RouteAssignmentsModule],
-  controllers: [TrackersController],
-  providers: [TrackersService, TrackerIngestGuard],
+  imports: [TripsModule, VehiclesModule, RoutesModule, RouteAssignmentsModule, QueueModule],
+  controllers: [TrackersController, TrackersQueueController],
+  providers: [TrackersService, TrackerIngestGuard, TrackersSchedulerService],
   exports: [TrackersService],
 })
 export class TrackersModule {}

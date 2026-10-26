@@ -5,6 +5,7 @@ import type {
   CreateTripData,
   TripRepository,
   UpdateTripData,
+  ViagemSemSinal,
 } from "./trip.repository";
 import type { Trip } from "@prisma/client";
 
@@ -75,6 +76,33 @@ export class PrismaTripRepository implements TripRepository {
    * histórico completo), então não precisa de paginação/janela por
    * bounding box como o mapa nacional de Escolas.
    */
+  async listSemSinalAcrossTenants(limite: Date, max: number): Promise<ViagemSemSinal[]> {
+    /*
+      `$queryRaw` e nao `findMany`: a condicao e sobre o MAIOR
+      `capturadaEm` das posicoes filhas, e o Prisma nao expressa
+      agregacao em filtro de relacao. `COALESCE` com `iniciadaEm` cobre
+      a viagem que nunca recebeu posicao nenhuma, que sem isso nunca
+      seria encerrada.
+
+      Bypass de RLS pelo mesmo motivo do varredor de retencao: quem
+      chama e um job agendado, sem ator e sem tenant.
+    */
+    return this.prisma.withBypass(
+      this.prisma.$queryRaw<ViagemSemSinal[]>`
+        SELECT t.id,
+               t."companyId",
+               t."motoristaId",
+               COALESCE(MAX(p."capturadaEm"), t."iniciadaEm") AS "ultimoSinalEm"
+          FROM trips t
+          LEFT JOIN trip_positions p ON p."tripId" = t.id
+         WHERE t.status = 'EM_ANDAMENTO'
+         GROUP BY t.id, t."companyId", t."motoristaId", t."iniciadaEm"
+        HAVING COALESCE(MAX(p."capturadaEm"), t."iniciadaEm") < ${limite}
+         LIMIT ${max}
+      `,
+    );
+  }
+
   listActiveNationwide(data: Date): Promise<ActiveTripWithDetails[]> {
     return this.prisma.withBypass(
       this.prisma.trip.findMany({
