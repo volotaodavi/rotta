@@ -125,6 +125,15 @@ echo ">> Apontando o encaminhamento para $API_URL/trackers/posicoes"
 # `forward.type`. A lista de chaves válidas está em `config/Keys.java`
 # do projeto, e uma chave inventada é ignorada em silêncio, o que faz
 # parecer que está configurado quando não está.
+#
+# `database.registerUnknown` é o que faz a corrente inteira existir, e
+# sem ela nada do resto adianta. Por padrão o Traccar RECUSA aparelho
+# que ele não conhece: em `session/ConnectionManager.java`, quando o
+# `uniqueId` não está no banco dele e a chave está desligada, o código
+# cai no `else`, escreve `Unknown device - <IMEI> (<ip>)` no log e
+# devolve `null`. Sem sessão de aparelho, o decodificador nunca produz
+# uma `Position`, e o encaminhamento nunca acontece. O rastreador
+# conecta, o log acusa, e a Rotta não recebe nada.
 sudo tee "$CONF" >/dev/null <<XML
 <?xml version='1.0' encoding='UTF-8'?>
 <!DOCTYPE properties SYSTEM 'http://java.sun.com/dtd/properties.dtd'>
@@ -142,6 +151,25 @@ sudo tee "$CONF" >/dev/null <<XML
   <entry key='forward.retry.enable'>true</entry>
   <entry key='forward.retry.delay'>5000</entry>
   <entry key='forward.retry.count'>10</entry>
+
+  <!-- Aceita aparelho que o Traccar ainda não conhece, cadastrando-o
+       sozinho no banco local dele. Sem isto, o Traccar responde
+       "Unknown device" e NENHUMA posição é encaminhada: é o que fazia
+       o rastreador conectar e a Rotta não receber nada.
+
+       Ligar isto NAO afrouxa a seguranca. Quem decide de qual onibus e
+       cada posicao continua sendo a API da Rotta, que descarta todo
+       IMEI nao credenciado em Admin, Veiculos, Credenciar
+       rastreadores. O cadastro aqui e so o que permite o Traccar
+       decodificar o pacote; a autorizacao e la. Some-se a isso o
+       cabecalho de forward.header, que ja impede qualquer um de postar
+       na API.
+
+       O filtro padrao de quais ids sao aceitos vem de
+       database.registerUnknown.regex, que por padrao casa com um IMEI
+       de 15 digitos. Aparelho com identificador fora disso continuaria
+       recusado em silencio. -->
+  <entry key='database.registerUnknown'>true</entry>
 
   <!-- O Traccar guarda o próprio histórico em H2. A verdade da operação
        é o banco da Rotta; isto aqui é só buffer local, por isso o

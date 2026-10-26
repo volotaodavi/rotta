@@ -54,8 +54,26 @@ também a 5023. Sem a flag, só a 5027 é aberta: porta aberta sem
 aparelho atrás é superfície de ataque de graça.
 
 O script fixa a versão do Traccar (`TRACCAR_VERSION`), confere o
-download antes de baixar e libera a porta no firewall da máquina,
-detectando `ufw` ou `iptables`.
+download antes de baixar, libera a porta no firewall da máquina
+(detectando `ufw` ou `iptables`) e liga `database.registerUnknown`.
+
+**Por que `database.registerUnknown` importa mais do que parece.** Por
+padrão o Traccar **recusa aparelho que ele não conhece**: o IMEI não
+está no banco local dele, ele escreve `Unknown device` no log e devolve
+nada. Sem sessão de aparelho o decodificador nunca monta a posição, e o
+encaminhamento nunca acontece. O rastreador conecta, o log acusa, e a
+Rotta não recebe uma posição sequer. É a falha mais confusa da cadeia,
+porque tudo parece certo dos dois lados.
+
+Com a chave ligada, o Traccar cadastra sozinho o aparelho que aparece e
+passa a decodificar. **Você não precisa cadastrar IMEI no Traccar.** O
+cadastro que importa continua sendo o da Rotta, no passo 7.
+
+Isso **não** abre a porta para qualquer um: quem decide de qual ônibus
+é cada posição é a API da Rotta, que descarta todo IMEI não credenciado
+no Admin; e quem decide quem pode postar na API é o
+`X-Rotta-Tracker-Token`. O cadastro no Traccar é só o que permite
+decodificar o pacote, a autorização é na Rotta.
 
 O segredo é o mesmo valor de `TRACKER_INGEST_SECRET` na API. Gere um
 forte e guarde **só** em variável de ambiente no Render e no
@@ -145,6 +163,20 @@ antes de sair da oficina:
 sudo tail -f /opt/traccar/logs/tracker-server.log
 ```
 
+**O que você precisa ver**, com o IMEI do aparelho decodificando:
+
+```
+INFO: [T1a2b3c4] id: 356938035643809, time: 2026-10-26 09:00:08, lat: -22.91940, lon: -42.81860
+```
+
+**O que significa dar errado:**
+
+| No log                             | O que é                                         | O que fazer                                                                     |
+| ---------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| `Unknown device - 356938035643809` | O Traccar recusou o aparelho por não conhecê-lo | Falta `database.registerUnknown` no `traccar.xml`. Rode o `instalar.sh` de novo |
+| Nada, nenhuma linha                | O aparelho não chegou a conectar                | Firewall (os dois), APN do chip, ou IP e porta errados no aparelho              |
+| `id:` aparece, `lat:` não          | Conectou, sem fix de GPS                        | Normal na bancada em área coberta. Leve para perto de uma janela                |
+
 Se o IMEI não aparecer aqui, nada adiante funciona, e é muito mais
 barato descobrir isso na bancada que embaixo de um painel.
 
@@ -209,12 +241,12 @@ impossíveis, atrasando as posições dos ônibus corretos.
 
 ## O que a Rotta faz com o que chega
 
-| Evento                                            | O que acontece                                                                        |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Ignição **ligou**, sem viagem aberta              | Abre a viagem do dia na rota deste ônibus e avisa os responsáveis                     |
-| Ignição ligou **sem escala** para hoje            | Tenta deduzir a rota pelo trajeto e **sugere**; nunca abre por dedução                |
-| Posição durante a viagem                          | Grava na **mesma tabela** que o GPS do celular usa, o app do pai não sabe a diferença |
-| Ignição **desligou**                              | Encerra a viagem                                                                      |
-| Sinal sumiu por mais de `TRACKER_TIMEOUT_MINUTOS` | Encerra a viagem na varredura, para o pai não ver o ônibus parado a noite inteira     |
-| Ônibus sem rota designada hoje                    | Posição entra só no mapa da frota, sem abrir viagem                                   |
-| IMEI desconhecido                                 | Descartado, com aviso no log                                                          |
+| Evento                                            | O que acontece                                                                          |
+| ------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Ignição **ligou**, sem viagem aberta              | Abre a viagem do dia na rota deste ônibus e avisa os responsáveis                       |
+| Ignição ligou **sem escala** para hoje            | Tenta deduzir a rota pelo trajeto e **sugere**; nunca abre por dedução                  |
+| Posição durante a viagem                          | Grava na **mesma tabela** que o GPS do celular usa, o app do pai não sabe a diferença   |
+| Ignição **desligou**                              | Encerra a viagem                                                                        |
+| Sinal sumiu por mais de `TRACKER_TIMEOUT_MINUTOS` | Encerra a viagem na varredura, para o pai não ver o ônibus parado a noite inteira       |
+| Ônibus sem rota designada hoje                    | Posição entra só no mapa da frota, sem abrir viagem                                     |
+| IMEI não credenciado no Admin                     | Descartado, com aviso no log. **É aqui que mora o filtro de segurança**, não no Traccar |
