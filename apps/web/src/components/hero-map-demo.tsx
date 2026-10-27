@@ -123,7 +123,15 @@ export function HeroMapDemo(): JSX.Element {
             Transporte em movimento · Rota 12
           </Typography>
         </div>
-        <Typography variant="subtitle" className="mt-1">
+        {/*
+          `as="p"` de propósito. A variante `subtitle` desenha um `h3`
+          por padrão, e aqui isso criava um salto de h1 para h3 logo na
+          hero, que o leitor de tela anuncia como uma seção que não
+          existe. Isto não é título de seção nenhuma: é a legenda viva
+          de um cartão decorativo. O tamanho continua o mesmo, só o
+          elemento muda.
+        */}
+        <Typography variant="subtitle" as="p" className="mt-1">
           Chegada prevista em {minutosRestantes} min
         </Typography>
       </div>

@@ -295,12 +295,23 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             </a>
           </div>
 
-          <nav className="flex flex-wrap gap-x-8 gap-y-3 border-t border-border pt-8">
+          {/*
+            `py-2 -my-2` em cada link: o alvo de toque cresce para 24px
+            de altura sem mexer no espaçamento visual do rodapé.
+
+            O Lighthouse reprovava `target-size` exatamente aqui, nestes
+            links, e não é preciosismo de nota: "Planos", "Empresa",
+            "Suporte", "Segurança" e "Privacidade" ficavam a menos de
+            24px um do outro num celular, então o dedo que mira
+            "Suporte" abre "Segurança". É o rodapé inteiro de quem
+            precisa de ajuda.
+          */}
+          <nav className="flex flex-wrap gap-x-8 gap-y-4 border-t border-border pt-8">
             {FOOTER_LINKS.map((link) => (
               <Link
                 key={link.label}
                 href={link.href}
-                className="text-sm text-text-muted transition-colors hover:text-text"
+                className="-my-2 py-2 text-sm text-text-muted transition-colors hover:text-text"
               >
                 {link.label}
               </Link>
