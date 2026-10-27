@@ -57,7 +57,22 @@ interface PublicoBloco {
   titulo: string;
   ideia: string;
   recursos: string[];
-  foto: { src: string; alt: string };
+  /**
+   * A arte da audiência, com as dimensões REAIS do arquivo.
+   *
+   * `largura`/`altura` não são enfeite nem otimização: estas artes têm
+   * o texto embutido no JPEG, e cada uma tem uma proporção diferente
+   * (1,387:1, 1,395:1 e 3:2). Enquadrá-las todas numa moldura 4:3 com
+   * `object-cover` cortava as bordas e comia a primeira letra das
+   * frases, que foi o defeito relatado ("isualize escalas",
+   * "otificações"). Com as medidas aqui, a moldura assume a proporção
+   * de cada arte e nada é cortado.
+   *
+   * O `alt` de cada uma repete a frase que está DENTRO da arte, e não
+   * uma descrição da foto. É o único jeito de essa frase existir para
+   * um leitor de tela e para o Google: hoje ela só existe como pixel.
+   */
+  foto: { src: string; alt: string; largura: number; altura: number };
   ctaHref: Route;
 }
 
@@ -80,7 +95,9 @@ const PUBLICOS: PublicoBloco[] = [
     ],
     foto: {
       src: "/marketing/audiencia-responsavel.jpg",
-      alt: "Responsável acompanhando o transporte escolar em tempo real pelo celular",
+      alt: "Responsável. Acompanhe o transporte em tempo real, receba notificações e tenha mais segurança durante todo o trajeto.",
+      largura: 695,
+      altura: 501,
     },
     ctaHref: "/criar-conta/pessoal",
   },
@@ -95,7 +112,9 @@ const PUBLICOS: PublicoBloco[] = [
     ],
     foto: {
       src: "/marketing/audiencia-empresas.jpg",
-      alt: "Gestor de transportadora acompanhando a frota pelo painel da Rotta",
+      alt: "Empresas. Gerencie alunos, motoristas, veículos, contratos, pagamentos e rotas em um único sistema. Inclui MEIs e profissionais autônomos.",
+      largura: 699,
+      altura: 501,
     },
     ctaHref: "/criar-conta/empresa",
   },
@@ -110,7 +129,9 @@ const PUBLICOS: PublicoBloco[] = [
     ],
     foto: {
       src: "/marketing/audiencia-motorista.jpg",
-      alt: "Motorista de transporte escolar visualizando a próxima viagem pelo aplicativo da Rotta",
+      alt: "Motorista. Visualize escalas, rotas, alunos, notificações e acompanhe cada viagem diretamente pelo aplicativo.",
+      largura: 1536,
+      altura: 1024,
     },
     ctaHref: "/criar-conta/motorista",
   },
@@ -372,13 +393,36 @@ export default function LandingPage(): JSX.Element {
                   index % 2 === 1 ? "lg:[&>*:first-child]:order-2" : ""
                 }`}
               >
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl">
+                {/*
+                  A moldura assume a proporção DA ARTE, em vez de uma
+                  proporção fixa com `object-cover`.
+
+                  Estas três artes têm o texto embutido no JPEG e cada
+                  uma tem uma proporção diferente. Numa moldura 4:3
+                  fixa, o `object-cover` cortava as laterais e comia a
+                  primeira letra das frases: o cartão do Motorista
+                  aparecia com "isualize escalas" e "otificações".
+                  Trocar por `object-position` só mudaria de lado o
+                  que é cortado. Assumir a proporção da arte é o único
+                  jeito de não cortar nada.
+
+                  Com a moldura na proporção exata, `cover` e `contain`
+                  dão o mesmo resultado. Fica `contain` de propósito,
+                  pelo modo de falhar: se alguém trocar a arte sem
+                  atualizar as medidas, `contain` deixa uma tarja (feio,
+                  legível) e `cover` volta a comer o texto (invisível
+                  até alguém reclamar).
+                */}
+                <div
+                  className="relative w-full overflow-hidden rounded-3xl"
+                  style={{ aspectRatio: `${bloco.foto.largura} / ${bloco.foto.altura}` }}
+                >
                   <Image
                     src={bloco.foto.src}
                     alt={bloco.foto.alt}
                     fill
                     sizes="(min-width: 1024px) 520px, 100vw"
-                    className="object-cover"
+                    className="object-contain"
                   />
                 </div>
                 <div className="flex flex-col gap-3">
