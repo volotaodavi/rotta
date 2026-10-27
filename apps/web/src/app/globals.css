@@ -323,3 +323,40 @@ html {
   height: 8px;
   border-radius: 0 0 999px 999px;
 }
+
+/**
+ * Animação de entrada que não apaga a página sem JavaScript.
+ *
+ * ## O defeito que isto conserta
+ *
+ * O `Reveal` começava com `opacity-0` no HTML que o servidor manda. Sem
+ * JavaScript, o `IntersectionObserver` nunca roda, a opacidade nunca
+ * volta, e 23 blocos de texto da landing ficavam invisíveis: o conteúdo
+ * estava no HTML, mas ninguém via. Isso atinge quem bloqueia script,
+ * quem está numa rede que engoliu o bundle, e qualquer rastreador que
+ * leia o HTML sem executar JS.
+ *
+ * ## Por que uma classe no `<html>`, e não um estado de React
+ *
+ * Porque esconder só depois que o React monta causaria o pior dos dois
+ * mundos: o conteúdo apareceria, sumiria na hidratação e voltaria com a
+ * animação. A classe `com-js` entra num script síncrono no `<head>`
+ * (ver `layout.tsx`), antes do primeiro desenho, então quem tem JS
+ * nunca vê o conteúdo visível e quem não tem nunca o vê escondido.
+ *
+ * `prefers-reduced-motion` desliga o estado inicial inteiro: a regra
+ * ampla mais acima zera a duração da transição, mas sem isto o bloco
+ * ainda nasceria invisível e apareceria de supetão ao cruzar a tela,
+ * que é justamente o movimento que a pessoa pediu para não ver.
+ */
+.com-js [data-reveal="pendente"] {
+  opacity: 0;
+  transform: translateY(0.75rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .com-js [data-reveal="pendente"] {
+    opacity: 1;
+    transform: none;
+  }
+}

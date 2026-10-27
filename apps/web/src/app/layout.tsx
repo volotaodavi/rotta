@@ -173,6 +173,22 @@ const THEME_INIT_SCRIPT = `
   } catch (e) {
     document.documentElement.setAttribute("data-theme", "dark");
   }
+  /*
+   * Marca que o JavaScript está rodando, ANTES do primeiro desenho.
+   *
+   * É isto que permite as animações de entrada começarem invisíveis
+   * sem escurecer a página de quem não tem JS: o estado invisível do
+   * Reveal mora atrás de .com-js em globals.css, e sem este script a
+   * classe nunca entra, então o conteúdo nasce visível.
+   *
+   * Tem de ser síncrono e no head, junto com o tema, pelo mesmo motivo
+   * dele: rodar depois do primeiro desenho faria o conteúdo aparecer e
+   * sumir.
+   *
+   * Sem crase neste comentário de propósito: ele vive dentro de um
+   * template literal, e uma crase aqui fecha a string.
+   */
+  document.documentElement.classList.add("com-js");
 })();
 `;
 
