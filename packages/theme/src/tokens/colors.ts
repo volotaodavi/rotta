@@ -195,7 +195,14 @@ export const darkColors: ColorTokens = {
   onPrimary: "#FFFFFF",
   success: "#22C55E",
   warning: "#F5A623",
-  danger: "#EF4444",
+  /**
+   * Clareado de #EF4444 em 27/10/2026, pelo mesmo motivo do tema claro
+   * e na direção oposta: no escuro, quem precisa de luminância é o
+   * texto. #EF4444 dava 4,16:1 sobre `surface` com fundo `/15`, a
+   * única das quatro cores do escuro que não passava. Agora dá 4,89:1
+   * no pior caso.
+   */
+  danger: "#F26666",
   info: "#22D3EE",
   successMuted: "#123321",
   warningMuted: "#3A2A12",
@@ -248,10 +255,34 @@ export const lightColors: ColorTokens = {
   primaryMuted: "#E8EEFF",
   secondary: "#4B5563",
   onPrimary: "#FFFFFF",
-  success: "#16A34A",
-  warning: "#D97706",
-  danger: "#DC2626",
-  info: "#0891B2",
+  /**
+   * As quatro cores semânticas, escurecidas em 27/10/2026 para
+   * atravessar o AA da WCAG.
+   *
+   * Os valores anteriores (#16A34A, #D97706, #DC2626, #0891B2) são os
+   * 600 do Tailwind, e eles NÃO passam no uso real desta plataforma.
+   * O padrão da casa para etiqueta de estado é texto da cor cheia
+   * sobre um fundo da mesma cor a 10% ou 15% (`bg-success/15
+   * text-success`), e esse fundo levanta a luminância embaixo do texto
+   * sem levantar a do texto. Medido: verde 2,96:1 e laranja 2,86:1
+   * sobre `/10`, quando o mínimo para texto normal é 4,5:1. Em 11px,
+   * que é o tamanho dos selos, isso é quase invisível em tela sob sol.
+   *
+   * Os valores atuais foram calculados, não escolhidos: o matiz e a
+   * saturação de cada cor foram mantidos e só a luminosidade desceu
+   * até o ponto em que a própria cor passa dos 4,5:1 sobre o seu
+   * fundo a 15%, que é o pior caso de uso. Ficam entre o 700 e o 800
+   * do Tailwind, então continuam lendo como verde, laranja, vermelho e
+   * ciano.
+   *
+   * Pior caso de cada uma, sobre branco, `/10` e `/15`: verde 4,66,
+   * laranja 4,64, vermelho 4,63, ciano 4,54. O teste
+   * `contraste-wcag.spec.ts` trava isso.
+   */
+  success: "#0F7536",
+  warning: "#9A5404",
+  danger: "#C32020",
+  info: "#06718B",
   successMuted: "#DCFCE7",
   warningMuted: "#FEF3C7",
   dangerMuted: "#FEE2E2",
@@ -275,7 +306,15 @@ export const lightColors: ColorTokens = {
   },
   placeholder: "#9CA3AF",
   text: "#0B0F14",
-  textMuted: "#6B7280",
+  /**
+   * Escurecido de #6B7280 (cinza 500 do Tailwind) em 27/10/2026.
+   *
+   * O valor antigo dava 4,32:1 sobre `muted` (#F1F2F4), que é o fundo
+   * de card mais claro em uso, abaixo dos 4,5:1 exigidos. E é
+   * justamente nesse fundo que vivem as legendas de 11 e 12px.
+   * Agora dá 5,34:1 ali, 5,63:1 sobre `surface` e 5,98:1 sobre branco.
+   */
+  textMuted: "#5B6472",
   muted: "#F1F2F4",
   monitorAccent: "#7C3AED",
   monitorAccentMuted: "#EFE9FE",
