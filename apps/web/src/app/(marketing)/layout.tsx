@@ -8,6 +8,7 @@ import type { Route } from "next";
 import type { ReactNode } from "react";
 
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
+import { MarketingNavDropdown } from "@/components/marketing-nav-dropdown";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
 import { RouteWordmark } from "@/components/route-wordmark";
 import { MarketingTracking } from "@/features/marketing/components/marketing-tracking";
@@ -25,10 +26,24 @@ import { wakeApi } from "@/lib/wake-api";
  * pra ser compartilhável e indexável sozinha, ao contrário de uma seção
  * dentro da Home.
  */
-const NAV_LINKS: { href: Route; label: string }[] = [
+/**
+ * Os três públicos, agrupados sob "Para quem" no cabeçalho.
+ *
+ * Saíram da barra principal porque sete itens de texto, mais a logo e
+ * os dois botões, não cabiam em 1440px: o menu quebrava em duas linhas.
+ * Os três começavam com a mesma palavra, então agrupá-los também lê
+ * melhor: são três portas para o mesmo produto, não três assuntos.
+ *
+ * No menu do celular continuam soltos, sob um rótulo de grupo: lá o
+ * espaço é vertical e sobra, e um nível a mais de clique só atrapalha.
+ */
+const PARA_QUEM_LINKS: { href: Route; label: string }[] = [
   { href: "/#para-responsaveis", label: "Para responsáveis" },
   { href: "/#para-transportadores", label: "Para transportadores" },
   { href: "/#para-motoristas", label: "Para motoristas" },
+];
+
+const NAV_LINKS: { href: Route; label: string }[] = [
   { href: "/#como-funciona", label: "Como funciona" },
   // Pedido do usuário 02/09/2026 ("otimize para que fique harmônico"):
   // `/planos` já existia (real, no `sitemap.ts`) mas não tinha link
@@ -164,12 +179,18 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             <RouteWordmark variant="dark" className="h-7 w-auto" />
           </Link>
 
+          {/*
+            `whitespace-nowrap` em cada item: sem isso, "Como funciona"
+            e "Sobre a Rotta" quebram no meio quando a barra aperta, o
+            que é pior que a barra apertada.
+          */}
           <nav className="hidden items-center gap-7 lg:flex">
+            <MarketingNavDropdown rotulo="Para quem" links={PARA_QUEM_LINKS} />
             {NAV_LINKS.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-text-muted transition-colors hover:text-text"
+                className="whitespace-nowrap text-sm font-medium text-text-muted transition-colors hover:text-text"
               >
                 {link.label}
               </Link>
@@ -209,6 +230,20 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             menuAberto ? "flex" : "hidden"
           }`}
         >
+          <span className="px-2 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+            Para quem
+          </span>
+          {PARA_QUEM_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              onClick={() => setMenuAberto(false)}
+              className="rounded-md px-2 py-2.5 text-sm text-text-muted transition-colors hover:bg-muted hover:text-text"
+            >
+              {link.label}
+            </Link>
+          ))}
+          <span className="mt-2 border-t border-border" aria-hidden="true" />
           {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
