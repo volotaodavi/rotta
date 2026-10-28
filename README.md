@@ -86,6 +86,72 @@ pnpm dev            # todos os apps em paralelo, ou pnpm dev:web / dev:admin / d
 
 Validação completa do monorepo (`lint` + `typecheck` + `build` nos 19 workspaces): `pnpm turbo run lint typecheck build`.
 
+## Infraestrutura em produção: o que o plano gratuito custa
+
+A API roda no **plano gratuito do Render**. O que o repositório mostra
+disso: `.github/workflows/keep-api-warm.yml` existe exatamente para
+mitigar a suspensão do plano gratuito, e documenta o limite de 750
+horas/mês da conta. Confirmar o plano no painel do Render é item do
+sócio (`docs/49-o-que-depende-de-voce.md`) — daqui não se vê o painel.
+
+O plano gratuito suspende o serviço depois de **15 minutos sem
+tráfego**, e o primeiro pedido depois disso espera o container acordar
+(a Render documenta "cerca de um minuto"; aqui já foram observados 35 a
+90 segundos). Três consequências, em ordem de gravidade:
+
+**1. O cron do GitHub não é garantido.** `keep-api-warm.yml` bate no
+`/v1/health` a cada cinco minutos, mas o `schedule` do GitHub Actions é
+melhor-esforço: atrasa sob carga e pode ser pulado. Um atraso de dez
+minutos basta para estourar a janela de 15 minutos. Pior: o GitHub
+**desabilita** workflows agendados em repositório com 60 dias sem
+commit. Num repositório ativo isso não acontece; numa semana parada,
+acontece em silêncio.
+
+**2. Posição de rastreador pode ser perdida — e esta parte está
+resolvida no script, não no plano.** O Traccar reentrega o que falha
+(`forward.retry.enable`), com espera que dobra a cada tentativa: 5s,
+10s, 20s, 40s, 80s... dez tentativas chegam a cerca de 85 minutos. Um
+cold start de 90 segundos, portanto, é coberto. O que NÃO era coberto é
+o teto de posições esperando entrega ao mesmo tempo: em
+`handler/PositionForwardingHandler.java`, a retentativa só é agendada
+se `deliveryPending <= forward.retry.limit`, e acima disso a posição é
+descartada na hora, sem tentativa nenhuma. O padrão do Traccar é 100.
+Setenta ônibus reportando a cada 30 segundos são 2,3 posições por
+segundo: 90 segundos de cold start acumulam ~210 esperando, e umas 110
+sumiriam — um buraco de quase um minuto no trajeto que a família vê,
+justamente quando o servidor acabou de acordar.
+`infra/rastreadores/instalar.sh` passou a escrever
+`forward.retry.limit` em 2000, que cobre cerca de quatorze minutos de
+silêncio dessa frota, e `instalar-traccar.spec.ts` trava o valor.
+
+**3. As 750 horas são da conta inteira, não do serviço.** Um serviço
+acordado o mês todo consome ~720–744 delas. Estourar o limite suspende
+**todos** os serviços gratuitos da conta até o mês seguinte — e aí
+nenhuma retentativa de 85 minutos salva nada. É por isso que o ping é
+de cinco minutos e não de um: deixar a API dormir de madrugada é
+deliberado.
+
+### O que custa sair disso
+
+Preços da Render em 28/10/2026 (`render.com/pricing`), em dólar por mês:
+
+| Item                     | Hoje                     | Pago                                      |
+| ------------------------ | ------------------------ | ----------------------------------------- |
+| Workspace                | Hobby, US$ 0             | Hobby serve: US$ 0                        |
+| `apps/api` (web service) | Grátis, 512 MB, suspende | US$ 7 — 512 MB, 0,5 CPU, **não suspende** |
+| Banco                    | Supabase, fora do Render | —                                         |
+
+**US$ 7/mês** (cerca de R$ 38 na cotação de outubro de 2026) é o preço
+inteiro de eliminar a suspensão: o workspace Hobby já serve, e o banco
+é Supabase, não Render Postgres. Em uma empresa pagante de R$ 39,90/mês
+o custo já se paga. Enquanto não houver cliente pagante, o plano
+gratuito mais o `forward.retry.limit` corrigido é uma escolha
+defensável — o que não é defensável é não saber que a escolha existe.
+
+Se um dia o banco voltar para o Render Postgres: o plano gratuito de lá
+**expira 30 dias depois de criado**, com 14 dias de carência antes de
+apagar os dados. O menor pago é US$ 6/mês (256 MB, 1 GB de SSD).
+
 ### Próximos passos de implementação
 
 1. **Módulo `auth` real** (Dossiê 15) — login por OTP/senha, refresh, sessões; todo o resto depende dele.

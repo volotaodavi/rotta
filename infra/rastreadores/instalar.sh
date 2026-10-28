@@ -152,6 +152,29 @@ sudo tee "$CONF" >/dev/null <<XML
   <entry key='forward.retry.delay'>5000</entry>
   <entry key='forward.retry.count'>10</entry>
 
+  <!-- QUANTAS posicoes podem estar esperando entrega ao mesmo tempo.
+
+       Este numero e o que decide se a API dormindo custa posicao, e o
+       padrao do Traccar (100) e pequeno demais para uma frota. A conta
+       esta em handler/PositionForwardingHandler.java: a retentativa so
+       e agendada se deliveryPending.get() menor ou igual a
+       forward.retry.limit. Acima disso a posicao e DESCARTADA na hora,
+       sem retentativa nenhuma.
+
+       Setenta onibus reportando a cada 30 segundos sao 2,3 posicoes
+       por segundo. Um cold start de 90 segundos da API no plano
+       gratuito do Render acumula cerca de 210 posicoes esperando: com
+       o limite de 100, umas 110 delas sumiriam, e o trajeto da familia
+       ficaria com um buraco de quase um minuto justamente quando o
+       servidor acordou.
+
+       2000 cobre cerca de quatorze minutos de silencio dessa frota, o
+       que e mais que a janela de 15 minutos de suspensao do Render
+       combinada com o ping de cinco minutos do GitHub Actions. O custo
+       e memoria na VM do Traccar: posicao e um objeto pequeno, e dois
+       mil deles nao chegam a alguns megabytes. -->
+  <entry key='forward.retry.limit'>2000</entry>
+
   <!-- Aceita aparelho que o Traccar ainda não conhece, cadastrando-o
        sozinho no banco local dele. Sem isto, o Traccar responde
        "Unknown device" e NENHUMA posição é encaminhada: é o que fazia

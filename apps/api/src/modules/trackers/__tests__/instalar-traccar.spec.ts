@@ -95,6 +95,22 @@ describe("o traccar.xml gerado", () => {
     expect(valorDaChave(xml, "forward.retry.count")).toBe("10");
   });
 
+  it("aguenta uma frota inteira esperando entrega, e não as 100 posições do padrão", () => {
+    /*
+      `PositionForwardingHandler.retry` só agenda a retentativa se
+      `deliveryPending.get() <= forward.retry.limit`. Acima disso a
+      posição é descartada na hora. O padrão do Traccar é 100, e 70
+      ônibus a cada 30 segundos são 2,3 posições por segundo: um cold
+      start de 90 segundos da API acumula ~210 esperando, e metade
+      sumiria.
+    */
+    const limite = Number(valorDaChave(xmlGerado(), "forward.retry.limit"));
+
+    expect(Number.isFinite(limite)).toBe(true);
+    // 70 ônibus × 2 posições/min × 10 minutos de silêncio.
+    expect(limite).toBeGreaterThanOrEqual(1400);
+  });
+
   it("sai sem erro e com todas as entradas fechadas", () => {
     const xml = xmlGerado();
 
