@@ -20,6 +20,20 @@ import DashboardLayout from "./layout";
  */
 
 let mockTags: string[] | null = ["PRIVADA"];
+/** A área está aberta? (`lib/funcionalidades.ts`, 28/10/2026.) */
+let mockMarketplaceAberto = true;
+
+// A flag é constante de build no código real (`process.env.NEXT_PUBLIC_*`
+// é substituído por texto). O getter é o que permite a um teste mudá-la
+// entre casos.
+vi.mock("@/lib/funcionalidades", () => ({
+  FUNCIONALIDADES: {
+    get marketplace() {
+      return mockMarketplaceAberto;
+    },
+  },
+  funcionalidadeLigada: (nome: string) => nome === "marketplace" && mockMarketplaceAberto,
+}));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/empresa",
@@ -100,6 +114,7 @@ describe("DashboardLayout: o menu respeita as habilitações da empresa", () => 
   afterEach(() => {
     cleanup();
     mockTags = ["PRIVADA"];
+    mockMarketplaceAberto = true;
   });
 
   it("empresa PARTICULAR vê o Marketplace", () => {
@@ -149,5 +164,62 @@ describe("DashboardLayout: o menu respeita as habilitações da empresa", () => 
     for (const item of ["Rotas", "Veículos", "Despachante", "Equipe", "Escolas"]) {
       expect(screen.getAllByText(item).length).toBeGreaterThan(0);
     }
+  });
+});
+
+/**
+ * O menu também esconde a área que a flag mantém fechada.
+ *
+ * ## A diferença entre as duas perguntas
+ *
+ * A habilitação (`exigeTag`) pergunta se ESTA empresa atende família
+ * particular. A flag pergunta se o Marketplace está aberto a alguém.
+ * Elas somam, e a flag é a mais forte: com a área fechada, nem a
+ * empresa particular vê o item.
+ *
+ * ## E por que esta erra para o lado de ESCONDER
+ *
+ * A tag erra para o lado de mostrar porque depende de carregar a
+ * empresa, e um item que pisca é pior que um item recusado. A flag não
+ * carrega nada — é constante de build — então não existe estado
+ * intermediário em que mostrar seja o menor risco.
+ */
+describe("DashboardLayout: o menu respeita as áreas fechadas", () => {
+  afterEach(() => {
+    cleanup();
+    mockTags = ["PRIVADA"];
+    mockMarketplaceAberto = true;
+  });
+
+  it("com o Marketplace fechado, o item sai do menu até para a empresa PARTICULAR", () => {
+    mockTags = ["PRIVADA"];
+    mockMarketplaceAberto = false;
+
+    render(<DashboardLayout>conteúdo</DashboardLayout>);
+
+    expect(screen.queryByText("Marketplace")).toBeNull();
+  });
+
+  it("fechar o Marketplace não leva embora o resto da operação", () => {
+    // O risco real de uma flag: o filtro vazar e levar junto Rotas,
+    // Veículos ou Equipe, que não têm nada a ver com ela.
+    mockMarketplaceAberto = false;
+
+    render(<DashboardLayout>conteúdo</DashboardLayout>);
+
+    for (const item of ["Rotas", "Veículos", "Despachante", "Equipe", "Escolas", "Mensalidades"]) {
+      expect(screen.getAllByText(item).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("aberta, o item volta — a tag continua valendo por cima", () => {
+    mockMarketplaceAberto = true;
+    mockTags = ["LICITADA"];
+
+    render(<DashboardLayout>conteúdo</DashboardLayout>);
+
+    // Aberta para o produto, fechada para ESTA empresa: quem barra
+    // agora é a habilitação.
+    expect(screen.queryByText("Marketplace")).toBeNull();
   });
 });

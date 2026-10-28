@@ -19,6 +19,7 @@ import { useResponsavelTransportState } from "../hooks/use-transport-state";
 import { useTransportersSearch } from "../hooks/use-transporters";
 
 import { EnderecoManualScreen } from "./endereco-manual-screen";
+import { MarketplaceComingSoonScreen } from "./marketplace-coming-soon-screen";
 import { TripTrackingOverlay } from "./transporte-inicio-screen";
 
 import type { MarketplaceStackParamList, ParentTabParamList } from "@/navigation/types";
@@ -28,6 +29,7 @@ import type { School, SearchTransportersParams } from "@rotta/api-client";
 
 import { Texto } from "@/components/texto";
 import { VehicleButton, VehicleScreen } from "@/features/vehicles/components";
+import { FUNCIONALIDADES } from "@/lib/funcionalidades";
 import { useTheme } from "@/providers/theme-provider";
 
 type Props = NativeStackScreenProps<MarketplaceStackParamList, "MapaHome">;
@@ -71,6 +73,11 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
   const [sheetOpen, setSheetOpen] = useState(true);
 
   useEffect(() => {
+    // Área fechada não pede GPS. A permissão de localização só existe
+    // aqui para achar transportador perto de você; com a busca
+    // fechada, pedi-la seria pedir acesso ao celular de alguém para
+    // uma coisa que não vai acontecer.
+    if (!FUNCIONALIDADES.marketplace) return;
     if (status === "idle") {
       void requestLocation();
     }
@@ -118,6 +125,27 @@ export function MapaScreen({ navigation }: Props): JSX.Element {
         }
       />
     );
+  }
+
+  /*
+    Marketplace fechado: a BUSCA de transportador sai, o
+    ACOMPANHAMENTO fica.
+
+    A ordem destes dois blocos é a regra inteira. Quem tem contrato
+    ativo já passou pelo `return` acima e continua vendo o mapa do
+    ônibus do filho — foi exatamente isso que o sócio restabeleceu em
+    11/09/2026 ("TODOS DEVERÃO TER MAPA") depois de uma versão que
+    trocava a aba toda por um "em breve". O que a flag fecha é só o
+    que esta aba oferece a quem ainda não contratou ninguém, e o texto
+    do "em breve" já diz o que fazer no lugar: pedir o código de
+    convite à transportadora.
+
+    Antes das ramificações de localização, de propósito, e o `useEffect`
+    acima tem a mesma guarda: não se pede acesso ao GPS de alguém para
+    uma área que está fechada.
+  */
+  if (!FUNCIONALIDADES.marketplace) {
+    return <MarketplaceComingSoonScreen />;
   }
 
   if (status === "idle" || status === "requesting") {

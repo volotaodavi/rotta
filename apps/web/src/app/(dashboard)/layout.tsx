@@ -7,6 +7,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
+import type { Funcionalidade } from "@/lib/funcionalidades";
 import type { ServiceTag } from "@rotta/api-client";
 import type { Route } from "next";
 
@@ -25,6 +26,7 @@ import { PostSignupIdentityPopup } from "@/features/identity-verification/compon
 import { useMyIdentityVerification } from "@/features/identity-verification/hooks/use-identity-verification";
 import { VinculoPendenteBlockScreen } from "@/features/team/components/vinculo-pendente-block-screen";
 import { VehicleAdminReviewAcknowledgeModal } from "@/features/vehicles/components/vehicle-admin-review-acknowledge-modal";
+import { funcionalidadeLigada } from "@/lib/funcionalidades";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
 import { wakeApi } from "@/lib/wake-api";
 import { StaleBuildWatchdog } from "@/providers/stale-build-watchdog";
@@ -39,6 +41,12 @@ interface NavLink {
    * (rotas, frota, equipe, despachante) é igual nas duas verticais.
    */
   exigeTag?: ServiceTag;
+  /**
+   * Área do produto que este item abre, quando a área é das que ainda
+   * podem estar fechadas (`lib/funcionalidades.ts`). Ausente = área
+   * aberta, que é o caso de toda a operação.
+   */
+  exigeFuncionalidade?: Funcionalidade;
 }
 
 /**
@@ -65,7 +73,15 @@ const PROFISSIONAL_NAV: NavLink[] = [
   // licitada quem define quem ela atende é o contrato com o município,
   // então a tela não tem o que mostrar — e o backend recusa a
   // solicitação de qualquer jeito.
-  { href: "/marketplace/solicitacoes", label: "Marketplace", exigeTag: "PRIVADA" },
+  // `exigeFuncionalidade` e `exigeTag` respondem perguntas diferentes e
+  // somam: a tag diz se ESTA empresa atende família particular, e a
+  // funcionalidade diz se o Marketplace está aberto a alguém.
+  {
+    href: "/marketplace/solicitacoes",
+    label: "Marketplace",
+    exigeTag: "PRIVADA",
+    exigeFuncionalidade: "marketplace",
+  },
   // Mensalidades das familias (17/10/2026) — contas a receber da
   // transportadora. Exige a tag PRIVADA pelo mesmo motivo do
   // Marketplace: numa empresa so licitada quem paga e o municipio, nao a
@@ -420,7 +436,15 @@ export default function DashboardLayout({ children }: { children: ReactNode }): 
   // pisca aparecendo e desaparecendo é pior que um item que o backend
   // recusa. Errar para o lado de MOSTRAR é seguro porque quem barra de
   // verdade é o backend.
-  const navLinks = navLinksBrutos.filter((link) => !link.exigeTag || temTag(link.exigeTag));
+  // A funcionalidade fechada, ao contrário da tag, erra para o lado de
+  // ESCONDER: ela não depende de carregar nada (é uma constante do
+  // build), então não há estado intermediário em que mostrar seja o
+  // menor risco.
+  const navLinks = navLinksBrutos.filter(
+    (link) =>
+      (!link.exigeTag || temTag(link.exigeTag)) &&
+      (!link.exigeFuncionalidade || funcionalidadeLigada(link.exigeFuncionalidade)),
+  );
   const showBottomNav = showDriverNavBar || isResponsavel;
   recordCheckpoint("dashboard-layout:antes-do-jsx-final");
 

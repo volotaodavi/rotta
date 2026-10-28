@@ -29,7 +29,11 @@ describe("acordarApiAoVoltarParaOPrimeiroPlano", () => {
   beforeEach(() => {
     esquecerUltimaChamadaDeAcordar();
     fetchMock = jest.fn().mockResolvedValue({ ok: true });
-    global.fetch = fetchMock as unknown as typeof fetch;
+    // `globalThis`, e não `global`: `types` deste app é
+    // `["react-native", "jest"]` (de propósito, ver tsconfig), e sem
+    // `@types/node` o nome `global` não existe para o TypeScript. O
+    // teste rodava, o typecheck do app reprovava.
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
     ouvinte = undefined;
     jest.spyOn(AppState, "addEventListener").mockImplementation(((
       _evento: string,

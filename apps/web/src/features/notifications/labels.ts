@@ -32,6 +32,7 @@ export const NOTIFICATION_TYPE_LABEL: Record<NotificationEventType, string> = {
   CONTRATO_ASSINADO: "Contrato assinado",
   CNH_VENCENDO: "CNH vencendo",
   DOCUMENTO_VENCENDO: "Documento vencendo",
+  RASTREADOR_SEM_SINAL: "Rastreador sem sinal",
   PAGAMENTO_APROVADO: "Pagamento aprovado",
   PAGAMENTO_RECUSADO: "Pagamento recusado",
   PAGAMENTO_PENDENTE: "Pagamento pendente",

@@ -47,6 +47,7 @@ import {
   useUpdateMyCompanySettings,
 } from "@/features/company/hooks/use-company";
 import { useGpsMap } from "@/features/gps/hooks/use-gps";
+import { FUNCIONALIDADES } from "@/lib/funcionalidades";
 
 /**
  * Banner de assinatura (briefing "PLANO" — Dossiê 26: cadastro
@@ -142,7 +143,12 @@ const PAINEL_ATALHOS: AtalhoTile[] = [
   { href: "/equipe", label: "Equipe", icon: Users },
   { href: "/veiculos", label: "Veículos", icon: Car },
   { href: "/escolas", label: "Escolas", icon: GraduationCap },
-  { href: "/marketplace/solicitacoes", label: "Marketplace", icon: Store },
+  // Entra só quando o Marketplace está aberto. É a segunda porta para
+  // a mesma área (a primeira é o menu do cabeçalho), e uma porta
+  // esquecida aberta é o mesmo que a flag não existir.
+  ...(FUNCIONALIDADES.marketplace
+    ? [{ href: "/marketplace/solicitacoes" as const, label: "Marketplace", icon: Store }]
+    : []),
   { href: "/verificacao-identidade", label: "Verificar identidade", icon: ShieldCheck },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/chamados", label: "Chamados", icon: MessageCircle },

@@ -21,6 +21,7 @@ import {
   OcorrenciasScreen,
 } from "@/features/vehicles/screens";
 import { CarteiraScreen, WalletComingSoonScreen } from "@/features/wallet/screens";
+import { FUNCIONALIDADES } from "@/lib/funcionalidades";
 import { useTheme } from "@/providers/theme-provider";
 
 const Stack = createNativeStackNavigator<VeiculoStackParamList>();
@@ -46,6 +47,14 @@ const Stack = createNativeStackNavigator<VeiculoStackParamList>();
  * nunca monta `VeiculoNavigator`): "Motorista (autônomo/MEI) - Tudo oq
  * o motorista anterior tem + financeiro..." — pedido explícito do
  * usuário. `CarteiraScreen` real nunca mudou, só qual role a alcança.
+ *
+ * Desde 28/10/2026 a decisão é de configuração, não de código
+ * (`lib/funcionalidades.ts`): a carteira real exige a área ABERTA
+ * (`EXPO_PUBLIC_FEATURE_ROTTA_PAY`) **e** o dono autônomo/MEI. As duas
+ * condições somam porque respondem perguntas diferentes — a flag diz
+ * se o Rotta Pay existe para alguém, a role diz para quem. Sem a
+ * flag, a área está fechada e nem o dono vê a carteira: é o estado
+ * vigente, e abri-la deixou de exigir um build novo.
  */
 export function VeiculoNavigator(): JSX.Element {
   const { theme } = useTheme();
@@ -91,7 +100,11 @@ export function VeiculoNavigator(): JSX.Element {
       />
       <Stack.Screen
         name="Carteira"
-        component={isAutonomoOuMeiEmModoAcao ? CarteiraScreen : WalletComingSoonScreen}
+        component={
+          FUNCIONALIDADES.rottaPay && isAutonomoOuMeiEmModoAcao
+            ? CarteiraScreen
+            : WalletComingSoonScreen
+        }
         /*
           `headerShown: false` só aqui: a Carteira desenha o próprio
           cabeçalho azul, que sangra até a barra de status, como no
