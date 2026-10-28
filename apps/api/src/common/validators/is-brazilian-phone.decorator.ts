@@ -28,9 +28,29 @@ import { registerDecorator, type ValidationOptions } from "class-validator";
  * para a mesma pessoa.
  */
 function NormalizaTelefone(): PropertyDecorator {
-  return Transform(({ value }): unknown =>
-    typeof value === "string" ? normalizarTelefone(value) : value,
-  );
+  return Transform(({ value }): unknown => {
+    if (typeof value !== "string") return value;
+    const digitos = normalizarTelefone(value);
+    /*
+      CAMPO EM BRANCO É CAMPO AUSENTE (28/10/2026).
+
+      Achado por um teste de ponta a ponta do cadastro, que reproduziu o
+      que qualquer pessoa faz: criar a conta sem preencher o WhatsApp,
+      que é opcional. O formulário manda `whatsapp: ""`, e `""` não é
+      `undefined` — então `@IsOptional()` não pulava a validação,
+      `isValidBrazilianPhone("")` dava falso, e o cadastro INTEIRO
+      morria com "Telefone inválido", sem dizer de qual telefone.
+
+      Era o primeiro passo do produto, e ele falhava para quem deixasse
+      em branco um campo marcado como opcional. Nenhum teste de unidade
+      via isso: cada ponta estava certa sozinha.
+
+      Devolver `undefined` faz o campo opcional voltar a ser opcional, e
+      não afrouxa nada no obrigatório — ali `undefined` continua
+      reprovando.
+    */
+    return digitos === "" ? undefined : digitos;
+  });
 }
 
 /**
