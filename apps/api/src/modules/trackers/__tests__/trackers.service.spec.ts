@@ -94,6 +94,10 @@ function criarServico(
       motoristaId: string;
       ultimoSinalEm: Date;
     }[];
+    /** `TripsService.start` recusa: ja existe viagem em andamento para a rota. */
+    startRecusa?: boolean;
+    /** A viagem ja aberta desta rota hoje, como o repositorio a devolve. */
+    viagemJaAberta?: { id: string; veiculoId: string } | null;
   } = {},
 ) {
   const findByRastreadorImei = jest
@@ -141,9 +145,11 @@ function criarServico(
   } as unknown as RouteRepository;
   const escalaRepository = { listDoDiaPorVeiculo } as unknown as RouteAssignmentRepository;
   const listSemSinalAcrossTenants = jest.fn().mockResolvedValue(opcoes.semSinal ?? []);
+  const findActiveDetailedByRouteId = jest.fn().mockResolvedValue(opcoes.viagemJaAberta ?? null);
   const tripRepository = {
     listRouteIdsComViagemEncerrada,
     listSemSinalAcrossTenants,
+    findActiveDetailedByRouteId,
   } as unknown as TripRepository;
 
   /*
@@ -157,11 +163,15 @@ function criarServico(
     .mockResolvedValue(opcoes.posicaoAtrasada ? false : true);
   const vehiclesService = {
     registrarPosicaoDeRastreador,
-    updateLocationFromTrip: jest.fn().mockResolvedValue(undefined),
+    updateLocationFromTrip: jest.fn().mockResolvedValue(true),
   } as unknown as VehiclesService;
 
   const tripsService = {
-    start: jest.fn().mockResolvedValue({ id: "trip-1" }),
+    start: opcoes.startRecusa
+      ? jest
+          .fn()
+          .mockRejectedValue(new Error("Já existe uma viagem em andamento para esta rota hoje."))
+      : jest.fn().mockResolvedValue({ id: "trip-1" }),
     finish: jest.fn().mockResolvedValue({ id: "trip-1" }),
   } as unknown as TripsService;
 
@@ -195,6 +205,7 @@ function criarServico(
     listDoDiaPorVeiculo,
     listRouteIdsComViagemEncerrada,
     registrarPosicaoDeRastreador,
+    findActiveDetailedByRouteId,
     listComRastreadorSemSinalAcrossTenants,
     marcarAvisoSemSinalEnviado,
     eventEmitter,
@@ -866,5 +877,82 @@ describe("avisarRastreadoresSemSinal", () => {
     const resultado = await service.avisarRastreadoresSemSinal();
 
     expect(resultado).toEqual({ avaliados: 2, avisados: 1, falhas: 1 });
+  });
+});
+
+/**
+ * Abertura duplicada: o app e a ignição abrindo a MESMA viagem.
+ *
+ * ## O defeito
+ *
+ * O motorista abre a viagem no app ao entrar no ônibus e gira a chave
+ * dez segundos depois. O rastreador recebia "já existe uma viagem em
+ * andamento para esta rota hoje", desistia, e a partir daí NENHUMA
+ * posição do aparelho entrava naquela viagem: o trajeto da família
+ * passava a depender só do celular — exatamente o que o rastreador
+ * existe para não depender.
+ */
+describe("abertura duplicada reaproveita a viagem existente", () => {
+  it("quando a viagem aberta é desta rota e deste ônibus, o rastreador grava nela", async () => {
+    const { service, positionRepository, tripRepository } = criarServico({
+      escalas: [escala("rota-1", "motorista-1")],
+      startRecusa: true,
+      viagemJaAberta: { id: "trip-do-app", veiculoId: "veiculo-1" },
+    });
+
+    const resultado = await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(resultado).toEqual(expect.objectContaining({ aceita: true, tripId: "trip-do-app" }));
+    expect(positionRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ tripId: "trip-do-app", origem: "RASTREADOR" }),
+    );
+    expect(tripRepository.findActiveDetailedByRouteId).toHaveBeenCalledWith(
+      "rota-1",
+      expect.any(Date),
+    );
+  });
+
+  it("não grava na viagem de OUTRO ônibus na mesma rota", async () => {
+    // O despachante remanejou a rota para outro carro, e foi ELE que
+    // abriu a viagem. Gravar nossas posições lá colocaria dois ônibus
+    // no mesmo trajeto.
+    const { service, positionRepository } = criarServico({
+      escalas: [escala("rota-1", "motorista-1")],
+      startRecusa: true,
+      viagemJaAberta: { id: "trip-do-outro", veiculoId: "veiculo-99" },
+    });
+
+    const resultado = await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(resultado.tripId).toBeUndefined();
+    expect(positionRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("sem viagem aberta nenhuma, segue descartando em silêncio", async () => {
+    const { service, positionRepository } = criarServico({
+      escalas: [escala("rota-1", "motorista-1")],
+      startRecusa: true,
+      viagemJaAberta: null,
+    });
+
+    const resultado = await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(resultado.aceita).toBe(true);
+    expect(resultado.tripId).toBeUndefined();
+    expect(positionRepository.create).not.toHaveBeenCalled();
+  });
+
+  it("toda posição gravada pelo rastreador é marcada como RASTREADOR", async () => {
+    // É esta marca que dá ao aparelho precedência sobre o celular do
+    // motorista na mesma viagem.
+    const { service, positionRepository } = criarServico({
+      veiculo: { ...veiculo, viagemAtualId: "trip-1" },
+    });
+
+    await service.registrarPosicao(posicao());
+
+    expect(positionRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ origem: "RASTREADOR" }),
+    );
   });
 });

@@ -148,10 +148,16 @@ export interface VehicleRepository {
    * `updateMany` com a condição no `where` resolve numa instrução só:
    * ou a linha ainda está mais velha e a escrita acontece, ou já está
    * mais nova e nada é tocado. `count` diz qual dos dois foi.
+   *
+   * `viagemId` opcional: quando a posição veio de dentro de uma viagem,
+   * ela também aponta a viagem atual do carro, na mesma instrução. Isto
+   * vale para o celular do motorista também, e não só para o
+   * rastreador — a fila offline do app drena fora de ordem, pelo mesmo
+   * motivo e com o mesmo efeito na tela.
    */
   registrarPosicaoSeMaisRecente(
     id: string,
-    data: { latitude: number; longitude: number; capturadaEm: Date },
+    data: { latitude: number; longitude: number; capturadaEm: Date; viagemId?: string },
   ): Promise<boolean>;
   /**
    * Os ônibus que deveriam estar reportando hoje e emudeceram.

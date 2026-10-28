@@ -588,16 +588,31 @@ export class VehiclesService {
     return this.vehicleRepository.registrarPosicaoSeMaisRecente(vehicleId, data);
   }
 
+  /**
+   * A última posição conhecida do ônibus, vinda de dentro de uma
+   * viagem — do celular do motorista ou do rastreador.
+   *
+   * Devolve `false` quando a posição recebida é mais velha que a
+   * gravada, e nesse caso nada é escrito.
+   *
+   * ## A guarda que faltava aqui
+   *
+   * Até 28/10/2026 este caminho escrevia direto, sem comparar nada,
+   * enquanto o caminho do rastreador já comparava. O resultado era que
+   * a mesma proteção valia para metade da frota: a fila offline do app
+   * drena fora de ordem (é o que ela existe para fazer), e um trecho de
+   * dez minutos atrás, drenado depois de um envio ao vivo, puxava o
+   * marcador do ônibus para trás na tela do pai.
+   *
+   * `viagemAtualId` entra na mesma escrita. Não é perda: quem abre a
+   * viagem é `TripsService.start`, que chama `setCurrentTrip`
+   * explicitamente — aqui o campo só reafirma o que já está lá.
+   */
   async updateLocationFromTrip(
     vehicleId: string,
     data: { latitude: number; longitude: number; capturadaEm: Date; viagemId: string },
-  ): Promise<void> {
-    await this.vehicleRepository.update(vehicleId, {
-      ultimaLatitude: data.latitude,
-      ultimaLongitude: data.longitude,
-      ultimaPosicaoEm: data.capturadaEm,
-      viagemAtualId: data.viagemId,
-    });
+  ): Promise<boolean> {
+    return this.vehicleRepository.registrarPosicaoSeMaisRecente(vehicleId, data);
   }
 
   async remove(id: string, actor: AuthenticatedUser, meta: RequestMeta): Promise<void> {

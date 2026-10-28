@@ -111,6 +111,7 @@ const UNIAO_DECLARADA = [
   "ALUNO_NAO_VAI_HOJE",
   "ENDERECO_DO_DIA_ALTERADO",
   "ESCALA_ALTERADA",
+  "RASTREADOR_SEM_SINAL",
 ] as const;
 
 describe("NotificationEventType contra o enum do banco", () => {
@@ -130,7 +131,7 @@ describe("NotificationEventType contra o enum do banco", () => {
     expect(sobrando, `tipos na união e fora do schema.prisma: ${sobrando.join(", ")}`).toEqual([]);
   });
 
-  it("o schema tem os 45 tipos que esta união espera", () => {
+  it("o schema tem os 46 tipos que esta união espera", () => {
     /*
       Trava de contagem, que é a que pega o caso chato: alguém renomeia
       um valor no schema e adiciona outro, e as duas listas acima ficam

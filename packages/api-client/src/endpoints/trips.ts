@@ -67,9 +67,19 @@ export interface IngestPositionInput {
   simuladoSuspeito?: boolean;
 }
 
+/**
+ * De onde veio a posição. `RASTREADOR` é o aparelho instalado no
+ * ônibus, `CELULAR` é o app do motorista — e enquanto o rastreador
+ * está reportando, as posições do celular na mesma viagem são
+ * ignoradas pela API (ver `TripsService.ingestPosition`), que responde
+ * com a posição do aparelho.
+ */
+export type TripPositionOrigem = "RASTREADOR" | "CELULAR";
+
 export interface TripPosition {
   id: string;
   tripId: string;
+  origem: TripPositionOrigem;
   latitude: number;
   longitude: number;
   precisaoMetros: number | null;

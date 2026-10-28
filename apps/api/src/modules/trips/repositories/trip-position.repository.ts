@@ -1,8 +1,13 @@
-import type { TripPosition } from "@prisma/client";
+import type { TripPosition, TripPositionOrigem } from "@prisma/client";
 
 export interface CreateTripPositionData {
   tripId: string;
   companyId: string;
+  /**
+   * Quem mandou esta posição. Omitido = `CELULAR`, pelo `@default` do
+   * schema: o app foi a única fonte durante toda a vida da tabela.
+   */
+  origem?: TripPositionOrigem;
   latitude: number;
   longitude: number;
   precisaoMetros?: number;
@@ -38,4 +43,17 @@ export interface TripPositionRepository {
    * `@@index([tripId, capturadaEm])`, que já existe.
    */
   findCapturasExistentes(tripId: string, capturadas: Date[]): Promise<Date[]>;
+  /**
+   * A posição mais recente do RASTREADOR nesta viagem, se ela for mais
+   * nova que `limite`.
+   *
+   * É a pergunta "o aparelho do ônibus está falando agora?", e ela
+   * decide se a posição do celular do motorista entra no trajeto ou é
+   * ignorada. Devolve a posição em si, e não um booleano, porque quem
+   * ignora o celular precisa responder ao app qual é, então, a posição
+   * atual da viagem.
+   *
+   * Usa o índice `[tripId, origem, capturadaEm]`, criado para isto.
+   */
+  findUltimaDeRastreadorDesde(tripId: string, limite: Date): Promise<TripPosition | null>;
 }

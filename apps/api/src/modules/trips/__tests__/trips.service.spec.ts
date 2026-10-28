@@ -103,6 +103,7 @@ describe("TripsService", () => {
       listByTrip: jest.fn(),
       findLatestByTrip: jest.fn(),
       findCapturasExistentes: jest.fn(),
+      findUltimaDeRastreadorDesde: jest.fn(),
     };
     studentEventRepository = {
       create: jest.fn(),
@@ -129,7 +130,10 @@ describe("TripsService", () => {
       setCurrentTrip: jest.fn(),
       adotarChecklistsPreViagem: jest.fn().mockResolvedValue(0),
       findChecklistDaViagemPorRotas: jest.fn().mockResolvedValue(null),
-      updateLocationFromTrip: jest.fn(),
+      // `true` = "a posicao e a mais nova", que e o caso normal. Desde
+      // 28/10/2026 a resposta importa: `false` significa posicao
+      // atrasada, e aviso de aproximacao nao sai a partir dela.
+      updateLocationFromTrip: jest.fn().mockResolvedValue(true),
       assertVeiculoOperavel: jest.fn(),
     } as unknown as jest.Mocked<VehiclesService>;
     contractsService = {
@@ -175,6 +179,9 @@ describe("TripsService", () => {
     routesService.listStops.mockResolvedValue([]);
     positionRepository.findLatestByTrip.mockResolvedValue(null);
     positionRepository.findCapturasExistentes.mockResolvedValue([]);
+    // `null` = o onibus nao tem rastreador falando, que e o caso de
+    // quem so usa o app. Quem testa a precedencia troca isto.
+    positionRepository.findUltimaDeRastreadorDesde.mockResolvedValue(null);
     studentEventRepository.listByTrip.mockResolvedValue([]);
 
     service = new TripsService(
@@ -1580,7 +1587,7 @@ describe("TripsService", () => {
         simuladoSuspeito: false,
         createdAt: new Date(),
       } as never);
-      vehiclesService.updateLocationFromTrip.mockResolvedValue(undefined);
+      vehiclesService.updateLocationFromTrip.mockResolvedValue(true);
       routesService.listStudents.mockResolvedValue([vinculo] as never);
       studentEventRepository.listByTrip.mockResolvedValue([]);
       contractsService.findRawByIdOrThrow.mockResolvedValue({
@@ -1686,6 +1693,181 @@ describe("TripsService", () => {
    * volta, o aparelho manda tudo de novo. O servidor precisa aguentar
    * isso sem duplicar o trajeto.
    */
+  /**
+   * Quem manda quando o ônibus tem duas bocas.
+   *
+   * ## O defeito
+   *
+   * Ônibus com rastreador instalado E app do motorista aberto mandava
+   * duas séries de posição para a MESMA viagem, de dois GPS que
+   * discordam por cinco a trinta metros. Intercaladas, elas desenham um
+   * ziguezague no mapa da família: o ônibus pula de um lado da rua para
+   * o outro a cada quinze segundos. É movimento que não aconteceu, e
+   * parece informação.
+   */
+  describe("ingestPosition — precedência do rastreador sobre o celular", () => {
+    const posicaoDoCelular = {
+      latitude: -23.0,
+      longitude: -46.0,
+      capturadaEm: "2026-08-10T10:00:00Z",
+    };
+
+    const posicaoDoRastreador = {
+      id: "position-rastreador",
+      tripId: "trip-1",
+      companyId: "company-1",
+      origem: "RASTREADOR",
+      latitude: -23.001,
+      longitude: -46.001,
+      precisaoMetros: null,
+      velocidadeKmh: null,
+      capturadaEm: new Date("2026-08-10T09:59:30Z"),
+      simuladoSuspeito: false,
+      createdAt: new Date(),
+    };
+
+    beforeEach(() => {
+      tripRepository.findById.mockResolvedValue(buildTrip());
+      vehiclesService.updateLocationFromTrip.mockResolvedValue(true);
+      routesService.listStops.mockResolvedValue([]);
+      routesService.listStudents.mockResolvedValue([]);
+      positionRepository.create.mockImplementation((data) =>
+        Promise.resolve({
+          id: "position-1",
+          ...data,
+          precisaoMetros: data.precisaoMetros ?? null,
+          velocidadeKmh: data.velocidadeKmh ?? null,
+          simuladoSuspeito: data.simuladoSuspeito ?? false,
+          createdAt: new Date(),
+        } as never),
+      );
+      positionRepository.createMany.mockResolvedValue([]);
+    });
+
+    it("com o rastreador falando, a posição do celular não entra na viagem", async () => {
+      positionRepository.findUltimaDeRastreadorDesde.mockResolvedValue(
+        posicaoDoRastreador as never,
+      );
+
+      await service.ingestPosition("trip-1", posicaoDoCelular, motoristaActor);
+
+      expect(positionRepository.create).not.toHaveBeenCalled();
+      expect(vehiclesService.updateLocationFromTrip).not.toHaveBeenCalled();
+    });
+
+    it("responde com a posição DO RASTREADOR, não com uma vazia nem com erro", async () => {
+      // O app precisa de 200 para apagar a linha da fila, e a pergunta
+      // que ele faz é "onde está a viagem agora". A resposta verdadeira
+      // é a do aparelho.
+      positionRepository.findUltimaDeRastreadorDesde.mockResolvedValue(
+        posicaoDoRastreador as never,
+      );
+
+      const resultado = await service.ingestPosition("trip-1", posicaoDoCelular, motoristaActor);
+
+      expect(resultado).toEqual(
+        expect.objectContaining({ id: "position-rastreador", origem: "RASTREADOR" }),
+      );
+    });
+
+    it("sem rastreador falando, o celular vale e entra marcado como CELULAR", async () => {
+      positionRepository.findUltimaDeRastreadorDesde.mockResolvedValue(null);
+
+      await service.ingestPosition("trip-1", posicaoDoCelular, motoristaActor);
+
+      expect(positionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ origem: "CELULAR" }),
+      );
+      expect(vehiclesService.updateLocationFromTrip).toHaveBeenCalled();
+    });
+
+    it("a janela perguntada é de DOIS minutos", async () => {
+      const antes = Date.now();
+      await service.ingestPosition("trip-1", posicaoDoCelular, motoristaActor);
+      const depois = Date.now();
+
+      const chamada = positionRepository.findUltimaDeRastreadorDesde.mock.calls[0]!;
+      expect(chamada[0]).toBe("trip-1");
+      const limite = chamada[1].getTime();
+      expect(limite).toBeGreaterThanOrEqual(antes - 2 * 60_000);
+      expect(limite).toBeLessThanOrEqual(depois - 2 * 60_000);
+    });
+
+    it("o lote da fila offline obedece à mesma precedência", async () => {
+      // É por aqui que entraria um BLOCO inteiro de leituras do celular
+      // de uma vez, no meio de um trajeto que o rastreador já desenha.
+      positionRepository.findUltimaDeRastreadorDesde.mockResolvedValue(
+        posicaoDoRastreador as never,
+      );
+
+      const resultado = await service.ingestPositionsBatch(
+        "trip-1",
+        { posicoes: [posicaoDoCelular] },
+        motoristaActor,
+      );
+
+      expect(resultado).toEqual([]);
+      expect(positionRepository.createMany).not.toHaveBeenCalled();
+      expect(vehiclesService.updateLocationFromTrip).not.toHaveBeenCalled();
+    });
+
+    it("se a consulta do rastreador falhar, o celular continua valendo", async () => {
+      // Ziguezague é defeito visual. Apagar o ônibus do mapa por causa
+      // de uma consulta que falhou é pior.
+      positionRepository.findUltimaDeRastreadorDesde.mockRejectedValue(new Error("banco fora"));
+
+      await service.ingestPosition("trip-1", posicaoDoCelular, motoristaActor);
+
+      expect(positionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ origem: "CELULAR" }),
+      );
+    });
+
+    it("posição atrasada do celular entra no histórico, mas não avisa aproximação", async () => {
+      // `false` = a leitura e mais velha que a ultima gravada. A fila
+      // offline drena fora de ordem de proposito, e avisar "o onibus
+      // esta chegando" a partir de um ponto de dez minutos atras e
+      // avisar sobre uma esquina que ele ja deixou para tras.
+      vehiclesService.updateLocationFromTrip.mockResolvedValue(false);
+      // A parada fica a ~111m da posicao, dentro do raio de 400m: sem a
+      // guarda, o aviso SAI. Conferido removendo a guarda.
+      routesService.listStops.mockResolvedValue([
+        {
+          id: "stop-perto",
+          endereco: "Rua Perto",
+          latitude: -22.999,
+          longitude: -46.0,
+          horarioPrevisto: "07:00",
+        },
+      ] as never);
+      routesService.listStudents.mockResolvedValue([
+        {
+          id: "vinculo-1",
+          routeId: "route-1",
+          contractId: "contract-1",
+          studentId: "student-1",
+          paradaEmbarqueId: "stop-perto",
+          paradaDesembarqueId: "stop-outra",
+          ativo: true,
+        },
+      ] as never);
+      studentEventRepository.listByTrip.mockResolvedValue([]);
+      contractsService.findRawByIdOrThrow.mockResolvedValue({
+        responsavelId: "responsavel-1",
+        companyId: "company-1",
+      } as never);
+      studentsService.findRawById.mockResolvedValue({ nome: "Maria" } as never);
+
+      await service.ingestPosition("trip-1", posicaoDoCelular, motoristaActor);
+
+      expect(positionRepository.create).toHaveBeenCalled();
+      expect(eventEmitter.emit).not.toHaveBeenCalledWith(
+        "communication.requested",
+        expect.objectContaining({ tipo: "VEICULO_PROXIMO" }),
+      );
+    });
+  });
+
   describe("ingestPositionsBatch — idempotência da fila offline", () => {
     const criarPosicao = (capturadaEm: string, latitude = -23.0, longitude = -46.0) => ({
       latitude,
@@ -1704,7 +1886,7 @@ describe("TripsService", () => {
 
     beforeEach(() => {
       tripRepository.findById.mockResolvedValue(buildTrip());
-      vehiclesService.updateLocationFromTrip.mockResolvedValue(undefined);
+      vehiclesService.updateLocationFromTrip.mockResolvedValue(true);
       routesService.listStops.mockResolvedValue([]);
       routesService.listStudents.mockResolvedValue([]);
       positionRepository.createMany.mockImplementation((data) =>

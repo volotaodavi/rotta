@@ -197,18 +197,20 @@ export class TrackersService {
 
     // Ignição ligou e não há viagem aberta → o dia começou.
     if (ignicao === true && !veiculo.viagemAtualId) {
-      const tripId = await this.abrirViagemDoDia(veiculo, {
+      const viagem = await this.abrirViagemDoDia(veiculo, {
         latitude: payload.latitude,
         longitude: payload.longitude,
         capturadaEm,
       });
-      if (tripId) {
-        await this.gravarNaViagem(tripId, veiculo, payload, capturadaEm);
+      if (viagem) {
+        await this.gravarNaViagem(viagem.tripId, veiculo, payload, capturadaEm);
         return {
           aceita: true,
-          motivo: "Viagem aberta pela ignição.",
+          motivo: viagem.reaproveitada
+            ? "Viagem já estava aberta (app): o rastreador passa a gravar nela."
+            : "Viagem aberta pela ignição.",
           vehicleId: veiculo.id,
-          tripId,
+          tripId: viagem.tripId,
         };
       }
       return {
@@ -440,7 +442,7 @@ export class TrackersService {
   private async abrirViagemDoDia(
     veiculo: Vehicle,
     posicao: PosicaoObservada,
-  ): Promise<string | null> {
+  ): Promise<{ tripId: string; reaproveitada: boolean } | null> {
     const designacao = await this.acharDesignacaoDoDia(veiculo);
     if (!designacao) {
       await this.avisarQueLigouSemEscala(veiculo, posicao);
@@ -457,13 +459,63 @@ export class TrackersService {
         this.atorDoRastreador(veiculo.companyId, designacao.motoristaId),
         {},
       );
-      return trip.id;
+      return { tripId: trip.id, reaproveitada: false };
     } catch (erro) {
-      // Conflito legítimo e comum: a viagem já foi aberta pelo app, ou
-      // duas posições chegaram juntas na virada da ignição. Não é erro
-      // de sistema, e não pode virar retentativa infinita.
+      /*
+        Conflito legítimo e comum: a viagem já foi aberta pelo app, ou
+        duas posições chegaram juntas na virada da ignição. Não é erro
+        de sistema, e não pode virar retentativa infinita.
+
+        O que isto fazia até 28/10/2026 era desistir — e desistir aqui
+        era o pior dos dois mundos. O motorista abre a viagem no app ao
+        entrar no ônibus, gira a chave dez segundos depois, e o
+        rastreador recebia "já existe viagem em andamento", devolvia
+        null, e a partir daí NENHUMA posição do aparelho entrava
+        naquela viagem: o trajeto da família ficava dependendo só do
+        celular, que é exatamente o que o rastreador existe para não
+        depender.
+
+        Reaproveitar é o certo porque é a mesma viagem real: a mesma
+        rota, o mesmo dia, o mesmo ônibus. Quem confere o mesmo ônibus é
+        a condição logo abaixo — se o despachante remanejou a rota para
+        outro carro e foi ELE que abriu a viagem, gravar nossas posições
+        lá colocaria dois ônibus no mesmo trajeto.
+      */
+      const reaproveitada = await this.viagemAbertaDaRota(designacao.routeId, veiculo.id);
+      if (reaproveitada) {
+        this.logger.log(
+          `Viagem ${reaproveitada} ja estava aberta para ${veiculo.numeroFrota ?? veiculo.placa}: o rastreador passa a gravar nela.`,
+        );
+        return { tripId: reaproveitada, reaproveitada: true };
+      }
+
       this.logger.warn(
         `Não foi possível abrir viagem para ${veiculo.numeroFrota ?? veiculo.placa}: ${
+          erro instanceof Error ? erro.message : "erro desconhecido"
+        }`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * A viagem já aberta desta rota hoje, **se for deste ônibus**.
+   *
+   * Bypass de RLS, como todo o módulo: quem fala é um aparelho, sem
+   * ator e sem tenant, e o `routeId` vem da escala do ônibus já
+   * resolvido pelo IMEI — é ele que mantém o escopo.
+   *
+   * Só `EM_ANDAMENTO`. Uma viagem PAUSADA é alguém dizendo "espera", e
+   * girar a chave não é a retomada: quem retoma é a pessoa, pelo app.
+   */
+  private async viagemAbertaDaRota(routeId: string, veiculoId: string): Promise<string | null> {
+    try {
+      const aberta = await this.trips.findActiveDetailedByRouteId(routeId, inicioDoDiaNaOperacao());
+      if (!aberta || aberta.veiculoId !== veiculoId) return null;
+      return aberta.id;
+    } catch (erro) {
+      this.logger.warn(
+        `Não foi possível conferir se a rota ${routeId} já tem viagem aberta: ${
           erro instanceof Error ? erro.message : "erro desconhecido"
         }`,
       );
@@ -647,6 +699,10 @@ export class TrackersService {
     await this.positionRepository.create({
       tripId,
       companyId: veiculo.companyId,
+      // É o aparelho do ônibus falando, e é isto que dá a ele
+      // precedência sobre o celular do motorista na mesma viagem (ver
+      // `TripsService.ingestPosition`).
+      origem: "RASTREADOR",
       latitude: payload.latitude,
       longitude: payload.longitude,
       // O Traccar encaminha em NÓS. Gravar sem converter mostraria um

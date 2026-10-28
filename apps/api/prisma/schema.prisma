@@ -3093,11 +3093,29 @@ model Trip {
 /// sobrescrito: mesmo uma posição de baixa precisão ou sinalizada como
 /// `simuladoSuspeito` fica no histórico bruto (`GPS-06`) — a suavização/
 /// descarte é só para exibição, nunca para o dado armazenado.
+/// De onde veio a posição.
+///
+/// Existe porque o mesmo ônibus pode falar por duas bocas ao mesmo
+/// tempo: o rastreador parafusado no painel e o celular do motorista
+/// com o app aberto. Sem saber qual é qual, as duas séries se
+/// intercalam no mesmo trajeto e o mapa da família desenha um
+/// ziguezague entre dois GPS que discordam por alguns metros —
+/// movimento que não aconteceu.
+///
+/// `CELULAR` é o padrão porque todo o histórico anterior a 28/10/2026
+/// veio do app: era a única fonte que existia.
+enum TripPositionOrigem {
+  RASTREADOR
+  CELULAR
+}
+
 model TripPosition {
   id        String @id @default(uuid()) @db.Uuid
   tripId    String @db.Uuid
   trip      Trip   @relation(fields: [tripId], references: [id], onDelete: Cascade)
   companyId String @db.Uuid
+
+  origem TripPositionOrigem @default(CELULAR)
 
   latitude       Decimal  @db.Decimal(9, 6)
   longitude      Decimal  @db.Decimal(9, 6)
@@ -3112,6 +3130,10 @@ model TripPosition {
   createdAt DateTime @default(now())
 
   @@index([tripId, capturadaEm])
+  /// "O rastreador desta viagem falou nos últimos dois minutos?" — a
+  /// pergunta que decide se a posição do celular entra ou é ignorada,
+  /// feita a cada leitura do app (uma a cada 15s por motorista).
+  @@index([tripId, origem, capturadaEm])
   @@index([companyId])
   @@map("trip_positions")
 }

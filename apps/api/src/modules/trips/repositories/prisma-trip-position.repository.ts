@@ -56,4 +56,13 @@ export class PrismaTripPositionRepository implements TripPositionRepository {
 
     return encontradas.map((item) => item.capturadaEm);
   }
+
+  findUltimaDeRastreadorDesde(tripId: string, limite: Date): Promise<TripPosition | null> {
+    return this.prisma.withTenant(
+      this.prisma.tripPosition.findFirst({
+        where: { tripId, origem: "RASTREADOR", capturadaEm: { gte: limite } },
+        orderBy: { capturadaEm: "desc" },
+      }),
+    );
+  }
 }

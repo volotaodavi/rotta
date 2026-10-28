@@ -10,7 +10,13 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
-import { NotificationEventType, Prisma, TripSentido, type Trip } from "@prisma/client";
+import {
+  NotificationEventType,
+  Prisma,
+  TripSentido,
+  type Trip,
+  type TripPosition,
+} from "@prisma/client";
 
 import { saltoIncoerente } from "./gps-coerencia.util";
 import { toMapVehicleResponseDto } from "./mappers/map-vehicle.mapper";
@@ -64,7 +70,6 @@ export interface RequestMeta {
   userAgent?: string;
 }
 
-/** Início do dia corrente em UTC — `Trip.data` é `@db.Date` (sem hora), então a hora local do servidor não deve vazar para a chave de unicidade `[routeId, data]`. */
 /**
  * O dia de trabalho corrente, como `Trip.data` o guarda.
  *
@@ -78,6 +83,38 @@ export interface RequestMeta {
 function today(): Date {
   return inicioDoDiaNaOperacao();
 }
+
+/**
+ * Por quanto tempo uma posição do rastreador silencia o celular do
+ * motorista na mesma viagem.
+ *
+ * ## O problema de duas bocas
+ *
+ * O ônibus com rastreador instalado e o app do motorista aberto manda
+ * duas séries de posição para a MESMA viagem, de dois GPS que
+ * discordam entre si por cinco a trinta metros. Intercaladas, elas
+ * desenham um ziguezague no mapa da família: o ônibus pula de um lado
+ * da rua para o outro a cada quinze segundos. É movimento que não
+ * aconteceu, e é pior que posição faltando, porque parece informação.
+ *
+ * ## Por que o rastreador ganha
+ *
+ * Ele é parafusado no carro, alimentado pela bateria do ônibus e não
+ * depende de ninguém manter uma tela aberta. O celular está no bolso
+ * de quem está dirigindo: ele bloqueia a tela, o Android mata o
+ * aplicativo em segundo plano para poupar bateria, a bateria acaba.
+ *
+ * ## Por que dois minutos, e não trinta segundos
+ *
+ * Porque a cadência normal do rastreador é de trinta segundos em
+ * movimento, e ela escorrega: o aparelho espera cobertura, o Traccar
+ * enfileira. Um limite de trinta segundos devolveria o controle ao
+ * celular a cada engarrafamento de rede e traria o ziguezague de
+ * volta, intermitente — pior de diagnosticar que constante. Dois
+ * minutos é quatro ciclos: silêncio tão longo já é o aparelho
+ * realmente mudo, e aí o celular assume, que é o que queremos.
+ */
+const MINUTOS_DE_PRECEDENCIA_DO_RASTREADOR = 2;
 
 /**
  * Raio de geofencing "veículo se aproximando" (Prompt "Rotta Geo
@@ -903,6 +940,16 @@ export class TripsService {
 
     const capturadaEm = new Date(dto.capturadaEm);
 
+    const doRastreador = await this.rastreadorFalandoAgora(tripId);
+    if (doRastreador) {
+      // 200, e não erro: o app PRECISA tratar isto como sucesso para
+      // apagar a linha da fila — mesmo contrato já documentado no lote
+      // inteiramente duplicado. E a resposta é a posição do
+      // rastreador, não uma vazia, porque a pergunta que o app faz é
+      // "onde está a viagem agora": esta é a resposta verdadeira.
+      return toTripPositionResponseDto(doRastreador);
+    }
+
     // `GPS-06` — quem decide se a leitura é suspeita é o SERVIDOR, não o
     // cliente. Antes desta linha o código fazia
     // `simuladoSuspeito: dto.simuladoSuspeito`, ou seja, perguntava ao
@@ -938,19 +985,56 @@ export class TripsService {
       precisaoMetros: dto.precisaoMetros,
       velocidadeKmh: dto.velocidadeKmh,
       capturadaEm,
+      origem: "CELULAR",
       simuladoSuspeito: dto.simuladoSuspeito === true || suspeitaDoServidor,
     });
 
-    await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {
+    // `false` = a leitura é mais velha que a última gravada e nada foi
+    // escrito. A fila offline do app drena fora de ordem de propósito,
+    // e uma leitura de dez minutos atrás não pode puxar o marcador do
+    // ônibus para trás na tela do pai. Ela fica no histórico, que é
+    // onde ela é verdade.
+    const ehAPosicaoMaisNova = await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {
       latitude: dto.latitude,
       longitude: dto.longitude,
       capturadaEm,
       viagemId: tripId,
     });
 
-    await this.detectarAproximacaoBestEffort(trip, actor, dto.latitude, dto.longitude);
+    // Aproximação é uma pergunta sobre ONDE O ÔNIBUS ESTÁ AGORA. Com
+    // posição atrasada, avisar "o ônibus está chegando" é avisar sobre
+    // uma esquina pela qual ele já passou.
+    if (ehAPosicaoMaisNova) {
+      await this.detectarAproximacaoBestEffort(trip, actor, dto.latitude, dto.longitude);
+    }
 
     return toTripPositionResponseDto(position);
+  }
+
+  /**
+   * A posição do rastreador desta viagem, se o aparelho falou nos
+   * últimos `MINUTOS_DE_PRECEDENCIA_DO_RASTREADOR` minutos.
+   *
+   * Uma consulta indexada por leitura de GPS do app (uma a cada 15s
+   * por motorista em viagem), pelo índice `[tripId, origem,
+   * capturadaEm]` criado para ela.
+   *
+   * Best effort: se a consulta falhar, o celular continua valendo. O
+   * ziguezague é um defeito visual; recusar a posição por causa de uma
+   * falha de consulta apagaria o ônibus do mapa, que é pior.
+   */
+  private async rastreadorFalandoAgora(tripId: string): Promise<TripPosition | null> {
+    const limite = new Date(Date.now() - MINUTOS_DE_PRECEDENCIA_DO_RASTREADOR * 60_000);
+    try {
+      return await this.positionRepository.findUltimaDeRastreadorDesde(tripId, limite);
+    } catch (erro) {
+      this.logger.warn(
+        `Não foi possível conferir o rastreador da viagem ${tripId}: ${
+          erro instanceof Error ? erro.message : "erro desconhecido"
+        }`,
+      );
+      return null;
+    }
   }
 
   /**
@@ -979,6 +1063,15 @@ export class TripsService {
     this.assertCanOperateTrip(trip, actor);
     if (trip.status !== "EM_ANDAMENTO") {
       throw new BadRequestException("Só é possível registrar posição de uma viagem em andamento.");
+    }
+
+    // Mesma precedência do envio ao vivo, e aqui ela importa até mais:
+    // é por este endpoint que entraria um bloco inteiro de leituras do
+    // celular, de uma vez, no meio de um trajeto que o rastreador já
+    // está desenhando. Lista vazia é o sucesso que esvazia a fila do
+    // app, exatamente como no lote já registrado.
+    if (await this.rastreadorFalandoAgora(tripId)) {
+      return [];
     }
 
     const novas = await this.descartarPosicoesJaRegistradas(tripId, dto.posicoes);
@@ -1022,6 +1115,7 @@ export class TripsService {
         precisaoMetros: item.precisaoMetros,
         velocidadeKmh: item.velocidadeKmh,
         capturadaEm: atual.capturadaEm,
+        origem: "CELULAR" as const,
         simuladoSuspeito: item.simuladoSuspeito === true || suspeita,
       };
     });
@@ -1029,19 +1123,25 @@ export class TripsService {
     const positions = await this.positionRepository.createMany(paraCriar);
 
     const latest = positions.reduce((a, b) => (a.capturadaEm > b.capturadaEm ? a : b));
-    await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {
+    const ehAPosicaoMaisNova = await this.vehiclesService.updateLocationFromTrip(trip.veiculoId, {
       latitude: Number(latest.latitude),
       longitude: Number(latest.longitude),
       capturadaEm: latest.capturadaEm,
       viagemId: tripId,
     });
 
-    await this.detectarAproximacaoBestEffort(
-      trip,
-      actor,
-      Number(latest.latitude),
-      Number(latest.longitude),
-    );
+    // Uma fila que drenou DEPOIS de um envio ao vivo mais recente é o
+    // caso normal, não a exceção: o bloco inteiro é passado, e avisar
+    // aproximação a partir dele é avisar sobre uma esquina que o ônibus
+    // já deixou para trás.
+    if (ehAPosicaoMaisNova) {
+      await this.detectarAproximacaoBestEffort(
+        trip,
+        actor,
+        Number(latest.latitude),
+        Number(latest.longitude),
+      );
+    }
 
     return positions.map(toTripPositionResponseDto);
   }

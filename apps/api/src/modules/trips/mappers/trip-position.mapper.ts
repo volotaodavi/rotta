@@ -5,6 +5,7 @@ export function toTripPositionResponseDto(position: TripPosition): TripPositionR
   return {
     id: position.id,
     tripId: position.tripId,
+    origem: position.origem,
     latitude: Number(position.latitude),
     longitude: Number(position.longitude),
     precisaoMetros: position.precisaoMetros ? Number(position.precisaoMetros) : null,

@@ -90,7 +90,7 @@ export class PrismaVehicleRepository implements VehicleRepository {
   /** Ver a nota da interface: a comparação é condição do `where`, nunca um `if` antes da escrita. */
   async registrarPosicaoSeMaisRecente(
     id: string,
-    data: { latitude: number; longitude: number; capturadaEm: Date },
+    data: { latitude: number; longitude: number; capturadaEm: Date; viagemId?: string },
   ): Promise<boolean> {
     const { count } = await this.prisma.withTenant(
       this.prisma.vehicle.updateMany({
@@ -104,6 +104,11 @@ export class PrismaVehicleRepository implements VehicleRepository {
           ultimaLatitude: data.latitude,
           ultimaLongitude: data.longitude,
           ultimaPosicaoEm: data.capturadaEm,
+          // Quando a posição veio de dentro de uma viagem, ela também
+          // diz qual é a viagem atual do carro. Fica na MESMA instrução
+          // de propósito: duas escritas separadas poderiam deixar o
+          // ônibus apontando para uma viagem com a posição de outra.
+          ...(data.viagemId ? { viagemAtualId: data.viagemId } : {}),
         },
       }),
     );
