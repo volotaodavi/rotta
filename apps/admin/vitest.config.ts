@@ -23,6 +23,13 @@ export default defineConfig({
   plugins: [react()],
   test: {
     environment: "jsdom",
+    /*
+      A pasta `e2e/` e do Playwright, nao do Vitest. Sem este recorte os
+      dois se atropelam: o Vitest carrega o arquivo de `@playwright/test`
+      e morre com "test.describe() is not supported" num teste que nunca
+      foi dele. Os dois usam `test`, e nenhum dos dois erra sozinho.
+    */
+    include: ["src/**/*.{spec,test}.{ts,tsx}"],
     setupFiles: ["./vitest.setup.ts"],
     globals: true,
     css: false,

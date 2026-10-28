@@ -35,6 +35,16 @@ module.exports = {
       07/10/2026. A ausência de teste não foi descuido: era impossível
       escrever o teste que teria pegado.
     */
+    /*
+      `expo-symbols` nao roda em Node: sem o modulo nativo, o
+      `SymbolView` trata a prop `fallback` (um elemento React) como
+      filho, e o React estoura com "Objects are not valid as a React
+      child". Como o `jest-expo` roda com `Platform.OS === "ios"`, esse
+      e o caminho que TODO teste atravessa — eram doze testes de
+      navegacao caindo por causa de icone, com uma mensagem que morre
+      dentro do reconciliador e nao aponta para lugar nenhum.
+    */
+    "^expo-symbols$": "<rootDir>/test/expo-symbols-stub.tsx",
     "^lucide-react-native$": require.resolve("lucide-react-native", {
       paths: [require("node:path").join(__dirname, "../../packages/icons")],
     }),
