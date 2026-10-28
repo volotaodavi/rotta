@@ -10,6 +10,7 @@ import { QueueModule } from "@/infra/queue/queue.module";
 import { RouteAssignmentsModule } from "@/modules/route-assignments/route-assignments.module";
 import { RoutesModule } from "@/modules/routes/routes.module";
 import { TripsModule } from "@/modules/trips/trips.module";
+import { UsersModule } from "@/modules/users/users.module";
 import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
 
 /**
@@ -38,7 +39,17 @@ import { VehiclesModule } from "@/modules/vehicles/vehicles.module";
  * perdesse sinal na garagem ficava `EM_ANDAMENTO` para sempre.
  */
 @Module({
-  imports: [TripsModule, VehiclesModule, RoutesModule, RouteAssignmentsModule, QueueModule],
+  // `UsersModule` entrou com o aviso de rastreador mudo: é dele que
+  // sai quem é Empresa/Gestor na transportadora, os únicos que recebem
+  // esse aviso.
+  imports: [
+    TripsModule,
+    VehiclesModule,
+    RoutesModule,
+    RouteAssignmentsModule,
+    UsersModule,
+    QueueModule,
+  ],
   controllers: [TrackersController, TrackersQueueController],
   providers: [TrackersService, TrackerIngestGuard, TrackersSchedulerService],
   exports: [TrackersService],

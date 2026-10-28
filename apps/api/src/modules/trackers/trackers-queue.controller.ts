@@ -22,6 +22,19 @@ import { QstashSignatureGuard } from "@/infra/queue/qstash/qstash-signature.guar
 export class TrackersQueueController {
   constructor(private readonly trackersService: TrackersService) {}
 
+  /**
+   * As duas varreduras rodam no mesmo disparo, de propósito.
+   *
+   * São perguntas vizinhas sobre o mesmo silêncio ("esta viagem
+   * acabou?" e "este aparelho quebrou?") e separá-las em dois
+   * agendamentos dobraria o consumo da cota gratuita do Render sem
+   * entregar nada a mais. Ver a janela operacional em
+   * `TrackersSchedulerService`.
+   *
+   * O aviso roda mesmo que o encerramento falhe: são coisas
+   * independentes, e a empresa precisa saber do aparelho mudo de
+   * qualquer jeito.
+   */
   @Post("viagens-sem-sinal")
   @HttpCode(HttpStatus.OK)
   async viagensSemSinal(): Promise<{
@@ -29,8 +42,10 @@ export class TrackersQueueController {
     avaliadas: number;
     encerradas: number;
     falhas: number;
+    rastreadores: { avaliados: number; avisados: number; falhas: number };
   }> {
     const resultado = await this.trackersService.encerrarViagensSemSinal();
-    return { ok: true, ...resultado };
+    const rastreadores = await this.trackersService.avisarRastreadoresSemSinal();
+    return { ok: true, ...resultado, rastreadores };
   }
 }

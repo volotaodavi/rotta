@@ -1680,6 +1680,15 @@ model Vehicle {
   escalas               RouteAssignment[] @relation("RouteAssignmentVeiculo")
   rastreadorImei        String?           @unique
   rastreadorVinculadoEm DateTime?
+  /// Quando o aviso de "rastreador sem sinal" foi enviado pela última
+  /// vez para este ônibus.
+  ///
+  /// Existe para o aviso sair no máximo UMA VEZ POR DIA por veículo. A
+  /// varredura roda a cada dez minutos: sem esta marca, um aparelho
+  /// que queimou na sexta renderia seis avisos por hora até alguém
+  /// trocá-lo, e aviso repetido é aviso que o gestor aprende a ignorar
+  /// justamente antes do dia em que ele importa.
+  avisoSemSinalEnviadoEm DateTime?
 
   ultimoMotoristaId String? @db.Uuid
   ultimoMotorista   User?   @relation("VehicleUltimoMotorista", fields: [ultimoMotoristaId], references: [id], onDelete: SetNull)
@@ -3211,6 +3220,10 @@ enum NotificationEventType {
   CONTRATO_ASSINADO
   CNH_VENCENDO
   DOCUMENTO_VENCENDO
+  /// O ônibus tem rastreador credenciado e escala para hoje, mas parou
+  /// de mandar posição. Vai para a EMPRESA, nunca para a família: quem
+  /// resolve aparelho mudo é quem tem a chave da garagem.
+  RASTREADOR_SEM_SINAL
   PAGAMENTO_APROVADO
   PAGAMENTO_RECUSADO
   PAGAMENTO_PENDENTE

@@ -49,6 +49,11 @@ export class NotificationChannelSelectorService {
     CONTRATO_ASSINADO: [PUSH, EMAIL],
     CNH_VENCENDO: [PUSH, EMAIL],
     DOCUMENTO_VENCENDO: [PUSH, EMAIL],
+    // Vai para a EMPRESA, e é acionável: conferir fusível, chip ou
+    // antena. Push para chegar hoje, e-mail para sobrar registro de
+    // quando o aparelho começou a falhar, que é o que vale numa
+    // conversa com o fornecedor.
+    RASTREADOR_SEM_SINAL: [PUSH, EMAIL],
     PAGAMENTO_APROVADO: [PUSH, EMAIL],
     PAGAMENTO_RECUSADO: [PUSH, EMAIL, WHATSAPP],
     PAGAMENTO_PENDENTE: [PUSH, EMAIL, WHATSAPP],

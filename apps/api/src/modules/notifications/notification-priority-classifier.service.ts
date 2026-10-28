@@ -33,6 +33,10 @@ export class NotificationPriorityClassifierService {
     CONTRATO_ASSINADO: IMPORTANTE,
     CNH_VENCENDO: URGENTE,
     DOCUMENTO_VENCENDO: IMPORTANTE,
+    // IMPORTANTE, não URGENTE: o ônibus está rodando, só não aparece
+    // no mapa. Urgente é o que tira alguém da cama, e isto espera o
+    // horário comercial.
+    RASTREADOR_SEM_SINAL: IMPORTANTE,
     PAGAMENTO_APROVADO: IMPORTANTE,
     PAGAMENTO_RECUSADO: URGENTE,
     PAGAMENTO_PENDENTE: URGENTE,

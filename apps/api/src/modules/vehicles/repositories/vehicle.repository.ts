@@ -153,6 +153,46 @@ export interface VehicleRepository {
     id: string,
     data: { latitude: number; longitude: number; capturadaEm: Date },
   ): Promise<boolean>;
+  /**
+   * Os ônibus que deveriam estar reportando hoje e emudeceram.
+   *
+   * O recorte é o que torna o aviso acionável, e cada parte dele tem
+   * motivo:
+   *
+   *  - **Com rastreador credenciado.** Sem IMEI não há o que calar.
+   *  - **Com escala para hoje.** Um ônibus de reserva, parado na
+   *    garagem o dia inteiro, está mudo por estar desligado. Avisar
+   *    sobre ele é o ruído que faz o gestor desistir do aviso.
+   *  - **Sem posição há mais de N horas**, contando também o que nunca
+   *    mandou nada: aparelho recém-instalado que nunca falou é
+   *    exatamente o caso que precisa de alguém.
+   *
+   * Cruza tenants porque quem chama é uma varredura agendada, sem ator
+   * e sem tenant. Mesmo caso do varredor de retenção.
+   */
+  listComRastreadorSemSinalAcrossTenants(
+    limite: Date,
+    dia: Date,
+    max: number,
+  ): Promise<
+    {
+      id: string;
+      companyId: string;
+      numeroFrota: string | null;
+      placa: string;
+      ultimaPosicaoEm: Date | null;
+    }[]
+  >;
+  /**
+   * Marca que o aviso de "sem sinal" saiu hoje para este ônibus, e diz
+   * se foi ESTA chamada que ganhou o direito de avisar.
+   *
+   * A condição mora no `where` pelo mesmo motivo de
+   * `registrarPosicaoSeMaisRecente`: a varredura pode rodar duas vezes
+   * em paralelo (uma retentativa do QStash enquanto a anterior ainda
+   * roda), e um `if` antes da escrita mandaria o aviso duas vezes.
+   */
+  marcarAvisoSemSinalEnviado(id: string, inicioDoDia: Date, agora: Date): Promise<boolean>;
   list(filter: ListVehiclesFilter): Promise<ListVehiclesResult>;
   /** Todos os veículos ativos do tenant, sem paginação — usado pelo Dashboard/Mapa/Exportação. */
   listAllActive(companyId: string): Promise<Vehicle[]>;

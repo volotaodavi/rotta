@@ -1,5 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import { NotificationEventType } from "@prisma/client";
 
 import { CONFIANCA_PARA_SUGERIR, sugerirRotaPeloTrajeto } from "./sugerir-rota.util";
 
@@ -14,10 +16,12 @@ import type { TripRepository } from "@/modules/trips/repositories/trip.repositor
 import type { VehicleRepository } from "@/modules/vehicles/repositories/vehicle.repository";
 import type { Vehicle } from "@prisma/client";
 
+import { COMMUNICATION_REQUESTED_EVENT } from "@/modules/notifications/events/communication-requested.event";
 import { ROUTE_ASSIGNMENT_REPOSITORY } from "@/modules/route-assignments/route-assignments.constants";
 import { ROUTE_REPOSITORY } from "@/modules/routes/routes.constants";
 import { TRIP_POSITION_REPOSITORY, TRIP_REPOSITORY } from "@/modules/trips/trips.constants";
 import { TripsService } from "@/modules/trips/trips.service";
+import { UsersService } from "@/modules/users/users.service";
 import { VEHICLE_REPOSITORY } from "@/modules/vehicles/vehicles.constants";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
@@ -36,6 +40,22 @@ const KMH_POR_NO = 1.852;
  * do que drenar aos poucos.
  */
 const LIMITE_POR_VARREDURA = 200;
+
+/**
+ * Horas sem posição antes de a Rotta avisar a EMPRESA de que o
+ * rastreador emudeceu.
+ *
+ * Duas horas, e não os vinte minutos que encerram a viagem, porque as
+ * duas perguntas são diferentes. Vinte minutos respondem "esta viagem
+ * acabou?", e a resposta errada só fecha uma viagem cedo demais. Duas
+ * horas respondem "este aparelho quebrou?", e a resposta errada manda
+ * um gestor até a garagem atrás de um ônibus que estava num túnel.
+ *
+ * Duas horas também é mais que o intervalo entre dois turnos
+ * escolares: o ônibus que fica parado entre a ida e a volta não gera
+ * aviso, porque nesse tempo ele ainda reporta ignição desligada.
+ */
+const HORAS_SEM_SINAL_PARA_AVISAR = 2;
 
 /**
  * O que aconteceu com uma posição recebida. Devolvido ao receptor só
@@ -103,6 +123,8 @@ export class TrackersService {
     @Inject(ROUTE_ASSIGNMENT_REPOSITORY)
     private readonly escalas: RouteAssignmentRepository,
     @Inject(TRIP_REPOSITORY) private readonly trips: TripRepository,
+    private readonly users: UsersService,
+    private readonly eventEmitter: EventEmitter2,
     configService: ConfigService,
   ) {
     this.config = configService.get<TrackersConfig>("trackers")!;
@@ -224,6 +246,94 @@ export class TrackersService {
       vehicleId: veiculo.id,
       tripId: veiculo.viagemAtualId,
     };
+  }
+
+  /**
+   * Avisa a EMPRESA dos ônibus que deveriam estar reportando hoje e
+   * emudeceram.
+   *
+   * ## O buraco que isto fecha
+   *
+   * Até aqui, rastreador mudo só aparecia quando alguém notava o
+   * ônibus sumido do mapa — e quem nota primeiro é a família, não a
+   * transportadora. A Rotta sabia do silêncio e não contava a ninguém.
+   *
+   * ## Por que vai para a empresa, e nunca para a família
+   *
+   * Porque a ação possível é de quem tem a chave da garagem: conferir
+   * o fusível, o chip, a antena, ou trocar o aparelho. Para a família,
+   * um aviso de "o rastreador do ônibus do seu filho parou" não abre
+   * nenhuma ação e só produz aflição.
+   *
+   * ## Uma vez por dia por ônibus
+   *
+   * A varredura roda a cada dez minutos. Sem essa trava, um aparelho
+   * que queimou na sexta renderia seis avisos por hora até alguém
+   * trocá-lo, e aviso repetido é aviso que o gestor aprende a ignorar
+   * justamente antes do dia em que ele importa. A trava é atômica (a
+   * condição mora no `where` da escrita), porque a varredura pode
+   * rodar duas vezes em paralelo quando o QStash reentrega.
+   *
+   * Best effort por veículo: uma empresa que falhe não cala as outras.
+   */
+  async avisarRastreadoresSemSinal(agora = new Date()): Promise<{
+    avaliados: number;
+    avisados: number;
+    falhas: number;
+  }> {
+    const limite = new Date(agora.getTime() - HORAS_SEM_SINAL_PARA_AVISAR * 60 * 60_000);
+    const dia = inicioDoDiaNaOperacao(agora);
+
+    const mudos = await this.vehicles.listComRastreadorSemSinalAcrossTenants(
+      limite,
+      dia,
+      LIMITE_POR_VARREDURA,
+    );
+
+    let avisados = 0;
+    let falhas = 0;
+
+    for (const veiculo of mudos) {
+      try {
+        // Quem escreve a marca primeiro ganha o direito de avisar.
+        const ganhou = await this.vehicles.marcarAvisoSemSinalEnviado(veiculo.id, dia, agora);
+        if (!ganhou) continue;
+
+        const identificacao = veiculo.numeroFrota ?? veiculo.placa;
+        const desde = veiculo.ultimaPosicaoEm
+          ? `A última posição chegou em ${veiculo.ultimaPosicaoEm.toLocaleString("pt-BR", {
+              timeZone: "America/Sao_Paulo",
+            })}.`
+          : "Este aparelho nunca mandou nenhuma posição.";
+
+        const membros = await this.users.listMembershipsByCompany(veiculo.companyId);
+        for (const membro of membros) {
+          if ((membro.role as Role) !== Role.EMPRESA && (membro.role as Role) !== Role.GESTOR) {
+            continue;
+          }
+          this.eventEmitter.emit(COMMUNICATION_REQUESTED_EVENT, {
+            userId: membro.userId,
+            companyId: veiculo.companyId,
+            tipo: NotificationEventType.RASTREADOR_SEM_SINAL,
+            titulo: `Ônibus ${identificacao} sem sinal do rastreador`,
+            corpo: `${desde} Ele tem escala para hoje, então as famílias não estão vendo onde ele está. Confira o aparelho, o chip e o fusível.`,
+          });
+        }
+        avisados += 1;
+        this.logger.warn(
+          `Rastreador sem sinal: onibus ${identificacao} da empresa ${veiculo.companyId}. ${desde}`,
+        );
+      } catch (erro) {
+        falhas += 1;
+        this.logger.warn(
+          `Nao foi possivel avisar sobre o rastreador do veiculo ${veiculo.id}: ${
+            erro instanceof Error ? erro.message : "erro desconhecido"
+          }`,
+        );
+      }
+    }
+
+    return { avaliados: mudos.length, avisados, falhas };
   }
 
   /**

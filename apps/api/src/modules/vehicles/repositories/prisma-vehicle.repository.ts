@@ -110,6 +110,64 @@ export class PrismaVehicleRepository implements VehicleRepository {
     return count > 0;
   }
 
+  /** Ver a nota da interface para o porquê de cada parte do recorte. */
+  listComRastreadorSemSinalAcrossTenants(
+    limite: Date,
+    dia: Date,
+    max: number,
+  ): Promise<
+    {
+      id: string;
+      companyId: string;
+      numeroFrota: string | null;
+      placa: string;
+      ultimaPosicaoEm: Date | null;
+    }[]
+  > {
+    return this.prisma.withBypass(
+      this.prisma.vehicle.findMany({
+        where: {
+          deletedAt: null,
+          rastreadorImei: { not: null },
+          // Escala publicada para hoje. Sem isto, todo ônibus de
+          // reserva parado na garagem viraria um aviso.
+          escalas: { some: { data: dia } },
+          OR: [{ ultimaPosicaoEm: null }, { ultimaPosicaoEm: { lt: limite } }],
+          // Já avisado hoje não entra de novo. A marca é escrita em
+          // `marcarAvisoSemSinalEnviado`; isto aqui só evita carregar
+          // o que já foi resolvido.
+          AND: [
+            {
+              OR: [{ avisoSemSinalEnviadoEm: null }, { avisoSemSinalEnviadoEm: { lt: dia } }],
+            },
+          ],
+        },
+        select: {
+          id: true,
+          companyId: true,
+          numeroFrota: true,
+          placa: true,
+          ultimaPosicaoEm: true,
+        },
+        take: max,
+      }),
+    );
+  }
+
+  /** Ver a nota da interface: a condição mora no `where`, nunca num `if` antes da escrita. */
+  async marcarAvisoSemSinalEnviado(id: string, inicioDoDia: Date, agora: Date): Promise<boolean> {
+    const { count } = await this.prisma.withBypass(
+      this.prisma.vehicle.updateMany({
+        where: {
+          id,
+          OR: [{ avisoSemSinalEnviadoEm: null }, { avisoSemSinalEnviadoEm: { lt: inicioDoDia } }],
+        },
+        data: { avisoSemSinalEnviadoEm: agora },
+      }),
+    );
+    return count > 0;
+  }
+
   async list(filter: ListVehiclesFilter): Promise<ListVehiclesResult> {
     const where: Prisma.VehicleWhereInput = {
       deletedAt: filter.includeDeleted ? undefined : null,

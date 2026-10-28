@@ -6,9 +6,11 @@ import type { RouteRepository } from "@/modules/routes/repositories/route.reposi
 import type { TripPositionRepository } from "@/modules/trips/repositories/trip-position.repository";
 import type { TripRepository } from "@/modules/trips/repositories/trip.repository";
 import type { TripsService } from "@/modules/trips/trips.service";
+import type { UsersService } from "@/modules/users/users.service";
 import type { VehicleRepository } from "@/modules/vehicles/repositories/vehicle.repository";
 import type { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import type { ConfigService } from "@nestjs/config";
+import type { EventEmitter2 } from "@nestjs/event-emitter";
 
 /**
  * Ingestão de rastreador físico (24/09/2026).
@@ -66,6 +68,18 @@ function criarServico(
     rota?: typeof rota | null;
     /** A posição recebida é mais velha que a última já gravada no veículo. */
     posicaoAtrasada?: boolean;
+    /** Ônibus com rastreador credenciado, escala hoje e sem posição há horas. */
+    rastreadoresMudos?: {
+      id: string;
+      companyId: string;
+      numeroFrota: string | null;
+      placa: string;
+      ultimaPosicaoEm: Date | null;
+    }[];
+    /** O aviso de hoje já saiu para este ônibus. */
+    jaAvisadoHoje?: boolean;
+    /** Quem é Empresa/Gestor na transportadora. */
+    membros?: { userId: string; role: string }[];
     escalas?: unknown[];
     viagensEncerradas?: { routeId: string }[];
     candidatas?: {
@@ -97,7 +111,24 @@ function criarServico(
     .fn()
     .mockResolvedValue((opcoes.viagensEncerradas ?? []).map((v) => v.routeId));
 
-  const vehicleRepository = { findByRastreadorImei } as unknown as VehicleRepository;
+  const listComRastreadorSemSinalAcrossTenants = jest
+    .fn()
+    .mockResolvedValue(opcoes.rastreadoresMudos ?? []);
+  const marcarAvisoSemSinalEnviado = jest
+    .fn()
+    .mockResolvedValue(opcoes.jaAvisadoHoje ? false : true);
+  const usersService = {
+    listMembershipsByCompany: jest
+      .fn()
+      .mockResolvedValue(opcoes.membros ?? [{ userId: "dono-1", role: "empresa" }]),
+  } as unknown as UsersService;
+  const eventEmitter = { emit: jest.fn() } as unknown as EventEmitter2;
+
+  const vehicleRepository = {
+    findByRastreadorImei,
+    listComRastreadorSemSinalAcrossTenants,
+    marcarAvisoSemSinalEnviado,
+  } as unknown as VehicleRepository;
   /* As rotas com paradas, para a sugestao por trajeto quando o onibus
      liga a ignicao sem escala. Vazio por padrao: a maioria dos testes
      nao e sobre isso. */
@@ -151,6 +182,8 @@ function criarServico(
       routeRepository,
       escalaRepository,
       tripRepository,
+      usersService,
+      eventEmitter,
       configService,
     ),
     vehiclesService,
@@ -162,6 +195,9 @@ function criarServico(
     listDoDiaPorVeiculo,
     listRouteIdsComViagemEncerrada,
     registrarPosicaoDeRastreador,
+    listComRastreadorSemSinalAcrossTenants,
+    marcarAvisoSemSinalEnviado,
+    eventEmitter,
   };
 }
 
@@ -706,5 +742,129 @@ describe("posicao fora de ordem", () => {
       "veiculo-1",
       expect.objectContaining({ capturadaEm: expect.any(Date) }),
     );
+  });
+});
+
+/*
+  Aviso de rastreador mudo.
+
+  Ate aqui, aparelho sem sinal so aparecia quando alguem notava o
+  onibus sumido do mapa, e quem nota primeiro e a familia, nao a
+  transportadora. A Rotta sabia do silencio e nao contava a ninguem.
+*/
+describe("avisarRastreadoresSemSinal", () => {
+  const mudo = {
+    id: "veiculo-1",
+    companyId: "company-1",
+    numeroFrota: "01.0867",
+    placa: "RXT3B21",
+    ultimaPosicaoEm: new Date("2026-10-28T09:00:00.000Z"),
+  };
+
+  it("avisa Empresa e Gestor, e ninguem mais", async () => {
+    // A acao possivel e de quem tem a chave da garagem. Para a familia,
+    // "o rastreador do onibus do seu filho parou" nao abre acao nenhuma
+    // e so produz aflicao.
+    const { service, eventEmitter } = criarServico({
+      rastreadoresMudos: [mudo],
+      membros: [
+        { userId: "dono-1", role: "empresa" },
+        { userId: "gestor-1", role: "gestor" },
+        { userId: "motorista-1", role: "motorista" },
+        { userId: "pai-1", role: "responsavel" },
+      ],
+    });
+
+    const resultado = await service.avisarRastreadoresSemSinal();
+
+    expect(resultado).toEqual({ avaliados: 1, avisados: 1, falhas: 0 });
+    const destinatarios = (eventEmitter.emit as jest.Mock).mock.calls.map(
+      (chamada) => (chamada[1] as { userId: string }).userId,
+    );
+    expect(destinatarios.sort()).toEqual(["dono-1", "gestor-1"]);
+  });
+
+  it("o aviso diz qual onibus e desde quando", async () => {
+    const { service, eventEmitter } = criarServico({ rastreadoresMudos: [mudo] });
+
+    await service.avisarRastreadoresSemSinal();
+
+    const evento = (eventEmitter.emit as jest.Mock).mock.calls[0][1] as {
+      tipo: string;
+      titulo: string;
+      corpo: string;
+    };
+    expect(evento.tipo).toBe("RASTREADOR_SEM_SINAL");
+    expect(evento.titulo).toContain("01.0867");
+    expect(evento.corpo).toContain("escala para hoje");
+  });
+
+  it("aparelho que nunca falou tambem e avisado, e o texto diz isso", async () => {
+    // E o caso do rastreador recem-instalado que ninguem conferiu.
+    const { service, eventEmitter } = criarServico({
+      rastreadoresMudos: [{ ...mudo, ultimaPosicaoEm: null }],
+    });
+
+    await service.avisarRastreadoresSemSinal();
+
+    const corpo = ((eventEmitter.emit as jest.Mock).mock.calls[0][1] as { corpo: string }).corpo;
+    expect(corpo).toContain("nunca mandou nenhuma posicao".replace("posicao", "posição"));
+  });
+
+  it("no maximo um aviso por onibus por dia", async () => {
+    /*
+      A varredura roda a cada dez minutos. Sem a trava, um aparelho que
+      queimou na sexta renderia seis avisos por hora ate alguem troca-lo,
+      e aviso repetido e aviso que o gestor aprende a ignorar justamente
+      antes do dia em que ele importa.
+    */
+    const { service, eventEmitter } = criarServico({
+      rastreadoresMudos: [mudo],
+      jaAvisadoHoje: true,
+    });
+
+    const resultado = await service.avisarRastreadoresSemSinal();
+
+    expect(resultado.avisados).toBe(0);
+    expect(eventEmitter.emit).not.toHaveBeenCalled();
+  });
+
+  it("quem decide se o aviso sai e o BANCO, nao um if antes da escrita", async () => {
+    // A varredura pode rodar duas vezes em paralelo (reentrega do
+    // QStash enquanto a anterior ainda roda).
+    const { service, marcarAvisoSemSinalEnviado } = criarServico({ rastreadoresMudos: [mudo] });
+
+    await service.avisarRastreadoresSemSinal(new Date("2026-10-28T18:00:00.000Z"));
+
+    expect(marcarAvisoSemSinalEnviado).toHaveBeenCalledWith(
+      "veiculo-1",
+      new Date("2026-10-28T00:00:00.000Z"),
+      expect.any(Date),
+    );
+  });
+
+  it("pergunta pelos onibus sem sinal ha mais de duas horas", async () => {
+    // Duas horas, e nao os vinte minutos que encerram a viagem: as
+    // perguntas sao diferentes. Vinte minutos respondem "esta viagem
+    // acabou?"; duas horas respondem "este aparelho quebrou?".
+    const { service, listComRastreadorSemSinalAcrossTenants } = criarServico();
+    const agora = new Date("2026-10-28T18:00:00.000Z");
+
+    await service.avisarRastreadoresSemSinal(agora);
+
+    const [limite, dia] = listComRastreadorSemSinalAcrossTenants.mock.calls[0];
+    expect(limite).toEqual(new Date("2026-10-28T16:00:00.000Z"));
+    expect(dia).toEqual(new Date("2026-10-28T00:00:00.000Z"));
+  });
+
+  it("uma empresa que falha nao cala as outras", async () => {
+    const { service, marcarAvisoSemSinalEnviado } = criarServico({
+      rastreadoresMudos: [mudo, { ...mudo, id: "veiculo-2", numeroFrota: "01.0412" }],
+    });
+    marcarAvisoSemSinalEnviado.mockRejectedValueOnce(new Error("banco fora"));
+
+    const resultado = await service.avisarRastreadoresSemSinal();
+
+    expect(resultado).toEqual({ avaliados: 2, avisados: 1, falhas: 1 });
   });
 });
