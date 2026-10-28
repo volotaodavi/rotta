@@ -23,7 +23,8 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node --transpile-only prisma/seed.ts",
     "prisma:create-admin": "ts-node --transpile-only prisma/create-admin.ts",
-    "clean": "rm -rf dist .turbo *.tsbuildinfo"
+    "clean": "rm -rf dist .turbo *.tsbuildinfo",
+    "prisma:seed:e2e": "ts-node --transpile-only prisma/seed-e2e.ts"
   },
   "prisma": {
     "seed": "ts-node --transpile-only prisma/seed.ts"
