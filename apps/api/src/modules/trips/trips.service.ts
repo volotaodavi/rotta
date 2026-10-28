@@ -56,6 +56,7 @@ import { StudentsService } from "@/modules/students/students.service";
 import { UsersService } from "@/modules/users/users.service";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
+import { inicioDoDiaNaOperacao } from "@/shared/utils/dia.util";
 import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 export interface RequestMeta {
@@ -64,9 +65,18 @@ export interface RequestMeta {
 }
 
 /** Início do dia corrente em UTC — `Trip.data` é `@db.Date` (sem hora), então a hora local do servidor não deve vazar para a chave de unicidade `[routeId, data]`. */
+/**
+ * O dia de trabalho corrente, como `Trip.data` o guarda.
+ *
+ * Era uma cópia local do dia em UTC, e isso tinha consequência: o
+ * servidor roda em UTC e o Brasil está três horas atrás, então entre
+ * 21h e meia-noite de Brasília a viagem nascia datada de AMANHÃ. O
+ * rastreador, que desde 27/10/2026 procura a escala pelo dia civil
+ * brasileiro, não achava a viagem que ele mesmo tinha acabado de
+ * abrir — e reabria outra. Ver `inicioDoDiaNaOperacao`.
+ */
 function today(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return inicioDoDiaNaOperacao();
 }
 
 /**

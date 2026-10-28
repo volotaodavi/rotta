@@ -26,6 +26,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 
 import { AuditLogService } from "@/modules/audit/audit-log.service";
 import { Role } from "@/shared/enums";
+import { inicioDoDiaNaOperacao } from "@/shared/utils/dia.util";
 
 export interface RequestMeta {
   ip?: string;
@@ -40,10 +41,9 @@ const TIPOS_SOMENTE_AUTOMATICOS: readonly EventoAgendaTipo[] = [
   EventoAgendaTipo.VENCIMENTO_DOCUMENTO_GENERICO,
 ];
 
-/** `Trip.data`-like: início do dia corrente em UTC, para comparar com `data`/`dataFim` (`@db.Date`). */
+/** O dia de trabalho corrente, para comparar com `data`/`dataFim` (`@db.Date`) — ver `inicioDoDiaNaOperacao`. */
 function today(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  return inicioDoDiaNaOperacao();
 }
 
 /**

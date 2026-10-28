@@ -62,6 +62,7 @@ import { SCHOOL_REPOSITORY } from "@/modules/schools/schools.constants";
 import { STUDENT_PRE_REGISTRATION_REPOSITORY } from "@/modules/student-pre-registrations/student-pre-registrations.constants";
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
+import { inicioDoDiaNaOperacao } from "@/shared/utils/dia.util";
 
 export interface RequestMeta {
   ip?: string;
@@ -1059,10 +1060,9 @@ export class StudentsService {
       });
   }
 
-  /** Início do dia corrente em UTC — mesma convenção de `Trip.data`/`StudentAddressOverride.data`. */
+  /** O dia de trabalho corrente — mesma convenção de `Trip.data`/`StudentAddressOverride.data`, ver `inicioDoDiaNaOperacao`. */
   private today(): Date {
-    const now = new Date();
-    return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    return inicioDoDiaNaOperacao();
   }
 
   /**

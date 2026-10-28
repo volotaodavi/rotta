@@ -17,7 +17,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 
 import { UsersService } from "@/modules/users/users.service";
 import { Role } from "@/shared/enums";
-import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
+import { inicioDoDiaNaOperacao } from "@/shared/utils/dia.util";
 
 /**
  * Portal da Escola (pedido do usuário 22/09/2026: "criar a categoria de
@@ -279,7 +279,7 @@ export class SchoolPortalService {
    */
   async listarAlunosDoDia(actor: AuthenticatedUser): Promise<AlunoDoDiaResponseDto[]> {
     const escolaId = this.exigirEscolaDoToken(actor);
-    const hoje = inicioDoDiaUtc();
+    const hoje = inicioDoDiaNaOperacao();
 
     // Uma consulta só, com os eventos e a viagem embutidos — buscar
     // aluno por aluno seriam centenas de idas ao banco na hora de pico

@@ -31,6 +31,7 @@ import type { AuthenticatedUser } from "@/common/decorators/current-user.decorat
 import type { TrackersConfig } from "@/config/trackers.config";
 
 import { Role } from "@/shared/enums";
+import { inicioDoDiaNaOperacao } from "@/shared/utils/dia.util";
 import { haversineDistanceKm } from "@/shared/utils/geo.util";
 
 /**
@@ -43,10 +44,9 @@ import { haversineDistanceKm } from "@/shared/utils/geo.util";
  */
 const DESLOCAMENTO_MINIMO_METROS = 50;
 
-/** Início do dia corrente em UTC — `Trip.data` é `@db.Date`, mesma conta de `TripsService.today`. */
+/** O dia de trabalho corrente — `Trip.data` é `@db.Date`, ver `inicioDoDiaNaOperacao`. */
 function hojeUtc(): Date {
-  const agora = new Date();
-  return new Date(Date.UTC(agora.getUTCFullYear(), agora.getUTCMonth(), agora.getUTCDate()));
+  return inicioDoDiaNaOperacao();
 }
 
 /** Como o despachante chama o carro: pelo número, e pela placa quando não há número. */
