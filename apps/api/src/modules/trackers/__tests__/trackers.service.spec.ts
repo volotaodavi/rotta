@@ -64,6 +64,8 @@ function criarServico(
   opcoes: {
     veiculo?: typeof veiculo | null;
     rota?: typeof rota | null;
+    /** A posição recebida é mais velha que a última já gravada no veículo. */
+    posicaoAtrasada?: boolean;
     escalas?: unknown[];
     viagensEncerradas?: { routeId: string }[];
     candidatas?: {
@@ -113,8 +115,17 @@ function criarServico(
     listSemSinalAcrossTenants,
   } as unknown as TripRepository;
 
+  /*
+    `registrarPosicaoDeRastreador` devolve SE a posição foi gravada:
+    `false` quando a recebida é mais velha que a última conhecida. O
+    padrão aqui é `true` (posição nova, o caso normal); os testes de
+    posição fora de ordem passam `posicaoAtrasada: true`.
+  */
+  const registrarPosicaoDeRastreador = jest
+    .fn()
+    .mockResolvedValue(opcoes.posicaoAtrasada ? false : true);
   const vehiclesService = {
-    registrarPosicaoDeRastreador: jest.fn().mockResolvedValue(undefined),
+    registrarPosicaoDeRastreador,
     updateLocationFromTrip: jest.fn().mockResolvedValue(undefined),
   } as unknown as VehiclesService;
 
@@ -150,6 +161,7 @@ function criarServico(
     findAtivaPorVeiculoPadrao,
     listDoDiaPorVeiculo,
     listRouteIdsComViagemEncerrada,
+    registrarPosicaoDeRastreador,
   };
 }
 
@@ -607,5 +619,92 @@ describe("encerrarViagensSemSinal", () => {
 
     expect(tripsService.finish).not.toHaveBeenCalled();
     expect(resultado).toEqual({ avaliadas: 0, encerradas: 0, falhas: 0 });
+  });
+});
+
+/*
+  Posicao fora de ordem.
+
+  Nao e excecao, e rotina: o rastreador guarda o que nao conseguiu
+  entregar (tunel, garagem coberta, area sem cobertura) e despeja tudo
+  junto quando a rede volta, fora de ordem, enquanto o Traccar
+  reentrega o que falhou ate dez vezes.
+
+  Os dois estragos que isso fazia:
+
+  1. O marcador no mapa andava e voltava, porque um pacote de dez
+     minutos atras chegava depois do atual e sobrescrevia a posicao.
+  2. Um "ignicao desligada" atrasado, entregue depois que o onibus ja
+     tinha voltado a andar, ENCERRAVA a viagem no meio do trajeto. As
+     familias perdiam o acompanhamento com a crianca dentro do carro.
+*/
+describe("posicao fora de ordem", () => {
+  it("ignicao desligada atrasada NAO encerra a viagem", async () => {
+    const { service, tripsService } = criarServico({
+      posicaoAtrasada: true,
+      veiculo: { ...veiculo, viagemAtualId: "viagem-1" },
+    });
+
+    const resultado = await service.registrarPosicao(posicao({ attributes: { ignition: false } }));
+
+    expect(tripsService.finish).not.toHaveBeenCalled();
+    expect(resultado.aceita).toBe(true);
+    expect(resultado.motivo).toContain("atrasada");
+  });
+
+  it("ignicao ligada atrasada NAO reabre viagem", async () => {
+    // O contrario do caso acima, e pelo mesmo motivo: o pacote conta um
+    // fato do passado. Reabrir agora ressuscitaria uma viagem que ja
+    // terminou.
+    const { service, tripsService } = criarServico({
+      posicaoAtrasada: true,
+      escalas: [escala("rota-1", "motorista-1")],
+    });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(tripsService.start).not.toHaveBeenCalled();
+  });
+
+  it("a posicao atrasada AINDA entra no historico da viagem", async () => {
+    // Ela aconteceu. O que ela nao pode e decidir o estado de agora.
+    const { service, positionRepository } = criarServico({
+      posicaoAtrasada: true,
+      veiculo: { ...veiculo, viagemAtualId: "viagem-1" },
+    });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: false } }));
+
+    expect(positionRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({ tripId: "viagem-1" }),
+    );
+  });
+
+  it("a posicao mais nova continua comandando a viagem normalmente", async () => {
+    const { service, tripsService } = criarServico({
+      veiculo: { ...veiculo, viagemAtualId: "viagem-1" },
+    });
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: false } }));
+
+    expect(tripsService.finish).toHaveBeenCalled();
+  });
+
+  it("a decisao de gravar ou nao e do BANCO, nao de um if antes da escrita", async () => {
+    /*
+      As posicoes de um mesmo onibus chegam em paralelo. Ler, comparar
+      em TypeScript e entao escrever tem uma janela entre a leitura e a
+      escrita, e nessa janela a posicao nova e sobrescrita pela velha.
+      Por isso o servico so PERGUNTA, e quem compara e o `where` do
+      `updateMany`.
+    */
+    const { service, registrarPosicaoDeRastreador } = criarServico();
+
+    await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+    expect(registrarPosicaoDeRastreador).toHaveBeenCalledWith(
+      "veiculo-1",
+      expect.objectContaining({ capturadaEm: expect.any(Date) }),
+    );
   });
 });

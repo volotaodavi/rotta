@@ -569,15 +569,23 @@ export class VehiclesService {
    * Sem ator, como todo o módulo de rastreadores: quem fala é o
    * aparelho, e o veículo já foi resolvido pelo IMEI credenciado.
    */
+  /**
+   * A última posição conhecida do ônibus, vinda do rastreador.
+   *
+   * Devolve `false` quando a posição recebida é MAIS VELHA que a que já
+   * está gravada, e nesse caso nada é escrito. Quem chama precisa dessa
+   * resposta: uma posição atrasada não pode mover o marcador no mapa
+   * nem comandar a viagem, mas continua entrando no histórico.
+   *
+   * Posição fora de ordem não é exceção: o rastreador guarda o que não
+   * conseguiu entregar (túnel, garagem, área sem cobertura) e despeja
+   * tudo junto quando a rede volta.
+   */
   async registrarPosicaoDeRastreador(
     vehicleId: string,
     data: { latitude: number; longitude: number; capturadaEm: Date },
-  ): Promise<void> {
-    await this.vehicleRepository.update(vehicleId, {
-      ultimaLatitude: data.latitude,
-      ultimaLongitude: data.longitude,
-      ultimaPosicaoEm: data.capturadaEm,
-    });
+  ): Promise<boolean> {
+    return this.vehicleRepository.registrarPosicaoSeMaisRecente(vehicleId, data);
   }
 
   async updateLocationFromTrip(

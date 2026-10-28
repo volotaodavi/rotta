@@ -134,11 +134,44 @@ export class TrackersService {
     // A posição do VEÍCULO é atualizada sempre, mesmo sem viagem. É o
     // que faz o mapa da frota (Empresa/Gestor) funcionar com o ônibus
     // manobrando na garagem, fora de rota.
-    await this.vehiclesService.registrarPosicaoDeRastreador(veiculo.id, {
+    //
+    // `false` = a posição recebida é MAIS VELHA que a última gravada, e
+    // nada foi escrito. Acontece o tempo todo: o rastreador guarda o
+    // que não conseguiu entregar (túnel, garagem, área sem cobertura) e
+    // despeja tudo junto quando a rede volta, fora de ordem, enquanto o
+    // Traccar reentrega o que falhou.
+    const ehAPosicaoMaisNova = await this.vehiclesService.registrarPosicaoDeRastreador(veiculo.id, {
       latitude: payload.latitude,
       longitude: payload.longitude,
       capturadaEm,
     });
+
+    /*
+      Posição atrasada NÃO comanda a viagem.
+
+      Ela conta um fato do passado, e tratá-la como se fosse agora
+      inverte a operação: um pacote de "ignição desligada" de dez
+      minutos atrás, entregue depois que o ônibus já voltou a andar,
+      encerraria a viagem no meio do trajeto e as famílias perderiam o
+      acompanhamento com a criança dentro do carro. O contrário também:
+      um "ignição ligada" atrasado reabriria uma viagem já encerrada.
+
+      A posição em si continua valendo como HISTÓRICO, logo abaixo: ela
+      aconteceu, só não é a mais recente. O que ela não pode fazer é
+      decidir o estado de agora.
+    */
+    if (!ehAPosicaoMaisNova && ignicao !== undefined) {
+      if (veiculo.viagemAtualId) {
+        await this.gravarNaViagem(veiculo.viagemAtualId, veiculo, payload, capturadaEm);
+      }
+      return {
+        aceita: true,
+        motivo:
+          "Posição atrasada: entrou no histórico, mas não mexe na viagem nem na posição atual.",
+        vehicleId: veiculo.id,
+        ...(veiculo.viagemAtualId ? { tripId: veiculo.viagemAtualId } : {}),
+      };
+    }
 
     // Ignição ligou e não há viagem aberta → o dia começou.
     if (ignicao === true && !veiculo.viagemAtualId) {

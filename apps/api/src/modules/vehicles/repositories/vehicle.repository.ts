@@ -127,6 +127,32 @@ export interface VehicleRepository {
    */
   findByNumeroFrota(companyId: string, numeroFrota: string): Promise<Vehicle | null>;
   update(id: string, data: UpdateVehicleData): Promise<Vehicle>;
+  /**
+   * Grava a última posição conhecida do veículo, **e só se ela for mais
+   * nova que a que já está lá**. Devolve `true` quando gravou.
+   *
+   * ## Por que a condição mora no banco, e não num `if` antes
+   *
+   * Porque as posições de um mesmo ônibus chegam em paralelo. O
+   * rastreador guarda o que não conseguiu entregar (túnel, garagem,
+   * área sem cobertura) e despeja tudo junto quando a rede volta, fora
+   * de ordem; o Traccar reentrega o que falhou, dez vezes, enquanto
+   * pacotes novos continuam chegando. Ler, comparar em TypeScript e
+   * então escrever tem uma janela entre a leitura e a escrita, e nessa
+   * janela a posição nova é sobrescrita pela velha.
+   *
+   * O efeito disso na tela do pai é o pior possível: o ônibus anda e
+   * volta, anda e volta, porque um pacote de dez minutos atrás chegou
+   * depois do atual.
+   *
+   * `updateMany` com a condição no `where` resolve numa instrução só:
+   * ou a linha ainda está mais velha e a escrita acontece, ou já está
+   * mais nova e nada é tocado. `count` diz qual dos dois foi.
+   */
+  registrarPosicaoSeMaisRecente(
+    id: string,
+    data: { latitude: number; longitude: number; capturadaEm: Date },
+  ): Promise<boolean>;
   list(filter: ListVehiclesFilter): Promise<ListVehiclesResult>;
   /** Todos os veículos ativos do tenant, sem paginação — usado pelo Dashboard/Mapa/Exportação. */
   listAllActive(companyId: string): Promise<Vehicle[]>;

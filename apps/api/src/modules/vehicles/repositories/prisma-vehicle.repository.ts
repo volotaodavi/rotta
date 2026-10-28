@@ -87,6 +87,29 @@ export class PrismaVehicleRepository implements VehicleRepository {
     return this.prisma.withTenant(this.prisma.vehicle.update({ where: { id }, data }));
   }
 
+  /** Ver a nota da interface: a comparação é condição do `where`, nunca um `if` antes da escrita. */
+  async registrarPosicaoSeMaisRecente(
+    id: string,
+    data: { latitude: number; longitude: number; capturadaEm: Date },
+  ): Promise<boolean> {
+    const { count } = await this.prisma.withTenant(
+      this.prisma.vehicle.updateMany({
+        where: {
+          id,
+          // `null` é o primeiro sinal da vida daquele aparelho: não há
+          // nada mais velho para proteger, então grava.
+          OR: [{ ultimaPosicaoEm: null }, { ultimaPosicaoEm: { lt: data.capturadaEm } }],
+        },
+        data: {
+          ultimaLatitude: data.latitude,
+          ultimaLongitude: data.longitude,
+          ultimaPosicaoEm: data.capturadaEm,
+        },
+      }),
+    );
+    return count > 0;
+  }
+
   async list(filter: ListVehiclesFilter): Promise<ListVehiclesResult> {
     const where: Prisma.VehicleWhereInput = {
       deletedAt: filter.includeDeleted ? undefined : null,
