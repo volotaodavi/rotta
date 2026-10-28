@@ -302,6 +302,108 @@ jobs:
         run: pnpm audit --audit-level=high
         continue-on-error: false
 
+  e2e:
+    name: E2E de interface (painel e admin)
+    runs-on: ubuntu-latest
+    # Depois dos testes unitários, nunca em paralelo com eles: se um
+    # teste de unidade já reprova, subir Postgres, Redis, a API e dois
+    # servidores Next para descobrir a mesma coisa de novo custa cinco
+    # minutos de CI por nada.
+    needs: test
+    services:
+      postgres:
+        # postgis/postgis, e não `postgres` puro: uma migration faz
+        # `CREATE EXTENSION postgis`, e a imagem pura não tem a
+        # extensão (mesma decisão de docker-compose.yml e do job
+        # "test").
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: rotta
+          POSTGRES_PASSWORD: rotta_ci_only
+          POSTGRES_DB: rotta_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rotta"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # O nome do banco TEM de conter "e2e": o seed e o script que sobe
+      # a API recusam qualquer outro, porque os dois apagam e escrevem
+      # dados. É a mesma trava que impede um terminal distraído de
+      # apontar isto para produção.
+      DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_e2e?schema=public"
+      DIRECT_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_e2e?schema=public"
+      E2E_DATABASE_URL: "postgresql://rotta:rotta_ci_only@localhost:5432/rotta_e2e?schema=public"
+      E2E_REDIS_URL: "redis://localhost:6379"
+      # Os dois servidores Next são construídos apontando para a API
+      # local — nunca para produção.
+      NEXT_PUBLIC_API_URL: "http://localhost:3399/v1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Gerar Prisma Client (@rotta/api)
+        run: pnpm --filter=@rotta/api prisma:generate
+
+      - name: Migrar e semear o banco de E2E
+        run: |
+          pnpm --filter=@rotta/api prisma:migrate:deploy
+          pnpm --filter=@rotta/api prisma:seed:e2e
+
+      # Só o Chromium: a suíte roda num navegador de propósito (ver a
+      # nota em playwright.config.ts), e baixar Firefox e WebKit
+      # custaria minutos por execução para nada.
+      - name: Instalar o Chromium do Playwright
+        run: pnpm --filter=@rotta/web exec playwright install --with-deps chromium
+
+      # `next start` exige build. Construir aqui, e não reaproveitar o
+      # job "Build", porque lá o NEXT_PUBLIC_API_URL aponta para
+      # produção — e um E2E que fala com a API de produção é pior que
+      # nenhum E2E.
+      - name: Construir o painel e o admin
+        run: pnpm turbo run build --filter=@rotta/web --filter=@rotta/admin
+
+      - name: E2E do painel (@rotta/web)
+        run: pnpm --filter=@rotta/web test:e2e
+
+      - name: E2E do admin (@rotta/admin)
+        run: pnpm --filter=@rotta/admin test:e2e
+
+      # Só quando falha: o relatório de uma execução verde é um
+      # artefato de alguns megabytes que ninguém abre. O rastro
+      # (`trace: "on-first-retry"`) é o que de fato se abre para
+      # entender a falha — ele reproduz a tela, a rede e o console
+      # daquele instante.
+      - name: Guardar relatório e rastros
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-e2e
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+            apps/admin/playwright-report
+            apps/admin/test-results
+          retention-days: 7
+          if-no-files-found: ignore
+
   lighthouse:
     name: Lighthouse (apps/web)
     runs-on: ubuntu-latest
