@@ -149,6 +149,7 @@ function criarServico(
     tripRepository,
     findAtivaPorVeiculoPadrao,
     listDoDiaPorVeiculo,
+    listRouteIdsComViagemEncerrada,
   };
 }
 
@@ -463,6 +464,64 @@ describe("escala do dia manda na viagem", () => {
     await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
 
     expect(listDoDiaPorVeiculo).toHaveBeenCalledWith("company-1", "veiculo-1", expect.any(Date));
+  });
+
+  it("ignicao as 21h30 de Brasilia abre a escala de HOJE, nao a de amanha", async () => {
+    /*
+      O defeito, conferido em producao e corrigido em 28/10/2026: o
+      servidor roda em UTC e o Brasil esta tres horas atras. As 21h30 de
+      Brasilia ja e 00h30 do dia seguinte em UTC, entao "hoje" calculado
+      em UTC apontava para AMANHA. O onibus do turno da noite procurava
+      a escala do dia errado, nao achava nada, e a viagem nao abria.
+      Para a familia, aquele onibus simplesmente nao existia.
+
+      Tres horas por noite, todos os dias, no turno em que mais importa
+      alguem estar vendo.
+    */
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-29T00:30:00.000Z")); // 21h30 em Brasilia, dia 28
+    try {
+      const { service, listDoDiaPorVeiculo } = criarServico({ escalas: [] });
+
+      await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+      const diaConsultado = listDoDiaPorVeiculo.mock.calls[0]?.[2] as Date;
+      expect(diaConsultado.toISOString()).toBe("2026-10-28T00:00:00.000Z");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("a mesma conta vale para a viagem ja encerrada", async () => {
+    // Sem isto, a escala da noite seria lida de um dia e as viagens
+    // encerradas de outro: o onibus reabriria uma viagem que ja tinha
+    // terminado, ou nunca abriria a que faltava.
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-29T00:30:00.000Z"));
+    try {
+      const { service, listRouteIdsComViagemEncerrada } = criarServico({
+        escalas: [{ routeId: "rota-1", motoristaId: "motorista-1", monitorId: null }],
+      });
+
+      await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+      const diaConsultado = listRouteIdsComViagemEncerrada.mock.calls[0]?.[1] as Date;
+      expect(diaConsultado.toISOString()).toBe("2026-10-28T00:00:00.000Z");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("de dia os dois jeitos de contar coincidem, e nada muda", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-10-28T11:00:00.000Z")); // 8h em Brasilia
+    try {
+      const { service, listDoDiaPorVeiculo } = criarServico({ escalas: [] });
+
+      await service.registrarPosicao(posicao({ attributes: { ignition: true } }));
+
+      const diaConsultado = listDoDiaPorVeiculo.mock.calls[0]?.[2] as Date;
+      expect(diaConsultado.toISOString()).toBe("2026-10-28T00:00:00.000Z");
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

@@ -21,7 +21,7 @@ import { TripsService } from "@/modules/trips/trips.service";
 import { VEHICLE_REPOSITORY } from "@/modules/vehicles/vehicles.constants";
 import { VehiclesService } from "@/modules/vehicles/vehicles.service";
 import { Role } from "@/shared/enums";
-import { inicioDoDiaUtc } from "@/shared/utils/dia.util";
+import { inicioDoDiaNaOperacao } from "@/shared/utils/dia.util";
 
 /** Um nó é 1,852 km/h — o Traccar encaminha velocidade em nós, sem converter. */
 const KMH_POR_NO = 1.852;
@@ -439,7 +439,13 @@ export class TrackersService {
    * meio-dia abrir a da tarde, sem ninguém escolher nada.
    */
   private async acharDesignacaoDoDia(veiculo: Vehicle): Promise<DesignacaoDoDia | null> {
-    const hoje = inicioDoDiaUtc();
+    // O dia CIVIL BRASILEIRO, não o dia UTC. O servidor roda em UTC e o
+    // Brasil está três horas atrás: entre 21h e meia-noite de Brasília,
+    // "hoje em UTC" já é amanhã. O ônibus que ligava a ignição às 21h30
+    // procurava a escala do dia seguinte, não achava nada, e a viagem
+    // não abria. Para a família, aquele ônibus não existia, justamente
+    // no turno da noite.
+    const hoje = inicioDoDiaNaOperacao();
 
     // Já vem sem as escalas que apontam para rota arquivada — filtrar
     // rota viável é condição da consulta, não regra daqui.
