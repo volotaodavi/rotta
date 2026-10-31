@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Bell, History, Home, Map, User } from "@rotta/icons/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { opcoesDaBarraDeAbas, opcoesDoCabecalhoDeAba, SeloDeAba } from "./estilo-da-navegacao";
 import { MarketplaceNavigator } from "./MarketplaceNavigator";
@@ -45,6 +46,7 @@ const Tab = createBottomTabNavigator<ParentTabParamList>();
  */
 export function ParentNavigator(): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { state } = useResponsavelTransportState();
   const { data: naoLidas } = useUnreadNotificationsCount();
 
@@ -52,7 +54,7 @@ export function ParentNavigator(): JSX.Element {
     <Tab.Navigator
       initialRouteName="Inicio"
       screenOptions={{
-        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDaBarraDeAbas(theme, insets.bottom),
         ...opcoesDoCabecalhoDeAba(theme),
         headerShown: false,
       }}
@@ -111,6 +113,22 @@ export function ParentNavigator(): JSX.Element {
         name="Mapa"
         component={MarketplaceNavigator}
         options={{
+          /*
+            A ÚNICA aba que desliga o respiro da ilha.
+
+            Em todas as outras o conteúdo termina acima da barra, como
+            sempre terminou. Aqui não: esta aba é o mapa de
+            acompanhamento, e é justamente nela que o vidro existe para
+            deixar o mapa aparecer por baixo — "a Liquid Glass background
+            that allows content beneath to peek through", nas palavras da
+            Apple. Com respiro, sobraria uma tira de fundo embaixo do
+            mapa e o efeito inteiro se perderia.
+
+            O mapa não tem "última linha" para sumir atrás da ilha, então
+            desligar aqui não custa nada: quem rola é o painel de
+            transportadores, que desenha o próprio respiro.
+          */
+          sceneStyle: { paddingBottom: 0 },
           tabBarLabel: "Mapa",
           tabBarIcon: ({ size, color, focused }) => (
             <SeloDeAba ativo={focused} theme={theme}>

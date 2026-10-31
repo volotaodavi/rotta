@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Bell, Bus, Home, Route, User } from "@rotta/icons/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { EmpresaFrotaNavigator } from "./EmpresaFrotaNavigator";
 import { EmpresaHomeNavigator } from "./EmpresaHomeNavigator";
@@ -37,6 +38,7 @@ const Tab = createBottomTabNavigator<EmpresaTabParamList>();
  */
 export function EmpresaNavigator(): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { data: naoLidas } = useUnreadNotificationsCount();
   // Frente 5 fechou o placeholder deixado na Frente 1: badge da aba
   // Início = contagem de pedidos de vínculo pendentes (ação real,
@@ -47,7 +49,7 @@ export function EmpresaNavigator(): JSX.Element {
     <Tab.Navigator
       initialRouteName="Inicio"
       screenOptions={{
-        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDaBarraDeAbas(theme, insets.bottom),
         ...opcoesDoCabecalhoDeAba(theme),
         headerShown: false,
       }}

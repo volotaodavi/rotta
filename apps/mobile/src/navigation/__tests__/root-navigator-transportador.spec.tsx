@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { RootNavigator } from "../RootNavigator";
 
@@ -95,7 +96,28 @@ function Envolvido({ children }: { children: ReactNode }): JSX.Element {
   });
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider>{children}</ThemeProvider>
+      {/*
+        `SafeAreaProvider` com medidas fixas, e não medindo a tela.
+
+        O app de verdade sempre teve este provider na raiz
+        (`providers/app-providers.tsx`), mas esta montagem de teste não
+        o tinha — e passava, porque nada aqui dentro lia a área segura.
+        Desde que a barra de abas virou uma ilha flutuante, os quatro
+        navegadores leem: a folga até a borda de baixo depende do
+        aparelho. Sem o provider, o hook lança "No safe area value
+        available".
+
+        `initialMetrics` em vez de medição: no Jest não existe tela para
+        medir, e sem valor inicial o provider renderiza vazio.
+      */}
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 59, left: 0, right: 0, bottom: 34 },
+        }}
+      >
+        <ThemeProvider>{children}</ThemeProvider>
+      </SafeAreaProvider>
     </QueryClientProvider>
   );
 }

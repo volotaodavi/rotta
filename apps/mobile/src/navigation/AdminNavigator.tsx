@@ -1,6 +1,7 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useAuth } from "@rotta/auth/native";
 import { Bell, Headset, Home, User, Wallet } from "@rotta/icons/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { AdminFinanceiroNavigator } from "./AdminFinanceiroNavigator";
 import { AdminHomeNavigator } from "./AdminHomeNavigator";
@@ -40,6 +41,7 @@ const Tab = createBottomTabNavigator<AdminTabParamList>();
  */
 export function AdminNavigator(): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const { data: naoLidas } = useUnreadNotificationsCount();
   const podeVerFinanceiro = (user?.adminPapel ?? "GERAL") !== "SUPORTE";
@@ -48,7 +50,7 @@ export function AdminNavigator(): JSX.Element {
     <Tab.Navigator
       initialRouteName="Inicio"
       screenOptions={{
-        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDaBarraDeAbas(theme, insets.bottom),
         ...opcoesDoCabecalhoDeAba(theme),
         headerShown: false,
       }}

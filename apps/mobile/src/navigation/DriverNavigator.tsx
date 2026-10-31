@@ -1,5 +1,6 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Bell, History, Home, User } from "@rotta/icons/native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { DriverPerfilNavigator } from "./DriverPerfilNavigator";
 import { opcoesDaBarraDeAbas, opcoesDoCabecalhoDeAba, SeloDeAba } from "./estilo-da-navegacao";
@@ -61,12 +62,13 @@ const TAB_SF_SYMBOL: Record<keyof DriverTabParamList, string> = {
  */
 export function DriverNavigator(): JSX.Element {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { data: naoLidas } = useUnreadNotificationsCount();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        ...opcoesDaBarraDeAbas(theme),
+        ...opcoesDaBarraDeAbas(theme, insets.bottom),
         ...opcoesDoCabecalhoDeAba(theme),
         headerShown: false,
         tabBarIcon: ({ size, color, focused }) => {
