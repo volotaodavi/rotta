@@ -17,6 +17,22 @@ export function useNationalKpis(params: NationalKpisParams = {}) {
   });
 }
 
+/**
+ * A série de oito semanas de "a família foi avisada?".
+ *
+ * Sem `refetchInterval`, ao contrário dos dois vizinhos: é uma série
+ * SEMANAL. Recarregar de minuto em minuto gastaria uma consulta
+ * agregada no banco para redesenhar exatamente o mesmo gráfico — o
+ * número de uma semana não muda dentro de um minuto.
+ */
+export function useViagensNotificadas() {
+  return useQuery({
+    queryKey: ["analytics", "national", "viagens-notificadas"],
+    queryFn: () => analyticsApi.getViagensNotificadas(),
+    staleTime: 15 * 60_000,
+  });
+}
+
 export function useNationalHeatmap() {
   return useQuery({
     queryKey: ["analytics", "national", "heatmap"],

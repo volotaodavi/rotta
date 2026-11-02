@@ -2012,17 +2012,36 @@ describe("TripsService", () => {
         localizador do Responsável SEMPRE filtrou por hoje, então as
         duas telas discordavam sobre a mesma van.
       */
-      const meiaNoiteDeHoje = new Date();
-      meiaNoiteDeHoje.setUTCHours(0, 0, 0, 0);
+      /*
+        O relógio é fixado às 01h30 UTC de propósito, e isto é a metade
+        importante do teste.
+
+        Nessa hora são 22h30 do dia ANTERIOR em São Paulo — a janela de
+        três horas por noite em que "hoje em UTC" e "hoje para quem
+        está dirigindo" são dias diferentes. É o turno noturno, e é
+        exatamente onde o defeito aparecia: o mapa procurava a viagem
+        do dia seguinte e não achava nenhuma.
+
+        Antes este teste montava a meia-noite UTC do dia corrente com
+        `new Date()`, e por isso passava das 03h UTC em diante e
+        falhava nas três horas da madrugada — o próprio defeito que ele
+        deveria pegar, transformado em teste instável.
+      */
+      jest.useFakeTimers().setSystemTime(new Date("2026-08-10T01:30:00.000Z"));
+      const diaDaOperacao = new Date("2026-08-09T00:00:00.000Z");
 
       tripRepository.listActiveByCompany.mockResolvedValue([]);
       tripRepository.listActiveNationwide.mockResolvedValue([]);
 
-      await service.listActiveForMap(empresaActor);
-      expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith("company-1", meiaNoiteDeHoje);
+      try {
+        await service.listActiveForMap(empresaActor);
+        expect(tripRepository.listActiveByCompany).toHaveBeenCalledWith("company-1", diaDaOperacao);
 
-      await service.listActiveForMap(adminActor);
-      expect(tripRepository.listActiveNationwide).toHaveBeenCalledWith(meiaNoiteDeHoje);
+        await service.listActiveForMap(adminActor);
+        expect(tripRepository.listActiveNationwide).toHaveBeenCalledWith(diaDaOperacao);
+      } finally {
+        jest.useRealTimers();
+      }
     });
 
     it("Empresa/Gestor: usa sempre o próprio tenantId, nunca lê `companyIdParam`", async () => {

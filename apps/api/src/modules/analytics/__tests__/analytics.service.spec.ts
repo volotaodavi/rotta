@@ -36,6 +36,7 @@ describe("AnalyticsService", () => {
       getPeriodMetrics: jest.fn(),
       listCompanyBiRows: jest.fn(),
       getOperationalHeatmap: jest.fn(),
+      listViagensNotificadasPorSemana: jest.fn(),
     };
     backofficeService = { getDashboard: jest.fn() } as unknown as jest.Mocked<BackofficeService>;
 
@@ -225,6 +226,115 @@ describe("AnalyticsService", () => {
 
       expect(result.contentType).toContain("spreadsheetml");
       expect(result.filename).toBe("rotta-bi-nacional.xlsx");
+    });
+  });
+
+  /**
+   * A série "a família foi avisada?".
+   *
+   * ## O que estes testes protegem, e por que não é o SQL
+   *
+   * O `GROUP BY` do repositório devolve só a semana que teve viagem.
+   * Quem transforma isso numa série de oito pontos é o service, e é
+   * exatamente aí que mora o defeito que ninguém percebe olhando a
+   * tela: a semana de feriado escolar — nenhuma viagem — não aparece
+   * como zero, ela simplesmente não existe, e a linha do gráfico pula
+   * de uma data para a outra como se a semana não tivesse acontecido.
+   *
+   * O relógio é fixado porque a série é relativa a HOJE: sem fixar, o
+   * teste passa oito semanas e falha na nona por motivo nenhum.
+   * 04/11/2026 é uma quarta — de propósito: é no meio da semana que um
+   * recorte errado de "segunda-feira" aparece.
+   */
+  describe("getViagensNotificadasPorSemana", () => {
+    /** As oito segundas da série, com o relógio fixado abaixo. */
+    const SEMANAS = [
+      "2026-09-14",
+      "2026-09-21",
+      "2026-09-28",
+      "2026-10-05",
+      "2026-10-12",
+      "2026-10-19",
+      "2026-10-26",
+      "2026-11-02",
+    ];
+
+    beforeEach(() => {
+      jest.useFakeTimers().setSystemTime(new Date("2026-11-04T10:00:00.000Z"));
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it("pede ao repositório as oito semanas, nunca uma janela aberta", async () => {
+      analyticsRepository.listViagensNotificadasPorSemana.mockResolvedValue([]);
+
+      await service.getViagensNotificadasPorSemana();
+
+      expect(analyticsRepository.listViagensNotificadasPorSemana).toHaveBeenCalledWith(8);
+    });
+
+    it("devolve as oito semanas mesmo quando o banco só tem uma", async () => {
+      analyticsRepository.listViagensNotificadasPorSemana.mockResolvedValue([
+        { semana: new Date("2026-10-26T00:00:00.000Z"), viagens: 50, comResponsavelNotificado: 45 },
+      ]);
+
+      const serie = await service.getViagensNotificadasPorSemana();
+
+      expect(serie.map((ponto) => ponto.semana)).toEqual(SEMANAS);
+    });
+
+    it("semana sem viagem nenhuma é zero explícito, nunca um buraco na série", async () => {
+      analyticsRepository.listViagensNotificadasPorSemana.mockResolvedValue([
+        { semana: new Date("2026-10-26T00:00:00.000Z"), viagens: 50, comResponsavelNotificado: 45 },
+      ]);
+
+      const serie = await service.getViagensNotificadasPorSemana();
+      const feriado = serie.find((ponto) => ponto.semana === "2026-10-19");
+
+      expect(feriado).toEqual({
+        semana: "2026-10-19",
+        viagens: 0,
+        comResponsavelNotificado: 0,
+        // Zero, nunca `NaN`: `0 / 0` renderizado num gráfico derruba o
+        // eixo inteiro, e num `StatTile` escreve "NaN%".
+        cobertura: 0,
+      });
+    });
+
+    it("a semana do banco cai no ponto certo da série, com a cobertura calculada", async () => {
+      analyticsRepository.listViagensNotificadasPorSemana.mockResolvedValue([
+        { semana: new Date("2026-10-26T00:00:00.000Z"), viagens: 50, comResponsavelNotificado: 45 },
+        { semana: new Date("2026-11-02T00:00:00.000Z"), viagens: 4, comResponsavelNotificado: 1 },
+      ]);
+
+      const serie = await service.getViagensNotificadasPorSemana();
+
+      expect(serie[6]).toEqual({
+        semana: "2026-10-26",
+        viagens: 50,
+        comResponsavelNotificado: 45,
+        cobertura: 0.9,
+      });
+      expect(serie[7]).toEqual({
+        semana: "2026-11-02",
+        viagens: 4,
+        comResponsavelNotificado: 1,
+        cobertura: 0.25,
+      });
+    });
+
+    it("a série termina na semana corrente — nunca numa semana futura", async () => {
+      // Um recorte de semana que erre o lado (domingo tratado como
+      // início) empurraria a série uma semana para frente, e a última
+      // barra do gráfico seria uma semana que ainda não aconteceu.
+      analyticsRepository.listViagensNotificadasPorSemana.mockResolvedValue([]);
+
+      const serie = await service.getViagensNotificadasPorSemana();
+
+      expect(serie[serie.length - 1]!.semana).toBe("2026-11-02");
+      expect(serie).toHaveLength(8);
     });
   });
 

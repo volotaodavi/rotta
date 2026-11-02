@@ -33,6 +33,18 @@ export class AnalyticsController {
     return this.analyticsService.getHeatmap();
   }
 
+  /**
+   * As últimas oito semanas de "a família foi avisada?" — viagens que
+   * rodaram contra viagens que geraram pelo menos um aviso a um
+   * responsável. Sem parâmetro de janela de propósito: a série é a
+   * mesma para todo mundo, e um gráfico de tendência que cada um corta
+   * do seu jeito deixa de ser comparável entre os dois sócios.
+   */
+  @Get("national/viagens-notificadas")
+  getViagensNotificadas() {
+    return this.analyticsService.getViagensNotificadasPorSemana();
+  }
+
   /** `@Res()` sem `passthrough` — mesmo motivo de `VehiclesController.export`: o binário não pode passar pelo `TransformResponseInterceptor`. */
   @Get("national/export")
   async exportNational(

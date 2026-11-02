@@ -25,7 +25,11 @@ import { formatarCentavos } from "@rotta/utils";
 import { useMemo, useState } from "react";
 
 import { RottaMapLazy as RottaMap } from "@/components/rotta-map-lazy";
-import { useNationalHeatmap, useNationalKpis } from "@/features/analytics/hooks/use-analytics";
+import {
+  useNationalHeatmap,
+  useNationalKpis,
+  useViagensNotificadas,
+} from "@/features/analytics/hooks/use-analytics";
 import { analyticsApi } from "@/lib/api-client";
 
 function formatPercent(rate: number): string {
@@ -196,6 +200,8 @@ export default function InteligenciaPage(): JSX.Element {
         </Card.Body>
       </Card>
 
+      <ViagensNotificadasCard />
+
       <Card>
         <Card.Header title="Operação nacional (hoje)" />
         <Card.Body className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
@@ -262,6 +268,105 @@ export default function InteligenciaPage(): JSX.Element {
       </Card>
     </div>
   );
+}
+
+/**
+ * "A família foi avisada?" — oito semanas.
+ *
+ * ## Por que este cartão existe, e por que a linha de baixo importa
+ *
+ * Porque é a única métrica desta tela que mede a PROMESSA do produto,
+ * não o negócio dele. MRR, churn e aprovações pendentes dizem como a
+ * Rotta está indo; esta diz se a mãe soube onde o filho estava. Uma
+ * semana com mil viagens e trezentas avisadas é uma semana em que a
+ * Rotta funcionou como software e falhou como serviço — e nenhum dos
+ * outros números desta tela mostraria isso.
+ *
+ * Cartão próprio (e não um `StatTile` na grade de cima) por duas
+ * razões: ele tem seu próprio carregamento, que não pode derrubar o
+ * resto da tela; e o número de uma semana sozinho não diz nada — o que
+ * diz é a linha descendo, e linha precisa de gráfico.
+ */
+function ViagensNotificadasCard(): JSX.Element {
+  const { data, isLoading, isError, refetch, isFetching } = useViagensNotificadas();
+
+  const ultima = data?.[data.length - 1];
+
+  return (
+    <Card>
+      <Card.Header title="Viagens com a família avisada" />
+      <Card.Body className="flex flex-col gap-4">
+        <Typography variant="bodySmall" color="muted">
+          Viagens que rodaram contra viagens que geraram ao menos um aviso a um responsável, por
+          semana. A diferença entre as duas barras é a promessa que não foi cumprida.
+        </Typography>
+
+        {isLoading && <Skeleton variant="rect" height={280} />}
+
+        {isError && (
+          <ErrorState
+            message="Não foi possível carregar a série de notificação."
+            onRetry={() => void refetch()}
+            isRetrying={isFetching}
+          />
+        )}
+
+        {data && (
+          <>
+            {ultima && (
+              <StatTile
+                label={`Cobertura da semana de ${formatDiaCurto(ultima.semana)}`}
+                value={formatPercent(ultima.cobertura)}
+                /* `tone` pelo valor, nunca fixo: um verde constante faz
+                   uma cobertura de 40% parecer notícia boa. */
+                tone={coberturaTone(ultima.cobertura)}
+              />
+            )}
+            <TrendBarChart
+              data={data.map((semana) => ({
+                semana: formatDiaCurto(semana.semana),
+                viagens: semana.viagens,
+                avisadas: semana.comResponsavelNotificado,
+              }))}
+              categoryKey="semana"
+              series={[
+                { key: "viagens", label: "Viagens" },
+                { key: "avisadas", label: "Com responsável avisado" },
+              ]}
+              height={280}
+            />
+          </>
+        )}
+      </Card.Body>
+    </Card>
+  );
+}
+
+/**
+ * `26/10` — o rótulo de uma semana no eixo X.
+ *
+ * `T00:00:00` explícito na string: `new Date("2026-10-26")` é
+ * interpretado como UTC pelo JS, e no Brasil (UTC-3) isso volta um dia
+ * ao formatar. O eixo mostraria 25/10 para a semana que começa em 26.
+ */
+function formatDiaCurto(dia: string): string {
+  return new Date(`${dia}T00:00:00`).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+/**
+ * Os limiares da cobertura.
+ *
+ * 90% não é meta de vaidade: abaixo disso, uma viagem em dez rodou sem
+ * a família saber. 70% é onde deixa de ser incidente e passa a ser
+ * defeito do produto.
+ */
+function coberturaTone(cobertura: number): "success" | "warning" | "danger" {
+  if (cobertura >= 0.9) return "success";
+  if (cobertura >= 0.7) return "warning";
+  return "danger";
 }
 
 /** Esqueleto do carregamento inicial — mesmo grid da tela de verdade, mesma disciplina da Home (pedido do usuário 02/09/2026: "trazer mais modernidade"). */

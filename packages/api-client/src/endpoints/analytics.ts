@@ -61,6 +61,21 @@ export interface HeatmapPoint {
   peso: number;
 }
 
+/**
+ * Uma semana da série "a família foi avisada?".
+ *
+ * `semana` é a segunda-feira, só a data (`2026-10-26`) — a API já
+ * corta a hora de propósito, para o eixo do gráfico não precisar
+ * reinterpretar fuso.
+ */
+export interface SemanaDeViagensNotificadas {
+  semana: string;
+  viagens: number;
+  comResponsavelNotificado: number;
+  /** De 0 a 1. Semana sem viagem nenhuma devolve 0, nunca `NaN`. */
+  cobertura: number;
+}
+
 interface ApiEnvelope<T> {
   data: T;
 }
@@ -76,6 +91,14 @@ export function createAnalyticsEndpoints(apiClient: ApiClient) {
 
     getNationalHeatmap: async (): Promise<HeatmapPoint[]> =>
       (await apiClient.request<ApiEnvelope<HeatmapPoint[]>>("/analytics/national/heatmap")).data,
+
+    /** Oito semanas fixas — a API não aceita janela (ver o controller). */
+    getViagensNotificadas: async (): Promise<SemanaDeViagensNotificadas[]> =>
+      (
+        await apiClient.request<ApiEnvelope<SemanaDeViagensNotificadas[]>>(
+          "/analytics/national/viagens-notificadas",
+        )
+      ).data,
 
     exportNational: (
       params: NationalKpisParams & { format: "csv" | "excel" | "pdf" },

@@ -6,6 +6,7 @@ import type {
   HeatmapPoint,
   NationalBusinessSnapshot,
   NationalPeriodMetrics,
+  SemanaDeViagensNotificadas,
 } from "./analytics.repository";
 
 import { PrismaService } from "@/infra/database/prisma.service";
@@ -157,4 +158,101 @@ export class PrismaAnalyticsRepository implements AnalyticsRepository {
 
     return Array.from(grade.values());
   }
+
+  /**
+   * Viagens por semana, e quantas avisaram alguma família.
+   *
+   * ## O `EXISTS`, e por que ele casa por ROTA e não por viagem
+   *
+   * Porque o aviso que a família recebe não carrega o id da viagem.
+   * `TripsService.notifyActiveStudentsOfRoute` grava
+   * `dadosContexto = { routeId, studentId }` — o id da rota e o do
+   * aluno, nunca o da viagem. Casar por `tripId` devolveria zero em
+   * toda semana do histórico, e um gráfico de zeros é pior que gráfico
+   * nenhum: parece defeito do produto quando é defeito da consulta.
+   *
+   * Então o casamento é **rota + janela de tempo da viagem**: um aviso
+   * conta para esta viagem se foi criado entre o início dela e o fim.
+   * Isso separa corretamente a ida da volta da mesma rota no mesmo dia,
+   * que são duas viagens com duas janelas que não se tocam.
+   *
+   * ## Os dois limites da janela, e por que existem
+   *
+   * `COALESCE(finalizadaEm, canceladaEm, now())` cobre a viagem que
+   * ainda está rodando — sem isso, toda viagem em andamento contaria
+   * como "não avisada" até ser encerrada.
+   *
+   * O `LEAST(..., iniciadaEm + 12 horas)` cobre a viagem ABANDONADA: a
+   * que o motorista iniciou e nunca encerrou, e que o varredor de sinal
+   * ainda não fechou. Sem o teto, a janela dela cresceria para sempre e
+   * ela acabaria "avisada" por um aviso de outra viagem da mesma rota,
+   * semanas depois. Doze horas é teto, não estimativa: nenhuma viagem
+   * de transporte escolar dura isso.
+   *
+   * ## E por que `memberships`
+   *
+   * Porque a métrica é sobre a FAMÍLIA. `notifications` também guarda
+   * aviso de motorista (`ESCALA_ALTERADA` carrega `routeId` e cairia na
+   * mesma janela) e de gestor. O `EXISTS` exige que o destinatário
+   * tenha vínculo de `responsavel` na mesma empresa da viagem.
+   */
+  async listViagensNotificadasPorSemana(semanas: number): Promise<SemanaDeViagensNotificadas[]> {
+    const inicio = segundaDaSemanaUtc(new Date());
+    inicio.setUTCDate(inicio.getUTCDate() - (semanas - 1) * 7);
+
+    /*
+      `withBypass` como todo o resto deste repositório: é visão
+      nacional de Admin Rotta, e `trips`/`notifications` têm RLS.
+
+      `::int` nos dois `COUNT`: sem o cast o Postgres devolve `bigint`,
+      que o Prisma entrega como `BigInt` — e `JSON.stringify` de um
+      `BigInt` lança `TypeError` na serialização da resposta.
+    */
+    return this.prisma.withBypass(
+      this.prisma.$queryRaw<SemanaDeViagensNotificadas[]>`
+        WITH viagens AS (
+          SELECT date_trunc('week', t.data) AS semana,
+                 EXISTS (
+                   SELECT 1
+                     FROM notifications n
+                     JOIN memberships m
+                       ON m."userId" = n."userId"
+                      AND m."companyId" = t."companyId"
+                      AND m.role = 'responsavel'
+                    WHERE n."companyId" = t."companyId"
+                      AND n."dadosContexto" ->> 'routeId' = t."routeId"::text
+                      AND n."createdAt" >= t."iniciadaEm"
+                      AND n."createdAt" <= LEAST(
+                            COALESCE(t."finalizadaEm", t."canceladaEm", now()),
+                            t."iniciadaEm" + interval '12 hours'
+                          )
+                 ) AS avisada
+            FROM trips t
+           WHERE t.data >= ${inicio}
+        )
+        SELECT semana,
+               COUNT(*)::int AS viagens,
+               COUNT(*) FILTER (WHERE avisada)::int AS "comResponsavelNotificado"
+          FROM viagens
+         GROUP BY semana
+         ORDER BY semana ASC
+      `,
+    );
+  }
+}
+
+/**
+ * A segunda-feira da semana de `data`, meia-noite UTC.
+ *
+ * O mesmo recorte que `date_trunc('week')` faz no Postgres (ISO-8601:
+ * a semana começa na segunda), para o começo da série e o agrupamento
+ * não discordarem em um dia e cortarem meia semana do gráfico.
+ */
+function segundaDaSemanaUtc(data: Date): Date {
+  const segunda = new Date(Date.UTC(data.getUTCFullYear(), data.getUTCMonth(), data.getUTCDate()));
+  // `getUTCDay()`: 0 é domingo. O domingo pertence à semana que começou
+  // na segunda anterior, seis dias atrás — não à que começa amanhã.
+  const diasDesdeSegunda = (segunda.getUTCDay() + 6) % 7;
+  segunda.setUTCDate(segunda.getUTCDate() - diasDesdeSegunda);
+  return segunda;
 }

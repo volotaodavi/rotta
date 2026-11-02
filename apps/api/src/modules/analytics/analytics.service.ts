@@ -14,6 +14,7 @@ import type {
   NationalKpisResponseDto,
   NationalPeriodResponseDto,
 } from "./dto/national-kpis-response.dto";
+import type { SemanaDeViagensNotificadasDto } from "./dto/viagens-notificadas-response.dto";
 import type { AnalyticsRepository, HeatmapPoint } from "./repositories/analytics.repository";
 
 import { BackofficeService } from "@/modules/backoffice/backoffice.service";
@@ -29,9 +30,42 @@ const CHURN_RATE_ALERTA = 0.05;
 const CHAMADOS_ABERTOS_ALERTA = 10;
 const DOCUMENTOS_PENDENTES_ALERTA = 20;
 
+/**
+ * Oito semanas: duas semanas não mostram tendência nenhuma, e um ano
+ * de barras numa tela de Admin não se lê. Oito cobre o bimestre
+ * escolar, que é o ciclo em que a transportadora decide renovar.
+ */
+const SEMANAS_DA_SERIE_DE_NOTIFICACAO = 8;
+
 interface Period {
   from: Date;
   to: Date;
+}
+
+/** `2026-10-26` — a parte de data de um `Date`, em UTC, sem hora. */
+function diaIso(data: Date): string {
+  return data.toISOString().slice(0, 10);
+}
+
+/**
+ * As segundas-feiras da série, da mais antiga para a mais recente.
+ *
+ * O mesmo recorte do `date_trunc('week')` do repositório, para as
+ * chaves baterem: a semana começa na segunda (ISO-8601), e domingo
+ * pertence à semana que começou seis dias antes.
+ */
+function semanasDaSerie(quantidade: number): string[] {
+  const hoje = new Date();
+  const segundaAtual = new Date(
+    Date.UTC(hoje.getUTCFullYear(), hoje.getUTCMonth(), hoje.getUTCDate()),
+  );
+  segundaAtual.setUTCDate(segundaAtual.getUTCDate() - ((segundaAtual.getUTCDay() + 6) % 7));
+
+  return Array.from({ length: quantidade }, (_, indice) => {
+    const semana = new Date(segundaAtual);
+    semana.setUTCDate(semana.getUTCDate() - (quantidade - 1 - indice) * 7);
+    return diaIso(semana);
+  });
 }
 
 function resolvePeriod(query: NationalKpisQueryDto): Period {
@@ -157,6 +191,41 @@ export class AnalyticsService {
 
   getHeatmap(): Promise<HeatmapPoint[]> {
     return this.analyticsRepository.getOperationalHeatmap();
+  }
+
+  /**
+   * As últimas oito semanas de "a família foi avisada?".
+   *
+   * ## O que o service faz que o SQL não faz
+   *
+   * **Completa as semanas vazias.** O `GROUP BY` só devolve semana que
+   * teve viagem. Num gráfico, a semana ausente não aparece como zero:
+   * ela simplesmente não existe, e a linha pula de uma data para outra
+   * como se nada tivesse acontecido no meio. Uma semana de feriado
+   * escolar — nenhuma viagem — é informação, e precisa aparecer.
+   *
+   * **Calcula a cobertura.** Dividir no front significa dividir em
+   * cada tela que mostrar o número, e uma delas vai esquecer o
+   * denominador zero.
+   */
+  async getViagensNotificadasPorSemana(): Promise<SemanaDeViagensNotificadasDto[]> {
+    const linhas = await this.analyticsRepository.listViagensNotificadasPorSemana(
+      SEMANAS_DA_SERIE_DE_NOTIFICACAO,
+    );
+
+    const porSemana = new Map(linhas.map((linha) => [diaIso(linha.semana), linha]));
+
+    return semanasDaSerie(SEMANAS_DA_SERIE_DE_NOTIFICACAO).map((semana) => {
+      const linha = porSemana.get(semana);
+      const viagens = linha?.viagens ?? 0;
+      const comResponsavelNotificado = linha?.comResponsavelNotificado ?? 0;
+      return {
+        semana,
+        viagens,
+        comResponsavelNotificado,
+        cobertura: viagens > 0 ? comResponsavelNotificado / viagens : 0,
+      };
+    });
   }
 
   async exportNational(
