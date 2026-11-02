@@ -16,7 +16,13 @@
     // restringe `types` só a `["react-native"]`; sem reafirmar `jest` aqui,
     // os globais de teste (`describe`/`it`/`expect`/`jest`) ficavam
     // invisíveis pro `tsc --noEmit` nos novos `*.spec.tsx`.
-    "types": ["react-native", "jest"]
+    // `node` entrou em 02/11/2026 por um teste só: `bundle-android.spec.ts`
+    // lê `package.json` de pacotes do monorepo e roda o script do hook
+    // da EAS, e para isso precisa de `node:fs`/`node:child_process`.
+    // Não é concessão ao código do app — nenhum arquivo de `src/` fora
+    // de teste importa módulo de Node, e o Metro falharia na hora se
+    // importasse.
+    "types": ["react-native", "jest", "node"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": ["node_modules"]

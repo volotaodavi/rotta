@@ -95,11 +95,23 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      # `@rotta/validators` é o único pacote do monorepo cujo `main`
-      # aponta pra um `dist/` compilado (`tsc`) em vez de apontar
-      # direto pro `.ts` fonte (todos os outros — `@rotta/ui`,
+      # ATUALIZADO 02/11/2026. A versão anterior deste comentário dizia
+      # que `@rotta/validators` era "o único pacote do monorepo" cujo
+      # `main` aponta pra um `dist/`. Era verdade quando foi escrito e
+      # deixou de ser em 18/10/2026, quando a primeira tela do app
+      # passou a importar `@rotta/utils` — que também aponta pra
+      # `dist/`. O build Android quebrou naquele dia e ninguém soube
+      # até 02/11, porque entre as duas datas ninguém gerou binário.
+      # O hook agora descobre a lista sozinho
+      # (`scripts/build-pacotes-compilados.mjs`), e
+      # `bundle-android.spec.ts` falha se um pacote importado pelo app
+      # ficar de fora.
+      #
+      # Os pacotes com `main` apontando pra um `dist/` compilado
+      # (`tsc`), em vez de apontar direto pro `.ts` fonte, são a
+      # exceção do monorepo (todos os outros — `@rotta/ui`,
       # `@rotta/theme`, `@rotta/api-client` etc. — o Metro resolve
-      # sem build nenhum, via Babel). Buildar esse pacote AQUI, no
+      # sem build nenhum, via Babel). Buildar esses pacotes AQUI, no
       # checkout deste job, não resolve nada: o passo "Build local via
       # EAS CLI" abaixo (`eas build --local`) copia o projeto pra um
       # diretório isolado próprio (`/tmp/.../eas-build-local-nodejs/...`)

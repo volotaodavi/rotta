@@ -16,7 +16,7 @@
     "test": "jest",
     "test:e2e": "echo \"[@rotta/mobile] Detox/Maestro sera configurado junto com o primeiro fluxo real\" && exit 0",
     "clean": "rm -rf .expo dist .turbo",
-    "eas-build-post-install": "cd ../.. && pnpm --filter @rotta/validators build"
+    "eas-build-post-install": "node ../../scripts/build-pacotes-compilados.mjs"
   },
   "dependencies": {
     "@babel/runtime": "^7.25.0",
@@ -71,6 +71,7 @@
     "@rotta/config": "workspace:*",
     "@testing-library/react-native": "^12.9.0",
     "@types/jest": "^29.5.14",
+    "@types/node": "^22.10.2",
     "@types/react": "^18.3.17",
     "@types/react-test-renderer": "^18.3.0",
     "babel-preset-expo": "~12.0.0",
