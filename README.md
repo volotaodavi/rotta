@@ -86,6 +86,14 @@ pnpm dev            # todos os apps em paralelo, ou pnpm dev:web / dev:admin / d
 
 Validação completa do monorepo (`lint` + `typecheck` + `build` nos 19 workspaces): `pnpm turbo run lint typecheck build`.
 
+## Quando algo quebra
+
+`docs/50-runbook-incidentes.md` — o runbook dos dois sócios, em
+português claro: os três endereços que respondem se o problema é nosso,
+da operadora ou do aparelho no ônibus, e o que fazer em cada caso. O que
+depende de cartão, senha ou de ir até o veículo está em
+`docs/49-o-que-depende-de-voce.md`.
+
 ## Infraestrutura em produção: o que o plano gratuito custa
 
 A API roda no **plano gratuito do Render**. O que o repositório mostra
