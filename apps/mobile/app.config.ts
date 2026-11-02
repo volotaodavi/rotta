@@ -69,7 +69,27 @@ export default (): ExpoConfig => ({
   // - A tela de Pagamentos existia sem nenhuma fatura, porque cobrança
   //   da família não existia no banco. Na 1.4.0 a família vê quanto
   //   deve, quando vence e paga por Pix.
-  version: "1.4.0",
+  //
+  // 1.4.0 -> 1.5.0 (02/11/2026). Dois meses de estabilização, e o que
+  // chega ao aparelho:
+  //
+  // - A barra de abas virou ilha flutuante, com o indicador de aba
+  //   ativa nas medidas do Material 3 e o respiro de conteúdo
+  //   reservado em um lugar só, para nenhuma lista terminar atrás dela.
+  // - O rastreamento em segundo plano ganhou rede de proteção com
+  //   teste: a posição é gravada no disco ANTES de qualquer tentativa
+  //   de rede, então túnel, viaduto e zona rural não apagam mais o
+  //   trecho. E a divulgação que a Play exige continua travada por
+  //   teste: o diálogo nativo de localização em segundo plano nunca
+  //   dispara antes da tela explicar por quê.
+  // - Com rastreador reportando no ônibus, a posição do celular do
+  //   motorista passa a ser ignorada de propósito na mesma viagem: os
+  //   dois GPS discordam por alguns metros e, intercalados, desenhavam
+  //   um ziguezague no mapa da família.
+  // - Campo de telefone em branco deixa de derrubar o cadastro
+  //   (`whatsapp: ""` virava um telefone inválido em vez de campo
+  //   ausente).
+  version: "1.5.0",
   orientation: "portrait",
   userInterfaceStyle: "automatic",
   newArchEnabled: true,
