@@ -2,7 +2,7 @@
 
 import { Button } from "@rotta/ui/web";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getCookieConsent, setCookieConsent } from "@/lib/cookie-consent";
 
@@ -35,11 +35,61 @@ export function CookieConsentBanner({
 }): JSX.Element | null {
   const [mounted, setMounted] = useState(false);
   const [decided, setDecided] = useState(false);
+  const bannerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
     setDecided(getCookieConsent() !== null);
   }, []);
+
+  /**
+   * Reserva, no fim da página, a altura exata que o banner ocupa.
+   *
+   * ## O defeito que isto conserta
+   *
+   * O banner é `fixed ... bottom-0`: ele flutua POR CIMA do conteúdo e
+   * não ocupa espaço no documento. Num monitor largo isso é inofensivo,
+   * porque o texto cabe numa linha e a faixa tem ~70px. Num celular o
+   * mesmo texto quebra em cinco linhas e a faixa passa de 200px — um
+   * quarto da tela de um iPhone.
+   *
+   * Aí ele cobre o ÚLTIMO elemento de qualquer página. Em 03/11/2026 a
+   * suíte no tamanho de iPhone pegou o caso caro: na tela de cadastro,
+   * o botão "Criar empresa" é o último elemento, e ficava inalcançável
+   * — formulário preenchido, termos aceitos, e nada acontecia. Rolar
+   * não resolvia: o documento já estava no fim. Ou seja, ninguém criava
+   * conta pelo celular sem antes aceitar ou recusar os cookies, e nada
+   * na tela dizia isso.
+   *
+   * ## Por que medir, e não um valor fixo
+   *
+   * Porque a altura depende da largura, do tamanho da fonte do sistema
+   * e do idioma. Um `pb-56` chutado erraria em metade dos aparelhos, e
+   * erraria para MENOS justamente nos mais estreitos, que são os que
+   * têm o problema. O `ResizeObserver` acompanha qualquer mudança,
+   * inclusive girar o aparelho.
+   *
+   * O espaço sai do `body` porque o banner vive no `layout` raiz e
+   * vale para toda página. Some junto com o banner: no `return` da
+   * limpeza, e também quando a pessoa decide (o componente desmonta).
+   */
+  useEffect(() => {
+    const elemento = bannerRef.current;
+    if (!elemento) return;
+
+    const aplicar = (): void => {
+      document.body.style.paddingBottom = `${elemento.offsetHeight}px`;
+    };
+    aplicar();
+
+    const observador = new ResizeObserver(aplicar);
+    observador.observe(elemento);
+
+    return () => {
+      observador.disconnect();
+      document.body.style.paddingBottom = "";
+    };
+  }, [temRastreamento, mounted, decided]);
 
   if (!temRastreamento || !mounted || decided) return null;
 
@@ -50,6 +100,7 @@ export function CookieConsentBanner({
 
   return (
     <div
+      ref={bannerRef}
       role="region"
       aria-label="Consentimento de cookies"
       className="fixed inset-x-0 bottom-0 z-toast border-t border-border bg-surface-elevated p-4 shadow-lg"
