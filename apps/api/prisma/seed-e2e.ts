@@ -5,6 +5,8 @@ import { CURRENT_PRIVACY_VERSION, CURRENT_TERMS_VERSION } from "../src/modules/a
 import { DEFAULT_PLAN } from "../src/modules/companies/companies.constants";
 import { LEGAL_DOCUMENT_CATALOG } from "../src/modules/legal-documents/legal-documents.catalog";
 
+import { CONTAS, EMPRESA, VEICULO } from "./seed-dados-fixos";
+
 /**
  * Semeadura dos testes de ponta a ponta.
  *
@@ -61,56 +63,16 @@ function exigirBancoDeTeste(url: string | undefined): URL {
   return alvo;
 }
 
-/**
- * As credenciais que os testes digitam. Exportadas para os testes
- * importarem daqui em vez de repetirem a senha em cada arquivo — senha
- * copiada em sete lugares é senha que fica errada em um deles.
- */
-export const CONTAS = {
-  empresa: {
-    email: "dono.e2e@rotta.test",
-    senha: "SenhaForte@123",
-    nome: "Dona Empresa E2E",
-    cpf: "52998224725",
-  },
-  responsavel: {
-    email: "mae.e2e@rotta.test",
-    senha: "SenhaForte@123",
-    nome: "Mãe Responsável E2E",
-  },
-  /**
-   * Conta da equipe Rotta, para os testes do painel administrativo.
-   *
-   * `isAdminRotta` não é setável por nenhuma rota pública — é o único
-   * papel sem tenant, e contas assim nascem internamente. Por isso o
-   * seed a cria direto, que é o mesmo caminho de
-   * `prisma/create-admin.ts`.
-   */
-  admin: {
-    email: "admin.e2e@rotta.test",
-    senha: "SenhaForte@123",
-    nome: "Admin Rotta E2E",
-    cpf: "15350946056",
-  },
-} as const;
-
-export const EMPRESA = {
-  nomeFantasia: "Transportes Teste E2E",
-  cnpj: "19131243097692",
-  codigoInterno: "TRN-999001",
-} as const;
-
-export const VEICULO = {
-  /**
-   * Placa no padrão Mercosul de verdade (`LLLNLNN`). A primeira versão
-   * deste seed usou "E2E1A23", que parecia esperto e é INVÁLIDA: a
-   * segunda posição tem de ser letra. O banco aceitou (o seed escreve
-   * direto), e o cadastro pela tela recusava com "Placa inválida" —
-   * dado impossível no banco faz o teste afirmar coisa errada.
-   */
-  placa: "RTA1E23",
-  numeroFrota: "E2E-01",
-} as const;
+/*
+  CONTAS, EMPRESA e VEICULO moraram aqui até 03/11/2026 e saíram para
+  `seed-dados-fixos.ts`, que não tem efeito nenhum. Este arquivo roda o
+  seed ao ser IMPORTADO (o `main()` no fim), então importar uma
+  constante daqui disparava o `limpar()` junto — e apagava a empresa do
+  script que estava importando. O reexport abaixo mantém
+  `import { CONTAS } from "./seed-e2e"` funcionando para quem já fazia,
+  mas o lugar certo de importar é o outro arquivo.
+*/
+export { CONTAS, EMPRESA, VEICULO } from "./seed-dados-fixos";
 
 const prisma = new PrismaClient();
 
