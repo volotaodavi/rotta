@@ -1,6 +1,11 @@
-# Rodar o app no Simulador iOS
+# Ver o app rodando: Android aqui, iOS só no Mac
 
 Para os dois sócios. O que é possível, o que não é, e quem faz o quê.
+
+**Resumo de uma linha:** o **Android funciona de dentro da sessão na
+nuvem** — o Claude instala o app num emulador, tira screenshot, clica e
+digita. Isso está medido e provado na seção "Android", mais abaixo. O
+**iOS não**, e nenhuma configuração muda isso.
 
 ---
 
@@ -165,3 +170,126 @@ em `app.config.ts` (`locationWhenInUsePermission`,
 no prebuild. Sem esses textos o iOS **derruba** o app ao pedir
 localização, então isto não é detalhe de loja: é a tela do motorista
 funcionar.
+
+---
+
+## Android: funciona de dentro da sessão na nuvem
+
+Esta é a parte boa, e é a resposta prática para quem não tem Mac.
+
+O emulador do Android SDK roda em Linux. Sem `/dev/kvm` — e este
+contêiner não tem, nem as flags `vmx`/`svm` da CPU — ele cai para a
+emulação de software do próprio QEMU (TCG). **Lento, mas funciona.**
+
+### Medido, não estimado
+
+Tudo abaixo foi executado neste contêiner em 03/11/2026, 4 vCPU,
+Xeon sem virtualização aninhada:
+
+| Etapa                                     | Tempo     |
+| ----------------------------------------- | --------- |
+| Baixar SDK + imagem `android-34` (5,4 GB) | ~6 min    |
+| Primeiro boot, 1 núcleo                   | **8m13s** |
+| Boot seguinte, 4 núcleos                  | **3m47s** |
+| `adb install` do APK de 126 MB            | **7m43s** |
+| Abrir o app até a tela desenhar           | ~2 min    |
+| Screenshot                                | ~2 s      |
+| Toque ou digitação até a tela mudar       | 20-60 s   |
+
+Os 4 núcleos mais que dobraram a velocidade do boot: o Android é bem
+paralelo mesmo sob emulação de software.
+
+### O que foi provado, tela a tela
+
+Com o APK `preview` da Release `android-preview-run55`:
+
+1. **Instala.** `adb install` concluiu com `Success`, e
+   `pm list packages` confirma `br.com.rottabr`.
+2. **Renderiza.** A tela de boas-vindas apareceu completa: logotipo,
+   "Seja bem-vindo à Rotta.", a van, a linha pontilhada entre os dois
+   pinos, "Começar agora" e "Entrar".
+3. **Aceita clique.** Um toque em "Entrar" navegou para a tela de
+   login.
+4. **Aceita digitação.** `mae.e2e@rotta.test` entrou inteiro no campo
+   de e-mail.
+5. **Entrega log.** `logcat` responde normalmente.
+
+De quebra, a tela de login mostrou **"Não foi possível falar com o
+servidor. Verifique sua conexão e tente de novo."** — que é exatamente
+a mensagem do conserto de 13/10/2026, funcionando num binário de
+verdade, no lugar do antigo "Erro inesperado ao entrar". O emulador não
+alcança a API de produção daqui, e o app tratou isso como devia.
+
+### Os dois limites honestos
+
+**O sistema Android engasga.** "Process system isn't responding"
+aparece com frequência — é o **sistema**, não o app, e "Wait" dispensa.
+O app em si desenha certo. Sob TCG o Android inteiro (Play Services,
+teclado, busca) compete por CPU.
+
+**Não serve para desenvolver interativamente.** Com 7 minutos para
+instalar e 2 para abrir, o laço "mudei o código, vejo o resultado" não
+fecha num ritmo útil. Serve para **conferir a tela** — que é
+exatamente o que faltava.
+
+### Como usar
+
+```
+./scripts/emulador-android.sh instalar          # baixa o SDK (~5,4 GB)
+./scripts/emulador-android.sh iniciar           # sobe o emulador
+./scripts/emulador-android.sh instalar-apk app.apk
+./scripts/emulador-android.sh abrir
+./scripts/emulador-android.sh tela captura.png
+./scripts/emulador-android.sh tocar 540 2184
+./scripts/emulador-android.sh texto "mae.e2e@rotta.test"
+./scripts/emulador-android.sh log
+./scripts/emulador-android.sh status
+./scripts/emulador-android.sh parar
+```
+
+O SDK não entra no git (5,4 GB). O padrão é `~/.rotta-android/sdk`;
+aponte `ANDROID_HOME` para outro lugar se quiser reaproveitar entre
+sessões. Numa sessão nova da nuvem, `instalar` roda de novo.
+
+### Duas armadilhas que custaram tempo, e estão travadas no script
+
+**O APK precisa de `lib/x86_64`.** Sem isso o emulador recusa com
+`INSTALL_FAILED_NO_MATCHING_ABIS`, e a mensagem não diz que falta a
+ABI. Os builds `preview` do `eas.json` trazem as quatro
+(`arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64`), então passam. O script
+confere antes de gastar sete minutos.
+
+**O teclado desloca o layout inteiro.** Uma coordenada lida num
+screenshot de antes do teclado passa a cair noutro elemento — ou no
+nada, e aí o toque não faz nada e parece que o comando falhou. Foi
+exatamente o que aconteceu aqui, e me levou a um diagnóstico errado:
+atribuí ao caractere `@` uma digitação que parou no meio, e escrevi um
+"conserto" que escapava `@` e outros metacaracteres. Estava errado —
+`input text 'abc@def'` escreve `abc@def` inteiro, conferido. O escape
+só teria inserido contrabarra literal no campo.
+
+O que **de fato** precisa de tradução é só o espaço, e precisa mesmo,
+porque o `adb` junta os argumentos e o shell do Android os separa de
+novo:
+
+```
+input text 'um dois'        -> digitou "um"
+input text '-tres%squatro'  -> digitou "-tres quattro"
+```
+
+Regra prática: tire um screenshot **novo** depois de qualquer coisa que
+abra o teclado, e leia a coordenada dele.
+
+---
+
+## O que NÃO funciona daqui, e já foi testado
+
+**Túnel do Expo** (`expo start --tunnel`, para o Metro daqui chegar ao
+seu celular). Falha com `ngrok tunnel took too long to connect`: o
+egresso deste contêiner é HTTPS por proxy, e o ngrok precisa de uma
+conexão TCP própria. Então não dá para você abrir o Expo Go no celular
+e ver o código que o Claude acabou de mudar aqui.
+
+Para esse laço, o Metro precisa rodar numa máquina sua
+(`pnpm --filter @rotta/mobile dev` no seu computador, celular na mesma
+rede).
