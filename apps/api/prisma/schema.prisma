@@ -169,6 +169,16 @@ enum MembershipStatus {
 }
 
 /// Carroceria/porte do veículo (Dossie 13, Secao 9, `VEI-01`).
+/// Origem do veiculo na frota, na linguagem do SETE/FNDE
+/// (`sete_veiculos.origem`: 1 Proprio, 2 Terceirizado). Opcional de
+/// proposito: nulo e "ninguem informou ainda", e vira pendencia na
+/// exportacao -- um default mentiria sobre um dado que a prefeitura
+/// precisa conferir. Ver `docs/52-integracao-sete.md`, RN-SETE-12.
+enum VehicleOwnership {
+  PROPRIO_MUNICIPIO
+  TERCEIRIZADO
+}
+
 enum VehicleType {
   AUTOMOVEL
   SEDAN
@@ -1653,6 +1663,9 @@ model Vehicle {
 
   status VehicleStatus @default(DISPONIVEL)
 
+  /// `sete_veiculos.origem` (RN-SETE-12). Nulo enquanto ninguem informou.
+  origemFrota VehicleOwnership?
+
   quilometragemAtual Int @default(0)
 
   ultimaLatitude  Decimal?  @db.Decimal(9, 6)
@@ -2797,6 +2810,21 @@ model Route {
   motoristaPadrao   User?    @relation("RouteMotoristaPadrao", fields: [motoristaPadraoId], references: [id], onDelete: SetNull)
   monitorPadraoId   String?  @db.Uuid
   monitorPadrao     User?    @relation("RouteMonitorPadrao", fields: [monitorPadraoId], references: [id], onDelete: SetNull)
+
+  /// Condicoes de acesso de zona rural, na linguagem do SETE/FNDE
+  /// (`sete_rotas.da_porteira` e irmaos). Existem porque o PNATE e um
+  /// programa de area rural (Lei 10.880/2004, art. 2): o SETE pergunta
+  /// se a rota atravessa porteira, mata-burro, colchete, atoleiro ou
+  /// ponte rustica, e a Rotta nao tinha onde guardar isso.
+  ///
+  /// `false` e o mesmo default do SETE, que grava `char(1)` 'N' -- aqui
+  /// nao e chute, e o espelho do outro lado. Ver
+  /// `docs/52-integracao-sete.md`, RN-SETE-11.
+  acessoPorteira     Boolean @default(false)
+  acessoMataBurro    Boolean @default(false)
+  acessoColchete     Boolean @default(false)
+  acessoAtoleiro     Boolean @default(false)
+  acessoPonteRustica Boolean @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

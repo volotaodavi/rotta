@@ -15,9 +15,10 @@
  *   dtos/       Schemas de request/response de cada endpoint do Dossie 13
  *   events/     Schemas dos eventos de dominio do Dossie 14, Secao 4
  *
- * Nenhum contrato definido ainda (fase de fundacao) — o primeiro a ser
- * criado deve acompanhar o primeiro modulo de dominio real implementado
- * (recomendacao: `auth`, Dossie 15).
+ * O primeiro contrato real e o da integracao com o SETE/FNDE
+ * (`dtos/sete.ts`, 10/11/2026): a API monta o pacote e o painel o
+ * consome, entao o dia em que um campo mudar as duas builds quebram no
+ * mesmo Pull Request. Ver `docs/52-integracao-sete.md`.
  */
 
-export {};
+export * from "./dtos/sete";
