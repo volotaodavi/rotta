@@ -25,6 +25,16 @@ import { PrismaService } from "@/infra/database/prisma.service";
  * o `where`. Aqui o pacote carrega nome, endereço e telefone de criança
  * (LGPD arts. 11 e 14) — é o lugar errado para economizar uma linha.
  *
+ * ## Três tabelas não têm `companyId`, e não é esquecimento
+ *
+ * `User`, `Student` e `School` não têm a coluna: um usuário se liga à
+ * empresa por `Membership`, uma escola serve várias transportadoras
+ * (`SchoolCompanyLink`), e um aluno se liga por contrato e por rota.
+ * Nessas três, o recorte é a LISTA DE IDS — e cada lista é derivada das
+ * rotas ATIVAS desta empresa, que já vieram filtradas por `companyId`.
+ * `User` leva, por cima, `memberships: { some: { companyId } }`: um id
+ * que escapasse para cá não traria nome e CPF de alguém de fora.
+ *
  * Ver `docs/52-integracao-sete.md`, RN-SETE-01.
  */
 @Injectable()
@@ -196,7 +206,13 @@ export class PrismaSeteRepository implements SeteRepository {
 
     const pessoas = await this.prisma.withTenant(
       this.prisma.user.findMany({
-        where: { id: { in: [...idsDeMotoristas, ...idsDeMonitores] } },
+        // `User` não tem `companyId`: o vínculo é a `Membership`. Sem
+        // esta condição, um `motoristaPadraoId` apontando para fora da
+        // empresa traria nome e CPF de quem não é dela.
+        where: {
+          id: { in: [...idsDeMotoristas, ...idsDeMonitores] },
+          memberships: { some: { companyId } },
+        },
         select: { id: true, nome: true, cpf: true, telefone: true },
       }),
     );
