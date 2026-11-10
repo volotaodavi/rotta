@@ -160,6 +160,13 @@ explicação provável é que o front do SETE usa OpenLayers, que trabalha em 38
 obrigatória antes do envio pela API: mandar graus onde o SETE espera metros
 desenha a rota no meio do Atlântico.
 
+Falta um segundo detalhe, menor mas com o mesmo potencial de recusa silenciosa:
+no banco do SETE a coluna `shape` é `text`, com o JSON **dentro de uma string**.
+No `rotas.json` que a Rotta exporta o `shape` vai **aninhado**, que é a forma
+natural num arquivo JSON e a que uma pessoa consegue ler. Se o `POST` da API
+exigir a string, a conversão é de uma linha — mas é preciso saber qual das duas
+antes de ligar o envio. Entrou na lista de confirmações pendentes.
+
 ---
 
 ## SETE-01 — Exportar o pacote do SETE
@@ -202,9 +209,22 @@ seria prometer utilidade que não existe.
 
 **Regras de negócio**:
 
-- `RN-SETE-01` — **Isolamento por empresa.** Toda consulta da exportação filtra
-  por `companyId`. Uma empresa nunca exporta dado de outra, e o teste de
-  isolamento é obrigatório (`SETE-01`, critérios de aceite).
+- `RN-SETE-01` — **Isolamento por empresa.** Toda consulta da exportação roda
+  dentro de `withTenant` (RLS) e leva `where: { companyId }` explícito — as duas
+  coisas, não uma. Três tabelas são exceção, e não por esquecimento: `User`,
+  `Student` e `School` não têm a coluna (o usuário se liga por `Membership`, a
+  escola serve várias transportadoras, o aluno se liga por contrato e por rota).
+  Nessas, o recorte é a **lista de ids**, sempre derivada das rotas ATIVAS desta
+  empresa — que já vieram filtradas. `User` leva, por cima,
+  `memberships: { some: { companyId } }`.
+
+  Isso não é detalhe de implementação: `students` **não tem política de RLS
+  nenhuma**, porque não há coluna para a política olhar. Apagar o
+  `where: { companyId }` da consulta de rotas faz o nome da criança da outra
+  transportadora aparecer no pacote — confirmado, quebrando de propósito, em
+  `test/sete.e2e-spec.ts`. O teste de isolamento é obrigatório (`SETE-01`,
+  critérios de aceite) justamente por isso.
+
 - `RN-SETE-02` — **Só empresa `LICITADA`.** Fora disso, `403`.
 - `RN-SETE-03` — **O código IBGE é sugerido, nunca imposto.** Sai da área de
   atuação da empresa (`company-service-areas`) e continua editável na tela, para
@@ -439,6 +459,23 @@ o título "Condições de acesso (zona rural)". Em "editar veículo", o campo
 - **Dado** o contraste da tela, **quando** medido, **então** atende WCAG AA, como
   já cobrado em `contraste-wcag.spec.ts`.
 
+**Como ficou, de fato** (10/11/2026): o recorte por `LICITADA` mora dentro de
+`SeteCard` e de `AcessoRuralCard`, não nas páginas que os montam. Duas razões: o
+teste do recorte não precisa montar o painel inteiro, e a próxima tela que
+quiser um desses cartões não pode esquecer de repetir a condição. `temTag`
+devolve `true` enquanto a empresa não carregou — um cartão que pisca a cada
+navegação é pior que um cartão que o backend recusa, e é o backend que barra de
+verdade.
+
+Em "editar veículo" o recorte ficou embutido no próprio campo, porque ali é um
+campo de um formulário que já existe, não um cartão.
+
+**Decisão tomada sem perguntar, e que vale revisar**: as cinco caixas da zona
+rural e o campo "Origem da frota" também só aparecem para `LICITADA`. O pedido
+original só exigia o recorte no cartão do painel. A escolha foi não pôr seis
+campos sem destino em toda rota e todo veículo de transportadora privada — mas é
+uma escolha, e desfazê-la é trocar a condição por `true`.
+
 **Possíveis melhorias futuras**: mobile (fora do escopo desta entrega).
 
 ---
@@ -449,9 +486,11 @@ o título "Condições de acesso (zona rural)". Em "editar veículo", o campo
    código público é de 01/03/2023.
 2. **Confirmar o CRS do `shape`.** A evidência diz EPSG:3857; o padrão GeoJSON
    diz WGS84. Errar põe a rota no oceano.
-3. **Conferir a Resolução CD/FNDE nº 18/2021** na fonte oficial — ela não está
+3. **Confirmar se o `shape` vai como objeto ou como string JSON.** No banco do
+   SETE a coluna é `text`; o arquivo da Rotta manda o objeto aninhado.
+4. **Conferir a Resolução CD/FNDE nº 18/2021** na fonte oficial — ela não está
    no acervo de leis, e o número do artigo não foi citado aqui por isso.
-4. **Credencial de acesso ao SETE**, que só a prefeitura emite.
+5. **Credencial de acesso ao SETE**, que só a prefeitura emite.
 
 ## A restrição que o `/importacao` impõe
 
