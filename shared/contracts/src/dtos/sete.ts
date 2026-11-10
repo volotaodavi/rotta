@@ -173,7 +173,15 @@ export interface SeteVeiculo {
   ano: number | null;
   renavam: string | null;
   capacidade: number;
-  tipo: SeteTipoVeiculo;
+  /**
+   * `null` quando o tipo da Rotta nao existe no SETE.
+   *
+   * O SETE nao tem "automovel", "sedan" nem "SUV": a lista dele vai de
+   * onibus a canoa a remo, pensada para transporte escolar rural. Um
+   * veiculo desses na frota vira pendencia em vez de virar VAN por
+   * aproximacao -- a capacidade declarada ao FNDE mudaria.
+   */
+  tipo: SeteTipoVeiculo | null;
   modo: (typeof SETE_MODO_VEICULO)[keyof typeof SETE_MODO_VEICULO];
   /** `null` enquanto ninguém informou: vira pendência, nunca um default. */
   origem: (typeof SETE_ORIGEM_VEICULO)[keyof typeof SETE_ORIGEM_VEICULO] | null;
@@ -260,6 +268,7 @@ export type SeteTipoPendencia =
   | "MOTORISTA_CNH_VENCIDA"
   | "VEICULO_SEM_RENAVAM"
   | "VEICULO_SEM_ORIGEM"
+  | "VEICULO_TIPO_SEM_EQUIVALENTE"
   | "ALUNO_SEM_COORDENADA"
   | "ALUNO_SEM_RESPONSAVEL";
 
