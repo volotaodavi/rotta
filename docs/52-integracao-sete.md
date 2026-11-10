@@ -459,7 +459,20 @@ o título "Condições de acesso (zona rural)". Em "editar veículo", o campo
 - **Dado** o contraste da tela, **quando** medido, **então** atende WCAG AA, como
   já cobrado em `contraste-wcag.spec.ts`.
 
-**Como ficou, de fato** (10/11/2026): o recorte por `LICITADA` mora dentro de
+**Como ficou** (10/11/2026, capturado da aplicação rodando contra banco
+semeado — `docs/prints/sete/`):
+
+![Cartão SETE / FNDE no painel da empresa](prints/sete/cartao-sete-fnde.png)
+
+![Condições de acesso (zona rural) na tela da rota](prints/sete/condicoes-de-acesso-zona-rural.png)
+
+![Origem da frota na tela do veículo](prints/sete/origem-da-frota.png)
+
+Corrigir uma pendência e voltar ao painel: a contagem cai, e o item some.
+
+![O cartão depois de informar a origem da frota](prints/sete/cartao-apos-corrigir-uma-pendencia.png)
+
+**Decisões de implementação** (10/11/2026): o recorte por `LICITADA` mora dentro de
 `SeteCard` e de `AcessoRuralCard`, não nas páginas que os montam. Duas razões: o
 teste do recorte não precisa montar o painel inteiro, e a próxima tela que
 quiser um desses cartões não pode esquecer de repetir a condição. `temTag`
