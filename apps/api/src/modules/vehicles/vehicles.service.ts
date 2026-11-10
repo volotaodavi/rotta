@@ -371,6 +371,7 @@ export class VehiclesService {
       categoriaRevisaoStatus: categoryFields.categoriaRevisaoStatus,
       categoriaConfiancaIa: categoryFields.categoriaConfiancaIa ?? undefined,
       categoriaMotivoIa: categoryFields.categoriaMotivoIa ?? undefined,
+      origemFrota: dto.origemFrota,
       observacoes: dto.observacoes,
     });
 

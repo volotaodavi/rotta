@@ -3,6 +3,7 @@ import { RouteWeekday, SchoolShift } from "@prisma/client";
 import {
   ArrayMinSize,
   IsArray,
+  IsBoolean,
   IsEnum,
   IsOptional,
   IsString,
@@ -55,4 +56,33 @@ export class CreateRouteDto {
   @IsOptional()
   @IsUUID()
   monitorPadraoId?: string;
+
+  // Condições de acesso da zona rural (SETE-03). Cinco obstáculos que o
+  // SETE pergunta por rota. Ficam aqui, e não na parada, porque é assim
+  // que ele os pede. Ver docs/52-integracao-sete.md.
+
+  @ApiPropertyOptional({ description: "A rota passa por porteira (zona rural)" })
+  @IsOptional()
+  @IsBoolean()
+  acessoPorteira?: boolean;
+
+  @ApiPropertyOptional({ description: "A rota passa por mata-burro (zona rural)" })
+  @IsOptional()
+  @IsBoolean()
+  acessoMataBurro?: boolean;
+
+  @ApiPropertyOptional({ description: "A rota passa por colchete (zona rural)" })
+  @IsOptional()
+  @IsBoolean()
+  acessoColchete?: boolean;
+
+  @ApiPropertyOptional({ description: "A rota tem trecho que atola (zona rural)" })
+  @IsOptional()
+  @IsBoolean()
+  acessoAtoleiro?: boolean;
+
+  @ApiPropertyOptional({ description: "A rota passa por ponte rústica (zona rural)" })
+  @IsOptional()
+  @IsBoolean()
+  acessoPonteRustica?: boolean;
 }

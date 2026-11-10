@@ -9,6 +9,7 @@ import {
   TripSentido,
   TripStatus,
   VehicleOccurrenceSeverity,
+  VehicleOwnership,
   VehicleStatus,
   VehicleType,
 } from "@prisma/client";
@@ -59,6 +60,7 @@ function buildVehicle(overrides: Partial<Vehicle> = {}): Vehicle {
     categoriaMotivoIa: null,
     categoriaRevisadaPorId: null,
     categoriaRevisadaEm: null,
+    origemFrota: null,
     observacoes: null,
     fotoUrl: null,
     status: VehicleStatus.DISPONIVEL,
@@ -361,6 +363,24 @@ describe("VehiclesService", () => {
       );
       expect(auditLogService.record).toHaveBeenCalledWith(
         expect.objectContaining({ acao: "CREATED", entidadeTipo: "Vehicle" }),
+      );
+    });
+
+    // `origemFrota` (SETE-03) é o único campo do cadastro que não serve
+    // à operação do dia: existe só para a exportação ao SETE. Um `create`
+    // que o esqueça não quebra nada visível — a pendência aparece meses
+    // depois, na hora de exportar.
+    it("repassa a origem da frota ao repositório (SETE-03)", async () => {
+      vehicleRepository.create.mockResolvedValue(buildVehicle());
+
+      await service.create(
+        buildCreateDto({ origemFrota: VehicleOwnership.TERCEIRIZADO }),
+        empresaActor,
+        {},
+      );
+
+      expect(vehicleRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ origemFrota: VehicleOwnership.TERCEIRIZADO }),
       );
     });
 

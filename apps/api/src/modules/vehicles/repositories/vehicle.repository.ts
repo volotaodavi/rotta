@@ -5,6 +5,7 @@ import type {
   VehicleCategory,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
+  VehicleOwnership,
   VehicleStatus,
   VehicleType,
   Prisma,
@@ -29,6 +30,8 @@ export interface CreateVehicleData {
   categoriaRevisaoStatus?: VehicleCategoryReviewStatus;
   categoriaConfiancaIa?: number;
   categoriaMotivoIa?: string;
+  /** Origem da frota (SETE-03): próprio do município ou terceirizado. */
+  origemFrota?: VehicleOwnership | null;
   observacoes?: string;
 }
 
@@ -53,6 +56,8 @@ export interface UpdateVehicleData {
   categoriaMotivoIa?: string | null;
   categoriaRevisadaPorId?: string | null;
   categoriaRevisadaEm?: Date | null;
+  /** Origem da frota (SETE-03): próprio do município ou terceirizado. */
+  origemFrota?: VehicleOwnership | null;
   observacoes?: string | null;
   fotoUrl?: string;
   status?: VehicleStatus;

@@ -12,6 +12,12 @@ export class RouteResponseDto {
   @ApiPropertyOptional() veiculoPadraoId?: string | null;
   @ApiPropertyOptional() motoristaPadraoId?: string | null;
   @ApiPropertyOptional() monitorPadraoId?: string | null;
+  /** Condições de acesso da zona rural (SETE-03). */
+  @ApiProperty() acessoPorteira!: boolean;
+  @ApiProperty() acessoMataBurro!: boolean;
+  @ApiProperty() acessoColchete!: boolean;
+  @ApiProperty() acessoAtoleiro!: boolean;
+  @ApiProperty() acessoPonteRustica!: boolean;
   @ApiProperty() createdAt!: Date;
   @ApiProperty() updatedAt!: Date;
 }

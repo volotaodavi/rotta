@@ -4,6 +4,7 @@ import {
   VehicleCategory,
   VehicleCategoryOrigin,
   VehicleCategoryReviewStatus,
+  VehicleOwnership,
   VehicleStatus,
   VehicleType,
 } from "@prisma/client";
@@ -46,6 +47,11 @@ export class VehicleResponseDto {
   categoriaMotivoIa?: string | null;
   @ApiPropertyOptional() categoriaRevisadaPorId?: string | null;
   @ApiPropertyOptional() categoriaRevisadaEm?: Date | null;
+  @ApiPropertyOptional({
+    enum: VehicleOwnership,
+    description: "Origem da frota (SETE-03): próprio do município ou terceirizado",
+  })
+  origemFrota?: VehicleOwnership | null;
   @ApiPropertyOptional() observacoes?: string | null;
   @ApiPropertyOptional() fotoUrl?: string | null;
   @ApiProperty({ enum: VehicleStatus }) status!: VehicleStatus;

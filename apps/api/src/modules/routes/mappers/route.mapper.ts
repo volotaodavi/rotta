@@ -13,6 +13,11 @@ export function toRouteResponseDto(route: Route): RouteResponseDto {
     veiculoPadraoId: route.veiculoPadraoId,
     motoristaPadraoId: route.motoristaPadraoId,
     monitorPadraoId: route.monitorPadraoId,
+    acessoPorteira: route.acessoPorteira,
+    acessoMataBurro: route.acessoMataBurro,
+    acessoColchete: route.acessoColchete,
+    acessoAtoleiro: route.acessoAtoleiro,
+    acessoPonteRustica: route.acessoPonteRustica,
     createdAt: route.createdAt,
     updatedAt: route.updatedAt,
   };
