@@ -38,6 +38,7 @@ export * from "./endpoints/routes";
 export * from "./endpoints/school-portal";
 export * from "./endpoints/school-portal-contas";
 export * from "./endpoints/schools";
+export * from "./endpoints/sete";
 export * from "./endpoints/student-pre-registrations";
 export * from "./endpoints/students";
 export * from "./endpoints/support";

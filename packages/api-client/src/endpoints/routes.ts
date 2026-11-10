@@ -17,7 +17,20 @@ export type RouteStatus = "ATIVA" | "PAUSADA";
 export type RouteWeekday =
   "SEGUNDA" | "TERCA" | "QUARTA" | "QUINTA" | "SEXTA" | "SABADO" | "DOMINGO";
 
-export interface CreateRouteInput {
+/**
+ * Condições de acesso da zona rural (SETE-03) — cinco obstáculos que o
+ * SETE pergunta por rota. Ficam na rota, e não na parada, porque é assim
+ * que ele os pede. Ver `docs/52-integracao-sete.md`.
+ */
+export interface AcessoRural {
+  acessoPorteira: boolean;
+  acessoMataBurro: boolean;
+  acessoColchete: boolean;
+  acessoAtoleiro: boolean;
+  acessoPonteRustica: boolean;
+}
+
+export interface CreateRouteInput extends Partial<AcessoRural> {
   nome: string;
   turno: SchoolShift;
   diasSemana: RouteWeekday[];
@@ -28,7 +41,7 @@ export interface CreateRouteInput {
 
 export type UpdateRouteInput = Partial<CreateRouteInput> & { status?: RouteStatus };
 
-export interface Route {
+export interface Route extends AcessoRural {
   id: string;
   companyId: string;
   nome: string;

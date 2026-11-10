@@ -29,6 +29,7 @@ import {
   formatRouteWeekdaysAbbrev,
 } from "@/features/routes/labels";
 import { SCHOOL_SHIFT_LABEL } from "@/features/schools/labels";
+import { AcessoRuralCard } from "@/features/sete/components/acesso-rural-card";
 import { useMyTeam } from "@/features/team/hooks/use-team";
 import { useMyLocation } from "@/hooks/use-my-location";
 import { recordCheckpoint } from "@/lib/render-checkpoint";
@@ -324,6 +325,14 @@ function RotaDetalheContent({ routeId }: RouteDetailClientProps): JSX.Element {
           </Card.Body>
         </Card>
       ) : null}
+
+      {/*
+        Condições de acesso da zona rural (SETE-03) — o cartão decide
+        sozinho se aparece (só empresa LICITADA). Ver `AcessoRuralCard`.
+      */}
+      <SectionErrorBoundary label="acesso-rural-da-rota">
+        <AcessoRuralCard route={route} />
+      </SectionErrorBoundary>
 
       <SectionErrorBoundary label="paradas-da-rota">
         <StopsSection

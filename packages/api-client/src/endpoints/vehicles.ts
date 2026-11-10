@@ -17,6 +17,12 @@ export type VehicleCategory = "ESCOLAR" | "FRETAMENTO" | "EXECUTIVO" | "OUTRO";
 export type VehicleCategoryOrigin = "MANUAL" | "IA";
 /** Frente AL — `PENDENTE` quando a confiança da IA foi baixa e aguarda revisão de um Admin Rotta. */
 export type VehicleCategoryReviewStatus = "NAO_REQUER" | "PENDENTE" | "CONFIRMADA" | "CORRIGIDA";
+/**
+ * Origem da frota (SETE-03) — o SETE pergunta, por veículo, se ele é da
+ * própria prefeitura ou de uma transportadora contratada. Ver
+ * `docs/52-integracao-sete.md`.
+ */
+export type VehicleOwnership = "PROPRIO_MUNICIPIO" | "TERCEIRIZADO";
 export type VehicleStatus =
   "DISPONIVEL" | "EM_VIAGEM" | "MANUTENCAO" | "RESERVA" | "INATIVO" | "BLOQUEADO";
 /**
@@ -78,6 +84,8 @@ export interface CreateVehicleInput {
   capacidadePassageiros: number;
   tipo: VehicleType;
   categoria?: VehicleCategory;
+  /** Origem da frota (SETE-03) — só serve à exportação ao SETE, não à operação do dia. */
+  origemFrota?: VehicleOwnership;
   observacoes?: string;
 }
 
@@ -111,6 +119,8 @@ export interface Vehicle {
   categoriaMotivoIa: string | null;
   categoriaRevisadaPorId: string | null;
   categoriaRevisadaEm: string | null;
+  /** Origem da frota (SETE-03). `null` enquanto a empresa não informou. */
+  origemFrota: VehicleOwnership | null;
   observacoes: string | null;
   fotoUrl: string | null;
   status: VehicleStatus;

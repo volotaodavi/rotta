@@ -208,6 +208,9 @@ importers:
       '@prisma/client':
         specifier: ^6.1.0
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@rotta/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
       '@rotta/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -557,6 +560,9 @@ importers:
       '@rotta/maps':
         specifier: workspace:*
         version: link:../../packages/maps
+      '@rotta/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
       '@rotta/theme':
         specifier: workspace:*
         version: link:../../packages/theme
@@ -654,6 +660,9 @@ importers:
 
   packages/api-client:
     dependencies:
+      '@rotta/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
       '@rotta/types':
         specifier: workspace:*
         version: link:../types

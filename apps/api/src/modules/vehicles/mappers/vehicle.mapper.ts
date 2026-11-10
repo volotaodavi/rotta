@@ -23,6 +23,7 @@ export function toVehicleResponseDto(vehicle: Vehicle): VehicleResponseDto {
     categoriaMotivoIa: vehicle.categoriaMotivoIa,
     categoriaRevisadaPorId: vehicle.categoriaRevisadaPorId,
     categoriaRevisadaEm: vehicle.categoriaRevisadaEm,
+    origemFrota: vehicle.origemFrota,
     observacoes: vehicle.observacoes,
     fotoUrl: vehicle.fotoUrl,
     status: vehicle.status,

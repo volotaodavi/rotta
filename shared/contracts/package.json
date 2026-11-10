@@ -4,9 +4,10 @@
   "private": true,
   "description": "Fonte unica de verdade dos contratos de dominio (entidades, DTOs, eventos) — Dossie 22, Secao 6.3. Consumido por packages/types e packages/validators no frontend, e diretamente por apps/api no backend.",
   "license": "UNLICENSED",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint . --ext .ts",
     "lint:fix": "eslint . --ext .ts --fix",
     "typecheck": "tsc --noEmit",

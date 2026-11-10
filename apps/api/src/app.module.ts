@@ -83,6 +83,7 @@ import { RouteAssignmentsModule } from "@/modules/route-assignments/route-assign
 import { RoutesModule } from "@/modules/routes/routes.module";
 import { SchoolPortalModule } from "@/modules/school-portal/school-portal.module";
 import { SchoolsModule } from "@/modules/schools/schools.module";
+import { SeteModule } from "@/modules/sete/sete.module";
 import { SettingsModule } from "@/modules/settings/settings.module";
 import { StudentPreRegistrationsModule } from "@/modules/student-pre-registrations/student-pre-registrations.module";
 import { StudentsModule } from "@/modules/students/students.module";
@@ -166,6 +167,7 @@ import { WalletModule } from "@/modules/wallet/wallet.module";
     // dia. Fica ao lado da escala e dos rastreadores porque é a mesma
     // operação, vista de cima.
     DispatchModule,
+    SeteModule,
     TrackersModule,
     // Portal da Escola (22/09/2026) — leitura por `escolaId`, fora do
     // isolamento por `companyId` do resto do sistema. Ver o módulo.

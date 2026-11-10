@@ -21,6 +21,7 @@
     "@rotta/auth": "workspace:*",
     "@rotta/icons": "workspace:*",
     "@rotta/maps": "workspace:*",
+    "@rotta/shared-contracts": "workspace:*",
     "@rotta/theme": "workspace:*",
     "@rotta/types": "workspace:*",
     "@rotta/ui": "workspace:*",

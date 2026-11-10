@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { VehicleCategory, VehicleType } from "@prisma/client";
+import { VehicleCategory, VehicleOwnership, VehicleType } from "@prisma/client";
 import { Type } from "class-transformer";
 import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 
@@ -70,6 +70,16 @@ export class CreateVehicleDto {
   @IsOptional()
   @IsEnum(VehicleCategory)
   categoria?: VehicleCategory;
+
+  @ApiPropertyOptional({
+    enum: VehicleOwnership,
+    description:
+      "Origem da frota (SETE-03): PROPRIO_MUNICIPIO ou TERCEIRIZADO. O SETE pergunta isso " +
+      "por veículo, e a Rotta não tinha onde guardar. Ver docs/52-integracao-sete.md.",
+  })
+  @IsOptional()
+  @IsEnum(VehicleOwnership)
+  origemFrota?: VehicleOwnership;
 
   @ApiPropertyOptional({ example: "Ar-condicionado, cinto de segurança em todos os bancos." })
   @IsOptional()

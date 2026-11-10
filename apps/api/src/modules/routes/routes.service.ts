@@ -207,6 +207,11 @@ export class RoutesService {
       veiculoPadraoId: dto.veiculoPadraoId,
       motoristaPadraoId: dto.motoristaPadraoId,
       monitorPadraoId: dto.monitorPadraoId,
+      acessoPorteira: dto.acessoPorteira,
+      acessoMataBurro: dto.acessoMataBurro,
+      acessoColchete: dto.acessoColchete,
+      acessoAtoleiro: dto.acessoAtoleiro,
+      acessoPonteRustica: dto.acessoPonteRustica,
     });
 
     await this.recordAudit({
@@ -341,6 +346,11 @@ export class RoutesService {
       veiculoPadraoId: dto.veiculoPadraoId,
       motoristaPadraoId: dto.motoristaPadraoId,
       monitorPadraoId: dto.monitorPadraoId,
+      acessoPorteira: dto.acessoPorteira,
+      acessoMataBurro: dto.acessoMataBurro,
+      acessoColchete: dto.acessoColchete,
+      acessoAtoleiro: dto.acessoAtoleiro,
+      acessoPonteRustica: dto.acessoPonteRustica,
     });
 
     await this.recordAudit({

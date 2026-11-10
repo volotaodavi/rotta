@@ -30,6 +30,11 @@ function buildRoute(overrides: Partial<Route> = {}): Route {
     veiculoPadraoId: null,
     motoristaPadraoId: null,
     monitorPadraoId: null,
+    acessoPorteira: false,
+    acessoMataBurro: false,
+    acessoColchete: false,
+    acessoAtoleiro: false,
+    acessoPonteRustica: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     deletedAt: null,
@@ -198,6 +203,48 @@ describe("RoutesService", () => {
         expect.objectContaining({ companyId: "company-1", nome: "Rota Manhã" }),
       );
       expect(result.id).toBe("route-1");
+    });
+
+    // Condições de acesso da zona rural (SETE-03). Cinco campos
+    // booleanos que só existem por causa da exportação ao SETE, e que
+    // por isso são fáceis de esquecer num `create` que não os lista: o
+    // DTO aceitaria, a rota gravaria `false`, e a prefeitura receberia
+    // "não há porteira" numa estrada que tem três.
+    it("repassa as condições de acesso da zona rural ao repositório", async () => {
+      routeRepository.create.mockResolvedValue(buildRoute({ acessoPorteira: true }));
+
+      await service.create(
+        {
+          nome: "Rota Sítio",
+          turno: SchoolShift.MANHA,
+          diasSemana: ["SEGUNDA"] as never,
+          acessoPorteira: true,
+          acessoAtoleiro: true,
+        },
+        empresaActor,
+        {},
+      );
+
+      expect(routeRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ acessoPorteira: true, acessoAtoleiro: true }),
+      );
+    });
+
+    it("rota sem obstáculo informado não grava nada no lugar dele", async () => {
+      // `undefined` deixa o default do banco (`false`) decidir. Mandar
+      // `false` explícito daria no mesmo hoje, mas apagaria um valor já
+      // gravado se este objeto fosse reutilizado num update.
+      routeRepository.create.mockResolvedValue(buildRoute());
+
+      await service.create(
+        { nome: "Rota Centro", turno: SchoolShift.MANHA, diasSemana: ["SEGUNDA"] as never },
+        empresaActor,
+        {},
+      );
+
+      const dados = routeRepository.create.mock.calls[0]![0];
+      expect(dados.acessoPorteira).toBeUndefined();
+      expect(dados.acessoPonteRustica).toBeUndefined();
     });
 
     it("Admin Rotta cria a rota com o companyId informado no corpo (pedido do usuário 02/09/2026)", async () => {

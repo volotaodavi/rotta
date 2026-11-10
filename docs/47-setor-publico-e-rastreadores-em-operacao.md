@@ -86,6 +86,17 @@ competência e a exportação. É o item de maior retorno desta revisão inteira
 o que a transportadora anexa ao processo de pagamento todo mês, e é o que faz o
 município aceitar que ela use a Rotta em vez da planilha.
 
+**Atualização de 10/11/2026 — o SETE entrou nesta conta.** Esta seção fala do
+relatório que a transportadora anexa ao processo de pagamento. Existe uma
+segunda prestação de contas, e ela é do próprio município: quem recebe PNATE é
+obrigado a alimentar o **SETE**, o sistema do FNDE, e hoje a prefeitura digita
+lá, à mão, as rotas, a frota, os motoristas, os monitores e os alunos — dados
+que a Rotta já tem. A especificação da exportação e do envio está em
+[`docs/52-integracao-sete.md`](52-integracao-sete.md), com a fundamentação
+legal, o mapeamento campo a campo e o que depende do FNDE. É o mesmo argumento
+desta seção levado um degrau adiante: não é só a transportadora que deixa de
+redigitar, é a prefeitura.
+
 ### 2.3 Quem paga muda, e o produto ainda não sabe disso
 
 No privado, a família paga a transportadora, e a Rotta acaba de montar esse

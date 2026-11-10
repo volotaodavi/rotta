@@ -1,6 +1,22 @@
 import type { Prisma, Route, RouteStatus, RouteWeekday, SchoolShift } from "@prisma/client";
 
-export interface CreateRouteData {
+/**
+ * Condições de acesso da zona rural (SETE-03).
+ *
+ * São cinco obstáculos que o SETE pergunta por rota — porteira, mata-burro,
+ * colchete, atoleiro e ponte rústica. A Rotta não tinha onde guardá-los, e
+ * sem eles a exportação ao SETE sai incompleta. Ficam na rota, e não na
+ * parada, porque é assim que o SETE os pede: um `char(1)` por rota.
+ */
+export interface AcessoRuralData {
+  acessoPorteira?: boolean;
+  acessoMataBurro?: boolean;
+  acessoColchete?: boolean;
+  acessoAtoleiro?: boolean;
+  acessoPonteRustica?: boolean;
+}
+
+export interface CreateRouteData extends AcessoRuralData {
   companyId: string;
   nome: string;
   turno: SchoolShift;
@@ -10,7 +26,7 @@ export interface CreateRouteData {
   monitorPadraoId?: string | null;
 }
 
-export interface UpdateRouteData {
+export interface UpdateRouteData extends AcessoRuralData {
   nome?: string;
   turno?: SchoolShift;
   diasSemana?: RouteWeekday[];
