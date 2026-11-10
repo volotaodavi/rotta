@@ -26,6 +26,7 @@ import type {
 } from "@rotta/api-client";
 
 import { SectionErrorBoundary } from "@/components/section-error-boundary";
+import { useMyCompanyTags } from "@/features/company/hooks/use-company";
 import { VehicleCategoryReviewBadges } from "@/features/vehicles/components/vehicle-category-review-badges";
 import { VehicleDocumentAiStatusBadge } from "@/features/vehicles/components/vehicle-document-ai-status-badge";
 import { VehicleStatusBadge } from "@/features/vehicles/components/vehicle-status-badge";
@@ -54,6 +55,7 @@ import {
   VEHICLE_CATEGORY_LABEL,
   VEHICLE_DOCUMENT_TYPE_LABEL,
   VEHICLE_MAINTENANCE_TYPE_LABEL,
+  VEHICLE_OWNERSHIP_LABEL,
   VEHICLE_REMINDER_TYPE_LABEL,
   VEHICLE_TYPE_LABEL,
 } from "@/features/vehicles/labels";
@@ -161,6 +163,10 @@ function VehicleDetailContent({ vehicleId }: { vehicleId: string }): JSX.Element
 function DadosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
   const router = useRouter();
   const { data: vehicle } = useVehicle(vehicleId);
+  // Habilitação da empresa — decide se "Origem da frota" (SETE-03)
+  // aparece. O veículo já diz de que empresa é, então não depende do
+  // token para saber de quem perguntar.
+  const { temTag } = useMyCompanyTags(vehicle?.companyId ?? "");
   const updateVehicle = useUpdateVehicle(vehicleId);
   const updateStatus = useUpdateVehicleStatus(vehicleId);
   const uploadPhoto = useUploadVehiclePhoto(vehicleId);
@@ -179,6 +185,7 @@ function DadosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
         capacidadePassageiros: vehicle.capacidadePassageiros,
         tipo: vehicle.tipo,
         categoria: vehicle.categoria,
+        origemFrota: vehicle.origemFrota ?? undefined,
         observacoes: vehicle.observacoes ?? "",
       });
     }
@@ -295,6 +302,36 @@ function DadosTab({ vehicleId }: { vehicleId: string }): JSX.Element {
                 }
               />
             </FormField>
+            {/*
+              Origem da frota (SETE-03) — só aparece para quem tem
+              contrato com prefeitura: numa frota privada a resposta é
+              sempre a mesma, e ninguém exporta ao SETE. "Não informado"
+              é opção de verdade, não placeholder: o SETE aceita o
+              veículo sem ela, e a pendência avisa depois.
+            */}
+            {temTag("LICITADA") ? (
+              <FormField
+                label="Origem da frota"
+                helperText="De quem é este veículo. Vai no arquivo que a prefeitura entrega ao FNDE."
+              >
+                <Select
+                  value={form.origemFrota ?? ""}
+                  onChange={(event) =>
+                    updateField(
+                      "origemFrota",
+                      (event.target.value || undefined) as UpdateVehicleInput["origemFrota"],
+                    )
+                  }
+                >
+                  <option value="">Não informado</option>
+                  {Object.entries(VEHICLE_OWNERSHIP_LABEL).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </Select>
+              </FormField>
+            ) : null}
           </Card.Body>
           <Card.Footer>
             {errorMessage && (

@@ -21,6 +21,7 @@ import {
   createSchoolPortalContasEndpoints,
   createSchoolPortalEndpoints,
   createSchoolsEndpoints,
+  createSeteEndpoints,
   createStudentPreRegistrationsEndpoints,
   createStudentsEndpoints,
   createSupportEndpoints,
@@ -83,3 +84,6 @@ export const familyBillingApi = createFamilyBillingEndpoints(apiClient);
 export const supportApi = createSupportEndpoints(apiClient);
 export const identityVerificationApi = createIdentityVerificationEndpoints(apiClient);
 export const planNoticesApi = createPlanNoticesEndpoints(apiClient);
+// Exportacao para o SETE (FNDE) — so empresa LICITADA. Ver
+// `docs/52-integracao-sete.md`.
+export const seteApi = createSeteEndpoints(apiClient);

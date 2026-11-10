@@ -15,6 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@rotta/shared-contracts": "workspace:*",
     "@rotta/types": "workspace:*"
   },
   "devDependencies": {

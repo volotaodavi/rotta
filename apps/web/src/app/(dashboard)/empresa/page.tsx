@@ -47,6 +47,7 @@ import {
   useUpdateMyCompanySettings,
 } from "@/features/company/hooks/use-company";
 import { useGpsMap } from "@/features/gps/hooks/use-gps";
+import { SeteCard } from "@/features/sete/components/sete-card";
 import { FUNCIONALIDADES } from "@/lib/funcionalidades";
 
 /**
@@ -509,6 +510,12 @@ function MinhaEmpresaContent({ companyId }: { companyId: string }): JSX.Element 
 
             <ProximosEventos />
           </div>
+
+          {/*
+            SETE / FNDE (SETE-05) — o cartão decide sozinho se aparece
+            (só empresa LICITADA). Ver `SeteCard`.
+          */}
+          <SeteCard />
 
           {dashboard && dashboard.alertas.length > 0 && (
             <Card>

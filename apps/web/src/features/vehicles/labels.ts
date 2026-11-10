@@ -2,6 +2,7 @@ import type {
   VehicleCategory,
   VehicleDocumentType,
   VehicleMaintenanceType,
+  VehicleOwnership,
   VehicleReminderType,
   VehicleType,
 } from "@rotta/api-client";
@@ -22,6 +23,16 @@ export const VEHICLE_CATEGORY_LABEL: Record<VehicleCategory, string> = {
   FRETAMENTO: "Fretamento",
   EXECUTIVO: "Executivo",
   OUTRO: "Outro",
+};
+
+/**
+ * Origem da frota (SETE-03) — o SETE pergunta, por veículo, de quem ele
+ * é. Os rótulos dizem "prefeitura" e não "município" porque é a palavra
+ * que quem preenche usa.
+ */
+export const VEHICLE_OWNERSHIP_LABEL: Record<VehicleOwnership, string> = {
+  PROPRIO_MUNICIPIO: "Da prefeitura",
+  TERCEIRIZADO: "Da transportadora (terceirizado)",
 };
 
 export const VEHICLE_DOCUMENT_TYPE_LABEL: Record<VehicleDocumentType, string> = {

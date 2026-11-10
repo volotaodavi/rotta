@@ -660,6 +660,9 @@ importers:
 
   packages/api-client:
     dependencies:
+      '@rotta/shared-contracts':
+        specifier: workspace:*
+        version: link:../../shared/contracts
       '@rotta/types':
         specifier: workspace:*
         version: link:../types
