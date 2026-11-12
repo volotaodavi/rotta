@@ -27,6 +27,7 @@ export * from "./atoms/ProgressRing";
 export * from "./atoms/Select";
 export * from "./atoms/Skeleton";
 export * from "./atoms/Spinner";
+export * from "./atoms/TextLink";
 export * from "./atoms/Textarea";
 export * from "./atoms/Typography";
 export * from "./molecules/EmptyState";

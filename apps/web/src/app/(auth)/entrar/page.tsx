@@ -2,7 +2,6 @@
 
 import { ApiError, isMfaChallengeResponse, isMfaSetupRequiredResponse } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
-import { Eye, EyeOff } from "@rotta/icons";
 import { Button, FormField, Input, Modal, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,6 +11,7 @@ import type { LoginMascotMood } from "@/components/login-mascot";
 import type { ProfileOption } from "@rotta/api-client";
 
 import { LoginMascot } from "@/components/login-mascot";
+import { PasswordToggleButton } from "@/components/password-toggle-button";
 import { defaultRouteForRole } from "@/lib/default-route";
 import { getAdminUrl } from "@/lib/site-config";
 
@@ -36,17 +36,10 @@ function SenhaField({
     <div className="relative">
       <Input
         type={mostrarSenha ? "text" : "password"}
-        className={`pr-10 ${className ?? ""}`}
+        className={`pr-12 ${className ?? ""}`}
         {...rest}
       />
-      <button
-        type="button"
-        onClick={onToggleMostrarSenha}
-        aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-text"
-      >
-        {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-      </button>
+      <PasswordToggleButton mostrarSenha={mostrarSenha} onToggle={onToggleMostrarSenha} />
     </div>
   );
 }

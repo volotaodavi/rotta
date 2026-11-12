@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@rotta/ui/web";
+import { Button, textLinkVariants } from "@rotta/ui/web";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
@@ -110,7 +110,7 @@ export function CookieConsentBanner({
           Usamos cookies de medição para entender como o site é usado e para saber quais anúncios
           trazem gente de verdade. Nada de dado de família, aluno ou veículo é enviado. Você pode
           aceitar ou recusar: veja detalhes na{" "}
-          <Link href="/legal/cookies" className="text-primary hover:underline">
+          <Link href="/legal/cookies" className={textLinkVariants()}>
             Política de Cookies
           </Link>
           .

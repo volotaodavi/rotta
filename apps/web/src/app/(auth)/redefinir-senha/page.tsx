@@ -1,12 +1,12 @@
 "use client";
 
 import { ApiError } from "@rotta/api-client";
-import { Eye, EyeOff } from "@rotta/icons";
 import { Button, FormField, Input, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState, type FormEvent } from "react";
 
+import { PasswordToggleButton } from "@/components/password-toggle-button";
 import { authApi } from "@/lib/api-client";
 
 /**
@@ -103,18 +103,14 @@ function RedefinirSenhaContent(): JSX.Element {
               required
               minLength={8}
               autoComplete="new-password"
-              className="pr-10"
+              className="pr-12"
               value={novaSenha}
               onChange={(event) => setNovaSenha(event.target.value)}
             />
-            <button
-              type="button"
-              onClick={() => setMostrarSenha((atual) => !atual)}
-              aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-text"
-            >
-              {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+            <PasswordToggleButton
+              mostrarSenha={mostrarSenha}
+              onToggle={() => setMostrarSenha((atual) => !atual)}
+            />
           </div>
         </FormField>
 

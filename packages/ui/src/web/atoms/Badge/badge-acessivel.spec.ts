@@ -23,7 +23,16 @@ import { join } from "node:path";
  * toda: um mostra o número, o outro prende o componente ao número.
  */
 
-const FONTE = readFileSync(join(__dirname, "Badge.tsx"), "utf8");
+/**
+ * O arquivo SEM os comentários — o mesmo cuidado de
+ * `text-link-acessivel.spec.ts`, e pela mesma razão: lá um teste
+ * reprovou por encontrar, dentro da documentação, a citação do padrão
+ * que ele proíbe. Um guarda que não distingue código de prosa pune
+ * quem explica o defeito.
+ */
+const FONTE = readFileSync(join(__dirname, "Badge.tsx"), "utf8")
+  .replace(/\/\*[\s\S]*?\*\//g, "")
+  .replace(/^\s*\/\/.*$/gm, "");
 
 describe("Badge, variante neutra", () => {
   it("usa o texto principal, nunca o cinza de legenda", () => {

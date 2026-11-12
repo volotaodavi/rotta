@@ -1,5 +1,5 @@
 import { Headset, MessageCircle } from "@rotta/icons";
-import { Card, Typography } from "@rotta/ui/web";
+import { Card, Typography, textLinkVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { Metadata } from "next";
@@ -45,7 +45,7 @@ export default function SuportePage(): JSX.Element {
             <Typography variant="subtitle">Ainda não é cliente</Typography>
             <Typography variant="bodySmall" color="muted">
               Tem dúvidas antes de começar? Fale conosco em{" "}
-              <Link href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">
+              <Link href={`mailto:${SUPPORT_EMAIL}`} className={textLinkVariants()}>
                 {SUPPORT_EMAIL}
               </Link>
               .

@@ -11,6 +11,7 @@ import {
   PhoneInput,
   Typography,
   isCompleteBrazilianCellphone,
+  textLinkVariants,
 } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -194,7 +195,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
 
       <Typography variant="bodySmall" color="muted" className="text-center">
         Recebeu um código de convite de uma escola ou empresa de transporte?{" "}
-        <Link href="/convite" className="text-primary hover:underline">
+        <Link href="/convite" className={textLinkVariants()}>
           Use seu código aqui
         </Link>
         .
