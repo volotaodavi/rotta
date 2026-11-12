@@ -71,6 +71,10 @@ TAMANHOS=("1366 900" "390 844")
 # `next dev` deste contêiner; num build de producao da para baixar.
 ASSENTAR_MS="${ASSENTAR_MS:-1200}"
 
+# Menos texto visivel que isto e sinal de pagina que nao renderizou.
+# A mais curta das 18 (`/baixar-app`) passa de 400 caracteres.
+MINIMO_DE_TEXTO="${MINIMO_DE_TEXTO:-200}"
+
 SAIDA="${SAIDA:-$(mktemp -d)}"
 mkdir -p "$SAIDA"
 
@@ -134,7 +138,24 @@ for tamanho in "${TAMANHOS[@]}"; do
     # nenhuma medida, porque dá para acreditar nela.
     agent-browser open "$BASE_URL$pagina" >/dev/null 2>&1
     agent-browser wait "$ASSENTAR_MS" >/dev/null 2>&1
+    # A pagina de fato renderizou? Uma tela presa no spinner nao viola
+    # regra nenhuma, e o axe devolve "0" com toda a honestidade do
+    # mundo sobre uma pagina que ninguem conseguiria usar.
+    #
+    # Aconteceu em 12/11/2026: a API estava fora do ar, as telas de
+    # `(auth)` ficaram no "Carregando" para sempre, e a varredura deu
+    # ok para sete paginas seguidas. Um "0 violacoes" assim e pior que
+    # um numero alto, porque ele encerra a investigacao.
+    render=$(agent-browser eval 'JSON.stringify({t:document.body.innerText.trim().length,c:document.querySelectorAll("[role=status][aria-label*=arregando]").length})' 2>/dev/null \
+      | node -e '''let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const o=JSON.parse(JSON.parse(s));process.stdout.write(o.t<"'"$MINIMO_DE_TEXTO"'"*1||o.c>0?"vazia":"ok")}catch{process.stdout.write("?")}})''')
+
     agent-browser a11y --json --tags "$TAGS" >"$arquivo" 2>/dev/null
+
+    if [ "$render" = "vazia" ]; then
+      printf '  %-28s NAO RENDERIZOU (spinner ou tela em branco)\n' "$pagina"
+      paginas_com_falha=$((paginas_com_falha + 1))
+      continue
+    fi
 
     violacoes=$(node -e '
       const fs = require("node:fs");
