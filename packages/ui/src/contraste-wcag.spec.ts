@@ -159,3 +159,104 @@ describe("texto sobre preenchimento cheio, tema claro", () => {
     expect(contraste(lightColors.onPrimary, lightColors[nome])).toBeGreaterThanOrEqual(3);
   });
 });
+
+/**
+ * `Badge variant="neutral"` — o único que mistura DOIS tokens
+ * diferentes (`bg-secondary/20` + `text-text-muted`), e por isso o
+ * único que escapava dos testes acima.
+ *
+ * ## O buraco que isto fecha (A11Y-02, `docs/53`)
+ *
+ * Tudo que vem antes neste arquivo cobre as quatro cores semânticas
+ * usando a PRÓPRIA cor como texto: `bg-success/15 text-success`. O
+ * neutro não é assim — é cinza de legenda sobre cinza de fundo. A
+ * revisão de acessibilidade de 10/11/2026 achou 4,39:1 num selo do
+ * `/governo`; calculando os oito fundos reais, o pior caso é 3,98:1.
+ *
+ * Baixar a opacidade do fundo não resolve com folga: a 10% o claro
+ * ainda dá 4,61:1. O defeito é a combinação, não a dosagem — por isso
+ * o texto passou de `text-text-muted` para `text-text`.
+ */
+describe("Badge neutro (bg-secondary/20 + texto)", () => {
+  const FUNDOS_CLARO = {
+    background: lightColors.background,
+    surface: lightColors.surface,
+    muted: lightColors.muted,
+    card: lightColors.card,
+  };
+  const FUNDOS_ESCURO = {
+    background: darkColors.background,
+    surface: darkColors.surface,
+    card: darkColors.card,
+    surfaceElevated: darkColors.surfaceElevated,
+  };
+  /** A opacidade que `Badge.tsx` usa de verdade no neutro. */
+  const OPACIDADE_DO_NEUTRO = 0.2;
+
+  it("o texto do neutro passa no AA sobre todo fundo do tema claro", () => {
+    for (const [nome, fundo] of Object.entries(FUNDOS_CLARO)) {
+      const pilha = sobrepor(lightColors.secondary, fundo, OPACIDADE_DO_NEUTRO);
+      expect({ nome, razao: contraste(lightColors.text, pilha) }).toMatchObject({
+        razao: expect.any(Number),
+      });
+      expect(contraste(lightColors.text, pilha)).toBeGreaterThanOrEqual(MINIMO_AA);
+    }
+  });
+
+  it("o texto do neutro passa no AA sobre todo fundo do tema escuro", () => {
+    for (const fundo of Object.values(FUNDOS_ESCURO)) {
+      const pilha = sobrepor(darkColors.secondary, fundo, OPACIDADE_DO_NEUTRO);
+      expect(contraste(darkColors.text, pilha)).toBeGreaterThanOrEqual(MINIMO_AA);
+    }
+  });
+
+  it("o cinza de legenda NÃO serve aqui — é por isto que o texto mudou", () => {
+    // Trava a razão de ser da correção. Se alguém devolver
+    // `text-text-muted` ao neutro achando que é mais discreto, este
+    // teste continua verde (ele afirma a reprovação), mas o de cima
+    // quebra — e a mensagem dos dois juntos explica o porquê.
+    const pior = Math.min(
+      ...Object.values(FUNDOS_CLARO).map((fundo) =>
+        contraste(
+          lightColors.textMuted,
+          sobrepor(lightColors.secondary, fundo, OPACIDADE_DO_NEUTRO),
+        ),
+      ),
+    );
+    expect(pior).toBeLessThan(MINIMO_AA);
+  });
+});
+
+/**
+ * `Badge surface="dark"` — selo sobre uma seção que é escura em
+ * qualquer tema (o herói do `/governo`, `bg-slate-950`).
+ *
+ * ## Por que existe (A11Y-02, `docs/53`)
+ *
+ * `bg-info/15 text-info` resolve pelas variáveis do tema ATIVO. Num
+ * visitante em tema claro, `--color-info` é o ciano escuro (#06718B),
+ * e sobre quase-preto isso dá 3,26:1 — reprovado, medido pelo axe na
+ * própria página.
+ *
+ * A correção não inventa cor: marca o selo com `data-theme="dark"`, e
+ * as variáveis passam a resolver pela paleta ESCURA, que o design
+ * system já tem para exatamente esta situação. O que este teste trava
+ * é a conta, não a implementação.
+ */
+describe("Badge sobre superfície escura", () => {
+  /** `bg-slate-950` do Tailwind — a cor real da seção, fixa em qualquer tema. */
+  const SECAO_ESCURA = "#020617";
+  const OPACIDADE_SEMANTICA = 0.15;
+
+  it.each(SEMANTICAS)("%s da paleta escura passa no AA sobre a seção escura", (nome) => {
+    const cor = darkColors[nome];
+    const pilha = sobrepor(cor, SECAO_ESCURA, OPACIDADE_SEMANTICA);
+    expect(contraste(cor, pilha)).toBeGreaterThanOrEqual(MINIMO_AA);
+  });
+
+  it("a paleta CLARA reprovaria ali — é o defeito que o axe achou", () => {
+    const cor = lightColors.info;
+    const pilha = sobrepor(cor, SECAO_ESCURA, OPACIDADE_SEMANTICA);
+    expect(contraste(cor, pilha)).toBeLessThan(MINIMO_AA);
+  });
+});

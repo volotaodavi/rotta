@@ -158,7 +158,12 @@ export default function GovernoPage(): JSX.Element {
         />
         <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-20 pt-16 sm:pt-20 lg:grid-cols-2">
           <div className="flex flex-col items-start gap-6 text-left">
-            <Badge variant="info">Para prefeituras e secretarias de educação</Badge>
+            {/* `surface="dark"` porque este herói é `bg-slate-950` em QUALQUER
+                tema: sem isso o selo resolve pela paleta clara e dá 3,26:1
+                sobre quase-preto (A11Y-02, `docs/53`). */}
+            <Badge variant="info" surface="dark">
+              Para prefeituras e secretarias de educação
+            </Badge>
             <Typography variant="display" as="h1" className="text-white">
               Você sabe, agora, onde está cada van escolar do seu município?
             </Typography>
