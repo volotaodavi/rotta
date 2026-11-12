@@ -67,6 +67,10 @@ PAGINAS=(
 # de elemento fixo cobrindo o foco.
 TAMANHOS=("1366 900" "390 844")
 
+# Quanto esperar a pagina assentar depois de abrir. 1200ms cobriu o
+# `next dev` deste contêiner; num build de producao da para baixar.
+ASSENTAR_MS="${ASSENTAR_MS:-1200}"
+
 SAIDA="${SAIDA:-$(mktemp -d)}"
 mkdir -p "$SAIDA"
 
@@ -76,13 +80,34 @@ if ! command -v agent-browser >/dev/null 2>&1; then
   exit 127
 fi
 
-if ! curl -sf -o /dev/null --max-time 10 "$BASE_URL/"; then
-  echo "Nada respondendo em $BASE_URL — suba o site com \`pnpm dev:web\`." >&2
-  exit 1
-fi
+# Espera até 90s, e não 10s: `next dev` compila a primeira página sob
+# demanda, e num contêiner frio isso passa de meio minuto. Um guarda
+# curto aborta a varredura inteira dizendo "nada respondendo" sobre um
+# servidor que está de pé — foi o que aconteceu em 12/11/2026, e o
+# diagnóstico errado custa mais que a espera.
+espera=0
+until curl -sf -o /dev/null --max-time 10 "$BASE_URL/"; do
+  espera=$((espera + 5))
+  if [ "$espera" -ge 90 ]; then
+    echo "Nada respondendo em $BASE_URL após ${espera}s — suba o site com \`pnpm dev:web\`." >&2
+    exit 1
+  fi
+  sleep 5
+done
 
 echo "axe-core via agent-browser · tags: $TAGS"
 echo "base: $BASE_URL · relatórios em: $SAIDA"
+echo
+
+# Aquecimento: abre cada página uma vez antes de medir qualquer uma.
+# No `next dev` a primeira visita de cada rota paga a compilação; sem
+# isto, a primeira varredura do dia mede páginas meio prontas.
+printf 'aquecendo %s páginas' "${#PAGINAS[@]}"
+for pagina in "${PAGINAS[@]}"; do
+  agent-browser open "$BASE_URL$pagina" >/dev/null 2>&1
+  printf '.'
+done
+echo " pronto"
 echo
 
 total=0
@@ -98,7 +123,18 @@ for tamanho in "${TAMANHOS[@]}"; do
     nome="$(echo "${largura}x${altura}${pagina}" | tr '/' '_')"
     arquivo="$SAIDA/$nome.json"
 
-    agent-browser a11y "$BASE_URL$pagina" --json --tags "$TAGS" >"$arquivo" 2>/dev/null
+    # Abrir, esperar assentar, e SÓ ENTÃO auditar — em vez de
+    # `a11y <url>`, que navega e mede na mesma tirada.
+    #
+    # Duas varreduras seguidas davam 17 e 15 violações no mesmo código
+    # (12/11/2026). A causa é o `next dev`, que compila cada rota no
+    # primeiro acesso: a auditoria às vezes rodava antes da página
+    # hidratar, e um elemento que ainda não existe não viola regra
+    # nenhuma. Uma medida instável que às vezes diz "0" é pior que
+    # nenhuma medida, porque dá para acreditar nela.
+    agent-browser open "$BASE_URL$pagina" >/dev/null 2>&1
+    agent-browser wait "$ASSENTAR_MS" >/dev/null 2>&1
+    agent-browser a11y --json --tags "$TAGS" >"$arquivo" 2>/dev/null
 
     violacoes=$(node -e '
       const fs = require("node:fs");
