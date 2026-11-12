@@ -134,6 +134,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
             <FormField label="Nome completo" isRequired>
               <Input
                 required
+                autoComplete="name"
                 value={form.nome}
                 onChange={(event) => updateField("nome", event.target.value)}
               />
@@ -142,6 +143,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
               <Input
                 type="email"
                 required
+                autoComplete="email"
                 value={form.email}
                 onChange={(event) => updateField("email", event.target.value)}
               />
@@ -165,6 +167,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
               <Input
                 type="password"
                 required
+                autoComplete="new-password"
                 value={form.senha}
                 onChange={(event) => updateField("senha", event.target.value)}
               />

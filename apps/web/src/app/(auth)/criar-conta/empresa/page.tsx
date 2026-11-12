@@ -488,6 +488,7 @@ export default function CriarEmpresaPage(): JSX.Element {
             <FormField label="Nome" isRequired>
               <Input
                 required
+                autoComplete="name"
                 value={form.administrador.nome}
                 onChange={(event) => updateAdminField("nome", event.target.value)}
               />
@@ -496,6 +497,7 @@ export default function CriarEmpresaPage(): JSX.Element {
               <Input
                 type="email"
                 required
+                autoComplete="email"
                 value={form.administrador.email}
                 onChange={(event) => updateAdminField("email", event.target.value)}
               />
@@ -526,6 +528,7 @@ export default function CriarEmpresaPage(): JSX.Element {
               <Input
                 type="password"
                 required
+                autoComplete="new-password"
                 value={form.administrador.senha}
                 onChange={(event) => updateAdminField("senha", event.target.value)}
               />

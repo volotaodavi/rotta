@@ -211,12 +211,18 @@ export function ConviteTransportadoraForm(): JSX.Element {
 
       <form onSubmit={(event) => void handleCadastrar(event)} className="flex flex-col gap-4">
         <FormField label="Nome completo" isRequired>
-          <Input required value={nome} onChange={(event) => setNome(event.target.value)} />
+          <Input
+            required
+            autoComplete="name"
+            value={nome}
+            onChange={(event) => setNome(event.target.value)}
+          />
         </FormField>
         <FormField label="Email" isRequired>
           <Input
             type="email"
             required
+            autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
           />
@@ -229,6 +235,7 @@ export function ConviteTransportadoraForm(): JSX.Element {
           <Input
             type="password"
             required
+            autoComplete="new-password"
             value={senha}
             onChange={(event) => setSenha(event.target.value)}
           />
