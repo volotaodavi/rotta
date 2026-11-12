@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+#
+# Varredura de acessibilidade das páginas públicas do rottabr.com.br.
+#
+# ## Por que um script, e não uma linha de comando no PR
+#
+# A revisão de 10/11/2026 achou 11 problemas em 18 páginas. Nove deles
+# só aparecem num tamanho de tela: o banner de cookies cobre o campo com
+# foco a 390px e não a 1366px; o contraste do `Badge` sobre fundo escuro
+# é o mesmo nos dois. Uma varredura que esqueça um dos dois tamanhos
+# devolve "0 violações" e mente.
+#
+# Então o que é fácil de esquecer vira script: 18 páginas × 2 tamanhos,
+# sempre os mesmos, sempre na mesma ordem.
+#
+# ## Como rodar
+#
+#   pnpm dev:web                      # em outro terminal, porta 3000
+#   ./scripts/a11y-check.sh
+#
+#   BASE_URL=http://localhost:3100 ./scripts/a11y-check.sh
+#   TAGS=best-practice ./scripts/a11y-check.sh
+#
+# Sai com 1 se houver qualquer violação — serve para CI.
+#
+# ## Pré-requisito
+#
+#   npm install -g agent-browser && agent-browser install
+#
+# `agent-browser a11y` embute o axe-core (4.12.1 na escrita deste
+# arquivo) e roda a auditoria dentro da página, sem rede.
+
+set -uo pipefail
+
+BASE_URL="${BASE_URL:-http://localhost:3000}"
+
+# As tags WCAG que a Rotta se obriga a cumprir: A e AA de 2.0, 2.1 e
+# 2.2. `best-practice` fica DE FORA por padrão — é recomendação do axe,
+# não norma, e misturar as duas faz uma falha de norma passar
+# despercebida no meio de dez sugestões. Para ver as recomendações:
+# `TAGS=best-practice ./scripts/a11y-check.sh`.
+TAGS="${TAGS:-wcag2a,wcag2aa,wcag21a,wcag21aa,wcag22aa}"
+
+# As 18 páginas públicas. Área logada e app mobile têm revisão própria.
+PAGINAS=(
+  /
+  /governo
+  /planos
+  /faq
+  /contato
+  /suporte
+  /sobre
+  /entrar
+  /selecionar-perfil
+  /criar-conta
+  /criar-conta/pessoal
+  /criar-conta/empresa
+  /criar-conta/motorista
+  /criar-conta/profissional
+  /baixar-app
+  /legal
+  /legal/privacidade
+  /legal/marco-legal
+)
+
+# Desktop e celular. O segundo é onde moram as falhas de alvo de toque e
+# de elemento fixo cobrindo o foco.
+TAMANHOS=("1366 900" "390 844")
+
+SAIDA="${SAIDA:-$(mktemp -d)}"
+mkdir -p "$SAIDA"
+
+if ! command -v agent-browser >/dev/null 2>&1; then
+  echo "agent-browser não encontrado. Instale com:" >&2
+  echo "  npm install -g agent-browser && agent-browser install" >&2
+  exit 127
+fi
+
+if ! curl -sf -o /dev/null --max-time 10 "$BASE_URL/"; then
+  echo "Nada respondendo em $BASE_URL — suba o site com \`pnpm dev:web\`." >&2
+  exit 1
+fi
+
+echo "axe-core via agent-browser · tags: $TAGS"
+echo "base: $BASE_URL · relatórios em: $SAIDA"
+echo
+
+total=0
+paginas_com_falha=0
+
+for tamanho in "${TAMANHOS[@]}"; do
+  read -r largura altura <<<"$tamanho"
+  agent-browser set viewport "$largura" "$altura" >/dev/null 2>&1
+
+  echo "── ${largura}×${altura} ──────────────────────────────────"
+
+  for pagina in "${PAGINAS[@]}"; do
+    nome="$(echo "${largura}x${altura}${pagina}" | tr '/' '_')"
+    arquivo="$SAIDA/$nome.json"
+
+    agent-browser a11y "$BASE_URL$pagina" --json --tags "$TAGS" >"$arquivo" 2>/dev/null
+
+    violacoes=$(node -e '
+      const fs = require("node:fs");
+      try {
+        const r = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+        const v = r?.data?.violations ?? [];
+        // nodeCount, e não o número de regras: uma regra violada em seis
+        // elementos é seis coisas para consertar, não uma.
+        process.stdout.write(String(v.reduce((s, x) => s + (x.nodeCount ?? x.nodes?.length ?? 0), 0)));
+      } catch { process.stdout.write("erro"); }
+    ' "$arquivo")
+
+    if [ "$violacoes" = "erro" ]; then
+      printf '  %-28s ?  (auditoria não devolveu JSON)\n' "$pagina"
+      paginas_com_falha=$((paginas_com_falha + 1))
+    elif [ "$violacoes" != "0" ]; then
+      printf '  %-28s %s\n' "$pagina" "$violacoes"
+      node -e '
+        const fs = require("node:fs");
+        const r = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+        for (const v of r.data.violations) {
+          console.log(`      [${v.id}] ${v.help} (${v.nodeCount})`);
+          for (const n of v.nodes.slice(0, 3)) console.log(`        ${JSON.stringify(n.target)}`);
+        }
+      ' "$arquivo"
+      total=$((total + violacoes))
+      paginas_com_falha=$((paginas_com_falha + 1))
+    else
+      printf '  %-28s ok\n' "$pagina"
+    fi
+  done
+  echo
+done
+
+agent-browser close >/dev/null 2>&1 || true
+
+echo "══════════════════════════════════════════════════════"
+if [ "$total" -eq 0 ] && [ "$paginas_com_falha" -eq 0 ]; then
+  echo "0 violações em ${#PAGINAS[@]} páginas × ${#TAMANHOS[@]} tamanhos."
+  exit 0
+fi
+
+echo "$total violação(ões) em $paginas_com_falha página(s)."
+echo "Relatórios completos: $SAIDA"
+exit 1
