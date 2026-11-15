@@ -78,6 +78,15 @@ export const SITE_LOGO_PATH = "/brand/rotta-mark-512.png";
 /** Perfil novo (pedido do usuário 05/09/2026) — substitui o antigo @rotta_app. URL sem parâmetros de rastreio de QR code (?igsi=.../utm_source=qr): esses só fazem sentido numa campanha específica, nunca num link permanente do site. */
 export const SITE_INSTAGRAM_URL = "https://www.instagram.com/rottabr.com.br/";
 
+/**
+ * Abstartups (Associação Brasileira de Startups) — a Rotta é associada,
+ * e o rodapé diz isso. Sem `www` e sem barra final porque é assim que o
+ * site deles responde 200 direto, sem redirecionamento (conferido em
+ * 15/11/2026); um redirect a mais num link de rodapé é latência que
+ * ninguém precisa pagar.
+ */
+export const SITE_ABSTARTUPS_URL = "https://abstartups.com.br";
+
 /** Número real de WhatsApp da Rotta do Brasil (fornecido pelo usuário), em E.164 sem "+" — formato exigido pelo `wa.me`. */
 export const SITE_WHATSAPP_NUMBER = "5521997099557";
 

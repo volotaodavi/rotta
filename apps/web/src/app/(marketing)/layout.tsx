@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import type { Route } from "next";
 import type { ReactNode } from "react";
 
+import { AbstartupsBadge } from "@/components/abstartups-badge";
 import { LEGAL_FOOTER_LINKS } from "@/components/legal/legal-footer-links";
 import { MarketingNavDropdown } from "@/components/marketing-nav-dropdown";
 import { pillGhostSm, pillPrimarySm } from "@/components/pill-button-classes";
@@ -278,21 +279,30 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
       {/* Rodapé — permanece escuro (`.ink-scope`): o "azul profundo institucional" pedido pelo usuário. */}
       <footer className="ink-scope w-full">
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-8 px-6 py-14">
-          <div className="flex flex-col gap-3">
-            <RouteWordmark className="h-6 w-auto self-start" />
-            <p className="max-w-sm text-sm text-text-muted">
-              Tecnologia para o transporte escolar: conectamos responsáveis, motoristas, monitores e
-              transportadoras numa única plataforma.
-            </p>
-            <a
-              href={SITE_INSTAGRAM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label="Rotta no Instagram (abre em nova aba)"
-              className="mt-1 flex h-8 w-8 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-muted hover:text-text"
-            >
-              <InstagramGlyph className="h-4 w-4" />
-            </a>
+          {/*
+            Identidade à esquerda, filiação à direita. A metade direita
+            desta faixa estava vazia, então o selo não acrescenta altura
+            ao rodapé — ocupa espaço que já existia.
+          */}
+          <div className="flex flex-col gap-8 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex flex-col gap-3">
+              <RouteWordmark className="h-6 w-auto self-start" />
+              <p className="max-w-sm text-sm text-text-muted">
+                Tecnologia para o transporte escolar: conectamos responsáveis, motoristas, monitores
+                e transportadoras numa única plataforma.
+              </p>
+              <a
+                href={SITE_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Rotta no Instagram (abre em nova aba)"
+                className="mt-1 flex h-8 w-8 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-muted hover:text-text"
+              >
+                <InstagramGlyph className="h-4 w-4" />
+              </a>
+            </div>
+
+            <AbstartupsBadge />
           </div>
 
           {/*
