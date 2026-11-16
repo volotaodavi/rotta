@@ -121,7 +121,9 @@ export default function CriarContaPessoalPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6 py-10">
       <div className="flex flex-col gap-1 text-center">
-        <Typography variant="title">Área Pessoal</Typography>
+        <Typography variant="title" as="h1">
+          Área Pessoal
+        </Typography>
         <Typography variant="body" color="muted">
           Crie sua conta de Responsável. Depois de entrar, você cadastra seus filhos e busca
           transportadores no Marketplace.

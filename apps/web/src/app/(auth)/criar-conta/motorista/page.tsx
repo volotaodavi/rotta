@@ -23,7 +23,9 @@ export default function CriarContaMotoristaPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
       <div className="flex flex-col gap-1 text-center">
-        <Typography variant="title">Como você trabalha como motorista?</Typography>
+        <Typography variant="title" as="h1">
+          Como você trabalha como motorista?
+        </Typography>
         <Typography variant="bodySmall" color="muted">
           Isso muda como sua conta é criada, escolha a opção certa.
         </Typography>

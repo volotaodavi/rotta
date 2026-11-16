@@ -258,7 +258,9 @@ export default function CriarEmpresaPage(): JSX.Element {
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <div className="flex flex-col gap-2">
-          <Typography variant="title">Que bom! 🎉</Typography>
+          <Typography variant="title" as="h1">
+            Que bom! 🎉
+          </Typography>
           <Typography variant="body" color="muted">
             {requerContatoComercial
               ? `Sua conta foi criada com sucesso. Nossa equipe entrará em contato pelo número de celular indicado (${form.telefone || form.administrador.telefone}). Fique atento!`
@@ -275,7 +277,7 @@ export default function CriarEmpresaPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-10">
       <div className="flex flex-col gap-1">
-        <Typography variant="title">
+        <Typography variant="title" as="h1">
           {isMotoristaAutonomo ? "Cadastro de motorista autônomo" : "Criar empresa"}
         </Typography>
         {isMotoristaAutonomo && (

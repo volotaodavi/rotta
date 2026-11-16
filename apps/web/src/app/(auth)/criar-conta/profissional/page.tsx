@@ -12,7 +12,9 @@ export default function AreaProfissionalPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
       <div className="flex flex-col gap-1 text-center">
-        <Typography variant="title">Área Profissional</Typography>
+        <Typography variant="title" as="h1">
+          Área Profissional
+        </Typography>
       </div>
 
       <div className="flex flex-col gap-3">

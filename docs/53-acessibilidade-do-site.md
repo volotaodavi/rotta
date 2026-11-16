@@ -198,12 +198,41 @@ de norma passar despercebida no meio de dez sugestões. Por isso
 `(marketing)/layout.tsx` e não ganhou `<main>` próprio. Envolver o
 conteúdo abaixo do cabeçalho.
 
+**Corrigido.** `<main>` entre o `</header>` e o `<footer>` da própria
+página. O diff é grande porque a indentação do bloco inteiro desce um
+nível — nenhuma linha de conteúdo mudou.
+
 ### A11Y-07 — Telas de login e cadastro sem `<main>` e sem H1
 
 As 7 telas de `(auth)`. A `<div>` externa de `(auth)/layout.tsx:37` vira
 `<main>`, e o título de cada tela sai como `h1` via `as="h1"` no
 `Typography` — sem mudar o visual, porque `variant` e `as` são
 independentes nesse componente.
+
+**Corrigido.** `<header>` em volta do logotipo e `<main>` em volta do
+formulário em `(auth)/layout.tsx`; `as="h1"` nos nove títulos das sete
+telas (`/entrar` e `/criar-conta/empresa` têm dois cada — estados
+alternativos da mesma rota, nunca simultâneos). Guard:
+`apps/web/src/app/marcos-e-titulo.spec.ts`.
+
+Verificado em navegador real, não pela varredura: `/selecionar-perfil`
+manda quem nunca viu o onboarding para `/onboarding`, então o axe nunca
+vê a tela em si — com `rotta_onboarding_seen=1` no `localStorage`, as
+sete telas dão exatamente um `h1`, um `<main>` e um `<header>`.
+
+#### Encontrado aqui, fora do escopo desta entrega
+
+Ficam registrados para não se perderem — nenhum estava na lista do
+pedido, e esta entrega não mexe no que não foi listado:
+
+- **Números como `h1` no `/governo`**: "58", "34", "1.240" e "2.470"
+  saem como `h1` (`variant="display"`/`"headline"` têm `h1` por padrão).
+  Mesmo defeito do `A11Y-09`, outra página: a lista de títulos lida pelo
+  leitor de tela vira "58", "34", "1.240".
+- **Telas públicas de `(auth)` sem `h1`**: `/esqueci-senha`,
+  `/redefinir-senha`, `/convite`, `/convite/transportadora` e
+  `/onboarding`. Não entraram nas 18 páginas auditadas; a correção é a
+  mesma linha (`as="h1"`).
 
 ### A11Y-08 — Marcadores do mapa sem nome
 

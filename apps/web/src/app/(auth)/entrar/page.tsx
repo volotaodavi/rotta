@@ -151,7 +151,15 @@ export default function EntrarPage(): JSX.Element {
     return (
       <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
         <div className="flex flex-col gap-1 text-center">
-          <Typography variant="title">Escolha um perfil</Typography>
+          {/* `as="h1"`: este branch é um ESTADO da própria /entrar (depois
+              de o backend confirmar que a conta tem mais de uma empresa),
+              nunca aparece junto com "Entrar na Rotta" — então é o único
+              cabeçalho da página enquanto está na tela. `variant` e `as`
+              são independentes no `Typography`, logo nada muda no visual.
+              Ver `A11Y-07` em `docs/53-acessibilidade-do-site.md`. */}
+          <Typography variant="title" as="h1">
+            Escolha um perfil
+          </Typography>
           <Typography variant="bodySmall" color="muted">
             Sua conta está vinculada a mais de uma empresa.
           </Typography>
@@ -183,7 +191,9 @@ export default function EntrarPage(): JSX.Element {
       <LoginMascot mood={mood} />
 
       <div className="flex flex-col gap-1 text-center">
-        <Typography variant="title">Entrar na Rotta</Typography>
+        <Typography variant="title" as="h1">
+          Entrar na Rotta
+        </Typography>
       </div>
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">

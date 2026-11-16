@@ -35,11 +35,31 @@ export const metadata: Metadata = {
 export default function AuthLayout({ children }: { children: ReactNode }): JSX.Element {
   return (
     <div className="flex min-h-screen flex-col items-center bg-background px-4 py-10">
-      <Link href="/" className="mb-8">
-        <RouteMark className="h-10 w-10" />
-      </Link>
+      {/*
+        `<header>` em volta do logotipo pela mesma razão do `<main>`
+        abaixo: era o único elemento das 7 telas que ficava fora de
+        qualquer região, e quem navega por marcos não tinha como
+        alcançá-lo. Não muda nada no visual (as classes continuam no
+        `<Link>`), nem a ordem do Tab.
+      */}
+      <header className="mb-8">
+        <Link href="/">
+          <RouteMark className="h-10 w-10" />
+        </Link>
+      </header>
       <MarketingTracking metaPixelId={getMetaPixelId()} googleAdsId={getGoogleAdsId()} />
-      {children}
+      {/*
+        `<main>` em volta do formulário, nunca em volta do logotipo: o
+        logotipo é um atalho para a home, não o conteúdo da tela. Sem
+        esta marcação as 7 telas de `(auth)` não tinham região nenhuma,
+        e quem navega por marcos saltava direto para o rodapé
+        inexistente. A11Y-07, `docs/53`.
+
+        `w-full` porque cada página controla a própria largura
+        (`max-w-sm`, ou `max-w-2xl` no cadastro de Empresa) — sem isso o
+        `<main>` encolheria para o conteúdo e quebraria esses limites.
+      */}
+      <main className="flex w-full flex-col items-center">{children}</main>
     </div>
   );
 }
