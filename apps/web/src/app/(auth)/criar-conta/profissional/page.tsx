@@ -20,7 +20,9 @@ export default function AreaProfissionalPage(): JSX.Element {
       <div className="flex flex-col gap-3">
         <Link href="/criar-conta/empresa">
           <Card interactive className="px-6 py-5">
-            <Typography variant="subtitle">Criar Empresa</Typography>
+            <Typography variant="subtitle" as="h2">
+              Criar Empresa
+            </Typography>
             <Typography variant="bodySmall" color="muted">
               Cadastre sua empresa, MEI ou atue como motorista autônomo.
             </Typography>
@@ -29,7 +31,9 @@ export default function AreaProfissionalPage(): JSX.Element {
 
         <Link href="/convite">
           <Card interactive className="px-6 py-5">
-            <Typography variant="subtitle">Já fui convidado</Typography>
+            <Typography variant="subtitle" as="h2">
+              Já fui convidado
+            </Typography>
             <Typography variant="bodySmall" color="muted">
               Tenho um código de convite de uma empresa.
             </Typography>

@@ -52,10 +52,23 @@ function CardHeader({
   title,
   action,
   className,
+  as: Heading = "h3",
 }: {
   title: ReactNode;
   action?: ReactNode;
   className?: string;
+  /**
+   * Nível do título do cartão. Padrão `h3`, que é o certo dentro de uma
+   * seção com título próprio — e errado quando o cartão vem logo
+   * debaixo do `h1` da página, porque aí o leitor de tela anuncia um
+   * nível que não existe (`A11Y-10`,
+   * `docs/53-acessibilidade-do-site.md`; WCAG 1.3.1).
+   *
+   * Só o nível muda: o tamanho e o peso continuam fixos no `className`
+   * abaixo, de propósito — o lugar do cartão na hierarquia do documento
+   * não é a mesma pergunta que o tamanho da letra dele.
+   */
+  as?: "h2" | "h3" | "h4";
 }) {
   return (
     <div
@@ -64,7 +77,7 @@ function CardHeader({
         className,
       )}
     >
-      <h3 className="text-xl font-semibold leading-7 text-text">{title}</h3>
+      <Heading className="text-xl font-semibold leading-7 text-text">{title}</Heading>
       {action}
     </div>
   );

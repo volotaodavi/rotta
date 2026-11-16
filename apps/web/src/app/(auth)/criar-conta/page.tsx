@@ -20,7 +20,9 @@ export default function CriarContaPage(): JSX.Element {
       <div className="flex flex-col gap-3">
         <Link href="/criar-conta/profissional">
           <Card interactive className="px-6 py-5">
-            <Typography variant="subtitle">Área Profissional</Typography>
+            <Typography variant="subtitle" as="h2">
+              Área Profissional
+            </Typography>
             <Typography variant="bodySmall" color="muted">
               Empresa, MEI ou motorista autônomo.
             </Typography>
@@ -29,7 +31,9 @@ export default function CriarContaPage(): JSX.Element {
 
         <Link href="/criar-conta/pessoal">
           <Card interactive className="px-6 py-5">
-            <Typography variant="subtitle">Área Pessoal</Typography>
+            <Typography variant="subtitle" as="h2">
+              Área Pessoal
+            </Typography>
             <Typography variant="bodySmall" color="muted">
               Responsável de aluno(s): crie sua conta direto ou use um código de convite.
             </Typography>

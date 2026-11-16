@@ -291,6 +291,31 @@ tela anunciar "navegação" três vezes sem distinguir: `aria-label="Menu
 principal"` no de `(marketing)/layout.tsx:187`, e rótulo próprio nos
 outros dois.
 
+**Corrigido.** Os três `<nav>` ganharam nome ("Menu principal" no do
+desktop e no do celular, que nunca aparecem juntos; "Links do rodapé" no
+terceiro).
+
+Os saltos de nível vinham de dois componentes que desenham `h3` por
+padrão — `Typography variant="subtitle"` e `Card.Header`. Onde o cartão
+é filho direto do título da página, o `h3` virou `h2` pelo `as` do
+componente: `/planos`, `/faq`, `/suporte`, `/legal` e as quatro telas de
+`/criar-conta`. `Card.Header` não tinha `as`; ganhou um, com `h3` de
+padrão — só o nível muda, o tamanho e o peso continuam fixos no
+componente, porque o lugar do cartão na hierarquia do documento não é a
+mesma pergunta que o tamanho da letra dele.
+
+Nas quatro telas de `/criar-conta` o salto só existia depois do
+`A11Y-07`: antes o título da página era `h2` e os cartões `h3`, uma
+ordem válida sobre uma página sem `h1` nenhum. Dar `h1` à página sem
+subir os cartões teria trocado um defeito por outro.
+
+Aproveitando o mesmo assunto, a busca da Documentação Rotta
+(`legal-search.tsx`) passou de `<div>` a `<search>`: ficava fora do
+`<main>` e do `<aside>`, e era o único pedaço daquelas páginas em região
+nenhuma. Só o papel muda, o elemento não traz estilo.
+
+Guard: `apps/web/src/app/marcos-e-titulo.spec.ts`.
+
 ### A11Y-11 — Texto alternativo repetido no logo
 
 No cabeçalho de `/legal`, `RouteMark` tem `alt="Rotta"` e logo ao lado

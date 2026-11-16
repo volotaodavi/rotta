@@ -107,6 +107,51 @@ describe("landing-product-mockups.tsx", () => {
   });
 });
 
+describe("(marketing)/layout.tsx", () => {
+  /**
+   * Três `<nav>` na mesma página sem nome faziam o leitor de tela
+   * anunciar "navegação" três vezes, sem distinguir o menu do site do
+   * menu do celular e do rodapé (`A11Y-10`).
+   */
+  const fonte = lerFonte("(marketing)/layout.tsx");
+
+  it("todo <nav> tem nome", () => {
+    // Janela larga de propósito: o `<nav>` do menu mobile tem um
+    // `className` com template literal de várias linhas.
+    const navs = fonte.match(/<nav[\s\S]{0,500}?>/g) ?? [];
+    expect(navs.length).toBe(3);
+    for (const nav of navs) {
+      expect(nav).toMatch(/aria-label="[^"]+"/);
+    }
+  });
+});
+
+describe("ordem de títulos", () => {
+  /**
+   * `Typography variant="subtitle"` e `Card.Header` desenham `h3`. Logo
+   * abaixo do `h1` de uma página isso é um salto de nível — o leitor de
+   * tela anuncia uma seção intermediária que não existe (`A11Y-10`).
+   * Nas páginas abaixo o cartão é filho direto do título da página, e
+   * por isso cada uma passa `as="h2"` explicitamente.
+   */
+  const PAGINAS: { arquivo: string; quantos: number }[] = [
+    { arquivo: "(marketing)/planos/page.tsx", quantos: 1 },
+    { arquivo: "(marketing)/suporte/page.tsx", quantos: 2 },
+    { arquivo: "(marketing)/faq/faq-accordion.tsx", quantos: 1 },
+    { arquivo: "legal/page.tsx", quantos: 1 },
+    { arquivo: "(auth)/criar-conta/page.tsx", quantos: 2 },
+    { arquivo: "(auth)/criar-conta/motorista/page.tsx", quantos: 2 },
+    { arquivo: "(auth)/criar-conta/profissional/page.tsx", quantos: 2 },
+    { arquivo: "(auth)/criar-conta/empresa/page.tsx", quantos: 3 },
+  ];
+
+  it.each(PAGINAS)("$arquivo sobe os cartões para h2", ({ arquivo, quantos }) => {
+    const fonte = lerFonte(arquivo);
+    expect((fonte.match(/as="h2"/g) ?? []).length).toBe(quantos);
+    expect(fonte).not.toMatch(/variant="subtitle">/);
+  });
+});
+
 describe("<main>", () => {
   /**
    * `(marketing)/layout.tsx` já tinha o seu. Estes dois não: a área de

@@ -290,7 +290,7 @@ export default function CriarEmpresaPage(): JSX.Element {
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6">
         <Card>
-          <Card.Header title={isMotoristaAutonomo ? "Seus dados" : "Dados da empresa"} />
+          <Card.Header title={isMotoristaAutonomo ? "Seus dados" : "Dados da empresa"} as="h2" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               label={isMotoristaAutonomo ? "Nome completo" : "Razão social"}
@@ -408,7 +408,7 @@ export default function CriarEmpresaPage(): JSX.Element {
         </Card>
 
         <Card>
-          <Card.Header title="Endereço" />
+          <Card.Header title="Endereço" as="h2" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               label="CEP"
@@ -485,6 +485,7 @@ export default function CriarEmpresaPage(): JSX.Element {
         <Card>
           <Card.Header
             title={isMotoristaAutonomo ? "Acesso à sua conta" : "Seus dados (administrador)"}
+            as="h2"
           />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Nome" isRequired>

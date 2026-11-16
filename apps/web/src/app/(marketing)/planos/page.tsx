@@ -32,7 +32,7 @@ export default function PlanosPage(): JSX.Element {
       </div>
 
       <Card className="w-full max-w-sm">
-        <Card.Header title="Starter" />
+        <Card.Header title="Starter" as="h2" />
         <Card.Body className="flex flex-col gap-4">
           <div>
             <Typography variant="display" as="span">

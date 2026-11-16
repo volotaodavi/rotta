@@ -184,7 +184,13 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             e "Sobre a Rotta" quebram no meio quando a barra aperta, o
             que é pior que a barra apertada.
           */}
-          <nav className="hidden items-center gap-7 lg:flex">
+          {/*
+            Os três `<nav>` desta página precisam de nome próprio
+            (A11Y-10, `docs/53-acessibilidade-do-site.md`): sem isso o
+            leitor de tela anuncia "navegação" três vezes e a pessoa não
+            tem como saber qual é o menu do site e qual é o rodapé.
+          */}
+          <nav aria-label="Menu principal" className="hidden items-center gap-7 lg:flex">
             <MarketingNavDropdown rotulo="Para quem" links={PARA_QUEM_LINKS} />
             {NAV_LINKS.map((link) => (
               <Link
@@ -226,6 +232,7 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
         */}
         <nav
           id="menu-mobile"
+          aria-label="Menu principal"
           className={`flex-col gap-1 border-t border-border bg-background px-6 py-4 lg:hidden ${
             menuAberto ? "flex" : "hidden"
           }`}
@@ -306,7 +313,10 @@ export default function MarketingLayout({ children }: { children: ReactNode }): 
             "Suporte" abre "Segurança". É o rodapé inteiro de quem
             precisa de ajuda.
           */}
-          <nav className="flex flex-wrap gap-x-8 gap-y-4 border-t border-border pt-8">
+          <nav
+            aria-label="Links do rodapé"
+            className="flex flex-wrap gap-x-8 gap-y-4 border-t border-border pt-8"
+          >
             {FOOTER_LINKS.map((link) => (
               <Link
                 key={link.label}
