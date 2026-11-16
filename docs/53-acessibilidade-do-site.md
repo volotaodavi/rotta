@@ -428,3 +428,19 @@ parece estável.
 
 Em todas, o padrão é o mesmo: uma medida que às vezes diz "0" é pior
 que nenhuma medida, porque dá para acreditar nela.
+
+### Antes e depois
+
+Em `docs/prints/acessibilidade/`, três pares:
+
+| item                                                                                                      | print                                      |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `A11Y-01` — campo com foco e o banner de cookies (390×844, `/criar-conta/empresa`, mesmo 6º Tab nos dois) | `a11y-01-foco-e-banner-{antes,depois}.png` |
+| `A11Y-02` — selo sobre o herói escuro do `/governo`                                                       | `a11y-02-selo-no-heroi-{antes,depois}.png` |
+| `A11Y-03` — link dentro de texto corrido no `/contato`                                                    | `a11y-03-link-no-texto-{antes,depois}.png` |
+
+No par do `A11Y-01` é o mesmo campo (Email) no mesmo ponto da navegação
+por teclado: antes, 93% dele fica atrás do banner; depois, inteiro
+acima. O "depois" também mostra, de lambuja, as outras duas correções
+que vivem ali — o texto curto do banner no celular e o sublinhado da
+"Política de Cookies".
