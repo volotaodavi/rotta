@@ -107,8 +107,20 @@ export function HeroMapDemo(): JSX.Element {
           padrão continua valendo, onde o volume de uso justifica a
           CARTO e um carimbo não custa um cliente.
         */}
-        <RottaMap markers={markers} route={routeLine} initialZoom={13.5} basemap="osm" />
+        {/*
+          `decorativo` (A11Y-08, `docs/53`): esta van, estas paradas e
+          estas ruas são exemplo. Sem isso, quem usa leitor de tela
+          recebia na primeira tela do site um mapa interativo com quatro
+          marcadores tabuláveis e nomes de lugares que não têm nada a
+          ver com a cidade de quem está lendo. O texto abaixo diz, em
+          uma frase, o que o mapa está mostrando.
+        */}
+        <RottaMap markers={markers} route={routeLine} initialZoom={13.5} basemap="osm" decorativo />
       </div>
+      <p className="sr-only">
+        Demonstração: um mapa com a van escolar andando em tempo real entre as paradas de uma rota
+        de exemplo, do ponto de partida até a escola.
+      </p>
       {/*
         Cartão flutuante (pedido do usuário 02/09/2026: "Transporte em
         movimento", "Rota 12", "Chegada prevista 07:52") — "Rota 12" e o

@@ -243,6 +243,22 @@ ilustrativo, marcar o mapa como decorativo (`aria-hidden`, fora da ordem
 do Tab) e manter um texto alternativo curto ao lado. Sem quebrar o uso
 no painel nem no `apps/mobile`.
 
+**Corrigido.** `nomearMarcador` aplica `marker.titulo` como `aria-label`
+nos dois caminhos do laço (marcador novo e marcador que só mudou de
+posição), e antes do `addTo` — o MapLibre só batiza marcador sem nome, e
+o nome dele é a string genérica "Map marker". O mapa da hero recebeu a
+propriedade nova `decorativo`, que aplica `aria-hidden` **e** `inert`:
+só o primeiro deixaria os marcadores tabuláveis e anônimos, pior que não
+mexer. O texto alternativo é um `<p className="sr-only">` logo abaixo.
+
+Guard: `apps/web/src/components/mapa-decorativo.spec.tsx`. O primeiro
+teste dele renderiza de verdade, porque `inert` depende de o React da
+versão em uso emitir o atributo (no 18 um booleano em atributo
+desconhecido era descartado em silêncio).
+
+`apps/mobile` não entra: nenhuma tela dele tem mapa ilustrativo, e a
+revisão de acessibilidade do app é separada.
+
 ### A11Y-09 — Números como títulos na home
 
 "12", "9" e "1" (Rotas ativas, Motoristas, Ocorrências) saem como `h2`
