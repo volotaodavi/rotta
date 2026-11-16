@@ -326,6 +326,13 @@ Cuidado: `RouteMark` é usado em outros lugares onde o nome NÃO está
 escrito ao lado, e ali o `alt` precisa continuar. A correção é no ponto
 de uso, não no componente.
 
+**Corrigido.** `RouteMark` ganhou `decorativo`, com `false` de padrão, e
+só `legal/layout.tsx` passa. O `(auth)` e o `/404` mostram o símbolo
+sozinho, e ali ele é a única identificação da marca — apagar o `alt`
+tiraria informação de verdade. Guard nos dois sentidos em
+`apps/web/src/app/marcos-e-titulo.spec.ts`: o ponto de uso de `/legal`
+precisa ser decorativo, e os outros dois precisam continuar nomeados.
+
 ---
 
 ## Anotado, não corrigido

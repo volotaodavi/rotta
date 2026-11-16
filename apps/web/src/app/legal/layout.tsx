@@ -29,7 +29,12 @@ export default function LegalLayout({ children }: { children: ReactNode }): JSX.
       <header className="sticky top-0 z-20 border-b border-border bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
           <Link href="/" className="flex items-center gap-2 text-base font-bold tracking-tight">
-            <RouteMark className="h-7 w-7" />
+            {/*
+              `decorativo` porque a palavra "Rotta" está logo aqui ao
+              lado: sem isso o link inteiro é anunciado como "Rotta
+              Rotta" (A11Y-11, `docs/53-acessibilidade-do-site.md`).
+            */}
+            <RouteMark className="h-7 w-7" decorativo />
             Rotta
           </Link>
           <Typography variant="overline" color="muted" className="hidden sm:block">

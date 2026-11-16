@@ -165,3 +165,23 @@ describe("<main>", () => {
     expect(fonte).toContain("</main>");
   });
 });
+
+describe("RouteMark", () => {
+  /**
+   * No cabeçalho da Documentação Rotta o símbolo tem a palavra "Rotta"
+   * escrita ao lado, e com `alt="Rotta"` o link inteiro era anunciado
+   * como "Rotta Rotta" (`A11Y-11`).
+   */
+  it("é decorativo onde a palavra já está escrita", () => {
+    const fonte = lerFonte("legal/layout.tsx");
+    expect(fonte).toMatch(/<RouteMark[^>]*decorativo/);
+  });
+
+  it("continua nomeado onde é a única marca da tela", () => {
+    // `(auth)` e o 404 mostram o símbolo sozinho: lá apagar o `alt`
+    // tiraria informação de verdade.
+    for (const arquivo of ["(auth)/layout.tsx", "not-found.tsx"]) {
+      expect(lerFonte(arquivo)).not.toMatch(/<RouteMark[^>]*decorativo/);
+    }
+  });
+});
