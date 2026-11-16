@@ -4,6 +4,7 @@ import { Button } from "@rotta/ui/web";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 
+import { getCookieConsent, subscribeCookieConsent } from "@/lib/cookie-consent";
 import { isStandalone } from "@/lib/pwa";
 
 /** `beforeinstallprompt` (Chrome/Edge/Android) não está no lib.dom.d.ts padrão do TS — tipagem mínima do que este componente de fato usa. */
@@ -60,9 +61,33 @@ function dismissForSession(): void {
  * site, Landing Page incluída (nenhuma rota o desliga), pra qualquer
  * visitante que ainda não tenha o app instalado.
  */
-export function InstallAppPrompt(): JSX.Element | null {
+export function InstallAppPrompt({
+  temRastreamento = false,
+}: {
+  /**
+   * Se o site tem medição de terceiro configurada — isto é, se o banner
+   * de cookies PODE aparecer (`app/layout.tsx`). Com ele aberto, este
+   * convite fica calado: são dois elementos fixos empilhados no rodapé
+   * de uma tela de 844px, e o de baixo é o que a lei exige
+   * (`A11Y-01`, `docs/53-acessibilidade-do-site.md`).
+   *
+   * Assim que a pessoa aceita ou recusa, o banner some e o convite
+   * aparece — daí o `subscribeCookieConsent` abaixo, e não uma leitura
+   * única na montagem.
+   */
+  temRastreamento?: boolean;
+} = {}): JSX.Element | null {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [visible, setVisible] = useState(false);
+  const [bannerDeCookiesAberto, setBannerDeCookiesAberto] = useState(false);
+
+  useEffect(() => {
+    if (!temRastreamento) return;
+
+    const reavaliar = (): void => setBannerDeCookiesAberto(getCookieConsent() === null);
+    reavaliar();
+    return subscribeCookieConsent(reavaliar);
+  }, [temRastreamento]);
 
   useEffect(() => {
     if (isStandalone() || isDismissedThisSession()) return;
@@ -86,7 +111,7 @@ export function InstallAppPrompt(): JSX.Element | null {
     };
   }, []);
 
-  if (!visible || !deferredPrompt) return null;
+  if (!visible || !deferredPrompt || bannerDeCookiesAberto) return null;
 
   async function handleInstall(): Promise<void> {
     if (!deferredPrompt) return;

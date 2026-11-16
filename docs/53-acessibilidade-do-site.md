@@ -90,6 +90,40 @@ de 844px), e encurtar o texto do banner no celular.
 **Arquivos**: `components/cookie-consent-banner.tsx`,
 `providers/install-app-prompt.tsx`.
 
+**Corrigido**, nas três frentes.
+
+O banner passou a escrever a própria altura em
+`--altura-do-banner-de-cookies` no `<html>` e usá-la como
+`scroll-padding-bottom`, junto do `padding` do `body` que já existia. O
+convite "Instale o app" espera a decisão sobre os cookies — recebe
+`temRastreamento` do layout raiz e assina `subscribeCookieConsent`, para
+reaparecer no instante em que o banner sai, sem recarregar a página. E o
+texto do banner tem agora uma versão curta no celular; o que sai é a
+frase sobre anúncios e o "você pode aceitar ou recusar", que os dois
+botões ao lado dizem melhor. O link para a Política de Cookies fica nos
+dois.
+
+**Medido em navegador real**, 390×844, `/criar-conta/empresa` (o
+formulário mais longo do site), avançando com Tab por todos os campos e
+comparando o `getBoundingClientRect` de cada um com o do banner:
+
+|                                  | antes               | depois |
+| -------------------------------- | ------------------- | ------ |
+| altura do banner                 | 177px               | 137px  |
+| `scroll-padding-bottom`          | `auto`              | 137px  |
+| campos que param atrás do banner | 8 (seis deles 100%) | 0      |
+
+A evidência original do pedido citava `/criar-conta/pessoal`. Nessa tela
+o formulário é curto o bastante para a página inteira caber em pouco
+mais de uma rolagem, e hoje ela não reproduz o defeito — por isso a
+medição acima usa a tela de Empresa, onde ele aparece inteiro.
+
+Guard: `apps/web/src/components/foco-atras-do-banner.spec.tsx`. A
+rolagem em si não dá para testar no jsdom; o que o teste protege é o que
+uma regressão apagaria em silêncio — a propriedade deixar de ser
+escrita, ou de ser limpa quando o banner sai, e o convite voltar a
+aparecer por cima dele.
+
 ### A11Y-02 — Contraste insuficiente em `/governo`
 
 **Critério**: WCAG 1.4.3 Contrast (Minimum), nível AA — mínimo 4,5:1

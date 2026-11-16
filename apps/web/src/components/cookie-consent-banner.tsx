@@ -77,8 +77,24 @@ export function CookieConsentBanner({
     const elemento = bannerRef.current;
     if (!elemento) return;
 
+    const raiz = document.documentElement;
+
     const aplicar = (): void => {
-      document.body.style.paddingBottom = `${elemento.offsetHeight}px`;
+      const altura = elemento.offsetHeight;
+      document.body.style.paddingBottom = `${altura}px`;
+      // `scroll-padding-bottom` resolve o campo NO MEIO da página
+      // (A11Y-01, `docs/53-acessibilidade-do-site.md`; WCAG 2.4.11
+      // Focus Not Obscured). O `padding` do `body` acima só alcança o
+      // último elemento: quando o Tab chega a um campo lá no meio, o
+      // navegador rola esse campo para a área visível — e, para ele, a
+      // área visível inclui os 200px que o banner cobre. A 390×844, no
+      // cadastro, o campo Senha ficava 66% coberto e a caixa "Li e
+      // aceito os Termos", 100%.
+      //
+      // Isto não intercepta evento nenhum: é a propriedade que o
+      // próprio navegador consulta antes de rolar algo para o foco.
+      raiz.style.setProperty("--altura-do-banner-de-cookies", `${altura}px`);
+      raiz.style.scrollPaddingBottom = "var(--altura-do-banner-de-cookies)";
     };
     aplicar();
 
@@ -88,6 +104,8 @@ export function CookieConsentBanner({
     return () => {
       observador.disconnect();
       document.body.style.paddingBottom = "";
+      raiz.style.removeProperty("--altura-do-banner-de-cookies");
+      raiz.style.scrollPaddingBottom = "";
     };
   }, [temRastreamento, mounted, decided]);
 
@@ -106,10 +124,28 @@ export function CookieConsentBanner({
       className="fixed inset-x-0 bottom-0 z-toast border-t border-border bg-surface-elevated p-4 shadow-lg"
     >
       <div className="mx-auto flex max-w-4xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        {/*
+          Dois textos, um por tamanho de tela (A11Y-01). O longo, num
+          aparelho de 390px, quebra em cinco linhas e faz a faixa passar
+          de 200px — um quarto da tela. Encurtar é o que diminui a
+          própria área coberta, e nenhuma informação se perde: o que sai
+          é a frase sobre anúncios e a frase "você pode aceitar ou
+          recusar", que os dois botões ao lado já dizem melhor. O dever
+          de informar continua cumprido pelo link, que fica nos dois.
+
+          O texto escondido é `display: none`, então o leitor de tela
+          nunca encontra os dois.
+        */}
         <p className="text-sm text-text-muted">
-          Usamos cookies de medição para entender como o site é usado e para saber quais anúncios
-          trazem gente de verdade. Nada de dado de família, aluno ou veículo é enviado. Você pode
-          aceitar ou recusar: veja detalhes na{" "}
+          <span className="sm:hidden">
+            Usamos cookies de medição para entender como o site é usado. Nada de dado de família,
+            aluno ou veículo é enviado. Detalhes na{" "}
+          </span>
+          <span className="hidden sm:inline">
+            Usamos cookies de medição para entender como o site é usado e para saber quais anúncios
+            trazem gente de verdade. Nada de dado de família, aluno ou veículo é enviado. Você pode
+            aceitar ou recusar: veja detalhes na{" "}
+          </span>
           <Link href="/legal/cookies" className={textLinkVariants()}>
             Política de Cookies
           </Link>
