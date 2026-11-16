@@ -138,6 +138,16 @@ for tamanho in "${TAMANHOS[@]}"; do
     # nenhuma medida, porque dá para acreditar nela.
     agent-browser open "$BASE_URL$pagina" >/dev/null 2>&1
     agent-browser wait "$ASSENTAR_MS" >/dev/null 2>&1
+    # Esperar as fontes antes de medir.
+    #
+    # `target-size` mede a DISTÂNCIA entre dois alvos, e a distância
+    # entre dois links do cabeçalho depende da largura do texto deles —
+    # que muda quando a fonte real substitui a de sistema. Enquanto isso
+    # não acontecia, a varredura acusava os links do menu numa página e
+    # não na seguinte, com o mesmo cabeçalho nas duas: 15 violações em
+    # `/sobre` numa passada, 11 em `/suporte` na outra, zero nas
+    # dezesseis restantes. Não era o site mudando; era a régua.
+    agent-browser eval 'document.fonts.ready.then(() => "ok")' >/dev/null 2>&1
     # A pagina de fato renderizou? Uma tela presa no spinner nao viola
     # regra nenhuma, e o axe devolve "0" com toda a honestidade do
     # mundo sobre uma pagina que ninguem conseguiria usar.
@@ -146,10 +156,35 @@ for tamanho in "${TAMANHOS[@]}"; do
     # `(auth)` ficaram no "Carregando" para sempre, e a varredura deu
     # ok para sete paginas seguidas. Um "0 violacoes" assim e pior que
     # um numero alto, porque ele encerra a investigacao.
-    render=$(agent-browser eval 'JSON.stringify({t:document.body.innerText.trim().length,c:document.querySelectorAll("[role=status][aria-label*=arregando]").length})' 2>/dev/null \
-      | node -e '''let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const o=JSON.parse(JSON.parse(s));process.stdout.write(o.t<"'"$MINIMO_DE_TEXTO"'"*1||o.c>0?"vazia":"ok")}catch{process.stdout.write("?")}})''')
+    #
+    # O `<title>` entra no mesmo guarda. Toda rota deste site declara
+    # metadata, então um `<title>` vazio nunca é o site: é a auditoria
+    # tendo pegado o documento no meio da troca de rota. Sem isto, a
+    # varredura relatava `document-title` numa página diferente a cada
+    # passada — um defeito que não existe, no lugar errado.
+    render=$(agent-browser eval 'JSON.stringify({t:document.body.innerText.trim().length,c:document.querySelectorAll("[role=status][aria-label*=arregando]").length,ti:document.title.trim().length})' 2>/dev/null \
+      | node -e '''let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const o=JSON.parse(JSON.parse(s));process.stdout.write(o.t<"'"$MINIMO_DE_TEXTO"'"*1||o.c>0||o.ti===0?"vazia":"ok")}catch{process.stdout.write("?")}})''')
 
     agent-browser a11y --json --tags "$TAGS" >"$arquivo" 2>/dev/null
+
+    # `document-title` transitório: mede de novo, uma vez.
+    #
+    # Numa varredura das 18 rotas seguidas, o `next dev` troca de rota
+    # mais rápido do que resolve a metadata da nova, e por um instante o
+    # documento fica sem `<title>`. O axe estava certo sobre o que viu;
+    # o site não. Era sempre UMA página por passada, e uma diferente a
+    # cada passada — e a mesma rota, aberta sozinha, nunca falha.
+    #
+    # A regra continua valendo: a segunda medida é que conta, e se o
+    # `<title>` estivesse mesmo faltando, `document.title` viria vazio
+    # aqui e a página cairia no guarda de "não renderizou" acima.
+    if grep -q '"document-title"' "$arquivo" 2>/dev/null; then
+      tem_titulo=$(agent-browser eval 'String(document.title.trim().length > 0)' 2>/dev/null | tr -d '"')
+      if [ "$tem_titulo" = "true" ]; then
+        agent-browser wait 600 >/dev/null 2>&1
+        agent-browser a11y --json --tags "$TAGS" >"$arquivo" 2>/dev/null
+      fi
+    fi
 
     if [ "$render" = "vazia" ]; then
       printf '  %-28s NAO RENDERIZOU (spinner ou tela em branco)\n' "$pagina"
