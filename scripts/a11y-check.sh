@@ -71,6 +71,11 @@ TAMANHOS=("1366 900" "390 844")
 # `next dev` deste contêiner; num build de producao da para baixar.
 ASSENTAR_MS="${ASSENTAR_MS:-1200}"
 
+# Abaixo disto, o relatorio descreve um documento vazio, nao uma
+# pagina: `passes` e quantas regras a pagina satisfez, e qualquer uma
+# das 18 passa de dez. Ver a nota no laco.
+MINIMO_DE_REGRAS_SATISFEITAS="${MINIMO_DE_REGRAS_SATISFEITAS:-6}"
+
 # Menos texto visivel que isto e sinal de pagina que nao renderizou.
 # A mais curta das 18 (`/baixar-app`) passa de 400 caracteres.
 MINIMO_DE_TEXTO="${MINIMO_DE_TEXTO:-200}"
@@ -136,18 +141,51 @@ for tamanho in "${TAMANHOS[@]}"; do
     # hidratar, e um elemento que ainda não existe não viola regra
     # nenhuma. Uma medida instável que às vezes diz "0" é pior que
     # nenhuma medida, porque dá para acreditar nela.
+    # Reafirmar o tamanho da janela A CADA página, e não uma vez por
+    # bloco. Sem isto a varredura relatava, a 390×844, os links
+    # `hidden lg:flex` do cabeçalho — elementos que naquele tamanho são
+    # `display: none`. Não eram alvos pequenos: era o layout de desktop
+    # ainda no lugar, porque o `open` recarrega a página e a janela
+    # voltava ao tamanho padrão antes de o CSS do celular valer.
+    agent-browser set viewport "$largura" "$altura" >/dev/null 2>&1
     agent-browser open "$BASE_URL$pagina" >/dev/null 2>&1
     agent-browser wait "$ASSENTAR_MS" >/dev/null 2>&1
-    # Esperar as fontes antes de medir.
+    # Esperar a página PARAR DE MEXER, e não um tempo fixo.
     #
-    # `target-size` mede a DISTÂNCIA entre dois alvos, e a distância
-    # entre dois links do cabeçalho depende da largura do texto deles —
-    # que muda quando a fonte real substitui a de sistema. Enquanto isso
-    # não acontecia, a varredura acusava os links do menu numa página e
-    # não na seguinte, com o mesmo cabeçalho nas duas: 15 violações em
-    # `/sobre` numa passada, 11 em `/suporte` na outra, zero nas
-    # dezesseis restantes. Não era o site mudando; era a régua.
-    agent-browser eval 'document.fonts.ready.then(() => "ok")' >/dev/null 2>&1
+    # `target-size` mede a distância entre dois alvos, e os links do
+    # cabeçalho têm 20px de altura: eles passam na regra pelo espaço em
+    # volta, não pelo tamanho. Qualquer medida tirada enquanto o
+    # layout ainda se acomoda — fonte real substituindo a de sistema,
+    # rota anterior ainda saindo da tela — acusa os mesmos links de um
+    # cabeçalho que é idêntico nas 18 páginas. E acusava: 15 violações
+    # em `/sobre` numa passada, 11 em `/suporte` na outra, zero nas
+    # dezesseis restantes, sem nada ter mudado no site.
+    #
+    # Esperar `document.fonts.ready` sozinho não resolveu (uma passada
+    # limpa, a seguinte com as 15 de volta): com a máquina ocupada, o
+    # que ainda estava em movimento era o resto. Então o critério passou
+    # a ser o próprio movimento: duas amostras iguais do tamanho do
+    # documento e da contagem de elementos interativos, a 250ms de
+    # distância, até 5s. Fora de carga isso devolve na primeira
+    # comparação.
+    agent-browser eval '(async () => {
+      const dormir = (ms) => new Promise((r) => setTimeout(r, ms));
+      const impressao = () =>
+        [
+          document.body.scrollHeight,
+          document.querySelectorAll("a,button,input,select,textarea").length,
+          document.title.length,
+        ].join("|");
+      await document.fonts.ready;
+      let anterior = impressao();
+      for (let i = 0; i < 20; i += 1) {
+        await dormir(250);
+        const atual = impressao();
+        if (atual === anterior) return "estavel";
+        anterior = atual;
+      }
+      return "instavel";
+    })()' >/dev/null 2>&1
     # A pagina de fato renderizou? Uma tela presa no spinner nao viola
     # regra nenhuma, e o axe devolve "0" com toda a honestidade do
     # mundo sobre uma pagina que ninguem conseguiria usar.
@@ -167,23 +205,48 @@ for tamanho in "${TAMANHOS[@]}"; do
 
     agent-browser a11y --json --tags "$TAGS" >"$arquivo" 2>/dev/null
 
-    # `document-title` transitório: mede de novo, uma vez.
+    # Auditoria que pegou documento quase vazio: mede de novo, uma vez.
     #
-    # Numa varredura das 18 rotas seguidas, o `next dev` troca de rota
-    # mais rápido do que resolve a metadata da nova, e por um instante o
-    # documento fica sem `<title>`. O axe estava certo sobre o que viu;
-    # o site não. Era sempre UMA página por passada, e uma diferente a
-    # cada passada — e a mesma rota, aberta sozinha, nunca falha.
+    # O guarda acima olha o DOM antes da auditoria, e não é suficiente:
+    # entre uma coisa e outra o `next dev` ainda recarrega a página. O
+    # próprio relatório denuncia quando isso acontece — uma das 18
+    # páginas, com o site de pé, voltava com `passes: 3` e uma única
+    # violação, `document-title`, contra `passes: 24` da mesma rota na
+    # medida boa. Não era uma página sem `<title>`: era um documento
+    # sem nada, e o axe descreveu com honestidade o que viu.
     #
-    # A regra continua valendo: a segunda medida é que conta, e se o
-    # `<title>` estivesse mesmo faltando, `document.title` viria vazio
-    # aqui e a página cairia no guarda de "não renderizou" acima.
-    if grep -q '"document-title"' "$arquivo" 2>/dev/null; then
-      tem_titulo=$(agent-browser eval 'String(document.title.trim().length > 0)' 2>/dev/null | tr -d '"')
-      if [ "$tem_titulo" = "true" ]; then
-        agent-browser wait 600 >/dev/null 2>&1
-        agent-browser a11y --json --tags "$TAGS" >"$arquivo" 2>/dev/null
-      fi
+    # `passes` é quantas regras a página SATISFEZ. Qualquer página real
+    # deste site passa de dez; três significa que não havia página.
+    passes=$(node -e '
+      const fs = require("node:fs");
+      try {
+        const r = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+        process.stdout.write(String(r?.data?.counts?.passes ?? 0));
+      } catch { process.stdout.write("0"); }
+    ' "$arquivo")
+
+    tentativa=0
+    while [ "$passes" -le "$MINIMO_DE_REGRAS_SATISFEITAS" ] && [ "$tentativa" -lt 3 ]; do
+      tentativa=$((tentativa + 1))
+      agent-browser set viewport "$largura" "$altura" >/dev/null 2>&1
+      agent-browser open "$BASE_URL$pagina" >/dev/null 2>&1
+      agent-browser wait "$ASSENTAR_MS" >/dev/null 2>&1
+      agent-browser a11y --json --tags "$TAGS" >"$arquivo" 2>/dev/null
+      passes=$(node -e '
+        const fs = require("node:fs");
+        try {
+          const r = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+          process.stdout.write(String(r?.data?.counts?.passes ?? 0));
+        } catch { process.stdout.write("0"); }
+      ' "$arquivo")
+    done
+
+    # Esgotou as tentativas e o relatório continua descrevendo um
+    # documento vazio: isso não é "zero violações", é medida nenhuma.
+    if [ "$passes" -le "$MINIMO_DE_REGRAS_SATISFEITAS" ]; then
+      printf '  %-28s NAO RENDERIZOU (auditoria sobre documento vazio)\n' "$pagina"
+      paginas_com_falha=$((paginas_com_falha + 1))
+      continue
     fi
 
     if [ "$render" = "vazia" ]; then
