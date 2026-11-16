@@ -386,3 +386,45 @@ corrigir.
   avançar com Tab por todos os campos e confirmar, por
   `getBoundingClientRect` contra os elementos `position: fixed`, que
   nenhum campo com foco fica coberto.
+
+## Resultado
+
+| critério                                                                   | resultado                                                                      |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `lint` / `typecheck` / `test` em `@rotta/web`, `@rotta/ui` e `@rotta/maps` | passa (256 + 46 testes; 0 erros de lint)                                       |
+| `./scripts/a11y-check.sh`, 18 páginas × 2 tamanhos                         | **0 violações**, em duas passadas seguidas iguais                              |
+| `TAGS=best-practice`                                                       | 48 → 10 antes do `A11Y-11`, e os itens `A11Y-06` a `A11Y-11` não aparecem mais |
+| foco atrás do banner, 390×844, `/criar-conta/empresa`                      | 8 campos → 0                                                                   |
+
+O `build` de `@rotta/web` falha neste contêiner por validação de
+variável de ambiente em `/api/webhooks/asaas-relay`. É anterior a este
+branch e não tem relação com nada aqui.
+
+### A régua precisou de conserto três vezes antes de medir
+
+Não é nota de rodapé: foi a maior parte do trabalho de medição, e sem
+isso os números acima não valeriam nada. Cada uma destas fazia a
+varredura devolver um número diferente a cada passada, sobre o mesmo
+código:
+
+1. **Página não renderizada contada como limpa** (`28f09ce4`, antes
+   desta entrega). API fora do ar, telas de `(auth)` presas no
+   "Carregando", sete páginas seguidas dadas como ok.
+2. **Tamanho de janela não aplicado** (`f951cd21`). Os alvos acusados a
+   390×844 eram os links `hidden lg:flex` do cabeçalho, que naquele
+   tamanho são `display: none`. Era o layout de desktop ainda no lugar:
+   o `open` recarrega a página, e o tamanho voltava ao padrão antes de o
+   CSS do celular valer.
+3. **Auditoria sobre documento vazio** (`f951cd21`). Relatórios com
+   `passes: 3` contra `passes: 24` da mesma rota, acusando
+   `document-title` — não era página sem `<title>`, era documento sem
+   nada.
+
+E uma quarta, de outra natureza (`429203a1`): `/selecionar-perfil`
+redireciona quem nunca viu o onboarding, então num navegador novo o axe
+media a `<div>` vazia do instante anterior ao redirecionamento. Esse
+relatava o mesmo "defeito" em toda passada, o que é pior que ruído —
+parece estável.
+
+Em todas, o padrão é o mesmo: uma medida que às vezes diz "0" é pior
+que nenhuma medida, porque dá para acreditar nela.
