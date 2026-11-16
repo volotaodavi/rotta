@@ -117,6 +117,15 @@ for pagina in "${PAGINAS[@]}"; do
   printf '.'
 done
 echo " pronto"
+
+# `/selecionar-perfil` manda quem nunca viu o onboarding para
+# `/onboarding`. Num navegador novo, então, o axe nunca via a tela em
+# si: media a `<div>` vazia do instante anterior ao redirecionamento e
+# relatava "sem h1" sobre uma tela que tem — e, pior, relatava isso
+# igual em toda passada, parecendo defeito estável. Marcar o
+# onboarding como visto é o que um visitante recorrente já tem, e é o
+# estado em que essa rota existe de verdade.
+agent-browser eval 'localStorage.setItem("rotta_onboarding_seen", "1"), "ok"' >/dev/null 2>&1
 echo
 
 total=0
