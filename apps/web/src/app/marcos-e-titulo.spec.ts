@@ -84,6 +84,29 @@ describe.each(TELAS_DE_AUTH)("%s", (arquivo) => {
   });
 });
 
+describe("landing-product-mockups.tsx", () => {
+  /**
+   * Os indicadores da maquete da home ("12", "9", "1") saíam como `h2`
+   * — `Typography variant="title"` tem `h2` por padrão —, então quem
+   * pedia a lista de títulos da página ouvia três números soltos
+   * (`A11Y-09`). Viraram `<dl>`/`<dt>`/`<dd>`.
+   */
+  const fonte = lerFonte("../components/landing-product-mockups.tsx");
+
+  it("os indicadores são uma lista de definição", () => {
+    expect(fonte).toContain("<dl ");
+    expect(fonte).toContain('as="dt"');
+    expect(fonte).toContain('as="dd"');
+  });
+
+  it("nenhum número da maquete volta a ser cabeçalho", () => {
+    const titulos = fonte.match(/variant="(title|subtitle|headline|display|hero)"[^>]*/g) ?? [];
+    for (const titulo of titulos) {
+      expect(titulo).toMatch(/as="(dd|dt|p|span)"/);
+    }
+  });
+});
+
 describe("<main>", () => {
   /**
    * `(marketing)/layout.tsx` já tinha o seu. Estes dois não: a área de

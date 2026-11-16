@@ -268,6 +268,21 @@ Viram `<dl>`/`<dt>`/`<dd>`.
 
 **Arquivo**: `components/landing-product-mockups.tsx:216-218`.
 
+**Corrigido.** `<dl>` com `<dt>` (rótulo) antes de `<dd>` (número), que é
+a ordem exigida pelo HTML e também a leitura certa: "Rotas ativas, 12".
+O visual continua número em cima e rótulo embaixo, por `order`. O ícone
+mora dentro do `<dd>` porque um `<div>` solto dentro de `<dl>` não é
+válido.
+
+Uma diferença visual de 8px, medida e aceita: o rótulo era um `<span>`
+em linha, e a caixa de linha dele herdava o entrelinhas de 24px do
+contêiner em vez dos 16px do próprio `variant="caption"`. Como `<dt>`
+ele passa a ocupar exatamente a altura que a tipografia declara, e cada
+cartão fica 112px → 104px. Reproduzir os 8px antigos exigiria um
+`leading-6` sobre o `leading-4` da variante, apostando na ordem em que o
+Tailwind emite as duas utilidades — preço alto por um espaço que nunca
+foi decisão de ninguém. Antes e depois nas capturas do PR.
+
 ### A11Y-10 — Ordem de títulos e menus sem nome
 
 Em `/planos`, `/faq`, `/suporte` e `/legal` os títulos pulam de H1 para
