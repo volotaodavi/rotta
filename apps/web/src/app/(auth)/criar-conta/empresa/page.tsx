@@ -258,7 +258,9 @@ export default function CriarEmpresaPage(): JSX.Element {
           <CheckCircle2 className="h-8 w-8" />
         </div>
         <div className="flex flex-col gap-2">
-          <Typography variant="title">Que bom! 🎉</Typography>
+          <Typography variant="title" as="h1">
+            Que bom! 🎉
+          </Typography>
           <Typography variant="body" color="muted">
             {requerContatoComercial
               ? `Sua conta foi criada com sucesso. Nossa equipe entrará em contato pelo número de celular indicado (${form.telefone || form.administrador.telefone}). Fique atento!`
@@ -275,7 +277,7 @@ export default function CriarEmpresaPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col gap-6 py-10">
       <div className="flex flex-col gap-1">
-        <Typography variant="title">
+        <Typography variant="title" as="h1">
           {isMotoristaAutonomo ? "Cadastro de motorista autônomo" : "Criar empresa"}
         </Typography>
         {isMotoristaAutonomo && (
@@ -288,7 +290,7 @@ export default function CriarEmpresaPage(): JSX.Element {
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-6">
         <Card>
-          <Card.Header title={isMotoristaAutonomo ? "Seus dados" : "Dados da empresa"} />
+          <Card.Header title={isMotoristaAutonomo ? "Seus dados" : "Dados da empresa"} as="h2" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               label={isMotoristaAutonomo ? "Nome completo" : "Razão social"}
@@ -406,7 +408,7 @@ export default function CriarEmpresaPage(): JSX.Element {
         </Card>
 
         <Card>
-          <Card.Header title="Endereço" />
+          <Card.Header title="Endereço" as="h2" />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField
               label="CEP"
@@ -483,11 +485,13 @@ export default function CriarEmpresaPage(): JSX.Element {
         <Card>
           <Card.Header
             title={isMotoristaAutonomo ? "Acesso à sua conta" : "Seus dados (administrador)"}
+            as="h2"
           />
           <Card.Body className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <FormField label="Nome" isRequired>
               <Input
                 required
+                autoComplete="name"
                 value={form.administrador.nome}
                 onChange={(event) => updateAdminField("nome", event.target.value)}
               />
@@ -496,6 +500,7 @@ export default function CriarEmpresaPage(): JSX.Element {
               <Input
                 type="email"
                 required
+                autoComplete="email"
                 value={form.administrador.email}
                 onChange={(event) => updateAdminField("email", event.target.value)}
               />
@@ -526,6 +531,7 @@ export default function CriarEmpresaPage(): JSX.Element {
               <Input
                 type="password"
                 required
+                autoComplete="new-password"
                 value={form.administrador.senha}
                 onChange={(event) => updateAdminField("senha", event.target.value)}
               />

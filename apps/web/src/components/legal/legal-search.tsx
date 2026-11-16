@@ -13,7 +13,15 @@ export function LegalSearch(): JSX.Element {
   const resultados = searchLegalDocuments(query);
 
   return (
-    <div className="relative flex flex-col gap-2">
+    /*
+      `<search>` (papel `search`) em vez de `<div>`: a busca fica no
+      topo da Documentação Rotta, fora do `<main>` e fora do `<aside>`,
+      e era o único pedaço da página em nenhuma região — quem navega
+      por marcos não tinha como chegar nela. Só o papel muda; o
+      `<search>` não traz estilo nenhum (A11Y-10,
+      `docs/53-acessibilidade-do-site.md`).
+    */
+    <search className="relative flex flex-col gap-2">
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
         <Input
@@ -48,6 +56,6 @@ export function LegalSearch(): JSX.Element {
           )}
         </div>
       )}
-    </div>
+    </search>
   );
 }

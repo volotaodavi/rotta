@@ -1,5 +1,5 @@
 import { Mail } from "@rotta/icons";
-import { Card, Typography } from "@rotta/ui/web";
+import { Card, Typography, textLinkVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { Metadata } from "next";
@@ -36,7 +36,7 @@ export default function ContatoPage(): JSX.Element {
           </GeneralContactButton>
           <Typography variant="bodySmall" color="muted">
             Já é cliente? Um atendimento mais rápido está no{" "}
-            <Link href="/suporte" className="text-primary hover:underline">
+            <Link href="/suporte" className={textLinkVariants()}>
               canal de suporte
             </Link>
             .

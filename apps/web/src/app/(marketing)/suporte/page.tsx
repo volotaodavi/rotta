@@ -1,5 +1,5 @@
 import { Headset, MessageCircle } from "@rotta/icons";
-import { Card, Typography } from "@rotta/ui/web";
+import { Card, Typography, textLinkVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { Metadata } from "next";
@@ -30,7 +30,9 @@ export default function SuportePage(): JSX.Element {
             <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
               <Headset className="h-5 w-5" />
             </span>
-            <Typography variant="subtitle">Já é cliente Rotta</Typography>
+            <Typography variant="subtitle" as="h2">
+              Já é cliente Rotta
+            </Typography>
             <Typography variant="bodySmall" color="muted">
               Abra um chamado direto pelo painel, na sua conta: nosso time acompanha empresas,
               motoristas e famílias todos os dias.
@@ -42,10 +44,12 @@ export default function SuportePage(): JSX.Element {
             <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
               <MessageCircle className="h-5 w-5" />
             </span>
-            <Typography variant="subtitle">Ainda não é cliente</Typography>
+            <Typography variant="subtitle" as="h2">
+              Ainda não é cliente
+            </Typography>
             <Typography variant="bodySmall" color="muted">
               Tem dúvidas antes de começar? Fale conosco em{" "}
-              <Link href={`mailto:${SUPPORT_EMAIL}`} className="text-primary hover:underline">
+              <Link href={`mailto:${SUPPORT_EMAIL}`} className={textLinkVariants()}>
                 {SUPPORT_EMAIL}
               </Link>
               .

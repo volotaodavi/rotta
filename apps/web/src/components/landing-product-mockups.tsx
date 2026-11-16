@@ -211,23 +211,35 @@ export function TransportadoraMockup(): JSX.Element {
         <span className="h-2.5 w-2.5 rounded-full bg-border-strong" />
       </div>
       <div className="flex flex-col gap-4 p-5">
-        <div className="grid grid-cols-3 gap-3">
+        {/*
+          `<dl>`, e não três `<div>` com um número em `variant="title"`
+          (A11Y-09, `docs/53-acessibilidade-do-site.md`). `title` desenha
+          um `h2` por padrão, então quem pedia a lista de títulos desta
+          página ouvia "12", "9", "1" — três seções que não existem.
+
+          `<dt>` é o rótulo e `<dd>` o número: na ORDEM DO DOM o leitor
+          de tela lê "Rotas ativas, 12", que é a leitura certa. O visual
+          continua número em cima e rótulo embaixo por `order`, e o
+          ícone mora dentro do `<dd>` (conteúdo de fluxo é válido ali;
+          um `<div>` solto dentro de `<dl>` não seria).
+        */}
+        <dl className="grid grid-cols-3 gap-3">
           {[
             { label: "Rotas ativas", value: "12", icon: RouteIcon },
             { label: "Motoristas", value: "9", icon: Users },
             { label: "Ocorrências", value: "1", icon: AlertTriangle },
           ].map((item) => (
-            <div key={item.label} className="rounded-xl border border-border p-3">
-              <item.icon className="h-4 w-4 text-primary" />
-              <Typography variant="title" className="mt-2 block">
-                {item.value}
-              </Typography>
-              <Typography variant="caption" color="muted">
+            <div key={item.label} className="flex flex-col rounded-xl border border-border p-3">
+              <Typography variant="caption" color="muted" as="dt" className="order-2">
                 {item.label}
+              </Typography>
+              <Typography variant="title" as="dd" className="order-1 block">
+                <item.icon className="h-4 w-4 text-primary" aria-hidden="true" />
+                <span className="mt-2 block">{item.value}</span>
               </Typography>
             </div>
           ))}
-        </div>
+        </dl>
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center gap-2">

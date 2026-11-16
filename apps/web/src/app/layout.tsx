@@ -218,7 +218,7 @@ export default function RootLayout({ children }: { children: ReactNode }): JSX.E
       <body>
         <ServiceWorkerRegistration />
         <AppProviders>{children}</AppProviders>
-        <InstallAppPrompt />
+        <InstallAppPrompt temRastreamento={temRastreamento} />
         <GoogleAnalytics measurementId={gaMeasurementId} />
         <CookieConsentBanner temRastreamento={temRastreamento} />
       </body>

@@ -194,6 +194,26 @@ interface MarkerEntry {
   lastUpdatedAt?: number;
 }
 
+/**
+ * Dá ao marcador o nome que ele já mostra no popup (`A11Y-08`,
+ * `docs/53-acessibilidade-do-site.md`). WCAG 4.1.2 Name, Role, Value
+ * (nível A).
+ *
+ * O MapLibre torna tabulável e anuncia como botão todo marcador que tem
+ * popup — mas o nome que ele dá a um marcador sem `aria-label` é a
+ * string genérica `Marker.Title` ("Map marker"), e a um marcador com
+ * elemento próprio (o ícone de veículo daqui) ele não dá nome nenhum.
+ * O resultado, no mapa de uma rota com dez paradas, era onze paradas de
+ * Tab todas chamadas "Map marker" — ou sem nome.
+ *
+ * `titulo` já é o texto do popup, logo o nome anunciado passa a ser
+ * exatamente o que a pessoa veria ao clicar ("Escola Municipal...",
+ * "Van — placa ABC1D23").
+ */
+function nomearMarcador(element: HTMLElement, titulo: string): void {
+  element.setAttribute("aria-label", titulo);
+}
+
 /** Elemento DOM do ícone de veículo (`marker.emMovimento`) — ver `vehicle-icon.ts`. */
 function buildVehicleMarkerElement(): HTMLDivElement {
   const el = document.createElement("div");
@@ -370,6 +390,7 @@ export function RottaMap({
   styleUrl,
   basemap = "padrao",
   followMode = false,
+  decorativo = false,
 }: RottaMapProps): JSX.Element {
   // Rede de segurança final contra `(0, 0)`/"Null Island" (ver
   // `isCoordenadaValida`) — nunca desenha um marcador nem centraliza a
@@ -557,6 +578,7 @@ export function RottaMap({
           existing.marker.setLngLat([marker.longitude, marker.latitude]);
         }
         existing.marker.getPopup()?.setText(marker.titulo);
+        nomearMarcador(existing.marker.getElement(), marker.titulo);
         continue;
       }
 
@@ -569,10 +591,13 @@ export function RottaMap({
       const mapMarker = emMovimento
         ? new Marker({ element: buildVehicleMarkerElement() })
         : new Marker({ color: MARKER_COLOR });
-      mapMarker
-        .setLngLat([marker.longitude, marker.latitude])
-        .setPopup(new Popup({ offset: 24 }).setText(marker.titulo))
-        .addTo(map);
+      mapMarker.setLngLat([marker.longitude, marker.latitude]);
+      // ANTES do `addTo`, de propósito: o MapLibre só batiza um
+      // marcador que ainda não tem nome, e o nome dele é genérico
+      // ("Map marker") — nomear depois seria trocar o nome certo pelo
+      // errado e vice-versa a cada remontagem. Ver `nomearMarcador`.
+      nomearMarcador(mapMarker.getElement(), marker.titulo);
+      mapMarker.setPopup(new Popup({ offset: 24 }).setText(marker.titulo)).addTo(map);
       mapMarker.getElement().addEventListener("click", () => onMarkerPressRef.current?.(marker));
       markersRef.current.set(marker.id, { marker: mapMarker, emMovimento });
     }
@@ -621,7 +646,22 @@ export function RottaMap({
   }, [heatmapPoints]);
 
   return (
-    <div style={{ position: "relative", width: "100%", height: "100%" }}>
+    /*
+      `decorativo` desliga o mapa inteiro para quem navega por teclado e
+      leitor de tela (`A11Y-08`): `aria-hidden` tira da árvore de
+      acessibilidade, e `inert` tira da ordem do Tab — os dois, porque
+      cada um resolve metade. Só `aria-hidden` deixaria os marcadores
+      tabuláveis e sem nome nenhum, o pior dos dois mundos.
+
+      `inert` cobre também o botão "Tentar novamente" do estado de erro,
+      que é o comportamento certo aqui: numa miniatura ilustrativa, um
+      mapa que não carregou não é uma tarefa pendente de ninguém.
+    */
+    <div
+      style={{ position: "relative", width: "100%", height: "100%" }}
+      aria-hidden={decorativo || undefined}
+      inert={decorativo || undefined}
+    >
       <div ref={containerRef} style={{ width: "100%", height: "100%" }} />
       {status === "error" ? (
         <div

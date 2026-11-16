@@ -125,6 +125,27 @@ export interface RottaMapProps {
    * pediram).
    */
   followMode?: boolean;
+  /**
+   * Mapa puramente ilustrativo — sai da árvore de acessibilidade e da
+   * ordem do Tab (`A11Y-08`, `docs/53-acessibilidade-do-site.md`).
+   *
+   * Existe por um caso concreto: a miniatura animada da hero da Landing
+   * Page (`hero-map-demo.tsx`) mostra uma van de EXEMPLO andando entre
+   * paradas de exemplo. Nela, o MapLibre entrega ao leitor de tela um
+   * mapa interativo com quatro marcadores tabuláveis e nomes de ruas
+   * inventados — ruído na primeira tela do site, sem nenhuma
+   * informação. Quem usa o mapa de verdade (painel, `/minha-rota`,
+   * mapa da operação) nunca passa `decorativo`.
+   *
+   * Não é a mesma coisa que esconder: a página que marca o mapa como
+   * decorativo é responsável por dizer em texto, ao lado, o que o mapa
+   * mostraria.
+   *
+   * Padrão `false`. Hoje só `./web` reage a esta propriedade: nenhuma
+   * tela do `apps/mobile` tem mapa ilustrativo, e a revisão de
+   * acessibilidade do app é separada (`docs/53`, "Fora do escopo").
+   */
+  decorativo?: boolean;
 }
 
 /**

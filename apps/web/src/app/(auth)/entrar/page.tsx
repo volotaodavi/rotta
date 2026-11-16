@@ -2,7 +2,6 @@
 
 import { ApiError, isMfaChallengeResponse, isMfaSetupRequiredResponse } from "@rotta/api-client";
 import { useAuth } from "@rotta/auth/web";
-import { Eye, EyeOff } from "@rotta/icons";
 import { Button, FormField, Input, Modal, Spinner, Typography } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,6 +11,7 @@ import type { LoginMascotMood } from "@/components/login-mascot";
 import type { ProfileOption } from "@rotta/api-client";
 
 import { LoginMascot } from "@/components/login-mascot";
+import { PasswordToggleButton } from "@/components/password-toggle-button";
 import { defaultRouteForRole } from "@/lib/default-route";
 import { getAdminUrl } from "@/lib/site-config";
 
@@ -36,17 +36,10 @@ function SenhaField({
     <div className="relative">
       <Input
         type={mostrarSenha ? "text" : "password"}
-        className={`pr-10 ${className ?? ""}`}
+        className={`pr-12 ${className ?? ""}`}
         {...rest}
       />
-      <button
-        type="button"
-        onClick={onToggleMostrarSenha}
-        aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
-        className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted transition-colors hover:text-text"
-      >
-        {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-      </button>
+      <PasswordToggleButton mostrarSenha={mostrarSenha} onToggle={onToggleMostrarSenha} />
     </div>
   );
 }
@@ -158,7 +151,15 @@ export default function EntrarPage(): JSX.Element {
     return (
       <div className="mx-auto flex w-full max-w-sm flex-col gap-6">
         <div className="flex flex-col gap-1 text-center">
-          <Typography variant="title">Escolha um perfil</Typography>
+          {/* `as="h1"`: este branch é um ESTADO da própria /entrar (depois
+              de o backend confirmar que a conta tem mais de uma empresa),
+              nunca aparece junto com "Entrar na Rotta" — então é o único
+              cabeçalho da página enquanto está na tela. `variant` e `as`
+              são independentes no `Typography`, logo nada muda no visual.
+              Ver `A11Y-07` em `docs/53-acessibilidade-do-site.md`. */}
+          <Typography variant="title" as="h1">
+            Escolha um perfil
+          </Typography>
           <Typography variant="bodySmall" color="muted">
             Sua conta está vinculada a mais de uma empresa.
           </Typography>
@@ -190,7 +191,9 @@ export default function EntrarPage(): JSX.Element {
       <LoginMascot mood={mood} />
 
       <div className="flex flex-col gap-1 text-center">
-        <Typography variant="title">Entrar na Rotta</Typography>
+        <Typography variant="title" as="h1">
+          Entrar na Rotta
+        </Typography>
       </div>
 
       <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4">

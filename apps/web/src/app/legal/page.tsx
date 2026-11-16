@@ -36,7 +36,9 @@ export default function LegalHubPage(): JSX.Element {
           <Link key={doc.slug} href={doc.href}>
             <Card className="h-full transition-colors hover:border-primary">
               <Card.Body className="flex flex-col gap-2">
-                <Typography variant="subtitle">{doc.titulo}</Typography>
+                <Typography variant="subtitle" as="h2">
+                  {doc.titulo}
+                </Typography>
                 <Typography variant="bodySmall" color="muted">
                   {doc.resumo}
                 </Typography>

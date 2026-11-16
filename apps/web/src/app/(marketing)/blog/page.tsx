@@ -1,5 +1,5 @@
 import { Newspaper } from "@rotta/icons";
-import { Typography } from "@rotta/ui/web";
+import { Typography, textLinkVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { Metadata } from "next";
@@ -33,7 +33,7 @@ export default function BlogPage(): JSX.Element {
       </Typography>
       <Typography variant="body" color="muted">
         Ainda estamos preparando o conteúdo. Enquanto isso, veja as{" "}
-        <Link href="/faq" className="text-primary hover:underline">
+        <Link href="/faq" className={textLinkVariants()}>
           perguntas frequentes
         </Link>
         .

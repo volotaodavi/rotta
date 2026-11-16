@@ -1,4 +1,4 @@
-import { Typography } from "@rotta/ui/web";
+import { Typography, textLinkVariants } from "@rotta/ui/web";
 import Link from "next/link";
 
 import type { LegalDocumentMeta } from "@/features/legal/documents";
@@ -69,7 +69,7 @@ export function LegalDocumentShell({
           <ol className="flex flex-col gap-1">
             {toc.map((item, index) => (
               <li key={item.id}>
-                <a href={`#${item.id}`} className="text-sm text-primary hover:underline">
+                <a href={`#${item.id}`} className={textLinkVariants({ className: "text-sm" })}>
                   {index + 1}. {item.label}
                 </a>
               </li>
@@ -88,7 +88,7 @@ export function LegalDocumentShell({
           <ul className="flex flex-col gap-1">
             {relacionados.map((link) => (
               <li key={link.href}>
-                <Link href={link.href} className="text-sm text-primary hover:underline">
+                <Link href={link.href} className={textLinkVariants({ className: "text-sm" })}>
                   {link.label} →
                 </Link>
               </li>

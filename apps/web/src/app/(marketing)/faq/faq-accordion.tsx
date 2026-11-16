@@ -32,7 +32,9 @@ export function FaqAccordion(): JSX.Element {
               aria-expanded={aberta}
               className="flex w-full items-center justify-between gap-4 py-4 text-left"
             >
-              <Typography variant="subtitle">{faq.question}</Typography>
+              <Typography variant="subtitle" as="h2">
+                {faq.question}
+              </Typography>
               <ChevronDown
                 className={`h-5 w-5 shrink-0 text-text-muted transition-transform duration-150 ${aberta ? "rotate-180" : ""}`}
               />

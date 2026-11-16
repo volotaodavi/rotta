@@ -11,6 +11,7 @@ import {
   PhoneInput,
   Typography,
   isCompleteBrazilianCellphone,
+  textLinkVariants,
 } from "@rotta/ui/web";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -120,7 +121,9 @@ export default function CriarContaPessoalPage(): JSX.Element {
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6 py-10">
       <div className="flex flex-col gap-1 text-center">
-        <Typography variant="title">Área Pessoal</Typography>
+        <Typography variant="title" as="h1">
+          Área Pessoal
+        </Typography>
         <Typography variant="body" color="muted">
           Crie sua conta de Responsável. Depois de entrar, você cadastra seus filhos e busca
           transportadores no Marketplace.
@@ -133,6 +136,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
             <FormField label="Nome completo" isRequired>
               <Input
                 required
+                autoComplete="name"
                 value={form.nome}
                 onChange={(event) => updateField("nome", event.target.value)}
               />
@@ -141,6 +145,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
               <Input
                 type="email"
                 required
+                autoComplete="email"
                 value={form.email}
                 onChange={(event) => updateField("email", event.target.value)}
               />
@@ -164,6 +169,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
               <Input
                 type="password"
                 required
+                autoComplete="new-password"
                 value={form.senha}
                 onChange={(event) => updateField("senha", event.target.value)}
               />
@@ -194,7 +200,7 @@ export default function CriarContaPessoalPage(): JSX.Element {
 
       <Typography variant="bodySmall" color="muted" className="text-center">
         Recebeu um código de convite de uma escola ou empresa de transporte?{" "}
-        <Link href="/convite" className="text-primary hover:underline">
+        <Link href="/convite" className={textLinkVariants()}>
           Use seu código aqui
         </Link>
         .

@@ -150,190 +150,204 @@ export default function GovernoPage(): JSX.Element {
         </div>
       </header>
 
-      {/* Hero — GPS em tempo real como demonstração central, tom direto com o gestor público */}
-      <section className="relative isolate overflow-hidden bg-slate-950">
-        <div
-          className="pointer-events-none absolute -left-40 -top-40 -z-10 h-[520px] w-[520px] rounded-full bg-primary/30 blur-[120px]"
-          aria-hidden="true"
-        />
-        <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-20 pt-16 sm:pt-20 lg:grid-cols-2">
-          <div className="flex flex-col items-start gap-6 text-left">
-            <Badge variant="info">Para prefeituras e secretarias de educação</Badge>
-            <Typography variant="display" as="h1" className="text-white">
-              Você sabe, agora, onde está cada van escolar do seu município?
-            </Typography>
-            <Typography variant="body" className="max-w-lg text-white/70">
-              A Rotta mostra a frota escolar pública se movendo no mapa em tempo real: o mesmo GPS
-              ao vivo que já roda hoje para transportadoras privadas, agora à disposição da gestão
-              pública. Sem planilha, sem grupo de WhatsApp, sem ligar perguntando onde está o
-              veículo.
-            </Typography>
-            <div className="flex flex-col gap-3 pt-2 sm:flex-row">
-              <GovernoContactButton variant="primary" size="lg">
-                Marcar uma reunião
-              </GovernoContactButton>
-              <ScrollToDemoButton
-                variant="secondary"
-                size="lg"
-                className="bg-white/10 text-white hover:bg-white/20"
-              >
-                Ver o GPS em tempo real
-              </ScrollToDemoButton>
-            </div>
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2">
-              {["LGPD", "Lei nº 14.133/2021", "LC 182/2021"].map((item) => (
-                <span
-                  key={item}
-                  className="flex items-center gap-2 text-xs font-medium text-white/60"
-                >
-                  <BookOpenCheck className="h-3.5 w-3.5 text-primary" />
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
+      {/*
+        Esta página fica FORA de `(marketing)/layout.tsx`, que é quem
+        fornece o `<main>` nas demais. Sem este, 27 blocos ficavam fora
+        de qualquer região — e "pular para o conteúdo" não tem para onde
+        pular. A11Y-06, `docs/53`.
+      */}
+      <main className="flex flex-1 flex-col">
+        {/* Hero — GPS em tempo real como demonstração central, tom direto com o gestor público */}
+        <section className="relative isolate overflow-hidden bg-slate-950">
           <div
-            id="demonstracao"
-            className="relative flex scroll-mt-24 justify-center rounded-[32px] pt-4 ring-0 transition-shadow duration-500 lg:justify-end lg:pt-0"
-          >
-            <HeroMapDemo />
-          </div>
-        </div>
-      </section>
-
-      {/* Métricas — mockup ilustrativo, explicitamente rotulado */}
-      <section className="mx-auto w-full max-w-6xl px-6 py-20">
-        <div className="mb-10 flex flex-col items-center gap-3 text-center">
-          <Typography variant="headline" as="h2">
-            O que a sua equipe veria no painel
-          </Typography>
-          <Typography variant="body" color="muted" className="max-w-2xl">
-            Exemplo ilustrativo de como a gestão da frota escolar pública aparece no painel da
-            Rotta: números de demonstração, não de um cliente real.
-          </Typography>
-        </div>
-        <Card className="overflow-hidden">
-          <Card.Header
-            title="Painel de gestão (exemplo)"
-            action={<Badge variant="neutral">Dado ilustrativo</Badge>}
+            className="pointer-events-none absolute -left-40 -top-40 -z-10 h-[520px] w-[520px] rounded-full bg-primary/30 blur-[120px]"
+            aria-hidden="true"
           />
-          <Card.Body>
-            <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-              {METRICAS_EXEMPLO.map((item) => (
-                <div key={item.label} className="flex flex-col gap-1">
-                  <Typography variant="display" className="text-primary">
-                    {item.valor}
-                  </Typography>
-                  <Typography variant="caption" color="muted">
-                    {item.label}
-                  </Typography>
-                </div>
-              ))}
+          <div className="mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-12 px-6 pb-20 pt-16 sm:pt-20 lg:grid-cols-2">
+            <div className="flex flex-col items-start gap-6 text-left">
+              {/* `surface="dark"` porque este herói é `bg-slate-950` em QUALQUER
+                tema: sem isso o selo resolve pela paleta clara e dá 3,26:1
+                sobre quase-preto (A11Y-02, `docs/53`). */}
+              <Badge variant="info" surface="dark">
+                Para prefeituras e secretarias de educação
+              </Badge>
+              <Typography variant="display" as="h1" className="text-white">
+                Você sabe, agora, onde está cada van escolar do seu município?
+              </Typography>
+              <Typography variant="body" className="max-w-lg text-white/70">
+                A Rotta mostra a frota escolar pública se movendo no mapa em tempo real: o mesmo GPS
+                ao vivo que já roda hoje para transportadoras privadas, agora à disposição da gestão
+                pública. Sem planilha, sem grupo de WhatsApp, sem ligar perguntando onde está o
+                veículo.
+              </Typography>
+              <div className="flex flex-col gap-3 pt-2 sm:flex-row">
+                <GovernoContactButton variant="primary" size="lg">
+                  Marcar uma reunião
+                </GovernoContactButton>
+                <ScrollToDemoButton
+                  variant="secondary"
+                  size="lg"
+                  className="bg-white/10 text-white hover:bg-white/20"
+                >
+                  Ver o GPS em tempo real
+                </ScrollToDemoButton>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-2">
+                {["LGPD", "Lei nº 14.133/2021", "LC 182/2021"].map((item) => (
+                  <span
+                    key={item}
+                    className="flex items-center gap-2 text-xs font-medium text-white/60"
+                  >
+                    <BookOpenCheck className="h-3.5 w-3.5 text-primary" />
+                    {item}
+                  </span>
+                ))}
+              </div>
             </div>
-          </Card.Body>
-        </Card>
-      </section>
+            <div
+              id="demonstracao"
+              className="relative flex scroll-mt-24 justify-center rounded-[32px] pt-4 ring-0 transition-shadow duration-500 lg:justify-end lg:pt-0"
+            >
+              <HeroMapDemo />
+            </div>
+          </div>
+        </section>
 
-      {/* Capacidades reais — deixa claro que é a MESMA plataforma, sem versão reduzida para o setor público */}
-      <section className="w-full bg-surface px-6 py-20">
-        <div className="mx-auto w-full max-w-6xl">
-          <div className="mb-12 flex flex-col items-center gap-3 text-center">
+        {/* Métricas — mockup ilustrativo, explicitamente rotulado */}
+        <section className="mx-auto w-full max-w-6xl px-6 py-20">
+          <div className="mb-10 flex flex-col items-center gap-3 text-center">
             <Typography variant="headline" as="h2">
-              A mesma plataforma, pronta para o setor público
+              O que a sua equipe veria no painel
             </Typography>
             <Typography variant="body" color="muted" className="max-w-2xl">
-              Tudo que a Rotta já oferece hoje para transportadoras privadas está disponível,
-              inteiro, para a gestão pública do transporte escolar do seu município: nenhuma versão
-              reduzida.
+              Exemplo ilustrativo de como a gestão da frota escolar pública aparece no painel da
+              Rotta: números de demonstração, não de um cliente real.
             </Typography>
           </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {CAPACIDADES.map((item) => (
-              <Card key={item.titulo}>
-                <Card.Body className="flex flex-col gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <item.icon className="h-5 w-5" />
-                  </span>
-                  <Typography variant="subtitle">{item.titulo}</Typography>
-                  <Typography variant="bodySmall" color="muted">
-                    {item.descricao}
-                  </Typography>
-                </Card.Body>
-              </Card>
-            ))}
+          <Card className="overflow-hidden">
+            <Card.Header
+              title="Painel de gestão (exemplo)"
+              action={<Badge variant="neutral">Dado ilustrativo</Badge>}
+            />
+            <Card.Body>
+              <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+                {METRICAS_EXEMPLO.map((item) => (
+                  <div key={item.label} className="flex flex-col gap-1">
+                    <Typography variant="display" className="text-primary">
+                      {item.valor}
+                    </Typography>
+                    <Typography variant="caption" color="muted">
+                      {item.label}
+                    </Typography>
+                  </div>
+                ))}
+              </div>
+            </Card.Body>
+          </Card>
+        </section>
+
+        {/* Capacidades reais — deixa claro que é a MESMA plataforma, sem versão reduzida para o setor público */}
+        <section className="w-full bg-surface px-6 py-20">
+          <div className="mx-auto w-full max-w-6xl">
+            <div className="mb-12 flex flex-col items-center gap-3 text-center">
+              <Typography variant="headline" as="h2">
+                A mesma plataforma, pronta para o setor público
+              </Typography>
+              <Typography variant="body" color="muted" className="max-w-2xl">
+                Tudo que a Rotta já oferece hoje para transportadoras privadas está disponível,
+                inteiro, para a gestão pública do transporte escolar do seu município: nenhuma
+                versão reduzida.
+              </Typography>
+            </div>
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {CAPACIDADES.map((item) => (
+                <Card key={item.titulo}>
+                  <Card.Body className="flex flex-col gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <item.icon className="h-5 w-5" />
+                    </span>
+                    <Typography variant="subtitle">{item.titulo}</Typography>
+                    <Typography variant="bodySmall" color="muted">
+                      {item.descricao}
+                    </Typography>
+                  </Card.Body>
+                </Card>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Demonstração do site oficial */}
-      <section className="mx-auto w-full max-w-6xl px-6 py-20">
-        <div className="flex flex-col items-center gap-5 text-center">
-          <Badge variant="success">Conheça a plataforma</Badge>
-          <Typography variant="headline" as="h2" className="max-w-2xl">
-            O mapa que você viu acima já está no ar
-          </Typography>
-          <Typography variant="body" color="muted" className="max-w-lg">
-            O site oficial da Rotta pode ser visitado antes de qualquer conversa comercial: é a
-            mesma tecnologia de rastreamento em tempo real usada hoje pelas transportadoras
-            privadas.
-          </Typography>
-          <Link
-            href="/"
-            target="_blank"
-            className={buttonVariants({ variant: "secondary", size: "lg" })}
-          >
-            Visitar o site oficial da Rotta
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </section>
-
-      {/* Enquadramento legal — honesto, sem certificação inventada */}
-      <section className="w-full border-y border-border bg-surface px-6 py-20">
-        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-            <BookOpenCheck className="h-6 w-6" />
-          </span>
-          <Typography variant="headline" as="h2">
-            Um ponto de atenção para a sua equipe jurídica
-          </Typography>
-          <Typography variant="body" color="muted" className="max-w-2xl">
-            A contratação de tecnologia por órgãos públicos pode se relacionar com a{" "}
-            <strong>Lei nº 14.133/2021</strong> (Nova Lei de Licitações e Contratos Administrativos)
-            e, a depender do enquadramento da empresa contratada, com a{" "}
-            <strong>Lei Complementar nº 182/2021</strong> (Marco Legal das Startups). O tratamento
-            de dados pessoais de alunos e responsáveis segue a <strong>LGPD</strong> (ver a nossa{" "}
-            <Link href="/legal/privacidade" className="font-semibold text-primary">
-              Política de Privacidade
+        {/* Demonstração do site oficial */}
+        <section className="mx-auto w-full max-w-6xl px-6 py-20">
+          <div className="flex flex-col items-center gap-5 text-center">
+            <Badge variant="success">Conheça a plataforma</Badge>
+            <Typography variant="headline" as="h2" className="max-w-2xl">
+              O mapa que você viu acima já está no ar
+            </Typography>
+            <Typography variant="body" color="muted" className="max-w-lg">
+              O site oficial da Rotta pode ser visitado antes de qualquer conversa comercial: é a
+              mesma tecnologia de rastreamento em tempo real usada hoje pelas transportadoras
+              privadas.
+            </Typography>
+            <Link
+              href="/"
+              target="_blank"
+              className={buttonVariants({ variant: "secondary", size: "lg" })}
+            >
+              Visitar o site oficial da Rotta
+              <ArrowRight className="h-4 w-4" />
             </Link>
-            ). A Rotta não substitui a análise da equipe jurídica do seu órgão: cada modalidade de
-            contratação e o enquadramento legal aplicável ao caso concreto devem ser avaliados por
-            ela antes de qualquer processo formal.
-          </Typography>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* CTA final — formulário real (Frente A), sem coletar dados num backend novo: o envio ainda é um mailto:, só que montado a partir do que a pessoa preencheu. */}
-      <section id="contato" className="w-full bg-slate-950 px-6 py-20">
-        <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
-          <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/20 text-primary">
-            <CalendarClock className="h-6 w-6" />
-          </span>
-          <Typography variant="headline" as="h2" className="text-white">
-            Vamos marcar uma reunião?
-          </Typography>
-          <Typography variant="body" className="max-w-lg text-white/70">
-            Conte um pouco sobre o seu órgão: a gente monta o e-mail pra {GOVERNO_CONTACT_EMAIL}, já
-            pronto pra enviar do seu próprio cliente de e-mail, sem cadastro nenhum na Rotta.
-          </Typography>
+        {/* Enquadramento legal — honesto, sem certificação inventada */}
+        <section className="w-full border-y border-border bg-surface px-6 py-20">
+          <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <BookOpenCheck className="h-6 w-6" />
+            </span>
+            <Typography variant="headline" as="h2">
+              Um ponto de atenção para a sua equipe jurídica
+            </Typography>
+            <Typography variant="body" color="muted" className="max-w-2xl">
+              A contratação de tecnologia por órgãos públicos pode se relacionar com a{" "}
+              <strong>Lei nº 14.133/2021</strong> (Nova Lei de Licitações e Contratos
+              Administrativos) e, a depender do enquadramento da empresa contratada, com a{" "}
+              <strong>Lei Complementar nº 182/2021</strong> (Marco Legal das Startups). O tratamento
+              de dados pessoais de alunos e responsáveis segue a <strong>LGPD</strong> (ver a nossa{" "}
+              <Link href="/legal/privacidade" className="font-semibold text-primary">
+                Política de Privacidade
+              </Link>
+              ). A Rotta não substitui a análise da equipe jurídica do seu órgão: cada modalidade de
+              contratação e o enquadramento legal aplicável ao caso concreto devem ser avaliados por
+              ela antes de qualquer processo formal.
+            </Typography>
+          </div>
+        </section>
 
-          <GovernoContactButton variant="primary" size="lg" showIcon>
-            Enviar e-mail pedindo reunião
-          </GovernoContactButton>
-        </div>
-      </section>
+        {/* CTA final — formulário real (Frente A), sem coletar dados num backend novo: o envio ainda é um mailto:, só que montado a partir do que a pessoa preencheu. */}
+        <section id="contato" className="w-full bg-slate-950 px-6 py-20">
+          <div className="mx-auto flex w-full max-w-2xl flex-col items-center gap-6 text-center">
+            <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/20 text-primary">
+              <CalendarClock className="h-6 w-6" />
+            </span>
+            <Typography variant="headline" as="h2" className="text-white">
+              Vamos marcar uma reunião?
+            </Typography>
+            <Typography variant="body" className="max-w-lg text-white/70">
+              Conte um pouco sobre o seu órgão: a gente monta o e-mail pra {GOVERNO_CONTACT_EMAIL},
+              já pronto pra enviar do seu próprio cliente de e-mail, sem cadastro nenhum na Rotta.
+            </Typography>
 
-      {/* Rodapé minimalista */}
+            <GovernoContactButton variant="primary" size="lg" showIcon>
+              Enviar e-mail pedindo reunião
+            </GovernoContactButton>
+          </div>
+        </section>
+
+        {/* Rodapé minimalista */}
+      </main>
+
       <footer className="w-full bg-slate-950 px-6 py-8">
         <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 text-center sm:flex-row sm:text-left">
           <Typography variant="caption" className="text-white/50">
